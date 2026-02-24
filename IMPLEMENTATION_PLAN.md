@@ -35,3 +35,38 @@
 - [ ] Variables de entorno para producción
 - [ ] Headers de seguridad (ya tiene vercel.json)
 - [ ] Dominio personalizado
+
+---
+
+# Plan de Implementación: Fase 8 - Conversión a App Móvil Nativa (Capacitor)
+
+## Objetivo
+Transformar el proyecto web Next.js maduro en una aplicación móvil instalable nativa para Android y iOS utilizando Ionic Capacitor, preservando todas las funcionalidades y el diseño responsivo ya desarrollado.
+
+## Proposed Changes
+
+### 1. Preparar Arquitectura Next.js para Exportación Estática
+Capacitor envuelve un directorio estático (`out` folder) dentro de las aplicaciones nativas. Next.js debe ser configurado para esto.
+#### [MODIFY] [next.config.ts](file:///C:/Users/pedro.moreno/.gemini/antigravity/scratch/comunidad-connect/next.config.ts)
+> [!WARNING]
+> Next.js Image Optimization nativo (`<Image>`) requiere un servidor Node.js activo por defecto. Para `output: 'export'`, debemos configurar un `loader` personalizado (ej. Supabase public URL builder) o pasar temporalmente a imágenes web estándar (unoptimized) si falla el build estático.
+- Añadir `output: 'export'` a la configuración principal para permitir la generación del directorio estático.
+- Desactivar temporalmente la optimización estricta de imágenes en caso de conflictos durante el renderizado estático (`unoptimized: true` en la config de images).
+
+### 2. Integración Core de Capacitor
+Capacitor actuará como el puente ("bridge") entre nuestros componentes web JS/React y la API nativa de los teléfonos.
+- Instalar las dependencias de Capacitor en la raíz del proyecto web.
+- Ejecutar `npx cap init` para generar el archivo maestro de configuración `capacitor.config.ts`.
+- Configurar el `webDir` hacia `out` (carpeta generada por `npm run build` con static export de Next).
+
+### 3. Integración de Plataformas Nativas Destino (Android/iOS)
+Se agregarán localmente las carpetas de proyectos nativos "Wrappers".
+- Añadir las plataformas destino: Ionic CLI (`@capacitor/android` y `@capacitor/ios`).
+- Inyectar el código de nuestra app en dichas plataformas ejecutando `npx cap add android` y `npx cap add ios`.
+
+## Verification Plan
+
+### Manual Verification
+1. **Comprobación de Exportación:** El Agente verificará si Next.js logra resolver todo el ruteo dinámico con `npm run build` en modo static export, revisando los logs por conflictos de `next/image` y arreglándolos sobre la marcha.
+2. **Sincronización:** Validar ejecutar `npx cap sync` libre de errores tras compilar.
+3. **Simulador Android (Opcional):** Si el USER cuenta con un emulador en su máquina Windows (`C:\Program Files\Android\Android Studio\`), la meta es abrir el proyecto Android sub-mapeado con `npx cap open android`. En su defecto, se garantizará que la estructura nativa esté intacta lista para compilar un `APK`/`AAB`.

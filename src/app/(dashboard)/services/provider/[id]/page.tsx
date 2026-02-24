@@ -4,6 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProviderProfileClient } from "@/components/services/ProviderProfileClient";
 
+export async function generateStaticParams() {
+    const providers = await providersService.getAll();
+    return providers.map((provider) => ({
+        id: provider.id.toString(),
+    }));
+}
+
 export default async function ProviderProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
 

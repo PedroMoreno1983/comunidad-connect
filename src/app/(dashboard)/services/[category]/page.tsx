@@ -27,6 +27,14 @@ const CATEGORY_CONFIG = {
     }
 };
 
+export function generateStaticParams() {
+    return [
+        { category: 'plumbing' },
+        { category: 'electrical' },
+        { category: 'locksmith' },
+    ];
+}
+
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
     const resolvedParams = await params;
     const category = resolvedParams.category as CategoryId;
