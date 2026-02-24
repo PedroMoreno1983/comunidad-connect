@@ -1,0 +1,293 @@
+"use client";
+
+import { Button } from "@/components/ui/Button";
+import { ExpensesService } from "@/lib/api";
+import { DollarSign, Download, CheckCircle, Clock, AlertCircle, TrendingUp, CreditCard, Receipt, ArrowUpRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+import { useToast } from "@/components/ui/Toast";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+export default function ExpensesPage() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isPaying, setIsPaying] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            // For demo purposes, fallback to a mocked unitId if user isn't fully linked
+            const activeUnit = user?.unitId || 'c4a96bdf-6f7f-4b02-8f9f-5c2f354f9aeb';
+            try {
+                setIsLoading(true);
+                const data = await ExpensesService.getExpenses(activeUnit);
+
+                // Map snake_case to camelCase
+                const mapped = data.map((exp: any) => ({
+                    id: exp.id,
+                    unitId: exp.unit_id,
+                    month: exp.month,
+                    amount: Number(exp.total_amount),
+                    status: exp.status,
+                    dueDate: exp.due_date,
+                    paidAt: exp.paid_at,
+                    breakdown: exp.items || []
+                }));
+
+                setExpenses(mapped);
+            } catch (error: any) {
+                console.error("Error fetching dependencies:", error);
+                toast({
+                    title: "Error de Servidor",
+                    description: "No se pudieron cargar los gastos.",
+                    variant: "destructive"
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchExpenses();
+    }, [user?.unitId, toast]);
+
+    const handlePay = async (id: string) => {
+        try {
+            setIsPaying(id);
+            await ExpensesService.payExpense(id);
+
+            // Optimistic update
+            setExpenses(prev => prev.map(exp =>
+                exp.id === id ? { ...exp, status: 'paid' as const } : exp
+            ));
+
+            toast({
+                title: "Pago Exitoso",
+                description: "La transacción ha sido procesada en la nube.",
+                variant: "success",
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "No se pudo procesar el pago.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsPaying(null);
+        }
+    };
+
+    const totalPending = expenses.filter(e => e.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalPaid = expenses.filter(e => e.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+    const hasOverdue = expenses.some(e => e.status === 'overdue');
+
+    const getStatusConfig = (status: string) => {
+        switch (status) {
+            case 'paid': return {
+                icon: CheckCircle,
+                label: 'Pagado',
+                bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+                text: 'text-emerald-700 dark:text-emerald-400',
+                border: 'border-emerald-200 dark:border-emerald-500/20',
+                ring: 'ring-emerald-500/20'
+            };
+            case 'pending': return {
+                icon: Clock,
+                label: 'Pendiente',
+                bg: 'bg-amber-50 dark:bg-amber-500/10',
+                text: 'text-amber-700 dark:text-amber-400',
+                border: 'border-amber-200 dark:border-amber-500/20',
+                ring: 'ring-amber-500/20'
+            };
+            case 'overdue': return {
+                icon: AlertCircle,
+                label: 'Vencido',
+                bg: 'bg-red-50 dark:bg-red-500/10',
+                text: 'text-red-700 dark:text-red-400',
+                border: 'border-red-200 dark:border-red-500/20',
+                ring: 'ring-red-500/20'
+            };
+            default: return {
+                icon: Clock,
+                label: status,
+                bg: 'bg-slate-50 dark:bg-slate-700',
+                text: 'text-slate-700 dark:text-slate-300',
+                border: 'border-slate-200 dark:border-slate-600',
+                ring: 'ring-slate-500/20'
+            };
+        }
+    };
+
+    const formatMonth = (monthStr: string) => {
+        const [year, month] = monthStr.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        return date.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+    };
+
+    return (
+        <div className="max-w-6xl space-y-8">
+            {/* Header */}
+            <div>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl">
+                        <DollarSign className="h-5 w-5 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Gastos Comunes</h1>
+                </div>
+                <p className="text-slate-500 dark:text-slate-400">
+                    Historial de cobros y pagos de tu unidad • Depto {user?.unitId || '101'}
+                </p>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Total Pending Card */}
+                <div className={`relative overflow-hidden rounded-2xl p-6 ${hasOverdue ? 'bg-gradient-to-br from-red-500 to-pink-600' : 'bg-gradient-to-br from-rose-500 to-pink-600'} text-white shadow-xl shadow-rose-500/25`}>
+                    <div className="absolute top-0 right-0 p-4 opacity-20">
+                        <DollarSign className="h-24 w-24" />
+                    </div>
+                    <div className="relative">
+                        <p className="text-white/80 text-sm font-medium">Total Pendiente</p>
+                        <p className="text-4xl font-bold mt-2">${totalPending.toLocaleString('es-CL')}</p>
+                        {hasOverdue && (
+                            <div className="mt-3 flex items-center gap-2 text-sm">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Tienes pagos vencidos</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Total Paid Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
+                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
+                            Al día
+                        </span>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Total Pagado</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">${totalPaid.toLocaleString('es-CL')}</p>
+                </div>
+
+                {/* Quick Pay Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
+                            <CreditCard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Métodos de Pago</p>
+                    <div className="flex items-center gap-2 mt-3">
+                        <div className="h-8 w-12 bg-gradient-to-r from-blue-600 to-blue-400 rounded-md flex items-center justify-center text-white text-xs font-bold">VISA</div>
+                        <div className="h-8 w-12 bg-gradient-to-r from-red-500 to-orange-400 rounded-md flex items-center justify-center text-white text-xs font-bold">MC</div>
+                        <div className="h-8 w-12 bg-gradient-to-r from-slate-700 to-slate-500 rounded-md flex items-center justify-center text-white text-xs font-bold">PAC</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Payment History Table */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-xl">
+                                <Receipt className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                            </div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Historial de Pagos</h2>
+                        </div>
+                        <button className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                            Descargar todo <Download className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+
+                <ErrorBoundary fallbackMessage="Error al cargar el historial de pagos.">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-medium">
+                                    <th className="px-6 py-4 text-left">Período</th>
+                                    <th className="px-6 py-4 text-left">Vencimiento</th>
+                                    <th className="px-6 py-4 text-left">Monto</th>
+                                    <th className="px-6 py-4 text-left">Estado</th>
+                                    <th className="px-6 py-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 relative">
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={5} className="p-0">
+                                            <SkeletonTable rows={3} />
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    expenses.map((expense, idx) => {
+                                        const status = getStatusConfig(expense.status);
+                                        const StatusIcon = status.icon;
+
+                                        return (
+                                            <tr
+                                                key={expense.id}
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors animate-slide-up opacity-0"
+                                                style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'forwards' }}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <p className="font-semibold text-slate-900 dark:text-white capitalize">{formatMonth(expense.month)}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                                                    {new Date(expense.dueDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-lg font-bold text-slate-900 dark:text-white">
+                                                        ${expense.amount.toLocaleString('es-CL')}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${status.bg} ${status.text} ring-1 ring-inset ${status.ring}`}>
+                                                        <StatusIcon className="h-3.5 w-3.5" />
+                                                        {status.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {expense.status !== 'paid' ? (
+                                                        <button
+                                                            onClick={() => handlePay(expense.id)}
+                                                            disabled={isPaying === expense.id}
+                                                            className="inline-flex items-center justify-center min-w-[140px] gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-rose-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none"
+                                                        >
+                                                            {isPaying === expense.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <>Pagar Ahora <ArrowUpRight className="h-4 w-4" /></>
+                                                            )}
+                                                        </button>
+                                                    ) : (
+                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm">
+                                                            <Download className="h-4 w-4" />
+                                                            Comprobante
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </ErrorBoundary>
+
+                {!isLoading && expenses.length === 0 && (
+                    <div className="text-center py-12">
+                        <DollarSign className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400">No hay registros de gastos comunes para esta unidad.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

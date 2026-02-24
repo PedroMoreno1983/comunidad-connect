@@ -1,0 +1,52 @@
+﻿Ôû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 8.2s
+  Running TypeScript ...
+node.exe : Failed to compile.
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (Failed   
+  to compile.:String) [],    
+ RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+
+./src/lib/mockData.ts:359:9
+Type error: Object literal 
+may only specify known 
+properties, but 'unitId' 
+does not exist in type 
+'WaterReading'. Did you mean 
+to write 'unit_id'?
+
+[0m [90m 357 |[39m     {
+ [90m 358 |[39m         
+id[33m:[39m 
+[32m'wr1'[39m[33m,[39m
+[31m[1m>[22m[39m[90m 
+359 |[39m         
+unitId[33m:[39m 
+[32m'u1'[39m[33m,[39m
+ [90m     |[39m         
+[31m[1m^[22m[39m
+ [90m 360 |[39m         
+previousReading[33m:[39m 
+[35m1240[39m[33m,[39m
+ [90m 361 |[39m         
+currentReading[33m:[39m 
+[35m1255[39m[33m,[39m
+ [90m 362 |[39m         
+consumption[33m:[39m 
+[35m15[39m[33m,[39m[0m
+Next.js build worker exited 
+with code: 1 and signal: null
