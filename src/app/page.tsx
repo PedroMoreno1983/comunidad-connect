@@ -11,7 +11,7 @@ import {
 import { motion } from 'framer-motion';
 
 export default function LoginPage() {
-  const { login, user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
@@ -28,13 +28,7 @@ export default function LoginPage() {
 
   const toggleTheme = () => setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
 
-  const handleLogin = async (role: string) => {
-    setLoading(role);
-    await login(role as 'admin' | 'resident' | 'concierge');
-    router.push('/home');
-  };
-
-  const roles = [
+  const features = [
     {
       id: 'admin',
       title: 'Administración',
@@ -136,12 +130,32 @@ export default function LoginPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed"
           >
-            Una plataforma de nivel empresarial diseñada para hacer que la vida en comunidad sea más simple, transparente y segura. Selecciona una vista para comenzar la demostración interactiva.
+            Una plataforma de nivel empresarial diseñada para hacer que la vida en comunidad sea más simple, transparente y segura.
           </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex items-center justify-center gap-4 mt-8"
+          >
+            <button
+              onClick={() => router.push('/login')}
+              className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all shadow-lg hover:shadow-indigo-500/30 flex items-center gap-2"
+            >
+              Iniciar Sesión <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              className="px-8 py-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold border border-slate-200 dark:border-slate-700 transition-all shadow-sm"
+            >
+              Registrarse
+            </button>
+          </motion.div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full z-20">
-          {roles.map((role, idx) => {
+          {features.map((role, idx) => {
             const Icon = role.icon;
             const isHovered = hoveredRole === role.id;
 
@@ -153,7 +167,6 @@ export default function LoginPage() {
                 transition={{ duration: 0.5, delay: 0.3 + (idx * 0.1) }}
                 onMouseEnter={() => setHoveredRole(role.id)}
                 onMouseLeave={() => setHoveredRole(null)}
-                onClick={() => handleLogin(role.id)}
                 className={`
                   group relative flex flex-col p-8 rounded-[2rem] cursor-pointer
                   bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60
@@ -201,17 +214,13 @@ export default function LoginPage() {
 
                 <div className="mt-auto pt-6 border-t border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between z-10">
                   <span className={`text-sm font-semibold transition-colors duration-300 ${isHovered ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
-                    {loading === role.id ? 'Iniciando sesión...' : 'Ingresar a la vista'}
+                    Más información
                   </span>
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
                     ${isHovered ? `bg-gradient-to-br ${role.color} text-white translate-x-1 shadow-md` : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}
                   `}>
-                    {loading === role.id ? (
-                      <Command className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5" />
-                    )}
+                    <ChevronRight className="w-5 h-5" />
                   </div>
                 </div>
               </motion.div>

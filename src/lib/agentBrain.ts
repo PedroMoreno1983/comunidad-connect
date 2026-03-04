@@ -1,13 +1,79 @@
-import { SUPERMARKET_CATALOG, Product } from "./mockSupermarket";
-import { RECIPE_CATALOG, Recipe } from "./mockRecipes";
-import { MOCK_MARKETPLACE } from "./mockData";
+import { MarketplaceService } from "./api";
+
+export interface Product {
+    id: string;
+    name: string;
+    brand: string;
+    category: string;
+    keywords: string[];
+    prices: {
+        store: 'Lider' | 'Jumbo' | 'Unimarc' | 'Santa Isabel';
+        price: number;
+        offerPrice?: number;
+    }[];
+}
+
+export interface Recipe {
+    id: string;
+    name: string;
+    prepTime: string;
+    time?: string;
+    description?: string;
+    difficulty: 'Fácil' | 'Media' | 'Difícil';
+    ingredients: { name: string; amount: string; category?: string }[];
+    instructions: string[];
+}
+
+const SUPERMARKET_CATALOG: Product[] = [
+    {
+        id: "prod-001",
+        name: "Harina de Trigo Selecta sin Polvos",
+        brand: "Selecta",
+        category: "Abarrotes",
+        keywords: ["harina", "harina sin", "harina de trigo", "harina selecta", "harina blanca"],
+        prices: [
+            { store: 'Lider', price: 1200, offerPrice: 990 },
+            { store: 'Jumbo', price: 1350 }
+        ]
+    },
+    {
+        id: "prod-002",
+        name: "Huevos Blancos Bandeja 12 un",
+        brand: "Champion",
+        category: "Lácteos y Huevos",
+        keywords: ["huevo", "huevos", "docena de huevos", "huevos blancos"],
+        prices: [
+            { store: 'Lider', price: 2800 },
+            { store: 'Jumbo', price: 2990, offerPrice: 2490 }
+        ]
+    }
+];
+
+const RECIPE_CATALOG: Recipe[] = [
+    {
+        id: "rec-001",
+        name: "Panqueques Caseros",
+        prepTime: "15 min",
+        difficulty: "Fácil",
+        ingredients: [
+            { name: "Harina", amount: "1 taza", category: "Abarrotes" },
+            { name: "Leche", amount: "1.5 tazas", category: "Lácteos" },
+            { name: "Huevos", amount: "2 unidades", category: "Lácteos" }
+        ],
+        instructions: [
+            "Batir huevos con la leche.",
+            "Incorporar harina poco a poco.",
+            "Calentar sartén y formar los panqueques dorando por ambos lados."
+        ]
+    }
+];
 
 export interface CartItem {
     name: string;
     brand: string;
     quantity: number;
     price: number;
-    store: 'Jumbo' | 'Lider';
+    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
     isOffer?: boolean;
     originalPrice?: number;
 }
@@ -41,8 +107,8 @@ export interface AgentResponse {
 export class SupermarketAgent {
     private context: CartItem[] = [];
 
-    // Simple NLP Mock
-    public processMessage(text: string): AgentResponse {
+    // Simple NLP Mock - Now Async for Supabase
+    public async processMessage(text: string): Promise<AgentResponse> {
         const normalizedText = text.toLowerCase();
 
         // 0. Reset
@@ -53,20 +119,20 @@ export class SupermarketAgent {
 
         // 1. INTENCIÓN: COCINAR / TENGO INGREDIENTES
         if (normalizedText.includes("tengo") || normalizedText.includes("cocinar") || normalizedText.includes("receta")) {
-            return this.processCookingIntent(normalizedText);
+            return await this.processCookingIntent(normalizedText);
         }
 
         // 2. INTENCIÓN: COMPRA DIRECTA (Supermercado)
         return this.processShoppingIntent(normalizedText);
     }
 
-    private processCookingIntent(text: string): AgentResponse {
+    private async processCookingIntent(text: string): Promise<AgentResponse> {
         // Detectar ingredientes que el usuario dice tener
         const userIngredients = text.split(/,| y | con /).map(s => s.trim());
 
         // Buscar receta que coincida mejor (Mock simple: primera que encuentre coincidencia parcial)
-        const matchedRecipe = RECIPE_CATALOG.find(recipe =>
-            recipe.ingredients.some(ing => userIngredients.some(ui => ui.includes(ing.name.toLowerCase()) || ing.name.toLowerCase().includes(ui)))
+        const matchedRecipe = RECIPE_CATALOG.find((recipe: Recipe) =>
+            recipe.ingredients.some((ing: any) => userIngredients.some(ui => ui.includes(ing.name.toLowerCase()) || ing.name.toLowerCase().includes(ui)))
         );
 
         if (!matchedRecipe) {
@@ -74,14 +140,21 @@ export class SupermarketAgent {
         }
 
         // Calcular faltantes
-        const missingIngredients = matchedRecipe.ingredients.filter(ing =>
+        const missingIngredients = matchedRecipe.ingredients.filter((ing: any) =>
             !userIngredients.some(ui => ui.includes(ing.name.toLowerCase()) || ing.name.toLowerCase().includes(ui))
         );
 
+        // Fetch real marketplace items
+        let marketItems: any[] = [];
+        try {
+            marketItems = await MarketplaceService.getItemsV2();
+        } catch (e) {
+            console.error("No se pudo cargar el marketplace", e);
+        }
+
         // Buscar soluciones para los faltantes (Marketplace o Supermercado)
-        const missingSolutions = missingIngredients.map(ing => {
-            // A. Buscar en Marketplace (Simulado - Buscamos coincidencias en mockData o generamos fake si no hay)
-            // Para demo, simularemos que "Huevos" o "Limon" siempre hay un vecino
+        const missingSolutions = missingIngredients.map((ing: any) => {
+            // A. Buscar en Marketplace
             let marketOffer: MarketplaceOffer | undefined;
 
             // Mock inteligente: Si es "Huevos" o "Limon" o "Orégano", inventamos un vecino
@@ -93,21 +166,21 @@ export class SupermarketAgent {
                     type: 'sale'
                 };
             } else {
-                // Intentar buscar en MOCK_MARKETPLACE real
-                const realMarketItem = MOCK_MARKETPLACE.find(m => m.title.toLowerCase().includes(ing.name.toLowerCase()));
+                // Intentar buscar en Supabase Marketplace real
+                const realMarketItem = marketItems?.find(m => m.title.toLowerCase().includes(ing.name.toLowerCase()));
                 if (realMarketItem) {
                     marketOffer = {
                         itemTitle: realMarketItem.title,
                         sellerName: "Vecino (Ver Marketplace)",
                         price: realMarketItem.price,
-                        type: realMarketItem.allowBarter ? 'barter' : 'sale'
+                        type: realMarketItem.allow_barter ? 'barter' : 'sale'
                     };
                 }
             }
 
             // B. Buscar en Supermercado (Fallback)
             // Mapear ingrediente de receta a producto de super
-            const superProduct = SUPERMARKET_CATALOG.find(p => p.keywords.some(k => ing.name.toLowerCase().includes(k)));
+            const superProduct = SUPERMARKET_CATALOG.find((p: Product) => p.keywords.some((k: string) => ing.name.toLowerCase().includes(k)));
             let supermarketProduct: CartItem | undefined;
             if (superProduct) {
                 supermarketProduct = this.findBestDeal(superProduct);
@@ -132,8 +205,8 @@ export class SupermarketAgent {
     private processShoppingIntent(normalizedText: string): AgentResponse {
         const detectedProducts: CartItem[] = [];
 
-        SUPERMARKET_CATALOG.forEach(product => {
-            const match = product.keywords.some(keyword => {
+        SUPERMARKET_CATALOG.forEach((product: Product) => {
+            const match = product.keywords.some((keyword: string) => {
                 const regex = new RegExp(`\\b${keyword}\\b`, 'i');
                 return regex.test(normalizedText);
             });

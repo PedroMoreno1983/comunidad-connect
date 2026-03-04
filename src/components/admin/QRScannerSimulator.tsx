@@ -9,43 +9,64 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { QRInvitation } from "@/lib/types";
-import { MOCK_INVITATIONS } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/client";
 
 export function QRScannerSimulator() {
     const [isScanning, setIsScanning] = useState(false);
-    const [scanResult, setScanResult] = useState<QRInvitation | null>(null);
+    const [scanResult, setScanResult] = useState<any | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const { toast } = useToast();
 
-    const simulateScan = () => {
+    const simulateScan = async () => {
         setIsScanning(true);
         setScanResult(null);
         setScanError(null);
 
         // Simulate camera focus/processing
-        setTimeout(() => {
+        setTimeout(async () => {
             // 70% chance of success, 30% error
             const isSuccess = Math.random() > 0.3;
 
             if (isSuccess) {
-                const invitation = MOCK_INVITATIONS[0]; // Get the active mock one
-                setScanResult(invitation);
-                toast({
-                    title: "Escaneo Exitoso",
-                    description: `Invitado: ${invitation.guestName}`,
-                    variant: "success"
-                });
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('qr_invitations')
+                    .select('*')
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (data) {
+                    const invitation = {
+                        guestName: data.guest_name,
+                        guestDni: data.guest_dni,
+                        unitId: data.unit_id || "101",
+                    };
+                    setScanResult(invitation);
+                    toast({
+                        title: "Escaneo Exitoso",
+                        description: `Invitado: ${invitation.guestName}`,
+                        variant: "success"
+                    });
+                } else {
+                    setScanError("Código QR no válido o expirado.");
+                    toast({
+                        title: "Error de Validación",
+                        description: "El código no coincide con ninguna invitación activa en la base de datos.",
+                        variant: "destructive"
+                    });
+                }
             } else {
-                setScanError("Código QR no válido o expirado.");
+                setScanError("Lectura fallida. Reintente.");
                 toast({
-                    title: "Error de Validación",
-                    description: "El código no coincide con ninguna invitación activa.",
+                    title: "Error de Lente",
+                    description: "No se pudo leer el código correctamente.",
                     variant: "destructive"
                 });
             }
             setIsScanning(false);
-        }, 2000);
+        }, 1500);
     };
 
     return (
@@ -220,8 +241,8 @@ export function QRScannerSimulator() {
                         <div key={i} className="p-8 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
                             <div className="flex items-center gap-5">
                                 <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${log.status === 'success'
-                                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'
-                                        : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600'
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'
+                                    : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600'
                                     }`}>
                                     {log.status === 'success' ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
                                 </div>

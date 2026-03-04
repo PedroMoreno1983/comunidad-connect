@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QRScannerSimulator } from "@/components/admin/QRScannerSimulator";
-import { MOCK_VISITORS, MOCK_UNITS } from "@/lib/mockData";
+import { useAuth } from "@/lib/authContext";
+import { VisitorService } from "@/lib/services/supabaseServices";
+import { WaterService } from "@/lib/api";
 import {
     Users, Plus, ClipboardList, Shield,
     Search, Filter, Download, MoreHorizontal
@@ -22,28 +24,74 @@ import { useToast } from "@/components/ui/Toast";
 import { motion } from "framer-motion";
 
 export default function VisitorsPage() {
-    const [visitors, setVisitors] = useState(MOCK_VISITORS);
+    const { user } = useAuth();
+    const [visitors, setVisitors] = useState<any[]>([]);
+    const [units, setUnits] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
     const { toast } = useToast();
 
-    const handleRegisterVisitor = (e: React.FormEvent) => {
-        e.preventDefault();
-        const visitor = {
-            id: Math.random().toString(36).substr(2, 9),
-            visitorName: newVisitor.name,
-            unitId: newVisitor.unit,
-            entryTime: new Date().toISOString(),
-        };
-        setVisitors([visitor, ...visitors]);
-        setIsDialogOpen(false);
-        setNewVisitor({ name: "", unit: "" });
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const logs = await VisitorService.getAll();
+                setVisitors(logs.map((v: any) => ({
+                    id: v.id,
+                    visitorName: v.visitor_name,
+                    unitId: v.units?.number || v.unit_id,
+                    entryTime: v.entry_time,
+                    isQr: v.is_qr
+                })));
 
-        toast({
-            title: "Registro Manual Exitoso",
-            description: `Se ha registrado el ingreso de ${visitor.visitorName}.`,
-            variant: "success",
-        });
+                const uns = await WaterService.getUnits();
+                setUnits(uns);
+            } catch (error) {
+                console.error("Error loading visitors data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
+    const handleRegisterVisitor = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const data = await VisitorService.register({
+                visitor_name: newVisitor.name,
+                unit_id: newVisitor.unit,
+                registered_by: user?.id || 'admin',
+                is_qr: false
+            } as any);
+
+            const visitor = {
+                id: data.id,
+                visitorName: data.visitor_name,
+                unitId: data.unit_id,
+                entryTime: data.entry_time,
+                isQr: false
+            };
+
+            setVisitors([visitor, ...visitors]);
+            setIsDialogOpen(false);
+            setNewVisitor({ name: "", unit: "" });
+
+            toast({
+                title: "Registro Manual Exitoso",
+                description: `Se ha registrado el ingreso de ${visitor.visitorName}.`,
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Error registering visitor:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo registrar la visita.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (
@@ -90,7 +138,7 @@ export default function VisitorsPage() {
                                         onChange={(e) => setNewVisitor({ ...newVisitor, unit: e.target.value })}
                                     >
                                         <option value="">Seleccionar Departamento</option>
-                                        {MOCK_UNITS.map((u) => (
+                                        {units.map((u) => (
                                             <option key={u.id} value={u.number}>Unidad {u.number}</option>
                                         ))}
                                     </select>
@@ -156,8 +204,8 @@ export default function VisitorsPage() {
                                         </td>
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${i === 0 ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
-                                                <span className="text-xs font-bold text-slate-500">{i === 0 ? "Código QR" : "Manual"}</span>
+                                                <div className={`h-2 w-2 rounded-full ${visitor.isQr ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
+                                                <span className="text-xs font-bold text-slate-500">{visitor.isQr ? "Código QR" : "Manual"}</span>
                                             </div>
                                         </td>
                                         <td className="px-10 py-8 text-right">

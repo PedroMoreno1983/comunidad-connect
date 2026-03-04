@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/authContext";
 import { WaterReading, ConsumptionMetric } from "@/lib/types";
 import { History, Waves, Calculator, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { MOCK_WATER_READINGS, MOCK_WATER_METRICS } from "@/lib/mockData";
 
 // Helper to calculate consumption (current - previous)
 function calculateConsumption(current: WaterReading, allReadings: WaterReading[]) {
@@ -60,34 +59,13 @@ export default function WaterConsumptionPage() {
                 }));
                 setMetrics(chartData);
             } catch (error: any) {
-                console.warn("Using mock fallback for water data. Reason:", error.message || error);
+                console.error("Error fetching water data:", error);
 
-                // Fallback to mock data
-                const mockData = MOCK_WATER_READINGS.filter(r => r.unit_id === user.unitId || user.unitId === '101' || user.unitId === 'u1');
-
-                const enrichedData = mockData.map(r => ({
-                    ...r,
-                    consumption: typeof r.consumption === 'number' ? r.consumption : calculateConsumption(r, mockData)
-                }));
-
-                setReadings(enrichedData);
-
-                const chartData = enrichedData.map(r => ({
-                    month: r.month.substring(0, 3),
-                    originalMonth: r.month,
-                    year: r.year,
-                    personal: r.consumption || 0,
-                    average: 15.5
-                }));
-
-                setMetrics(chartData.length > 0 ? chartData : MOCK_WATER_METRICS);
-
-                // Solo mostrar Toast si es un error real de red/servidor, no de datos faltantes
                 if (error.code !== 'PGRST116' && error.code !== '42P01') {
                     toast({
-                        title: "Modo Offline / Demo",
-                        description: "Mostrando datos de prueba debido a un error de conexión.",
-                        variant: "default"
+                        title: "Error de Conexión",
+                        description: "No se pudieron cargar los datos de consumo al conectar con el servidor.",
+                        variant: "destructive"
                     });
                 }
             } finally {

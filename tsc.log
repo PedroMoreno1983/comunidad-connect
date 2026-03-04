@@ -1,0 +1,2 @@
+﻿src/components/resident/supermarket/RecipeBubble.tsx(27,89): error TS2339: Property 'time' does not exist on type 'Recipe'.
+src/components/resident/supermarket/RecipeBubble.tsx(34,83): error TS2339: Property 'description' does not exist on type 'Recipe'.

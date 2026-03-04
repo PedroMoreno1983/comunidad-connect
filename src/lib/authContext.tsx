@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from './types';
-import { MOCK_USERS } from './mockData';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -16,9 +15,6 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     logout: () => Promise<void>;
-
-    // Demo mode
-    login: (role: string) => void;
 
     // Supabase mode
     supabaseUser: SupabaseUser | null;
@@ -57,11 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (session?.user) {
                 fetchUserProfile(session.user);
-            } else if (!user || (!MOCK_USERS.some(u => u.id === user.id))) {
-                // Clear user if logged out and not a demo user
-                setUser(null);
-                setLoading(false);
             } else {
+                // Clear user if logged out
+                setUser(null);
                 setLoading(false);
             }
         });
@@ -127,16 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             unitId: sbUser.user_metadata?.unit_id,
         });
     };
-
-    // Demo login: find mock user by role
-    const login = (roleIdOrEmail: string) => {
-        const foundUser = MOCK_USERS.find(u => u.role === roleIdOrEmail || u.email === roleIdOrEmail)
-            || MOCK_USERS.find(u => u.role === 'resident');
-        if (foundUser) {
-            setUser(foundUser);
-        }
-    };
-
     // Supabase sign in
     const signIn = async (email: string, password: string) => {
         try {
@@ -176,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <AuthContext.Provider value={{
             user,
             loading,
-            login,
             logout,
             supabaseUser,
             session,

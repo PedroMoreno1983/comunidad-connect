@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Calendar, AlertCircle, Clock, CheckCircle2,
@@ -9,7 +9,7 @@ import {
     Check, X, Trash2, Info
 } from "lucide-react";
 import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
-import { MOCK_MAINTENANCE_TASKS, MOCK_ASSETS, MOCK_MAINTENANCE_LOGS } from "@/lib/mockData";
+import { supabase } from "@/lib/supabase";
 import {
     Dialog,
     DialogContent,
@@ -22,23 +22,90 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
 export function MaintenanceDashboard() {
-    const [tasks, setTasks] = useState<MaintenanceTask[]>(MOCK_MAINTENANCE_TASKS);
-    const [assets] = useState<BuildingAsset[]>(MOCK_ASSETS);
+    const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
+    const [assets, setAssets] = useState<BuildingAsset[]>([]);
+    const [logs, setLogs] = useState<MaintenanceLog[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
 
-    const handleCompleteTask = (taskId: string) => {
-        setTasks(prev => prev.map(t =>
-            t.id === taskId ? { ...t, status: 'completed' } : t
-        ));
-        setIsDetailOpen(false);
-        toast({
-            title: "Tarea Completada",
-            description: "El registro ha sido actualizado exitosamente.",
-            variant: "success"
-        });
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [tasksRes, assetsRes, logsRes] = await Promise.all([
+                    supabase.from('maintenance_tasks').select('*'),
+                    supabase.from('building_assets').select('*'),
+                    supabase.from('maintenance_logs').select('*').order('date', { ascending: false }).limit(5)
+                ]);
+
+                if (tasksRes.data) {
+                    setTasks(tasksRes.data.map((t: any) => ({
+                        id: t.id,
+                        assetId: t.asset_id || t.assetId,
+                        title: t.title,
+                        description: t.description,
+                        frequency: t.frequency,
+                        dueDate: t.due_date || t.dueDate,
+                        priority: t.priority,
+                        status: t.status
+                    })));
+                }
+
+                if (assetsRes.data) {
+                    setAssets(assetsRes.data.map((dbAsset: any) => ({
+                        id: dbAsset.id,
+                        name: dbAsset.name,
+                        category: dbAsset.category,
+                        brand: dbAsset.brand,
+                        model: dbAsset.model,
+                        installationDate: dbAsset.installation_date || dbAsset.installationDate,
+                        location: dbAsset.location,
+                        healthStatus: dbAsset.health_status || dbAsset.healthStatus,
+                        lastMaintenance: dbAsset.last_maintenance || dbAsset.lastMaintenance,
+                        nextMaintenance: dbAsset.next_maintenance || dbAsset.nextMaintenance,
+                    })));
+                }
+
+                if (logsRes.data) {
+                    setLogs(logsRes.data.map((l: any) => ({
+                        id: l.id,
+                        assetId: l.asset_id || l.assetId,
+                        performedBy: l.performed_by || l.performedBy,
+                        description: l.description,
+                        cost: l.cost,
+                        date: l.date
+                    })));
+                }
+            } catch (err) {
+                console.error("Error fetching maintenance data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const handleCompleteTask = async (taskId: string) => {
+        try {
+            await supabase.from('maintenance_tasks').update({ status: 'completed' }).eq('id', taskId);
+            setTasks(prev => prev.map(t =>
+                t.id === taskId ? { ...t, status: 'completed' } : t
+            ));
+            setIsDetailOpen(false);
+            toast({
+                title: "Tarea Completada",
+                description: "El registro ha sido actualizado exitosamente.",
+                variant: "success"
+            });
+        } catch (error) {
+            console.error(error);
+        }
     };
+
+    if (isLoading) return <div className="p-8 text-center">Cargando dashboard de mantenimiento...</div>;
 
     const overdueCount = tasks.filter(t => t.status === 'overdue').length;
     const pendingCount = tasks.filter(t => t.status === 'pending').length;
@@ -161,9 +228,10 @@ export function MaintenanceDashboard() {
                     </div>
 
                     <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white/50 dark:border-slate-700/50 space-y-8 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
-                        {MOCK_MAINTENANCE_LOGS.map((log: MaintenanceLog, i: number) => (
+                        {logs.length === 0 && <p className="text-slate-500 text-sm">No hay historial reciente.</p>}
+                        {logs.map((log: MaintenanceLog, i: number) => (
                             <div key={log.id} className="flex gap-4 relative">
-                                {i !== MOCK_MAINTENANCE_LOGS.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-slate-100 dark:bg-slate-800" />}
+                                {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-slate-100 dark:bg-slate-800" />}
                                 <div className="h-6 w-6 rounded-full border-4 border-white dark:border-slate-900 bg-blue-500 z-10 shrink-0" />
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">

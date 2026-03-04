@@ -23,11 +23,36 @@ interface PaymentModalProps {
 export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalProps) {
     const [step, setStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
 
-    const handlePayment = () => {
+    const handlePayment = async () => {
+        if (!item) return;
         setStep('processing');
-        setTimeout(() => {
-            setStep('success');
-        }, 2500);
+
+        try {
+            const response = await fetch('/api/payments/create-haulmer-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: item.price,
+                    description: `Compra en Marketplace: ${item.title}`,
+                    reference: `MARKET_${item.id}`,
+                    client: {
+                        name: 'Residente Comprador',
+                        email: 'resident@comunidadconnect.com'
+                    },
+                    returnUrl: window.location.origin + '/marketplace'
+                })
+            });
+
+            if (!response.ok) throw new Error("Error generating payment link");
+
+            const { url } = await response.json();
+            window.location.href = url;
+
+        } catch (error) {
+            console.error("Payment error:", error);
+            // Optionally could add a toast here for errors
+            setStep('checkout');
+        }
     };
 
     if (!item) return null;

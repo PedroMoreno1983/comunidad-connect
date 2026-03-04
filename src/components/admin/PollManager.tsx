@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Plus, BarChart3, Clock, Settings,
@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Poll } from "@/lib/types";
-import { MOCK_POLLS } from "@/lib/mockData";
+import { PollService } from "@/lib/services/supabaseServices";
 import {
     Dialog,
     DialogContent,
@@ -22,37 +22,63 @@ import {
     DialogTrigger,
 } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/authContext";
 
 export function PollManager() {
-    const [polls, setPolls] = useState<Poll[]>(MOCK_POLLS);
+    const { user } = useAuth();
+    const [polls, setPolls] = useState<Poll[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newPoll, setNewPoll] = useState({ title: "", description: "", category: "community" });
     const { toast } = useToast();
 
-    const handleCreatePoll = (e: React.FormEvent) => {
-        e.preventDefault();
-        const poll: Poll = {
-            id: Math.random().toString(36).substr(2, 9),
-            title: newPoll.title,
-            description: newPoll.description,
-            category: newPoll.category as any,
-            status: 'active',
-            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date().toISOString(),
-            totalVotes: 0,
-            options: [
-                { id: '1', text: 'Opción A', votes: 0 },
-                { id: '2', text: 'Opción B', votes: 0 }
-            ]
+    useEffect(() => {
+        const loadPolls = async () => {
+            setIsLoading(true);
+            try {
+                const data = await PollService.getAll();
+                setPolls(data as Poll[]);
+            } catch (err) {
+                console.error("Error loading polls:", err);
+            } finally {
+                setIsLoading(false);
+            }
         };
-        setPolls([poll, ...polls]);
-        setIsDialogOpen(false);
-        setNewPoll({ title: "", description: "", category: "community" });
-        toast({
-            title: "Votación Publicada",
-            description: "La consulta ya está disponible para todos los residentes.",
-            variant: "success"
-        });
+        loadPolls();
+    }, []);
+
+    const handleCreatePoll = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+
+        try {
+            const pollData = {
+                title: newPoll.title,
+                description: newPoll.description,
+                category: newPoll.category,
+                end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                created_by: user.id
+            };
+            const createdPoll = await PollService.create(pollData, ['A favor', 'En contra']);
+
+            if (createdPoll) {
+                setPolls([createdPoll as any, ...polls]);
+                setIsDialogOpen(false);
+                setNewPoll({ title: "", description: "", category: "community" });
+                toast({
+                    title: "Votación Publicada",
+                    description: "La consulta ya está disponible para todos los residentes.",
+                    variant: "success"
+                });
+            }
+        } catch (error) {
+            console.error("Error creating poll:", error);
+            toast({
+                title: "Error",
+                description: "Hubo un problema al crear la consulta.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (
@@ -187,7 +213,13 @@ export function PollManager() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                {polls.map((poll) => (
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-10 py-8 text-center text-slate-500">
+                                            Cargando consultas...
+                                        </td>
+                                    </tr>
+                                ) : polls.map((poll) => (
                                     <tr key={poll.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">

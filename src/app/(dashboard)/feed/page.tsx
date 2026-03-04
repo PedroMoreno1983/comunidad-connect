@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { MOCK_ANNOUNCEMENTS } from "@/lib/mockData";
 import { Bell, Info, AlertTriangle, Calendar, Plus, Megaphone, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";

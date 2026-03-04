@@ -309,6 +309,37 @@ export const ExpenseService = {
 };
 
 // ==========================================
+// Condo Fees Service (Gastos Comunes)
+// ==========================================
+export const CondoFeeService = {
+    async getAll() {
+        const { data, error } = await supabase
+            .from('condo_fees')
+            .select(`
+                *,
+                units (number, tower)
+            `)
+            .order('due_date', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    },
+
+    async markAsPaid(feeId: string, paymentMethod: string = 'manual') {
+        const { error } = await supabase
+            .from('condo_fees')
+            .update({
+                status: 'paid',
+                paid_at: new Date().toISOString(),
+                payment_method: paymentMethod
+            })
+            .eq('id', feeId);
+
+        if (error) throw error;
+    }
+};
+
+// ==========================================
 // QR Invitations Service
 // ==========================================
 export const InvitationService = {
@@ -399,10 +430,7 @@ export const PackageService = {
     async getAll() {
         const { data, error } = await supabase
             .from('packages')
-            .select(`
-        *,
-        units:recipient_unit_id (number, tower, profiles:resident_profile_id (full_name))
-      `)
+            .select('*')
             .order('received_at', { ascending: false });
 
         if (error) throw error;

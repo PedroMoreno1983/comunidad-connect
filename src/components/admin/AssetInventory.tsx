@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Activity, Shield, Settings, AlertTriangle,
@@ -10,7 +10,7 @@ import {
     History, DollarSign, User
 } from "lucide-react";
 import { BuildingAsset, MaintenanceLog } from "@/lib/types";
-import { MOCK_ASSETS, MOCK_MAINTENANCE_LOGS } from "@/lib/mockData";
+import { supabase } from "@/lib/supabase";
 import {
     Dialog,
     DialogContent,
@@ -20,13 +20,62 @@ import {
 } from "@/components/ui/Dialog";
 
 export function AssetInventory() {
-    const [assets] = useState<BuildingAsset[]>(MOCK_ASSETS);
+    const [assets, setAssets] = useState<BuildingAsset[]>([]);
     const [selectedAsset, setSelectedAsset] = useState<BuildingAsset | null>(null);
+    const [assetLogs, setAssetLogs] = useState<MaintenanceLog[]>([]);
     const [isLogOpen, setIsLogOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const assetLogs = selectedAsset
-        ? MOCK_MAINTENANCE_LOGS.filter(log => log.assetId === selectedAsset.id)
-        : [];
+    useEffect(() => {
+        const fetchAssets = async () => {
+            try {
+                const { data, error } = await supabase.from('building_assets').select('*');
+                if (data && !error) {
+                    const mappedAssets = data.map(dbAsset => ({
+                        id: dbAsset.id,
+                        name: dbAsset.name,
+                        category: dbAsset.category,
+                        brand: dbAsset.brand,
+                        model: dbAsset.model,
+                        installationDate: dbAsset.installation_date || dbAsset.installationDate,
+                        location: dbAsset.location,
+                        healthStatus: dbAsset.health_status || dbAsset.healthStatus,
+                        lastMaintenance: dbAsset.last_maintenance || dbAsset.lastMaintenance,
+                        nextMaintenance: dbAsset.next_maintenance || dbAsset.nextMaintenance,
+                    }));
+                    setAssets(mappedAssets as BuildingAsset[]);
+                }
+            } catch (err) {
+                console.error("Error fetching assets:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchAssets();
+    }, []);
+
+    const handleOpenLog = async (asset: BuildingAsset) => {
+        setSelectedAsset(asset);
+        setIsLogOpen(true);
+        try {
+            const { data, error } = await supabase.from('maintenance_logs').select('*').eq('asset_id', asset.id);
+            if (data && !error) {
+                const mappedLogs = data.map(log => ({
+                    id: log.id,
+                    assetId: log.asset_id || log.assetId,
+                    performedBy: log.performed_by || log.performedBy,
+                    description: log.description,
+                    cost: log.cost,
+                    date: log.date
+                }));
+                setAssetLogs(mappedLogs as MaintenanceLog[]);
+            } else {
+                setAssetLogs([]);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const getStatusColor = (status: BuildingAsset['healthStatus']) => {
         switch (status) {
@@ -48,6 +97,8 @@ export function AssetInventory() {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {isLoading && <div className="col-span-full p-4 text-center">Cargando activos...</div>}
+            {!isLoading && assets.length === 0 && <div className="col-span-full p-4 text-center text-slate-500">No hay activos registrados.</div>}
             {assets.map((asset, i) => (
                 <motion.div
                     key={asset.id}
@@ -122,10 +173,7 @@ export function AssetInventory() {
 
                     {/* Footer Action */}
                     <button
-                        onClick={() => {
-                            setSelectedAsset(asset);
-                            setIsLogOpen(true);
-                        }}
+                        onClick={() => handleOpenLog(asset)}
                         className="w-full py-6 bg-slate-50 dark:bg-slate-800/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 border-t border-slate-50 dark:border-slate-800"
                     >
                         Ver Bitácora Técnica

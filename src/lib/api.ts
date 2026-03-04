@@ -390,82 +390,38 @@ export const ExpensesService = {
 // ==========================================
 // FEED / ANUNCIOS (ANNOUNCEMENTS)
 // ==========================================
-import { MOCK_ANNOUNCEMENTS } from './mockData';
-
 export const AnnouncementsService = {
     async getAnnouncements() {
-        try {
-            const { data, error } = await supabase
-                .from('announcements')
-                .select('*')
-                .order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-            if (error) throw error;
-
-            // Si la base de datos está vacía por error de migración, devolver mock data para el prototipo
-            if (!data || data.length === 0) {
-                return MOCK_ANNOUNCEMENTS.map(m => ({
-                    id: m.id,
-                    title: m.title,
-                    content: m.content,
-                    priority: m.priority,
-                    author_name: m.author,
-                    created_at: m.createdAt
-                }));
-            }
-
-            return data;
-        } catch (error) {
-            console.warn("Retornando datos locales para Announcements. Error DB:", error);
-            // Fallback to mock data for prototype
-            return MOCK_ANNOUNCEMENTS.map(m => ({
-                id: m.id,
-                title: m.title,
-                content: m.content,
-                priority: m.priority,
-                author_name: m.author,
-                created_at: m.createdAt
-            }));
-        }
+        if (error) throw error;
+        return data;
     },
 
     async createAnnouncement(announcementData: { title: string; content: string; priority: 'info' | 'alert' | 'event'; author_id: string; author_name: string }) {
-        try {
-            // Intentamos mapear al schema existente (category en lugar de priority)
-            const { data, error } = await supabase
-                .from('announcements')
-                .insert([{
-                    title: announcementData.title,
-                    content: announcementData.content,
-                    category: announcementData.priority,
-                    condo_id: '11111111-1111-1111-1111-111111111111'
-                }])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Map return values to frontend expectations
-            return {
-                id: data.id,
-                title: data.title,
-                content: data.content,
-                priority: data.category || announcementData.priority,
-                author_name: announcementData.author_name,
-                created_at: data.created_at
-            };
-        } catch (error) {
-            console.warn("Insert falló en Supabase. Simulando creación para el prototipo...", error);
-
-            // Mock successful creation for the demo
-            return {
-                id: Math.random().toString(36).substr(2, 9),
+        const { data, error } = await supabase
+            .from('announcements')
+            .insert([{
                 title: announcementData.title,
                 content: announcementData.content,
-                priority: announcementData.priority,
-                author_name: announcementData.author_name,
-                created_at: new Date().toISOString()
-            };
-        }
+                category: announcementData.priority,
+                condo_id: '11111111-1111-1111-1111-111111111111'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return {
+            id: data.id,
+            title: data.title,
+            content: data.content,
+            priority: data.category || announcementData.priority,
+            author_name: announcementData.author_name,
+            created_at: data.created_at
+        };
     }
 };

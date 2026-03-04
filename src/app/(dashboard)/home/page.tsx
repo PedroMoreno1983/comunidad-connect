@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/authContext";
-import { MOCK_REQUESTS, MOCK_MARKETPLACE, MOCK_VISITORS, MOCK_USERS, MOCK_ANNOUNCEMENTS, MOCK_EXPENSES } from "@/lib/mockData";
+import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
     Users, ShoppingBag, Wrench, ClipboardList, TrendingUp, Bell,
@@ -42,19 +42,93 @@ const amenityUsageData = [
 export default function HomePage() {
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
+    const [statsData, setStatsData] = useState({
+        announcements: 0,
+        marketplace: 0,
+        bookings: 0,
+        pendingExpenses: 0,
+        residents: 0,
+        pendingRequests: 0,
+        visitorsToday: 0,
+        visitorsExpected: 0, // Placeholder
+        pendingPackages: 0,
+        recentAnnouncements: [] as any[]
+    });
 
-    // Simulate loading
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        if (!user) return;
+
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            try {
+                // Common queries
+                const { count: annCount } = await supabase.from('announcements').select('*', { count: 'exact', head: true });
+                const { data: recentAnn } = await supabase.from('announcements')
+                    .select('id, title, content, priority, created_at, profiles(full_name)')
+                    .order('created_at', { ascending: false })
+                    .limit(3);
+
+                let commonStats = {
+                    announcements: annCount || 0,
+                    recentAnnouncements: (recentAnn || []).map(a => ({
+                        id: a.id,
+                        title: a.title,
+                        content: a.content,
+                        priority: a.priority,
+                        createdAt: a.created_at,
+                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as any)?.full_name) || 'Admin',
+                    }))
+                };
+
+                if (user.role === 'resident') {
+                    const { count: mp } = await supabase.from('marketplace_items').select('*', { count: 'exact', head: true }) || { count: 0 };
+                    const { count: exp } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
+                    const { count: book } = await supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString()) || { count: 0 };
+
+                    setStatsData(prev => ({
+                        ...prev, ...commonStats,
+                        marketplace: mp || 0,
+                        pendingExpenses: exp || 0,
+                        bookings: book || 0
+                    }));
+                } else if (user.role === 'admin') {
+                    const { count: res } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'resident') || { count: 0 };
+                    const { count: req } = await supabase.from('service_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
+                    const { count: exp } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid') || { count: 0 };
+
+                    setStatsData(prev => ({
+                        ...prev, ...commonStats,
+                        residents: res || 0,
+                        pendingRequests: req || 0,
+                        pendingExpenses: exp || 0
+                    }));
+                } else if (user.role === 'concierge') {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { count: visToday } = await supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('entry_time', today) || { count: 0 };
+                    const { count: pack } = await supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
+
+                    setStatsData(prev => ({
+                        ...prev, ...commonStats,
+                        visitorsToday: visToday || 0,
+                        pendingPackages: pack || 0
+                    }));
+                }
+            } catch (err) {
+                console.error("Error fetching dashboard stats:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, [user]);
 
     if (!user) return null;
 
     const statsResident = [
         {
             label: "Avisos Nuevos",
-            value: MOCK_ANNOUNCEMENTS.length,
+            value: statsData.announcements,
             icon: Bell,
             gradient: "from-indigo-500 to-purple-600",
             bg: "bg-indigo-100 dark:bg-indigo-500/20",
@@ -62,7 +136,7 @@ export default function HomePage() {
         },
         {
             label: "En Marketplace",
-            value: MOCK_MARKETPLACE.length,
+            value: statsData.marketplace,
             icon: ShoppingBag,
             gradient: "from-emerald-500 to-teal-600",
             bg: "bg-emerald-100 dark:bg-emerald-500/20",
@@ -70,7 +144,7 @@ export default function HomePage() {
         },
         {
             label: "Próximas Reservas",
-            value: 2,
+            value: statsData.bookings,
             icon: Calendar,
             gradient: "from-purple-500 to-pink-600",
             bg: "bg-purple-100 dark:bg-purple-500/20",
@@ -78,7 +152,7 @@ export default function HomePage() {
         },
         {
             label: "Gastos Pendientes",
-            value: MOCK_EXPENSES.filter(e => e.status !== 'paid').length,
+            value: statsData.pendingExpenses,
             icon: DollarSign,
             gradient: "from-rose-500 to-pink-600",
             bg: "bg-rose-100 dark:bg-rose-500/20",
@@ -89,7 +163,7 @@ export default function HomePage() {
     const statsAdmin = [
         {
             label: "Residentes",
-            value: MOCK_USERS.filter(u => u.role === 'resident').length,
+            value: statsData.residents,
             icon: Users,
             gradient: "from-indigo-500 to-purple-600",
             bg: "bg-indigo-100 dark:bg-indigo-500/20",
@@ -97,7 +171,7 @@ export default function HomePage() {
         },
         {
             label: "Avisos Activos",
-            value: MOCK_ANNOUNCEMENTS.length,
+            value: statsData.announcements,
             icon: Bell,
             gradient: "from-amber-500 to-orange-600",
             bg: "bg-amber-100 dark:bg-amber-500/20",
@@ -105,7 +179,7 @@ export default function HomePage() {
         },
         {
             label: "Solicitudes Abiertas",
-            value: MOCK_REQUESTS.filter(r => r.status === 'pending').length,
+            value: statsData.pendingRequests,
             icon: Wrench,
             gradient: "from-emerald-500 to-teal-600",
             bg: "bg-emerald-100 dark:bg-emerald-500/20",
@@ -113,7 +187,7 @@ export default function HomePage() {
         },
         {
             label: "Pagos Pendientes",
-            value: MOCK_EXPENSES.filter(e => e.status !== 'paid').length,
+            value: statsData.pendingExpenses,
             icon: DollarSign,
             gradient: "from-rose-500 to-pink-600",
             bg: "bg-rose-100 dark:bg-rose-500/20",
@@ -124,7 +198,7 @@ export default function HomePage() {
     const statsConcierge = [
         {
             label: "Visitas Hoy",
-            value: MOCK_VISITORS.filter(v => v.entryTime?.startsWith(new Date().toISOString().split('T')[0])).length,
+            value: statsData.visitorsToday,
             icon: ClipboardList,
             gradient: "from-amber-500 to-orange-600",
             bg: "bg-amber-100 dark:bg-amber-500/20",
@@ -132,7 +206,7 @@ export default function HomePage() {
         },
         {
             label: "Visitas Esperadas",
-            value: MOCK_VISITORS.filter(v => !v.exitTime).length,
+            value: statsData.visitorsExpected,
             icon: Users,
             gradient: "from-blue-500 to-cyan-600",
             bg: "bg-blue-100 dark:bg-blue-500/20",
@@ -140,7 +214,7 @@ export default function HomePage() {
         },
         {
             label: "Paquetes Pendientes",
-            value: 3,
+            value: statsData.pendingPackages,
             icon: ShoppingBag,
             gradient: "from-emerald-500 to-teal-600",
             bg: "bg-emerald-100 dark:bg-emerald-500/20",
@@ -148,7 +222,7 @@ export default function HomePage() {
         },
         {
             label: "Avisos",
-            value: MOCK_ANNOUNCEMENTS.length,
+            value: statsData.announcements,
             icon: Bell,
             gradient: "from-purple-500 to-pink-600",
             bg: "bg-purple-100 dark:bg-purple-500/20",
@@ -158,7 +232,7 @@ export default function HomePage() {
 
     const stats = user.role === 'admin' ? statsAdmin : user.role === 'concierge' ? statsConcierge : statsResident;
 
-    const recentAnnouncements = MOCK_ANNOUNCEMENTS.slice(0, 3);
+    const recentAnnouncements = statsData.recentAnnouncements;
 
     const getGreeting = () => {
         const hour = new Date().getHours();

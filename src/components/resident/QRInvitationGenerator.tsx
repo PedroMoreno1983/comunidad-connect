@@ -10,8 +10,11 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/authContext";
+import { InvitationService } from "@/lib/services/supabaseServices";
 
-export function QRInvitationGenerator() {
+export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => void }) {
+    const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [guestName, setGuestName] = useState("");
     const [guestDni, setGuestDni] = useState("");
@@ -19,7 +22,7 @@ export function QRInvitationGenerator() {
     const [invitationCode, setInvitationCode] = useState("");
     const { toast } = useToast();
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
         if (!guestName || !guestDni) {
             toast({
                 title: "Campos Requeridos",
@@ -30,8 +33,24 @@ export function QRInvitationGenerator() {
         }
 
         setIsGenerating(true);
-        setTimeout(() => {
-            setInvitationCode(`INV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+        try {
+            const qrCodeValue = `INV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+            if (user) {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                await InvitationService.create({
+                    resident_id: user.id,
+                    guest_name: guestName,
+                    guest_dni: guestDni,
+                    qr_code: qrCodeValue,
+                    valid_from: new Date().toISOString(),
+                    valid_to: tomorrow.toISOString()
+                });
+            }
+
+            setInvitationCode(qrCodeValue);
             setIsGenerating(false);
             setStep(2);
             toast({
@@ -39,7 +58,17 @@ export function QRInvitationGenerator() {
                 description: "El código QR ya está listo para compartir.",
                 variant: "success"
             });
-        }, 1500);
+
+            if (onGenerated) onGenerated();
+        } catch (error) {
+            console.error("Error creating invitation:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo generar la invitación. Intente nuevamente.",
+                variant: "destructive"
+            });
+            setIsGenerating(false);
+        }
     };
 
     const copyToClipboard = () => {

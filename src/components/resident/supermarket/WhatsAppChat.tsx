@@ -78,49 +78,60 @@ export function WhatsAppChat() {
         processAgentResponse(textToProcess);
     };
 
-    const processAgentResponse = (userText: string) => {
+    const processAgentResponse = async (userText: string) => {
         setIsProcessing(true);
 
-        // Simular delay de "pensando"
-        setTimeout(() => {
-            setIsProcessing(false);
-
+        try {
             // Llamar al cerebro del agente
-            const response = agent.processMessage(userText);
+            const response = await agent.processMessage(userText);
 
-            // 1. Respuesta de Texto del Agente
+            // Simular delay de "pensando" (adicional al tiempo de red)
+            setTimeout(() => {
+                setIsProcessing(false);
+
+                // 1. Respuesta de Texto del Agente
+                addMessage({
+                    type: 'text',
+                    content: response.message,
+                    isSender: false,
+                    status: 'read'
+                });
+
+                // 2. Si hay carrito, mostrar burbuja de pedido
+                if (response.cart) {
+                    setTimeout(() => {
+                        addMessage({
+                            type: 'order',
+                            isSender: false,
+                            orderData: response.cart,
+                            status: 'read'
+                        });
+                    }, 800);
+                }
+
+                // 3. Si hay sugerencia de receta, mostrar burbuja de receta
+                if (response.recipeSuggestion) {
+                    setTimeout(() => {
+                        addMessage({
+                            type: 'recipe',
+                            isSender: false,
+                            recipeData: response.recipeSuggestion,
+                            status: 'read'
+                        });
+                    }, 800);
+                }
+
+            }, 500);
+        } catch (error) {
+            setIsProcessing(false);
+            console.error("Agent error:", error);
             addMessage({
                 type: 'text',
-                content: response.message,
+                content: "Lo siento, tuve un problema procesando tu mensaje. 😥",
                 isSender: false,
                 status: 'read'
             });
-
-            // 2. Si hay carrito, mostrar burbuja de pedido
-            if (response.cart) {
-                setTimeout(() => {
-                    addMessage({
-                        type: 'order',
-                        isSender: false,
-                        orderData: response.cart,
-                        status: 'read'
-                    });
-                }, 800);
-            }
-
-            // 3. Si hay sugerencia de receta, mostrar burbuja de receta
-            if (response.recipeSuggestion) {
-                setTimeout(() => {
-                    addMessage({
-                        type: 'recipe',
-                        isSender: false,
-                        recipeData: response.recipeSuggestion,
-                        status: 'read'
-                    });
-                }, 800);
-            }
-
-        }, 1500);
+        }
     };
 
     const addMessage = (msg: Partial<Message>) => {
@@ -205,12 +216,32 @@ export function WhatsAppChat() {
                                         items={msg.orderData.items}
                                         total={msg.orderData.total}
                                         savings={msg.orderData.savings}
-                                        onPay={() => {
-                                            addMessage({
-                                                type: 'text',
-                                                content: '¡Pago realizado! Tu pedido llegará pronto. 🚀',
-                                                isSender: false
+                                        onPay={async () => {
+                                            const response = await fetch('/api/payments/create-haulmer-link', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    amount: msg.orderData.total,
+                                                    description: `Compra Supermercado IA (${msg.orderData.items.length} items)`,
+                                                    reference: `MARKET_CART_${msg.id}`,
+                                                    client: {
+                                                        name: 'Residente',
+                                                        email: 'resident@comunidadconnect.com'
+                                                    },
+                                                    returnUrl: window.location.origin + '/resident/supermarket'
+                                                })
                                             });
+
+                                            if (response.ok) {
+                                                const { url } = await response.json();
+                                                window.location.href = url;
+                                            } else {
+                                                addMessage({
+                                                    type: 'text',
+                                                    content: 'No pudimos generar el link de pago con Haulmer.',
+                                                    isSender: false
+                                                });
+                                            }
                                         }}
                                     />
                                 )}

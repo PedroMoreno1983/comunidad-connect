@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { MOCK_PACKAGES, MOCK_UNITS } from "@/lib/mockData";
+import { useAuth } from "@/lib/authContext";
+import { PackageService } from "@/lib/services/supabaseServices";
+import { WaterService } from "@/lib/api";
 import {
     Package as PackageIcon, Check, Clock, Plus, Truck,
     CheckCircle2, Package2, Search, Camera, Scan,
@@ -23,7 +25,10 @@ import { Package } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PackagesPage() {
-    const [packages, setPackages] = useState<Package[]>(MOCK_PACKAGES);
+    const { user } = useAuth();
+    const [packages, setPackages] = useState<any[]>([]);
+    const [units, setUnits] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [newPackage, setNewPackage] = useState({ unit: "", description: "" });
@@ -32,33 +37,77 @@ export default function PackagesPage() {
     const pendingPackages = packages.filter(p => p.status === 'pending');
     const deliveredPackages = packages.filter(p => p.status === 'picked-up');
 
-    const handleReceivePackage = (e: React.FormEvent) => {
-        e.preventDefault();
-        const pkg: Package = {
-            id: Math.random().toString(36).substr(2, 9),
-            recipientUnitId: newPackage.unit,
-            description: newPackage.description,
-            receivedAt: new Date().toISOString(),
-            status: 'pending',
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const pkgs = await PackageService.getAll();
+                setPackages(pkgs.map((p: any) => ({
+                    id: p.id,
+                    recipientUnitId: p.recipient_unit_id,
+                    description: p.description,
+                    receivedAt: p.received_at,
+                    status: p.status,
+                    pickedUpAt: p.picked_up_at
+                })));
+
+                const uns = await WaterService.getUnits();
+                setUnits(uns);
+            } catch (error) {
+                console.error("Error loading packages data:", error);
+            } finally {
+                setIsLoading(false);
+            }
         };
-        setPackages([pkg, ...packages]);
-        setIsDialogOpen(false);
-        setNewPackage({ unit: "", description: "" });
-        toast({
-            title: "Paquete Registrado",
-            description: `Se ha notificado al Residente de la Unidad ${pkg.recipientUnitId}.`,
-            variant: "success",
-        });
+
+        loadData();
+    }, []);
+
+    const handleReceivePackage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const data = await PackageService.register({
+                recipient_unit_id: newPackage.unit,
+                description: newPackage.description,
+                registered_by: user?.id || 'admin'
+            });
+
+            const pkg = {
+                id: data.id,
+                recipientUnitId: data.recipient_unit_id,
+                description: data.description,
+                receivedAt: data.received_at,
+                status: data.status,
+            };
+
+            setPackages([pkg, ...packages]);
+            setIsDialogOpen(false);
+            setNewPackage({ unit: "", description: "" });
+            toast({
+                title: "Paquete Registrado",
+                description: `Se ha notificado al Residente de la Unidad ${pkg.recipientUnitId}.`,
+                variant: "success",
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Hubo un problema registrando el paquete.",
+                variant: "destructive",
+            });
+        }
     };
 
     const simulateScan = () => {
         setIsScanning(true);
         setTimeout(() => {
-            const randomUnit = MOCK_UNITS[Math.floor(Math.random() * MOCK_UNITS.length)].number;
-            const descriptions = ["Caja Mercado Libre", "Sobre Chilexpress", "Pedido PedidosYa", "Caja Amazon Prime"];
-            const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+            if (units.length > 0) {
+                const randomUnit = units[Math.floor(Math.random() * units.length)].number;
+                const descriptions = ["Caja Mercado Libre", "Sobre Chilexpress", "Pedido PedidosYa", "Caja Amazon Prime"];
+                const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
 
-            setNewPackage({ unit: randomUnit, description: randomDesc });
+                setNewPackage({ unit: randomUnit, description: randomDesc });
+            }
             setIsScanning(false);
             toast({
                 title: "¡Escaneo Exitoso!",
@@ -67,16 +116,25 @@ export default function PackagesPage() {
         }, 1500);
     };
 
-    const handleMarkDelivered = (id: string) => {
-        setPackages(prev => prev.map(pkg =>
-            pkg.id === id
-                ? { ...pkg, status: 'picked-up' as const, pickedUpAt: new Date().toISOString() }
-                : pkg
-        ));
-        toast({
-            title: "Paquete Entregado",
-            description: "Registro actualizado en la bitácora.",
-        });
+    const handleMarkDelivered = async (id: string) => {
+        try {
+            await PackageService.markPickedUp(id);
+            setPackages(prev => prev.map(pkg =>
+                pkg.id === id
+                    ? { ...pkg, status: 'picked-up', pickedUpAt: new Date().toISOString() }
+                    : pkg
+            ));
+            toast({
+                title: "Paquete Entregado",
+                description: "Registro actualizado en la bitácora.",
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "No se pudo actualizar el estado.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (
@@ -135,7 +193,7 @@ export default function PackagesPage() {
                                             onChange={(e) => setNewPackage({ ...newPackage, unit: e.target.value })}
                                         >
                                             <option value="">Seleccionar Departamento</option>
-                                            {MOCK_UNITS.map((u) => (
+                                            {units.map((u) => (
                                                 <option key={u.id} value={u.number}>Unidad {u.number}</option>
                                             ))}
                                         </select>
