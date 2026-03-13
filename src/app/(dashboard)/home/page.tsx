@@ -70,13 +70,13 @@ export default function HomePage() {
 
                 let commonStats = {
                     announcements: annCount || 0,
-                    recentAnnouncements: (recentAnn || []).map(a => ({
+                    recentAnnouncements: (recentAnn || []).map((a: { id: string; title: string; content: string; priority: string; created_at: string; profiles: { full_name: string } | { full_name: string }[] | null }) => ({
                         id: a.id,
                         title: a.title,
                         content: a.content,
                         priority: a.priority,
                         createdAt: a.created_at,
-                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as any)?.full_name) || 'Admin',
+                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as { full_name: string } | null)?.full_name) || 'Admin',
                     }))
                 };
 
