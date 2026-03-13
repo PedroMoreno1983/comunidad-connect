@@ -94,7 +94,7 @@ export const WaterService = {
 
         // Calcular consumo promedio (simplificado: asume lectura es consumo directo por ahora)
         // En realidad deberíamos restar lectura anterior, pero para MVP está bien.
-        const total = data.reduce((acc, curr) => acc + (Number(curr.reading_value) || 0), 0);
+        const total = data.reduce((acc: number, curr: any) => acc + (Number(curr.reading_value) || 0), 0);
         return total / data.length;
     }
 };
@@ -188,8 +188,8 @@ export const MarketplaceService = {
             return { error: error.message };
         }
 
-        console.log("MARKETPLACE_DEBUG: Buckets encontrados:", data.map(b => b.name));
-        return { buckets: data.map(b => b.name) };
+        console.log("MARKETPLACE_DEBUG: Buckets encontrados:", data.map((b: any) => b.name));
+        return { buckets: data.map((b: any) => b.name) };
     }
 };
 
