@@ -63,13 +63,13 @@ export default function VotacionesPage() {
 
             // To be precise for the UI, let's map them.
             // We fetch user vote statuses in parallel.
-            const checkVotesPromises = [...(active || []), ...(closed || [])].map(p =>
+            const checkVotesPromises = [...(active || []), ...(closed || [])].map((p: any) =>
                 PollsService.hasUserVoted(p.id, user!.id).then(res => ({ poll_id: p.id, vote: res }))
             );
             const userVotesResults = await Promise.all(checkVotesPromises);
             const validUserVotes = userVotesResults
                 .filter(r => r.vote !== null)
-                .map(r => ({ poll_id: r.poll_id, option_id: r.vote!.option_id }));
+                .map((r: any) => ({ poll_id: r.poll_id, option_id: r.vote!.option_id }));
 
             setActivePolls((active || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
             setClosedPolls((closed || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
