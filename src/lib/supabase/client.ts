@@ -5,22 +5,41 @@ const createMockClient = () => ({
     auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
-        signInWithPassword: async () => ({ error: new Error('Demo mode - configure Supabase to enable') }),
-        signUp: async () => ({ error: new Error('Demo mode - configure Supabase to enable') }),
+        signInWithPassword: async () => ({ error: new Error('Demo mode') }),
+        signUp: async () => ({ error: new Error('Demo mode') }),
         signOut: async () => ({ error: null }),
     },
     from: () => ({
         select: () => ({
             eq: () => ({
                 order: () => ({
-                    maybeSingle: () => ({ error: null, data: null }),
-                    then: () => Promise.resolve({ data: [], error: null })
+                    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                    single: () => Promise.resolve({ data: null, error: null }),
+                    then: (cb: any) => Promise.resolve({ data: [], error: null }).then(cb)
                 }),
-                maybeSingle: () => ({ error: null, data: null })
+                maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                then: (cb: any) => Promise.resolve({ data: [], error: null }).then(cb)
             }),
-            insert: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }),
-            update: () => ({ eq: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }) })
+            order: () => ({
+                then: (cb: any) => Promise.resolve({ data: [], error: null }).then(cb)
+            }),
+            then: (cb: any) => Promise.resolve({ data: [], error: null }).then(cb)
         }),
+        insert: () => ({
+            select: () => ({
+                single: () => Promise.resolve({ data: null, error: null })
+            })
+        }),
+        update: () => ({
+            eq: () => ({
+                select: () => ({
+                    single: () => Promise.resolve({ data: null, error: null })
+                })
+            })
+        }),
+        delete: () => ({
+            eq: () => Promise.resolve({ error: null })
+        })
     }),
 });
 
