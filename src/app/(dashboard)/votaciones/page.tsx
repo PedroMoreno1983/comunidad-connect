@@ -71,8 +71,8 @@ export default function VotacionesPage() {
                 .filter(r => r.vote !== null)
                 .map(r => ({ poll_id: r.poll_id, option_id: r.vote!.option_id }));
 
-            setActivePolls((active || []).map(p => mapSupabasePoll(p, validUserVotes)));
-            setClosedPolls((closed || []).map(p => mapSupabasePoll(p, validUserVotes)));
+            setActivePolls((active || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
+            setClosedPolls((closed || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
 
         } catch (error) {
             console.error("Error loading polls:", error);
