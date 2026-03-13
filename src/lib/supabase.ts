@@ -17,6 +17,7 @@ const createMockClient = () => ({
   }),
 });
 
+// Export client - will use real Supabase if credentials are provided, otherwise mock
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createBrowserClient(supabaseUrl, supabaseAnonKey)
   : createMockClient() as any;
