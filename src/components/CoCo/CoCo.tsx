@@ -65,14 +65,18 @@ export default function CoCo() {
                 }),
             });
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.reply || `HTTP ${res.status}`);
+            }
 
             const d = await res.json();
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate }]);
             if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
         } catch (err: any) {
             console.error("CoCo error:", err);
-            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: "Tuve un problema de conexión 😅 Inténtalo de nuevo." }]);
+            const errorMsg = err.message || "Tuve un problema de conexión 😅";
+            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `${errorMsg} Inténtalo de nuevo.` }]);
         } finally { setLoading(false); }
     };
 
