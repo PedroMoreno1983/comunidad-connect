@@ -100,7 +100,7 @@ export const NotificationService = {
                     table: 'notifications',
                     filter: `user_id=eq.${userId}`
                 },
-                (payload) => {
+                (payload: any) => {
                     onNew(payload.new as DbNotification);
                 }
             )
