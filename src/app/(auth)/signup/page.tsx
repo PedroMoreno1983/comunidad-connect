@@ -7,13 +7,15 @@ import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Mail, Lock, User, Eye, EyeOff, Key } from "lucide-react";
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [accessCode, setAccessCode] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { signUp } = useAuth();
@@ -42,9 +44,42 @@ export default function SignUpPage() {
             return;
         }
 
+        if (!accessCode || accessCode.trim().length === 0) {
+            toast({
+                title: "Error",
+                description: "Debes ingresar un código de invitación",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setLoading(true);
 
-        const { error } = await signUp(email, password, { full_name: fullName });
+        // Verify Access Code
+        const cleanCode = accessCode.trim().toUpperCase();
+        const { data: communities, error: codeError } = await supabase
+            .from('communities')
+            .select('id, resident_code, concierge_code')
+            .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode}`);
+
+        if (codeError || !communities || communities.length === 0) {
+            toast({
+                title: "Código Inválido",
+                description: "El código de invitación no existe o es incorrecto.",
+                variant: "destructive",
+            });
+            setLoading(false);
+            return;
+        }
+
+        const community = communities[0];
+        const assignedRole = community.resident_code === cleanCode ? 'resident' : 'concierge';
+
+        const { error } = await signUp(email, password, {
+            full_name: fullName,
+            community_id: community.id,
+            role: assignedRole
+        });
 
         if (error) {
             toast({
@@ -163,6 +198,28 @@ export default function SignUpPage() {
                                     className="pl-10"
                                 />
                             </div>
+                        </div>
+
+                        {/* Access Code Field */}
+                        <div>
+                            <label htmlFor="accessCode" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                Código de Invitación
+                            </label>
+                            <div className="relative">
+                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="accessCode"
+                                    type="text"
+                                    value={accessCode}
+                                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                                    placeholder="Ej: RSD-A3F9K2"
+                                    required
+                                    className="pl-10 tracking-widest font-mono uppercase"
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Ingresa el código que te proporcionó el administrador de tu comunidad.
+                            </p>
                         </div>
 
                         {/* Submit Button */}

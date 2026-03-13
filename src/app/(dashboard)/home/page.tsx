@@ -156,7 +156,7 @@ export default function HomePage() {
             icon: DollarSign,
             gradient: "from-rose-500 to-pink-600",
             bg: "bg-rose-100 dark:bg-rose-500/20",
-            link: "/expenses"
+            link: "/resident/finances"
         },
     ];
 
@@ -278,14 +278,16 @@ export default function HomePage() {
                             </div>
                         </div>
                         <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">
-                            {getGreeting()}, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{user.name.split(' ')[0]}</span>
+                            {getGreeting()}, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                {user.name.split(' ')[0]}
+                            </span>
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 mt-1">
                             {user.role === 'admin'
                                 ? 'Gestiona tu comunidad desde un solo lugar'
                                 : user.role === 'concierge'
                                     ? 'Control de accesos y servicios del edificio'
-                                    : `Bienvenido a ComunidadConnect • Depto ${user.unitId}`
+                                    : `Bienvenido a ComunidadConnect${user.unitName ? ` • ${user.unitName}` : ''}`
                             }
                         </p>
                     </div>
@@ -428,65 +430,68 @@ export default function HomePage() {
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Announcements */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="lg:col-span-2"
-                >
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
-                        <div className="p-5 lg:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
-                                    <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                {user.role !== 'concierge' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="lg:col-span-2"
+                    >
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
+                            <div className="p-5 lg:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
+                                        <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Avisos Recientes</h2>
                                 </div>
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Avisos Recientes</h2>
+                                <Link href="/feed" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                                    Ver todos <ArrowUpRight className="h-4 w-4" />
+                                </Link>
                             </div>
-                            <Link href="/feed" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
-                                Ver todos <ArrowUpRight className="h-4 w-4" />
-                            </Link>
+                            {isLoading ? (
+                                <div className="p-6">
+                                    <SkeletonList count={3} />
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {recentAnnouncements.map((ann, idx) => (
+                                        <motion.div
+                                            key={ann.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.4 + idx * 0.1 }}
+                                            className="p-4 lg:p-5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className={`p-2 rounded-xl flex-shrink-0 ${ann.priority === 'alert'
+                                                    ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+                                                    : ann.priority === 'event'
+                                                        ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
+                                                        : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                                                    }`}>
+                                                    <Bell className="h-4 w-4" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{ann.title}</h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{ann.content}</p>
+                                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{ann.author} • {new Date(ann.createdAt).toLocaleDateString('es-CL')}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        {isLoading ? (
-                            <div className="p-6">
-                                <SkeletonList count={3} />
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                                {recentAnnouncements.map((ann, idx) => (
-                                    <motion.div
-                                        key={ann.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: 0.4 + idx * 0.1 }}
-                                        className="p-4 lg:p-5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                    >
-                                        <div className="flex items-start gap-4">
-                                            <div className={`p-2 rounded-xl flex-shrink-0 ${ann.priority === 'alert'
-                                                ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
-                                                : ann.priority === 'event'
-                                                    ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
-                                                    : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                                                }`}>
-                                                <Bell className="h-4 w-4" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <h3 className="font-semibold text-slate-900 dark:text-white truncate">{ann.title}</h3>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{ann.content}</p>
-                                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{ann.author} • {new Date(ann.createdAt).toLocaleDateString('es-CL')}</p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Quick Actions */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
+                    className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 p-5 lg:p-6">
                         <div className="flex items-center gap-3 mb-6">
@@ -496,46 +501,83 @@ export default function HomePage() {
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Acceso Rápido</h2>
                         </div>
                         <div className="space-y-3">
-                            <Link
-                                href="/amenities"
-                                className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10 border border-purple-100 dark:border-purple-500/20 hover:border-purple-200 dark:hover:border-purple-500/30 transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                    <span className="font-medium text-slate-900 dark:text-white">Reservar Espacio</span>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-purple-400 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link
-                                href="/marketplace"
-                                className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100 dark:border-emerald-500/20 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                    <span className="font-medium text-slate-900 dark:text-white">Publicar Artículo</span>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link
-                                href="/services"
-                                className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100 dark:border-amber-500/20 hover:border-amber-200 dark:hover:border-amber-500/30 transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Wrench className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                    <span className="font-medium text-slate-900 dark:text-white">Solicitar Servicio</span>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link
-                                href="/expenses"
-                                className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-500/10 dark:to-pink-500/10 border border-rose-100 dark:border-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <DollarSign className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                                    <span className="font-medium text-slate-900 dark:text-white">Pagar Gastos</span>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-rose-400 group-hover:translate-x-1 transition-transform" />
-                            </Link>
+                            {user.role === 'concierge' ? (
+                                <>
+                                    <Link
+                                        href="/concierge/visitors"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100 dark:border-amber-500/20 hover:border-amber-200 dark:hover:border-amber-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Registrar Visita</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/concierge/packages"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100 dark:border-emerald-500/20 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Recibir Paquete</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/services"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-500/10 dark:to-rose-500/10 border border-red-100 dark:border-red-500/20 hover:border-red-200 dark:hover:border-red-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Bell className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Activar Emergencia</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-red-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        href="/amenities"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10 border border-purple-100 dark:border-purple-500/20 hover:border-purple-200 dark:hover:border-purple-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Reservar Espacio</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-purple-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/marketplace"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100 dark:border-emerald-500/20 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Publicar Artículo</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/services"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100 dark:border-amber-500/20 hover:border-amber-200 dark:hover:border-amber-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Wrench className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Solicitar Servicio</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/resident/finances"
+                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-500/10 dark:to-pink-500/10 border border-rose-100 dark:border-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <DollarSign className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                                            <span className="font-medium text-slate-900 dark:text-white">Pagar Gastos</span>
+                                        </div>
+                                        <ChevronRight className="h-5 w-5 text-rose-400 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </motion.div>

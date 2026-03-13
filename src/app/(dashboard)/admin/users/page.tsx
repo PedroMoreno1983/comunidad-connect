@@ -2,17 +2,47 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/authContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { User, Mail, Shield, Trash2, Edit } from "lucide-react";
+import { User, Mail, Shield, Trash2, Edit, Key, Copy, CheckCheck, Users, HardHat } from "lucide-react";
 
 export default function UsersPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [communityName, setCommunityName] = useState<string>("");
+    const [residentCode, setResidentCode] = useState<string | null>(null);
+    const [conciergeCode, setConciergeCode] = useState<string | null>(null);
+    const [copiedCode, setCopiedCode] = useState<string | null>(null);
+    const { user } = useAuth();
 
     useEffect(() => {
-        const fetchUsers = async () => {
+        const fetchData = async () => {
             try {
+                // Fetch community codes for the admin's community
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('community_id')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profile?.community_id) {
+                        const { data: community } = await supabase
+                            .from('communities')
+                            .select('name, resident_code, concierge_code')
+                            .eq('id', profile.community_id)
+                            .single();
+
+                        if (community) {
+                            setCommunityName(community.name);
+                            setResidentCode(community.resident_code);
+                            setConciergeCode(community.concierge_code);
+                        }
+                    }
+                }
+
+                // Fetch users
                 const { data, error } = await supabase
                     .from('profiles')
                     .select(`
@@ -24,17 +54,22 @@ export default function UsersPage() {
                     `)
                     .order('full_name');
 
-                if (data) {
-                    setUsers(data);
-                }
+                if (data) setUsers(data);
             } catch (err) {
-                console.error("Error fetching users:", err);
+                console.error("Error fetching data:", err);
             } finally {
                 setIsLoading(false);
             }
         };
-        fetchUsers();
-    }, []);
+        fetchData();
+    }, [user]);
+
+    const handleCopy = (code: string, type: string) => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopiedCode(type);
+            setTimeout(() => setCopiedCode(null), 2000);
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -48,6 +83,84 @@ export default function UsersPage() {
                     Nuevo Usuario
                 </Button>
             </div>
+
+            {/* Invitation Codes Card */}
+            {(residentCode || conciergeCode) && (
+                <Card className="border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-800 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-300">
+                            <Key className="h-5 w-5" />
+                            Códigos de Invitación — {communityName}
+                        </CardTitle>
+                        <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                            Comparte estos códigos con los miembros de tu comunidad para que puedan registrarse en la app.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Resident Code */}
+                            {residentCode && (
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-900 p-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                            <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Residentes</span>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-4 py-3 border border-emerald-200 dark:border-emerald-900">
+                                        <span className="font-mono text-xl font-bold tracking-widest text-emerald-700 dark:text-emerald-400">
+                                            {residentCode}
+                                        </span>
+                                        <button
+                                            onClick={() => handleCopy(residentCode, 'resident')}
+                                            className="ml-3 text-emerald-500 hover:text-emerald-700 transition-colors"
+                                            title="Copiar código"
+                                        >
+                                            {copiedCode === 'resident'
+                                                ? <CheckCheck className="h-5 w-5 text-emerald-600" />
+                                                : <Copy className="h-5 w-5" />
+                                            }
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                        Para propietarios e inquilinos
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Concierge Code */}
+                            {conciergeCode && (
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-200 dark:border-orange-900 p-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
+                                            <HardHat className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Conserjes</span>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950/30 rounded-lg px-4 py-3 border border-orange-200 dark:border-orange-900">
+                                        <span className="font-mono text-xl font-bold tracking-widest text-orange-700 dark:text-orange-400">
+                                            {conciergeCode}
+                                        </span>
+                                        <button
+                                            onClick={() => handleCopy(conciergeCode, 'concierge')}
+                                            className="ml-3 text-orange-500 hover:text-orange-700 transition-colors"
+                                            title="Copiar código"
+                                        >
+                                            {copiedCode === 'concierge'
+                                                ? <CheckCheck className="h-5 w-5 text-orange-600" />
+                                                : <Copy className="h-5 w-5" />
+                                            }
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                        Para personal de conserjería
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardContent className="p-0">

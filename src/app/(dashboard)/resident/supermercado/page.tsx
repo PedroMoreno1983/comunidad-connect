@@ -1,12 +1,26 @@
 "use client";
 
 import { WhatsAppChat } from "@/components/resident/supermarket/WhatsAppChat";
-import { QrCode, Smartphone, ShoppingCart, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { QrCode, ShoppingCart, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 
 export default function SupermarketPage() {
     const [isConnected, setIsConnected] = useState(false);
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (searchParams.get('status') === 'success') {
+            toast({
+                title: "¡Compra Exitosa!",
+                description: "Tu pedido ha sido procesado correctamente.",
+                variant: "success"
+            });
+        }
+    }, [searchParams, toast]);
 
     return (
         <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
@@ -37,7 +51,7 @@ export default function SupermarketPage() {
                                 <div className="space-y-2">
                                     <h2 className="text-3xl font-black text-slate-900 dark:text-white">Conecta tu WhatsApp</h2>
                                     <p className="text-slate-500 max-w-md mx-auto">
-                                        Escanea este código o haz clic en "Conectar" para iniciar tu asistente.
+                                        Escanea este código o haz clic en &quot;Conectar&quot; para iniciar tu asistente.
                                         Podrás enviar audios y recibir tu carrito listo.
                                     </p>
                                 </div>

@@ -1,47 +1,28 @@
-import { Building2, ArrowLeft, Search } from "lucide-react";
-import Link from "next/link";
+import Link from 'next/link';
+import { Home, AlertCircle } from 'lucide-react';
 
 export default function NotFound() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20 p-6">
-            <div className="max-w-md w-full text-center">
-                {/* 404 Number */}
-                <div className="relative mb-6">
-                    <span className="text-[10rem] font-black leading-none text-transparent bg-clip-text bg-gradient-to-br from-indigo-200 to-purple-200 dark:from-indigo-800/50 dark:to-purple-800/50 select-none">
-                        404
-                    </span>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/30">
-                            <Search className="h-8 w-8 text-white" />
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F19] flex flex-col items-center justify-center p-6 text-center">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-800 flex flex-col items-center">
+                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6">
+                    <AlertCircle className="w-10 h-10 text-indigo-500" />
                 </div>
 
-                {/* Text */}
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-                    Página no encontrada
-                </h1>
-                <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
-                    La página que buscas no existe o fue movida. Verifica la URL o regresa al inicio.
+                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-2">404</h1>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Página no encontrada</h2>
+
+                <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                    Lo sentimos, la página que buscas no existe o ha sido movida. Verifica que la URL sea correcta.
                 </p>
 
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Link
-                        href="/home"
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                    >
-                        <Building2 className="h-4 w-4" />
-                        Ir al Dashboard
-                    </Link>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Volver al Inicio
-                    </Link>
-                </div>
+                <Link
+                    href="/home"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors text-white font-semibold w-full justify-center shadow-lg shadow-indigo-500/30"
+                >
+                    <Home className="w-5 h-5" />
+                    Te llevamos al Inicio
+                </Link>
             </div>
         </div>
     );

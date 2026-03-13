@@ -4,19 +4,30 @@ import { MarketplaceItem } from "@/lib/types";
 import { motion } from "framer-motion";
 import { MessageCircle, Heart, Tag, Calendar, User, Search, Repeat, Sparkles } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { type ComponentType, useState } from "react";
+
+type CategoryConfig = {
+    icon: ComponentType<{ className?: string }>;
+    gradient: string;
+    bg: string;
+};
+
+type MarketplaceCardItem = MarketplaceItem & {
+    created_at?: string;
+};
 
 interface MarketplaceCardProps {
-    item: MarketplaceItem;
+    item: MarketplaceCardItem;
     idx: number;
-    onClick: (item: MarketplaceItem) => void;
+    onClick: (item: MarketplaceCardItem) => void;
     categoryLabel: string;
-    categoryConfig: any;
+    categoryConfig: CategoryConfig;
 }
 
 export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryConfig }: MarketplaceCardProps) {
     const Icon = categoryConfig.icon;
     const [imgSrc, setImgSrc] = useState(item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null));
+    const deptNumber = Array.from(item.sellerId ?? item.id).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 900 + 100;
 
     return (
         <motion.article
@@ -137,11 +148,11 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     <div className="mt-5 flex items-center gap-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tight">
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5" />
-                            {new Date((item as any).created_at || item.createdAt).toLocaleDateString('es-CL')}
+                            {new Date(item.created_at ?? item.createdAt).toLocaleDateString('es-CL')}
                         </div>
                         <div className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            Depto {Math.floor(Math.random() * 900) + 100}
+                            Depto {deptNumber}
                         </div>
                     </div>
                 </div>

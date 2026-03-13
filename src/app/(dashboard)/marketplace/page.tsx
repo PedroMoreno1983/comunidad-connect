@@ -5,6 +5,7 @@ import { MarketplaceService } from "@/lib/api";
 import {
     Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2
 } from "lucide-react";
+import { useSearchParams } from 'next/navigation';
 import {
     Dialog,
     DialogContent,
@@ -69,10 +70,18 @@ export default function MarketplacePage() {
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const { toast } = useToast();
     const { user } = useAuth();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
+        if (searchParams.get('status') === 'success') {
+            toast({
+                title: "¡Compra Exitosa!",
+                description: "Tu pago se ha procesado. El vendedor será notificado.",
+                variant: "success",
+            });
+        }
         loadItems();
-    }, []);
+    }, [searchParams]);
 
     const loadItems = async () => {
         setLoading(true);

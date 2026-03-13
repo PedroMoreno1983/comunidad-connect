@@ -10,6 +10,9 @@ import { CreditCard, History, AlertCircle, CheckCircle2, Home } from "lucide-rea
 import { useToast } from "@/components/ui/Toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { getApiUrl } from "@/lib/config";
+import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface CondoFee {
     id: string;
@@ -27,13 +30,21 @@ interface CondoFee {
 export default function FinancesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
     const [fees, setFees] = useState<CondoFee[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
     useEffect(() => {
+        if (searchParams.get('status') === 'success') {
+            toast({
+                title: "¡Pago Recibido!",
+                description: "Tu pago se está procesando. El estado se actualizará en unos momentos.",
+                variant: "success"
+            });
+        }
         loadFinances();
-    }, [user]);
+    }, [user, searchParams]);
 
     const loadFinances = async () => {
         if (!user) return;
@@ -42,20 +53,25 @@ export default function FinancesPage() {
 
             const supabase = createClient();
 
-            // 1. Obtener la unidad del residente actual
-            const { data: profile } = await supabase
-                .from('resident_profiles')
-                .select('unit_id')
-                .eq('user_id', user.id)
-                .single();
+            // 1. Obtener la unidad (Priorizar unidad de authContext)
+            let targetUnitId = user.unitId;
 
-            if (!profile?.unit_id) throw new Error("Unidad no encontrada");
+            if (!targetUnitId) {
+                const { data: profile } = await supabase
+                    .from('resident_profiles')
+                    .select('unit_id')
+                    .eq('user_id', user.id)
+                    .single();
+                targetUnitId = profile?.unit_id;
+            }
+
+            if (!targetUnitId) throw new Error("Unidad no encontrada");
 
             // 2. Traer Gastos Comunes
             const { data, error } = await supabase
                 .from('condo_fees')
                 .select('*, units(number)')
-                .eq('unit_id', profile.unit_id)
+                .eq('unit_id', targetUnitId)
                 .order('due_date', { ascending: false });
 
             if (error) throw error;
@@ -77,7 +93,7 @@ export default function FinancesPage() {
         setProcessingId(fee.id);
         try {
             // Llamar a nuestro propio API Route que genera el link
-            const response = await fetch('/api/payments/create-haulmer-link', {
+            const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -85,11 +101,10 @@ export default function FinancesPage() {
                     description: `Gastos Comunes ${format(new Date(fee.month), 'MMMM yyyy', { locale: es })} - Depto ${fee.units?.number}`,
                     reference: `FEE_${fee.id}`, // Prefijo FEE_ + UUID
                     client: {
-                        // @ts-ignore
-                        name: user?.user_metadata?.full_name || 'Residente',
+                        name: user?.name || 'Residente',
                         email: user?.email || '',
                     },
-                    returnUrl: window.location.origin + '/resident/finances'
+                    returnUrl: window.location.origin + '/resident/finances?status=success'
                 })
             });
 
@@ -145,10 +160,18 @@ export default function FinancesPage() {
                         {loading ? (
                             <div className="p-8 text-center text-slate-400">Cargando...</div>
                         ) : pendingFees.length === 0 ? (
-                            <div className="p-12 text-center text-emerald-600 flex flex-col items-center">
-                                <CheckCircle2 className="w-12 h-12 mb-3 text-emerald-400" />
-                                <h3 className="text-xl font-bold">¡Estás al día!</h3>
-                                <p className="text-sm text-emerald-600/70">No tienes deudas pendientes.</p>
+                            <div className="p-16 text-center flex flex-col items-center justify-center">
+                                <motion.div 
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mb-6"
+                                >
+                                    <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+                                </motion.div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">¡Todo al día!</h3>
+                                <p className="text-slate-500 dark:text-slate-400 max-w-[280px] font-medium leading-relaxed">
+                                    No tienes pagos pendientes en este momento. Sigue disfrutando de tu comunidad.
+                                </p>
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100">

@@ -97,9 +97,13 @@ export default function ResidentInvitationsPage() {
                                     <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-xs text-slate-400 font-bold">
                                             <Clock className="h-4 w-4" />
-                                            <span>Hasta el 14 Feb</span>
+                                            <span>
+                                                Vence: {new Date(inv.validTo).toLocaleString('es-CL', {
+                                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                                })}
+                                            </span>
                                         </div>
-                                        <button className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                                        <button className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Compartir Código">
                                             <Share2 className="h-4 w-4 text-slate-400" />
                                         </button>
                                     </div>
@@ -128,10 +132,14 @@ export default function ResidentInvitationsPage() {
                                             </div>
                                             <div>
                                                 <p className="font-black text-slate-900 dark:text-white">{inv.guestName}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ingresó el 10 Enero</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Generado el {new Date(inv.validFrom).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                                </p>
                                             </div>
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expirado</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            {inv.status === 'expired' ? 'Expirado' : inv.status === 'cancelled' ? 'Cancelado' : 'Usado'}
+                                        </span>
                                     </div>
                                 ))}
                                 {!isLoading && pastInvitations.length === 0 && (

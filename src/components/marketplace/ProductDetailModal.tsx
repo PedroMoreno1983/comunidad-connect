@@ -4,18 +4,12 @@ import { MarketplaceItem } from "@/lib/types";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
     DialogTitle,
-    DialogDescription
 } from "@/components/ui/Dialog";
 import {
     MessageCircle,
-    Calendar,
-    User,
-    CheckCircle2,
     AlertCircle,
     ShieldCheck,
-    Truck,
     Clock,
     Repeat,
     CreditCard,
@@ -24,7 +18,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useState, useEffect } from "react";
 
 interface ProductDetailModalProps {
     item: MarketplaceItem | null;
@@ -36,13 +29,9 @@ interface ProductDetailModalProps {
 }
 
 export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onChat, onBuy }: ProductDetailModalProps) {
-    const [imgSrc, setImgSrc] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (item) {
-            setImgSrc(item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null));
-        }
-    }, [item]);
+    const imgSrc = item?.imageUrl || (item?.images && item.images.length > 0 ? item.images[0] : null);
+    const deptNumber = Array.from(item?.sellerId ?? item?.id ?? "")
+        .reduce((acc, char) => acc + char.charCodeAt(0), 0) % 900 + 100;
 
     if (!item) return null;
 
@@ -59,7 +48,6 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                 fill
                                 sizes="(max-width: 768px) 100vw, 50vw"
                                 className="object-cover"
-                                onError={() => setImgSrc(`https://ui-avatars.com/api/?name=${encodeURIComponent(item.title)}&background=random&color=fff&size=512`)}
                             />
                         ) : (
                             <div className="w-full h-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center min-h-[300px]">
@@ -84,7 +72,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                     className="flex items-center gap-2.5 text-blue-600 dark:text-blue-400 font-bold text-xs bg-blue-50/50 dark:bg-blue-500/10 w-fit px-4 py-2 rounded-2xl border border-blue-100/50 dark:border-blue-500/20 shadow-sm"
                                 >
                                     <ShieldCheck className="h-4 w-4" />
-                                    Artículo Verificado Comunitario • Depto {Math.floor(Math.random() * 900) + 100}
+                                    Artículo Verificado Comunitario • Depto {deptNumber}
                                 </motion.div>
                                 <DialogTitle className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white leading-[1.05] tracking-tight">
                                     {item.title}
@@ -127,7 +115,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                             </div>
                                             <div className="pl-16">
                                                 <p className="text-sm md:text-base text-purple-700/80 dark:text-purple-300/80 font-medium leading-relaxed italic">
-                                                    "{item.swapDetails || "Busco artículos de similar valor o categoría."}"
+                                                    &ldquo;{item.swapDetails || "Busco artículos de similar valor o categoría."}&rdquo;
                                                 </p>
                                             </div>
                                         </div>
@@ -147,7 +135,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                             </div>
                                             <div className="pl-16">
                                                 <p className="text-sm md:text-base text-emerald-700/80 dark:text-emerald-300/80 font-medium leading-relaxed italic">
-                                                    "{item.barterDetails || "Conversable por cualquier cosa de utilidad para el hogar."}"
+                                                    &ldquo;{item.barterDetails || "Conversable por cualquier cosa de utilidad para el hogar."}&rdquo;
                                                 </p>
                                             </div>
                                         </div>

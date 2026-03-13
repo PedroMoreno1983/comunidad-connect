@@ -76,11 +76,8 @@ export default function VotacionesPage() {
 
         } catch (error) {
             console.error("Error loading polls:", error);
-            toast({
-                title: "Error",
-                description: "No se pudieron cargar las votaciones.",
-                variant: "destructive"
-            });
+            setActivePolls([]);
+            setClosedPolls([]);
         } finally {
             setLoading(false);
         }

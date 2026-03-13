@@ -21,7 +21,7 @@ export const AmenityService = {
             .select(`
         *,
         amenities:amenity_id (name, icon_name),
-        profiles:user_id (full_name, email)
+        profiles:user_id (full_name)
       `)
             .order('date', { ascending: true });
 
@@ -449,6 +449,18 @@ export const PackageService = {
             .single();
 
         if (error) throw error;
+
+        // Internal Notification / Alert for the resident
+        await supabase
+            .from('announcements')
+            .insert({
+                title: '📦 ¡Tienes un paquete nuevo!',
+                content: `El conserje ha recibido una encomienda para ti. Descripción: ${pkg.description}`,
+                author_id: pkg.registered_by,
+                unit_id: pkg.recipient_unit_id,
+                type: 'info'
+            });
+
         return data;
     },
 
@@ -485,7 +497,7 @@ export const ServiceRequestService = {
             .from('service_requests')
             .select(`
         *,
-        profiles:requester_id (full_name, email),
+        profiles:requester_id (full_name),
         units:unit_id (number, tower)
       `)
             .order('created_at', { ascending: false });
@@ -520,4 +532,273 @@ export const ServiceRequestService = {
 
         if (error) throw error;
     },
+};
+
+// ==========================================
+// Reservations & Amenities
+// ==========================================
+export const ReservationService = {
+    async getAmenities() {
+        const { data, error } = await supabase
+            .from('amenities')
+            .select('*')
+            .order('name');
+
+        if (error) throw error;
+        return data;
+    },
+
+    async getBookingsByUser(userId: string) {
+        const { data, error } = await supabase
+            .from('amenity_bookings')
+            .select(`
+                *,
+                amenities:amenity_id (name, icon_name, gradient)
+            `)
+            .eq('user_id', userId)
+            .order('date', { ascending: true })
+            .order('start_time', { ascending: true });
+
+        if (error) throw error;
+        return data;
+    },
+
+    async createBooking(booking: {
+        amenity_id: string;
+        user_id: string;
+        date: string;
+        start_time: string;
+        end_time: string;
+    }) {
+        const { data, error } = await supabase
+            .from('amenity_bookings')
+            .insert({ ...booking, status: 'pending' })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+};
+
+// ==========================================
+// Social Network (Phase 4)
+// ==========================================
+export const SocialService = {
+    async getPosts() {
+        const { data, error } = await supabase
+            .from('social_posts')
+            .select(`
+                *,
+                profiles:author_id (full_name, avatar_url, unit_id),
+                comments:social_comments(count)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform the nested comments count
+        return data?.map(post => ({
+            ...post,
+            comments_count: post.comments[0]?.count || 0
+        }));
+    },
+
+    async createPost(post: { author_id: string; content: string; image_url?: string }) {
+        const { data, error } = await supabase
+            .from('social_posts')
+            .insert(post)
+            .select(`
+                *,
+                profiles:author_id (full_name, avatar_url, unit_id)
+            `)
+            .single();
+
+        if (error) throw error;
+        return { ...data, comments_count: 0 };
+    },
+
+    async likePost(postId: string) {
+        // Increment likes count via rpc or simple update if RLS allows
+        const { error } = await supabase.rpc('increment_post_likes', { post_id: postId });
+        if (error) throw error;
+    },
+
+    async getComments(postId: string) {
+        const { data, error } = await supabase
+            .from('social_comments')
+            .select(`
+                *,
+                profiles:author_id (full_name, avatar_url)
+            `)
+            .eq('post_id', postId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data;
+    },
+
+    async createComment(comment: { post_id: string; author_id: string; content: string }) {
+        const { data, error } = await supabase
+            .from('social_comments')
+            .insert(comment)
+            .select(`
+                *,
+                profiles:author_id (full_name, avatar_url)
+            `)
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+};
+
+// ==========================================
+// Real-time Chat (Phase 4)
+// ==========================================
+export const ChatService = {
+    async getGlobalMessages(limit = 50) {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select(`
+                *,
+                profiles:sender_id (full_name, avatar_url)
+            `)
+            .is('receiver_id', null)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data.reverse(); // Return chronological
+    },
+
+    async sendMessage(message: { sender_id: string; receiver_id?: string; content: string }) {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .insert(message)
+            .select(`
+                *,
+                profiles:sender_id (full_name, avatar_url)
+            `)
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Subscribe to new messages. Returns the channel to be able to unsubscribe.
+    subscribeToGlobalChat(onNewMessage: (msg: any) => void) {
+        const channel = supabase.channel('global_chat')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'chat_messages',
+                    filter: 'receiver_id=is.null' // Only listen to global chat
+                },
+                async (payload) => {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('full_name, avatar_url')
+                        .eq('id', payload.new.sender_id)
+                        .single();
+
+                    const enrichedMessage = { ...payload.new, profiles: profile };
+                    onNewMessage(enrichedMessage);
+                }
+            )
+            .subscribe();
+
+        return channel;
+    },
+
+    // ---- Direct Messages ----
+
+    // Get all DMs between two specific users
+    async getDirectMessages(userId: string, peerId: string, limit = 50) {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select(`
+                *,
+                profiles:sender_id (full_name, avatar_url)
+            `)
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${userId})`)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data.reverse();
+    },
+
+    // Subscribe to DMs in a specific conversation
+    subscribeToDirectChat(myId: string, peerId: string, onNewMessage: (msg: any) => void) {
+        const channelName = [myId, peerId].sort().join('_');
+        const channel = supabase.channel(`dm_${channelName}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'chat_messages',
+                },
+                async (payload) => {
+                    const msg = payload.new as any;
+                    // Only act on messages relevant to this conversation
+                    const isRelevant = (
+                        (msg.sender_id === myId && msg.receiver_id === peerId) ||
+                        (msg.sender_id === peerId && msg.receiver_id === myId)
+                    );
+                    if (!isRelevant) return;
+
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('full_name, avatar_url')
+                        .eq('id', msg.sender_id)
+                        .single();
+
+                    onNewMessage({ ...msg, profiles: profile });
+                }
+            )
+            .subscribe();
+
+        return channel;
+    },
+
+    // Get list of users the current user has had DMs with
+    async getConversations(userId: string) {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select(`
+                sender_id,
+                receiver_id,
+                content,
+                created_at,
+                senderProfile:profiles!sender_id(full_name, avatar_url),
+                receiverProfile:profiles!receiver_id(full_name, avatar_url)
+            `)
+            .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+            .not('receiver_id', 'is', null) // Only DMs, not global
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Deduplicate by peer
+        const seen = new Set<string>();
+        const conversations: any[] = [];
+        for (const msg of (data || [])) {
+            const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+            const peerProfile = msg.sender_id === userId ? msg.receiverProfile : msg.senderProfile;
+            if (!seen.has(peerId)) {
+                seen.add(peerId);
+                conversations.push({
+                    peerId,
+                    peerProfile,
+                    lastMessage: msg.content,
+                    lastAt: msg.created_at
+                });
+            }
+        }
+        return conversations;
+    }
 };

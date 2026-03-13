@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/Button";
 import { CreditCard, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getApiUrl } from "@/lib/config";
+import { useAuth } from "@/lib/authContext";
 
 interface PaymentModalProps {
     item: MarketplaceItem | null;
@@ -21,6 +23,7 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalProps) {
+    const { user } = useAuth();
     const [step, setStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
 
     const handlePayment = async () => {
@@ -28,7 +31,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
         setStep('processing');
 
         try {
-            const response = await fetch('/api/payments/create-haulmer-link', {
+            const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -36,10 +39,10 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                     description: `Compra en Marketplace: ${item.title}`,
                     reference: `MARKET_${item.id}`,
                     client: {
-                        name: 'Residente Comprador',
-                        email: 'resident@comunidadconnect.com'
+                        name: user?.name || 'Residente',
+                        email: user?.email || ''
                     },
-                    returnUrl: window.location.origin + '/marketplace'
+                    returnUrl: window.location.origin + '/marketplace?status=success'
                 })
             });
 

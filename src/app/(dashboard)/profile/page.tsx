@@ -1,0 +1,345 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/lib/authContext";
+import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
+import { useToast } from "@/components/ui/Toast";
+import {
+    User, Camera, Save, Loader2, ShieldCheck,
+    Home, Mail, Lock, CheckCircle, Smartphone, MessageCircle
+} from "lucide-react";
+
+export default function ProfilePage() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    const [fullName, setFullName] = useState(user?.name || "");
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [isSendingReset, setIsSendingReset] = useState(false);
+    const [passwordResetSent, setPasswordResetSent] = useState(false);
+    const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+
+    // WhatsApp
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+    const [isSavingWa, setIsSavingWa] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (user) {
+            setFullName(user.name || "");
+            loadProfile();
+        }
+    }, [user?.id]);
+
+    const loadProfile = async () => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('profiles')
+            .select('full_name, avatar_url, phone_number, whatsapp_enabled')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+        if (data?.phone_number) setPhoneNumber(data.phone_number);
+        if (data?.whatsapp_enabled) setWhatsappEnabled(data.whatsapp_enabled);
+    };
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        setIsUploadingAvatar(true);
+        try {
+            const ext = file.name.split('.').pop();
+            const path = `avatars/${user.id}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(path, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(path);
+
+            // Save to profile
+            await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+            setAvatarUrl(publicUrl);
+            toast({ title: "✅ Foto actualizada", description: "Tu foto de perfil fue guardada.", variant: "success" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "No se pudo subir la foto.", variant: "destructive" });
+        } finally {
+            setIsUploadingAvatar(false);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!user || !fullName.trim()) return;
+        setIsSaving(true);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ full_name: fullName.trim() })
+                .eq('id', user.id);
+
+            if (error) throw error;
+            toast({ title: "✅ Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
+        } catch {
+            toast({ title: "Error", description: "No se pudo guardar el perfil.", variant: "destructive" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        if (!user?.email) return;
+        setIsSendingReset(true);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+                redirectTo: `${window.location.origin}/reset-password`
+            });
+            if (error) throw error;
+            setPasswordResetSent(true);
+            setShowEmailConfirm(true);
+            toast({ title: "📧 Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
+        } catch (error) {
+            toast({ title: "Error", description: "No se pudo enviar el email.", variant: "destructive" });
+        } finally {
+            setIsSendingReset(false);
+        }
+    };
+
+    const ROLE_LABEL: Record<string, string> = {
+        admin: 'Administrador',
+        resident: 'Residente',
+        concierge: 'Conserjería'
+    };
+
+    const ROLE_GRADIENT: Record<string, string> = {
+        admin: 'from-indigo-500 to-purple-600',
+        resident: 'from-emerald-500 to-teal-600',
+        concierge: 'from-amber-500 to-orange-500'
+    };
+
+    const gradient = ROLE_GRADIENT[user?.role || 'resident'];
+
+    return (
+        <div className="max-w-2xl mx-auto py-10 px-4 sm:px-6 space-y-8">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <div className={`p-3 bg-gradient-to-br ${gradient} rounded-2xl shadow-lg`}>
+                    <User className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                    <h1 className="text-3xl font-black text-slate-900 dark:text-white">Mi Perfil</h1>
+                    <p className="text-sm font-medium text-slate-500">Gestiona tu información personal</p>
+                </div>
+            </div>
+
+            {/* Avatar Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-lg shadow-slate-200/40 dark:shadow-none overflow-hidden"
+            >
+                {/* Banner */}
+                <div className={`h-24 bg-gradient-to-r ${gradient} relative`}>
+                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                </div>
+
+                <div className="px-8 pb-8">
+                    {/* Avatar */}
+                    <div className="relative -mt-12 inline-block mb-4">
+                        <div className={`w-24 h-24 rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} border-4 border-white dark:border-slate-800 shadow-xl`}>
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-black text-white">
+                                    {user?.name?.charAt(0) || '?'}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="absolute -bottom-2 -right-2 p-2 bg-indigo-500 text-white rounded-xl shadow-lg hover:bg-indigo-600 transition-colors disabled:opacity-60"
+                        >
+                            {isUploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 mb-6">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${gradient} text-white shadow-sm`}>
+                            <ShieldCheck className="h-3 w-3" />
+                            {ROLE_LABEL[user?.role || 'resident']}
+                        </span>
+                        {user?.unitName && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                <Home className="h-3 w-3" />
+                                {user.unitName}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Full Name input */}
+                    <div className="space-y-2 mb-6">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nombre completo</label>
+                        <input
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        />
+                    </div>
+
+                    {/* Email (read-only) */}
+                    <div className="space-y-2 mb-6">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Email</label>
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                            <Mail className="h-4 w-4 text-slate-400" />
+                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{user?.email}</span>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleSaveProfile}
+                        disabled={isSaving || !fullName.trim()}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r ${gradient} text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100`}
+                    >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Guardar cambios
+                    </button>
+                </div>
+            </motion.div>
+
+            {/* WhatsApp Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+            >
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                        <MessageCircle className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h2 className="font-black text-slate-900 dark:text-white">Notificaciones WhatsApp</h2>
+                        <p className="text-xs text-slate-400">Recibe avisos importantes en tu WhatsApp</p>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Número de WhatsApp</label>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 px-3 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                <Smartphone className="h-4 w-4 text-slate-400" />
+                                <span className="text-sm font-bold text-slate-400">+56</span>
+                            </div>
+                            <input
+                                type="tel"
+                                value={phoneNumber.replace('+56', '').replace('56', '')}
+                                onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                                placeholder="9XXXXXXXX"
+                                maxLength={9}
+                                className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                            />
+                        </div>
+                        <p className="text-xs text-slate-400">Ingresa tu número sin el +56 (ej: 912345678)</p>
+                    </div>
+
+                    {/* Toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">Activar notificaciones</p>
+                            <p className="text-xs text-slate-400">Recibirás avisos, pagos y mensajes por WhatsApp</p>
+                        </div>
+                        <button
+                            onClick={() => setWhatsappEnabled(v => !v)}
+                            className={`relative w-12 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+                                }`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${whatsappEnabled ? 'translate-x-6' : 'translate-x-0'
+                                }`} />
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={async () => {
+                            if (!user || !phoneNumber) return;
+                            setIsSavingWa(true);
+                            const fullPhone = phoneNumber.startsWith('56') ? `+${phoneNumber}` : `+56${phoneNumber}`;
+                            const { error } = await supabase.from('profiles').update({
+                                phone_number: fullPhone,
+                                whatsapp_enabled: whatsappEnabled
+                            }).eq('id', user.id);
+                            if (!error) {
+                                toast({ title: '✅ WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
+                            } else {
+                                toast({ title: 'Error', description: 'No se pudo guardar el número.', variant: 'destructive' });
+                            }
+                            setIsSavingWa(false);
+                        }}
+                        disabled={isSavingWa || !phoneNumber}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100"
+                    >
+                        {isSavingWa ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                        Guardar WhatsApp
+                    </button>
+                </div>
+            </motion.div>
+
+            {/* Security Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+            >
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2.5 bg-red-50 dark:bg-red-500/10 rounded-xl">
+                        <Lock className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                        <h2 className="font-black text-slate-900 dark:text-white">Seguridad</h2>
+                        <p className="text-xs text-slate-400">Gestiona tu contraseña</p>
+                    </div>
+                </div>
+
+                {showEmailConfirm ? (
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                        <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Email enviado</p>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                Revisa tu bandeja en <strong>{user?.email}</strong> para cambiar la contraseña.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                            Te enviaremos un link a <strong>{user?.email}</strong> para que puedas cambiar tu contraseña de forma segura.
+                        </p>
+                        <button
+                            onClick={handlePasswordReset}
+                            disabled={isSendingReset}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-60"
+                        >
+                            {isSendingReset ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                            Cambiar contraseña
+                        </button>
+                    </div>
+                )}
+            </motion.div>
+        </div>
+    );
+}

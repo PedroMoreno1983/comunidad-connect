@@ -1,7 +1,10 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { useAuth } from './authContext';
+import { NotificationService, DbNotification } from './services/notificationService';
 
+// The Notification type used by the UI (maps from DbNotification)
 export interface Notification {
     id: string;
     type: 'info' | 'success' | 'warning' | 'alert';
@@ -24,82 +27,95 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// Initial mock notifications
-const initialNotifications: Notification[] = [
-    {
-        id: '1',
-        type: 'info',
-        title: 'Nueva reserva confirmada',
-        message: 'Tu reserva del Quincho para el 15 de febrero ha sido confirmada.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-        read: false,
-        link: '/amenities'
-    },
-    {
-        id: '2',
-        type: 'alert',
-        title: 'Pago pendiente',
-        message: 'Tienes gastos comunes pendientes por $85.000.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        read: false,
-        link: '/expenses'
-    },
-    {
-        id: '3',
-        type: 'success',
-        title: 'Artículo publicado',
-        message: 'Tu artículo "Bicicleta Aro 29" ya está visible en el marketplace.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-        read: true,
-        link: '/marketplace'
-    },
-    {
-        id: '4',
-        type: 'warning',
-        title: 'Mantención programada',
-        message: 'El ascensor 2 estará en mantención mañana de 9:00 a 14:00.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        read: true,
-        link: '/feed'
-    },
-];
+function dbToUi(n: DbNotification): Notification {
+    return {
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.body,
+        timestamp: new Date(n.created_at),
+        read: n.read,
+        link: n.link
+    };
+}
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-    const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+    const { user } = useAuth();
+    const [notifications, setNotifications] = useState<Notification[]>([]);
 
-    const unreadCount = notifications.filter(n => !n.read).length;
+    // Load from Supabase when user changes
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
 
-    const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-        const newNotification: Notification = {
+        // Initial load
+        NotificationService.getNotifications(user.id)
+            .then(data => setNotifications(data.map(dbToUi)))
+            .catch(err => console.error('[NotificationContext] load error:', err));
+
+        // Realtime subscription — bell animates on new notification
+        const subscription = NotificationService.subscribeToNotifications(user.id, (newN) => {
+            setNotifications(prev => [dbToUi(newN), ...prev]);
+        });
+
+        return () => { subscription.unsubscribe(); };
+    }, [user]);
+
+    const visibleNotifications = user ? notifications : [];
+    const unreadCount = visibleNotifications.filter(n => !n.read).length;
+
+    // addNotification: optimistically adds to UI and persists to Supabase
+    const addNotification = useCallback(async (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+        if (!user) return;
+        // Optimistic local add
+        const tmpId = Math.random().toString(36).substr(2, 9);
+        const optimistic: Notification = {
             ...notification,
-            id: Math.random().toString(36).substr(2, 9),
+            id: tmpId,
             timestamp: new Date(),
             read: false,
         };
-        setNotifications(prev => [newNotification, ...prev]);
+        setNotifications(prev => [optimistic, ...prev]);
+        // Persist
+        try {
+            await NotificationService.create({
+                user_id: user.id,
+                type: notification.type,
+                title: notification.title,
+                body: notification.message,
+                link: notification.link
+            });
+        } catch (err) {
+            console.error('[NotificationContext] create error:', err);
+        }
+    }, [user]);
+
+    const markAsRead = useCallback(async (id: string) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+        try { await NotificationService.markAsRead(id); } catch { }
     }, []);
 
-    const markAsRead = useCallback((id: string) => {
-        setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, read: true } : n)
-        );
-    }, []);
-
-    const markAllAsRead = useCallback(() => {
+    const markAllAsRead = useCallback(async () => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }, []);
+        if (!user) return;
+        try { await NotificationService.markAllAsRead(user.id); } catch { }
+    }, [user]);
 
-    const removeNotification = useCallback((id: string) => {
+    const removeNotification = useCallback(async (id: string) => {
         setNotifications(prev => prev.filter(n => n.id !== id));
+        try { await NotificationService.deleteNotification(id); } catch { }
     }, []);
 
-    const clearAll = useCallback(() => {
+    const clearAll = useCallback(async () => {
         setNotifications([]);
-    }, []);
+        if (!user) return;
+        try { await NotificationService.deleteAll(user.id); } catch { }
+    }, [user]);
 
     return (
         <NotificationContext.Provider value={{
-            notifications,
+            notifications: visibleNotifications,
             unreadCount,
             addNotification,
             markAsRead,

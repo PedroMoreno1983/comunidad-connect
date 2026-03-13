@@ -74,7 +74,7 @@ export const WaterService = {
     async getProfiles() {
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, role')
+            .select('id, full_name, role')
             .order('full_name', { ascending: true });
 
         if (error) throw error;

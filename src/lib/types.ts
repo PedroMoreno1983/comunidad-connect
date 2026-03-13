@@ -8,6 +8,7 @@ export interface User {
   avatarUrl?: string; // Optional avatar
   photo?: string; // Alias for avatarUrl or external photo
   unitId?: string; // For residents/tenants
+  unitName?: string; // User-friendly unit designator
 }
 
 export interface Unit {
@@ -40,12 +41,15 @@ export interface MarketplaceItem {
 
 export interface ChatMessage {
   id: string;
-  idSender: string;
-  idReceiver: string;
-  itemId: string;
+  sender_id: string;
+  receiver_id?: string; // Optional: null means global chat
   content: string;
-  createdAt: string;
-  read: boolean;
+  created_at: string;
+  read?: boolean;
+  profiles?: {
+    full_name: string;
+    avatar_url?: string;
+  };
 }
 
 export interface ServiceProvider {
@@ -266,4 +270,32 @@ export interface ConsumptionMetric {
   month: string;
   personal: number;
   average: number;
+}
+
+export interface SocialPost {
+  id: string;
+  author_id: string;
+  content: string;
+  image_url?: string;
+  likes_count: number;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    avatar_url?: string;
+    unit_id?: string;
+  };
+  has_liked?: boolean; // Client-side computed
+  comments_count?: number; // Client-side computed
+}
+
+export interface SocialComment {
+  id: string;
+  post_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    avatar_url?: string;
+  };
 }

@@ -10,8 +10,11 @@ import {
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
+import { VisitorService } from "@/lib/services/supabaseServices";
+import { useAuth } from "@/lib/authContext";
 
-export function QRScannerSimulator() {
+export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: any) => void }) {
+    const { user } = useAuth();
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState<any | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -43,12 +46,39 @@ export function QRScannerSimulator() {
                         guestDni: data.guest_dni,
                         unitId: data.unit_id || "101",
                     };
-                    setScanResult(invitation);
-                    toast({
-                        title: "Escaneo Exitoso",
-                        description: `Invitado: ${invitation.guestName}`,
-                        variant: "success"
-                    });
+
+                    try {
+                        // Insert into DB
+                        const newLog = await VisitorService.register({
+                            visitor_name: data.guest_name,
+                            unit_id: data.unit_id,
+                            registered_by: user?.id || 'admin',
+                            is_qr: true
+                        } as any);
+
+                        // Mark invitation as used (optional, depends on your business rules)
+                        // await VisitorService.cancel(data.id); 
+
+                        setScanResult(invitation);
+                        toast({
+                            title: "Escaneo Exitoso",
+                            description: `Acceso concedido a ${invitation.guestName}.`,
+                            variant: "success"
+                        });
+
+                        if (onScanSuccess) {
+                            onScanSuccess({
+                                id: newLog.id,
+                                visitorName: newLog.visitor_name,
+                                unitId: newLog.unit_id,
+                                entryTime: newLog.entry_time,
+                                isQr: true
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error creating visitor log:", err);
+                        setScanError("Error al registrar la visita en la bitácora.");
+                    }
                 } else {
                     setScanError("Código QR no válido o expirado.");
                     toast({

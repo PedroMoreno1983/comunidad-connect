@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
+import CoCo from "@/components/CoCo/CoCo";
 
 export default function DashboardLayout({
     children,
@@ -29,7 +30,6 @@ export default function DashboardLayout({
             <AnimatedBackground />
             <Sidebar />
             <main className="flex-1 overflow-y-auto relative z-10">
-
                 {/* Main content with page transition */}
                 <div className="relative p-4 pt-20 lg:pt-8 lg:p-8">
                     <AnimatePresence mode="wait">
@@ -38,16 +38,14 @@ export default function DashboardLayout({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            transition={{
-                                duration: 0.3,
-                                ease: [0.4, 0, 0.2, 1]
-                            }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                         >
                             {children}
                         </motion.div>
                     </AnimatePresence>
                 </div>
             </main>
+            <CoCo />
         </div>
     );
 }

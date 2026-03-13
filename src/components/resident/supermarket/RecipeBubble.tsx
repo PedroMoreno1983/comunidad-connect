@@ -24,7 +24,7 @@ export function RecipeBubble({ suggestion, onAddMissingToCart }: RecipeBubblePro
                 </div>
                 <div>
                     <h3 className="font-bold text-sm">Sugerencia del Chef</h3>
-                    <p className="text-[10px] opacity-90">{recipe.difficulty} • {recipe.time}</p>
+                    <p className="text-[10px] opacity-90">{recipe.difficulty} • {recipe.prepTime}</p>
                 </div>
             </div>
 

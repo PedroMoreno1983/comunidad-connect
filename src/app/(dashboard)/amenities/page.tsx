@@ -66,12 +66,9 @@ export default function AmenitiesPage() {
             setAmenities(amenitiesData || []);
             setBookings(bookingsData || []);
         } catch (error: any) {
-            console.error("Error loading amenities data:", error);
-            toast({
-                title: "Error",
-                description: "No se pudieron cargar los datos de amenidades.",
-                variant: "destructive"
-            });
+            console.error("Error loading amenities data:", error?.message || error);
+            setAmenities([]);
+            setBookings([]);
         } finally {
             setLoading(false);
         }

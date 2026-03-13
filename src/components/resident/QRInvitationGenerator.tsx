@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    QrCode, Share2, Calendar, UserPlus,
-    Smartphone, Download, Copy, Check,
+    QrCode, Share2, UserPlus,
+    Smartphone, Copy,
     ShieldCheck, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +20,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
     const [guestDni, setGuestDni] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [invitationCode, setInvitationCode] = useState("");
+    const [qrPattern, setQrPattern] = useState<boolean[]>([]);
     const { toast } = useToast();
 
     const handleGenerate = async () => {
@@ -51,6 +52,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
             }
 
             setInvitationCode(qrCodeValue);
+            setQrPattern(Array.from({ length: 16 }, () => Math.random() > 0.4));
             setIsGenerating(false);
             setStep(2);
             toast({
@@ -164,10 +166,10 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                             <div className="mx-auto w-64 h-64 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(59,130,246,0.5)] relative group">
                                 <div className="w-full h-full border-4 border-slate-900 rounded-2xl p-2 grid grid-cols-4 grid-rows-4 gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                                     {/* Abstract QR Pattern */}
-                                    {[...Array(16)].map((_, i) => (
+                                    {qrPattern.map((isFilled, i) => (
                                         <div
                                             key={i}
-                                            className={`rounded-sm ${Math.random() > 0.4 ? 'bg-slate-900' : 'bg-transparent'
+                                            className={`rounded-sm ${isFilled ? 'bg-slate-900' : 'bg-transparent'
                                                 } ${i === 0 || i === 3 || i === 12 || i === 15 ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
                                         />
                                     ))}

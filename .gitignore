@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local temp
+.tmp/
+.tmp_plataforma_educacion/
+compile_errors.txt
+git_status.txt
+generate_sql.mjs
+seed_amenities.mjs
+insert_amenities.sql
+agente_psicometrico/

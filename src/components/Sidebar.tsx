@@ -29,11 +29,12 @@ import {
     Shield,
     Vote,
     BarChart3,
-    Info,
     MessageSquare,
-    ShieldCheck,
     Filter,
-    Waves
+    Waves,
+    Hash,
+    UserCircle,
+    GraduationCap
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -100,12 +101,15 @@ export function Sidebar() {
 
     const links = [
         { href: '/home', label: 'Inicio', icon: Home, roles: ['admin', 'resident', 'concierge'] },
-        { href: '/feed', label: 'Avisos', icon: Bell, roles: ['admin', 'resident', 'concierge'], badge: 3 },
+        { href: '/chat', label: 'Comunidad', icon: MessageSquare, roles: ['resident', 'admin'] },
+        { href: '/directorio', label: 'Directorio', icon: Users, roles: ['resident', 'admin'] },
+        { href: '/social', label: 'Muro Social', icon: Hash, roles: ['resident', 'admin'] },
+        { href: '/feed', label: 'Avisos Oficiales', icon: Bell, roles: ['admin', 'resident', 'concierge'] },
         { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'] },
         { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag, roles: ['resident', 'admin'] },
         { href: '/services', label: 'Servicios', icon: Wrench, roles: ['resident', 'admin'] },
         { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'] },
-        { href: '/expenses', label: 'Mis Gastos', icon: DollarSign, roles: ['resident', 'admin'] },
+        { href: '/resident/finances', label: 'Mis Gastos', icon: DollarSign, roles: ['resident', 'admin'] },
         { href: '/resident/consumo', label: 'Consumo Agua', icon: Waves, roles: ['resident', 'admin'] },
         { href: '/resident/supermercado', label: 'Supermercado', icon: ShoppingBag, roles: ['resident'] },
         { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'] },
@@ -118,6 +122,8 @@ export function Sidebar() {
         { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
         { href: '/concierge/visitors', label: 'Visitas', icon: Shield, roles: ['concierge', 'admin'] },
         { href: '/concierge/packages', label: 'Paquetería', icon: Package, roles: ['concierge', 'admin', 'resident'] },
+        { href: '/training', label: 'Capacitación', icon: GraduationCap, roles: ['admin', 'concierge'] },
+        { href: '/profile', label: 'Mi Perfil', icon: UserCircle, roles: ['admin', 'resident', 'concierge'] },
     ];
 
     const getRoleGradient = () => {
@@ -137,6 +143,8 @@ export function Sidebar() {
             default: return 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300';
         }
     };
+
+
 
     const sidebarContent = (
         <>
@@ -165,17 +173,21 @@ export function Sidebar() {
                             {user.name.charAt(0)}
                         </div>
                         <div className="ml-3 overflow-hidden flex-1">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.name}</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                {user.name.includes('@')
+                                    ? (user.name.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.name.split('@')[0].split('.')[0].slice(1))
+                                    : user.name}
+                            </p>
                             <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${getRoleBg()}`}>
                                 <Sparkles className="h-3 w-3" />
                                 {user.role === 'admin' ? 'Administrador' : user.role === 'resident' ? 'Residente' : 'Conserjería'}
                             </span>
                         </div>
                     </div>
-                    {user.unitId && (
+                    {user.unitName && (
                         <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
                             <p className="text-xs text-slate-500 dark:text-slate-400">Unidad</p>
-                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Depto {user.unitId}</p>
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{user.unitName}</p>
                         </div>
                     )}
                 </div>
@@ -187,7 +199,6 @@ export function Sidebar() {
                     if (!link.roles.includes(user.role)) return null;
 
                     const Icon = link.icon;
-                    // Logic: match prefix, but ensure it's the most specific match
                     const isActive = pathname.startsWith(link.href) &&
                         !links.filter(l => l.roles.includes(user.role) && l.href.length > link.href.length)
                             .some(l => pathname.startsWith(l.href));
@@ -225,11 +236,7 @@ export function Sidebar() {
                                     isActive ? "text-white drop-shadow-md" : "text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400"
                                 )} />
                                 <span className="flex-1">{link.label}</span>
-                                {link.badge && !isActive && (
-                                    <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
-                                        {link.badge}
-                                    </span>
-                                )}
+
                                 <ChevronRight className={clsx(
                                     "h-4 w-4 transition-all duration-200",
                                     isActive ? "opacity-100 text-white/70" : "opacity-0 group-hover:opacity-100 text-slate-400 dark:text-slate-500"
@@ -242,24 +249,7 @@ export function Sidebar() {
 
             {/* Footer / Logout */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                {/* DEV TOOL: Auto-promote to admin */}
-                {user.role !== 'admin' && (
-                    <button
-                        onClick={async () => {
-                            const { supabase } = await import('@/lib/supabase');
-                            await supabase.from('profiles').upsert({
-                                id: user.id,
-                                email: user.email,
-                                full_name: user.name,
-                                role: 'admin'
-                            });
-                            window.location.reload();
-                        }}
-                        className="w-full text-xs text-center text-blue-500 hover:underline py-1"
-                    >
-                        (Dev) Hacerme Admin
-                    </button>
-                )}
+
 
                 <button
                     onClick={handleLogout}

@@ -10,6 +10,8 @@ import { OrderPreviewBubble } from "./OrderPreviewBubble";
 import { RecipeBubble } from "./RecipeBubble";
 import { motion, AnimatePresence } from "framer-motion";
 import { agent } from "@/lib/agentBrain"; // Importar el cerebro del agente
+import { getApiUrl } from "@/lib/config";
+import { useAuth } from "@/lib/authContext";
 
 interface Message {
     id: string;
@@ -24,6 +26,7 @@ interface Message {
 }
 
 export function WhatsAppChat() {
+    const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -36,7 +39,7 @@ export function WhatsAppChat() {
         {
             id: '2',
             type: 'text',
-            content: '¡Hola! 👋 Soy tu Asistente de Supermercado y Chef. Dime qué ingredientes tienes (ej: "tengo arroz y huevos") o envíame tu lista de compras.',
+            content: '¡Hola! 😊 Soy CoCo Supermercado, tu asistente de compras y cocina. Cuéntame qué tienes en casa (ej: "tengo arroz y cebolla") y te sugiero una receta, o dime qué necesitas comprar y comparo precios en Jumbo, Lider, Unimarc y Santa Isabel.',
             isSender: false,
             timestamp: '10:00',
             status: 'read'
@@ -163,7 +166,7 @@ export function WhatsAppChat() {
                         </div>
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm">ComunidadMarket Bot</h3>
+                        <h3 className="font-semibold text-sm">CoCo Supermercado</h3>
                         <p className="text-[10px] text-white/80">{isProcessing ? 'escribiendo...' : 'en línea'}</p>
                     </div>
                 </div>
@@ -217,7 +220,7 @@ export function WhatsAppChat() {
                                         total={msg.orderData.total}
                                         savings={msg.orderData.savings}
                                         onPay={async () => {
-                                            const response = await fetch('/api/payments/create-haulmer-link', {
+                                            const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
@@ -225,10 +228,10 @@ export function WhatsAppChat() {
                                                     description: `Compra Supermercado IA (${msg.orderData.items.length} items)`,
                                                     reference: `MARKET_CART_${msg.id}`,
                                                     client: {
-                                                        name: 'Residente',
-                                                        email: 'resident@comunidadconnect.com'
+                                                        name: user?.name || 'Residente',
+                                                        email: user?.email || ''
                                                     },
-                                                    returnUrl: window.location.origin + '/resident/supermarket'
+                                                    returnUrl: window.location.origin + '/resident/supermarket?status=success'
                                                 })
                                             });
 

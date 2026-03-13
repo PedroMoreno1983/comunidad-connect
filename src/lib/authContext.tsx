@@ -20,7 +20,7 @@ interface AuthContextType {
     supabaseUser: SupabaseUser | null;
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, userData: { full_name: string }) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string, userData: Record<string, any>) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,13 +36,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initialize Supabase auth listener
     useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setSupabaseUser(session?.user ?? null);
-            if (session?.user) fetchUserProfile(session.user);
-            else setLoading(false);
-        });
+        // Check active session safely
+        const checkSession = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                setSession(session);
+                setSupabaseUser(session?.user ?? null);
+                if (session?.user) fetchUserProfile(session.user);
+                else setLoading(false);
+            } catch (err) {
+                console.warn("Auth session check failed (likely expired token):", err);
+
+                // Self-healing: aggressively clear corrupted auth tokens from localStorage
+                if (typeof window !== 'undefined') {
+                    try {
+                        for (const key of Object.keys(localStorage)) {
+                            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    } catch (e) {
+                        // ignore clear errors
+                    }
+                }
+
+                setSession(null);
+                setSupabaseUser(null);
+                setLoading(false);
+            }
+        };
+        checkSession();
 
         // Listen for changes
         const {
@@ -77,13 +102,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // Fallback to metadata if profile fails
                 mapSupabaseUserFromMetadata(sbUser);
             } else if (profile) {
+                // Extract a readable display name from email as last resort
+                const emailFirstPart = sbUser.email?.split('@')[0]?.split('.')?.[0];
+                const displayName = profile.full_name
+                    || (emailFirstPart ? emailFirstPart.charAt(0).toUpperCase() + emailFirstPart.slice(1) : null)
+                    || 'Usuario';
+
                 // Map from DB profile
                 setUser({
                     id: sbUser.id,
-                    name: profile.full_name || sbUser.email || 'Usuario',
+                    name: displayName,
                     email: sbUser.email || '',
                     role: profile.role || 'resident',
-                    unitId: undefined, // Until we implement unit logic fully here or in wrapper
+                    unitId: undefined,
                     photo: profile.avatar_url
                 });
 
@@ -100,14 +131,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Helper to fetch unit
     const fetchUnitForUser = async (userId: string) => {
-        const { data: unit } = await supabase
-            .from('units')
-            .select('id, number, tower')
-            .eq('resident_profile_id', userId)
-            .single();
+        try {
+            const { data: unit, error } = await supabase
+                .from('units')
+                .select('id, number, tower')
+                .eq('resident_profile_id', userId)
+                .maybeSingle();
 
-        if (unit) {
-            setUser(prev => prev ? ({ ...prev, unitId: unit.id }) : null);
+            if (unit && !error) {
+                setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unit.number ? `Depto ${unit.number}` : undefined }) : null);
+            }
+        } catch (err) {
+            console.warn("Could not fetch unit for user (ignoring):", err);
         }
     };
 
@@ -119,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: sbUser.email || '',
             role: sbUser.user_metadata?.role || 'resident',
             unitId: sbUser.user_metadata?.unit_id,
+            unitName: sbUser.user_metadata?.unit_number ? `Depto ${sbUser.user_metadata.unit_number}` : undefined,
         });
     };
     // Supabase sign in
@@ -132,13 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Supabase sign up
-    const signUp = async (email: string, password: string, userData: { full_name: string }) => {
+    const signUp = async (email: string, password: string, userData: Record<string, any>) => {
         try {
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
-                    data: { full_name: userData.full_name },
+                    data: userData,
                     emailRedirectTo: `${window.location.origin}/`,
                 },
             });

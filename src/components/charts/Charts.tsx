@@ -13,7 +13,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{label}</p>
                 {payload.map((entry: any, index: number) => (
                     <p key={index} className="text-sm text-slate-600 dark:text-slate-400">
-                        {entry.name}: <span className="font-medium text-slate-900 dark:text-white">${entry.value.toLocaleString('es-CL')}</span>
+                        {entry.name}: <span className="font-medium text-slate-900 dark:text-white">${entry.value.toLocaleString('es-CL')} CLP</span>
                     </p>
                 ))}
             </div>
@@ -49,7 +49,7 @@ export function ExpenseAreaChart({ data }: { data: ExpenseData[] }) {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#94a3b8' }}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k CLP`}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
@@ -92,7 +92,7 @@ export function ExpensePieChart({ data }: { data: CategoryData[] }) {
                     ))}
                 </Pie>
                 <Tooltip
-                    formatter={(value) => [`$${(value as number).toLocaleString('es-CL')}`, 'Monto']}
+                    formatter={(value) => [`$${(value as number).toLocaleString('es-CL')} CLP`, 'Monto']}
                     contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #e2e8f0',
@@ -126,6 +126,7 @@ export function AmenityUsageChart({ data }: { data: UsageData[] }) {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#94a3b8' }}
+                    label={{ value: 'N° Reservas', angle: -90, position: 'insideLeft', style: { fill: '#94a3b8', fontSize: 12 } }}
                 />
                 <Tooltip
                     formatter={(value) => [value as number, 'Reservas']}

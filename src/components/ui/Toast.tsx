@@ -177,8 +177,8 @@ export const ToastProviderComponent = ({ children }: { children: React.ReactNode
 
     return (
         <ToastContext.Provider value={{ toast }}>
-            {children}
             <ToastProvider>
+                {children}
                 {toasts.map(function ({ id, title, description, action, ...props }) {
                     return (
                         <Toast key={id} {...props}>

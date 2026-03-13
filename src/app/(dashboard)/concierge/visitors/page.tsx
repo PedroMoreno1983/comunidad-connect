@@ -155,7 +155,7 @@ export default function VisitorsPage() {
             </div>
 
             {/* Main Scanner Section */}
-            <QRScannerSimulator />
+            <QRScannerSimulator onScanSuccess={(newLog) => setVisitors([newLog, ...visitors])} />
 
             {/* Activity Log Section */}
             <div className="space-y-8">

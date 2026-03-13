@@ -38,12 +38,9 @@ export default function ExpensesPage() {
 
                 setExpenses(mapped);
             } catch (error: any) {
-                console.error("Error fetching dependencies:", error);
-                toast({
-                    title: "Error de Servidor",
-                    description: "No se pudieron cargar los gastos.",
-                    variant: "destructive"
-                });
+                console.error("Error fetching expenses:", error?.message || error);
+                // Mostrar estado vacío en vez de error toast
+                setExpenses([]);
             } finally {
                 setIsLoading(false);
             }

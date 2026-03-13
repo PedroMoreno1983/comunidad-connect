@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from 'next-themes';
 import {
   Building2, User, ShieldCheck, KeyRound,
-  Sun, Moon, Sparkles, Command, ChevronRight
+  Sun, Moon, Sparkles, Command, ChevronRight,
+  CheckCircle2, HelpCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -72,9 +74,9 @@ export default function LoginPage() {
         {/* Subtle Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
 
-        {/* Ambient Glows */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/20 dark:bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/20 dark:bg-purple-500/10 blur-[120px] rounded-full mix-blend-screen animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+        {/* Ambient Glows (Optimized: hidden on mobile to prevent severe performance drops) */}
+        <div className="hidden md:block absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/20 dark:bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="hidden md:block absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/20 dark:bg-purple-500/10 blur-[120px] rounded-full mix-blend-screen animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
       </div>
 
       <header className="relative z-10 w-full px-6 py-6 md:px-12 md:py-8 flex justify-between items-center max-w-7xl mx-auto">
@@ -119,7 +121,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.1]"
+            className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tighter leading-[1.1] break-words"
           >
             Administración inteligente que <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">conecta personas</span>.
           </motion.h1>
@@ -227,15 +229,146 @@ export default function LoginPage() {
             );
           })}
         </div>
+
+        {/* PRICING SECTION */}
+        <div className="mt-24 md:mt-32 w-full max-w-5xl mx-auto z-20">
+          <div className="text-center mb-16">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl md:text-5xl font-bold mb-4 tracking-tight"
+            >
+              Planes simples y transparentes
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-lg text-slate-600 dark:text-slate-400"
+            >
+              Diseñados para escalar junto al crecimiento de tu comunidad.
+            </motion.p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:px-12">
+            {/* Basic Plan */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 flex flex-col hover:shadow-xl hover:border-indigo-500/30 transition-all"
+            >
+              <h3 className="text-2xl font-bold mb-2">Comunidad</h3>
+              <p className="text-slate-500 dark:text-slate-400 mb-6">Para condominios pequeños que necesitan digitalizarse.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-extrabold tracking-tight">$1.500</span>
+                <span className="text-slate-500 dark:text-slate-400 font-medium"> / unidad al mes</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {['App Móvil para Residentes', 'Gestión de Cobros Básica', 'Noticias y Avisos Push', 'Reservas de Áreas Comunes'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
+                    <CheckCircle2 className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => router.push('/signup')} className="w-full py-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold transition-colors">
+                Prueba Gratis por 14 Días
+              </button>
+            </motion.div>
+
+            {/* Pro Plan */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden transform md:-translate-y-4"
+            >
+              <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-md px-6 py-2 rounded-bl-2xl font-semibold text-sm tracking-wide uppercase">Recomendado</div>
+              <h3 className="text-2xl font-bold mb-2 mt-4 md:mt-0">Enterprise</h3>
+              <p className="text-indigo-100 mb-6">La solución total para grandes edificios y conserjerías.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-extrabold tracking-tight">$2.500</span>
+                <span className="text-indigo-200 font-medium"> / unidad al mes</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {['App para Conserjería', 'Marketplace Comunitario', 'Control de Visitas', 'Analítica Avanzada y Multi-Rol'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-white font-medium">
+                    <CheckCircle2 className="w-5 h-5 text-indigo-200 flex-shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => router.push('/signup')} className="w-full py-4 rounded-xl bg-white text-indigo-600 hover:bg-slate-50 font-bold transition-colors shadow-lg shadow-white/10">
+                Contactar Ventas
+              </button>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* FAQ SECTION */}
+        <div className="mt-24 md:mt-32 mb-10 w-full max-w-3xl mx-auto z-20">
+          <div className="text-center mb-16">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl md:text-5xl font-bold mb-4 tracking-tight"
+            >
+              Preguntas Frecuentes
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-lg text-slate-600 dark:text-slate-400"
+            >
+              Todo lo que necesitas saber antes de modernizar tu comunidad.
+            </motion.p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              { q: "¿En qué países está disponible ComunidadConnect?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
+              { q: "¿Es seguro el manejo del dinero y los pagos en la app?", a: "Absolutamente. ComunidadConnect no almacena ni procesa tarjetas de crédito directamente. Usamos pasarelas de pago oficiales y altamente reguladas (con certificación PCI Compliance) que aseguran máxima protección bancaria." },
+              { q: "¿Qué pasa si un residente no tiene un smartphone?", a: "No hay problema. Si bien la aplicación móvil nativa brinda la mejor experiencia, los residentes también pueden acceder a ComunidadConnect desde la computadora o tablet, navegando simplemente por la web." },
+              { q: "¿Cuánto tiempo toma instalar este sistema en el edificio?", a: "El proceso de configuración es muy veloz. Usualmente, una vez que nos envías la lista de departamentos y residentes (en Excel), nuestra plataforma deja todo funcionando en menos de 48 horas hábiles." }
+            ].map((faq, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 * i }}
+                className="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex-shrink-0 mt-0.5">
+                    <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2 tracking-tight">{faq.q}</h4>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{faq.a}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </main>
 
       <footer className="relative z-10 py-8 text-center text-sm text-slate-500 dark:text-slate-500 mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p>© 2026 ComunidadConnect. Sistema de Gestión Inmobiliaria Nivel Empresarial.</p>
           <div className="flex items-center gap-6 font-medium">
-            <span className="hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors">Privacidad</span>
-            <span className="hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors">Términos</span>
-            <span className="hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors">Soporte</span>
+            <Link href="/privacy" className="hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Privacidad</Link>
+            <Link href="/terms" className="hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Términos</Link>
+            <a href="mailto:soporte@comunidadconnect.com" className="hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Soporte</a>
           </div>
         </div>
       </footer>
