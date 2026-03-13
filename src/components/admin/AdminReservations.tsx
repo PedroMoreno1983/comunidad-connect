@@ -54,7 +54,7 @@ export function AdminReservations() {
             });
 
             // Update local state without fetching again
-            setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+            setBookings(prev => prev.map((b: any) => b.id === id ? { ...b, status: newStatus } : b));
 
         } catch (err) {
             console.error("Error updating booking status", err);
@@ -66,7 +66,7 @@ export function AdminReservations() {
         }
     };
 
-    const pendingCount = bookings.filter(b => b.status === 'pending').length;
+    const pendingCount = bookings.filter((b: any) => b.status === 'pending').length;
 
     return (
         <div className="space-y-8">
@@ -101,7 +101,7 @@ export function AdminReservations() {
                         </div>
                     )}
 
-                    {!isLoading && bookings.map(booking => (
+                    {!isLoading && bookings.map((booking: any) => (
                         <div key={booking.id} className="p-8 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
 
                             <div className="flex items-start gap-6">
