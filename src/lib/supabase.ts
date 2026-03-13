@@ -14,15 +14,15 @@ const createMockClient = () => ({
   },
   from: () => ({
     select: () => ({ 
-        eq: () => ({ 
-            order: () => ({ 
-                maybeSingle: () => ({ error: null, data: null }),
-                then: () => Promise.resolve({ data: [], error: null })
-            }),
-            maybeSingle: () => ({ error: null, data: null })
+      eq: () => ({ 
+        order: () => ({ 
+          maybeSingle: () => ({ error: null, data: null }),
+          then: () => Promise.resolve({ data: [], error: null })
         }),
-        insert: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }),
-        update: () => ({ eq: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }) })
+        maybeSingle: () => ({ error: null, data: null })
+      }),
+      insert: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }),
+      update: () => ({ eq: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }) })
     }),
   }),
 });
