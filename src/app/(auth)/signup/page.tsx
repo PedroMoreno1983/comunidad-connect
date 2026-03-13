@@ -21,6 +21,7 @@ export default function SignUpPage() {
     const { signUp } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    const [selectedRole, setSelectedRole] = useState<'resident' | 'concierge' | 'admin'>('resident');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -57,10 +58,13 @@ export default function SignUpPage() {
 
         // Verify Access Code
         const cleanCode = accessCode.trim().toUpperCase();
+        
+        // Admins can use a master code or we check communities
+        // For simplicity in this logical flow, we verify if the code matches the selected role's community code
         const { data: communities, error: codeError } = await supabase
             .from('communities')
-            .select('id, resident_code, concierge_code')
-            .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode}`);
+            .select('id, resident_code, concierge_code, admin_code')
+            .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode},admin_code.eq.${cleanCode}`);
 
         if (codeError || !communities || communities.length === 0) {
             toast({
@@ -73,12 +77,27 @@ export default function SignUpPage() {
         }
 
         const community = communities[0];
-        const assignedRole = community.resident_code === cleanCode ? 'resident' : 'concierge';
+        
+        // Validate if the code matches the selected role
+        let isCodeValidForRole = false;
+        if (selectedRole === 'resident' && community.resident_code === cleanCode) isCodeValidForRole = true;
+        if (selectedRole === 'concierge' && community.concierge_code === cleanCode) isCodeValidForRole = true;
+        if (selectedRole === 'admin' && community.admin_code === cleanCode) isCodeValidForRole = true;
+
+        if (!isCodeValidForRole) {
+            toast({
+                title: "Rol no coincide",
+                description: `El código ingresado no es válido para el perfil de ${selectedRole === 'resident' ? 'Residente' : selectedRole === 'admin' ? 'Administrador' : 'Conserje'}.`,
+                variant: "destructive",
+            });
+            setLoading(false);
+            return;
+        }
 
         const { error } = await signUp(email, password, {
             full_name: fullName,
             community_id: community.id,
-            role: assignedRole
+            role: selectedRole
         });
 
         if (error) {
@@ -117,6 +136,29 @@ export default function SignUpPage() {
                 {/* Sign Up Form */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Profile Type Selection */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                Tipo de Perfil
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {(['resident', 'admin', 'concierge'] as const).map((role) => (
+                                    <button
+                                        key={role}
+                                        type="button"
+                                        onClick={() => setSelectedRole(role)}
+                                        className={`py-2 px-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                            selectedRole === role
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20'
+                                            : 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-900 dark:border-slate-800'
+                                        }`}
+                                    >
+                                        {role === 'resident' ? 'Residente' : role === 'admin' ? 'Admin' : 'Conserje'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Full Name Field */}
                         <div>
                             <label htmlFor="fullName" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
@@ -218,7 +260,9 @@ export default function SignUpPage() {
                                 />
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Ingresa el código que te proporcionó el administrador de tu comunidad.
+                                {selectedRole === 'admin' 
+                                    ? "Ingresa el código maestro de administrador."
+                                    : "Ingresa el código que te proporcionó el administrador de tu comunidad."}
                             </p>
                         </div>
 

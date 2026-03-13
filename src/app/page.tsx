@@ -18,6 +18,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
+  const [selectedInfo, setSelectedInfo] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -65,6 +66,39 @@ export default function LoginPage() {
       features: ['Control de Visitas', 'Recepción de Paquetes', 'Gestión de Emergencias']
     }
   ];
+
+  const roleDetails: Record<string, { title: string; fullDescription: string; extraFeatures: string[] }> = {
+    admin: {
+      title: 'Administración Profesional',
+      fullDescription: 'El cerebro de la comunidad. Diseñado para administradores que buscan transparencia total y eficiencia operativa absoluta.',
+      extraFeatures: [
+        'Auditoría en tiempo real de todos los movimientos financieros.',
+        'Emisión masiva de gastos comunes con un solo clic.',
+        'Portal de transparencia para que los residentes vean en qué se gasta su dinero.',
+        'Gestión de proveedores y contratos de mantenimiento preventivo.'
+      ]
+    },
+    resident: {
+      title: 'Experiencia del Residente',
+      fullDescription: 'Tu edificio en el bolsillo. Eliminamos la fricción de vivir en comunidad con herramientas modernas y fáciles de usar.',
+      extraFeatures: [
+        'Notificaciones push instantáneas sobre avisos de la comunidad.',
+        'Marketplace interno seguro para comprar y vender con tus vecinos.',
+        'Sistema de reservas inteligentes con pago integrado.',
+        'Chat directo con administración y conserjería.'
+      ]
+    },
+    concierge: {
+      title: 'Control y Seguridad',
+      fullDescription: 'La primera línea de defensa. Empoderamos a la conserjería con tecnología para un control de acceso sin errores.',
+      extraFeatures: [
+        'Registro digital de visitas con escaneo de documentos.',
+        'Control de paquetes y encomiendas con notificaciones automáticas.',
+        'Libro de novedades digital para cambios de turno eficientes.',
+        'Botón de pánico y gestión de protocolos de emergencia.'
+      ]
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 overflow-hidden relative transition-colors duration-700">
@@ -169,6 +203,7 @@ export default function LoginPage() {
                 transition={{ duration: 0.5, delay: 0.3 + (idx * 0.1) }}
                 onMouseEnter={() => setHoveredRole(role.id)}
                 onMouseLeave={() => setHoveredRole(null)}
+                onClick={() => setSelectedInfo(role.id)}
                 className={`
                   group relative flex flex-col p-8 rounded-[2rem] cursor-pointer
                   bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60
@@ -229,6 +264,73 @@ export default function LoginPage() {
             );
           })}
         </div>
+
+        {/* Info Modal */}
+        <motion.div initial={false}>
+          {selectedInfo && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedInfo(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20"
+              >
+                <div className={`h-2 bg-gradient-to-r ${features.find(f => f.id === selectedInfo)?.color}`} />
+                <div className="p-8 md:p-12">
+                  <div className="flex justify-between items-start mb-8">
+                    <div>
+                      <h2 className="text-3xl font-bold tracking-tight mb-2">
+                        {roleDetails[selectedInfo].title}
+                      </h2>
+                      <div className="h-1 w-20 bg-indigo-500 rounded-full" />
+                    </div>
+                    <button
+                      onClick={() => setSelectedInfo(null)}
+                      className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6 rotate-180" />
+                    </button>
+                  </div>
+
+                  <p className="text-lg text-slate-600 dark:text-slate-400 mb-10 leading-relaxed font-medium">
+                    {roleDetails[selectedInfo].fullDescription}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {roleDetails[selectedInfo].extraFeatures.map((feat, i) => (
+                      <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-500 mt-1 flex-shrink-0" />
+                        <span className="text-sm font-semibold leading-snug">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-12 flex gap-4">
+                    <button
+                      onClick={() => router.push('/signup')}
+                      className="flex-1 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20"
+                    >
+                      Empezar Ahora
+                    </button>
+                    <button
+                      onClick={() => setSelectedInfo(null)}
+                      className="px-8 py-4 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </motion.div>
 
         {/* PRICING SECTION */}
         <div className="mt-24 md:mt-32 w-full max-w-5xl mx-auto z-20">
