@@ -22,11 +22,11 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                 const fetchedUnits = await WaterService.getUnits();
                 setUnits(fetchedUnits);
 
-                const readingsPromises = fetchedUnits.map(u => WaterService.getReadingsByUnit(u.id));
+                const readingsPromises = fetchedUnits.map((u: any) => WaterService.getReadingsByUnit(u.id));
                 const allResults = await Promise.all(readingsPromises);
 
                 const readingsMap: Record<string, WaterReading> = {};
-                allResults.forEach((unitReadings, idx) => {
+                allResults.forEach((unitReadings: any[], idx: number) => {
                     const currentReading = unitReadings.find(r => r.month === currentMonth && r.year === currentYear);
                     if (currentReading) {
                         readingsMap[fetchedUnits[idx].id] = currentReading;
@@ -73,7 +73,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
 
             {/* Grid Map */}
             <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-15 gap-3">
-                {units.map((unit) => {
+                {units.map((unit: any) => {
                     const reading = readings[unit.id];
                     const isRead = !!reading;
                     // Simplificación: consumo > 25 es alerta (esto vendría de la API en el futuro)

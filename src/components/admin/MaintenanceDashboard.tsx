@@ -107,9 +107,9 @@ export function MaintenanceDashboard() {
 
     if (isLoading) return <div className="p-8 text-center">Cargando dashboard de mantenimiento...</div>;
 
-    const overdueCount = tasks.filter(t => t.status === 'overdue').length;
-    const pendingCount = tasks.filter(t => t.status === 'pending').length;
-    const criticalAssets = assets.filter(a => a.healthStatus === 'critical').length;
+    const overdueCount = tasks.filter((t: any) => t.status === 'overdue').length;
+    const pendingCount = tasks.filter((t: any) => t.status === 'pending').length;
+    const criticalAssets = assets.filter((a: any) => a.healthStatus === 'critical').length;
 
     return (
         <div className="space-y-12">
@@ -178,7 +178,7 @@ export function MaintenanceDashboard() {
                     </div>
 
                     <div className="space-y-4">
-                        {tasks.map((task) => {
+                        {tasks.map((task: any) => {
                             const asset = assets.find(a => a.id === task.assetId);
                             return (
                                 <div key={task.id} className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 hover:border-white/80 dark:hover:border-slate-600 hover:shadow-xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">

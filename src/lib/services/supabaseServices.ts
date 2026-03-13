@@ -163,7 +163,7 @@ export const PollService = {
         if (pollError) throw pollError;
 
         // Create options
-        const optionInserts = options.map((text, idx) => ({
+        const optionInserts = options.map((text: string, idx: number) => ({
             poll_id: pollData.id,
             text,
             display_order: idx,
@@ -295,7 +295,7 @@ export const ExpenseService = {
             total: data?.length || 0,
         };
 
-        data?.forEach(e => {
+        data?.forEach((e: any) => {
             if (e.status === 'paid') stats.totalRevenue += Number(e.total_amount);
             if (e.status === 'pending') stats.totalPending += Number(e.total_amount);
             if (e.status === 'overdue') stats.totalOverdue += Number(e.total_amount);
@@ -598,7 +598,7 @@ export const SocialService = {
         if (error) throw error;
 
         // Transform the nested comments count
-        return data?.map(post => ({
+        return data?.map((post: any) => ({
             ...post,
             comments_count: post.comments[0]?.count || 0
         }));
@@ -697,7 +697,7 @@ export const ChatService = {
                     table: 'chat_messages',
                     filter: 'receiver_id=is.null' // Only listen to global chat
                 },
-                async (payload) => {
+                async (payload: any) => {
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('full_name, avatar_url')
@@ -742,7 +742,7 @@ export const ChatService = {
                     schema: 'public',
                     table: 'chat_messages',
                 },
-                async (payload) => {
+                async (payload: any) => {
                     const msg = payload.new as any;
                     // Only act on messages relevant to this conversation
                     const isRelevant = (

@@ -40,11 +40,11 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 // Cargar lecturas del mes actual para ver el estado (completado/pendiente)
                 // y lecturas del mes anterior para el cálculo de consumo
                 // Por ahora, traemos todo lo reciente de water_readings de forma simple
-                const readingsPromises = fetchedUnits.map(u => WaterService.getReadingsByUnit(u.id));
+                const readingsPromises = fetchedUnits.map((u: any) => WaterService.getReadingsByUnit(u.id));
                 const allResults = await Promise.all(readingsPromises);
 
                 const readingsMap: Record<string, WaterReading> = {};
-                allResults.forEach((unitReadings, idx) => {
+                allResults.forEach((unitReadings: any[], idx: number) => {
                     if (unitReadings.length > 0) {
                         // Guardar la última lectura conocida (que no sea del mes actual si queremos calcular consumo)
                         // O simplemente la última lectura para mostrar en la columna "Anterior"
@@ -61,7 +61,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
         loadData();
     }, []);
 
-    const filteredUnits = units.filter(unit => {
+    const filteredUnits = units.filter((unit: any) => {
         const matchesSearch = unit.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
             unit.tower.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -90,7 +90,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const savePromises = Object.entries(readings).map(([unitId, value]) => {
+            const savePromises = Object.entries(readings).map(([unitId, value]: [string, number]) => {
                 return WaterService.saveReading({
                     unit_id: unitId,
                     reading_value: value,
@@ -140,7 +140,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                     </div>
                     {/* Filters */}
                     <div className="flex items-center gap-2">
-                        {(['all', 'pending', 'completed', 'alert'] as const).map((status) => (
+                        {(['all', 'pending', 'completed', 'alert'] as const).map((status: any) => (
                             <button
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
@@ -188,7 +188,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                            {filteredUnits.map((unit) => {
+                            {filteredUnits.map((unit: any) => {
                                 // Find last reading for this unit
                                 const lastReading = lastReadings[unit.id];
                                 const lastValue = lastReading?.reading_value || 0;
