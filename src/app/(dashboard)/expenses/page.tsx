@@ -55,7 +55,7 @@ export default function ExpensesPage() {
             await ExpensesService.payExpense(id);
 
             // Optimistic update
-            setExpenses(prev => prev.map(exp =>
+            setExpenses(prev => prev.map((exp: any) =>
                 exp.id === id ? { ...exp, status: 'paid' as const } : exp
             ));
 
@@ -75,9 +75,9 @@ export default function ExpensesPage() {
         }
     };
 
-    const totalPending = expenses.filter(e => e.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalPaid = expenses.filter(e => e.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-    const hasOverdue = expenses.some(e => e.status === 'overdue');
+    const totalPending = expenses.filter((e: any) => e.status !== 'paid').reduce((acc: number, curr: any) => acc + curr.amount, 0);
+    const totalPaid = expenses.filter((e: any) => e.status === 'paid').reduce((acc: number, curr: any) => acc + curr.amount, 0);
+    const hasOverdue = expenses.some((e: any) => e.status === 'overdue');
 
     const getStatusConfig = (status: string) => {
         switch (status) {

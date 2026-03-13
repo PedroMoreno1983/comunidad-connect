@@ -117,7 +117,7 @@ export default function SocialFeedPage() {
     const handleLike = async (postId: string) => {
         try {
             // Optimistic Update
-            setPosts(prev => prev.map(p => {
+            setPosts(prev => prev.map((p: any) => {
                 if (p.id === postId) {
                     return { ...p, likes_count: p.likes_count + 1, has_liked: true };
                 }
@@ -126,7 +126,7 @@ export default function SocialFeedPage() {
             await SocialService.likePost(postId);
         } catch (error) {
             // Revert on error
-            setPosts(prev => prev.map(p => {
+            setPosts(prev => prev.map((p: any) => {
                 if (p.id === postId) {
                     return { ...p, likes_count: p.likes_count - 1, has_liked: false };
                 }
@@ -176,7 +176,7 @@ export default function SocialFeedPage() {
             }));
 
             // Increment comment count on Post summary
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
+            setPosts(prev => prev.map((p: any) => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewCommentContent("");
 
         } catch (error) {
@@ -283,7 +283,7 @@ export default function SocialFeedPage() {
                 )}
 
                 <AnimatePresence>
-                    {posts.map((post) => (
+                    {posts.map((post: any) => (
                         <motion.div
                             key={post.id}
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -380,7 +380,7 @@ export default function SocialFeedPage() {
                                                 <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                                             ) : (
                                                 <div className="space-y-5">
-                                                    {(comments[post.id] || []).map(comment => (
+                                                    {(comments[post.id] || []).map((comment: any) => (
                                                         <div key={comment.id} className="flex gap-4">
                                                             <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-700 flex-shrink-0">
                                                                 {comment.profiles?.avatar_url ? (
