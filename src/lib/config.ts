@@ -5,7 +5,7 @@
 
 // Detectar si estamos corriendo en un dispositivo móvil (Capacitor)
 export const isNative = typeof window !== 'undefined' && 
-  (window.location.protocol === 'capacitor:' || window.location.protocol === 'http:');
+  window.location.protocol === 'capacitor:';
 
 // URL base para las llamadas a la API
 // En el celular no podemos usar "/api/..." relativo, necesitamos la URL absoluta de producción.
