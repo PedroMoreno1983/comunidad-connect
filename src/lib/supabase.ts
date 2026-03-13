@@ -24,6 +24,7 @@ const createMockClient = () => ({
         insert: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }),
         update: () => ({ eq: () => ({ select: () => ({ single: () => ({ error: null, data: null }) }) }) })
     }),
+  }),
 });
 
 // Export client - will use real Supabase if credentials are provided, otherwise mock
