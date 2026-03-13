@@ -31,7 +31,7 @@ export function AssetInventory() {
             try {
                 const { data, error } = await supabase.from('building_assets').select('*');
                 if (data && !error) {
-                    const mappedAssets = data.map(dbAsset => ({
+                    const mappedAssets = data.map((dbAsset: any) => ({
                         id: dbAsset.id,
                         name: dbAsset.name,
                         category: dbAsset.category,
@@ -60,7 +60,7 @@ export function AssetInventory() {
         try {
             const { data, error } = await supabase.from('maintenance_logs').select('*').eq('asset_id', asset.id);
             if (data && !error) {
-                const mappedLogs = data.map(log => ({
+                const mappedLogs = data.map((log: any) => ({
                     id: log.id,
                     assetId: log.asset_id || log.assetId,
                     performedBy: log.performed_by || log.performedBy,
