@@ -22,7 +22,7 @@ export default function ResidentInvitationsPage() {
                 setIsLoading(true);
                 const data = await InvitationService.getByResident(user.id);
                 if (data) {
-                    setInvitations(data.map((inv) => ({
+                    setInvitations(data.map((inv: { id: string; resident_id: string; guest_name: string; guest_dni: string; status?: string; valid_from: string; valid_to: string; qr_code: string }) => ({
                         id: inv.id,
                         residentId: inv.resident_id,
                         guestName: inv.guest_name,
