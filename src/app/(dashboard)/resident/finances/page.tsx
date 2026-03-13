@@ -175,7 +175,7 @@ export default function FinancesPage() {
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100">
-                                {pendingFees.map(fee => (
+                                {pendingFees.map((fee: any) => (
                                     <div key={fee.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                                         <div className="flex gap-4 items-center w-full sm:w-auto">
                                             <div className="h-12 w-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
@@ -223,7 +223,7 @@ export default function FinancesPage() {
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                                {paidFees.map(fee => (
+                                {paidFees.map((fee: any) => (
                                     <div key={fee.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div>
                                             <p className="text-sm font-medium text-slate-700 capitalize">
