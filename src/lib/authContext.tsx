@@ -46,17 +46,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Check active session safely
-        const checkSession = async () => {
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                setIsLoading(false);
+                console.warn("Dashboard fetch timed out");
+                controller.abort(); // Abort any ongoing fetches
+            }, 8000); // Timeout for dashboard data fetching
+
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
+                // Add a safety timeout for the session check to prevent hanging the app on slow networks
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 5000));
+                
+                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
                 if (error) throw error;
 
                 setSession(session);
                 setSupabaseUser(session?.user ?? null);
-                if (session?.user) fetchUserProfile(session.user);
-                else setLoading(false);
+                if (session?.user) {
+                    await fetchUserProfile(session.user); // Await profile fetch
+                } else {
+                    setLoading(false);
+                }
             } catch (err) {
-                console.warn("Auth session check failed (likely expired token):", err);
+                console.warn("Auth session check failed (likely expired token or timeout):", err);
 
                 // Self-healing: aggressively clear corrupted auth tokens from localStorage
                 if (typeof window !== 'undefined') {
@@ -74,9 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setSession(null);
                 setSupabaseUser(null);
                 setLoading(false);
+            } finally {
+                clearTimeout(timeoutId);
+                setIsLoading(false);
             }
         };
-        checkSession();
+        fetchDashboardData();
 
         // Listen for changes
         const {
