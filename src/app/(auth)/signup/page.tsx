@@ -109,8 +109,8 @@ export default function SignUpPage() {
             setLoading(false);
         } else {
             toast({
-                title: "¡Cuenta creada!",
-                description: "Revisa tu email para confirmar tu cuenta",
+                title: "¡Cuenta creada con éxito!",
+                description: `Hemos enviado un correo a ${email}. Debes confirmarlo para poder iniciar sesión.`,
                 variant: "success",
             });
             router.push("/login");
