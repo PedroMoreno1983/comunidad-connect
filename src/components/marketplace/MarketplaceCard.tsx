@@ -2,7 +2,7 @@
 
 import { MarketplaceItem } from "@/lib/types";
 import { motion } from "framer-motion";
-import { MessageCircle, Heart, Tag, Calendar, User, Search, Repeat, Sparkles } from "lucide-react";
+import { MessageCircle, Heart, Tag, Calendar, User, Search, Repeat, Sparkles, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { type ComponentType, useState } from "react";
 

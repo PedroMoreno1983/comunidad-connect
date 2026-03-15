@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MarketplaceService } from "@/lib/api";
 import {
-    Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2
+    Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck, AlertCircle
 } from "lucide-react";
 import { useSearchParams } from 'next/navigation';
 import {
@@ -63,6 +63,8 @@ export default function MarketplacePage() {
         allowBarter: false,
         barterDetails: ''
     });
+
+    const [isRulesOpen, setIsRulesOpen] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [publishing, setPublishing] = useState(false);
@@ -424,6 +426,22 @@ export default function MarketplacePage() {
                                 <ShoppingBag className="h-5 w-5" />
                                 Mis compras
                             </button>
+                            <button 
+                                onClick={() => setIsRulesOpen(true)}
+                                className="flex items-center gap-2 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200 dark:border-slate-700"
+                            >
+                                <Info className="h-5 w-5" />
+                                Reglamento
+                            </button>
+
+                            {user?.role === 'admin' && (
+                                <button 
+                                    className="flex items-center gap-2 px-6 py-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold rounded-2xl hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all active:scale-95 border border-emerald-200 dark:border-emerald-800"
+                                >
+                                    <ShieldCheck className="h-5 w-5" />
+                                    Moderación
+                                </button>
+                            )}
                         </motion.div>
                     </div>
 
@@ -543,6 +561,46 @@ export default function MarketplacePage() {
                     </button>
                 </motion.div>
             )}
+
+            {/* Rules Modal */}
+            <Dialog open={isRulesOpen} onOpenChange={setIsRulesOpen}>
+                <DialogContent className="sm:max-w-[600px] bg-white dark:bg-slate-900 rounded-3xl p-8">
+                    <DialogHeader>
+                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                            <Info className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black">Reglamento del Marketplace</DialogTitle>
+                        <DialogDescription className="text-slate-500 font-medium">
+                            Para mantener un ambiente seguro y confiable entre vecinos, sigue estas normas:
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 my-6 text-slate-700 dark:text-slate-300">
+                        <div className="flex gap-4">
+                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">1</div>
+                            <p><span className="font-bold">Solo Residentes:</span> Solo usuarios verificados de la comunidad pueden publicar.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">2</div>
+                            <p><span className="font-bold">Fotos Reales:</span> Asegúrate de subir fotos propias del producto, no de internet.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">3</div>
+                            <p><span className="font-bold">Sin Ilegalidades:</span> Prohibida la venta de alcohol, tabaco, armas o medicamentos.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">4</div>
+                            <p><span className="font-bold">Respeto:</span> La administración se reserva el derecho de eliminar posts ofensivos o fraudulentos.</p>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button onClick={() => setIsRulesOpen(false)} className="w-full h-12 rounded-2xl bg-slate-900 dark:bg-white dark:text-slate-900">
+                            Entendido
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
