@@ -113,6 +113,11 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                                 <span className="text-[9px] font-black uppercase tracking-wider text-white">Trueque</span>
                             </div>
                         )}
+                        {/* Verified Resident Trust Badge */}
+                        <div className="px-3 py-1.5 bg-indigo-600/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-xl">
+                            <ShieldCheck className="h-3 w-3 text-white" />
+                            <span className="text-[9px] font-black uppercase tracking-wider text-white">Verificado</span>
+                        </div>
                     </div>
                 </div>
 
