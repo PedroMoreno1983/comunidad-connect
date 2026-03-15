@@ -214,16 +214,31 @@ export async function POST(req: NextRequest) {
         }
 
         if (!res || !res.ok) {
-            console.error("[CoCo API] Exhausted all model/version combinations. Last error was likely 404.");
+            console.error("[CoCo API] Exhausted all model/version combinations. Last error was likely 404 or 401.");
             return NextResponse.json(
-                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están respondiendo (404/Config). Esto suele ocurrir si la API Key es nueva o está restringida. 🛠️" },
+                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están respondiendo. 🛠️ Esto puede ser por una API Key inválida o restricciones de región. Por favor, verifica las variables de entorno." },
                 { status: 200 }
             );
         }
         
         console.info(`[CoCo API] Success! Using ${finalVer}/${finalModel}`);
 
-        const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const candidate = data?.candidates?.[0];
+        if (!candidate || candidate.finishReason === 'SAFETY') {
+            return NextResponse.json(
+                { reply: "Lo siento, no puedo responder a ese mensaje por razones de seguridad o políticas de contenido. 🛡️ ¿Podrías preguntar de otra forma?" },
+                { status: 200 }
+            );
+        }
+
+        const rawText: string = candidate?.content?.parts?.[0]?.text || "";
+
+        if (!rawText) {
+            return NextResponse.json(
+                { reply: "Recibí una respuesta vacía de la IA. Inténtalo de nuevo, por favor. 😅" },
+                { status: 200 }
+            );
+        }
 
         // 5. Extract navigation command if present and validate it
         const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
