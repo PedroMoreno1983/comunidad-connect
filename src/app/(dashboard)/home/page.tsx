@@ -63,56 +63,67 @@ export default function HomePage() {
         const fetchDashboardData = async () => {
             setIsLoading(true);
             try {
-                // Common queries
-                const { count: annCount } = await supabase.from('announcements').select('*', { count: 'exact', head: true });
-                const { data: recentAnn } = await supabase.from('announcements')
-                    .select('id, title, content, priority, created_at, profiles(full_name)')
-                    .order('created_at', { ascending: false })
-                    .limit(3);
+                // Fetch basic announcements and count in parallel
+                const [annCountRes, recentAnnRes] = await Promise.all([
+                    supabase.from('announcements').select('*', { count: 'exact', head: true }),
+                    supabase.from('announcements')
+                        .select('id, title, content, priority, created_at, profiles(full_name)')
+                        .order('created_at', { ascending: false })
+                        .limit(3)
+                ]);
+
+                const annCount = annCountRes.count;
+                const recentAnn = recentAnnRes.data;
 
                 let commonStats = {
                     announcements: annCount || 0,
-                    recentAnnouncements: (recentAnn || []).map((a: { id: string; title: string; content: string; priority: string; created_at: string; profiles: { full_name: string } | { full_name: string }[] | null }) => ({
+                    recentAnnouncements: (recentAnn || []).map((a: any) => ({
                         id: a.id,
                         title: a.title,
                         content: a.content,
                         priority: a.priority,
                         createdAt: a.created_at,
-                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as { full_name: string } | null)?.full_name) || 'Admin',
+                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as any)?.full_name) || 'Admin',
                     }))
                 };
 
                 if (user.role === 'resident') {
-                    const { count: mp } = await supabase.from('marketplace_items').select('*', { count: 'exact', head: true }) || { count: 0 };
-                    const { count: exp } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
-                    const { count: book } = await supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString()) || { count: 0 };
+                    const [mpRes, expRes, bookRes] = await Promise.all([
+                        supabase.from('marketplace_items').select('*', { count: 'exact', head: true }),
+                        supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+                        supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString())
+                    ]);
 
                     setStatsData(prev => ({
                         ...prev, ...commonStats,
-                        marketplace: mp || 0,
-                        pendingExpenses: exp || 0,
-                        bookings: book || 0
+                        marketplace: mpRes.count || 0,
+                        pendingExpenses: expRes.count || 0,
+                        bookings: bookRes.count || 0
                     }));
                 } else if (user.role === 'admin') {
-                    const { count: res } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'resident') || { count: 0 };
-                    const { count: req } = await supabase.from('service_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
-                    const { count: exp } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid') || { count: 0 };
+                    const [resProp, reqProp, expProp] = await Promise.all([
+                        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'resident'),
+                        supabase.from('service_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+                        supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid')
+                    ]);
 
                     setStatsData(prev => ({
                         ...prev, ...commonStats,
-                        residents: res || 0,
-                        pendingRequests: req || 0,
-                        pendingExpenses: exp || 0
+                        residents: resProp.count || 0,
+                        pendingRequests: reqProp.count || 0,
+                        pendingExpenses: expProp.count || 0
                     }));
                 } else if (user.role === 'concierge') {
                     const today = new Date().toISOString().split('T')[0];
-                    const { count: visToday } = await supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('entry_time', today) || { count: 0 };
-                    const { count: pack } = await supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'pending') || { count: 0 };
+                    const [visTodayRes, packRes] = await Promise.all([
+                        supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('entry_time', today),
+                        supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+                    ]);
 
                     setStatsData(prev => ({
                         ...prev, ...commonStats,
-                        visitorsToday: visToday || 0,
-                        pendingPackages: pack || 0
+                        visitorsToday: visTodayRes.count || 0,
+                        pendingPackages: packRes.count || 0
                     }));
                 }
             } catch (err) {
