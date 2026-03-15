@@ -16,16 +16,15 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://comunid
  * @param path El path de la api empezando con / (ej: /api/coco)
  */
 export const getApiUrl = (path: string): string => {
+  // En el navegador (web), siempre usamos la ruta relativa para evitar problemas de CORS 
+  // y permitir despliegues dinámicos en Vercel (previews, etc).
+  if (typeof window !== 'undefined' && !isNative) {
+    return path;
+  }
+  
+  // En Capacitor o ambientes externos (ej: Node), usamos la URL absoluta.
   const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  
-  // En producción real fuera de localhost, siempre usamos la URL absoluta 
-  // para evitar problemas con proxies o ambientes embebidos.
-  if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost') {
-      return path; // En local sigue siendo fácil usar rutas relativas
-    }
-  }
   
   return `${baseUrl}${cleanPath}`;
 };
