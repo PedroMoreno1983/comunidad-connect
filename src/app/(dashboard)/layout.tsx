@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 import CoCo from "@/components/CoCo/CoCo";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 export default function DashboardLayout({
     children,
