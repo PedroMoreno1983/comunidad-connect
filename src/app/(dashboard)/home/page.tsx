@@ -13,6 +13,7 @@ import Link from "next/link";
 import { SkeletonStats, SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/components/charts/Charts";
+import { WhatsNew } from "@/components/ui/WhatsNew";
 
 // Mock data for charts
 const expenseChartData = [
@@ -582,6 +583,7 @@ export default function HomePage() {
                     </div>
                 </motion.div>
             </div>
+            <WhatsNew />
         </div>
     );
 }
