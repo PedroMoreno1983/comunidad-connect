@@ -83,7 +83,8 @@ export default function DirectoryPage() {
     };
 
     const filtered = neighbors.filter(n => {
-        const matchSearch = n.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const fullName = n.full_name || "";
+        const matchSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (n.unit_id || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchFilter = activeFilter === 'all' || n.role === activeFilter;
         return matchSearch && matchFilter;
@@ -246,5 +247,31 @@ export default function DirectoryPage() {
 }
 
 function ErrorBoundary({ children, fallbackMessage }: { children: React.ReactNode, fallbackMessage: string }) {
-    return children; // For now, we rely on the main error boundary, but we wrap it to prevent full page crash
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        const handleError = (error: ErrorEvent) => {
+            console.error("Local ErrorBoundary caught:", error);
+            setHasError(true);
+        };
+        window.addEventListener("error", handleError);
+        return () => window.removeEventListener("error", handleError);
+    }, []);
+
+    if (hasError) {
+        return (
+            <div className="p-10 text-center space-y-4">
+                <Shield className="h-12 w-12 text-rose-500 mx-auto" />
+                <h2 className="text-xl font-bold">{fallbackMessage}</h2>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
+
+    return <>{children}</>;
 }
