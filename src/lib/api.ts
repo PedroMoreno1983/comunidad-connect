@@ -366,13 +366,18 @@ export const ExpensesService = {
         return data;
     },
 
-    // Process a payment for a specific expense
-    async payExpense(expenseId: string) {
+    // Process a payment for a specific expense with Haulmer tax compliance
+    async payExpense(expenseId: string, taxData?: { rut: string; type: 'boleta' | 'factura'; business_type?: string }) {
         const { data, error } = await supabase
             .from('expenses')
             .update({
                 status: 'paid',
-                paid_at: new Date().toISOString()
+                paid_at: new Date().toISOString(),
+                payment_metadata: {
+                    ...taxData,
+                    processor: 'haulmer',
+                    issued_tax_doc: true
+                }
             })
             .eq('id', expenseId)
             .select()

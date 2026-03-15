@@ -1,131 +1,249 @@
 "use client";
 
-import { WhatsAppChat } from "@/components/resident/supermarket/WhatsAppChat";
-import { QrCode, ShoppingCart, MessageCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { 
+    ShoppingBag, 
+    Sparkles, 
+    ListChecks, 
+    ShoppingCart, 
+    Plus, 
+    Trash2, 
+    CheckCircle2, 
+    ChevronRight, 
+    Loader2, 
+    ChefHat,
+    UtensilsCrossed,
+    CalendarDays,
+    ArrowRight
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 
-export default function SupermarketPage() {
-    const [isConnected, setIsConnected] = useState(false);
-    const searchParams = useSearchParams();
-    const { toast } = useToast();
+// Mock AI Suggestions
+const AI_SUGGESTIONS = [
+    { title: "Plan Semanal Saludable", items: ["Pechuga de pollo", "Arroz integral", "Brócoli", "Paltas", "Huevos"], icon: ChefHat },
+    { title: "Kit de Asado Chileno", items: ["Lomo liso", "Chorizos", "Carbón", "Pico de gallo", "Pan marraqueta"], icon: UtensilsCrossed },
+    { title: "Desayuno Energético", items: ["Avena", "Leche de almendras", "Plátanos", "Miel", "Chía"], icon: UtensilsCrossed }
+];
 
-    useEffect(() => {
-        if (searchParams.get('status') === 'success') {
+export default function SupermarketPage() {
+    const { toast } = useToast();
+    const [list, setList] = useState<{ id: string; name: string; checked: boolean }[]>([]);
+    const [newItem, setNewItem] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [aiInput, setAiInput] = useState("");
+
+    const addItem = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!newItem.trim()) return;
+        setList([...list, { id: Math.random().toString(), name: newItem.trim(), checked: false }]);
+        setNewItem("");
+    };
+
+    const applyAiPlan = (plan: typeof AI_SUGGESTIONS[0]) => {
+        const newItems = plan.items.map(name => ({ id: Math.random().toString(), name, checked: false }));
+        setList([...list, ...newItems]);
+        toast({
+            title: "¡Plan aplicado!",
+            description: `${plan.title} añadido a tu lista.`,
+            variant: "success"
+        });
+    };
+
+    const processAiInput = () => {
+        if (!aiInput.trim()) return;
+        setLoading(true);
+        // Simulating AI processing
+        setTimeout(() => {
+            const items = ["Leche", "Cereal", "Café"]; // Simulated result
+            setList([...list, ...items.map(name => ({ id: Math.random().toString(), name, checked: false }))]);
+            setAiInput("");
+            setLoading(false);
             toast({
-                title: "¡Compra Exitosa!",
-                description: "Tu pedido ha sido procesado correctamente.",
+                title: "Lista Inteligente",
+                description: "CoCo ha procesado tus necesidades.",
                 variant: "success"
             });
-        }
-    }, [searchParams, toast]);
+        }, 1500);
+    };
+
+    const removeItem = (id: string) => setList(list.filter(i => i.id !== id));
+    const toggleItem = (id: string) => setList(list.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
 
     return (
-        <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                <div className="space-y-2">
-                    <h2 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.3em]">Asistente de Compras</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Supermercado Express</h1>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
-
-                {/* Chat Container */}
-                <div className="lg:col-span-2">
-                    <AnimatePresence mode="wait">
-                        {!isConnected ? (
-                            <motion.div
-                                key="connect"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-12 text-center border border-slate-100 dark:border-slate-800 shadow-xl space-y-8"
-                            >
-                                <div className="mx-auto w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-600">
-                                    <QrCode className="h-10 w-10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h2 className="text-3xl font-black text-slate-900 dark:text-white">Conecta tu WhatsApp</h2>
-                                    <p className="text-slate-500 max-w-md mx-auto">
-                                        Escanea este código o haz clic en &quot;Conectar&quot; para iniciar tu asistente.
-                                        Podrás enviar audios y recibir tu carrito listo.
-                                    </p>
-                                </div>
-
-                                <div className="py-8">
-                                    <div className="w-64 h-64 mx-auto bg-slate-900 rounded-2xl flex items-center justify-center relative group cursor-pointer" onClick={() => setIsConnected(true)}>
-                                        <QrCode className="h-40 w-40 text-white group-hover:opacity-50 transition-opacity" />
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold shadow-lg">Clic para Conectar</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setIsConnected(true)}
-                                    className="px-8 py-4 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-500/25"
+        <div className="max-w-6xl mx-auto pb-20 space-y-10 px-4 sm:px-0">
+            {/* Hero Section Premium */}
+            <section className="relative overflow-hidden rounded-[3rem] bg-indigo-600 p-8 md:p-16 text-white shadow-2xl shadow-indigo-200 dark:shadow-indigo-950/20">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 blur-[80px] rounded-full translate-y-1/2 -translate-x-1/2" />
+                
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div className="space-y-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }} 
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-black uppercase tracking-widest"
+                        >
+                            <Sparkles className="h-3 w-3" />
+                            Nuevo: Smart Shopping Hub
+                        </motion.div>
+                        <h1 className="text-4xl md:text-6xl font-black leading-[1.1]">
+                            Tus compras, <br /><span className="text-indigo-200">más inteligentes.</span>
+                        </h1>
+                        <p className="text-lg text-indigo-100 font-medium max-w-md">
+                            Deja que CoCo organice tu semana. Del plan de comidas al carrito del supermercado en segundos.
+                        </p>
+                    </div>
+                    
+                    {/* AI Chat-like Input for Grocery */}
+                    <div className="bg-white/10 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/20 shadow-inner">
+                        <div className="space-y-4">
+                            <label className="text-xs font-black text-white/70 uppercase tracking-widest ml-1">Pregúntale a CoCo</label>
+                            <div className="relative">
+                                <textarea 
+                                    className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all min-h-[100px] text-lg font-medium"
+                                    placeholder="Ej: Necesito ingredientes para una cena keto para 4 personas..."
+                                    value={aiInput}
+                                    onChange={(e) => setAiInput(e.target.value)}
+                                />
+                                <button 
+                                    onClick={processAiInput}
+                                    disabled={loading}
+                                    className="absolute bottom-4 right-4 p-3 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                                 >
-                                    Abrir Asistente Web
+                                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronRight className="h-5 w-5" />}
                                 </button>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="chat"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                            >
-                                <WhatsAppChat />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* List Management */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                                <ListChecks className="text-indigo-600" />
+                                Lista de Compras
+                            </h2>
+                            <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-slate-500">
+                                {list.length} artículos
+                            </span>
+                        </div>
+
+                        <form onSubmit={addItem} className="flex gap-3 mb-8">
+                            <Input 
+                                placeholder="Añade un producto..."
+                                className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-transparent focus:bg-white dark:focus:bg-slate-800 transition-all text-lg"
+                                value={newItem}
+                                onChange={(e) => setNewItem(e.target.value)}
+                            />
+                            <Button type="submit" className="h-14 w-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 p-0 shadow-lg shadow-indigo-600/20">
+                                <Plus className="h-6 w-6 text-white" />
+                            </Button>
+                        </form>
+
+                        <div className="space-y-3">
+                            <AnimatePresence>
+                                {list.map((item) => (
+                                    <motion.div 
+                                        key={item.id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 10 }}
+                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                            item.checked 
+                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 opacity-60' 
+                                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/40'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <button 
+                                                onClick={() => toggleItem(item.id)}
+                                                className={`h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                                    item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700'
+                                                }`}
+                                            >
+                                                {item.checked && <CheckCircle2 className="h-4 w-4" />}
+                                            </button>
+                                            <span className={`text-lg font-medium ${item.checked ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                {item.name}
+                                            </span>
+                                        </div>
+                                        <button onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                            <Trash2 className="h-5 w-5" />
+                                        </button>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+
+                            {list.length === 0 && (
+                                <div className="py-20 text-center space-y-4 opacity-40">
+                                    <ShoppingCart className="h-16 w-16 mx-auto text-slate-300" />
+                                    <p className="text-slate-500 font-bold">Tu lista está vacía</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Instructions / Info Side */}
-                <div className="space-y-8">
-                    <div className="bg-emerald-600 rounded-[2.5rem] p-10 text-white relative overflow-hidden">
-                        <div className="relative z-10 space-y-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white/20 rounded-xl">
-                                    <MessageCircle className="h-6 w-6 text-white" />
-                                </div>
-                                <h3 className="text-xl font-black">¿Cómo funciona?</h3>
-                            </div>
-                            <ul className="space-y-4 text-sm font-medium text-emerald-50">
-                                <li className="flex gap-3">
-                                    <span className="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                                    <span>Envía un audio con tu lista de compras.</span>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                                    <span>Nuestra IA busca los mejores precios en Jumbo y Lider.</span>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                                    <span>Revisas el carrito optimizado y pagas en un clic.</span>
-                                </li>
-                            </ul>
+                {/* AI Planner Sidebar */}
+                <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white shadow-2xl">
+                        <div className="flex items-center gap-3 mb-6">
+                            <ChefHat className="text-indigo-400" />
+                            <h3 className="text-xl font-black">Planes de CoCo</h3>
+                        </div>
+                        <div className="space-y-4">
+                            {AI_SUGGESTIONS.map((plan, idx) => {
+                                const PlanIcon = plan.icon;
+                                return (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => applyAiPlan(plan)}
+                                        className="w-full p-5 bg-white/5 border border-white/10 rounded-3xl hover:bg-white/10 transition-all text-left group"
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <PlanIcon className="h-6 w-6 text-indigo-400" />
+                                            <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-white transition-all opacity-0 group-hover:opacity-100" />
+                                        </div>
+                                        <h4 className="font-bold text-lg mb-1">{plan.title}</h4>
+                                        <p className="text-xs text-white/40 font-medium">{plan.items.slice(0, 3).join(", ")}...</p>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none space-y-6">
-                        <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <ShoppingCart className="h-5 w-5 text-blue-500" />
-                            Tiendas Conectadas
-                        </h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">Jumbo</span>
-                                <span className="text-[10px] font-black text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded">CONECTADO</span>
+                    {/* Checkout Card - Target: Lider/Jumbo Chile */}
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-xl">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
+                                <ShoppingCart className="h-6 w-6 text-emerald-600" />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">Lider</span>
-                                <span className="text-[10px] font-black text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded">CONECTADO</span>
+                            <Button 
+                                disabled={list.length === 0}
+                                className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl h-12 px-6 font-bold flex items-center gap-2 group"
+                            >
+                                Checkout
+                                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200" />
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Jumbo Delivery</span>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 opacity-40">
+                                <div className="w-8 h-8 rounded-full bg-orange-100 border border-orange-200" />
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Líder App</span>
                             </div>
                         </div>
+                        <p className="mt-6 text-[10px] uppercase font-black tracking-widest text-slate-400 text-center">Próximamente Integración API Directa</p>
                     </div>
                 </div>
             </div>
