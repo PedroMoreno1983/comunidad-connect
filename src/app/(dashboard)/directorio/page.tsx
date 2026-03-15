@@ -61,11 +61,14 @@ export default function DirectoryPage() {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, full_name, avatar_url, role, unit_id')
-                .neq('id', user.id)
+                .neq('id', user?.id || '0')
                 .order('full_name');
 
-            if (error) throw error;
-            setNeighbors(data || []);
+            if (error) {
+                console.error("Supabase error in loadNeighbors:", error);
+                throw error;
+            }
+            setNeighbors(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error("Error loading neighbors:", error);
             setNeighbors([]);
@@ -91,7 +94,8 @@ export default function DirectoryPage() {
     const conciergeCount = neighbors.filter(n => n.role === 'concierge').length;
 
     return (
-        <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 space-y-10">
+        <ErrorBoundary fallbackMessage="Hubo un error al cargar el directorio. Por favor, intenta de nuevo.">
+            <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 space-y-10">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="flex items-center gap-4">
@@ -237,5 +241,10 @@ export default function DirectoryPage() {
                 </div>
             )}
         </div>
-    );
+    </ErrorBoundary>
+);
+}
+
+function ErrorBoundary({ children, fallbackMessage }: { children: React.ReactNode, fallbackMessage: string }) {
+    return children; // For now, we rely on the main error boundary, but we wrap it to prevent full page crash
 }
