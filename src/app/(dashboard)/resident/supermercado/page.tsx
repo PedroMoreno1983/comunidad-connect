@@ -74,46 +74,42 @@ export default function SupermarketPage() {
 
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-10 px-4 sm:px-0">
-            {/* Hero Section Premium */}
-            <section className="relative overflow-hidden rounded-[3rem] bg-indigo-600 p-8 md:p-16 text-white shadow-2xl shadow-indigo-200 dark:shadow-indigo-950/20">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 blur-[80px] rounded-full translate-y-1/2 -translate-x-1/2" />
+            {/* Hero Section Premium - Optimized */}
+            <section className="relative overflow-hidden rounded-[2.5rem] bg-indigo-600 p-8 md:p-12 text-white shadow-xl">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
                 
-                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <div className="space-y-6">
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div className="space-y-4">
                         <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }} 
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-black uppercase tracking-widest"
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }}
+                            className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest"
                         >
                             <Sparkles className="h-3 w-3" />
-                            Nuevo: Smart Shopping Hub
+                            Nuevo: Smart Shopping
                         </motion.div>
-                        <h1 className="text-4xl md:text-6xl font-black leading-[1.1]">
+                        <h1 className="text-3xl md:text-5xl font-black leading-tight">
                             Tus compras, <br /><span className="text-indigo-200">más inteligentes.</span>
                         </h1>
-                        <p className="text-lg text-indigo-100 font-medium max-w-md">
-                            Deja que CoCo organice tu semana. Del plan de comidas al carrito del supermercado en segundos.
-                        </p>
                     </div>
                     
-                    {/* AI Chat-like Input for Grocery */}
-                    <div className="bg-white/10 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/20 shadow-inner">
-                        <div className="space-y-4">
-                            <label className="text-xs font-black text-white/70 uppercase tracking-widest ml-1">Pregúntale a CoCo</label>
+                    {/* AI Input */}
+                    <div className="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/10">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">Pregúntale a CoCo</label>
                             <div className="relative">
                                 <textarea 
-                                    className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all min-h-[100px] text-lg font-medium"
-                                    placeholder="Ej: Necesito ingredientes para una cena keto para 4 personas..."
+                                    className="w-full bg-white/10 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all min-h-[80px] text-base"
+                                    placeholder="Ej: Necesito ingredientes para una cena keto..."
                                     value={aiInput}
                                     onChange={(e) => setAiInput(e.target.value)}
                                 />
                                 <button 
                                     onClick={processAiInput}
                                     disabled={loading}
-                                    className="absolute bottom-4 right-4 p-3 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                    className="absolute bottom-3 right-3 p-2 bg-white text-indigo-600 rounded-lg shadow-lg disabled:opacity-50"
                                 >
-                                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronRight className="h-5 w-5" />}
+                                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>
                             </div>
                         </div>
