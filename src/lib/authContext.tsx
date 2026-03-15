@@ -46,14 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Check active session safely
-        const fetchDashboardData = async () => {
-            setIsLoading(true);
+        const checkSessionSafe = async () => {
+            setLoading(true);
             const controller = new AbortController();
             const timeoutId = setTimeout(() => {
                 setLoading(false);
-                console.warn("Dashboard fetch timed out");
-                controller.abort(); // Abort any ongoing fetches
-            }, 8000); // Timeout for dashboard data fetching
+                console.warn("Auth session check timed out");
+            }, 8000);
 
             try {
                 // Add a safety timeout for the session check to prevent hanging the app on slow networks
@@ -94,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setLoading(false);
             }
         };
-        fetchDashboardData();
+        checkSessionSafe();
 
         // Listen for changes
         const {
