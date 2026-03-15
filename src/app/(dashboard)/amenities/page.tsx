@@ -192,6 +192,7 @@ export default function AmenitiesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {amenities.map((amenity, idx) => {
                             const Icon = getIcon(amenity.icon_name);
+                            const gradient = amenity.gradient || 'from-blue-500 to-indigo-600';
                             return (
                                 <article
                                     key={amenity.id}
@@ -199,9 +200,9 @@ export default function AmenitiesPage() {
                                     style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
                                 >
                                     {/* Background glow effect behind the card */}
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${amenity.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`}></div>
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`}></div>
                                     {/* Professional Icon Banner */}
-                                    <div className={`relative h-32 bg-gradient-to-br ${amenity.gradient} flex items-center justify-center overflow-hidden`}>
+                                    <div className={`relative h-32 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
                                         {/* Decorative circles */}
                                         <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12" />
                                         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
@@ -238,7 +239,7 @@ export default function AmenitiesPage() {
 
                                         <button
                                             onClick={() => handleOpenBooking(amenity)}
-                                            className={`w-full py-3 bg-gradient-to-r ${amenity.gradient} text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative z-10`}
+                                            className={`w-full py-3 bg-gradient-to-r ${gradient} text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative z-10`}
                                         >
                                             Reservar Ahora
                                         </button>

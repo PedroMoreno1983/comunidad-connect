@@ -74,7 +74,12 @@ export default function CoCo() {
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate }]);
             if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
         } catch (err: any) {
-            console.error("CoCo error:", err);
+            console.error("CoCo connection failed details:", {
+                message: err.message,
+                status: err.status,
+                cause: err.cause,
+                timestamp: new Date().toISOString()
+            });
             const errorMsg = err.message || "Tuve un problema de conexión 😅";
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `${errorMsg} Inténtalo de nuevo.` }]);
         } finally { setLoading(false); }
