@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Removing output: 'export' to enable dynamic API routes and Image optimization on Vercel
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
