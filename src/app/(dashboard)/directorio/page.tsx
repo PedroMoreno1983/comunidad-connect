@@ -98,7 +98,7 @@ export default function DirectoryPage() {
     const conciergeCount = neighbors.filter(n => n.role === 'concierge').length;
 
     return (
-        <ErrorBoundary fallbackMessage="Hubo un error al cargar el directorio. Por favor, intenta de nuevo.">
+        <ErrorBoundary name="Directorio de Vecinos">
             <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 space-y-10">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
