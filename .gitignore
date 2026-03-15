@@ -49,3 +49,4 @@ generate_sql.mjs
 seed_amenities.mjs
 insert_amenities.sql
 agente_psicometrico/
+datawise-people-analytics/
