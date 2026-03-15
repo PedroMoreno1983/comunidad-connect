@@ -197,9 +197,9 @@ export default function DirectoryPage() {
                                         </div>
 
                                         {/* Name & Role */}
-                                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{neighbor.full_name}</h3>
-                                        <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role]}`}>
-                                            {ROLE_LABELS[neighbor.role] || neighbor.role}
+                                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{neighbor.full_name || 'Vecino'}</h3>
+                                        <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-slate-100 dark:bg-slate-800 text-slate-600'}`}>
+                                            {ROLE_LABELS[neighbor.role] || 'Residente'}
                                         </span>
 
                                         {/* Unit info */}
@@ -225,7 +225,7 @@ export default function DirectoryPage() {
                                                                 e.stopPropagation();
                                                                 handleStartDM(neighbor);
                                                             }}
-                                                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${gradient} text-white text-sm font-bold shadow-md hover:scale-105 transition-transform`}
+                                                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${ROLE_STYLES[neighbor.role] || 'from-indigo-500 to-purple-600'} text-white text-sm font-bold shadow-md hover:scale-105 transition-transform`}
                                                         >
                                                             <MessageSquare className="h-4 w-4" />
                                                             Enviar mensaje

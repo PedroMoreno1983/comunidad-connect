@@ -170,47 +170,45 @@ export async function POST(req: NextRequest) {
             },
         };
 
-        let res = await fetch(GEMINI_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(geminiBody),
-        });
+        const models = [
+            "gemini-1.5-flash",
+            "gemini-pro",
+            "gemini-1.5-flash-latest",
+            "gemini-ultra"
+        ];
+        
+        let res: Response | null = null;
+        let data: any = null;
+        let finalModel = "";
 
-        let data = await res.json();
-
-        // 5. Fallback logic if 404 or transient error
-        if (!res.ok && (res.status === 404 || res.status === 400)) {
-            console.warn(`[CoCo API] Primary model failed (${res.status}). Trying fallback...`);
-            const fallbackRes = await fetch(GEMINI_FALLBACK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(geminiBody),
-            });
-            
-            if (fallbackRes.ok) {
-                res = fallbackRes;
-                data = await fallbackRes.json();
+        for (const model of models) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+            try {
+                const attemptRes = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(geminiBody),
+                });
+                
+                const attemptData = await attemptRes.json();
+                
+                if (attemptRes.ok) {
+                    res = attemptRes;
+                    data = attemptData;
+                    finalModel = model;
+                    break;
+                } else {
+                    console.warn(`[CoCo API] Model ${model} failed with ${attemptRes.status}:`, attemptData?.error?.message);
+                    // Continue to next model
+                }
+            } catch (e) {
+                console.error(`[CoCo API] Fetch failed for ${model}:`, e);
             }
         }
 
-        if (!res.ok) {
-            const errorMsg = data.error?.message || "Unknown error";
-            console.error(`[CoCo API] Error Status ${res.status}:`, errorMsg);
-            
-            if (res.status === 404) {
-                return NextResponse.json(
-                    { reply: "Lo siento, mi servicio de inteligencia (Google Gemini) no está respondiendo correctamente (404). Por favor notifica al administrador. 🛠️" },
-                    { status: 200 }
-                );
-            }
-            if (res.status === 429) {
-                return NextResponse.json(
-                    { reply: "Estoy un poco saturada en este momento. Inténtalo en unos segundos. 😊" },
-                    { status: 200 }
-                );
-            }
+        if (!res || !res.ok) {
             return NextResponse.json(
-                { reply: `Error de IA (${res.status}). Inténtalo de nuevo.` },
+                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están disponibles en este momento (404/Config). Por favor verifica tu API Key. 🛠️" },
                 { status: 200 }
             );
         }
