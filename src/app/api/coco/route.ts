@@ -170,48 +170,58 @@ export async function POST(req: NextRequest) {
             },
         };
 
+        const versions = ["v1beta", "v1"];
         const models = [
             "gemini-1.5-flash",
-            "gemini-pro",
-            "gemini-1.5-flash-latest",
-            "gemini-ultra"
+            "gemini-1.5-flash-8b",
+            "gemini-1.5-pro",
+            "gemini-1.0-pro",
+            "gemini-2.0-flash-exp"
         ];
         
         let res: Response | null = null;
         let data: any = null;
         let finalModel = "";
+        let finalVer = "";
 
-        for (const model of models) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-            try {
-                const attemptRes = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(geminiBody),
-                });
-                
-                const attemptData = await attemptRes.json();
-                
-                if (attemptRes.ok) {
-                    res = attemptRes;
-                    data = attemptData;
-                    finalModel = model;
-                    break;
-                } else {
-                    console.warn(`[CoCo API] Model ${model} failed with ${attemptRes.status}:`, attemptData?.error?.message);
-                    // Continue to next model
+        // Double loop to try every combination of version and model
+        for (const ver of versions) {
+            for (const model of models) {
+                const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+                try {
+                    const attemptRes = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(geminiBody),
+                    });
+                    
+                    const attemptData = await attemptRes.json();
+                    
+                    if (attemptRes.ok) {
+                        res = attemptRes;
+                        data = attemptData;
+                        finalModel = model;
+                        finalVer = ver;
+                        break;
+                    } else {
+                        console.warn(`[CoCo API] FAIL: ${ver}/${model} -> ${attemptRes.status}`, attemptData?.error?.message);
+                    }
+                } catch (e) {
+                    console.error(`[CoCo API] Error fetching ${ver}/${model}:`, e);
                 }
-            } catch (e) {
-                console.error(`[CoCo API] Fetch failed for ${model}:`, e);
             }
+            if (res && res.ok) break;
         }
 
         if (!res || !res.ok) {
+            console.error("[CoCo API] Exhausted all model/version combinations. Last error was likely 404.");
             return NextResponse.json(
-                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están disponibles en este momento (404/Config). Por favor verifica tu API Key. 🛠️" },
+                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están respondiendo (404/Config). Esto suele ocurrir si la API Key es nueva o está restringida. 🛠️" },
                 { status: 200 }
             );
         }
+        
+        console.info(`[CoCo API] Success! Using ${finalVer}/${finalModel}`);
 
         const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 

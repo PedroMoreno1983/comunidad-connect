@@ -8,9 +8,10 @@ import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import {
     Users, Search, MessageSquare, MapPin,
-    Shield, Star, Loader2, Home
+    Shield, Star, Loader2, Home, AlertTriangle
 } from "lucide-react";
 import clsx from "clsx";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 interface Neighbor {
     id: string;
@@ -83,9 +84,11 @@ export default function DirectoryPage() {
     };
 
     const filtered = neighbors.filter(n => {
+        if (!n) return false;
         const fullName = n.full_name || "";
-        const matchSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (n.unit_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const searchTermLower = (searchTerm || "").toLowerCase();
+        const matchSearch = fullName.toLowerCase().includes(searchTermLower) ||
+            (n.unit_id || '').toLowerCase().includes(searchTermLower);
         const matchFilter = activeFilter === 'all' || n.role === activeFilter;
         return matchSearch && matchFilter;
     });
@@ -246,32 +249,4 @@ export default function DirectoryPage() {
 );
 }
 
-function ErrorBoundary({ children, fallbackMessage }: { children: React.ReactNode, fallbackMessage: string }) {
-    const [hasError, setHasError] = useState(false);
-
-    useEffect(() => {
-        const handleError = (error: ErrorEvent) => {
-            console.error("Local ErrorBoundary caught:", error);
-            setHasError(true);
-        };
-        window.addEventListener("error", handleError);
-        return () => window.removeEventListener("error", handleError);
-    }, []);
-
-    if (hasError) {
-        return (
-            <div className="p-10 text-center space-y-4">
-                <Shield className="h-12 w-12 text-rose-500 mx-auto" />
-                <h2 className="text-xl font-bold">{fallbackMessage}</h2>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl"
-                >
-                    Reintentar
-                </button>
-            </div>
-        );
-    }
-
-    return <>{children}</>;
-}
+// Local ErrorBoundary helper replaced by the shared one
