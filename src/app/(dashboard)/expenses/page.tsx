@@ -202,7 +202,7 @@ export default function ExpensesPage() {
                     </div>
                 </div>
 
-                <ErrorBoundary fallbackMessage="Error al cargar el historial de pagos.">
+                <ErrorBoundary name="Historial de pagos">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>

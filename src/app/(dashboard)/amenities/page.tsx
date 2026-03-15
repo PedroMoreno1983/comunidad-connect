@@ -179,7 +179,7 @@ export default function AmenitiesPage() {
             </div>
 
             {/* Amenities Grid */}
-            <ErrorBoundary fallbackMessage="Error al cargar los espacios comunes disponibles.">
+            <ErrorBoundary name="Espacios Comunes">
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -253,7 +253,7 @@ export default function AmenitiesPage() {
 
             {/* My Bookings */}
             {!loading && userBookings.length > 0 && (
-                <ErrorBoundary fallbackMessage="Error al cargar tus reservas.">
+                <ErrorBoundary name="Mis Reservas">
                     <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">

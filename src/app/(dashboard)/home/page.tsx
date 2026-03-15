@@ -378,7 +378,7 @@ export default function HomePage() {
                                 Ver más <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
-                        <ErrorBoundary fallbackMessage="Error al cargar el resumen de gastos.">
+                        <ErrorBoundary name="Resumen de gastos">
                             <ExpenseAreaChart data={expenseChartData} />
                         </ErrorBoundary>
                     </div>
@@ -391,7 +391,7 @@ export default function HomePage() {
                             </div>
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Por Categoría</h2>
                         </div>
-                        <ErrorBoundary fallbackMessage="Error al cargar la distribución por categoría.">
+                        <ErrorBoundary name="Distribución por categoría">
                             <ExpensePieChart data={expenseCategoryData} />
                         </ErrorBoundary>
                         <div className="mt-4 space-y-2">
@@ -433,7 +433,7 @@ export default function HomePage() {
                                 Gestionar <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
-                        <ErrorBoundary fallbackMessage="Error al cargar el uso de amenidades.">
+                        <ErrorBoundary name="Uso de amenidades">
                             <AmenityUsageChart data={amenityUsageData} />
                         </ErrorBoundary>
                     </div>
