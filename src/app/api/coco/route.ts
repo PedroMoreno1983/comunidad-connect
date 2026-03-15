@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Using v1 endpoint which is more stable than beta for production
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_FALLBACK_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
 // ─── Rate Limiter (in-memory, per IP) ────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -168,16 +170,39 @@ export async function POST(req: NextRequest) {
             },
         };
 
-        const res = await fetch(GEMINI_URL, {
+        let res = await fetch(GEMINI_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(geminiBody),
         });
 
-        const data = await res.json();
+        let data = await res.json();
+
+        // 5. Fallback logic if 404 or transient error
+        if (!res.ok && (res.status === 404 || res.status === 400)) {
+            console.warn(`[CoCo API] Primary model failed (${res.status}). Trying fallback...`);
+            const fallbackRes = await fetch(GEMINI_FALLBACK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(geminiBody),
+            });
+            
+            if (fallbackRes.ok) {
+                res = fallbackRes;
+                data = await fallbackRes.json();
+            }
+        }
 
         if (!res.ok) {
-            console.error("[CoCo API] Gemini Error:", data.error?.message);
+            const errorMsg = data.error?.message || "Unknown error";
+            console.error(`[CoCo API] Error Status ${res.status}:`, errorMsg);
+            
+            if (res.status === 404) {
+                return NextResponse.json(
+                    { reply: "Lo siento, mi servicio de inteligencia (Google Gemini) no está respondiendo correctamente (404). Por favor notifica al administrador. 🛠️" },
+                    { status: 200 }
+                );
+            }
             if (res.status === 429) {
                 return NextResponse.json(
                     { reply: "Estoy un poco saturada en este momento. Inténtalo en unos segundos. 😊" },

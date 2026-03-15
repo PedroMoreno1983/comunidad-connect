@@ -196,17 +196,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Supabase sign up
     const signUp = async (email: string, password: string, userData: Record<string, any>) => {
         try {
-            const { error } = await supabase.auth.signUp({
+            // Determine current origin for email redirection
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://comunidadconnect.vercel.app';
+            
+            if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+                console.error("Supabase not configured. Signup will fail.");
+                return { error: new Error("Sistema configurado en modo DEMO. El registro real no está disponible.") };
+            }
+
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: userData,
-                    emailRedirectTo: `${window.location.origin}/`,
+                    emailRedirectTo: `${origin}/login`,
                 },
             });
+            if (error) return { error };
+            return { error: null };
+        } catch (error: any) {
             return { error };
-        } catch (error) {
-            return { error: error as Error };
         }
     };
 
