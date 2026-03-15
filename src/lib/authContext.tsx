@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsLoading(true);
             const controller = new AbortController();
             const timeoutId = setTimeout(() => {
-                setIsLoading(false);
+                setLoading(false);
                 console.warn("Dashboard fetch timed out");
                 controller.abort(); // Abort any ongoing fetches
             }, 8000); // Timeout for dashboard data fetching
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setLoading(false);
             } finally {
                 clearTimeout(timeoutId);
-                setIsLoading(false);
+                setLoading(false);
             }
         };
         fetchDashboardData();
