@@ -231,7 +231,7 @@ export function WhatsAppChat() {
                                                         name: user?.name || 'Residente',
                                                         email: user?.email || ''
                                                     },
-                                                    returnUrl: window.location.origin + '/resident/supermarket?status=success'
+                                                    returnUrl: window.location.origin + '/resident/supermercado?status=success'
                                                 })
                                             });
 
