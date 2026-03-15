@@ -14,6 +14,7 @@ import { SkeletonStats, SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/components/charts/Charts";
 import { WhatsNew } from "@/components/ui/WhatsNew";
+import { DebugStats } from "@/components/ui/DebugStats";
 
 // Mock data for charts
 const expenseChartData = [
@@ -584,6 +585,7 @@ export default function HomePage() {
                 </motion.div>
             </div>
             <WhatsNew />
+            <DebugStats />
         </div>
     );
 }
