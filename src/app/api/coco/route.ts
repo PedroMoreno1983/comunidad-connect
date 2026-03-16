@@ -176,85 +176,72 @@ export async function POST(req: NextRequest) {
             },
         };
 
-        const versions = ["v1beta", "v1"];
-        const models = [
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-latest",
-            "gemini-pro",
-            "gemini-1.5-pro",
-            "gemini-1.5-flash-8b",
+        // 5. Try the most stable combinations
+        const configs = [
+            { ver: "v1beta", model: "gemini-1.5-flash" },
+            { ver: "v1", model: "gemini-1.5-flash" },
+            { ver: "v1beta", model: "gemini-1.5-pro" }
         ];
         
         let res: Response | null = null;
         let data: any = null;
         let finalModel = "";
         let finalVer = "";
-        let lastStatus = 0;
-        let diagnosticMsg = "";
-        
-        let stableErrorStatus = 0;
-        let stableErrorMsg = "";
+        let firstErrorMessage = "";
+        let firstErrorStatus = 0;
 
-        // Double loop to try every combination of version and model
-        for (const ver of versions) {
-            for (const model of models) {
-                const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-                try {
-                    const attemptRes = await fetch(url, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(geminiBody),
-                    });
+        // Try configurations in order
+        for (const config of configs) {
+            const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${GEMINI_API_KEY}`;
+            try {
+                const attemptRes = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(geminiBody),
+                });
+                
+                const attemptData = await attemptRes.json();
+                
+                if (attemptRes.ok) {
+                    res = attemptRes;
+                    data = attemptData;
+                    finalModel = config.model;
+                    finalVer = config.ver;
+                    break;
+                } else {
+                    const status = attemptRes.status;
+                    const error = attemptData?.error?.message || "Error desconocido";
                     
-                    const attemptData = await attemptRes.json();
-                    
-                    if (attemptRes.ok) {
-                        res = attemptRes;
-                        data = attemptData;
-                        finalModel = model;
-                        finalVer = ver;
-                        break;
-                    } else {
-                        const currentStatus = attemptRes.status;
-                        const currentError = attemptData?.error?.message || "Unknown error";
-                        
-                        // Capture error from the very first attempt (the most stable one)
-                        if (stableErrorStatus === 0) {
-                            stableErrorStatus = currentStatus;
-                            stableErrorMsg = currentError;
-                        }
-
-                        lastStatus = currentStatus;
-                        diagnosticMsg = currentError;
-                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${currentStatus}: ${currentError}`);
+                    if (!firstErrorMessage) {
+                        firstErrorMessage = error;
+                        firstErrorStatus = status;
                     }
-                } catch (e) {
-                    console.error(`[CoCo API] Error fetching ${ver}/${model}:`, e);
+                    console.error(`[CoCo API] Configuracion fallida (${config.ver}/${config.model}): ${status} - ${error}`);
                 }
+            } catch (e) {
+                console.error(`[CoCo API] Error critico en fetch (${config.ver}/${config.model}):`, e);
             }
-            if (res && res.ok) break;
         }
 
         if (!res || !res.ok) {
-            // Priority: show error from the first stable attempt
-            const displayStatus = stableErrorStatus || lastStatus;
-            const displayMsg = stableErrorMsg || diagnosticMsg;
+            const status = firstErrorStatus || 0;
+            const message = firstErrorMessage || "No hubo respuesta del servidor de Google.";
+            
+            console.error(`[CoCo API] Todas las opciones fallaron. Status final: ${status}`);
+            
+            let helpInfo = `(Google Error ${status}: ${message})`;
+            const studioLink = "https://aistudio.google.com/app/apikey";
 
-            console.error(`[CoCo API] All failed. Showing stable diagnostic: CPU ${displayStatus} -> ${displayMsg}`);
-            
-            let helpMsg = `(Error ${displayStatus || 'UNK'}: ${displayMsg})`;
-            const enablementLink = "https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com";
-            
-            if (displayStatus === 404) {
-                helpMsg = `(Error 404: Google dice "${displayMsg}"). Esto significa que la API necesaria no está activa en tu proyecto o el modelo no está disponible. 🛠️ Por favor, activa la "Generative Language API" aquí: ${enablementLink}`;
+            if (status === 404) {
+                helpInfo = `(Error 404: El modelo o la versión no existen para esta clave). 🛠️ RECOMENDACIÓN: Ve a ${studioLink}, genera una clave NUEVA y asegúrate de ponerla en Vercel.`;
+            } else if (status === 403) {
+                helpInfo = `(Error 403: El acceso está prohibido). Esto suele ser por restricciones de país o porque la clave no tiene permisos. 🛠️ Prueba con una clave nueva de ${studioLink}.`;
+            } else if (status === 401) {
+                helpInfo = `(Error 401: La clave de API es inválida). 🛠️ Verifica que la clave en Vercel sea exactamente la misma que en ${studioLink}.`;
             }
-            if (displayStatus === 401) helpMsg = `(Error 401: Google dice "${displayMsg}"). La clave podría ser inválida o haber expirado.`;
-            if (displayStatus === 403) {
-                helpMsg = `(Error 403: Google dice "${displayMsg}"). Esto suele ser restricción de país o de permisos del proyecto. 🛠️ Verifica la configuración aquí: ${enablementLink}`;
-            }
-            
+
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. Después de activarla, haz un 'Redeploy' en Vercel.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo correctamente. ${helpInfo} 🛠️ Si acabas de cambiar la clave, recuerda hacer un 'Redeploy' en Vercel.` },
                 { status: 200 }
             );
         }
