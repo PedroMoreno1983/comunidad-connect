@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
         const currentPage = sanitizeString(body.currentPage, 100);
         const userName = sanitizeString(body.userName, 80);
         const userRole = sanitizeString(body.userRole, 20);
+        const history: Array<{role: string, text: string}> = Array.isArray(body.history) ? body.history : [];
 
         if (!message) {
             return NextResponse.json(
@@ -163,11 +164,25 @@ export async function POST(req: NextRequest) {
 
         const contextNote = `El usuario se llama "${userName}", tiene rol "${safeRole}", y está actualmente en la página "${currentPage}".`;
 
+        // Map history to Gemini format, ensuring alternating roles if necessary, though Gemini is usually flexible.
+        // We will filter out any empty text just in case.
+        const formattedHistory = history
+            .filter(msg => msg.text && msg.text.trim().length > 0)
+            .map(msg => ({
+                role: msg.role === "model" ? "model" : "user",
+                parts: [{ text: msg.text.slice(0, 1000) }]
+            }));
+
         const geminiBody = {
+            systemInstruction: {
+                role: "user",
+                parts: [{ text: `${SYSTEM_PROMPT}\n\nContexto actual: ${contextNote}` }]
+            },
             contents: [
+                ...formattedHistory,
                 {
                     role: "user",
-                    parts: [{ text: `${SYSTEM_PROMPT}\n\nContexto actual: ${contextNote}\n\nUsuario dice: ${message}` }],
+                    parts: [{ text: message }],
                 },
             ],
             generationConfig: {
