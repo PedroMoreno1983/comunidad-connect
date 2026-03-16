@@ -178,7 +178,6 @@ export async function POST(req: NextRequest) {
             "gemini-1.5-flash-latest",
             "gemini-1.5-pro",
             "gemini-1.5-flash-8b",
-            "gemini-2.0-flash-exp"
         ];
         
         let res: Response | null = null;
@@ -187,6 +186,9 @@ export async function POST(req: NextRequest) {
         let finalVer = "";
         let lastStatus = 0;
         let diagnosticMsg = "";
+        
+        let stableErrorStatus = 0;
+        let stableErrorMsg = "";
 
         // Double loop to try every combination of version and model
         for (const ver of versions) {
@@ -208,10 +210,18 @@ export async function POST(req: NextRequest) {
                         finalVer = ver;
                         break;
                     } else {
-                        lastStatus = attemptRes.status;
-                        const errorMsg = attemptData?.error?.message || "Unknown error";
-                        diagnosticMsg = errorMsg;
-                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${attemptRes.status}: ${errorMsg}`);
+                        const currentStatus = attemptRes.status;
+                        const currentError = attemptData?.error?.message || "Unknown error";
+                        
+                        // Capture error from the very first attempt (the most stable one)
+                        if (stableErrorStatus === 0) {
+                            stableErrorStatus = currentStatus;
+                            stableErrorMsg = currentError;
+                        }
+
+                        lastStatus = currentStatus;
+                        diagnosticMsg = currentError;
+                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${currentStatus}: ${currentError}`);
                     }
                 } catch (e) {
                     console.error(`[CoCo API] Error fetching ${ver}/${model}:`, e);
@@ -221,14 +231,19 @@ export async function POST(req: NextRequest) {
         }
 
         if (!res || !res.ok) {
-            console.error(`[CoCo API] Exhausted all combinations. Last status: ${lastStatus}. Error: ${diagnosticMsg}`);
-            let helpMsg = `(Error ${lastStatus || 'UNK'}: ${diagnosticMsg})`;
-            if (lastStatus === 404) helpMsg = `(Error 404: Google dice "${diagnosticMsg}". Revisa si la API de Generative Language está activa en tu proyecto)`;
-            if (lastStatus === 401) helpMsg = `(Error 401: Google dice "${diagnosticMsg}". La clave podría ser inválida o estar expirada)`;
-            if (lastStatus === 403) helpMsg = `(Error 403: Google dice "${diagnosticMsg}". Habitualmente es por restricciones de región de los servidores de Vercel)`;
+            // Priority: show error from the first stable attempt
+            const displayStatus = stableErrorStatus || lastStatus;
+            const displayMsg = stableErrorMsg || diagnosticMsg;
+
+            console.error(`[CoCo API] All failed. Showing stable diagnostic: CPU ${displayStatus} -> ${displayMsg}`);
+            
+            let helpMsg = `(Error ${displayStatus || 'UNK'}: ${displayMsg})`;
+            if (displayStatus === 404) helpMsg = `(Error 404: Google dice "${displayMsg}". Esto suele ocurrir si la API key es para un proyecto de Google Cloud diferente o si la API de Generative Language no está habilitada en console.cloud.google.com)`;
+            if (displayStatus === 401) helpMsg = `(Error 401: Google dice "${displayMsg}". La clave podría ser inválida)`;
+            if (displayStatus === 403) helpMsg = `(Error 403: Google dice "${displayMsg}". Esto suele ser restricción de país)`;
             
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Por favor, verifica la configuración en el panel de Vercel.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Por favor, verifica la configuración en Vercel.` },
                 { status: 200 }
             );
         }
