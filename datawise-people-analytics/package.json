@@ -1,0 +1,53 @@
+{
+  "name": "datawise-people-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:share": "next dev --hostname 0.0.0.0 --port 3001",
+    "build": "node --require ./scripts/next-build-worker-threads.js ./node_modules/next/dist/bin/next build",
+    "start": "next start",
+    "start:share": "next start --hostname 0.0.0.0 --port 3001",
+    "lint": "eslint .",
+    "test": "tsx --test src/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "analytics:run": "tsx scripts/run-analytics.ts",
+    "demo:up": "docker compose --env-file .env.demo -f docker-compose.demo.yml up -d --build",
+    "demo:down": "docker compose --env-file .env.demo -f docker-compose.demo.yml down",
+    "demo:reset": "docker compose --env-file .env.demo -f docker-compose.demo.yml down -v"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^16.4.7",
+    "lucide-react": "^0.563.0",
+    "next": "16.1.6",
+    "papaparse": "^5.5.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
+    "tailwind-merge": "^3.3.1",
+    "xlsx": "^0.18.5",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^20.19.20",
+    "@types/papaparse": "^5.3.16",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "16.1.6",
+    "prisma": "^6.6.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
