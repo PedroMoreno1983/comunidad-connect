@@ -180,7 +180,8 @@ export async function POST(req: NextRequest) {
         const configs = [
             { ver: "v1beta", model: "gemini-1.5-flash" },
             { ver: "v1", model: "gemini-1.5-flash" },
-            { ver: "v1beta", model: "gemini-1.5-pro" }
+            { ver: "v1beta", model: "gemini-1.5-pro" },
+            { ver: "v1beta", model: "gemini-1.0-pro" }
         ];
         
         let res: Response | null = null;
@@ -190,13 +191,20 @@ export async function POST(req: NextRequest) {
         let firstErrorMessage = "";
         let firstErrorStatus = 0;
 
+        // Masking helper for diagnostics
+        const maskKey = (k: string) => k.length > 10 ? `${k.substring(0, 6)}...${k.substring(k.length - 4)}` : "INV-KEY";
+        const currentMaskedKey = maskKey(GEMINI_API_KEY);
+
         // Try configurations in order
         for (const config of configs) {
-            const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${GEMINI_API_KEY}`;
+            const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent`;
             try {
-                const attemptRes = await fetch(url, {
+                const attemptRes = await fetch(`${url}?key=${GEMINI_API_KEY}`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": GEMINI_API_KEY // Try both parameter and header
+                    },
                     body: JSON.stringify(geminiBody),
                 });
                 
@@ -227,7 +235,7 @@ export async function POST(req: NextRequest) {
             const status = firstErrorStatus || 0;
             const message = firstErrorMessage || "No hubo respuesta del servidor de Google.";
             
-            console.error(`[CoCo API] Todas las opciones fallaron. Status final: ${status}`);
+            console.error(`[CoCo API] Todas las opciones fallaron. Key usada: ${currentMaskedKey}. Status final: ${status}`);
             
             let helpInfo = `(Google Error ${status}: ${message})`;
             const studioLink = "https://aistudio.google.com/app/apikey";
@@ -241,7 +249,7 @@ export async function POST(req: NextRequest) {
             }
 
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo correctamente. ${helpInfo} 🛠️ Si acabas de cambiar la clave, recuerda hacer un 'Redeploy' en Vercel.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo correctamente. ${helpInfo} [Clave detectada en servidor: ${currentMaskedKey}]. 🛠️ Recuerda hacer un 'Redeploy' en Vercel tras cambiarla.` },
                 { status: 200 }
             );
         }
