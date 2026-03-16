@@ -115,6 +115,8 @@ function sanitizeString(value: unknown, maxLength: number): string {
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+    const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
+
     // 1. Rate Limit
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
         ?? req.headers.get("x-real-ip")
@@ -130,7 +132,7 @@ export async function POST(req: NextRequest) {
     // 2. No API key configured
     if (!GEMINI_API_KEY) {
         return NextResponse.json(
-            { reply: "CoCo no está configurada. Falta GEMINI_API_KEY en las variables de entorno." },
+            { reply: "⚠️ CoCo no está configurada. Falta GEMINI_API_KEY en las variables de entorno de Vercel. Por favor, añádela y haz un 'Redeploy'." },
             { status: 200 }
         );
     }
@@ -184,6 +186,7 @@ export async function POST(req: NextRequest) {
         let finalModel = "";
         let finalVer = "";
         let lastStatus = 0;
+        let diagnosticMsg = "";
 
         // Double loop to try every combination of version and model
         for (const ver of versions) {
@@ -205,8 +208,10 @@ export async function POST(req: NextRequest) {
                         finalVer = ver;
                         break;
                     } else {
-                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${attemptRes.status}: ${attemptData?.error?.message || 'Unknown error'}`);
                         lastStatus = attemptRes.status;
+                        const errorMsg = attemptData?.error?.message || "Unknown error";
+                        diagnosticMsg = errorMsg;
+                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${attemptRes.status}: ${errorMsg}`);
                     }
                 } catch (e) {
                     console.error(`[CoCo API] Error fetching ${ver}/${model}:`, e);
@@ -215,22 +220,15 @@ export async function POST(req: NextRequest) {
             if (res && res.ok) break;
         }
 
-        if (!GEMINI_API_KEY) {
-            return NextResponse.json(
-                { reply: "⚠️ No encontré la GEMINI_API_KEY en el servidor. Por favor, asegúrate de haberla guardado en Vercel y haber hecho un 'Redeploy'." },
-                { status: 200 }
-            );
-        }
-
         if (!res || !res.ok) {
-            console.error(`[CoCo API] Exhausted all combinations. Last status: ${lastStatus}`);
-            let helpMsg = `(Error ${lastStatus || 'UNK'})`;
-            if (lastStatus === 404) helpMsg = "(Error 404: Ruta no encontrada. Revisa si la clave tiene restricciones o si la API de Generative Language está activa)";
-            if (lastStatus === 401) helpMsg = "(Error 401: La clave no es válida)";
-            if (lastStatus === 403) helpMsg = "(Error 403: Acceso prohibido. Puede ser por restricciones de país/región)";
+            console.error(`[CoCo API] Exhausted all combinations. Last status: ${lastStatus}. Error: ${diagnosticMsg}`);
+            let helpMsg = `(Error ${lastStatus || 'UNK'}: ${diagnosticMsg})`;
+            if (lastStatus === 404) helpMsg = `(Error 404: Google dice "${diagnosticMsg}". Revisa si la API de Generative Language está activa en tu proyecto)`;
+            if (lastStatus === 401) helpMsg = `(Error 401: Google dice "${diagnosticMsg}". La clave podría ser inválida o estar expirada)`;
+            if (lastStatus === 403) helpMsg = `(Error 403: Google dice "${diagnosticMsg}". Habitualmente es por restricciones de región de los servidores de Vercel)`;
             
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Verifica la configuración en Vercel.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Por favor, verifica la configuración en el panel de Vercel.` },
                 { status: 200 }
             );
         }
