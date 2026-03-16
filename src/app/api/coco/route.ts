@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 // Reverting to v1beta as it is the most compatible with current models like flash
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 const GEMINI_FALLBACK_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
@@ -216,9 +216,9 @@ export async function POST(req: NextRequest) {
         }
 
         if (!res || !res.ok) {
-            console.error("[CoCo API] Exhausted all model/version combinations. Last error was likely 404 or 401.");
+            console.error(`[CoCo API] Exhausted all combinations. Last status: ${lastStatus}`);
             return NextResponse.json(
-                { reply: "Lo siento, mis servicios de IA (Google Gemini) no están respondiendo. 🛠️ Esto puede ser por una API Key inválida o restricciones de región. Por favor, verifica las variables de entorno." },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo (Error ${lastStatus || 'UNK'}). 🛠️ Verifica que la clave en Vercel sea correcta y no tenga restricciones de región.` },
                 { status: 200 }
             );
         }
