@@ -172,11 +172,10 @@ export async function POST(req: NextRequest) {
 
         const versions = ["v1beta", "v1"];
         const models = [
-            "gemini-1.5-flash-latest",
             "gemini-1.5-flash",
-            "gemini-pro",
-            "gemini-1.5-flash-8b",
+            "gemini-1.5-flash-latest",
             "gemini-1.5-pro",
+            "gemini-1.5-flash-8b",
             "gemini-2.0-flash-exp"
         ];
         
@@ -226,11 +225,12 @@ export async function POST(req: NextRequest) {
         if (!res || !res.ok) {
             console.error(`[CoCo API] Exhausted all combinations. Last status: ${lastStatus}`);
             let helpMsg = `(Error ${lastStatus || 'UNK'})`;
-            if (lastStatus === 404) helpMsg = "(Error 404: No se encontró el modelo o la clave es inválida)";
-            if (lastStatus === 401) helpMsg = "(Error 401: Clave no autorizada)";
+            if (lastStatus === 404) helpMsg = "(Error 404: Ruta no encontrada. Revisa si la clave tiene restricciones o si la API de Generative Language está activa)";
+            if (lastStatus === 401) helpMsg = "(Error 401: La clave no es válida)";
+            if (lastStatus === 403) helpMsg = "(Error 403: Acceso prohibido. Puede ser por restricciones de país/región)";
             
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Verifica que la clave en Vercel sea AIza... y que el proyecto tenga habilitado Gemini 1.5 Flash.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo ${helpMsg}. 🛠️ Verifica la configuración en Vercel.` },
                 { status: 200 }
             );
         }
