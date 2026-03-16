@@ -54,11 +54,19 @@ export default function CoCo() {
         setInput("");
         setLoading(true);
         try {
+            // Construct history, excluding the first greeting and the latest message (which is handled separately or all together)
+            // Let's send the last 10 messages for context
+            const history = msgs.slice(-10).map(m => ({
+                role: m.role === "assistant" ? "model" : "user",
+                text: m.text
+            }));
+
             const res = await fetch(getApiUrl("/api/coco"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     message: text,
+                    history: history,
                     currentPage: pathname,
                     userName: user?.email || "Residente",
                     userRole: user?.role || "resident",
