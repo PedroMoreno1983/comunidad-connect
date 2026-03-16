@@ -172,10 +172,10 @@ export async function POST(req: NextRequest) {
 
         const versions = ["v1beta", "v1"];
         const models = [
+            "gemini-1.5-flash-latest",
             "gemini-1.5-flash",
             "gemini-1.5-flash-8b",
             "gemini-1.5-pro",
-            "gemini-1.0-pro",
             "gemini-2.0-flash-exp"
         ];
         
@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
         let data: any = null;
         let finalModel = "";
         let finalVer = "";
+        let lastStatus = 0;
 
         // Double loop to try every combination of version and model
         for (const ver of versions) {
@@ -204,7 +205,8 @@ export async function POST(req: NextRequest) {
                         finalVer = ver;
                         break;
                     } else {
-                        console.warn(`[CoCo API] FAIL: ${ver}/${model} -> ${attemptRes.status}`, attemptData?.error?.message);
+                        console.error(`[CoCo API] FAIL: ${ver}/${model} -> HTTP ${attemptRes.status}: ${attemptData?.error?.message || 'Unknown error'}`);
+                        lastStatus = attemptRes.status;
                     }
                 } catch (e) {
                     console.error(`[CoCo API] Error fetching ${ver}/${model}:`, e);
