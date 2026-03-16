@@ -129,10 +129,14 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    // 2. No API key configured
-    if (!GEMINI_API_KEY) {
+    // 2. No API key configured or invalid format
+    if (!GEMINI_API_KEY || !GEMINI_API_KEY.startsWith("AIza")) {
+        const errorDetail = !GEMINI_API_KEY 
+            ? "Falta GEMINI_API_KEY en las variables de entorno de Vercel."
+            : "La clave GEMINI_API_KEY configurada no parece válida (debe empezar con 'AIza').";
+            
         return NextResponse.json(
-            { reply: "⚠️ CoCo no está configurada. Falta GEMINI_API_KEY en las variables de entorno de Vercel. Por favor, añádela y haz un 'Redeploy'." },
+            { reply: `⚠️ CoCo no está configurada correctamente. ${errorDetail} Por favor, revísala y haz un 'Redeploy'.` },
             { status: 200 }
         );
     }
@@ -172,7 +176,7 @@ export async function POST(req: NextRequest) {
             },
         };
 
-        const versions = ["v1beta", "v1"];
+        const versions = ["v1", "v1beta"];
         const models = [
             "gemini-1.5-flash",
             "gemini-1.5-flash-latest",
