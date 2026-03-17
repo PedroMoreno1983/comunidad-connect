@@ -12,17 +12,18 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { getApiUrl } from "@/lib/config";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
-interface CondoFee {
+interface Expense {
     id: string;
     unit_id: string;
-    amount: number;
     month: string;
+    year: number;
+    total_amount: number;
     status: 'pending' | 'paid' | 'overdue';
     due_date: string;
     paid_at?: string;
-    units: {
+    units?: {
         number: string;
     };
 }
@@ -31,7 +32,7 @@ export default function FinancesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
-    const [fees, setFees] = useState<CondoFee[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -50,32 +51,36 @@ export default function FinancesPage() {
         if (!user) return;
         try {
             setLoading(true);
-
             const supabase = createClient();
 
-            // 1. Obtener la unidad (Priorizar unidad de authContext)
+            // 1. Obtener la unidad del perfil del usuario
             let targetUnitId = user.unitId;
 
             if (!targetUnitId) {
                 const { data: profile } = await supabase
-                    .from('resident_profiles')
+                    .from('profiles')
                     .select('unit_id')
-                    .eq('user_id', user.id)
+                    .eq('id', user.id)
                     .single();
                 targetUnitId = profile?.unit_id;
             }
 
-            if (!targetUnitId) throw new Error("Unidad no encontrada");
+            if (!targetUnitId) {
+                // User has no unit assigned yet – show empty state instead of error
+                setExpenses([]);
+                return;
+            }
 
-            // 2. Traer Gastos Comunes
+            // 2. Traer Gastos Comunes desde tabla 'expenses'
             const { data, error } = await supabase
-                .from('condo_fees')
+                .from('expenses')
                 .select('*, units(number)')
                 .eq('unit_id', targetUnitId)
-                .order('due_date', { ascending: false });
+                .order('year', { ascending: false })
+                .order('month', { ascending: false });
 
             if (error) throw error;
-            setFees(data || []);
+            setExpenses(data || []);
 
         } catch (error) {
             console.error(error);
@@ -89,17 +94,17 @@ export default function FinancesPage() {
         }
     };
 
-    const handlePayHaulmer = async (fee: CondoFee) => {
-        setProcessingId(fee.id);
+    const handlePayHaulmer = async (expense: Expense) => {
+        setProcessingId(expense.id);
         try {
-            // Llamar a nuestro propio API Route que genera el link
+            const monthLabel = `${expense.month} ${expense.year}`;
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    amount: fee.amount,
-                    description: `Gastos Comunes ${format(new Date(fee.month), 'MMMM yyyy', { locale: es })} - Depto ${fee.units?.number}`,
-                    reference: `FEE_${fee.id}`, // Prefijo FEE_ + UUID
+                    amount: expense.total_amount,
+                    description: `Gastos Comunes ${monthLabel} - Depto ${expense.units?.number ?? ''}`,
+                    reference: `EXP_${expense.id}`,
                     client: {
                         name: user?.name || 'Residente',
                         email: user?.email || '',
@@ -108,13 +113,9 @@ export default function FinancesPage() {
                 })
             });
 
-            if (!response.ok) {
-                throw new Error("Error al generar orden de pago");
-            }
+            if (!response.ok) throw new Error("Error al generar orden de pago");
 
             const data = await response.json();
-
-            // Redirigir al Web Checkout de Haulmer (o Local Mock)
             window.location.href = data.url;
 
         } catch (error) {
@@ -128,9 +129,9 @@ export default function FinancesPage() {
         }
     };
 
-    const pendingFees = fees.filter(f => f.status !== 'paid');
-    const paidFees = fees.filter(f => f.status === 'paid');
-    const totalDebt = pendingFees.reduce((acc, curr) => acc + curr.amount, 0);
+    const pendingExpenses = expenses.filter(e => e.status !== 'paid');
+    const paidExpenses = expenses.filter(e => e.status === 'paid');
+    const totalDebt = pendingExpenses.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -159,9 +160,9 @@ export default function FinancesPage() {
                     <CardContent className="p-0">
                         {loading ? (
                             <div className="p-8 text-center text-slate-400">Cargando...</div>
-                        ) : pendingFees.length === 0 ? (
+                        ) : pendingExpenses.length === 0 ? (
                             <div className="p-16 text-center flex flex-col items-center justify-center">
-                                <motion.div 
+                                <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
                                     className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mb-6"
@@ -175,31 +176,31 @@ export default function FinancesPage() {
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100">
-                                {pendingFees.map((fee: any) => (
-                                    <div key={fee.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                                {pendingExpenses.map((expense) => (
+                                    <div key={expense.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                                         <div className="flex gap-4 items-center w-full sm:w-auto">
                                             <div className="h-12 w-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
                                                 <Home className="w-6 h-6" />
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold text-slate-900 capitalize">
-                                                    {format(new Date(fee.month), 'MMMM yyyy', { locale: es })}
+                                                    {expense.month} {expense.year}
                                                 </h4>
                                                 <p className="text-sm text-slate-500">
-                                                    Vence: {format(new Date(fee.due_date), 'dd MMM yyyy')}
+                                                    Vence: {format(new Date(expense.due_date), 'dd MMM yyyy')}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                                             <span className="text-lg font-bold text-slate-700">
-                                                ${fee.amount.toLocaleString('es-CL')}
+                                                ${Number(expense.total_amount).toLocaleString('es-CL')}
                                             </span>
                                             <Button
-                                                onClick={() => handlePayHaulmer(fee)}
+                                                onClick={() => handlePayHaulmer(expense)}
                                                 className="bg-[#1b4382] hover:bg-[#1b4382]/90 text-white min-w-[140px]"
-                                                disabled={processingId === fee.id}
+                                                disabled={processingId === expense.id}
                                             >
-                                                {processingId === fee.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
+                                                {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
                                             </Button>
                                         </div>
                                     </div>
@@ -217,25 +218,25 @@ export default function FinancesPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {paidFees.length === 0 ? (
+                        {paidExpenses.length === 0 ? (
                             <div className="p-6 text-center text-slate-400 text-sm">
                                 No hay pagos registrados.
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                                {paidFees.map((fee: any) => (
-                                    <div key={fee.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                {paidExpenses.map((expense) => (
+                                    <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div>
                                             <p className="text-sm font-medium text-slate-700 capitalize">
-                                                {format(new Date(fee.month), 'MMMM yyyy', { locale: es })}
+                                                {expense.month} {expense.year}
                                             </p>
                                             <p className="text-xs text-slate-400">
-                                                {fee.paid_at ? format(new Date(fee.paid_at), 'dd MMM yyyy') : 'Pagado'}
+                                                {expense.paid_at ? format(new Date(expense.paid_at), 'dd MMM yyyy') : 'Pagado'}
                                             </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm font-bold text-slate-900">
-                                                ${fee.amount.toLocaleString('es-CL')}
+                                                ${Number(expense.total_amount).toLocaleString('es-CL')}
                                             </p>
                                             <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 mt-1 border-emerald-200/50">
                                                 Completado

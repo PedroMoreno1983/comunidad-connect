@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
-import { Mail, Lock, User, Eye, EyeOff, Key } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Key, Home } from "lucide-react";
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
@@ -16,6 +16,7 @@ export default function SignUpPage() {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [accessCode, setAccessCode] = useState("");
+    const [departmentNumber, setDepartmentNumber] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { signUp } = useAuth();
@@ -97,7 +98,8 @@ export default function SignUpPage() {
         const { error } = await signUp(email, password, {
             full_name: fullName,
             community_id: community.id,
-            role: selectedRole
+            role: selectedRole,
+            ...(selectedRole === 'resident' && departmentNumber ? { department_number: departmentNumber.trim() } : {})
         });
 
         if (error) {
@@ -265,6 +267,30 @@ export default function SignUpPage() {
                                     : "Ingresa el código que te proporcionó el administrador de tu comunidad."}
                             </p>
                         </div>
+
+                        {/* Department Number - only for residents */}
+                        {selectedRole === 'resident' && (
+                            <div>
+                                <label htmlFor="departmentNumber" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                    Número de Departamento
+                                </label>
+                                <div className="relative">
+                                    <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                    <Input
+                                        id="departmentNumber"
+                                        type="text"
+                                        value={departmentNumber}
+                                        onChange={(e) => setDepartmentNumber(e.target.value)}
+                                        placeholder="Ej: 501, 3B, 1201"
+                                        required={selectedRole === 'resident'}
+                                        className="pl-10"
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Número o identificador de tu departamento.
+                                </p>
+                            </div>
+                        )}
 
                         {/* Submit Button */}
                         <Button

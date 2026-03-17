@@ -21,6 +21,11 @@ import { Booking } from "@/lib/types";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
+// TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
+// from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
+// from-slate-600 to-slate-900 from-emerald-400 to-teal-600 from-violet-500 to-purple-700 
+// from-purple-500 to-pink-500 from-blue-500 to-indigo-600
+
 // Icon mapping for amenities
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Flame,

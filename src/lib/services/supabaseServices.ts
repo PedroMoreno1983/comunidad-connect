@@ -309,31 +309,32 @@ export const ExpenseService = {
 };
 
 // ==========================================
-// Condo Fees Service (Gastos Comunes)
+// Condo Fees Service (Gastos Comunes - usa tabla 'expenses')
 // ==========================================
 export const CondoFeeService = {
     async getAll() {
         const { data, error } = await supabase
-            .from('condo_fees')
+            .from('expenses')
             .select(`
                 *,
-                units (number, tower)
+                units:unit_id (number, tower)
             `)
-            .order('due_date', { ascending: false });
+            .order('year', { ascending: false })
+            .order('month', { ascending: false });
 
         if (error) throw error;
-        return data;
+        // Normalize: alias total_amount as amount for backward-compat with components
+        return (data || []).map((e: any) => ({ ...e, amount: e.total_amount }));
     },
 
-    async markAsPaid(feeId: string, paymentMethod: string = 'manual') {
+    async markAsPaid(expenseId: string, paymentMethod: string = 'manual') {
         const { error } = await supabase
-            .from('condo_fees')
+            .from('expenses')
             .update({
                 status: 'paid',
                 paid_at: new Date().toISOString(),
-                payment_method: paymentMethod
             })
-            .eq('id', feeId);
+            .eq('id', expenseId);
 
         if (error) throw error;
     }
@@ -728,7 +729,7 @@ export const ChatService = {
             .limit(limit);
 
         if (error) throw error;
-        return data.reverse();
+        return (data || []).reverse();
     },
 
     // Subscribe to DMs in a specific conversation
@@ -769,31 +770,44 @@ export const ChatService = {
     async getConversations(userId: string) {
         const { data, error } = await supabase
             .from('chat_messages')
-            .select(`
-                sender_id,
-                receiver_id,
-                content,
-                created_at,
-                senderProfile:profiles!sender_id(full_name, avatar_url),
-                receiverProfile:profiles!receiver_id(full_name, avatar_url)
-            `)
+            .select('sender_id, receiver_id, content, created_at')
             .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
             .not('receiver_id', 'is', null) // Only DMs, not global
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // Deduplicate by peer
+        // Collect unique peer IDs
         const seen = new Set<string>();
-        const conversations: any[] = [];
+        const peerIds: string[] = [];
         for (const msg of (data || [])) {
             const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
-            const peerProfile = msg.sender_id === userId ? msg.receiverProfile : msg.senderProfile;
             if (!seen.has(peerId)) {
                 seen.add(peerId);
+                peerIds.push(peerId);
+            }
+        }
+
+        // Fetch profiles for those peers
+        const profileMap: Record<string, any> = {};
+        if (peerIds.length > 0) {
+            const { data: profiles } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', peerIds);
+            (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+        }
+
+        // Build conversations list
+        const conversations: any[] = [];
+        const added = new Set<string>();
+        for (const msg of (data || [])) {
+            const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+            if (!added.has(peerId)) {
+                added.add(peerId);
                 conversations.push({
                     peerId,
-                    peerProfile,
+                    peerProfile: profileMap[peerId] || { full_name: 'Vecino', avatar_url: null },
                     lastMessage: msg.content,
                     lastAt: msg.created_at
                 });
