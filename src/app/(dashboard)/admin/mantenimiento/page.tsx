@@ -120,6 +120,7 @@ export default function MantenimientoAdminPage() {
 
             {/* Content Rendering */}
             <div className="min-h-[600px]">
+                <ErrorBoundary name="Maintenance Tab Error">
                 <AnimatePresence mode="wait">
                     {activeTab === 'overview' ? (
                         <motion.div
@@ -163,6 +164,7 @@ export default function MantenimientoAdminPage() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </ErrorBoundary>
             </div>
         </div>
     );

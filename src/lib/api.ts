@@ -36,13 +36,17 @@ export const WaterService = {
             .from('units')
             .select(`
                 *,
-                profiles:resident_profile_id (full_name, email)
+                profiles:owner_id (name, email)
             `)
             .order('tower', { ascending: true })
             .order('number', { ascending: true });
 
-        if (error) throw error;
-        return data as (Unit & { profiles: any })[];
+        if (error) {
+            console.error('Error loading units:', error);
+            // Return empty array instead of throwing so the page shows empty state
+            return [] as (Unit & { profiles: any })[];
+        }
+        return (data || []) as (Unit & { profiles: any })[];
     },
 
     // Crear nueva unidad
@@ -60,22 +64,20 @@ export const WaterService = {
     // Asignar residente a unidad (Actualiza units y opcionalmente user metadata si fuese necesario, 
     // pero por ahora la fuente de verdad es la tabla units)
     async assignResident(unitId: string, residentId: string | null) {
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('units')
-            .update({ resident_profile_id: residentId })
-            .eq('id', unitId)
-            .select();
+            .update({ owner_id: residentId })
+            .eq('id', unitId);
 
         if (error) throw error;
-        return data;
     },
 
     // Obtener lista de perfiles (para dropdown de asignación)
     async getProfiles() {
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, role')
-            .order('full_name', { ascending: true });
+            .select('id, name, email, role')
+            .order('name', { ascending: true });
 
         if (error) throw error;
         return data;

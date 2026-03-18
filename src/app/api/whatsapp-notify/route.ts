@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         // Get user's phone number and WhatsApp opt-in status
         const { data: profile, error } = await supabaseAdmin
             .from("profiles")
-            .select("phone_number, whatsapp_enabled, full_name")
+            .select("phone_number, whatsapp_enabled, name")
             .eq("id", user_id)
             .single();
 

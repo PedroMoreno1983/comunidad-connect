@@ -67,7 +67,7 @@ export default function HomePage() {
                 const [annCountRes, recentAnnRes] = await Promise.all([
                     supabase.from('announcements').select('*', { count: 'exact', head: true }),
                     supabase.from('announcements')
-                        .select('id, title, content, priority, created_at, profiles(full_name)')
+                        .select('id, title, content, priority, created_at, profiles(name)')
                         .order('created_at', { ascending: false })
                         .limit(3)
                 ]);
@@ -83,7 +83,7 @@ export default function HomePage() {
                         content: a.content,
                         priority: a.priority,
                         createdAt: a.created_at,
-                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.full_name : (a.profiles as any)?.full_name) || 'Admin',
+                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.name : (a.profiles as any)?.name) || 'Admin',
                     }))
                 };
 

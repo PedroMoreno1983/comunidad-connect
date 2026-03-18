@@ -201,7 +201,7 @@ export default function AmenitiesPage() {
                             return (
                                 <article
                                     key={amenity.id}
-                                    className="group relative bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 overflow-hidden hover:shadow-2xl hover:border-white/80 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 animate-slide-up opacity-0"
+                                    className="group relative bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 overflow-hidden hover:shadow-2xl hover:border-white/80 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 animate-slide-up"
                                     style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
                                 >
                                     {/* Background glow effect behind the card */}

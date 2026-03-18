@@ -238,7 +238,10 @@ export function MaintenanceDashboard() {
                                         {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
                                     </p>
                                     <p className="text-sm font-bold text-slate-900 dark:text-white">{log.description}</p>
-                                    <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Costo: ${log.cost.toLocaleString('es-CL')}</p>
+                                    <div className="text-right flex-shrink-0">
+                                        <p className="text-sm font-black text-slate-900 dark:text-white">${(log.cost || 0).toLocaleString('es-CL')}</p>
+                                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Costo</p>
+                                    </div>
                                 </div>
                             </div>
                         ))}

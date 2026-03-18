@@ -234,7 +234,7 @@ export function AssetInventory() {
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                                                         <DollarSign className="h-3 w-3" />
-                                                        ${log.cost.toLocaleString('es-CL')}
+                                                        ${(log.cost || 0).toLocaleString('es-CL')}
                                                     </div>
                                                 </div>
                                             </div>

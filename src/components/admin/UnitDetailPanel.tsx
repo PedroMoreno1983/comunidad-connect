@@ -66,7 +66,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                 } else if (profile) {
                     setResident({
                         id: profile.id,
-                        name: profile.full_name,
+                        name: profile.name,
                         email: profile.email || '',
                         role: profile.role || 'resident',
                         photo: profile.avatar_url

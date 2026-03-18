@@ -47,7 +47,7 @@ export interface ChatMessage {
   created_at: string;
   read?: boolean;
   profiles?: {
-    full_name: string;
+    name: string;
     avatar_url?: string;
   };
 }
@@ -280,7 +280,7 @@ export interface SocialPost {
   likes_count: number;
   created_at: string;
   profiles?: {
-    full_name: string;
+    name: string;
     avatar_url?: string;
     unit_id?: string;
   };
@@ -295,7 +295,7 @@ export interface SocialComment {
   content: string;
   created_at: string;
   profiles?: {
-    full_name: string;
+    name: string;
     avatar_url?: string;
   };
 }
