@@ -147,7 +147,7 @@ export const reviewsService = {
             .select(`
                 *,
                 profiles:user_id (
-                  full_name,
+                  name,
                   avatar_url
                 )
             `)
@@ -161,7 +161,7 @@ export const reviewsService = {
             id: data.id,
             providerId: data.provider_id,
             userId: data.user_id,
-            userName: data.profiles?.full_name || 'Usuario',
+            userName: data.profiles?.name || 'Usuario',
             userAvatar: data.profiles?.avatar_url,
             rating: data.rating,
             comment: data.comment,
@@ -251,7 +251,7 @@ export const serviceRequestsService = {
             .select(`
                 *,
                 profiles:user_id (
-                  full_name,
+                  name,
                   email,
                   phone
                 )

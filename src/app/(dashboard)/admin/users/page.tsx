@@ -47,12 +47,12 @@ export default function UsersPage() {
                     .from('profiles')
                     .select(`
                         id, 
-                        full_name, 
+                        name, 
                         email, 
                         role,
                         units(number)
                     `)
-                    .order('full_name');
+                    .order('name');
 
                 if (data) setUsers(data);
             } catch (err) {
@@ -180,7 +180,7 @@ export default function UsersPage() {
                                         <td colSpan={4} className="px-6 py-8 text-center text-slate-500">Cargando usuarios...</td>
                                     </tr>
                                 ) : users.map((u) => {
-                                    const name = u.full_name || 'Usuario Default';
+                                    const name = u.name || 'Usuario Default';
                                     const email = u.email || 'Sin correo';
                                     const initial = name.charAt(0).toUpperCase();
                                     const unitLabel = Array.isArray(u.units) && u.units.length > 0 ? u.units[0].number : (u.units as any)?.number || '-';

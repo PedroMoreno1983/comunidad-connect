@@ -15,7 +15,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 interface Neighbor {
     id: string;
-    full_name: string;
+    name: string;
     avatar_url?: string;
     role: 'admin' | 'resident' | 'concierge';
     unit_id?: string;
@@ -61,9 +61,9 @@ export default function DirectoryPage() {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, full_name, avatar_url, role, unit_id')
+                .select('id, name, avatar_url, role, unit_id')
                 .neq('id', user?.id || '0')
-                .order('full_name');
+                .order('name');
 
             if (error) {
                 console.error("Supabase error in loadNeighbors:", error);
@@ -85,7 +85,7 @@ export default function DirectoryPage() {
 
     const filtered = neighbors.filter(n => {
         if (!n) return false;
-        const fullName = n.full_name || "";
+        const fullName = n.name || "";
         const searchTermLower = (searchTerm || "").toLowerCase();
         const matchSearch = fullName.toLowerCase().includes(searchTermLower) ||
             (n.unit_id || '').toLowerCase().includes(searchTermLower);
@@ -191,16 +191,16 @@ export default function DirectoryPage() {
                                     <div className="px-5 pb-5">
                                         <div className={`w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} border-4 border-white dark:border-slate-800 shadow-lg -mt-8 mb-3`}>
                                             {neighbor.avatar_url ? (
-                                                <img src={neighbor.avatar_url} alt={neighbor.full_name} className="w-full h-full object-cover" />
+                                                <img src={neighbor.avatar_url} alt={neighbor.name} className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-2xl font-black text-white">
-                                                    {neighbor.full_name?.charAt(0)}
+                                                    {neighbor.name?.charAt(0)}
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Name & Role */}
-                                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{neighbor.full_name || 'Vecino'}</h3>
+                                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{neighbor.name || 'Vecino'}</h3>
                                         <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-slate-100 dark:bg-slate-800 text-slate-600'}`}>
                                             {ROLE_LABELS[neighbor.role] || 'Residente'}
                                         </span>

@@ -19,7 +19,7 @@ export function AdminReservations() {
                 .from('amenity_bookings')
                 .select(`
                     id, date, start_time, end_time, status, created_at,
-                    users:user_id (full_name, email),
+                    users:user_id (name, email),
                     amenities:amenity_id (name, icon_name, gradient)
                 `)
                 .order('created_at', { ascending: false });
@@ -120,7 +120,7 @@ export function AdminReservations() {
                                     <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
                                         <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                                             <Users className="h-4 w-4" />
-                                            {booking.users?.full_name || 'Residente'}
+                                            {booking.users?.name || 'Residente'}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <CalendarIcon className="h-4 w-4" />

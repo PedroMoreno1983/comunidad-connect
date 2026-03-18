@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else if (profile) {
                 // Extract a readable display name from email as last resort
                 const emailFirstPart = sbUser.email?.split('@')[0]?.split('.')?.[0];
-                const displayName = profile.full_name
+                const displayName = profile.name
                     || (emailFirstPart ? emailFirstPart.charAt(0).toUpperCase() + emailFirstPart.slice(1) : null)
                     || 'Usuario';
 
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { data: unit, error } = await supabase
                 .from('units')
                 .select('id, number, tower')
-                .eq('resident_profile_id', userId)
+                .eq('owner_id', userId)
                 .maybeSingle();
 
             if (unit && !error) {
@@ -176,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mapSupabaseUserFromMetadata = (sbUser: SupabaseUser) => {
         setUser({
             id: sbUser.id,
-            name: sbUser.user_metadata?.full_name || sbUser.email || 'Usuario',
+            name: sbUser.user_metadata?.name || sbUser.email || 'Usuario',
             email: sbUser.email || '',
             role: sbUser.user_metadata?.role || 'resident',
             unitId: sbUser.user_metadata?.unit_id,

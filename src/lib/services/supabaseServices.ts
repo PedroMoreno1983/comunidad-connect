@@ -21,7 +21,7 @@ export const AmenityService = {
             .select(`
         *,
         amenities:amenity_id (name, icon_name),
-        profiles:user_id (full_name)
+        profiles:user_id (name)
       `)
             .order('date', { ascending: true });
 
@@ -79,7 +79,7 @@ export const AnnouncementService = {
             .from('announcements')
             .select(`
         *,
-        profiles:author_id (full_name, avatar_url)
+        profiles:author_id (name, avatar_url)
       `)
             .order('created_at', { ascending: false });
 
@@ -259,7 +259,7 @@ export const ExpenseService = {
             .select(`
         *,
         expense_items (*),
-        units:unit_id (number, tower, profiles:resident_profile_id (full_name))
+        units:unit_id (number, tower, profiles:owner_id (name))
       `)
             .order('year', { ascending: false })
             .order('month', { ascending: false });
@@ -498,7 +498,7 @@ export const ServiceRequestService = {
             .from('service_requests')
             .select(`
         *,
-        profiles:requester_id (full_name),
+        profiles:requester_id (name),
         units:unit_id (number, tower)
       `)
             .order('created_at', { ascending: false });
@@ -551,7 +551,7 @@ export const ReservationService = {
 
     async getBookingsByUser(userId: string) {
         const { data, error } = await supabase
-            .from('amenity_bookings')
+            .from('bookings')
             .select(`
                 *,
                 amenities:amenity_id (name, icon_name, gradient)
@@ -572,7 +572,7 @@ export const ReservationService = {
         end_time: string;
     }) {
         const { data, error } = await supabase
-            .from('amenity_bookings')
+            .from('bookings')
             .insert({ ...booking, status: 'pending' })
             .select()
             .single();
@@ -591,7 +591,7 @@ export const SocialService = {
             .from('social_posts')
             .select(`
                 *,
-                profiles:author_id (full_name, avatar_url, unit_id),
+                profiles:author_id (name, avatar_url, unit_id),
                 comments:social_comments(count)
             `)
             .order('created_at', { ascending: false });
@@ -611,7 +611,7 @@ export const SocialService = {
             .insert(post)
             .select(`
                 *,
-                profiles:author_id (full_name, avatar_url, unit_id)
+                profiles:author_id (name, avatar_url, unit_id)
             `)
             .single();
 
@@ -630,7 +630,7 @@ export const SocialService = {
             .from('social_comments')
             .select(`
                 *,
-                profiles:author_id (full_name, avatar_url)
+                profiles:author_id (name, avatar_url)
             `)
             .eq('post_id', postId)
             .order('created_at', { ascending: true });
@@ -645,7 +645,7 @@ export const SocialService = {
             .insert(comment)
             .select(`
                 *,
-                profiles:author_id (full_name, avatar_url)
+                profiles:author_id (name, avatar_url)
             `)
             .single();
 
@@ -663,7 +663,7 @@ export const ChatService = {
             .from('chat_messages')
             .select(`
                 *,
-                profiles:sender_id (full_name, avatar_url)
+                profiles:sender_id (name, avatar_url)
             `)
             .is('receiver_id', null)
             .order('created_at', { ascending: false })
@@ -679,7 +679,7 @@ export const ChatService = {
             .insert(message)
             .select(`
                 *,
-                profiles:sender_id (full_name, avatar_url)
+                profiles:sender_id (name, avatar_url)
             `)
             .single();
 
@@ -701,7 +701,7 @@ export const ChatService = {
                 async (payload: any) => {
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('full_name, avatar_url')
+                        .select('name, avatar_url')
                         .eq('id', payload.new.sender_id)
                         .single();
 
@@ -722,7 +722,7 @@ export const ChatService = {
             .from('chat_messages')
             .select(`
                 *,
-                profiles:sender_id (full_name, avatar_url)
+                profiles:sender_id (name, avatar_url)
             `)
             .or(`and(sender_id.eq.${userId},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${userId})`)
             .order('created_at', { ascending: false })
@@ -754,7 +754,7 @@ export const ChatService = {
 
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('full_name, avatar_url')
+                        .select('name, avatar_url')
                         .eq('id', msg.sender_id)
                         .single();
 
@@ -772,7 +772,9 @@ export const ChatService = {
             .from('chat_messages')
             .select('sender_id, receiver_id, content, created_at')
             .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-            .not('receiver_id', 'is', null) // Only DMs, not global
+            .filter('receiver_id', 'is', null) // Change filter approach or use .not('receiver_id', 'is', null) correctly
+            // Actually, let's use the explicit NOT IS NULL syntax
+            .not('receiver_id', 'is', null)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -793,7 +795,7 @@ export const ChatService = {
         if (peerIds.length > 0) {
             const { data: profiles } = await supabase
                 .from('profiles')
-                .select('id, full_name, avatar_url')
+                .select('id, name, avatar_url')
                 .in('id', peerIds);
             (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
         }
@@ -807,7 +809,7 @@ export const ChatService = {
                 added.add(peerId);
                 conversations.push({
                     peerId,
-                    peerProfile: profileMap[peerId] || { full_name: 'Vecino', avatar_url: null },
+                    peerProfile: profileMap[peerId] || { name: 'Vecino', avatar_url: null },
                     lastMessage: msg.content,
                     lastAt: msg.created_at
                 });

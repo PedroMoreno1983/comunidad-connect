@@ -27,6 +27,11 @@ export default function ProfilePage() {
     const [whatsappEnabled, setWhatsappEnabled] = useState(false);
     const [isSavingWa, setIsSavingWa] = useState(false);
 
+    // Unit / Dept
+    const [unitNumber, setUnitNumber] = useState("");
+    const [unitTower, setUnitTower] = useState("");
+    const [isSavingUnit, setIsSavingUnit] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -40,12 +45,27 @@ export default function ProfilePage() {
         if (!user) return;
         const { data } = await supabase
             .from('profiles')
-            .select('full_name, avatar_url, phone_number, whatsapp_enabled')
+            .select('name, avatar_url, phone_number, whatsapp_enabled')
             .eq('id', user.id)
             .maybeSingle();
         if (data?.avatar_url) setAvatarUrl(data.avatar_url);
-        if (data?.phone_number) setPhoneNumber(data.phone_number);
+        if (data?.phone_number) {
+            // Remove +56 for the input field
+            setPhoneNumber(data.phone_number.replace('+56', ''));
+        }
         if (data?.whatsapp_enabled) setWhatsappEnabled(data.whatsapp_enabled);
+
+        // Load unit info
+        const { data: unitData } = await supabase
+            .from('units')
+            .select('number, tower')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+
+        if (unitData) {
+            setUnitNumber(unitData.number || "");
+            setUnitTower(unitData.tower || "");
+        }
     };
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,14 +103,59 @@ export default function ProfilePage() {
         if (!user || !fullName.trim()) return;
         setIsSaving(true);
         try {
-            const { error } = await supabase
+            // Update profile
+            const { error: profileError } = await supabase
                 .from('profiles')
-                .update({ full_name: fullName.trim() })
+                .update({ name: fullName.trim() })
                 .eq('id', user.id);
 
-            if (error) throw error;
+            if (profileError) throw profileError;
+
+            // Update unit info
+            if (unitNumber.trim()) {
+                // Check if user already has a unit assigned
+                const { data: existingUnit } = await supabase
+                    .from('units')
+                    .select('id')
+                    .eq('owner_id', user.id)
+                    .maybeSingle();
+
+                if (existingUnit) {
+                    await supabase
+                        .from('units')
+                        .update({ number: unitNumber.trim(), tower: unitTower.trim() })
+                        .eq('id', existingUnit.id);
+                } else {
+                    // Try to find if the unit number already exists but is unowned
+                    const { data: foundUnit } = await supabase
+                        .from('units')
+                        .select('id')
+                        .eq('number', unitNumber.trim())
+                        .is('owner_id', null)
+                        .maybeSingle();
+                    
+                    if (foundUnit) {
+                        await supabase
+                            .from('units')
+                            .update({ owner_id: user.id, tower: unitTower.trim() })
+                            .eq('id', foundUnit.id);
+                    } else {
+                        // Create new unit (as fallback for demo/enrollment flow)
+                        await supabase
+                            .from('units')
+                            .insert({ 
+                                number: unitNumber.trim(), 
+                                tower: unitTower.trim(), 
+                                owner_id: user.id,
+                                floor: parseInt(unitNumber.substring(0, 1)) || 1 
+                            });
+                    }
+                }
+            }
+
             toast({ title: "✅ Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
-        } catch {
+        } catch (error) {
+            console.error(error);
             toast({ title: "Error", description: "No se pudo guardar el perfil.", variant: "destructive" });
         } finally {
             setIsSaving(false);
@@ -208,6 +273,30 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
+                    {/* Unit Info (Enrollment) */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">N° Depto / Casa</label>
+                            <input
+                                type="text"
+                                value={unitNumber}
+                                onChange={(e) => setUnitNumber(e.target.value)}
+                                placeholder="Ej: 402"
+                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Torre / Block</label>
+                            <input
+                                type="text"
+                                value={unitTower}
+                                onChange={(e) => setUnitTower(e.target.value)}
+                                placeholder="Ej: A"
+                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            />
+                        </div>
+                    </div>
+
                     <button
                         onClick={handleSaveProfile}
                         disabled={isSaving || !fullName.trim()}
@@ -246,14 +335,19 @@ export default function ProfilePage() {
                             </div>
                             <input
                                 type="tel"
-                                value={phoneNumber.replace('+56', '').replace('56', '')}
-                                onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                                placeholder="9XXXXXXXX"
-                                maxLength={9}
+                                value={phoneNumber}
+                                onChange={e => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.startsWith('56') && val.length > 9) {
+                                        val = val.substring(2);
+                                    }
+                                    setPhoneNumber(val.substring(0, 9));
+                                }}
+                                placeholder="912345678"
                                 className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
                         </div>
-                        <p className="text-xs text-slate-400">Ingresa tu número sin el +56 (ej: 912345678)</p>
+                        <p className="text-xs text-slate-400">Ingresa los 9 dígitos de tu móvil (ej: 912345678)</p>
                     </div>
 
                     {/* Toggle */}
@@ -274,9 +368,12 @@ export default function ProfilePage() {
 
                     <button
                         onClick={async () => {
-                            if (!user || !phoneNumber) return;
+                            if (!user || phoneNumber.length < 9) {
+                                toast({ title: 'Error', description: 'Ingresa un número de 9 dígitos.', variant: 'destructive' });
+                                return;
+                            }
                             setIsSavingWa(true);
-                            const fullPhone = phoneNumber.startsWith('56') ? `+${phoneNumber}` : `+56${phoneNumber}`;
+                            const fullPhone = `+56${phoneNumber}`;
                             const { error } = await supabase.from('profiles').update({
                                 phone_number: fullPhone,
                                 whatsapp_enabled: whatsappEnabled

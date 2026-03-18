@@ -96,7 +96,7 @@ export default function SignUpPage() {
         }
 
         const { error } = await signUp(email, password, {
-            full_name: fullName,
+            name: fullName,
             community_id: community.id,
             role: selectedRole,
             ...(selectedRole === 'resident' && departmentNumber ? { department_number: departmentNumber.trim() } : {})

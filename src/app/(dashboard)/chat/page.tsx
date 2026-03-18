@@ -14,7 +14,7 @@ type ChatMode = 'global' | 'direct';
 
 interface Conversation {
     peerId: string;
-    peerProfile: { full_name: string; avatar_url?: string };
+    peerProfile: { name: string; avatar_url?: string };
     lastMessage: string;
     lastAt: string;
 }
@@ -32,7 +32,7 @@ export default function ChatPage() {
     // Direct Messages
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activePeer, setActivePeer] = useState<Conversation | null>(null);
-    const [neighbors, setNeighbors] = useState<{ id: string; full_name: string; avatar_url?: string }[]>([]);
+    const [neighbors, setNeighbors] = useState<{ id: string; name: string; avatar_url?: string }[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,9 +92,9 @@ export default function ChatPage() {
         if (!user) return;
         const { data } = await supabase
             .from('profiles')
-            .select('id, full_name, avatar_url')
+            .select('id, name, avatar_url')
             .neq('id', user.id)
-            .order('full_name');
+            .order('name');
         if (data) setNeighbors(data);
     };
 
@@ -117,10 +117,10 @@ export default function ChatPage() {
         }
     };
 
-    const openDirectChat = (neighbor: { id: string; full_name: string; avatar_url?: string }) => {
+    const openDirectChat = (neighbor: { id: string; name: string; avatar_url?: string }) => {
         const conv: Conversation = {
             peerId: neighbor.id,
-            peerProfile: { full_name: neighbor.full_name, avatar_url: neighbor.avatar_url },
+            peerProfile: { name: neighbor.name, avatar_url: neighbor.avatar_url },
             lastMessage: '',
             lastAt: ''
         };
@@ -150,10 +150,10 @@ export default function ChatPage() {
     };
 
     const filteredNeighbors = neighbors.filter(n =>
-        n.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+        (n.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const chatTitle = mode === 'global' ? 'Chat Global' : (activePeer?.peerProfile.full_name || 'Mensajes Directos');
+    const chatTitle = mode === 'global' ? 'Chat Global' : (activePeer?.peerProfile.name || 'Mensajes Directos');
     const chatSubtitle = mode === 'global' ? 'Toda la comunidad' : (activePeer ? '1‑a‑1 privado' : 'Selecciona un vecino');
 
     return (
@@ -231,12 +231,12 @@ export default function ChatPage() {
                                                     <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-slate-500">
-                                                        {conv.peerProfile?.full_name?.charAt(0) || '?'}
+                                                        {conv.peerProfile?.name?.charAt(0) || '?'}
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="text-left min-w-0">
-                                                <p className="font-bold text-sm truncate">{conv.peerProfile?.full_name}</p>
+                                                <p className="font-bold text-sm truncate">{conv.peerProfile?.name}</p>
                                                 <p className="text-[11px] text-slate-400 truncate">{conv.lastMessage}</p>
                                             </div>
                                         </button>
@@ -265,11 +265,11 @@ export default function ChatPage() {
                                                 <img src={neighbor.avatar_url} alt="av" className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-white">
-                                                    {neighbor.full_name?.charAt(0) || '?'}
+                                                    {neighbor.name?.charAt(0) || '?'}
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="font-bold text-sm text-slate-700 dark:text-slate-300 truncate">{neighbor.full_name}</p>
+                                        <p className="font-bold text-sm text-slate-700 dark:text-slate-300 truncate">{neighbor.name}</p>
                                     </button>
                                 ))
                             )}
@@ -348,13 +348,13 @@ export default function ChatPage() {
                                                             {showAvatar ? (
                                                                 msg.profiles?.avatar_url
                                                                     ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
-                                                                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{msg.profiles?.full_name?.charAt(0) || '?'}</div>
+                                                                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{msg.profiles?.name?.charAt(0) || '?'}</div>
                                                             ) : null}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
                                                         {!isMe && showAvatar && (
-                                                            <span className="text-[11px] font-black text-slate-400 ml-1 mb-1">{msg.profiles?.full_name}</span>
+                                                            <span className="text-[11px] font-black text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>
                                                         )}
                                                         <div className={clsx(
                                                             "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
@@ -386,7 +386,7 @@ export default function ChatPage() {
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder={mode === 'global' ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.full_name}...`}
+                                    placeholder={mode === 'global' ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
                                     className="w-full pl-6 pr-14 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
                                 />
                                 <button

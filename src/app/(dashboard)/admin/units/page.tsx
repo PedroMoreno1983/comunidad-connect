@@ -30,7 +30,7 @@ import { useAuth } from "@/lib/authContext";
 
 interface Profile {
     id: string;
-    full_name: string;
+    name: string;
     email: string;
     role: string;
 }
@@ -59,22 +59,26 @@ export default function UnitsPage() {
     async function loadData() {
         setLoading(true);
         try {
-            const [unitsData, profilesData] = await Promise.all([
-                WaterService.getUnits(),
-                WaterService.getProfiles()
-            ]);
+            const unitsData = await WaterService.getUnits();
             setUnits(unitsData);
-            setProfiles(profilesData as Profile[]);
         } catch (error) {
-            console.error(error);
+            console.error('Error loading units:', error);
             toast({
                 title: "Error",
-                description: "No se pudieron cargar los datos.",
+                description: "No se pudieron cargar las unidades.",
                 variant: "destructive"
             });
-        } finally {
-            setLoading(false);
         }
+
+        try {
+            const profilesData = await WaterService.getProfiles();
+            setProfiles(profilesData as Profile[]);
+        } catch (error) {
+            console.error('Error loading profiles:', error);
+            // Non-critical — profiles load silently fails, unit list is still usable
+        }
+
+        setLoading(false);
     }
 
     async function handleCreateUnit(e: React.FormEvent) {
@@ -222,10 +226,10 @@ export default function UnitsPage() {
                                             {unit.profiles ? (
                                                 <div className="flex items-center gap-2">
                                                     <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                                                        {unit.profiles.full_name?.charAt(0) || 'U'}
+                                                        {(unit.profiles.name || unit.profiles.name)?.charAt(0) || 'U'}
                                                     </div>
                                                     <span className="text-slate-700 dark:text-slate-300">
-                                                        {unit.profiles.full_name || unit.profiles.email}
+                                                        {unit.profiles.name || unit.profiles.name || unit.profiles.email}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -261,9 +265,9 @@ export default function UnitsPage() {
                                                             onChange={(e) => setSelectedResident(e.target.value)}
                                                         >
                                                             <option value="">Seleccionar usuario...</option>
-                                                            {profiles.map(p => (
+                                                            {profiles.map((p: any) => (
                                                                 <option key={p.id} value={p.id}>
-                                                                    {p.full_name || p.email} ({p.role})
+                                                                    {p.name || p.name || p.email} ({p.role})
                                                                 </option>
                                                             ))}
                                                         </select>
