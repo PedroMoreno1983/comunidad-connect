@@ -12,9 +12,14 @@ interface ChatMessage {
     role: 'tutor' | 'classmate' | 'user' | 'system';
     text: string;
     blackboard?: string;
+    name?: string;
 }
 
-export function MultiAgentClassroom() {
+interface MultiAgentClassroomProps {
+    courseContent?: string;
+}
+
+export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps) {
     const { user } = useAuth();
     const [messages, setMessages] = useState<ChatMessage[]>([{
         id: 'system-1',
@@ -57,7 +62,8 @@ export function MultiAgentClassroom() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     message: newUserMsg.text,
-                    history: updatedMessages 
+                    history: updatedMessages,
+                    courseContent
                 })
             });
 
@@ -150,7 +156,7 @@ export function MultiAgentClassroom() {
                             >
                                 {msg.role !== 'system' && (
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">
-                                        {msg.role === 'tutor' ? 'CoCo Tutor' : msg.role === 'classmate' ? 'Compañero' : 'Tú'}
+                                        {msg.role === 'tutor' ? 'CoCo Tutor' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
                                     </span>
                                 )}
                                 <div className={`

@@ -1,26 +1,125 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
-import { BookOpen } from "lucide-react";
+import { BookOpen, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
+interface Course {
+    id: string;
+    title: string;
+    description: string;
+    training_lessons: { content: string }[];
+}
+
 export default function ResidentTrainingPage() {
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
+    const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetch('/api/training/modules')
+            .then(res => res.json())
+            .then(data => {
+                setCourses(data || []);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (selectedCourseContent !== null) {
+        return (
+            <ErrorBoundary name="Resident Training Module">
+                <div className="p-8 max-w-[1600px] mx-auto space-y-4 animate-in fade-in zoom-in-95 duration-500">
+                    <button 
+                        onClick={() => { setSelectedCourseContent(null); setSelectedCourseTitle(null); }}
+                        className="mb-2 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        Volver al Catálogo de Cursos
+                    </button>
+                    <div className="flex items-center gap-2 mb-4">
+                        <BookOpen className="h-6 w-6 text-indigo-500" />
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white border-b-2 border-indigo-100 dark:border-indigo-900 pb-1 inline-block">
+                            {selectedCourseTitle}
+                        </h2>
+                    </div>
+                    
+                    <div className="w-full h-full">
+                        <MultiAgentClassroom courseContent={selectedCourseContent} />
+                    </div>
+                </div>
+            </ErrorBoundary>
+        );
+    }
+
     return (
-        <ErrorBoundary name="Resident Training Module">
+        <ErrorBoundary name="Resident Training Module List">
             <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex flex-col mb-8">
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white border-l-4 border-indigo-500 pl-4 py-1 flex items-center gap-3">
-                        <BookOpen className="w-8 h-8 text-indigo-500" />
-                        Centro de Formación Multi-Agente
+                        <GraduationCap className="w-8 h-8 text-indigo-500" />
+                        Centro de Formación Interactivo
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-3 ml-5 max-w-2xl text-sm font-medium">
-                        Bienvenido a las aulas interactivas de ComunidadConnect. Aquí podrás capacitarte sobre convivencia, seguridad y normativas junto a "CoCo Tutor" y tus compañeros virtuales.
+                        Selecciona un módulo oficial creado por la administración. El CoCo Tutor IA y tus compañeros virtuales te enseñarán de forma interactiva.
                     </p>
                 </div>
 
-                <div className="w-full h-full">
-                    <MultiAgentClassroom />
-                </div>
+                {loading ? (
+                    <div className="py-12 text-center text-slate-500 dark:text-slate-400">Cargando cursos disponibles...</div>
+                ) : courses.length === 0 ? (
+                    <div className="py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700/50 rounded-2xl">
+                        <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Sin cursos específicos</h3>
+                        <p className="text-slate-500 dark:text-slate-400">Prueba el Modo Libre o pide a tu administración que agregue módulos.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-5">
+                        {courses.map(course => (
+                            <div 
+                                key={course.id}
+                                onClick={() => {
+                                    setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
+                                    setSelectedCourseTitle(course.title);
+                                }}
+                                className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{course.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4">
+                                    {course.description || "Inicia este curso interactivo con el Tutor CoCo."}
+                                </p>
+                                <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">
+                                    Iniciar Clase &rarr;
+                                </div>
+                            </div>
+                        ))}
+                        
+                        {/* Modo Inteligencia General */}
+                        <div 
+                            onClick={() => {
+                                setSelectedCourseContent(""); 
+                                setSelectedCourseTitle("Modo Libre (Pregúntale a CoCo Tutor)");
+                            }}
+                            className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
+                        >
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <GraduationCap className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Modo Abierto</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                El Tutor usará su inteligencia general sin guiarse estrictamente por un manual interno.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </ErrorBoundary>
     );

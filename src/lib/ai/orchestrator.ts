@@ -1,14 +1,15 @@
 import { TUTOR_PROMPT } from './agents/tutor';
-import { CLASSMATE_PROMPT } from './agents/classmate';
+import { CLASSMATE_PERSONAS } from './agents/classmate';
 
 type MessageRole = 'user' | 'model';
 type AgentRole = 'system' | 'tutor' | 'classmate' | 'user';
 
-interface ChatMessage {
+export interface ChatMessage {
     id: string;
     role: AgentRole;
     text: string;
     blackboard?: string;
+    name?: string;
 }
 
 /**
@@ -74,7 +75,8 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
 export async function runMultiAgentTurn(
     apiKey: string,
     history: ChatMessage[],
-    userMessage: string
+    userMessage: string,
+    courseContent?: string
 ): Promise<ChatMessage[]> {
     const newResponses: ChatMessage[] = [];
     const geminiHistory: {role: MessageRole, text: string}[] = [];
@@ -115,7 +117,11 @@ export async function runMultiAgentTurn(
             tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. Usa EXÁCTAMENTE la etiqueta 【BLACKBOARD】 y dentro pon un título en Markdown (ej. # Título) y los puntos clave de lo que vas a enseñar. Fuera de esa etiqueta, saluda amigablemente en el chat.";
         }
 
-        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + "\n\n" + tutorContextParam, geminiHistory);
+        const tutorCourseContext = courseContent 
+            ? `\n\nCONTENIDO DEL CURSO: A continuación tienes el contenido estricto sobre el cual debes basar tu clase hoy. Úsalo como tu fuente principal de verdad:\n${courseContent}\n\n`
+            : "";
+
+        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + "\n\n" + tutorContextParam, geminiHistory);
         
         let tutorChatText = rawTutorResponse;
         let tutorBlackboard = "";
@@ -139,16 +145,19 @@ export async function runMultiAgentTurn(
         const shouldClassmateSpeak = Math.random() < 0.3 && geminiHistory.length > 2;
 
         if (shouldClassmateSpeak) {
+            const persona = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
+            
             // Le damos contexto sobre lo que acaba de responder el tutor
             geminiHistory.push({ role: 'model', text: `[TUTOR]: ${tutorChatText}` });
             
-            const classmateContextParam = "El tutor acaba de dar su explicación. Comenta algo breve o haz una pregunta concisa como alumno.";
-            const classmateResponse = await callGemini(apiKey, CLASSMATE_PROMPT + "\\n\\n" + classmateContextParam, geminiHistory);
+            const classmateContextParam = "El tutor acaba de dar su explicación. Reacciona brevemente, haz una duda o comenta algo basado estrictamente en el contenido o en la respuesta del usuario, desde la perspectiva de tu personaje.";
+            const classmateResponse = await callGemini(apiKey, persona.prompt + "\n\n" + classmateContextParam, geminiHistory);
             
             if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD")) {
                 newResponses.push({
                     id: `classmate-${Date.now()}`,
                     role: 'classmate',
+                    name: persona.name,
                     text: classmateResponse.replace(/\[CLASSMATE\]:/gi, '').trim()
                 });
             }
