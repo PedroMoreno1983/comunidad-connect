@@ -63,17 +63,31 @@ export async function runMultiAgentTurn(
 
     // Mapear historial al formato de Gemini
     for (const msg of history) {
-        if (msg.role === 'user') {
-            geminiHistory.push({ role: 'user', text: msg.text });
+        // Ignoramos el mensaje duplicado del usuario actual si es el ultimo,
+        // porque lo consolidaremos al final
+        if (msg.text === userMessage && msg === history[history.length - 1]) continue;
+
+        const role = msg.role === 'user' ? 'user' : 'model';
+        const prefix = msg.role !== 'user' ? `[${msg.role.toUpperCase()}]: ` : '';
+        
+        // Evitar que haya dos roles seguidos repetidos, Gemini arroja 400 si eso pasa.
+        // Si el ultimo es el mismo rol, concatenamos al texto.
+        if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === role) {
+            geminiHistory[geminiHistory.length - 1].text += `\n\n${prefix}${msg.text}`;
         } else {
-            // Simplificación: Todo lo que dicen el Tutor o el Classmate se manda como 'model' o contexto
-            geminiHistory.push({ role: 'model', text: `[${msg.role.toUpperCase()}]: ${msg.text}` });
+            geminiHistory.push({ role, text: `${prefix}${msg.text}` });
         }
     }
 
-    // Agregar mensaje actual del usuario
-    geminiHistory.push({ role: 'user', text: `[USER]: ${userMessage}` });
+    // Agregar mensaje actual del usuario (asegurando alternancia)
+    if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'user') {
+        geminiHistory[geminiHistory.length - 1].text += `\n\n[USER]: ${userMessage}`;
+    } else {
+        geminiHistory.push({ role: 'user', text: `[USER]: ${userMessage}` });
+    }
 
+    // Gemini exige que si el ultimo no es user (casi imposible aca), o el primero no es user...
+    // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
         const tutorContextParam = "Recuerda usar 【BLACKBOARD】...【/BLACKBOARD】 para enviar contenido a la pizarra si vas a mostrar diapositivas o preguntas densas.";
