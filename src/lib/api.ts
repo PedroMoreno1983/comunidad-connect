@@ -357,7 +357,6 @@ export const ExpensesService = {
                 items:expense_items(*)
             `)
             .eq('unit_id', unitId)
-            .order('year', { ascending: false })
             .order('month', { ascending: false });
 
         if (error) {

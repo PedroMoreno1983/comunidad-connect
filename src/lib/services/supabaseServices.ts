@@ -246,7 +246,6 @@ export const ExpenseService = {
         expense_items (*)
       `)
             .eq('unit_id', unitId)
-            .order('year', { ascending: false })
             .order('month', { ascending: false });
 
         if (error) throw error;
@@ -261,7 +260,6 @@ export const ExpenseService = {
         expense_items (*),
         units:unit_id (number, tower, profiles:owner_id (name))
       `)
-            .order('year', { ascending: false })
             .order('month', { ascending: false });
 
         if (error) throw error;
@@ -283,7 +281,7 @@ export const ExpenseService = {
     async getStats() {
         const { data, error } = await supabase
             .from('expenses')
-            .select('status, total_amount');
+            .select('status, amount');
 
         if (error) throw error;
 
@@ -296,9 +294,9 @@ export const ExpenseService = {
         };
 
         data?.forEach((e: any) => {
-            if (e.status === 'paid') stats.totalRevenue += Number(e.total_amount);
-            if (e.status === 'pending') stats.totalPending += Number(e.total_amount);
-            if (e.status === 'overdue') stats.totalOverdue += Number(e.total_amount);
+            if (e.status === 'paid') stats.totalRevenue += Number(e.amount);
+            if (e.status === 'pending') stats.totalPending += Number(e.amount);
+            if (e.status === 'overdue') stats.totalOverdue += Number(e.amount);
         });
 
         const totalAmount = stats.totalRevenue + stats.totalPending + stats.totalOverdue;
@@ -319,12 +317,10 @@ export const CondoFeeService = {
                 *,
                 units:unit_id (number, tower)
             `)
-            .order('year', { ascending: false })
             .order('month', { ascending: false });
 
         if (error) throw error;
-        // Normalize: alias total_amount as amount for backward-compat with components
-        return (data || []).map((e: any) => ({ ...e, amount: e.total_amount }));
+        return data || [];
     },
 
     async markAsPaid(expenseId: string, paymentMethod: string = 'manual') {
