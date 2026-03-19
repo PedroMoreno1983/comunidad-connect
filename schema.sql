@@ -388,3 +388,56 @@ create policy "Admin manage options" on public.poll_options for all using (
 alter table public.votes enable row level security;
 create policy "Votes viewable by all" on public.votes for select using (true);
 CREATE POLICY "Allow inserts from Demo users" ON public.votes FOR INSERT WITH CHECK (true);
+
+-- =============================================
+-- 15. FORMACIÓN Y CAPACITACIÓN MULTI-AGENTE
+-- =============================================
+create table if not exists public.training_modules (
+  id uuid default uuid_generate_v4() primary key,
+  title text not null,
+  description text,
+  target_audience text default 'all' check (target_audience in ('resident', 'concierge', 'admin', 'all')),
+  is_active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table if not exists public.training_lessons (
+  id uuid default uuid_generate_v4() primary key,
+  module_id uuid references public.training_modules(id) on delete cascade not null,
+  title text not null,
+  content text not null,
+  order_index integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table if not exists public.user_training_progress (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) not null,
+  module_id uuid references public.training_modules(id) on delete cascade not null,
+  status text default 'started' check (status in ('started', 'completed')),
+  score integer default 0,
+  completed_at timestamp with time zone,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, module_id)
+);
+
+alter table public.training_modules enable row level security;
+alter table public.training_lessons enable row level security;
+alter table public.user_training_progress enable row level security;
+
+create policy "Training modules viewable by all" on public.training_modules for select using (true);
+create policy "Admin manage training modules" on public.training_modules for all using (
+  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
+);
+
+create policy "Training lessons viewable by all" on public.training_lessons for select using (true);
+create policy "Admin manage training lessons" on public.training_lessons for all using (
+  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
+);
+
+create policy "Users view own progress" on public.user_training_progress for select using (
+  auth.uid() = user_id
+  or exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
+);
+create policy "Users insert own progress" on public.user_training_progress for insert with check (auth.uid() = user_id);
+create policy "Users update own progress" on public.user_training_progress for update using (auth.uid() = user_id);
