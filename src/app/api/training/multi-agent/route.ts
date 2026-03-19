@@ -33,10 +33,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (!GEMINI_API_KEY || !GEMINI_API_KEY.startsWith("AIza")) {
-        return NextResponse.json(
-            { error: "API Key not configured" },
-            { status: 500 }
-        );
+        return NextResponse.json({
+            responses: [{
+                id: `sys-err-${Date.now()}`,
+                role: 'system',
+                text: 'Error interno: La GEMINI_API_KEY no está configurada correctamente en el entorno.'
+            }]
+        }, { status: 200 });
     }
 
     try {
@@ -54,9 +57,12 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Training MultiAgent API Error:", error);
-        return NextResponse.json(
-            { error: error.message || "Unknown Error" },
-            { status: 500 }
-        );
+        return NextResponse.json({
+            responses: [{
+                id: `sys-err-${Date.now()}`,
+                role: 'system',
+                text: `Error de los modelos de IA: ${error.message || "Desconocido"}. Revisa los logs o tu clave de API.`
+            }]
+        }, { status: 200 });
     }
 }
