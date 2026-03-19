@@ -108,7 +108,13 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        const tutorContextParam = "Recuerda usar 【BLACKBOARD】...【/BLACKBOARD】 para enviar contenido a la pizarra si vas a mostrar diapositivas o preguntas densas.";
+        let tutorContextParam = "Opcional: puedes usar 【BLACKBOARD】...【/BLACKBOARD】 para actualizar la pizarra con información visual si lo crees necesario.";
+        
+        // Forzar la pizarra visual al inicio de la conversación
+        if (history.length <= 2) {
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. Usa EXÁCTAMENTE la etiqueta 【BLACKBOARD】 y dentro pon un título en Markdown (ej. # Título) y los puntos clave de lo que vas a enseñar. Fuera de esa etiqueta, saluda amigablemente en el chat.";
+        }
+
         const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + "\n\n" + tutorContextParam, geminiHistory);
         
         let tutorChatText = rawTutorResponse;
