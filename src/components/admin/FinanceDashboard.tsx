@@ -16,7 +16,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
     const stats = [
         {
             label: "Recaudación Mensual",
-            value: `$${data.totalRevenue.toLocaleString('es-CL')}`,
+            value: `$${(data.totalRevenue || 0).toLocaleString('es-CL')}`,
             change: "+12.5%",
             trend: "up",
             icon: DollarSign,
@@ -25,7 +25,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
         },
         {
             label: "Egresos Totales",
-            value: `$${data.totalExpenses.toLocaleString('es-CL')}`,
+            value: `$${(data.totalExpenses || 0).toLocaleString('es-CL')}`,
             change: "-4.2%",
             trend: "down",
             icon: TrendingDown,
@@ -34,7 +34,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
         },
         {
             label: "Fondo de Reserva",
-            value: `$${data.reserveFund.toLocaleString('es-CL')}`,
+            value: `$${(data.reserveFund || 0).toLocaleString('es-CL')}`,
             change: "+2.1%",
             trend: "up",
             icon: Wallet,
@@ -149,7 +149,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                 </div>
                                 <div className="text-right">
                                     <p className={`text-lg font-black ${activity.type === 'income' ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
-                                        {activity.type === 'income' ? '+' : '-'}${activity.amount.toLocaleString('es-CL')}
+                                        {activity.type === 'income' ? '+' : '-'}${(activity.amount || 0).toLocaleString('es-CL')}
                                     </p>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Liquidado</span>
                                 </div>

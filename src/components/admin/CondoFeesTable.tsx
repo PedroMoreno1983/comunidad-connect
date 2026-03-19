@@ -94,7 +94,7 @@ export function CondoFeesTable() {
                                     </p>
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className="font-black text-slate-900 dark:text-white">${fee.amount.toLocaleString('es-CL')}</span>
+                                    <span className="font-black text-slate-900 dark:text-white">${(fee.amount || 0).toLocaleString('es-CL')}</span>
                                 </td>
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' && (
