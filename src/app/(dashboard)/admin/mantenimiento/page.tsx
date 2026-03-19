@@ -9,6 +9,7 @@ import {
     BarChart3, ShieldCheck, HeartPulse, DollarSign
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 export default function MantenimientoAdminPage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'assets'>('overview');
