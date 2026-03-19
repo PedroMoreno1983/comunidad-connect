@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { CreditCard, History, AlertCircle, CheckCircle2, Home } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { getApiUrl } from "@/lib/config";
+import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -95,7 +94,7 @@ export default function FinancesPage() {
     const handlePayHaulmer = async (expense: Expense) => {
         setProcessingId(expense.id);
         try {
-            const monthLabel = format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es });
+            const monthLabel = safeFormatDate(expense.month, 'MMMM yyyy', true);
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -151,7 +150,7 @@ export default function FinancesPage() {
                                 <CardTitle className="text-lg">Deuda Actual</CardTitle>
                             </div>
                             <span className="text-2xl font-black text-rose-600">
-                                ${totalDebt.toLocaleString('es-CL')}
+                                {formatCurrency(totalDebt)}
                             </span>
                         </div>
                     </CardHeader>
@@ -182,16 +181,16 @@ export default function FinancesPage() {
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold text-slate-900 capitalize">
-                                                    {format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es })}
+                                                    {safeFormatDate(expense.month, 'MMMM yyyy', true)}
                                                 </h4>
                                                 <p className="text-sm text-slate-500">
-                                                    Vence: {format(new Date(expense.due_date), 'dd MMM yyyy')}
+                                                    Vence: {safeFormatDate(expense.due_date, 'dd MMM yyyy')}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                                             <span className="text-lg font-bold text-slate-700">
-                                                ${Number(expense.amount).toLocaleString('es-CL')}
+                                                {formatCurrency(expense.amount)}
                                             </span>
                                             <Button
                                                 onClick={() => handlePayHaulmer(expense)}
@@ -226,15 +225,15 @@ export default function FinancesPage() {
                                     <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div>
                                             <p className="text-sm font-medium text-slate-700 capitalize">
-                                                {format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es })}
+                                                {safeFormatDate(expense.month, 'MMMM yyyy', true)}
                                             </p>
                                             <p className="text-xs text-slate-400">
-                                                {expense.paid_at ? format(new Date(expense.paid_at), 'dd MMM yyyy') : 'Pagado'}
+                                                {expense.paid_at ? safeFormatDate(expense.paid_at, 'dd MMM yyyy') : 'Pagado'}
                                             </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm font-bold text-slate-900">
-                                                ${Number(expense.amount).toLocaleString('es-CL')}
+                                                {formatCurrency(expense.amount)}
                                             </p>
                                             <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 mt-1 border-emerald-200/50">
                                                 Completado

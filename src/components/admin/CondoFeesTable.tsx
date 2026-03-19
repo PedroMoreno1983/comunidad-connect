@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { CondoFeeService } from "@/lib/services/supabaseServices";
 import { Badge } from "@/components/ui/Badge";
 import { CreditCard, CheckCircle2, Clock, AlertCircle } from "lucide-react";
@@ -87,14 +86,14 @@ export function CondoFeesTable() {
                                 </td>
                                 <td className="py-4 px-6">
                                     <p className="font-bold text-slate-700 dark:text-slate-200 capitalize">
-                                        {format(new Date(fee.month), 'MMMM yyyy', { locale: es })}
+                                        {safeFormatDate(fee.month, 'MMMM yyyy', true)}
                                     </p>
                                     <p className="text-xs text-slate-400">
-                                        Vence: {format(new Date(fee.due_date), 'dd/MM/yyyy')}
+                                        Vence: {safeFormatDate(fee.due_date, 'dd/MM/yyyy')}
                                     </p>
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className="font-black text-slate-900 dark:text-white">${(fee.amount || 0).toLocaleString('es-CL')}</span>
+                                    <span className="font-black text-slate-900 dark:text-white">{formatCurrency(fee.amount)}</span>
                                 </td>
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' && (
@@ -122,7 +121,7 @@ export function CondoFeesTable() {
                                             </span>
                                             {fee.paid_at && (
                                                 <span className="text-[10px] text-slate-400">
-                                                    {format(new Date(fee.paid_at), 'dd/MM HH:mm')}
+                                                    {safeFormatDate(fee.paid_at, 'dd/MM HH:mm')}
                                                 </span>
                                             )}
                                         </div>
