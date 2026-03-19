@@ -29,7 +29,7 @@ export default function ExpensesPage() {
                     id: exp.id,
                     unitId: exp.unit_id,
                     month: exp.month,
-                    amount: Number(exp.total_amount),
+                    amount: Number(exp.amount),
                     status: exp.status,
                     dueDate: exp.due_date,
                     paidAt: exp.paid_at,

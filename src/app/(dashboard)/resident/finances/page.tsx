@@ -18,8 +18,7 @@ interface Expense {
     id: string;
     unit_id: string;
     month: string;
-    year: number;
-    total_amount: number;
+    amount: number;
     status: 'pending' | 'paid' | 'overdue';
     due_date: string;
     paid_at?: string;
@@ -76,7 +75,6 @@ export default function FinancesPage() {
                 .from('expenses')
                 .select('*, units(number)')
                 .eq('unit_id', targetUnitId)
-                .order('year', { ascending: false })
                 .order('month', { ascending: false });
 
             if (error) throw error;
@@ -97,12 +95,12 @@ export default function FinancesPage() {
     const handlePayHaulmer = async (expense: Expense) => {
         setProcessingId(expense.id);
         try {
-            const monthLabel = `${expense.month} ${expense.year}`;
+            const monthLabel = format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es });
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    amount: expense.total_amount,
+                    amount: expense.amount,
                     description: `Gastos Comunes ${monthLabel} - Depto ${expense.units?.number ?? ''}`,
                     reference: `EXP_${expense.id}`,
                     client: {
@@ -131,7 +129,7 @@ export default function FinancesPage() {
 
     const pendingExpenses = expenses.filter(e => e.status !== 'paid');
     const paidExpenses = expenses.filter(e => e.status === 'paid');
-    const totalDebt = pendingExpenses.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+    const totalDebt = pendingExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -184,7 +182,7 @@ export default function FinancesPage() {
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold text-slate-900 capitalize">
-                                                    {expense.month} {expense.year}
+                                                    {format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es })}
                                                 </h4>
                                                 <p className="text-sm text-slate-500">
                                                     Vence: {format(new Date(expense.due_date), 'dd MMM yyyy')}
@@ -193,7 +191,7 @@ export default function FinancesPage() {
                                         </div>
                                         <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                                             <span className="text-lg font-bold text-slate-700">
-                                                ${Number(expense.total_amount).toLocaleString('es-CL')}
+                                                ${Number(expense.amount).toLocaleString('es-CL')}
                                             </span>
                                             <Button
                                                 onClick={() => handlePayHaulmer(expense)}
@@ -228,7 +226,7 @@ export default function FinancesPage() {
                                     <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div>
                                             <p className="text-sm font-medium text-slate-700 capitalize">
-                                                {expense.month} {expense.year}
+                                                {format(new Date(expense.month + '-01T00:00:00'), 'MMMM yyyy', { locale: es })}
                                             </p>
                                             <p className="text-xs text-slate-400">
                                                 {expense.paid_at ? format(new Date(expense.paid_at), 'dd MMM yyyy') : 'Pagado'}
@@ -236,7 +234,7 @@ export default function FinancesPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm font-bold text-slate-900">
-                                                ${Number(expense.total_amount).toLocaleString('es-CL')}
+                                                ${Number(expense.amount).toLocaleString('es-CL')}
                                             </p>
                                             <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 mt-1 border-emerald-200/50">
                                                 Completado
