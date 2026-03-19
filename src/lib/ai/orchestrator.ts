@@ -15,8 +15,6 @@ interface ChatMessage {
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
 async function callGemini(apiKey: string, systemPrompt: string, history: {role: MessageRole, text: string}[]) {
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
     const formattedHistory = history.map(msg => ({
         role: msg.role,
         parts: [{ text: msg.text }]
@@ -34,19 +32,39 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
         },
     };
 
-    const res = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
+    const configs = [
+        { ver: "v1beta", model: "gemini-2.5-flash" },
+        { ver: "v1beta", model: "gemini-2.0-flash" },
+        { ver: "v1beta", model: "gemini-1.5-flash" },
+        { ver: "v1beta", model: "gemini-pro" },
+        { ver: "v1", model: "gemini-pro" }
+    ];
 
-    if (!res.ok) {
-        throw new Error(`Gemini API Error: ${res.status}`);
+    let lastError = null;
+
+    for (const config of configs) {
+        const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${apiKey}`;
+        
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const candidate = data?.candidates?.[0];
+                return (candidate?.content?.parts?.[0]?.text || "").trim();
+            } else {
+                lastError = new Error(`Gemini API Error: ${res.status}`);
+            }
+        } catch (err) {
+            lastError = err;
+        }
     }
 
-    const data = await res.json();
-    const candidate = data?.candidates?.[0];
-    return (candidate?.content?.parts?.[0]?.text || "").trim();
+    throw lastError || new Error("All Gemini configurations failed");
 }
 
 /**
