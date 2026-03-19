@@ -6,6 +6,7 @@ import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 export default function AdminFinanzasPage() {
     const [finances, setFinances] = useState<CommunityFinance | null>(null);
@@ -33,15 +34,17 @@ export default function AdminFinanzasPage() {
     if (!finances) return <div className="p-10 text-center text-slate-500">Cargando finanzas...</div>;
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="max-w-7xl mx-auto py-10 px-4 md:px-8"
-        >
-            <FinanceDashboard data={finances} />
-            <div className="mt-12">
-                <CondoFeesTable />
-            </div>
-        </motion.div>
+        <ErrorBoundary name="Community Finances Page">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="max-w-7xl mx-auto py-10 px-4 md:px-8"
+            >
+                <FinanceDashboard data={finances} />
+                <div className="mt-12">
+                    <CondoFeesTable />
+                </div>
+            </motion.div>
+        </ErrorBoundary>
     );
 }
