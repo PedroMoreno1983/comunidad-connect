@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "ESTRICTO: si usas la <pizarra> ... </pizarra> DEBES incluir imágenes generativas con la URL exacta así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles) y usar siempre doble salto de línea entre viñetas.";
+        let tutorContextParam = "ESTRICTO: si usas la <pizarra> ... </pizarra> DEBES incluir imágenes con la URL exacta y EN UNA SOLA LÍNEA así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_separadas_por_guion_bajo). NUNCA pongas un salto de línea entre los corchetes de la imagen y los paréntesis.";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium_meeting_3d_render)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1 con salto de línea doble.\n\n* ✅ Punto 2 con salto de línea doble.\n</pizarra>\n\n¡ES OBLIGATORIO incluir la URL completa (https://image.pollinations.ai/...) dentro de los paréntesis de la imagen y usar asteriscos para las listas! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium_meeting_3d_render?width=800&height=400)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1 con salto de línea doble.\n\n* ✅ Punto 2 con salto de línea doble.\n</pizarra>\n\n¡ES OBLIGATORIO que la imagen (el ![alt] y el (url)) estén en la MISMA LÍNEA sin saltos! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
@@ -171,7 +171,7 @@ export async function runMultiAgentTurn(
         // Le damos contexto sobre lo que acaba de responder el tutor
         geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
         
-        const classmateContextParam = `Eres ${persona1.name}. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. NO escribas un guion para otras personas.\n2. NO uses etiquetas como [Tu Nombre]: al principio de tu mensaje.\n3. Actúa únicamente de acuerdo a tu personalidad.`;
+        const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE, DAR LECCIONES O ROBAR EL ROL DE LA TUTORA.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina, duda o haz una pregunta CORTA sobre lo que acaba de decir la Tutora.`;
         const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, geminiHistory);
         
         let classmate1FinalText = "";
@@ -190,7 +190,7 @@ export async function runMultiAgentTurn(
                 const remainingPersonas = CLASSMATE_PERSONAS.filter(p => p.name !== persona1.name);
                 const persona2 = remainingPersonas[Math.floor(Math.random() * remainingPersonas.length)];
                 
-                const classmate2ContextParam = `Eres ${persona2.name}. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". Responde a eso o acota algo a la clase brevemente. REGLAS:\n1. NO escribas un guion.\n2. NO uses etiquetas de nombre.\n3. Actúa 100% de acuerdo a tu personalidad única.`;
+                const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente.\n3. NO uses etiquetas de nombre ni asteriscos de acciones.`;
                 const classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, geminiHistory);
                 
                 if (classmate2Response && classmate2Response.length > 5 && !classmate2Response.includes("BLACKBOARD")) {
