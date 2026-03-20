@@ -152,8 +152,8 @@ export async function runMultiAgentTurn(
             blackboard: tutorBlackboard || undefined
         });
 
-        // 2. DECIDIR SI INTERVIENE EL CLASSMATE (ej: 30% de probabilidad O si estamos al inicio)
-        const shouldClassmateSpeak = Math.random() < 0.3 && geminiHistory.length > 2;
+        // 2. DECIDIR SI INTERVIENE EL CLASSMATE (ej: 70% de probabilidad O si estamos al inicio)
+        const shouldClassmateSpeak = Math.random() < 0.7 && geminiHistory.length > 2;
 
         if (shouldClassmateSpeak) {
             const persona = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
