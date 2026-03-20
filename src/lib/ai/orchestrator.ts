@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "Opcional: puedes usar las etiquetas [PIZARRA] ... [/PIZARRA] para actualizar la pantalla. Puedes usar imágenes generativas en Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo).";
+        let tutorContextParam = "Opcional: puedes usar las etiquetas <pizarra> ... </pizarra> para actualizar la pantalla. Puedes usar imágenes generativas en Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo).";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n[PIZARRA]\n# Título Markdown\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo)\n- Puntos clave\n[/PIZARRA]\n\n¡NO olvides la etiqueta de cierre [/PIZARRA]! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n<pizarra>\n# Título Markdown\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo)\n- Puntos clave\n</pizarra>\n\n¡NO olvides la etiqueta de cierre </pizarra> ni la de apertura! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
@@ -136,12 +136,25 @@ export async function runMultiAgentTurn(
         let tutorChatText = sanitizeAgentResponse(rawTutorResponse);
         let tutorBlackboard = "";
 
-        // Extraer contenido de la pizarra si el tutor lo envió
-        const bbRegex = /(?:\[|【)(?:BLACKBOARD|PIZARRA)(?:\]|】)([\s\S]*?)(?:(?:\[|【)\/(?:BLACKBOARD|PIZARRA)(?:\]|】)|$)/i;
+        // Extractor primario: Soporta <pizarra>, [PIZARRA], o 【BLACKBOARD】
+        const bbRegex = /(?:<pizarra>|\[PIZARRA\]|【BLACKBOARD】)([\s\S]*?)(?:<\/pizarra>|\[\/PIZARRA\]|【\/BLACKBOARD】|$)/i;
         const bbMatch = tutorChatText.match(bbRegex);
+        
         if (bbMatch) {
             tutorBlackboard = bbMatch[1].trim();
             tutorChatText = tutorChatText.replace(bbRegex, "").trim();
+        } else {
+            // Extractor secundario (Fallback): Si la IA omitió etiqueta de apertura pero escupió el cierre
+            const fallbackRegex = /^([\s\S]*?)(?:<\/pizarra>|\[\/PIZARRA\]|【\/BLACKBOARD】)/i;
+            const fallbackMatch = tutorChatText.match(fallbackRegex);
+            if (fallbackMatch && fallbackMatch[1].length > 20) {
+               tutorBlackboard = fallbackMatch[1].trim();
+               tutorChatText = tutorChatText.replace(fallbackRegex, "").trim();
+            }
+        }
+
+        if (tutorBlackboard && (!tutorChatText || tutorChatText.length < 5)) {
+            tutorChatText = "¡Toda la información importante de esta lección está ahora compartida en la pizarra! ¿Comenzamos?";
         }
 
         const tutorMsgId = `tutor-${Date.now()}`;
