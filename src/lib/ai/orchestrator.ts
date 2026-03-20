@@ -171,8 +171,12 @@ export async function runMultiAgentTurn(
         // Le damos contexto sobre lo que acaba de responder el tutor
         geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
         
+        // Forzamos un turno falso de "user" para romper la continuidad de la IA y que no asuma el rol anterior
+        const classmate1History = [...geminiHistory];
+        classmate1History.push({ role: 'user', text: `Instrucción del Sistema: La Tutora CoCo acaba de terminar de hablar. Ahora debes actuar estrictamente como el alumno ${persona1.name} y dar tu opinión corta.` });
+
         const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina o duda sobre la Tutora.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
-        const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, geminiHistory);
+        const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History);
         
         let classmate1FinalText = "";
         if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
@@ -190,8 +194,11 @@ export async function runMultiAgentTurn(
                 const remainingPersonas = CLASSMATE_PERSONAS.filter(p => p.name !== persona1.name);
                 const persona2 = remainingPersonas[Math.floor(Math.random() * remainingPersonas.length)];
                 
+                const classmate2History = [...geminiHistory];
+                classmate2History.push({ role: 'user', text: `Instrucción del Sistema: El vecino ${persona1.name} acaba de opinar. Ahora debes actuar estrictamente como el alumno ${persona2.name} y responderle o acotar algo a la clase.` });
+
                 const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente.\n3. NO uses etiquetas de nombre ni asteriscos de acciones.`;
-                const classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, geminiHistory);
+                const classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History);
                 
                 if (classmate2Response && classmate2Response.length > 5 && !classmate2Response.includes("BLACKBOARD")) {
                     newResponses.push({
