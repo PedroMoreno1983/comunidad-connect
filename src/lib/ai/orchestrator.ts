@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "Opcional: puedes usar las etiquetas <pizarra> ... </pizarra> para actualizar la pantalla. Usa imágenes generativas Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo) y MUCHO formato visual (emojis, negritas, listas).";
+        let tutorContextParam = "ESTRICTO: si usas la <pizarra> ... </pizarra> DEBES incluir imágenes generativas con la URL exacta así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles) y usar siempre doble salto de línea entre viñetas.";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo_y_3d_render)\n\n## 📋 Puntos Clave\n✅ Usa emojis vistosos y listas en markdown.\n✅ Hazlo muy visualmente dinámico, no texto plano.\n</pizarra>\n\n¡NO olvides la etiqueta de cierre </pizarra> ni la de apertura! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium_meeting_3d_render)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1 con salto de línea doble.\n\n* ✅ Punto 2 con salto de línea doble.\n</pizarra>\n\n¡ES OBLIGATORIO incluir la URL completa (https://image.pollinations.ai/...) dentro de los paréntesis de la imagen y usar asteriscos para las listas! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
@@ -165,25 +165,42 @@ export async function runMultiAgentTurn(
             blackboard: tutorBlackboard || undefined
         });
 
-        // 2. DECIDIR SI INTERVIENE EL CLASSMATE (ej: 70% de probabilidad desde el turno 1)
-        const shouldClassmateSpeak = Math.random() < 0.7 && geminiHistory.length > 0;
-
-        if (shouldClassmateSpeak) {
-            const persona = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
+        // 2. INTERVENCIÓN DE CLASSMATE 1 (100% asegurado en cada turno de usuario)
+        const persona1 = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
+        
+        // Le damos contexto sobre lo que acaba de responder el tutor
+        geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
+        
+        const classmateContextParam = `Eres ${persona1.name}. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. NO escribas un guion para otras personas.\n2. NO uses etiquetas como [Tu Nombre]: al principio de tu mensaje.\n3. Actúa únicamente de acuerdo a tu personalidad.`;
+        const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, geminiHistory);
+        
+        let classmate1FinalText = "";
+        if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
+            classmate1FinalText = sanitizeAgentResponse(classmateResponse);
+            newResponses.push({
+                id: `classmate1-${Date.now()}`,
+                role: 'classmate',
+                name: persona1.name,
+                text: classmate1FinalText
+            });
+            geminiHistory.push({ role: 'model', text: `[${persona1.name}]: ${classmate1FinalText}` });
             
-            // Le damos contexto sobre lo que acaba de responder el tutor
-            geminiHistory.push({ role: 'model', text: `[TUTOR]: ${tutorChatText}` });
-            
-            const classmateContextParam = `Eres ${persona.name}. El tutor acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. NO escribas un guion para otras personas.\n2. NO uses etiquetas como [Tu Nombre]: al principio de tu mensaje.\n3. Actúa únicamente de acuerdo a tu personalidad.`;
-            const classmateResponse = await callGemini(apiKey, persona.prompt + "\n\n" + classmateContextParam, geminiHistory);
-            
-            if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
-                newResponses.push({
-                    id: `classmate-${Date.now()}`,
-                    role: 'classmate',
-                    name: persona.name,
-                    text: sanitizeAgentResponse(classmateResponse)
-                });
+            // 3. INTERVENCIÓN DE CLASSMATE 2 (50% de probabilidad de que otro vecino le responda o acote algo)
+            if (Math.random() < 0.5) {
+                const remainingPersonas = CLASSMATE_PERSONAS.filter(p => p.name !== persona1.name);
+                const persona2 = remainingPersonas[Math.floor(Math.random() * remainingPersonas.length)];
+                
+                const classmate2ContextParam = `Eres ${persona2.name}. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". Responde a eso o acota algo a la clase brevemente. REGLAS:\n1. NO escribas un guion.\n2. NO uses etiquetas de nombre.\n3. Actúa 100% de acuerdo a tu personalidad única.`;
+                const classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, geminiHistory);
+                
+                if (classmate2Response && classmate2Response.length > 5 && !classmate2Response.includes("BLACKBOARD")) {
+                    newResponses.push({
+                        id: `classmate2-${Date.now()}`,
+                        role: 'classmate',
+                        name: persona2.name,
+                        text: sanitizeAgentResponse(classmate2Response)
+                    });
+                }
             }
         }
 
