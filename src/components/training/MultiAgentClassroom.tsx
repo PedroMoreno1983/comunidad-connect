@@ -149,6 +149,28 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                                 }} 
                                             />
                                         );
+                                    },
+                                    a: ({node, ...props}) => {
+                                        const href = props.href || '';
+                                        // Si es un link de YouTube, lo renderizamos como Iframe en vivo
+                                        const ytMatch = href.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+                                        
+                                        if (ytMatch && ytMatch[1]) {
+                                            const videoId = ytMatch[1];
+                                            return (
+                                                <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl mb-4 border border-slate-200 dark:border-slate-800">
+                                                    <iframe 
+                                                        src={`https://www.youtube.com/embed/${videoId}`}
+                                                        className="absolute top-0 left-0 w-full h-full border-0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        // Link normal
+                                        return <a {...props} className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium" target="_blank" rel="noopener noreferrer" />;
                                     }
                                 }}
                             >
