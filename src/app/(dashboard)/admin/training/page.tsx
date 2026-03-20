@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/authContext';
 import { 
     GraduationCap, Plus, Trash2, Edit3, 
-    BookOpen, Users, Save, X, Eye, AlertCircle 
+    BookOpen, Users, Save, X, Eye, AlertCircle, UploadCloud
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -30,6 +30,38 @@ export default function AdminTrainingPage() {
     const [newAudience, setNewAudience] = useState('all');
     const [newContent, setNewContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/training/parse', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                setNewContent(prev => prev ? prev + '\n\n' + data.text : data.text);
+                if (!newTitle) setNewTitle(`Módulo basado en: ${file.name}`);
+            } else {
+                alert(data.error || 'Error al procesar el archivo');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error conectando con el analizador de documentos.');
+        } finally {
+            setIsUploading(false);
+            // Reset input so they can upload the same file again if needed
+            e.target.value = '';
+        }
+    };
 
     useEffect(() => {
         if (!user || user.role !== 'admin') {
@@ -180,17 +212,46 @@ export default function AdminTrainingPage() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
                                     Contenido (Conocimiento de la Tutora) *
                                 </label>
-                                <p className="text-xs text-slate-500 mb-2">Pega aquí manuales, normativas o copias de un PDF. El IA leerá esto y se basará estrictamente en esta información para dar la clase.</p>
+                                
+                                <div className="relative p-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-center overflow-hidden">
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf,.docx,.doc,.txt" 
+                                        onChange={handleFileUpload} 
+                                        disabled={isUploading}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10" 
+                                    />
+                                    <div className="flex flex-col items-center justify-center gap-2 pointer-events-none relative z-0">
+                                        {isUploading ? (
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                        ) : (
+                                            <UploadCloud className="w-10 h-10 text-indigo-500 mb-1" />
+                                        )}
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            {isUploading ? 'Extrayendo texto con IA...' : 'Arrastra un PDF o Word aquí, o haz clic para subir'}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            La Tutora "leerá" y memorizará este manual automáticamente (.pdf, .docx, .txt)
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 py-2">
+                                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">O escribe manualmente</span>
+                                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                </div>
+
                                 <textarea 
                                     required 
                                     rows={8}
                                     value={newContent}
                                     onChange={e => setNewContent(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 resize-y"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 resize-y"
                                     placeholder="El Condominio Los Pinos establece que ante un fuerte sismo, las vías de evacuación son..."
                                 />
                             </div>
