@@ -110,7 +110,7 @@ export default function AdminTrainingPage() {
                         Creador de Cursos IA
                     </h1>
                     <p className="mt-2 text-slate-500 max-w-2xl">
-                        Añade contenido en texto (ej. PDFs, protocolos, leyes) y el CoCo Tutor enseñará estas lecciones 
+                        Añade contenido en texto (ej. PDFs, protocolos, leyes) y la Tutora CoCo enseñará estas lecciones 
                         automáticamente de forma interactiva a tu comunidad.
                     </p>
                 </div>
@@ -182,7 +182,7 @@ export default function AdminTrainingPage() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                    Contenido (Conocimiento del Tutor) *
+                                    Contenido (Conocimiento de la Tutora) *
                                 </label>
                                 <p className="text-xs text-slate-500 mb-2">Pega aquí manuales, normativas o copias de un PDF. El IA leerá esto y se basará estrictamente en esta información para dar la clase.</p>
                                 <textarea 
