@@ -34,7 +34,8 @@ import {
     Waves,
     Hash,
     UserCircle,
-    GraduationCap
+    GraduationCap,
+    BookOpen
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -122,7 +123,9 @@ export function Sidebar() {
         { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
         { href: '/concierge/visitors', label: 'Visitas', icon: Shield, roles: ['concierge', 'admin'] },
         { href: '/concierge/packages', label: 'Paquetería', icon: Package, roles: ['concierge', 'admin', 'resident'] },
-        { href: '/resident/training', label: 'Formación Multi-Agente', icon: GraduationCap, roles: ['resident', 'admin', 'concierge'] },
+        { href: '/resident/training', label: 'Aula Multi-Agente', icon: GraduationCap, roles: ['resident', 'concierge'] },
+        { href: '/admin/training', label: 'Creador Cursos IA', icon: BookOpen, roles: ['admin'] },
+        { href: '/resident/training', label: 'Vista Alumno (Aula)', icon: Users, roles: ['admin'] },
         { href: '/training', label: 'Cursos (Antiguo)', icon: GraduationCap, roles: ['admin', 'concierge'] },
         { href: '/profile', label: 'Mi Perfil', icon: UserCircle, roles: ['admin', 'resident', 'concierge'] },
     ];
