@@ -13,7 +13,7 @@ export interface ChatMessage {
 }
 
 const HALLUCINATED_SPEAKER_TAG_REGEX =
-    /((?:^|\n)\s*)\[(?:CLASSMATE|TUTOR|USER|USUARIO|ASSISTANT|SYSTEM|MODEL|AGENT|BOT|AI|ALUMNO|ALUMNA|PROFESOR(?:A)?|DOCENTE|ESTUDIANTE)\]:?\s*/gi;
+    /((?:^|\n)\s*)\[([A-Za-z0-9\s_]+)\]:?\s*/gi;
 
 function sanitizeAgentResponse(text: string) {
     return text
@@ -161,7 +161,7 @@ export async function runMultiAgentTurn(
             // Le damos contexto sobre lo que acaba de responder el tutor
             geminiHistory.push({ role: 'model', text: `[TUTOR]: ${tutorChatText}` });
             
-            const classmateContextParam = "El tutor acaba de dar su explicación. Reacciona brevemente, haz una duda o comenta algo basado estrictamente en el contenido o en la respuesta del usuario, desde la perspectiva de tu personaje.";
+            const classmateContextParam = `Eres ${persona.name}. El tutor acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. NO escribas un guion para otras personas.\n2. NO uses etiquetas como [Tu Nombre]: al principio de tu mensaje.\n3. Actúa únicamente de acuerdo a tu personalidad.`;
             const classmateResponse = await callGemini(apiKey, persona.prompt + "\n\n" + classmateContextParam, geminiHistory);
             
             if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
