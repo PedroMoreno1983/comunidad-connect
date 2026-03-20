@@ -171,7 +171,7 @@ export async function runMultiAgentTurn(
         // Le damos contexto sobre lo que acaba de responder el tutor
         geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
         
-        const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE, DAR LECCIONES O ROBAR EL ROL DE LA TUTORA.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina, duda o haz una pregunta CORTA sobre lo que acaba de decir la Tutora.`;
+        const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina o duda sobre la Tutora.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
         const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, geminiHistory);
         
         let classmate1FinalText = "";
