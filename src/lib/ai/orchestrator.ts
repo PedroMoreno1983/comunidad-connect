@@ -12,6 +12,16 @@ export interface ChatMessage {
     name?: string;
 }
 
+const HALLUCINATED_SPEAKER_TAG_REGEX =
+    /((?:^|\n)\s*)\[(?:CLASSMATE|TUTOR|USER|USUARIO|ASSISTANT|SYSTEM|MODEL|AGENT|BOT|AI|ALUMNO|ALUMNA|PROFESOR(?:A)?|DOCENTE|ESTUDIANTE)\]:?\s*/gi;
+
+function sanitizeAgentResponse(text: string) {
+    return text
+        .replace(HALLUCINATED_SPEAKER_TAG_REGEX, "$1")
+        .replace(/\[USER\]/gi, "vecino(a)")
+        .trim();
+}
+
 /**
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
@@ -110,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "Opcional: puedes usar 【BLACKBOARD】...【/BLACKBOARD】 para actualizar la pizarra con información visual si lo crees necesario.";
+        let tutorContextParam = "Opcional: puedes usar las etiquetas [PIZARRA] ... [/PIZARRA] para actualizar la pizarra con información visual si lo crees necesario.";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. Usa EXÁCTAMENTE la etiqueta 【BLACKBOARD】 y dentro pon un título en Markdown (ej. # Título) y los puntos clave de lo que vas a enseñar. Fuera de esa etiqueta, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n[PIZARRA]\n# Título Markdown\n- Puntos clave\n[/PIZARRA]\n\n¡NO olvides la etiqueta de cierre [/PIZARRA]! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
@@ -123,11 +133,7 @@ export async function runMultiAgentTurn(
 
         const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + "\n\n" + tutorContextParam, geminiHistory);
         
-        // Remove hallucinatory tags and normalize user reference
-        let tutorChatText = rawTutorResponse
-            .replace(/\[(?:CLASSMATE|TUTOR|USER|[A-Zb-z]+)\]:?\s*/gi, '')
-            .replace(/\[USER\]/gi, "vecino(a)")
-            .trim();
+        let tutorChatText = sanitizeAgentResponse(rawTutorResponse);
         let tutorBlackboard = "";
 
         // Extraer contenido de la pizarra si el tutor lo envió
@@ -157,15 +163,12 @@ export async function runMultiAgentTurn(
             const classmateContextParam = "El tutor acaba de dar su explicación. Reacciona brevemente, haz una duda o comenta algo basado estrictamente en el contenido o en la respuesta del usuario, desde la perspectiva de tu personaje.";
             const classmateResponse = await callGemini(apiKey, persona.prompt + "\n\n" + classmateContextParam, geminiHistory);
             
-            if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD")) {
+            if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
                 newResponses.push({
                     id: `classmate-${Date.now()}`,
                     role: 'classmate',
                     name: persona.name,
-                    text: classmateResponse
-                        .replace(/\[(?:CLASSMATE|TUTOR|USER|[A-Zb-z]+)\]:?\s*/gi, '')
-                        .replace(/\[USER\]/gi, "vecino(a)")
-                        .trim()
+                    text: sanitizeAgentResponse(classmateResponse)
                 });
             }
         }
