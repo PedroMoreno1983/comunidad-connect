@@ -130,19 +130,21 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                     img: ({node, ...props}) => {
-                                        let src = props.src || '';
-                                        // Si la IA alucina una ruta local, la forzamos a Pollinations
+                                        let src = typeof props.src === 'string' ? props.src : '';
+                                        // Filtramos espacios del alt para generar una URL válida 100% segura
+                                        const safeAltTag = (props.alt || 'condominium_meeting').trim().replace(/[\s_]+/g, '-').toLowerCase();
+                                        
                                         if (!src.startsWith('http')) {
-                                            src = `https://image.pollinations.ai/prompt/${encodeURIComponent(props.alt || 'condominium_meeting')}`;
+                                            src = `https://image.pollinations.ai/prompt/${safeAltTag}`;
                                         }
                                         return (
                                             <img 
                                                 {...props} 
                                                 src={src} 
-                                                alt={props.alt || "Ilustración del curso"}
+                                                alt={props.alt || "Ilustración"}
                                                 className="rounded-2xl shadow-xl w-full object-cover max-h-64 mb-4"
                                                 onError={(e) => { 
-                                                    // Fallback ultra-seguro si pollinations falla
+                                                    e.currentTarget.onerror = null; // Evitar loop infinito
                                                     e.currentTarget.src = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"; 
                                                 }} 
                                             />
