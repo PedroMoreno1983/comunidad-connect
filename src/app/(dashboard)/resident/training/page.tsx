@@ -22,7 +22,12 @@ export default function ResidentTrainingPage() {
         fetch('/api/training/modules')
             .then(res => res.json())
             .then(data => {
-                setCourses(data || []);
+                if (Array.isArray(data)) {
+                    setCourses(data);
+                } else {
+                    console.error("API Error fetching courses:", data);
+                    setCourses([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
@@ -72,37 +77,39 @@ export default function ResidentTrainingPage() {
 
                 {loading ? (
                     <div className="py-12 text-center text-slate-500 dark:text-slate-400">Cargando cursos disponibles...</div>
-                ) : courses.length === 0 ? (
-                    <div className="py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700/50 rounded-2xl">
-                        <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Sin cursos específicos</h3>
-                        <p className="text-slate-500 dark:text-slate-400">Prueba el Modo Libre o pide a tu administración que agregue módulos.</p>
-                    </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-5">
-                        {courses.map(course => (
-                            <div 
-                                key={course.id}
-                                onClick={() => {
-                                    setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
-                                    setSelectedCourseTitle(course.title);
-                                }}
-                                className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{course.title}</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4">
-                                    {course.description || "Inicia este curso interactivo con el Tutor CoCo."}
-                                </p>
-                                <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">
-                                    Iniciar Clase &rarr;
-                                </div>
+                        {courses.length === 0 ? (
+                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700/50 rounded-2xl">
+                                <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Sin cursos específicos</h3>
+                                <p className="text-slate-500 dark:text-slate-400">Pide a tu administración que agregue módulos oficiales.</p>
                             </div>
-                        ))}
+                        ) : (
+                            courses.map(course => (
+                                <div 
+                                    key={course.id}
+                                    onClick={() => {
+                                        setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
+                                        setSelectedCourseTitle(course.title);
+                                    }}
+                                    className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group"
+                                >
+                                    <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{course.title}</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4">
+                                        {course.description || "Inicia este curso interactivo con el Tutor CoCo."}
+                                    </p>
+                                    <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">
+                                        Iniciar Clase &rarr;
+                                    </div>
+                                </div>
+                            ))
+                        )}
                         
-                        {/* Modo Inteligencia General */}
+                        {/* Modo Inteligencia General (SIEMPRE VISIBLE) */}
                         <div 
                             onClick={() => {
                                 setSelectedCourseContent(""); 
