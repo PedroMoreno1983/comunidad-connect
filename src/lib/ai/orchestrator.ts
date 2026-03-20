@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "ESTRICTO: si usas la <pizarra> ... </pizarra> DEBES incluir imágenes con la URL exacta EN UNA SOLA LÍNEA así: ![Grafico](https://image.pollinations.ai/prompt/palabra-en-ingles-1-palabra-en-ingles-2). REGLA CRÍTICA DE IMÁGENES: NUNCA pongas espacios ni mayúsculas ni caracteres especiales en la URL, SOLO usa palabras en inglés separadas por guiones medios (-).";
+        let tutorContextParam = "MODO PIZARRA REGLAS: Si usas la etiqueta <pizarra> ... </pizarra> DEBES incluir ayudas visuales. 1) Para imágenes: ![Alt](https://image.pollinations.ai/prompt/palabra-ingles-sin-espacios) (NUNCA uses espacios ni mayúsculas). 2) NUEVA CAPACIDAD: Para mostrar videos explicaivos reales de YouTube usa enlaces estándar: [Ver Video](https://www.youtube.com/watch?v=ID_EJEMPLO). La pizarra detectará mágicamente los enlaces de YouTube y los transformará en reproductores de video incrustados. Usa videos libremente si crees que aportan a la clase.";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium-meeting-3d-render)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1 con salto de línea doble.\n\n* ✅ Punto 2 con salto de línea doble.\n</pizarra>\n\n¡ES OBLIGATORIO que la imagen (el ![alt] y el (url)) estén en la MISMA LÍNEA sin saltos, y que la URL SOLO TENGA letras y guiones medios! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium)\n\n[Ver Video](https://www.youtube.com/watch?v=kR2C2B6u-M4)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1\n</pizarra>\n\n¡Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
