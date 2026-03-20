@@ -137,10 +137,11 @@ export async function runMultiAgentTurn(
         let tutorBlackboard = "";
 
         // Extraer contenido de la pizarra si el tutor lo envió
-        const bbMatch = tutorChatText.match(/【BLACKBOARD】([\\s\\S]*?)【\/BLACKBOARD】/);
+        const bbRegex = /(?:\[|【)(?:BLACKBOARD|PIZARRA)(?:\]|】)([\s\S]*?)(?:(?:\[|【)\/(?:BLACKBOARD|PIZARRA)(?:\]|】)|$)/i;
+        const bbMatch = tutorChatText.match(bbRegex);
         if (bbMatch) {
             tutorBlackboard = bbMatch[1].trim();
-            tutorChatText = tutorChatText.replace(/【BLACKBOARD】[\\s\\S]*?【\/BLACKBOARD】/, "").trim();
+            tutorChatText = tutorChatText.replace(bbRegex, "").trim();
         }
 
         const tutorMsgId = `tutor-${Date.now()}`;
