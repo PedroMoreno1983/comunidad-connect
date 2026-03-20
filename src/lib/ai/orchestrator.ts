@@ -158,7 +158,10 @@ export async function runMultiAgentTurn(
                     id: `classmate-${Date.now()}`,
                     role: 'classmate',
                     name: persona.name,
-                    text: classmateResponse.replace(/\[CLASSMATE\]:/gi, '').trim()
+                    text: classmateResponse
+                        .replace(/\[(?:CLASSMATE|TUTOR|USER|[A-Zb-z]+)\]:?\s*/gi, '')
+                        .replace(/\[USER\]/gi, "vecino(a)")
+                        .trim()
                 });
             }
         }
