@@ -43,12 +43,16 @@ export default function AdminTrainingPage() {
         setLoading(true);
         try {
             const res = await fetch('/api/training/modules');
-            if (res.ok) {
-                const data = await res.json();
-                setCourses(data || []);
+            const data = await res.json();
+            if (res.ok && Array.isArray(data)) {
+                setCourses(data);
+            } else {
+                console.error("Error fetching courses from API:", data);
+                setCourses([]);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Fetch try/catch error:", error);
+            setCourses([]);
         } finally {
             setLoading(false);
         }
