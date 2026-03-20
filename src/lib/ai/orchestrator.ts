@@ -123,7 +123,11 @@ export async function runMultiAgentTurn(
 
         const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + "\n\n" + tutorContextParam, geminiHistory);
         
-        let tutorChatText = rawTutorResponse;
+        // Remove hallucinatory tags and normalize user reference
+        let tutorChatText = rawTutorResponse
+            .replace(/\[(?:CLASSMATE|TUTOR|USER|[A-Zb-z]+)\]:?\s*/gi, '')
+            .replace(/\[USER\]/gi, "vecino(a)")
+            .trim();
         let tutorBlackboard = "";
 
         // Extraer contenido de la pizarra si el tutor lo envió
