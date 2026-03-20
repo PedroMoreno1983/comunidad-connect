@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "Opcional: puedes usar las etiquetas [PIZARRA] ... [/PIZARRA] para actualizar la pizarra con información visual si lo crees necesario.";
+        let tutorContextParam = "Opcional: puedes usar las etiquetas [PIZARRA] ... [/PIZARRA] para actualizar la pantalla. Puedes usar imágenes generativas en Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo).";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n[PIZARRA]\n# Título Markdown\n- Puntos clave\n[/PIZARRA]\n\n¡NO olvides la etiqueta de cierre [/PIZARRA]! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n[PIZARRA]\n# Título Markdown\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo)\n- Puntos clave\n[/PIZARRA]\n\n¡NO olvides la etiqueta de cierre [/PIZARRA]! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 

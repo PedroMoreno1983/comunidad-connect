@@ -116,10 +116,21 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                 <div className="flex-1 overflow-y-auto min-h-0 relative z-10 prose prose-slate dark:prose-invert max-w-none 
                     prose-headings:font-black prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                    prose-a:text-indigo-500 prose-strong:text-indigo-600 dark:prose-strong:text-indigo-400">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {blackboardContent}
-                    </ReactMarkdown>
+                    prose-a:text-indigo-500 prose-strong:text-indigo-600 dark:prose-strong:text-indigo-400
+                    prose-img:rounded-2xl prose-img:shadow-xl prose-img:border prose-img:border-slate-100 dark:prose-img:border-slate-800">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={blackboardContent.substring(0, 50)} // Anima cuando cambia el contenido principal
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.4 }}
+                        >
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {blackboardContent}
+                            </ReactMarkdown>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </div>
 
