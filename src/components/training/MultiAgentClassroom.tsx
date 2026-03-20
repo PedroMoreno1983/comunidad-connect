@@ -24,7 +24,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     const [messages, setMessages] = useState<ChatMessage[]>([{
         id: 'system-1',
         role: 'system',
-        text: '¡Bienvenido al Aula Virtual Multi-Agente! Tu Tutor está preparándose...'
+        text: '¡Bienvenid@ al Aula Virtual Multi-Agente! Tu Tutora CoCo está preparándose...'
     }]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -110,7 +110,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     </div>
                     <div>
                         <h2 className="text-xl font-black text-slate-900 dark:text-white">Pizarra Interactiva</h2>
-                        <p className="text-sm font-medium text-slate-500">Contenido guiado por el Tutor</p>
+                        <p className="text-sm font-medium text-slate-500">Contenido guiado por la Tutora</p>
                     </div>
                 </div>
 
@@ -167,7 +167,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             >
                                 {msg.role !== 'system' && (
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">
-                                        {msg.role === 'tutor' ? 'CoCo Tutor' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
+                                        {msg.role === 'tutor' ? 'Tutora CoCo' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
                                     </span>
                                 )}
                                 <div className={`
@@ -208,7 +208,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Aporta a la clase o haz una pregunta..."
+                            placeholder="Aporta a la clase o haz una pregunta a la Tutora..."
                             className="flex-1 bg-transparent px-4 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
                             disabled={isTyping}
                         />

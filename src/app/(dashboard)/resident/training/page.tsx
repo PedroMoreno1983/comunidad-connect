@@ -71,7 +71,7 @@ export default function ResidentTrainingPage() {
                         Centro de Formación Interactivo
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-3 ml-5 max-w-2xl text-sm font-medium">
-                        Selecciona un módulo oficial creado por la administración. El CoCo Tutor IA y tus compañeros virtuales te enseñarán de forma interactiva.
+                        Selecciona un módulo oficial creado por la administración. La Tutora CoCo IA y tus compañeros virtuales te enseñarán de forma interactiva.
                     </p>
                 </div>
 
@@ -100,7 +100,7 @@ export default function ResidentTrainingPage() {
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{course.title}</h3>
                                     <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4">
-                                        {course.description || "Inicia este curso interactivo con el Tutor CoCo."}
+                                        {course.description || "Inicia este curso interactivo con la Tutora CoCo."}
                                     </p>
                                     <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">
                                         Iniciar Clase &rarr;
@@ -113,7 +113,7 @@ export default function ResidentTrainingPage() {
                         <div 
                             onClick={() => {
                                 setSelectedCourseContent(""); 
-                                setSelectedCourseTitle("Modo Libre (Pregúntale a CoCo Tutor)");
+                                setSelectedCourseTitle("Modo Libre (Pregúntale a la Tutora CoCo)");
                             }}
                             className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
                         >
@@ -122,7 +122,7 @@ export default function ResidentTrainingPage() {
                             </div>
                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Modo Abierto</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                El Tutor usará su inteligencia general sin guiarse estrictamente por un manual interno.
+                                La Tutora usará su inteligencia general sin guiarse estrictamente por un manual interno.
                             </p>
                         </div>
                     </div>
