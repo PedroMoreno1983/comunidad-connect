@@ -120,11 +120,11 @@ export async function runMultiAgentTurn(
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "Opcional: puedes usar las etiquetas <pizarra> ... </pizarra> para actualizar la pantalla. Puedes usar imágenes generativas en Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo).";
+        let tutorContextParam = "Opcional: puedes usar las etiquetas <pizarra> ... </pizarra> para actualizar la pantalla. Usa imágenes generativas Markdown así: ![Grafico](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo) y MUCHO formato visual (emojis, negritas, listas).";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO:\n<pizarra>\n# Título Markdown\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo)\n- Puntos clave\n</pizarra>\n\n¡NO olvides la etiqueta de cierre </pizarra> ni la de apertura! Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título Atractivo\n![Ilustracion](https://image.pollinations.ai/prompt/palabras_clave_en_ingles_separadas_por_guion_bajo_y_3d_render)\n\n## 📋 Puntos Clave\n✅ Usa emojis vistosos y listas en markdown.\n✅ Hazlo muy visualmente dinámico, no texto plano.\n</pizarra>\n\n¡NO olvides la etiqueta de cierre </pizarra> ni la de apertura! Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
@@ -165,8 +165,8 @@ export async function runMultiAgentTurn(
             blackboard: tutorBlackboard || undefined
         });
 
-        // 2. DECIDIR SI INTERVIENE EL CLASSMATE (ej: 70% de probabilidad O si estamos al inicio)
-        const shouldClassmateSpeak = Math.random() < 0.7 && geminiHistory.length > 2;
+        // 2. DECIDIR SI INTERVIENE EL CLASSMATE (ej: 70% de probabilidad desde el turno 1)
+        const shouldClassmateSpeak = Math.random() < 0.7 && geminiHistory.length > 0;
 
         if (shouldClassmateSpeak) {
             const persona = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
