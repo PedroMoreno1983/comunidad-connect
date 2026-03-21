@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['pdf-parse', 'mammoth'],
   // Removing output: 'export' to enable dynamic API routes and Image optimization on Vercel
   images: {
     remotePatterns: [

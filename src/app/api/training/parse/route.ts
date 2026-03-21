@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
     try {
