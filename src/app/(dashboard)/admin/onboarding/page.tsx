@@ -1,0 +1,287 @@
+"use client";
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/lib/authContext';
+import { useRouter } from 'next/navigation';
+import { 
+    UploadCloud, Sparkles, FileText, CheckCircle2, 
+    AlertCircle, Users, Save, Trash2, Edit3 
+} from 'lucide-react';
+
+interface ExtractedUser {
+    id: string; // ID temporal
+    name: string;
+    unit_id: string;
+    email: string;
+    phone: string;
+}
+
+export default function AdminOnboardingPage() {
+    const { user } = useAuth();
+    const router = useRouter();
+
+    const [file, setFile] = useState<File | null>(null);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [extractedData, setExtractedData] = useState<ExtractedUser[] | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncSuccess, setSyncSuccess] = useState(false);
+
+    // Si no es admin, redirigir
+    if (user && user.role !== 'admin') {
+        router.push('/home');
+        return null;
+    }
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const uploadedFile = e.target.files?.[0];
+        if (!uploadedFile) return;
+
+        setFile(uploadedFile);
+        setIsExtracting(true);
+        setExtractedData(null);
+        setSyncSuccess(false);
+
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+
+        try {
+            const res = await fetch('/api/onboarding/extract', {
+                method: 'POST',
+                body: formData,
+            });
+            const result = await res.json();
+            
+            if (res.ok && result.data) {
+                // Asignarle un ID temporal a cada fila para list keys
+                const mappedData = result.data.map((row: any, i: number) => ({
+                    id: `temp-${i}`,
+                    name: row.name || '',
+                    unit_id: row.unit_id || '',
+                    email: row.email || '',
+                    phone: row.phone || ''
+                }));
+                setExtractedData(mappedData);
+            } else {
+                alert(result.error || 'Hubo un error al procesar el archivo con IA.');
+                setFile(null);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error letal de conexión con el Extraordinario de IA.');
+            setFile(null);
+        } finally {
+            setIsExtracting(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleFieldChange = (id: string, field: keyof ExtractedUser, value: string) => {
+        setExtractedData(prev => 
+            prev ? prev.map(row => row.id === id ? { ...row, [field]: value } : row) : null
+        );
+    };
+
+    const handleDeleteRow = (id: string) => {
+        setExtractedData(prev => prev ? prev.filter(row => row.id !== id) : null);
+    };
+
+    const handleSyncToDatabase = async () => {
+        if (!extractedData || extractedData.length === 0) return;
+        
+        const confirmSync = confirm(`¿Estás completamente seguro de inyectar estos ${extractedData.length} residentes a tu Base de Datos en la nube?`);
+        if (!confirmSync) return;
+
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/onboarding/upsert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ residents: extractedData })
+            });
+
+            if (res.ok) {
+                setSyncSuccess(true);
+                setExtractedData(null);
+                setFile(null);
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Hubo un error fatal sincronizando con Supabase.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('La conexión con Supabase falló.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-8 pb-12">
+            <div>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                    <Sparkles className="h-8 w-8 text-indigo-600" />
+                    Asistente Mágico de Migración con IA
+                </h1>
+                <p className="mt-2 text-slate-500 max-w-3xl">
+                    Olvídate de tipear usuarios a mano. Sube tu viejo PDF impreso, Excel desordenado o lista de residentes
+                    escraneada. Nuestro cerebro de Inteligencia Artificial (Gemini) leerá inteligentemente el desastre, 
+                    extraerá los nombres, y poblará la base de datos automáticamente por ti.
+                </p>
+            </div>
+
+            {/* ZONA DE CARGA */}
+            {!extractedData && !syncSuccess && (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl border border-indigo-100 dark:border-indigo-500/20 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50 z-0"></div>
+                    
+                    <input 
+                        type="file" 
+                        accept=".pdf,.docx,.doc,.txt,.csv" 
+                        onChange={handleFileUpload} 
+                        disabled={isExtracting}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10" 
+                    />
+                    
+                    <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
+                        <div className={`p-6 rounded-full bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
+                            {isExtracting ? (
+                                <Sparkles className="w-16 h-16 text-indigo-600 animate-spin-slow" />
+                            ) : (
+                                <UploadCloud className="w-16 h-16 text-indigo-500" />
+                            )}
+                        </div>
+                        
+                        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            {isExtracting ? 'La IA está leyendo y estructurando tu archivo...' : 'Arrastra tu archivo PDF o Word aquí'}
+                        </h3>
+                        
+                        <p className="text-slate-500 font-medium max-w-md mx-auto">
+                            {isExtracting 
+                                ? 'Esto puede tomar hasta 20 segundos dependiendo del tamaño gigantesco del archivo. No cierres la ventana.' 
+                                : 'Soporta nóminas de residentes antiguas, listas de Excel copiadas en texto, o escaneos de OCR.'}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* PANTALLA DE ÉXITO */}
+            {syncSuccess && (
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-500 rounded-3xl p-12 text-center shadow-xl flex flex-col items-center"
+                >
+                    <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg mb-6">
+                        <CheckCircle2 className="h-12 w-12" />
+                    </div>
+                    <h2 className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mb-2">¡Sincronización Mágica Completada!</h2>
+                    <p className="text-emerald-600 dark:text-emerald-500 font-medium mb-8">Todos los residentes han sido inyectados y creados exitosamente en Supabase de forma estructurada.</p>
+                    <button 
+                        onClick={() => setSyncSuccess(false)}
+                        className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 transition"
+                    >
+                        Inyectar Otro Archivo
+                    </button>
+                </motion.div>
+            )}
+
+            {/* DATA GRID INTERACTIVO - REVISIÓN HUMANA */}
+            <AnimatePresence>
+                {extractedData && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+                    >
+                        <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <FileText className="h-6 w-6 text-indigo-400" />
+                                    Tabla de Triaje para Revisión Humana
+                                </h2>
+                                <p className="text-sm text-slate-400 mt-1">
+                                    La Inteligencia Artificial encontró <strong>{extractedData.length} personas</strong>. Por seguridad corporativa, debes revisar que la IA no haya cometido errores leyendo manchas del PDF. Edita los campos si notas algo raro.
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => {setExtractedData(null); setFile(null)}}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition"
+                                >
+                                    Cancelar y Subir Otro
+                                </button>
+                                <button 
+                                    onClick={handleSyncToDatabase}
+                                    disabled={isSyncing}
+                                    className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSyncing ? <span className="animate-pulse">Guardando en Supabase...</span> : <><Save className="h-5 w-5" /> Inyectar a Base de Datos</>}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th className="px-6 py-4 w-1/4">Nombre del Residente</th>
+                                        <th className="px-6 py-4 w-1/6">Depto / Unidad</th>
+                                        <th className="px-6 py-4 w-1/4">Correo Generado/Propio</th>
+                                        <th className="px-6 py-4 w-1/6">Teléfono</th>
+                                        <th className="px-6 py-4 text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 md:max-h-[60vh] overflow-y-auto w-full block">
+                                    {/* Un truco común para que las tablas rolen con 100+ items es display: block en tbody, pero aquí prescindiremos para mantener el flex perfecto width. */}
+                                    {extractedData.map((row) => (
+                                        <tr key={row.id} className="hover:bg-indigo-50/50 dark:hover:bg-slate-700/30 transition group">
+                                            <td className="px-4 py-2">
+                                                <input 
+                                                    value={row.name} 
+                                                    onChange={e => handleFieldChange(row.id, 'name', e.target.value)}
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-medium"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <input 
+                                                    value={row.unit_id} 
+                                                    onChange={e => handleFieldChange(row.id, 'unit_id', e.target.value)}
+                                                    className="w-full bg-slate-100 dark:bg-slate-900 border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-3 py-1 font-mono text-xs"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <input 
+                                                    value={row.email} 
+                                                    onChange={e => handleFieldChange(row.id, 'email', e.target.value)}
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 text-slate-500 dark:text-slate-400"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <input 
+                                                    value={row.phone || ''} 
+                                                    onChange={e => handleFieldChange(row.id, 'phone', e.target.value)}
+                                                    placeholder="N/A"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                <button 
+                                                    onClick={() => handleDeleteRow(row.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                                                    title="Ignorar esta fila"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
