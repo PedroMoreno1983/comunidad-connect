@@ -3,6 +3,7 @@ const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
 
 const GEMINI_JSON_PROMPT = `
 Eres un Extractor de Datos experto.

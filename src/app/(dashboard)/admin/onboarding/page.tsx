@@ -50,9 +50,17 @@ export default function AdminOnboardingPage() {
                 method: 'POST',
                 body: formData,
             });
-            const result = await res.json();
             
-            if (res.ok && result.data) {
+            // Si Vercel devuelve un Timeout 504 (HTML) en lugar de JSON, esto explotaba
+            const textResponse = await res.text();
+            let result;
+            try {
+                result = JSON.parse(textResponse);
+            } catch (e) {
+                throw new Error(`Servidor devolvió un error grave no-JSON (posible Timeout 504 o Archivo muy grande). Respuesta cruda: ${textResponse.substring(0, 50)}...`);
+            }
+            
+            if (res.ok && result?.data) {
                 // Asignarle un ID temporal a cada fila para list keys
                 const mappedData = result.data.map((row: any, i: number) => ({
                     id: `temp-${i}`,
@@ -66,9 +74,9 @@ export default function AdminOnboardingPage() {
                 alert(result.error || 'Hubo un error al procesar el archivo con IA.');
                 setFile(null);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert('Error letal de conexión con el Extraordinario de IA.');
+            alert(`Error de red o timeout en los servidores de IA: ${err?.message || 'Falla desconocida'}`);
             setFile(null);
         } finally {
             setIsExtracting(false);

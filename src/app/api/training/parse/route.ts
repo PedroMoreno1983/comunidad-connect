@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Extender timeout a 60s en Vercel Hobby
 
 export async function POST(request: Request) {
     try {
