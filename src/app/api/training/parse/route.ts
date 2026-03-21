@@ -19,6 +19,9 @@ export async function POST(request: Request) {
         let extractedText = '';
 
         if (fileName.endsWith('.pdf')) {
+            if (typeof global.DOMMatrix === 'undefined') {
+                (global as any).DOMMatrix = class DOMMatrix { constructor() {} };
+            }
             // Extraer texto de PDF evadiendo el top-level scope crasheo en Vercel
             const pdfParse = require('pdf-parse');
             const pdfData = await pdfParse(buffer);
