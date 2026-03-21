@@ -125,6 +125,7 @@ export function Sidebar() {
         { href: '/concierge/packages', label: 'Paquetería', icon: Package, roles: ['concierge', 'admin', 'resident'] },
         { href: '/resident/training', label: 'Aula Multi-Agente', icon: GraduationCap, roles: ['resident', 'concierge'] },
         { href: '/admin/training', label: 'Creador Cursos IA', icon: BookOpen, roles: ['admin'] },
+        { href: '/admin/onboarding', label: 'Migración IA', icon: Sparkles, roles: ['admin'] },
         { href: '/resident/training', label: 'Vista Alumno (Aula)', icon: Users, roles: ['admin'] },
         { href: '/training', label: 'Cursos (Antiguo)', icon: GraduationCap, roles: ['admin', 'concierge'] },
         { href: '/profile', label: 'Mi Perfil', icon: UserCircle, roles: ['admin', 'resident', 'concierge'] },
