@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-const pdfParse = require('pdf-parse');
-import mammoth from 'mammoth';
+
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender timeout a 60s en Vercel Hobby
 
@@ -20,11 +19,13 @@ export async function POST(request: Request) {
         let extractedText = '';
 
         if (fileName.endsWith('.pdf')) {
-            // Extraer texto de PDF
+            // Extraer texto de PDF evadiendo el top-level scope crasheo en Vercel
+            const pdfParse = require('pdf-parse');
             const pdfData = await pdfParse(buffer);
             extractedText = pdfData.text;
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-            // Extraer texto de Word
+            // Extraer texto de Word evadiendo crash
+            const mammoth = require('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
         } else if (fileName.endsWith('.txt')) {
