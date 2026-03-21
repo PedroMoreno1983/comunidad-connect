@@ -72,6 +72,10 @@ export async function POST(request: Request) {
 
         // 1. EXTRAER TEXTO BRUTO DEL BINARIO (PDF, DOCX)
         if (fileName.endsWith('.pdf')) {
+            // Polyfill para Vercel: pdf.js interno busca objetos del navegador tipo DOMMatrix
+            if (typeof global.DOMMatrix === 'undefined') {
+                (global as any).DOMMatrix = class DOMMatrix { constructor() {} };
+            }
             // Lazy load the native module to prevent Vercel Serverless top-level crashes
             const pdfParse = require('pdf-parse');
             const pdfData = await pdfParse(buffer);
