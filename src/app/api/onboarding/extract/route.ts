@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-const pdfParse = require('pdf-parse');
-import mammoth from 'mammoth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
@@ -74,9 +72,13 @@ export async function POST(request: Request) {
 
         // 1. EXTRAER TEXTO BRUTO DEL BINARIO (PDF, DOCX)
         if (fileName.endsWith('.pdf')) {
+            // Lazy load the native module to prevent Vercel Serverless top-level crashes
+            const pdfParse = require('pdf-parse');
             const pdfData = await pdfParse(buffer);
             extractedText = pdfData.text;
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+            // Lazy load mammoth as well
+            const mammoth = require('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
         } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
