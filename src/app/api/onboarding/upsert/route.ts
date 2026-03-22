@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -57,16 +58,22 @@ export async function POST(request: Request) {
         let successCount = 0;
         let errorCount = 0;
 
+        // Cliente bypass de RLS
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         // Por cada residente extraído
         // Nota: en un sistema empresarial masivo real, esto se hace con bulk upserts,
-        // pero dado que necesitamos crear/asegurar Unidades primero, se hace iterativo para 100-500 filas.
+        // pero dado que necesitamos crear/asegurar Unidades primero, se hace iterativo.
         for (const res of residents) {
             try {
-                // 1. Asegurar Unit (Unidad/Departamento)
+                // 1. Asegurar Unit (Unidad/Departamento) usando Service Role
                 let finalUnitId = null;
                 if (res.unit_id && res.unit_id.trim() !== '') {
                     // Buscar si existe
-                    const { data: existingUnit } = await supabase
+                    const { data: existingUnit } = await supabaseAdmin
                         .from('units')
                         .select('id')
                         .eq('community_id', communityId)
@@ -77,7 +84,7 @@ export async function POST(request: Request) {
                         finalUnitId = existingUnit.id;
                     } else {
                         // Crear unidad
-                        const { data: newUnit, error: unitError } = await supabase
+                        const { data: newUnit, error: unitError } = await supabaseAdmin
                             .from('units')
                             .insert({
                                 community_id: communityId,
@@ -92,25 +99,19 @@ export async function POST(request: Request) {
                 }
 
                 // 2. Upsert del Residente en Supabase Auth via Edge/Admin Bypass
-                // Para simplificar el prototipo de manera segura sin saltarnos Auth:
-                // Lo guardamos directamente en una "Lista de Espera" o, al tener RLS, 
-                // creamoos un perfil dummy asumiendo invitacion pendiente.
-                // En Produccion Real: Se insertaría en 'invitations' y se enviaría un link mágico.
-                
-                // Pero como este es un Upsert Mágico:
-                const { error: profileError } = await supabase
+                // Lo guardamos directamente como perfil usando el Service Role.
+                const { error: profileError } = await supabaseAdmin
                     .from('profiles')
                     .insert({
                         id: crypto.randomUUID(), // ID Autogenerado para cuentas Offline
                         full_name: res.name.trim(),
                         role: 'resident',
                         community_id: communityId,
-                        // Guardamos email y unit en metadatos o generamos relaciones si tuvieramos la foreign key expuesta
-                        // Nota: como RLS requiere Auth User, esto puede fallar si no usamos Service Role.
                     });
                 
-                // Si la inyección arriba falla por RLS, insertamos en una nueva tabla `imported_legacy_residents` o invitaciones.
-                // Para no romper la DB actual, usamos la tabla `invitations` existente o perfiles.
+                if (profileError) {
+                    throw profileError;
+                }
                 
                 successCount++;
             } catch (err) {

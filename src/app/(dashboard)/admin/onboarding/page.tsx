@@ -26,6 +26,7 @@ export default function AdminOnboardingPage() {
     const [extractedData, setExtractedData] = useState<ExtractedUser[] | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     // Si no es admin, redirigir
     if (user && user.role !== 'admin') {
@@ -33,10 +34,7 @@ export default function AdminOnboardingPage() {
         return null;
     }
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const uploadedFile = e.target.files?.[0];
-        if (!uploadedFile) return;
-
+    const processFile = async (uploadedFile: File) => {
         setFile(uploadedFile);
         setIsExtracting(true);
         setExtractedData(null);
@@ -80,7 +78,35 @@ export default function AdminOnboardingPage() {
             setFile(null);
         } finally {
             setIsExtracting(false);
-            e.target.value = '';
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const uploadedFile = e.target.files?.[0];
+        if (uploadedFile) {
+            await processFile(uploadedFile);
+        }
+        e.target.value = '';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (isExtracting) return;
+        
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile) {
+            await processFile(droppedFile);
         }
     };
 
@@ -140,16 +166,17 @@ export default function AdminOnboardingPage() {
 
             {/* ZONA DE CARGA */}
             {!extractedData && !syncSuccess && (
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl border border-indigo-100 dark:border-indigo-500/20 relative overflow-hidden group">
+                <div 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl border relative overflow-hidden group transition-all duration-300 ${
+                        isDragging 
+                            ? 'border-indigo-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20' 
+                            : 'border-indigo-100 dark:border-indigo-500/20'
+                    }`}
+                >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50 z-0"></div>
-                    
-                    <input 
-                        type="file" 
-                        accept=".pdf,.docx,.doc,.txt,.csv" 
-                        onChange={handleFileUpload} 
-                        disabled={isExtracting}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10" 
-                    />
                     
                     <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
                         <div className={`p-6 rounded-full bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
@@ -169,6 +196,22 @@ export default function AdminOnboardingPage() {
                                 ? 'Esto puede tomar hasta 20 segundos dependiendo del tamaño gigantesco del archivo. No cierres la ventana.' 
                                 : 'Soporta nóminas de residentes antiguas, listas de Excel copiadas en texto, o escaneos de OCR.'}
                         </p>
+
+                        {!isExtracting && (
+                            <div className="mt-6 relative">
+                                <label className="cursor-pointer px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl shadow-lg transition duration-200 inline-flex items-center gap-2 group/btn">
+                                    <UploadCloud className="w-5 h-5 group-hover/btn:-translate-y-1 transition" />
+                                    Subir Archivo Manualmente
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf,.docx,.doc,.txt,.csv" 
+                                        onChange={handleFileUpload} 
+                                        disabled={isExtracting}
+                                        className="hidden" 
+                                    />
+                                </label>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
