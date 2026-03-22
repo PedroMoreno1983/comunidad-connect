@@ -331,7 +331,7 @@ export default function HomePage() {
                             <motion.div key={idx} variants={item}>
                                 <Link
                                     href={stat.link}
-                                    className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-5 lg:p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:border-slate-200 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 block"
+                                    className="group relative overflow-hidden rounded-[2rem] bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl p-6 lg:p-8 shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 hover:shadow-2xl hover:border-white dark:hover:border-slate-600 hover:-translate-y-2 transition-all duration-500 block"
                                 >
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br opacity-[0.07] group-hover:opacity-[0.12] transition-opacity rounded-full -translate-y-8 translate-x-8"
                                         style={{ backgroundImage: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} />
@@ -363,7 +363,7 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 p-5 lg:p-6">
+                    <div className="lg:col-span-2 bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
@@ -384,7 +384,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 p-5 lg:p-6">
+                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-xl">
                                 <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -418,7 +418,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 p-5 lg:p-6">
+                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
@@ -450,7 +450,7 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
+                        <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 overflow-hidden">
                             <div className="p-5 lg:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
@@ -506,7 +506,7 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 p-5 lg:p-6">
+                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
                                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
