@@ -1,13 +1,34 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-// Servidor solo: asume que usas las variables del servidor para Supabase (ideal para backend)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+async function getSupabase() {
+    const cookieStore = await cookies();
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return cookieStore.getAll()
+                },
+                setAll(cookiesToSet) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            cookieStore.set(name, value, options)
+                        )
+                    } catch {
+                        // Ignore headers error in Server Components
+                    }
+                },
+            },
+        }
+    );
+}
 
 export async function GET() {
     try {
+        const supabase = await getSupabase();
         const { data: modules, error } = await supabase
             .from('training_modules')
             .select(`
@@ -28,6 +49,25 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
+        const supabase = await getSupabase();
+        
+        // Ensure user is authenticated
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
+        // Obtener el community_id y verificar si es administrador
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, community_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile || profile.role !== 'admin') {
+            return NextResponse.json({ error: "Permisos insuficientes o no es administrador." }, { status: 403 });
+        }
+
         const body = await req.json();
         const { title, description, target_audience, content } = body;
 
@@ -47,7 +87,10 @@ export async function POST(req: Request) {
             .select()
             .single();
 
-        if (modError) throw modError;
+        if (modError) {
+            console.error("Supabase Error Details:", modError);
+            throw new Error(`DB Error: ${modError.message} | Details: ${modError.details || 'n/a'} | Hint: ${modError.hint || 'n/a'}`);
+        }
 
         // 2. Crear la lección asociada
         const { error: lessonError } = await supabase
@@ -71,6 +114,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
     try {
+        const supabase = await getSupabase();
         const url = new URL(req.url);
         const id = url.searchParams.get('id');
 

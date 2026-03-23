@@ -19,13 +19,28 @@ export async function POST(request: Request) {
         let extractedText = '';
 
         if (fileName.endsWith('.pdf')) {
-            if (typeof global.DOMMatrix === 'undefined') {
-                (global as any).DOMMatrix = class DOMMatrix { constructor() {} };
-            }
-            // Extraer texto de PDF evadiendo el top-level scope crasheo en Vercel
-            const pdfParse = require('pdf-parse');
-            const pdfData = await pdfParse(buffer);
-            extractedText = pdfData.text;
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (!apiKey) throw new Error("GEMINI_API_KEY no configurada. Imposible leer PDFs en Vercel.");
+
+            const pdfBase64 = buffer.toString('base64');
+            const inlineData = { mimeType: 'application/pdf', data: pdfBase64 };
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const body = {
+                contents: [{
+                    role: "user", 
+                    parts: [
+                        { text: "Extrae TODO el texto de este documento de entrenamiento exactamente como está escrito, sin omitir partes, sin resumir y sin agregar comentarios extras. Solo retorna el contenido puro en texto plano directo, sin usar bloques de código Markdown." },
+                        { inlineData }
+                    ]
+                }],
+                generationConfig: { temperature: 0.1 }
+            };
+
+            const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!response.ok) throw new Error("Error al analizar PDF con IA: " + response.statusText);
+            const data = await response.json();
+            extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
             // Extraer texto de Word evadiendo crash
             const mammoth = require('mammoth');
