@@ -212,6 +212,16 @@ export default function LoginPage() {
                     </p>
                 </div>
 
+                {/* Admin Registration CTA */}
+                <div className="mt-4 text-center">
+                    <Link
+                        href="/admin-onboarding"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                    >
+                        🏢 ¿Eres administrador? Registra tu edificio aquí →
+                    </Link>
+                </div>
+
                 {/* Back to Home */}
                 <div className="text-center mt-6">
                     <Link
