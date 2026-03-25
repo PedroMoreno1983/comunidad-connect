@@ -14,7 +14,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { signIn } = useAuth();
+    const { signIn, signUp } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -39,6 +39,43 @@ export default function LoginPage() {
             });
             router.push("/");
         }
+    };
+
+    const handleDemoLogin = async (demoEmail: string, demoPass: string, role: string) => {
+        setLoading(true);
+        // Intentar Iniciar Sesión primero
+        const { error } = await signIn(demoEmail, demoPass);
+        
+        if (error) {
+            // Si el usuario no existe (credenciales inválidas), lo creamos automáticamente
+            if (error.message.includes('Invalid') || error.message.includes('No user') || error.message.includes('credenciales')) {
+                
+                const { error: signUpError } = await signUp(demoEmail, demoPass, {
+                    name: role === 'admin' ? 'Admin Demo' : 'Residente Demo',
+                    role: role,
+                    community_id: '00000000-0000-0000-0000-000000000000' // The default demo community
+                });
+
+                if (signUpError) {
+                    toast({ title: "Error", description: "No pudimos crear el usuario demo. " + signUpError.message, variant: "destructive" });
+                    setLoading(false);
+                    return;
+                }
+
+                // If created successfully, try to sign in again immediately
+                await signIn(demoEmail, demoPass);
+                toast({ title: "Cuenta Demo Creada", description: "Entrando...", variant: "success" });
+                router.push("/");
+                return;
+            } else {
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+                setLoading(false);
+                return;
+            }
+        }
+
+        toast({ title: "¡Entrando a la Demo!", description: "Has iniciado sesión", variant: "success" });
+        router.push("/");
     };
 
     return (
@@ -134,6 +171,36 @@ export default function LoginPage() {
                     >
                         Crear Cuenta
                     </Link>
+                </div>
+
+                {/* Demo Access */}
+                <div className="mt-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/50 text-center">
+                    <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-4">
+                        ¿Quieres probar la plataforma?
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleDemoLogin("admin@demo.com", "demo123", "admin")}
+                            disabled={loading}
+                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                        >
+                            Ver Demo Administrador
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleDemoLogin("residente@demo.com", "demo123", "resident")}
+                            disabled={loading}
+                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                        >
+                            Ver Demo Residente
+                        </Button>
+                    </div>
+                    <p className="text-xs text-indigo-500 mt-4">
+                        Haz clic para autocompletar las credenciales
+                    </p>
                 </div>
 
                 {/* Back to Home */}

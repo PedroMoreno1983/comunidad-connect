@@ -1,0 +1,745 @@
+[
+  {
+    "source_file_id": "SRC-2015-matriz_docentes",
+    "year_data": 2015,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_docentes.xlsx",
+    "relative_path": "2015/Matriz_docentes.xlsx",
+    "workbook_label": "Matriz_docentes",
+    "sheet_count": 7,
+    "size_bytes": 101844,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Docente 4°",
+        "Docente 6°Leng",
+        "Docente 6°Mat",
+        "Docente 8°Mat",
+        "Docente 8° Cs.Nat.",
+        "Docente II° Leng.",
+        "Docente II° Hist."
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:20.861863+00:00",
+      "rows_detected": 1379
+    }
+  },
+  {
+    "source_file_id": "SRC-2015-matriz_estudiantes",
+    "year_data": 2015,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_estudiantes.xlsx",
+    "relative_path": "2015/Matriz_estudiantes.xlsx",
+    "workbook_label": "Matriz_estudiantes",
+    "sheet_count": 4,
+    "size_bytes": 292900,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Estudiantes 4°B",
+        "Estudiantes 6°B",
+        "Estudiantes 8°B",
+        "Estudiantes IIm"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:22.456705+00:00",
+      "rows_detected": 656
+    }
+  },
+  {
+    "source_file_id": "SRC-2015-matriz_padres",
+    "year_data": 2015,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_padres.xlsx",
+    "relative_path": "2015/Matriz_padres.xlsx",
+    "workbook_label": "Matriz_padres",
+    "sheet_count": 5,
+    "size_bytes": 115936,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Padres 2°",
+        "Padres 4°",
+        "Padres 6°",
+        "Padres 8°",
+        "Padres II"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:24.657586+00:00",
+      "rows_detected": 552
+    }
+  },
+  {
+    "source_file_id": "SRC-2015-resultados",
+    "year_data": 2015,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados.xlsx",
+    "relative_path": "2015/Resultados.xlsx",
+    "workbook_label": "Resultados",
+    "sheet_count": 14,
+    "size_bytes": 1708056,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "CARGASF",
+        "Hoja1",
+        "RESUMEN",
+        "ALPHAS",
+        "STATPREG",
+        "CORRIT",
+        "FREQPREG",
+        "VAREXPF",
+        "MISSPREG",
+        "VAREXPD",
+        "NFNP",
+        "MISSDIM"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:25.118731+00:00",
+      "rows_detected": 807
+    }
+  },
+  {
+    "source_file_id": "SRC-2016-matriz_docentes",
+    "year_data": 2016,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_Docentes.xlsx",
+    "relative_path": "2016/Matriz_Docentes.xlsx",
+    "workbook_label": "Matriz_Docentes",
+    "sheet_count": 5,
+    "size_bytes": 64976,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "4°b",
+        " 6°_LENG",
+        " 6°_MAT",
+        " II_MAT ",
+        " II_BIO"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:29.435377+00:00",
+      "rows_detected": 856
+    }
+  },
+  {
+    "source_file_id": "SRC-2016-matriz_estudiantes",
+    "year_data": 2016,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_Estudiantes.xlsx",
+    "relative_path": "2016/Matriz_Estudiantes.xlsx",
+    "workbook_label": "Matriz_Estudiantes",
+    "sheet_count": 4,
+    "size_bytes": 19484725,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "4°b",
+        "6°b",
+        "IIA",
+        "IIB"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:38:30.039888+00:00",
+      "rows_detected": 615
+    }
+  },
+  {
+    "source_file_id": "SRC-2016-matriz_padres",
+    "year_data": 2016,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz_Padres.xlsx",
+    "relative_path": "2016/Matriz_Padres.xlsx",
+    "workbook_label": "Matriz_Padres",
+    "sheet_count": 3,
+    "size_bytes": 33632,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Padres 4°",
+        "Padres 6°",
+        "Padres II"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:03.236417+00:00",
+      "rows_detected": 308
+    }
+  },
+  {
+    "source_file_id": "SRC-2016-resultados_2m",
+    "year_data": 2016,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_2m.xlsx",
+    "relative_path": "2016/Resultados_2m.xlsx",
+    "workbook_label": "Resultados_2m",
+    "sheet_count": 15,
+    "size_bytes": 936073,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "CARGASF",
+        "RESUMEN",
+        "PROMS",
+        "ALPHAS",
+        "STATPREG",
+        "CORRIT",
+        "FREQPREG",
+        "VAREXPF",
+        "MISSPREG",
+        "VAREXPD",
+        "NFNP",
+        "MISSDIM",
+        "MATRIZ"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:03.490147+00:00",
+      "rows_detected": 214
+    }
+  },
+  {
+    "source_file_id": "SRC-2016-resultados_4b_6b",
+    "year_data": 2016,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_4b_6b.xlsx",
+    "relative_path": "2016/Resultados_4b_6b.xlsx",
+    "workbook_label": "Resultados_4b_6b",
+    "sheet_count": 15,
+    "size_bytes": 1032883,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "CARGASF",
+        "MATRIZ",
+        "RESUMEN",
+        "PROMS",
+        "ALPHAS",
+        "STATPREG",
+        "CORRIT",
+        "FREQPREG",
+        "VAREXPF",
+        "MISSPREG",
+        "VAREXPD",
+        "NFNP",
+        "MISSDIM"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:20.876061+00:00",
+      "rows_detected": 406
+    }
+  },
+  {
+    "source_file_id": "SRC-2017-matriz",
+    "year_data": 2017,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2017/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 8,
+    "size_bytes": 326692,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "grado_actor_forma",
+        "matriz",
+        "SD_2017",
+        "cc",
+        "aame",
+        "pf",
+        "hv",
+        "Hoja3"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:38.897604+00:00",
+      "rows_detected": 2572
+    }
+  },
+  {
+    "source_file_id": "SRC-2017-resultados",
+    "year_data": 2017,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados.xlsx",
+    "relative_path": "2017/Resultados.xlsx",
+    "workbook_label": "Resultados",
+    "sheet_count": 10,
+    "size_bytes": 993682,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "MATRIZ",
+        "RESUMEN",
+        "PROMS",
+        "ALPHAS",
+        "CORRIT",
+        "MISS_OIC",
+        "MISS_OICS",
+        "NFNP"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:43.407643+00:00",
+      "rows_detected": 780
+    }
+  },
+  {
+    "source_file_id": "SRC-2018-matriz",
+    "year_data": 2018,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2018/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 1,
+    "size_bytes": 228257,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "matriz"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:55.858667+00:00",
+      "rows_detected": 2164
+    }
+  },
+  {
+    "source_file_id": "SRC-2018-resultados",
+    "year_data": 2018,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados.xlsx",
+    "relative_path": "2018/Resultados.xlsx",
+    "workbook_label": "Resultados",
+    "sheet_count": 10,
+    "size_bytes": 995588,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "MATRIZ",
+        "RESUMEN",
+        "PROMS",
+        "ALPHAS",
+        "CORRIT",
+        "MISS_OIC",
+        "MISS_OICS",
+        "NFNP"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:44:57.831291+00:00",
+      "rows_detected": 749
+    }
+  },
+  {
+    "source_file_id": "SRC-2019-matriz",
+    "year_data": 2019,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2019/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 2,
+    "size_bytes": 172593,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Hoja2",
+        "Matriz 2019"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:07.715301+00:00",
+      "rows_detected": 2142
+    }
+  },
+  {
+    "source_file_id": "SRC-2019-resultados",
+    "year_data": 2019,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados.xls",
+    "relative_path": "2019/Resultados.xls",
+    "workbook_label": "Resultados",
+    "sheet_count": 11,
+    "size_bytes": 786944,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "OBS",
+        "GLOSA",
+        "MATRIZ",
+        "Hoja1",
+        "RESUMEN",
+        "PROMS",
+        "ALPHAS",
+        "CORRIT",
+        "MISS_OIC",
+        "MISS_OICS",
+        "NFNP"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:09.410843+00:00",
+      "rows_detected": 283
+    }
+  },
+  {
+    "source_file_id": "SRC-2022-matriz",
+    "year_data": 2022,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2022/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 2,
+    "size_bytes": 132726,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "todo 2022",
+        "items sin casillas"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:10.123043+00:00",
+      "rows_detected": 1000
+    }
+  },
+  {
+    "source_file_id": "SRC-2023-matriz",
+    "year_data": 2023,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2023/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 2,
+    "size_bytes": 149738,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Matriz 2023",
+        "Hoja1"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:11.278215+00:00",
+      "rows_detected": 1162
+    }
+  },
+  {
+    "source_file_id": "SRC-2023-resultados",
+    "year_data": 2023,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados.xlsx",
+    "relative_path": "2023/Resultados.xlsx",
+    "workbook_label": "Resultados",
+    "sheet_count": 4,
+    "size_bytes": 170394,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s23_10_doce_l",
+        "pink_s23_10_doce_m",
+        "pink_s23_10_estu",
+        "pink_s23_10_padr"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:12.499800+00:00",
+      "rows_detected": 604
+    }
+  },
+  {
+    "source_file_id": "SRC-2024-matriz",
+    "year_data": 2024,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2024/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 3,
+    "size_bytes": 228615,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Matriz 2024",
+        "Hoja 6",
+        "Hoja 7"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:14.091976+00:00",
+      "rows_detected": 1808
+    }
+  },
+  {
+    "source_file_id": "SRC-2024-resultados_2m",
+    "year_data": 2024,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_2m.xlsx",
+    "relative_path": "2024/Resultados_2m.xlsx",
+    "workbook_label": "Resultados_2m",
+    "sheet_count": 4,
+    "size_bytes": 123760,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s24_10_doce_l",
+        "pink_s24_10_doce_m",
+        "pink_s24_10_estu",
+        "pink_s24_10_padr"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:16.352712+00:00",
+      "rows_detected": 681
+    }
+  },
+  {
+    "source_file_id": "SRC-2024-resultados_4b",
+    "year_data": 2024,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_4b.xlsx",
+    "relative_path": "2024/Resultados_4b.xlsx",
+    "workbook_label": "Resultados_4b",
+    "sheet_count": 3,
+    "size_bytes": 172409,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s24_04_doce",
+        "pink_s24_04_estu",
+        "pink_s24_04_padr"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:17.535547+00:00",
+      "rows_detected": 463
+    }
+  },
+  {
+    "source_file_id": "SRC-2024-resultados_6b",
+    "year_data": 2024,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_6b.xlsx",
+    "relative_path": "2024/Resultados_6b.xlsx",
+    "workbook_label": "Resultados_6b",
+    "sheet_count": 3,
+    "size_bytes": 109234,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s24_06_doce",
+        "pink_s24_06_estu",
+        "pink_s24_06_padr"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:19.200943+00:00",
+      "rows_detected": 468
+    }
+  },
+  {
+    "source_file_id": "SRC-2025-matriz",
+    "year_data": 2025,
+    "file_type": "MATRIZ",
+    "file_name": "Matriz.xlsx",
+    "relative_path": "2025/Matriz.xlsx",
+    "workbook_label": "Matriz",
+    "sheet_count": 1,
+    "size_bytes": 217941,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "Matriz 2025"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "MATRIZ",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:20.273775+00:00",
+      "rows_detected": 1956
+    }
+  },
+  {
+    "source_file_id": "SRC-2025-resultados_2m",
+    "year_data": 2025,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_2m.xlsx",
+    "relative_path": "2025/Resultados_2m.xlsx",
+    "workbook_label": "Resultados_2m",
+    "sheet_count": 4,
+    "size_bytes": 314272,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s25_10_estu",
+        "pink_s25_10_padr",
+        "pink_s25_10_doce_l",
+        "pink_s25_10_doce_m"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:21.937511+00:00",
+      "rows_detected": 638
+    }
+  },
+  {
+    "source_file_id": "SRC-2025-resultados_4b",
+    "year_data": 2025,
+    "file_type": "RESULTADOS",
+    "file_name": "Resultados_4b.xlsx",
+    "relative_path": "2025/Resultados_4b.xlsx",
+    "workbook_label": "Resultados_4b",
+    "sheet_count": 3,
+    "size_bytes": 224621,
+    "import_status": "IMPORTADO",
+    "import_errors": [],
+    "structure_detected": {
+      "sheet_names": [
+        "pink_s25_04_estu",
+        "pink_s25_04_padr",
+        "pink_s25_04_doce"
+      ]
+    },
+    "column_mapping": {
+      "file_type": "RESULTADOS",
+      "notes": "Resolucion de columnas por alias en Python"
+    },
+    "metadata": {
+      "generated_at": "2026-03-24T20:45:25.312010+00:00",
+      "rows_detected": 474
+    }
+  }
+]

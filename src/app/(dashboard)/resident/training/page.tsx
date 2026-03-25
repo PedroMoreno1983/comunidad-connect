@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
-import { BookOpen, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
+import { BookOpen, AlertCircle, ArrowLeft, GraduationCap, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 interface Course {
@@ -17,6 +18,25 @@ export default function ResidentTrainingPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
+    const { user } = useAuth();
+
+    const handleDeleteCourse = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm("¿Estás seguro de querer eliminar permanentemente este curso oficial?")) return;
+        
+        try {
+            const res = await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setCourses(prev => prev.filter(c => c.id !== id));
+            } else {
+                const data = await res.json();
+                alert(`No se pudo eliminar el curso:\n\n${data.error || 'Permisos de base de datos insuficientes (RLS)'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error de red al eliminar el curso.");
+        }
+    };
 
     useEffect(() => {
         fetch('/api/training/modules')
@@ -93,13 +113,22 @@ export default function ResidentTrainingPage() {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group"
+                                    className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group relative overflow-hidden"
                                 >
+                                    {user?.role === 'admin' && (
+                                        <button 
+                                            onClick={(e) => handleDeleteCourse(course.id, e)}
+                                            className="absolute top-4 right-4 p-2.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-500 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                            title="Eliminar Curso"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                     <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{course.title}</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 break-all line-clamp-2 pr-8">{course.title}</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4 break-words">
                                         {course.description || "Inicia este curso interactivo con la Tutora CoCo."}
                                     </p>
                                     <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">

@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('*, communities(id, pricing_tiers(features))')
                 .eq('id', sbUser.id)
                 .single();
 
@@ -134,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     || (emailFirstPart ? emailFirstPart.charAt(0).toUpperCase() + emailFirstPart.slice(1) : null)
                     || 'Usuario';
 
+                const features = profile.communities?.pricing_tiers?.features || {};
+
                 // Map from DB profile
                 setUser({
                     id: sbUser.id,
@@ -141,7 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     email: sbUser.email || '',
                     role: profile.role || 'resident',
                     unitId: undefined,
-                    photo: profile.avatar_url
+                    photo: profile.avatar_url,
+                    communityId: profile.community_id,
+                    features,
                 });
 
                 // Fetch unit if exists

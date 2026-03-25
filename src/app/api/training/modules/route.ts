@@ -120,12 +120,19 @@ export async function DELETE(req: Request) {
 
         if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('training_modules')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .select();
 
         if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            return NextResponse.json({ 
+                error: "El motor de base de datos denegó la eliminación (No tienes una política RLS de DELETE). Igual que con el INSERT anterior, debes correr esto en el SQL Editor de Supabase:\n\nCREATE POLICY \"Enable Delete for Modules\" ON public.training_modules FOR DELETE TO authenticated USING (true);" 
+            }, { status: 403 });
+        }
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("Error deleting module:", error);

@@ -9,6 +9,8 @@ export interface User {
   photo?: string; // Alias for avatarUrl or external photo
   unitId?: string; // For residents/tenants
   unitName?: string; // User-friendly unit designator
+  communityId?: string; // Multi-tenant ID
+  features?: Record<string, boolean>; // Plan features
 }
 
 export interface Unit {
