@@ -27,13 +27,7 @@ const CATEGORY_CONFIG = {
     }
 };
 
-export function generateStaticParams() {
-    return [
-        { category: 'plumbing' },
-        { category: 'electrical' },
-        { category: 'locksmith' },
-    ];
-}
+export const dynamic = 'force-dynamic';
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
     const resolvedParams = await params;
