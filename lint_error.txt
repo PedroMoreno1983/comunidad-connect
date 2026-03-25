@@ -1,0 +1,594 @@
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(auth)\admin-onboarding\page.tsx[24m[0m
+[0m   [2m21:13[22m  [33mwarning[39m  'signUp' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m105:25[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\consumo\page.tsx[24m[0m
+[0m   [2m7:5[22m   [33mwarning[39m  'Download' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m8:5[22m   [33mwarning[39m  'PieChart' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m10:10[22m  [33mwarning[39m  'motion' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\mantenimiento\page.tsx[24m[0m
+[0m  [2m7:5[22m   [33mwarning[39m  'Wrench' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m7:13[22m  [33mwarning[39m  'ClipboardList' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\onboarding\page.tsx[24m[0m
+[0m   [2m9:5[22m   [33mwarning[39m  'AlertCircle' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:18[22m  [33mwarning[39m  'Users' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:39[22m  [33mwarning[39m  'Edit3' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m24:12[22m  [33mwarning[39m  'file' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m57:22[22m  [33mwarning[39m  'e' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m63:58[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m75:23[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\training\page.tsx[24m[0m
+[0m    [2m7:34[22m   [33mwarning[39m  'Edit3' is defined but never used                                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:5[22m    [33mwarning[39m  'BookOpen' is defined but never used                             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:28[22m   [33mwarning[39m  'X' is defined but never used                                    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:93[22m   [33mwarning[39m  'ChevronRight' is defined but never used                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m233:118[22m  [31merror[39m    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  [2mreact/no-unescaped-entities[22m[0m
+[0m  [2m233:134[22m  [31merror[39m    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  [2mreact/no-unescaped-entities[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\units\page.tsx[24m[0m
+[0m    [2m4:52[22m  [33mwarning[39m  'CardDescription' is defined but never used                                                                  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m15:5[22m   [33mwarning[39m  'UserX' is defined but never used                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m17:5[22m   [33mwarning[39m  'Home' is defined but never used                                                                             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m18:5[22m   [33mwarning[39m  'MoreHorizontal' is defined but never used                                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m29:10[22m  [33mwarning[39m  'useAuth' is defined but never used                                                                          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m40:60[22m  [31merror[39m    Unexpected any. Specify a different type                                                                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m57:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m97:18[22m  [33mwarning[39m  'error' is defined but never used                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m114:18[22m  [33mwarning[39m  'error' is defined but never used                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m268:79[22m  [31merror[39m    Unexpected any. Specify a different type                                                                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\users\page.tsx[24m[0m
+[0m   [2m11:40[22m   [31merror[39m    Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m46:31[22m   [33mwarning[39m  'error' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m186:134[22m  [31merror[39m    Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\admin\votaciones\page.tsx[24m[0m
+[0m  [2m6:12[22m  [33mwarning[39m  'Vote' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m6:18[22m  [33mwarning[39m  'BarChart3' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m8:17[22m  [33mwarning[39m  'Info' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\amenities\page.tsx[24m[0m
+[0m   [2m20:10[22m  [33mwarning[39m  'Booking' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m21:10[22m  [33mwarning[39m  'Skeleton' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m41:46[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m42:48[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m45:60[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m73:25[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m82:41[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m123:19[22m  [33mwarning[39m  'newBooking' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m140:25[22m  [31merror[39m    Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\chat\page.tsx[24m[0m
+[0m   [2m39:36[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m55:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'loadConversations' and 'loadNeighbors'. Either include them or remove the dependency array                                                                                                                                               [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m61:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'loadDirectMessages' and 'user'. Either include them or remove the dependency array                                                                                                                                                       [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m145:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m231:53[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m265:49[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m350:71[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\concierge\packages\page.tsx[24m[0m
+[0m   [2m10:49[22m  [33mwarning[39m  'Truck' is defined but never used               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m11:37[22m  [33mwarning[39m  'Camera' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m24:10[22m  [33mwarning[39m  'Package' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m29:46[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m30:40[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m31:12[22m  [33mwarning[39m  'isLoading' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m45:42[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m131:18[22m  [33mwarning[39m  'error' is defined but never used               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\concierge\visitors\page.tsx[24m[0m
+[0m    [2m9:5[22m   [33mwarning[39m  'Users' is defined but never used               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m9:33[22m  [33mwarning[39m  'Shield' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m10:5[22m   [33mwarning[39m  'Search' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m10:13[22m  [33mwarning[39m  'Filter' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m10:21[22m  [33mwarning[39m  'Download' is defined but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m24:10[22m  [33mwarning[39m  'motion' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m28:46[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m29:40[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m30:12[22m  [33mwarning[39m  'isLoading' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m40:42[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m68:18[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m184:57[22m  [33mwarning[39m  'i' is defined but never used                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\directorio\page.tsx[24m[0m
+[0m   [2m11:34[22m  [33mwarning[39m  'AlertTriangle' is defined but never used                                                                                                                                                                                                                                                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m45:13[22m  [33mwarning[39m  'toast' is assigned a value but never used                                                                                                                                                                                                                                               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m56:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'loadNeighbors'. Either include it or remove the dependency array                                                                                                                                                                         [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m194:49[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\expenses\page.tsx[24m[0m
+[0m   [2m3:10[22m   [33mwarning[39m  'Button' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:10[22m   [33mwarning[39m  'motion' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m10:10[22m   [33mwarning[39m  'Skeleton' is defined but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m15:46[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m28:47[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:29[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m58:48[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m67:18[22m   [33mwarning[39m  'error' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m78:46[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m78:102[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m79:43[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m79:99[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m80:42[22m   [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\feed\page.tsx[24m[0m
+[0m   [2m4:64[22m  [33mwarning[39m  'ArrowRight' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m4:76[22m  [33mwarning[39m  'Loader2' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m23:56[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m35:51[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\home\page.tsx[24m[0m
+[0m  [2m57:36[22m  [31merror[39m  Unexpected any. Specify a different type                [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m78:21[22m  [31merror[39m  'commonStats' is never reassigned. Use 'const' instead  [2mprefer-const[22m[0m
+[0m  [2m80:68[22m  [31merror[39m  Unexpected any. Specify a different type                [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m86:99[22m  [31merror[39m  Unexpected any. Specify a different type                [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\marketplace\page.tsx[24m[0m
+[0m    [2m6:95[22m  [33mwarning[39m  'AlertCircle' is defined but never used                                                                                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m48:40[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m51:54[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m69:12[22m  [33mwarning[39m  'loading' is assigned a value but never used                                                                                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m86:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'loadItems' and 'toast'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m94:25[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m168:25[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\mock-payment\page.tsx[24m[0m
+[0m   [2m6:30[22m  [33mwarning[39m  'useEffect' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m12:12[22m  [33mwarning[39m  'loading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m15:61[22m  [31merror[39m    Error: Cannot call impure function during render[0m
+[0m[0m
+[0m`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\mock-payment\page.tsx:15:61[0m
+[0m  13 |     const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');[0m
+[0m  14 |[0m
+[0m> 15 |     const ref = searchParams.get('ref') || `CC-${Math.floor(Math.random() * 1000000)}`;[0m
+[0m     |                                                             ^^^^^^^^^^^^^ Cannot call impure function[0m
+[0m  16 |     const amount = searchParams.get('amount') || '0';[0m
+[0m  17 |     const callback = searchParams.get('callback') || '/home';[0m
+[0m  18 |  [2mreact-hooks/purity[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\profile\page.tsx[24m[0m
+[0m   [2m22:12[22m  [33mwarning[39m  'passwordResetSent' is assigned a value but never used                                                                                                                                                                                                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m33:12[22m  [33mwarning[39m  'isSavingUnit' is assigned a value but never used                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m33:26[22m  [33mwarning[39m  'setIsSavingUnit' is assigned a value but never used                                                                                                                                                                                                                                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m42:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'loadProfile' and 'user'. Either include them or remove the dependency array                                                                                                                                                              [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m176:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m226:33[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\resident\consumo\page.tsx[24m[0m
+[0m  [2m61:29[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\resident\finances\page.tsx[24m[0m
+[0m   [2m9:10[22m  [33mwarning[39m  'CreditCard' is defined but never used                                                                                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m46:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'loadFinances' and 'toast'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\resident\invitations\page.tsx[24m[0m
+[0m   [2m8:13[22m  [33mwarning[39m  'UserCheck' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:5[22m   [33mwarning[39m  'ChevronRight' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:41[22m  [33mwarning[39m  'Info' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m15:52[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\resident\supermercado\page.tsx[24m[0m
+[0m   [2m5:5[22m  [33mwarning[39m  'ShoppingBag' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m16:5[22m  [33mwarning[39m  'CalendarDays' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\services\my-requests\page.tsx[24m[0m
+[0m  [2m16:46[22m  [31merror[39m    Unexpected any. Specify a different type                                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m23:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'fetchRequests'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\services\register\page.tsx[24m[0m
+[0m  [2m109:25[22m   [31merror[39m    Unexpected any. Specify a different type               [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m118:11[22m   [33mwarning[39m  'getCategoryLabel' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m223:105[22m  [31merror[39m    Unexpected any. Specify a different type               [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\social\page.tsx[24m[0m
+[0m  [2m110:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m120:43[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m127:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m129:43[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m179:43[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m182:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m206:33[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m252:37[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m286:39[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m298:45[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m331:41[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m383:94[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m387:69[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m  [2m415:57[22m  [33mwarning[39m  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  [2m@next/next/no-img-element[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\superadmin\page.tsx[24m[0m
+[0m    [2m8:29[22m  [33mwarning[39m  'Settings' is defined but never used                                                                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:46[22m  [33mwarning[39m  'X' is defined but never used                                                                                                          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:57[22m  [33mwarning[39m  'Edit2' is defined but never used                                                                                                      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m9:10[22m  [33mwarning[39m  'Button' is defined but never used                                                                                                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m55:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'fetchData', 'router', and 'toast'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m70:18[22m  [33mwarning[39m  'error' is defined but never used                                                                                                      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m70:25[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                               [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m87:25[22m  [31merror[39m    Unexpected any. Specify a different type                                                                                               [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m172:39[22m  [33mwarning[39m  'currentTier' is assigned a value but never used                                                                                       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\training\page.tsx[24m[0m
+[0m  [2m284:13[22m  [33mwarning[39m  Expected an assignment or function call and instead saw an expression  [2m@typescript-eslint/no-unused-expressions[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\(dashboard)\votaciones\page.tsx[24m[0m
+[0m   [2m9:22[22m  [33mwarning[39m  'Info' is defined but never used                                                                              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:28[22m  [33mwarning[39m  'Calendar' is defined but never used                                                                          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m10:5[22m   [33mwarning[39m  'MessageSquare' is defined but never used                                                                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m12:10[22m  [33mwarning[39m  'motion' is defined but never used                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m17:52[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m18:52[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m25:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'loadPolls'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m27:40[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m27:61[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m30:70[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m31:70[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m66:87[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m72:26[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m74:51[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m75:51[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m92:25[22m  [31merror[39m    Unexpected any. Specify a different type                                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\coco\route.ts[24m[0m
+[0m    [2m5:7[22m   [33mwarning[39m  'GEMINI_URL' is assigned a value but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m6:7[22m   [33mwarning[39m  'GEMINI_FALLBACK_URL' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m204:19[22m  [31merror[39m    Unexpected any. Specify a different type                  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\onboarding\extract\route.ts[24m[0m
+[0m   [2m30:18[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m93:29[22m  [31merror[39m    A `require()` style import is forbidden   [2m@typescript-eslint/no-require-imports[22m[0m
+[0m  [2m122:18[22m  [33mwarning[39m  'parseError' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m129:21[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\onboarding\upsert\route.ts[24m[0m
+[0m   [2m97:52[22m  [33mwarning[39m  'finalUnitId' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m130:21[22m  [31merror[39m    Unexpected any. Specify a different type          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\providers\route.ts[24m[0m
+[0m  [2m31:75[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m34:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\training\generate-slides\route.ts[24m[0m
+[0m  [2m86:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\training\modules\route.ts[24m[0m
+[0m   [2m44:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m109:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m137:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\training\multi-agent\route.ts[24m[0m
+[0m  [2m58:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\training\parse\route.ts[24m[0m
+[0m  [2m46:29[22m  [31merror[39m  A `require()` style import is forbidden   [2m@typescript-eslint/no-require-imports[22m[0m
+[0m  [2m70:21[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\api\whatsapp-notify\route.ts[24m[0m
+[0m  [2m92:19[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\page.tsx[24m[0m
+[0m  [2m10:24[22m  [33mwarning[39m  'Command' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m19:10[22m  [33mwarning[39m  'loading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m19:19[22m  [33mwarning[39m  'setLoading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m24:19[22m  [31merror[39m    Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\app\page.tsx:24:19[0m
+[0m  22 |   const [mounted, setMounted] = useState(false);[0m
+[0m  23 |[0m
+[0m> 24 |   useEffect(() => setMounted(true), []);[0m
+[0m     |                   ^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  25 |[0m
+[0m  26 |   useEffect(() => {[0m
+[0m  27 |     if (user && !authLoading) {  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\CoCo\CoCo.tsx[24m[0m
+[0m  [2m84:23[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\NotificationCenter.tsx[24m[0m
+[0m  [2m7:11[22m  [33mwarning[39m  'Check' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m8:5[22m   [33mwarning[39m  'ExternalLink' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\Sidebar.tsx[24m[0m
+[0m  [2m23:5[22m  [33mwarning[39m  'ChevronRight' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m33:5[22m  [33mwarning[39m  'Filter' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m84:9[22m  [31merror[39m    Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\Sidebar.tsx:84:9[0m
+[0m  82 |     // Close mobile menu on route change[0m
+[0m  83 |     useEffect(() => {[0m
+[0m> 84 |         setIsMobileOpen(false);[0m
+[0m     |         ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  85 |     }, [pathname]);[0m
+[0m  86 |[0m
+[0m  87 |     // Close on escape key  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ThemeToggle.tsx[24m[0m
+[0m   [2m14:21[22m  [31merror[39m  Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ThemeToggle.tsx:14:21[0m
+[0m  12 |     const menuRef = useRef<HTMLDivElement>(null);[0m
+[0m  13 |[0m
+[0m> 14 |     useEffect(() => setMounted(true), []);[0m
+[0m     |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  15 |[0m
+[0m  16 |     // Close menu on click outside[0m
+[0m  17 |     useEffect(() => {                                                  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m  [2m105:21[22m  [31merror[39m  Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ThemeToggle.tsx:105:21[0m
+[0m  103 |     const [mounted, setMounted] = useState(false);[0m
+[0m  104 |[0m
+[0m> 105 |     useEffect(() => setMounted(true), []);[0m
+[0m      |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  106 |[0m
+[0m  107 |     const toggleTheme = () => {[0m
+[0m  108 |         setTheme(resolvedTheme === 'light' ? 'dark' : 'light');  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\AdminMeterEntry.tsx[24m[0m
+[0m    [2m4:10[22m  [33mwarning[39m  'motion' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m4:18[22m  [33mwarning[39m  'AnimatePresence' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m6:5[22m   [33mwarning[39m  'Plus' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m7:5[22m   [33mwarning[39m  'Home' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m7:11[22m  [33mwarning[39m  'Hash' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m7:17[22m  [33mwarning[39m  'ArrowRight' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:20[22m  [33mwarning[39m  'Filter' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m10:10[22m  [33mwarning[39m  'Button' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m15:10[22m  [33mwarning[39m  'Loader2' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m28:12[22m  [33mwarning[39m  'isLoading' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m43:63[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m47:51[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m64:47[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m114:25[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m143:91[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m191:55[22m  [31merror[39m    Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\AdminReservations.tsx[24m[0m
+[0m    [2m4:10[22m  [33mwarning[39m  'motion' is defined but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m4:18[22m  [33mwarning[39m  'AnimatePresence' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m5:70[22m  [33mwarning[39m  'Info' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:10[22m  [33mwarning[39m  'Button' is defined but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m11:46[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m57:46[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m69:46[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m104:59[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\AssetInventory.tsx[24m[0m
+[0m   [2m4:18[22m  [33mwarning[39m  'AnimatePresence' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m6:15[22m  [33mwarning[39m  'Shield' is defined but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m6:33[22m  [33mwarning[39m  'AlertTriangle' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:5[22m   [33mwarning[39m  'CheckCircle2' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:34[22m  [33mwarning[39m  'Wrench' is defined but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m8:19[22m  [33mwarning[39m  'MoreHorizontal' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m8:35[22m  [33mwarning[39m  'FlaskConical' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m34:61[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m63:51[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\MaintenanceDashboard.tsx[24m[0m
+[0m    [2m4:10[22m  [33mwarning[39m  'motion' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m6:35[22m  [33mwarning[39m  'CheckCircle2' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m7:27[22m  [33mwarning[39m  'BarChart3' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m9:12[22m  [33mwarning[39m  'X' is defined but never used                  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m9:15[22m  [33mwarning[39m  'Trash2' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m16:5[22m   [33mwarning[39m  'DialogHeader' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m17:5[22m   [33mwarning[39m  'DialogTitle' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m18:5[22m   [33mwarning[39m  'DialogDescription' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m19:5[22m   [33mwarning[39m  'DialogFooter' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m44:52[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m57:60[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m72:50[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m110:43[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m111:43[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m112:46[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m181:43[22m  [31merror[39m    Unexpected any. Specify a different type       [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\PollManager.tsx[24m[0m
+[0m   [2m4:10[22m  [33mwarning[39m  'motion' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:21[22m  [33mwarning[39m  'Filter' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:29[22m  [33mwarning[39m  'Search' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m8:5[22m   [33mwarning[39m  'MessageSquare' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m8:33[22m  [33mwarning[39m  'CheckCircle2' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m9:5[22m   [33mwarning[39m  'Calendar' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m65:42[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\QRScannerSimulator.tsx[24m[0m
+[0m   [2m6:37[22m  [33mwarning[39m  'CheckCircle2' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:38[22m  [33mwarning[39m  'Trash2' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m16:79[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m19:50[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m57:30[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\UnitDetailPanel.tsx[24m[0m
+[0m    [2m4:11[22m  [33mwarning[39m  'AlertTriangle' is defined but never used                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m4:26[22m  [33mwarning[39m  'CheckCircle2' is defined but never used                                                                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m25:12[22m  [33mwarning[39m  'isLoading' is assigned a value but never used                                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m35:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'loadUnitData'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m104:29[22m  [31merror[39m    Unexpected any. Specify a different type                                                                         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\admin\UnitStatusGrid.tsx[24m[0m
+[0m   [2m5:10[22m  [33mwarning[39m  'Waves' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m5:17[22m  [33mwarning[39m  'AlertTriangle' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m5:32[22m  [33mwarning[39m  'CheckCircle2' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m25:63[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m29:51[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m76:35[22m  [31merror[39m    Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\charts\Charts.tsx[24m[0m
+[0m   [2m9:52[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m14:38[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\marketplace\ChatModal.tsx[24m[0m
+[0m   [2m8:5[22m   [33mwarning[39m  'DialogHeader' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m11:24[22m  [33mwarning[39m  'UserIcon' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m21:52[22m  [33mwarning[39m  'currentUser' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m28:13[22m  [31merror[39m    Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\marketplace\ChatModal.tsx:28:13[0m
+[0m  26 |         if (isOpen && item) {[0m
+[0m  27 |             // Initial mock message from system or seller[0m
+[0m> 28 |             setMessages([[0m
+[0m     |             ^^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  29 |                 {[0m
+[0m  30 |                     sender: "system",[0m
+[0m  31 |                     text: `Has iniciado una conversación por: ${item.title}`,  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\marketplace\ProductFilters.tsx[24m[0m
+[0m   [2m3:21[22m  [33mwarning[39m  'Grid3X3' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m3:30[22m  [33mwarning[39m  'Smartphone' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m3:42[22m  [33mwarning[39m  'Armchair' is defined but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m3:52[22m  [33mwarning[39m  'Shirt' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m3:59[22m  [33mwarning[39m  'Package' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m12:46[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\polls\PollCard.tsx[24m[0m
+[0m   [2m6:26[22m  [33mwarning[39m  'Users' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m6:33[22m  [33mwarning[39m  'ChevronRight' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:5[22m   [33mwarning[39m  'BarChart3' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:16[22m  [33mwarning[39m  'Calendar' is defined but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m7:26[22m  [33mwarning[39m  'Info' is defined but never used          [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m10:16[22m  [33mwarning[39m  'PollOption' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m21:42[22m  [33mwarning[39m  'isAdmin' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\resident\SavingsGoalCard.tsx[24m[0m
+[0m  [2m4:18[22m  [33mwarning[39m  'TrendingDown' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\resident\WaterConsumptionChart.tsx[24m[0m
+[0m  [2m3:41[22m  [33mwarning[39m  'AreaChart' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m3:52[22m  [33mwarning[39m  'Area' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m5:10[22m  [33mwarning[39m  'motion' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\resident\supermarket\OrderPreviewBubble.tsx[24m[0m
+[0m  [2m3:24[22m  [33mwarning[39m  'Check' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m3:31[22m  [33mwarning[39m  'ExternalLink' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\resident\supermarket\RecipeBubble.tsx[24m[0m
+[0m  [2m3:52[22m  [33mwarning[39m  'ExternalLink' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m8:33[22m  [31merror[39m    Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\resident\supermarket\WhatsAppChat.tsx[24m[0m
+[0m   [2m5:16[22m  [33mwarning[39m  'Paperclip' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m6:18[22m  [33mwarning[39m  'Check' is defined but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m11:18[22m  [33mwarning[39m  'AnimatePresence' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m21:17[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m22:18[22m  [31merror[39m    Unexpected any. Specify a different type     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\services\CategoryClient.tsx[24m[0m
+[0m  [2m73:74[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\services\ProviderCard.tsx[24m[0m
+[0m  [2m4:16[22m  [33mwarning[39m  'Phone' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\services\ProviderProfileClient.tsx[24m[0m
+[0m   [2m74:25[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m122:25[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\training\MultiAgentClassroom.tsx[24m[0m
+[0m  [2m40:13[22m  [33mwarning[39m  'user' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ui\Animations.tsx[24m[0m
+[0m  [2m155:5[22m  [33mwarning[39m  'duration' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ui\DebugStats.tsx[24m[0m
+[0m   [2m7:40[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m25:28[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m52:29[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ui\ErrorBoundary.tsx[24m[0m
+[0m  [2m4:10[22m  [33mwarning[39m  'Shield' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\components\ui\Toast.tsx[24m[0m
+[0m  [2m5:13[22m  [33mwarning[39m  'CheckCircle' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m5:26[22m  [33mwarning[39m  'AlertCircle' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\api.ts[24m[0m
+[0m   [2m47:46[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m49:52[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m99:55[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m125:28[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m193:77[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m194:40[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\authContext.tsx[24m[0m
+[0m   [2m23:72[22m   [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m51:19[22m   [33mwarning[39m  'controller' is assigned a value but never used                                                                      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m62:110[22m  [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m83:30[22m   [33mwarning[39m  'e' is defined but never used                                                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m101:54[22m   [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m101:68[22m   [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m115:8[22m    [33mwarning[39m  React Hook useEffect has a missing dependency: 'fetchUserProfile'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m201:85[22m   [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m211:21[22m   [33mwarning[39m  'data' is assigned a value but never used                                                                            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m221:25[22m   [31merror[39m    Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\services\haulmer.ts[24m[0m
+[0m  [2m1:10[22m  [33mwarning[39m  'supabase' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\services\notificationService.ts[24m[0m
+[0m  [2m103:27[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\services\providersService.ts[24m[0m
+[0m  [2m124:42[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m183:70[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\services\supabaseServices.ts[24m[0m
+[0m  [2m296:27[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m326:41[22m  [33mwarning[39m  'paymentMethod' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m598:33[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m687:47[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m697:33[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m732:77[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m742:33[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m743:48[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m790:42[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m796:42[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m800:30[22m  [31merror[39m    Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\supabase.ts[24m[0m
+[0m  [2m21:16[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m38:27[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\supabase\client.ts[24m[0m
+[0m  [2m18:20[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m38:38[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4mC:\Users\pedro.moreno\Documents\GitHub\comunidad-connect\src\lib\utils.ts[24m[0m
+[0m  [2m10:40[22m  [31merror[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[31m[1m✖ 350 problems (156 errors, 194 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[31m[1m  1 error and 0 warnings potentially fixable with the `--fix` option.[22m[39m[0m
+[0m[31m[1m[22m[39m[0m
