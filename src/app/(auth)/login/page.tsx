@@ -186,7 +186,16 @@ export default function LoginPage() {
                             disabled={loading}
                             className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
                         >
-                            Ver Demo Administrador
+                            🏢 Ver Demo Administrador
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleDemoLogin("conserje@demo.com", "demo123", "concierge")}
+                            disabled={loading}
+                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                        >
+                            🔐 Ver Demo Conserje
                         </Button>
                         <Button
                             type="button"
@@ -195,11 +204,11 @@ export default function LoginPage() {
                             disabled={loading}
                             className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
                         >
-                            Ver Demo Residente
+                            🏠 Ver Demo Residente
                         </Button>
                     </div>
                     <p className="text-xs text-indigo-500 mt-4">
-                        Haz clic para autocompletar las credenciales
+                        Acceso completo a todos los módulos — sin datos reales
                     </p>
                 </div>
 
