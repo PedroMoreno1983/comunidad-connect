@@ -1,0 +1,47 @@
+{
+  "2015": {
+    "files": 4,
+    "matrix_rows": 2587,
+    "result_rows": 807
+  },
+  "2016": {
+    "files": 5,
+    "matrix_rows": 1779,
+    "result_rows": 620
+  },
+  "2017": {
+    "files": 2,
+    "matrix_rows": 2572,
+    "result_rows": 780
+  },
+  "2018": {
+    "files": 2,
+    "matrix_rows": 2164,
+    "result_rows": 749
+  },
+  "2019": {
+    "files": 2,
+    "matrix_rows": 2142,
+    "result_rows": 283
+  },
+  "2022": {
+    "files": 1,
+    "matrix_rows": 1000,
+    "result_rows": 0
+  },
+  "2023": {
+    "files": 2,
+    "matrix_rows": 1162,
+    "result_rows": 604
+  },
+  "2024": {
+    "files": 4,
+    "matrix_rows": 1808,
+    "result_rows": 1612
+  },
+  "2025": {
+    "files": 3,
+    "matrix_rows": 1956,
+    "result_rows": 1112
+  }
+}

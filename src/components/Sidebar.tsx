@@ -114,13 +114,13 @@ export function Sidebar() {
         {
             title: 'MIS SERVICIOS',
             links: [
-                { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'] },
+                { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'], feature: 'amenities' },
                 { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag, roles: ['resident', 'admin'] },
                 { href: '/resident/supermercado', label: 'Supermercado', icon: ShoppingBag, roles: ['resident'] },
-                { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'] },
-                { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'] },
+                { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'], feature: 'maintenance' },
+                { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/resident/invitations', label: 'Mis Invitaciones', icon: QrCode, roles: ['resident', 'admin'] },
-                { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'] },
+                { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'], feature: 'voting' },
             ]
         },
         {
@@ -133,10 +133,10 @@ export function Sidebar() {
         {
             title: 'AULA & INTELIGENCIA IA',
             links: [
-                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'] },
-                { href: '/admin/training', label: 'Generador Cursos IA', icon: BookOpen, roles: ['admin'] },
-                { href: '/admin/onboarding', label: 'Migración IA (Agentes)', icon: Sparkles, roles: ['admin'] },
-                { href: '/training', label: 'Cursos (Antiguos)', icon: ClipboardList, roles: ['admin', 'concierge'] },
+                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'], feature: 'coco_ai' },
+                { href: '/admin/training', label: 'Generador Cursos IA', icon: BookOpen, roles: ['admin'], feature: 'coco_ai' },
+                { href: '/admin/onboarding', label: 'Migración IA (Agentes)', icon: Sparkles, roles: ['admin'], feature: 'coco_ai' },
+                { href: '/training', label: 'Cursos (Antiguos)', icon: ClipboardList, roles: ['admin', 'concierge'], feature: 'coco_ai' },
             ]
         },
         {
@@ -152,8 +152,8 @@ export function Sidebar() {
                 { href: '/admin/finanzas', label: 'Control Finanzas', icon: PieChart, roles: ['admin'] },
                 { href: '/admin/units', label: 'Unidades', icon: Home, roles: ['admin'] },
                 { href: '/admin/consumo', label: 'Control Hídrico', icon: Waves, roles: ['admin'] },
-                { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'] },
-                { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'] },
+                { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'], feature: 'maintenance' },
+                { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'], feature: 'voting' },
                 { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
             ]
         },
@@ -164,6 +164,15 @@ export function Sidebar() {
             ]
         }
     ];
+
+    if (user.email === 'pedromoreno1983@gmail.com' || user.email.includes('comunidadconnect')) {
+        menuSections.push({
+            title: 'SaaS SUPERADMIN',
+            links: [
+                { href: '/superadmin', label: 'Panel SaaS', icon: Shield, roles: ['admin'] }
+            ]
+        });
+    }
 
     const getRoleGradient = () => {
         switch (user.role) {
@@ -229,7 +238,17 @@ export function Sidebar() {
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-3 py-2 pb-6 space-y-6 custom-scrollbar">
                 {menuSections.map((section, sIdx) => {
-                    const validLinks = section.links.filter(link => link.roles.includes(user.role));
+                    const validLinks = section.links.filter(link => {
+                        // 1. Check basic user role matching
+                        if (!link.roles.includes(user.role)) return false;
+                        
+                        // 2. Check Plan Features using feature flag if defined
+                        if (link.feature && user.features) {
+                            if (user.features[link.feature] === false) return false;
+                        }
+                        return true;
+                    });
+                    
                     if (validLinks.length === 0) return null;
 
                     return (

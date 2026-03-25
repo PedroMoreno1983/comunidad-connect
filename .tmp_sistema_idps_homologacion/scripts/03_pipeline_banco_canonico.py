@@ -14,6 +14,7 @@ import logging
 import math
 import re
 import unicodedata
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -185,6 +186,17 @@ def normalize_text(value: Optional[str]) -> str:
     return text
 
 
+def tokenize_normalized(value: Optional[str]) -> list[str]:
+    return [token for token in normalize_text(value).split() if token]
+
+
+def contains_token_sequence(haystack: list[str], needle: list[str]) -> bool:
+    if not haystack or not needle or len(needle) > len(haystack):
+        return False
+    limit = len(haystack) - len(needle) + 1
+    return any(haystack[index : index + len(needle)] == needle for index in range(limit))
+
+
 def clean_cell(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -208,6 +220,160 @@ def combine_text(question_text: Optional[str], item_text: Optional[str]) -> str:
     if question_text:
         return question_text
     return ""
+
+
+def canonicalize_actor(value: Optional[str]) -> Optional[str]:
+    text = normalize_text(value)
+    if not text:
+        return None
+    aliases = {
+        "doce": {"doce", "docente", "docentes"},
+        "estu": {"estu", "estudiante", "estudiantes"},
+        "padr": {"padr", "padre", "padres", "apoderado", "apoderados", "familia", "familias"},
+        "dire": {"dire", "director", "directora", "directivo", "directivos", "equipo directivo"},
+    }
+    for canonical, candidates in aliases.items():
+        if text in candidates:
+            return canonical
+    return text
+
+
+def canonicalize_grade(value: Optional[str]) -> Optional[str]:
+    raw = clean_cell(value)
+    if raw and re.fullmatch(r"\d+\.0+", raw):
+        raw = raw.split(".", maxsplit=1)[0]
+    text = normalize_text(raw)
+    if not text:
+        return None
+
+    collapsed = text.replace(" ", "")
+    roman_medium_patterns = (
+        r"^ii$",
+        r"^ii[a-z]?$",
+        r"^ii[o°º]$",
+        r"^segundomedio$",
+        r"^2medio$",
+        r"^2m$",
+        r"^10$",
+    )
+    if any(re.fullmatch(pattern, collapsed) for pattern in roman_medium_patterns):
+        return "2m"
+
+    collapsed = (
+        collapsed.replace("basico", "b")
+        .replace("medio", "m")
+        .replace("1ro", "1")
+        .replace("2do", "2")
+        .replace("3ro", "3")
+        .replace("4to", "4")
+    )
+
+    direct_map = {
+        "4": "4b",
+        "04": "4b",
+        "4b": "4b",
+        "6": "6b",
+        "06": "6b",
+        "6b": "6b",
+        "8": "8b",
+        "08": "8b",
+        "8b": "8b",
+        "2": "2b",
+        "02": "2b",
+        "2b": "2b",
+        "10": "2m",
+        "2m": "2m",
+        "2medio": "2m",
+        "2mdo": "2m",
+        "2mto": "2m",
+        "2mm": "2m",
+        "iim": "2m",
+    }
+    if collapsed in direct_map:
+        return direct_map[collapsed]
+
+    match = re.search(r"(\d+)([bm])", collapsed)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+
+    if collapsed == "9":
+        return "9"
+
+    return collapsed
+
+
+def canonicalize_question_code(value: Optional[str]) -> Optional[str]:
+    raw = clean_cell(value)
+    if raw is None:
+        return None
+
+    text = unicodedata.normalize("NFKD", str(raw))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower().strip()
+    text = re.sub(r"\s+", "", text)
+    text = re.sub(r"[^a-z0-9_]", "", text)
+    if not text:
+        return None
+
+    match = re.fullmatch(r"p(\d+)(?:_(\d+))?(r)?", text)
+    if match:
+        first = str(int(match.group(1)))
+        second = match.group(2)
+        suffix = match.group(3) or ""
+        if second is not None:
+            return f"p{first}_{int(second)}{suffix}"
+        return f"p{first}{suffix}"
+
+    return text
+
+
+def canonicalize_form(value: Optional[str]) -> Optional[str]:
+    text = normalize_text(value)
+    if not text:
+        return None
+
+    collapsed = text.replace(" ", "")
+    if collapsed.startswith(("matriz", "hoja", "estudiantes", "docentes", "padres", "apoderados")):
+        return None
+
+    aliases = {
+        "leng": {"l", "len", "leng", "lenguaje", "lenguayliteratura"},
+        "mate": {"m", "mat", "mate", "matematica", "matematicas"},
+        "hist": {"h", "hist", "historia"},
+        "cnat": {"cnat", "cienciasnaturales", "naturales"},
+        "a": {"a"},
+        "b": {"b"},
+    }
+    for canonical, candidates in aliases.items():
+        if collapsed in candidates:
+            return canonical
+    return None
+
+
+def infer_context_from_code(value: Optional[str]) -> dict[str, Optional[str]]:
+    text = clean_cell(value)
+    if not text:
+        return {"grade": None, "actor": None, "form": None}
+
+    tokens = [token for token in re.split(r"[^A-Za-z0-9]+", text) if token]
+    if not tokens:
+        return {"grade": None, "actor": None, "form": None}
+
+    start_index = 1 if re.fullmatch(r"[sS]?\d{2,4}", tokens[0]) else 0
+    grade = tokens[start_index] if len(tokens) > start_index else None
+    actor = tokens[start_index + 1] if len(tokens) > start_index + 1 else None
+    form = tokens[start_index + 2] if len(tokens) > start_index + 2 else None
+    canonical_form = canonicalize_form(form)
+    return {
+        "grade": canonicalize_grade(grade),
+        "actor": canonicalize_actor(actor),
+        "form": canonical_form,
+    }
+
+
+def looks_like_item_code(value: Optional[str]) -> bool:
+    text = normalize_text(value).replace(" ", "")
+    return bool(text and re.fullmatch(r"p\d+(?:_\d+)?r?", text))
 
 
 def fuzzy_ratio(a: str, b: str) -> float:
@@ -255,15 +421,16 @@ class WorkbookReader:
     }
 
     RESULT_COLUMN_ALIASES = {
-        "actor": ["actor"],
+        "actor": ["actor", "ta"],
         "grade": ["grado"],
         "form": ["forma"],
         "indicator": ["indicador"],
         "dimension": ["dimension"],
         "subdimension": ["subdimension"],
-        "np_code": ["np", "pregunta"],
-        "question_text": ["enunciado_pregunta", "enunciado pregunta"],
+        "np_code": ["np", "pregunta", "preg"],
+        "question_text": ["enunciado_pregunta", "enunciado pregunta", "enunciado_preg"],
         "item_text": ["enunciado_item", "enunciado item"],
+        "base_code": ["base", "agap", "agadp"],
     }
 
     def __init__(self, base_path: Path):
@@ -316,10 +483,14 @@ class WorkbookReader:
             exact = normalized_headers.get(normalize_text(alias))
             if exact:
                 return exact
+
         for alias in aliases:
-            alias_norm = normalize_text(alias)
+            alias_tokens = tokenize_normalized(alias)
+            if not alias_tokens:
+                continue
             for normalized, original in normalized_headers.items():
-                if alias_norm in normalized or normalized in alias_norm:
+                header_tokens = tokenize_normalized(normalized)
+                if contains_token_sequence(header_tokens, alias_tokens) or contains_token_sequence(alias_tokens, header_tokens):
                     return original
         return None
 
@@ -398,13 +569,13 @@ class WorkbookReader:
                         year=year,
                         sheet_name=sheet_name,
                         source_row_number=row_index + 2,
-                        actor=clean_cell(row.get(mapping.get("actor", ""))) or self._infer_actor(path, sheet_name),
-                        grade=clean_cell(row.get(mapping.get("grade", ""))) or self._infer_grade(path, sheet_name),
-                        form=clean_cell(row.get(mapping.get("form", ""))) or sheet_name,
+                        actor=canonicalize_actor(clean_cell(row.get(mapping.get("actor", ""))) or self._infer_actor(path, sheet_name)) or "estu",
+                        grade=canonicalize_grade(clean_cell(row.get(mapping.get("grade", ""))) or self._infer_grade(path, sheet_name)),
+                        form=canonicalize_form(clean_cell(row.get(mapping.get("form", ""))) or self._infer_form(path, sheet_name)),
                         indicator=clean_cell(row.get(mapping.get("indicator", ""))),
                         dimension=clean_cell(row.get(mapping.get("dimension", ""))),
                         subdimension=clean_cell(row.get(mapping.get("subdimension", ""))),
-                        np_code=clean_cell(row.get(mapping.get("np_code", ""))),
+                        np_code=canonicalize_question_code(row.get(mapping.get("np_code", ""))),
                         question_text=clean_cell(row.get(mapping.get("question_text", ""))),
                         item_text=item_text,
                         scales=clean_cell(row.get(mapping.get("scales", ""))),
@@ -433,11 +604,22 @@ class WorkbookReader:
                 continue
 
             for row_index, row in df.iterrows():
+                compound_context = infer_context_from_code(clean_cell(row.get(mapping.get("base_code", ""))))
                 item_text = combine_text(
                     row.get(mapping.get("question_text", "")),
                     row.get(mapping.get("item_text", "")),
                 )
-                if len(normalize_text(item_text)) < 5:
+                if len(normalize_text(item_text)) < 5 or looks_like_item_code(item_text):
+                    continue
+
+                actor = canonicalize_actor(clean_cell(row.get(mapping.get("actor", ""))) or compound_context["actor"])
+                grade = canonicalize_grade(clean_cell(row.get(mapping.get("grade", ""))) or compound_context["grade"])
+                form = canonicalize_form(
+                    clean_cell(row.get(mapping.get("form", ""))) or compound_context["form"] or self._infer_form(path, sheet_name)
+                )
+                np_code = canonicalize_question_code(row.get(mapping.get("np_code", "")))
+                question_text = clean_cell(row.get(mapping.get("question_text", "")))
+                if actor is None and grade is None and np_code is None:
                     continue
 
                 records.append(
@@ -446,14 +628,14 @@ class WorkbookReader:
                         year=year,
                         sheet_name=sheet_name,
                         source_row_number=row_index + 2,
-                        actor=clean_cell(row.get(mapping.get("actor", ""))),
-                        grade=clean_cell(row.get(mapping.get("grade", ""))),
-                        form=clean_cell(row.get(mapping.get("form", ""))),
+                        actor=actor,
+                        grade=grade,
+                        form=form,
                         indicator=clean_cell(row.get(mapping.get("indicator", ""))),
                         dimension=clean_cell(row.get(mapping.get("dimension", ""))),
                         subdimension=clean_cell(row.get(mapping.get("subdimension", ""))),
-                        np_code=clean_cell(row.get(mapping.get("np_code", ""))),
-                        question_text=clean_cell(row.get(mapping.get("question_text", ""))),
+                        np_code=np_code,
+                        question_text=question_text,
                         item_text=item_text,
                         estimation_method="IRT" if year >= 2024 else "CLASICA",
                         metrics=self._extract_metrics(row),
@@ -495,19 +677,40 @@ class WorkbookReader:
     def _infer_actor(path: Path, sheet_name: str) -> str:
         lowered = f"{path.stem} {sheet_name}".lower()
         if "doc" in lowered:
-            return "Docente"
+            return "doce"
         if "padr" in lowered or "fam" in lowered:
-            return "Apoderado"
+            return "padr"
         if "direc" in lowered:
-            return "Directivo"
-        return "Estudiante"
+            return "dire"
+        return "estu"
 
     @staticmethod
     def _infer_grade(path: Path, sheet_name: str) -> Optional[str]:
         text = f"{path.stem} {sheet_name}"
-        match = re.search(r"(\d+\s*[mbb°º])", text.lower())
+        lowered = normalize_text(text).replace(" ", "")
+        if (
+            "iim" in lowered
+            or "iia" in lowered
+            or "iib" in lowered
+            or "iio" in lowered
+            or "2m" in lowered
+            or "10" in lowered
+            or "padresii" in lowered
+            or "docenteii" in lowered
+        ):
+            return "2m"
+        match = re.search(r"(\d+)\s*[b°ºm]", text.lower())
         if match:
-            return match.group(1).replace(" ", "")
+            suffix = "m" if "m" in match.group(0) else "b"
+            return f"{match.group(1)}{suffix}"
+        return None
+
+    @staticmethod
+    def _infer_form(path: Path, sheet_name: str) -> Optional[str]:
+        for token in tokenize_normalized(f"{path.stem} {sheet_name}"):
+            canonical = canonicalize_form(token)
+            if canonical is not None:
+                return canonical
         return None
 
 
@@ -520,7 +723,13 @@ class CanonicalWarehouse:
         self.results: list[dict[str, Any]] = []
         self.revisions: list[dict[str, Any]] = []
         self._canonical_states: list[CanonicalState] = []
-        self._occurrence_lookup: dict[tuple[Any, ...], str] = {}
+        self._occurrence_lookup_exact: dict[tuple[Any, ...], list[str]] = defaultdict(list)
+        self._occurrence_lookup_no_form: dict[tuple[Any, ...], list[str]] = defaultdict(list)
+        self._occurrence_lookup_text: dict[tuple[Any, ...], list[str]] = defaultdict(list)
+        self._occurrence_lookup_np_exact: dict[tuple[Any, ...], list[str]] = defaultdict(list)
+        self._occurrence_lookup_np_no_form: dict[tuple[Any, ...], list[str]] = defaultdict(list)
+        self._occurrence_by_id: dict[str, dict[str, Any]] = {}
+        self._aggregate_occurrence_lookup: dict[tuple[Any, ...], str] = {}
         self._canonical_index: dict[tuple[str, str, str], list[CanonicalState]] = {}
         self._variant_exact_index: dict[tuple[str, str, str, str], tuple[CanonicalState, VariantState]] = {}
         self._canonical_counter = 1
@@ -541,14 +750,17 @@ class CanonicalWarehouse:
             canonical_state, variant_state, audit = self._assign_record(record)
             occurrence = self._build_occurrence(record, canonical_state, variant_state, audit)
             self.occurrences.append(occurrence)
+            self._occurrence_by_id[occurrence["id_ocurrencia"]] = occurrence
             audits.append(audit)
-            self._occurrence_lookup[self._occurrence_key(record)] = occurrence["id_ocurrencia"]
+            self._register_occurrence(record, occurrence["id_ocurrencia"])
         return audits
 
     def attach_results(self, result_records: list[ResultRecord]) -> list[ResultRecord]:
         unmatched: list[ResultRecord] = []
         for result in result_records:
             occurrence_id = self._find_occurrence_id(result)
+            if occurrence_id is None:
+                occurrence_id = self._find_or_create_aggregate_occurrence(result)
             if occurrence_id is None:
                 unmatched.append(result)
                 continue
@@ -893,39 +1105,231 @@ class CanonicalWarehouse:
         return (
             record.year,
             normalize_text(record.actor),
+            normalize_text(record.grade),
             normalize_text(record.form),
             normalize_text(record.np_code),
             normalize_text(record.item_text),
         )
 
-    def _find_occurrence_id(self, result: ResultRecord) -> Optional[str]:
-        keys = [
-            (
-                result.year,
-                normalize_text(result.actor),
-                normalize_text(result.form),
-                normalize_text(result.np_code),
-                normalize_text(result.item_text),
-            ),
-            (
-                result.year,
-                normalize_text(result.actor),
-                normalize_text(result.form),
-                "",
-                normalize_text(result.item_text),
-            ),
-            (
-                result.year,
-                normalize_text(result.actor),
-                "",
-                normalize_text(result.np_code),
-                normalize_text(result.item_text),
-            ),
+    def _register_occurrence(self, record: MatrixRecord, occurrence_id: str) -> None:
+        year, actor, grade, form, np_code, item_text = self._occurrence_key(record)
+        self._register_occurrence_values(year, actor, grade, form, np_code, item_text, occurrence_id)
+
+    def _register_occurrence_values(
+        self,
+        year: int,
+        actor: str,
+        grade: str,
+        form: str,
+        np_code: str,
+        item_text: str,
+        occurrence_id: str,
+    ) -> None:
+        self._occurrence_lookup_exact[(year, actor, grade, form, np_code, item_text)].append(occurrence_id)
+        self._occurrence_lookup_no_form[(year, actor, grade, np_code, item_text)].append(occurrence_id)
+        self._occurrence_lookup_text[(year, actor, grade, item_text)].append(occurrence_id)
+        self._occurrence_lookup_np_exact[(year, actor, grade, form, np_code)].append(occurrence_id)
+        self._occurrence_lookup_np_no_form[(year, actor, grade, np_code)].append(occurrence_id)
+
+    @staticmethod
+    def _select_unique(candidates: list[str]) -> Optional[str]:
+        unique = sorted(set(candidates))
+        return unique[0] if len(unique) == 1 else None
+
+    def _select_unique_with_context(self, candidates: list[str], item_text: str, question_text: str) -> Optional[str]:
+        unique_candidates = sorted(set(candidates))
+        if len(unique_candidates) == 1:
+            return unique_candidates[0]
+
+        exact_item = [
+            occurrence_id
+            for occurrence_id in unique_candidates
+            if normalize_text(self._occurrence_by_id.get(occurrence_id, {}).get("texto_original")) == item_text
         ]
-        for key in keys:
-            if key in self._occurrence_lookup:
-                return self._occurrence_lookup[key]
+        exact_prompt = [
+            occurrence_id
+            for occurrence_id in unique_candidates
+            if normalize_text(self._occurrence_by_id.get(occurrence_id, {}).get("prompt_text")) == question_text
+        ] if question_text else []
+        exact_both = [
+            occurrence_id
+            for occurrence_id in exact_item
+            if normalize_text(self._occurrence_by_id.get(occurrence_id, {}).get("prompt_text")) == question_text
+        ] if question_text else []
+
+        for filtered in (exact_both, exact_item, exact_prompt):
+            selected = self._select_unique(filtered)
+            if selected is not None:
+                return selected
+
+        scored_candidates = exact_prompt or unique_candidates
+        scored: list[tuple[float, str]] = []
+        for occurrence_id in scored_candidates:
+            occurrence = self._occurrence_by_id.get(occurrence_id, {})
+            candidate_item = normalize_text(occurrence.get("texto_original"))
+            item_score = semantic_similarity(candidate_item, item_text) if item_text else 0.0
+            if question_text:
+                candidate_prompt = normalize_text(occurrence.get("prompt_text"))
+                prompt_score = semantic_similarity(candidate_prompt, question_text)
+                combined_score = round((item_score * 0.7) + (prompt_score * 0.3), 4)
+            else:
+                combined_score = item_score
+            scored.append((combined_score, occurrence_id))
+
+        scored.sort(reverse=True)
+        if not scored:
+            return None
+        if len(scored) == 1 and scored[0][0] >= 0.88:
+            return scored[0][1]
+        if len(scored) >= 2 and scored[0][0] >= 0.88 and (scored[0][0] - scored[1][0]) >= 0.08:
+            return scored[0][1]
         return None
+
+    def _find_occurrence_id(self, result: ResultRecord) -> Optional[str]:
+        actor = normalize_text(result.actor)
+        grade = normalize_text(result.grade)
+        form = normalize_text(result.form)
+        np_code = normalize_text(result.np_code)
+        item_text = normalize_text(result.item_text)
+        question_text = normalize_text(result.question_text)
+
+        np_lookups = []
+        if result.year >= 2023 and form:
+            np_lookups.append(self._occurrence_lookup_np_exact.get((result.year, actor, grade, form, np_code), []))
+        np_lookups.append(self._occurrence_lookup_np_no_form.get((result.year, actor, grade, np_code), []))
+        for candidates in np_lookups:
+            selected = self._select_unique(candidates)
+            if selected is not None:
+                return selected
+            selected = self._select_unique_with_context(candidates, item_text, question_text)
+            if selected is not None:
+                return selected
+
+        lookups = [
+            self._occurrence_lookup_no_form.get((result.year, actor, grade, np_code, item_text), []),
+            self._occurrence_lookup_text.get((result.year, actor, grade, item_text), []),
+        ]
+        if not grade:
+            lookups.extend(
+                [
+                    [
+                        occurrence["id_ocurrencia"]
+                        for occurrence in self.occurrences
+                        if occurrence["year_applied"] == result.year
+                        and normalize_text(occurrence["actor_label"]) == actor
+                        and normalize_text(occurrence["question_code"]) == np_code
+                        and normalize_text(occurrence["texto_original"]) == item_text
+                    ],
+                    [
+                        occurrence["id_ocurrencia"]
+                        for occurrence in self.occurrences
+                        if occurrence["year_applied"] == result.year
+                        and normalize_text(occurrence["actor_label"]) == actor
+                        and normalize_text(occurrence["texto_original"]) == item_text
+                    ],
+                ]
+            )
+        for candidates in lookups:
+            selected = self._select_unique(candidates)
+            if selected is not None:
+                return selected
+            selected = self._select_unique_with_context(candidates, item_text, question_text)
+            if selected is not None:
+                return selected
+        return None
+
+    def _find_or_create_aggregate_occurrence(self, result: ResultRecord) -> Optional[str]:
+        actor = normalize_text(result.actor)
+        grade = normalize_text(result.grade)
+        np_code = normalize_text(result.np_code)
+        item_text = normalize_text(result.item_text)
+        question_text = normalize_text(result.question_text)
+        if not actor or not grade or not np_code:
+            return None
+
+        candidate_ids = sorted(set(self._occurrence_lookup_np_no_form.get((result.year, actor, grade, np_code), [])))
+        if len(candidate_ids) < 2:
+            return None
+
+        if question_text:
+            prompt_matched = [
+                occurrence_id
+                for occurrence_id in candidate_ids
+                if normalize_text(self._occurrence_by_id.get(occurrence_id, {}).get("prompt_text")) == question_text
+            ]
+            if len(prompt_matched) >= 2:
+                candidate_ids = prompt_matched
+
+        if item_text:
+            exact_item_matched = [
+                occurrence_id
+                for occurrence_id in candidate_ids
+                if normalize_text(self._occurrence_by_id.get(occurrence_id, {}).get("texto_original")) == item_text
+            ]
+            if len(exact_item_matched) >= 2:
+                candidate_ids = exact_item_matched
+
+        if len(candidate_ids) < 2:
+            return None
+
+        candidates = [self._occurrence_by_id[occurrence_id] for occurrence_id in candidate_ids if occurrence_id in self._occurrence_by_id]
+        if len(candidates) != len(candidate_ids):
+            return None
+
+        variant_ids = {candidate["variante_id"] for candidate in candidates}
+        aggregate_key = (result.year, actor, grade, np_code, question_text, item_text, tuple(sorted(variant_ids)))
+        existing = self._aggregate_occurrence_lookup.get(aggregate_key)
+        if existing is not None:
+            return existing
+
+        template = candidates[0]
+        aggregate_variant_id = sorted(variant_ids)[0]
+        aggregate_occurrence_id = (
+            aggregate_variant_id.replace("VAR", "OCC", 1)
+            + f"-{slugify(template.get('actor_label'), 'na')}-{slugify(template.get('grade_label'), 'na')}-{slugify(template.get('question_code'), 'na')}-agg"
+        )
+        if aggregate_occurrence_id in self._occurrence_by_id:
+            return aggregate_occurrence_id
+
+        metadata = dict(template.get("metadata") or {})
+        metadata["aggregate_variant_ids"] = sorted(variant_ids)
+        metadata["aggregate_forms"] = sorted({candidate.get("form_label") for candidate in candidates if candidate.get("form_label")})
+        metadata["aggregate_occurrence_ids"] = candidate_ids
+        metadata["aggregate_source"] = "resultados_sin_forma"
+
+        aggregate_occurrence = {
+            "id_ocurrencia": aggregate_occurrence_id,
+            "variante_id": aggregate_variant_id,
+            "source_file_id": template["source_file_id"],
+            "year_applied": template["year_applied"],
+            "actor_label": template["actor_label"],
+            "grade_label": template["grade_label"],
+            "form_label": None,
+            "sheet_name": "AGREGADO_RESULTADOS_SIN_FORMA",
+            "source_row_number": None,
+            "question_code": template["question_code"],
+            "item_code": template["item_code"],
+            "prompt_text": template["prompt_text"],
+            "texto_original": template["texto_original"],
+            "texto_normalizado": template["texto_normalizado"],
+            "decision_taxonomy": template["decision_taxonomy"],
+            "processing_status": template["processing_status"],
+            "metadata": metadata,
+        }
+
+        self.occurrences.append(aggregate_occurrence)
+        self._occurrence_by_id[aggregate_occurrence_id] = aggregate_occurrence
+        self._aggregate_occurrence_lookup[aggregate_key] = aggregate_occurrence_id
+        self._register_occurrence_values(
+            aggregate_occurrence["year_applied"],
+            normalize_text(aggregate_occurrence["actor_label"]),
+            normalize_text(aggregate_occurrence["grade_label"]),
+            normalize_text(aggregate_occurrence["form_label"]),
+            normalize_text(aggregate_occurrence["question_code"]),
+            normalize_text(aggregate_occurrence["texto_original"]),
+            aggregate_occurrence_id,
+        )
+        return aggregate_occurrence_id
 
     @staticmethod
     def _build_result(result: ResultRecord, occurrence_id: str) -> dict[str, Any]:
