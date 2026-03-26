@@ -87,6 +87,15 @@ export default function AdminTrainingPage() {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
+        // Validate file sizes (Vercel Hobby plan limit ~4MB per request)
+        const MAX_SIZE_MB = 4;
+        const oversized = files.filter(f => f.size > MAX_SIZE_MB * 1024 * 1024);
+        if (oversized.length > 0) {
+            alert(`⚠️ Archivo demasiado grande: ${oversized.map(f => f.name).join(', ')}\n\nEl límite es ${MAX_SIZE_MB}MB por archivo. Por favor comprime el PDF o divídelo en partes más pequeñas.`);
+            e.target.value = '';
+            return;
+        }
+
         setIsUploading(true);
         let combinedText = '';
         let lastFileName = '';
