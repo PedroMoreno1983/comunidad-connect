@@ -25,7 +25,7 @@ export async function POST(request: Request) {
             const pdfBase64 = buffer.toString('base64');
             const inlineData = { mimeType: 'application/pdf', data: pdfBase64 };
             
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             const body = {
                 contents: [{
                     role: "user", 
@@ -38,7 +38,10 @@ export async function POST(request: Request) {
             };
 
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            if (!response.ok) throw new Error("Error al analizar PDF con IA: " + response.statusText);
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                throw new Error(`Error Gemini API (${response.status}): ${errBody?.error?.message || response.statusText}`);
+            }
             const data = await response.json();
             extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
