@@ -333,7 +333,7 @@ export default function LoginPage() {
         </motion.div>
 
         {/* PRICING SECTION */}
-        <div className="mt-24 md:mt-32 w-full max-w-5xl mx-auto z-20">
+        <div className="mt-24 md:mt-32 w-full max-w-6xl mx-auto z-20">
           <div className="text-center mb-16">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -350,63 +350,114 @@ export default function LoginPage() {
               transition={{ delay: 0.1 }}
               className="text-lg text-slate-600 dark:text-slate-400"
             >
-              Diseñados para escalar junto al crecimiento de tu comunidad.
+              Todos los planes incluyen 30 días de prueba gratuita. Sin tarjeta de crédito.
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:px-12">
-            {/* Basic Plan */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Básico */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 flex flex-col hover:shadow-xl hover:border-blue-500/30 transition-all"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-bold mb-1">Básico</h3>
+              <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">Para condominios que recién se digitalizan.</p>
+              <div className="mb-2">
+                <span className="text-4xl font-extrabold tracking-tight">$19.990</span>
+                <span className="text-slate-500 font-medium text-sm"> /mes base</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-8">+ $490 por unidad/mes</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Muro y Avisos', 'Directorio Vecinal', 'Conserjería Digital', 'Espacios Comunes', 'Control de Visitas'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+                {['Mantenimiento', 'Votaciones', 'CoCo IA'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-400 text-sm line-through">
+                    <div className="w-4 h-4 rounded-full border border-slate-300 flex-shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => router.push('/admin-onboarding')} className="w-full py-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold transition-colors">
+                Empezar Gratis
+              </button>
+            </motion.div>
+
+            {/* Avanzado (destacado) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 flex flex-col hover:shadow-xl hover:border-indigo-500/30 transition-all"
+              className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden md:-translate-y-4"
             >
-              <h3 className="text-2xl font-bold mb-2">Comunidad</h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-6">Para condominios pequeños que necesitan digitalizarse.</p>
-              <div className="mb-8">
-                <span className="text-5xl font-extrabold tracking-tight">$1.500</span>
-                <span className="text-slate-500 dark:text-slate-400 font-medium"> / unidad al mes</span>
+              <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-md px-5 py-1.5 rounded-bl-2xl font-semibold text-xs tracking-wide uppercase">Más Popular</div>
+              <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-4 mt-4 md:mt-0">
+                <CheckCircle2 className="w-6 h-6 text-white" />
               </div>
-              <ul className="space-y-4 mb-8 flex-1">
-                {['App Móvil para Residentes', 'Gestión de Cobros Básica', 'Noticias y Avisos Push', 'Reservas de Áreas Comunes'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
-                    <CheckCircle2 className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+              <h3 className="text-2xl font-bold mb-1">Avanzado</h3>
+              <p className="text-indigo-100 mb-6 text-sm">Para comunidades que quieren más control y funcionalidades.</p>
+              <div className="mb-2">
+                <span className="text-4xl font-extrabold tracking-tight">$34.990</span>
+                <span className="text-indigo-200 font-medium text-sm"> /mes base</span>
+              </div>
+              <p className="text-xs text-indigo-300 mb-8">+ $690 por unidad/mes</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Todo lo del plan Básico', 'Mantenimiento y Solicitudes', 'Votaciones Online', 'Pagos Online', 'Reportes Financieros'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-white text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-indigo-200 flex-shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+                {['CoCo IA'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-indigo-300 text-sm line-through">
+                    <div className="w-4 h-4 rounded-full border border-indigo-400 flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/signup')} className="w-full py-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold transition-colors">
-                Prueba Gratis por 14 Días
+              <button onClick={() => router.push('/admin-onboarding')} className="w-full py-4 rounded-xl bg-white text-indigo-600 hover:bg-slate-50 font-bold transition-colors shadow-lg shadow-white/10">
+                Empezar Gratis
               </button>
             </motion.div>
 
-            {/* Pro Plan */}
+            {/* Premium */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden transform md:-translate-y-4"
+              className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 flex flex-col hover:shadow-xl hover:border-purple-500/30 transition-all"
             >
-              <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-md px-6 py-2 rounded-bl-2xl font-semibold text-sm tracking-wide uppercase">Recomendado</div>
-              <h3 className="text-2xl font-bold mb-2 mt-4 md:mt-0">Enterprise</h3>
-              <p className="text-indigo-100 mb-6">La solución total para grandes edificios y conserjerías.</p>
-              <div className="mb-8">
-                <span className="text-5xl font-extrabold tracking-tight">$2.500</span>
-                <span className="text-indigo-200 font-medium"> / unidad al mes</span>
+              <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mb-4">
+                <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <ul className="space-y-4 mb-8 flex-1">
-                {['App para Conserjería', 'Marketplace Comunitario', 'Control de Visitas', 'Analítica Avanzada y Multi-Rol'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-white font-medium">
-                    <CheckCircle2 className="w-5 h-5 text-indigo-200 flex-shrink-0" />
+              <h3 className="text-2xl font-bold mb-1">Premium</h3>
+              <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">La solución total con inteligencia artificial.</p>
+              <div className="mb-2">
+                <span className="text-4xl font-extrabold tracking-tight">$49.990</span>
+                <span className="text-slate-500 font-medium text-sm"> /mes base</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-8">+ $990 por unidad/mes</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Todo lo del plan Avanzado', 'CoCo IA Assistant', 'Aula Virtual', 'Integraciones', 'Soporte Prioritario 24/7'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/signup')} className="w-full py-4 rounded-xl bg-white text-indigo-600 hover:bg-slate-50 font-bold transition-colors shadow-lg shadow-white/10">
-                Contactar Ventas
+              <button onClick={() => router.push('/admin-onboarding')} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold transition-colors shadow-lg shadow-purple-500/20">
+                Empezar Gratis
               </button>
             </motion.div>
           </div>
