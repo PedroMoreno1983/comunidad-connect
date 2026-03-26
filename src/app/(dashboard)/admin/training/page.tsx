@@ -118,7 +118,8 @@ export default function AdminTrainingPage() {
             }
         } catch (err) {
             console.error(err);
-            alert('Error extrayendo texto.');
+            const msg = err instanceof Error ? err.message : 'Error desconocido';
+            alert('Error extrayendo texto: ' + msg);
         } finally {
             setIsUploading(false);
             e.target.value = '';
