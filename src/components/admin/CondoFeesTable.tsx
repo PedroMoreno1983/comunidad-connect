@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { CondoFeeService } from "@/lib/services/supabaseServices";
 import { Badge } from "@/components/ui/Badge";
-import { CreditCard, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/authContext";
+import { useToast } from "@/components/ui/Toast";
 
 interface CondoFee {
     id: string;
@@ -25,6 +27,9 @@ interface CondoFee {
 export function CondoFeesTable() {
     const [fees, setFees] = useState<CondoFee[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sending, setSending] = useState(false);
+    const { user } = useAuth();
+    const { toast } = useToast();
 
     useEffect(() => {
         loadFees();
@@ -39,6 +44,48 @@ export function CondoFeesTable() {
             console.error("Error loading condo fees:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSendEmails = async () => {
+        if (!user?.communityId) {
+            toast({ title: "Error", description: "No se encontró tu comunidad.", variant: "destructive" });
+            return;
+        }
+        setSending(true);
+        try {
+            // Get current month in YYYY-MM format
+            const now = new Date();
+            const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            // Build items from current fees
+            const totalAmount = fees.reduce((acc, f) => acc + (f.amount || 0), 0);
+
+            const res = await fetch('/api/email/send-expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    communityId: user.communityId,
+                    month,
+                    totalAmount,
+                    items: [{ label: 'Gastos Comunes', amount: totalAmount }],
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast({
+                    title: "✉️ Emails enviados",
+                    description: `${data.sent} residentes notificados correctamente.`,
+                    variant: "success",
+                });
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error desconocido';
+            toast({ title: "Error al enviar", description: msg, variant: "destructive" });
+        } finally {
+            setSending(false);
         }
     };
 
@@ -57,6 +104,14 @@ export function CondoFeesTable() {
                     <h3 className="text-xl font-black text-slate-900 dark:text-white">Registro de Cobros</h3>
                     <p className="text-sm font-medium text-slate-500 mt-1">Historial y estado de los Gastos Comunes</p>
                 </div>
+                <button
+                    onClick={handleSendEmails}
+                    disabled={sending || fees.length === 0}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors shadow-lg shadow-indigo-500/20"
+                >
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                    {sending ? 'Enviando...' : 'Enviar a Residentes'}
+                </button>
             </div>
 
             <div className="overflow-x-auto">

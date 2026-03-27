@@ -145,6 +145,20 @@ export default function AdminOnboardingPage() {
 
             if (profileError) throw profileError;
 
+            // Notify SuperAdmin (fire and forget — don't block the user)
+            const selectedPlanName = PLANS.find(p => p.id === selectedPlan)?.name || 'Sin plan';
+            fetch('/api/email/new-community', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    communityName: communityName.trim(),
+                    address,
+                    planName: selectedPlanName,
+                    adminEmail: email,
+                    adminName: fullName,
+                }),
+            }).catch(console.error);
+
             toast({
                 title: "¡Comunidad creada!",
                 description: `Bienvenido a la administración de ${communityName}`,
