@@ -47,44 +47,140 @@ export async function POST(request: Request) {
         const itemRows = Array.isArray(items) && items.length > 0
             ? items.map((item: { label: string; amount: number }) => `
                 <tr>
-                    <td style="padding:12px 20px;color:#475569;border-bottom:1px solid #f1f5f9;">${item.label}</td>
-                    <td style="padding:12px 20px;font-weight:700;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">${formatCLP(item.amount)}</td>
+                  <td style="padding:14px 0;color:#374151;font-size:15px;border-bottom:1px solid #f3f4f6;">${item.label}</td>
+                  <td style="padding:14px 0;color:#111827;font-size:15px;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6;">${formatCLP(item.amount)}</td>
                 </tr>`).join('')
-            : `<tr><td colspan="2" style="padding:14px 20px;color:#64748b;text-align:center;">Sin desglose disponible</td></tr>`;
+            : `<tr><td colspan="2" style="padding:14px 0;color:#9ca3af;text-align:center;">Sin desglose disponible</td></tr>`;
 
         // Send one email per resident
         const results = await Promise.allSettled(
             residents.map((resident) => {
-                const html = emailWrapper(`
-                    <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#1e293b;">
-                        📄 Gastos Comunes — <span style="text-transform:capitalize;">${monthLabel}</span>
-                    </h1>
-                    <p style="margin:0 0 8px;color:#64748b;font-size:15px;">
-                        Hola <strong>${resident.name || 'Residente'}</strong>, adjuntamos el detalle de tus gastos comunes correspondientes a <strong style="text-transform:capitalize;">${monthLabel}</strong>.
-                    </p>
-                    <p style="margin:0 0 32px;font-size:13px;color:#94a3b8;">Comunidad: ${communityName}</p>
+                const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Gastos Comunes ${monthLabel}</title>
+</head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:48px 0;">
+<tr><td align="center">
+<table width="580" cellpadding="0" cellspacing="0" style="width:100%;max-width:580px;">
 
-                    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:24px;">
-                        <tr style="background:#f8fafc;">
-                            <th style="padding:12px 20px;font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;text-align:left;border-bottom:1px solid #e2e8f0;">Concepto</th>
-                            <th style="padding:12px 20px;font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;text-align:right;border-bottom:1px solid #e2e8f0;">Monto</th>
-                        </tr>
-                        ${itemRows}
-                        <tr style="background:#f8fafc;">
-                            <td style="padding:16px 20px;font-weight:800;color:#1e293b;font-size:16px;">TOTAL A PAGAR</td>
-                            <td style="padding:16px 20px;font-weight:900;color:#4f46e5;font-size:18px;text-align:right;">${formatCLP(totalAmount || 0)}</td>
-                        </tr>
-                    </table>
+  <!-- Logo header -->
+  <tr>
+    <td align="center" style="padding-bottom:32px;">
+      <table cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;padding:10px 20px;">
+            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Comunidad<span style="color:#c4b5fd;">Connect</span></span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
-                    ${dueDate ? `<p style="margin:0 0 28px;font-size:14px;color:#64748b;">⏰ <strong>Fecha de vencimiento:</strong> ${new Date(dueDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+  <!-- Card -->
+  <tr>
+    <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 1px 16px rgba(0,0,0,0.07);">
 
-                    <a href="https://comunidad-connect-eight.vercel.app/expenses" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;">
-                        Pagar Ahora →
-                    </a>
-                    <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">
-                        Si ya realizaste el pago, puedes ignorar este mensaje. El sistema se actualizará automáticamente al confirmar la transacción.
-                    </p>
-                `, `Gastos Comunes ${monthLabel}`);
+      <!-- Card top accent -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);height:5px;"></td>
+        </tr>
+      </table>
+
+      <!-- Card body -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 40px;">
+
+        <!-- Month badge + title -->
+        <tr>
+          <td style="padding-top:40px;padding-bottom:6px;">
+            <span style="background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:20px;text-transform:capitalize;">${monthLabel}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:8px;">
+            <h1 style="margin:0;font-size:26px;font-weight:800;color:#111827;letter-spacing:-0.5px;">Estado de tus Gastos Comunes</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:36px;">
+            <p style="margin:0;font-size:15px;color:#6b7280;">Hola <strong style="color:#111827;">${resident.name || 'Residente'}</strong> — aquí está el detalle de cobro para tu unidad en <strong style="color:#111827;">${communityName}</strong>.</p>
+          </td>
+        </tr>
+
+        <!-- Items table -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <th style="padding:10px 0;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;text-align:left;border-bottom:2px solid #e5e7eb;">Concepto</th>
+                <th style="padding:10px 0;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;text-align:right;border-bottom:2px solid #e5e7eb;">Monto</th>
+              </tr>
+              ${itemRows}
+            </table>
+          </td>
+        </tr>
+
+        <!-- Total -->
+        <tr>
+          <td style="padding-top:0;padding-bottom:36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-top:4px;">
+              <tr>
+                <td style="padding:18px 20px;font-size:14px;font-weight:700;color:#6d28d9;">TOTAL A PAGAR</td>
+                <td style="padding:18px 20px;font-size:22px;font-weight:900;color:#4f46e5;text-align:right;">${formatCLP(totalAmount || 0)}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        ${dueDate ? `
+        <!-- Due date -->
+        <tr>
+          <td style="padding-bottom:32px;">
+            <table cellpadding="0" cellspacing="0" style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;width:100%;">
+              <tr>
+                <td style="padding:14px 20px;font-size:14px;color:#92400e;">
+                  ⏰ <strong>Fecha límite de pago:</strong> ${new Date(dueDate).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>` : ''}
+
+        <!-- CTA -->
+        <tr>
+          <td align="center" style="padding-bottom:48px;">
+            <a href="https://comunidad-connect-eight.vercel.app/expenses"
+               style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;letter-spacing:-.2px;">
+              Pagar en línea &rarr;
+            </a>
+            <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">También puedes pagar por transferencia bancaria según las instrucciones de tu administrador.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td align="center" style="padding:32px 0 0;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+        ComunidadConnect &mdash; Sistema de Gestión Inmobiliaria<br/>
+        Preguntas: <a href="mailto:soporte@comunidadconnect.cl" style="color:#6d28d9;text-decoration:none;">soporte@comunidadconnect.cl</a>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
 
                 return resend.emails.send({
                     from: FROM_EMAIL,
