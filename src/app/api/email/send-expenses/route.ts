@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { resend, FROM_EMAIL, emailWrapper, formatCLP } from '@/lib/email';
+import { resend, FROM_EMAIL, formatCLP } from '@/lib/email';
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,10 +14,35 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
     try {
+        // ─── Auth gate: only authenticated admins can send mass emails ───
+        const cookieStore = await cookies();
+        const supabaseUser = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+        );
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
+        // Verify caller is admin and get their communityId
+        const { data: callerProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('role, community_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!callerProfile || callerProfile.role !== 'admin') {
+            return NextResponse.json({ error: 'Acceso denegado: solo administradores pueden enviar correos masivos' }, { status: 403 });
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         const { communityId, month, items, dueDate, totalAmount } = await request.json();
 
-        if (!communityId) {
-            return NextResponse.json({ error: 'communityId requerido' }, { status: 400 });
+        // Ensure communityId matches the caller's own community — prevents cross-community abuse
+        if (!communityId || communityId !== callerProfile.community_id) {
+            return NextResponse.json({ error: 'communityId no válido' }, { status: 403 });
         }
 
         // Get community name

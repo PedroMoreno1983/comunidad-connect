@@ -3,14 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886"; // Twilio sandbox
+const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
 
-// Format Chilean numbers: +569XXXXXXXX
+// Shared secret for internal/webhook calls — set WHATSAPP_WEBHOOK_SECRET in Vercel env vars
+const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET;
+
 function formatPhoneNumber(raw: string): string {
     const digits = raw.replace(/\D/g, "");
     if (digits.startsWith("569")) return `+${digits}`;
@@ -23,15 +25,9 @@ async function sendWhatsApp(to: string, message: string) {
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
         throw new Error("Twilio credentials not configured");
     }
-
     const formattedTo = `whatsapp:${formatPhoneNumber(to)}`;
     const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-
-    const params = new URLSearchParams({
-        From: TWILIO_FROM,
-        To: formattedTo,
-        Body: message,
-    });
+    const params = new URLSearchParams({ From: TWILIO_FROM, To: formattedTo, Body: message });
 
     const res = await fetch(url, {
         method: "POST",
@@ -50,17 +46,28 @@ async function sendWhatsApp(to: string, message: string) {
 }
 
 // POST /api/whatsapp-notify
-// Called by Supabase Webhook OR directly from the app
+// Requires: Authorization: Bearer <WHATSAPP_WEBHOOK_SECRET>
 // Body: { user_id, title, body, type }
 export async function POST(req: NextRequest) {
     try {
+        // ─── Auth gate: validate internal webhook secret ───
+        if (WEBHOOK_SECRET) {
+            const token = req.headers.get('authorization')?.replace('Bearer ', '');
+            if (token !== WEBHOOK_SECRET) {
+                return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+            }
+        } else if (process.env.NODE_ENV === 'production') {
+            // In production, always require the secret
+            return NextResponse.json({ error: 'WHATSAPP_WEBHOOK_SECRET no configurado' }, { status: 500 });
+        }
+        // ──────────────────────────────────────────────────
+
         const { user_id, title, body: notifBody, type } = await req.json();
 
         if (!user_id || !title) {
             return NextResponse.json({ error: "Missing user_id or title" }, { status: 400 });
         }
 
-        // Get user's phone number and WhatsApp opt-in status
         const { data: profile, error } = await supabaseAdmin
             .from("profiles")
             .select("phone_number, whatsapp_enabled, name")
@@ -75,22 +82,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ skipped: true, reason: "WhatsApp not enabled or no phone number" });
         }
 
-        // Build message
         const emoji = type === "alert" ? "🚨" : type === "success" ? "✅" : type === "warning" ? "⚠️" : "📢";
-        const message = [
-            `${emoji} *ComunidadConnect*`,
-            ``,
-            `*${title}*`,
-            notifBody || "",
-            ``,
-            `👉 Revisa tu cuenta en la plataforma.`,
-        ].join("\n");
+        const message = [`${emoji} *ComunidadConnect*`, ``, `*${title}*`, notifBody || "", ``, `👉 Revisa tu cuenta en la plataforma.`].join("\n");
 
         await sendWhatsApp(profile.phone_number, message);
 
-        return NextResponse.json({ success: true, sentTo: profile.phone_number });
-    } catch (err: any) {
-        console.error("WhatsApp notify error:", err.message);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        // NOTE: Do NOT return phone number — unnecessary data exposure
+        return NextResponse.json({ success: true });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Error desconocido';
+        console.error("WhatsApp notify error:", message);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
