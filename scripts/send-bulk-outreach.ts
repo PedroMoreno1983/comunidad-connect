@@ -113,6 +113,7 @@ async function startBulkOutreach() {
         try {
             const { data, error } = await resend.emails.send({
                 from: 'ComunidadConnect <notificaciones@datawiseconsultoria.com>', 
+                replyTo: 'corporativo@datawiseconsultoria.com',
                 to: [email],
                 subject: `Propuesta de Software para la administración de tus comunidades 🏢`,
                 html: generarHtmlCorreo(nombreFormateado),
