@@ -9,7 +9,7 @@ interface ProductFiltersProps {
     selectedCategory: string | null;
     setSelectedCategory: (cat: string | null) => void;
     categories: { id: string, label: string }[];
-    getCategoryConfig: (category: string) => any;
+    getCategoryConfig: (category: string) => { icon: React.ElementType, gradient: string };
 }
 
 export function ProductFilters({

@@ -5,6 +5,7 @@ import { MarketplaceService } from "@/lib/api";
 import {
     Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck, AlertCircle
 } from "lucide-react";
+import { MarketplaceItem } from "@/lib/types";
 import { useSearchParams } from 'next/navigation';
 import {
     Dialog,
@@ -45,10 +46,10 @@ const categoryConfig: Record<string, {
 
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<MarketplaceItem[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [selectedItem, setSelectedItem] = useState<any | null>(null);
+    const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -88,14 +89,14 @@ export default function MarketplacePage() {
     const loadItems = async () => {
         setLoading(true);
         try {
-            console.log("MARKETPLACE_DEBUG: Cargando items desde el componente...");
+
             const realItems = await MarketplaceService.getItemsV2();
             setItems(realItems || []);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error loading items:", error);
             toast({
                 title: "Error al cargar productos",
-                description: error.message || "No se pudieron obtener los anuncios reales.",
+                description: error instanceof Error ? error.message : "No se pudieron obtener los anuncios reales.",
                 variant: "destructive",
             });
         } finally {
@@ -142,7 +143,10 @@ export default function MarketplacePage() {
                 return;
             }
 
-            await MarketplaceService.createItem(newItem, imageFiles);
+            await MarketplaceService.createItem({
+                ...newItem,
+                price: Number(newItem.price)
+            } as Partial<MarketplaceItem>, imageFiles);
 
             toast({
                 title: "¡Artículo publicado!",
@@ -165,11 +169,11 @@ export default function MarketplacePage() {
             setImageFiles([]);
             setPreviewUrls([]);
             loadItems();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error al publicar item:", error);
             toast({
                 title: "Error al publicar",
-                description: error.message || "No se pudo subir tu artículo. Revisa tu conexión.",
+                description: error instanceof Error ? error.message : "No se pudo subir tu artículo. Revisa tu conexión.",
                 variant: "destructive",
             });
         } finally {

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 // Vercel Hobby allows up to 60s maxDuration for Edge/Serverless functions
@@ -6,6 +8,17 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
     try {
+        const cookieStore = await cookies();
+        const supabaseUser = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+        );
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
         const bodyReq = await request.json();
         const { text } = bodyReq;
 
@@ -83,10 +96,10 @@ ${text}
 
         return NextResponse.json({ slides });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error generating slides:', error);
         return NextResponse.json({ 
-            error: 'Ocurrió un error al diseñar la presentación. ' + (error.message || '') 
+            error: 'Ocurrió un error al diseñar la presentación. ' + (error instanceof Error ? error.message : '') 
         }, { status: 500 });
     }
 }

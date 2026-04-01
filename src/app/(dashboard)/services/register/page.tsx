@@ -106,10 +106,11 @@ export default function ProviderRegisterPage() {
 
             // Redirect to the provider profile
             router.push(`/services/provider/${data.id}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "No se pudo completar el registro. Intenta nuevamente.";
             toast({
                 title: "Error",
-                description: error.message || "No se pudo completar el registro. Intenta nuevamente.",
+                description: errorMessage,
                 variant: "destructive",
             });
         }

@@ -1,10 +1,14 @@
 import { supabase } from '../supabase';
+import { 
+    Amenity, Booking, Announcement, Poll, ExpenseRecord, 
+    QRInvitation, VisitorLog, Package, ServiceRequest, SocialPost, SocialComment, ChatMessage, Unit, Conversation
+} from '../types';
 
 // ==========================================
 // Amenities & Bookings Service
 // ==========================================
 export const AmenityService = {
-    async getAll() {
+    async getAll(): Promise<Amenity[]> {
         const { data, error } = await supabase
             .from('amenities')
             .select('*')
@@ -12,7 +16,7 @@ export const AmenityService = {
             .order('name');
 
         if (error) throw error;
-        return data;
+        return data as Amenity[];
     },
 
     async getBookings(amenityId?: string, date?: string) {
@@ -293,7 +297,7 @@ export const ExpenseService = {
             total: data?.length || 0,
         };
 
-        data?.forEach((e: any) => {
+        data?.forEach((e: { status: string; amount: number }) => {
             if (e.status === 'paid') stats.totalRevenue += Number(e.amount);
             if (e.status === 'pending') stats.totalPending += Number(e.amount);
             if (e.status === 'overdue') stats.totalOverdue += Number(e.amount);
@@ -384,7 +388,7 @@ export const InvitationService = {
 // Visitor & Package Services (Concierge)
 // ==========================================
 export const VisitorService = {
-    async getAll() {
+    async getAll(): Promise<any[]> {
         const { data, error } = await supabase
             .from('visitor_logs')
             .select(`
@@ -394,7 +398,7 @@ export const VisitorService = {
             .order('entry_time', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     async register(visitor: {
@@ -424,21 +428,21 @@ export const VisitorService = {
 };
 
 export const PackageService = {
-    async getAll() {
+    async getAll(): Promise<any[]> {
         const { data, error } = await supabase
             .from('packages')
             .select('*')
             .order('received_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     async register(pkg: {
         recipient_unit_id: string;
         description: string;
         registered_by: string;
-    }) {
+    }): Promise<any> {
         const { data, error } = await supabase
             .from('packages')
             .insert(pkg)
@@ -595,9 +599,9 @@ export const SocialService = {
         if (error) throw error;
 
         // Transform the nested comments count
-        return data?.map((post: any) => ({
+        return data?.map((post: { comments?: { count: number }[] } & Record<string, unknown>) => ({
             ...post,
-            comments_count: post.comments[0]?.count || 0
+            comments_count: (post.comments && post.comments.length > 0) ? post.comments[0].count : 0
         }));
     },
 
@@ -654,7 +658,7 @@ export const SocialService = {
 // Real-time Chat (Phase 4)
 // ==========================================
 export const ChatService = {
-    async getGlobalMessages(limit = 50) {
+    async getGlobalMessages(limit = 50): Promise<ChatMessage[]> {
         const { data, error } = await supabase
             .from('chat_messages')
             .select(`
@@ -666,10 +670,10 @@ export const ChatService = {
             .limit(limit);
 
         if (error) throw error;
-        return data.reverse(); // Return chronological
+        return (data as unknown as ChatMessage[]).reverse(); // Return chronological
     },
 
-    async sendMessage(message: { sender_id: string; receiver_id?: string; content: string }) {
+    async sendMessage(message: { sender_id: string; receiver_id?: string; content: string }): Promise<ChatMessage> {
         const { data, error } = await supabase
             .from('chat_messages')
             .insert(message)
@@ -680,11 +684,11 @@ export const ChatService = {
             .single();
 
         if (error) throw error;
-        return data;
+        return data as unknown as ChatMessage;
     },
 
     // Subscribe to new messages. Returns the channel to be able to unsubscribe.
-    subscribeToGlobalChat(onNewMessage: (msg: any) => void) {
+    subscribeToGlobalChat(onNewMessage: (msg: ChatMessage) => void) {
         const channel = supabase.channel('global_chat')
             .on(
                 'postgres_changes',
@@ -694,14 +698,15 @@ export const ChatService = {
                     table: 'chat_messages',
                     filter: 'receiver_id=is.null' // Only listen to global chat
                 },
-                async (payload: any) => {
+                async (payload: { new: any }) => {
+                    const newMsg = payload.new;
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('name, avatar_url')
-                        .eq('id', payload.new.sender_id)
+                        .eq('id', newMsg.sender_id)
                         .single();
 
-                    const enrichedMessage = { ...payload.new, profiles: profile };
+                    const enrichedMessage: ChatMessage = { ...newMsg, profiles: profile };
                     onNewMessage(enrichedMessage);
                 }
             )
@@ -713,7 +718,7 @@ export const ChatService = {
     // ---- Direct Messages ----
 
     // Get all DMs between two specific users
-    async getDirectMessages(userId: string, peerId: string, limit = 50) {
+    async getDirectMessages(userId: string, peerId: string, limit = 50): Promise<ChatMessage[]> {
         const { data, error } = await supabase
             .from('chat_messages')
             .select(`
@@ -725,11 +730,11 @@ export const ChatService = {
             .limit(limit);
 
         if (error) throw error;
-        return (data || []).reverse();
+        return (data as unknown as ChatMessage[] || []).reverse();
     },
 
     // Subscribe to DMs in a specific conversation
-    subscribeToDirectChat(myId: string, peerId: string, onNewMessage: (msg: any) => void) {
+    subscribeToDirectChat(myId: string, peerId: string, onNewMessage: (msg: ChatMessage) => void) {
         const channelName = [myId, peerId].sort().join('_');
         const channel = supabase.channel(`dm_${channelName}`)
             .on(
@@ -739,8 +744,8 @@ export const ChatService = {
                     schema: 'public',
                     table: 'chat_messages',
                 },
-                async (payload: any) => {
-                    const msg = payload.new as any;
+                async (payload: { new: any }) => {
+                    const msg = payload.new;
                     // Only act on messages relevant to this conversation
                     const isRelevant = (
                         (msg.sender_id === myId && msg.receiver_id === peerId) ||
@@ -763,13 +768,12 @@ export const ChatService = {
     },
 
     // Get list of users the current user has had DMs with
-    async getConversations(userId: string) {
+    // Get list of users the current user has had DMs with
+    async getConversations(userId: string): Promise<Conversation[]> {
         const { data, error } = await supabase
             .from('chat_messages')
             .select('sender_id, receiver_id, content, created_at')
             .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-            .filter('receiver_id', 'is', null) // Change filter approach or use .not('receiver_id', 'is', null) correctly
-            // Actually, let's use the explicit NOT IS NULL syntax
             .not('receiver_id', 'is', null)
             .order('created_at', { ascending: false });
 
@@ -778,7 +782,9 @@ export const ChatService = {
         // Collect unique peer IDs
         const seen = new Set<string>();
         const peerIds: string[] = [];
-        for (const msg of (data || [])) {
+        const rawMessages = (data as any[] || []);
+        
+        for (const msg of rawMessages) {
             const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
             if (!seen.has(peerId)) {
                 seen.add(peerId);
@@ -787,25 +793,28 @@ export const ChatService = {
         }
 
         // Fetch profiles for those peers
-        const profileMap: Record<string, any> = {};
+        const profileMap: Record<string, { name: string; avatar_url?: string }> = {};
         if (peerIds.length > 0) {
             const { data: profiles } = await supabase
                 .from('profiles')
                 .select('id, name, avatar_url')
                 .in('id', peerIds);
-            (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+            
+            (profiles || []).forEach((p: any) => { 
+                profileMap[p.id] = { name: p.name, avatar_url: p.avatar_url }; 
+            });
         }
 
         // Build conversations list
-        const conversations: any[] = [];
+        const conversations: Conversation[] = [];
         const added = new Set<string>();
-        for (const msg of (data || [])) {
+        for (const msg of rawMessages) {
             const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
             if (!added.has(peerId)) {
                 added.add(peerId);
                 conversations.push({
                     peerId,
-                    peerProfile: profileMap[peerId] || { name: 'Vecino', avatar_url: null },
+                    peerProfile: profileMap[peerId] || { name: 'Vecino' },
                     lastMessage: msg.content,
                     lastAt: msg.created_at
                 });

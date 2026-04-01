@@ -37,7 +37,7 @@ interface Profile {
 
 export default function UnitsPage() {
     const { toast } = useToast();
-    const [units, setUnits] = useState<(Unit & { profiles: any })[]>([]);
+    const [units, setUnits] = useState<(Unit & { profiles: { name: string; email: string; } | null })[]>([]);
     const [loading, setLoading] = useState(true);
     const [profiles, setProfiles] = useState<Profile[]>([]);
 
@@ -265,9 +265,9 @@ export default function UnitsPage() {
                                                             onChange={(e) => setSelectedResident(e.target.value)}
                                                         >
                                                             <option value="">Seleccionar usuario...</option>
-                                                            {profiles.map((p: any) => (
+                                                            {profiles.map((p: Profile) => (
                                                                 <option key={p.id} value={p.id}>
-                                                                    {p.name || p.name || p.email} ({p.role})
+                                                                    {p.name || p.email} ({p.role})
                                                                 </option>
                                                             ))}
                                                         </select>

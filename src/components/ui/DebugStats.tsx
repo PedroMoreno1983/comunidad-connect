@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getApiUrl, API_BASE_URL } from "@/lib/config";
 
 export function DebugStats() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<Record<string, any> | null>(null);
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -22,7 +22,7 @@ export function DebugStats() {
         if (!isVisible) return;
 
         const checkApis = async () => {
-            const results: any = {
+            const results: Record<string, any> = {
                 env: {
                     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "not set",
                     API_BASE_URL: API_BASE_URL,
@@ -49,9 +49,10 @@ export function DebugStats() {
                         time: `${Math.round(end - start)}ms`,
                         url_used: url
                     };
-                } catch (e: any) {
+                } catch (e: unknown) {
+                    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
                     results.endpoints[path] = {
-                        error: e.message,
+                        error: errorMsg,
                         url_used: url
                     };
                 }

@@ -55,13 +55,13 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ responses }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Training MultiAgent API Error:", error);
         return NextResponse.json({
             responses: [{
                 id: `sys-err-${Date.now()}`,
                 role: 'system',
-                text: `Error de los modelos de IA: ${error.message || "Desconocido"}. Revisa los logs o tu clave de API.`
+                text: `Error de los modelos de IA: ${error instanceof Error ? error.message : "Desconocido"}. Revisa los logs o tu clave de API.`
             }]
         }, { status: 200 });
     }

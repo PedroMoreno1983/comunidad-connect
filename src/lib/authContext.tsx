@@ -20,7 +20,7 @@ interface AuthContextType {
     supabaseUser: SupabaseUser | null;
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, userData: Record<string, any>) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string, userData: Record<string, unknown>) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const sessionPromise = supabase.auth.getSession();
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 5000));
                 
-                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: Session | null }, error: Error | null };
                 if (error) throw error;
 
                 setSession(session);
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        } = supabase.auth.onAuthStateChange((_event: unknown, session: Session | null) => {
             setSession(session);
             setSupabaseUser(session?.user ?? null);
 
@@ -218,8 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             if (error) return { error };
             return { error: null };
-        } catch (error: any) {
-            return { error };
+        } catch (error: unknown) {
+            return { error: error as Error };
         }
     };
 

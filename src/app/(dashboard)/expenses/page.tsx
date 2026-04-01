@@ -9,10 +9,22 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+
+interface Expense {
+    id: string;
+    unitId: string;
+    month: string;
+    amount: number;
+    status: 'paid' | 'pending' | 'overdue' | string;
+    dueDate: string;
+    paidAt?: string | null;
+    breakdown?: { label: string; amount: number }[];
+}
+
 export default function ExpensesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [expenses, setExpenses] = useState<any[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPaying, setIsPaying] = useState<string | null>(null);
 
@@ -37,8 +49,9 @@ export default function ExpensesPage() {
                 }));
 
                 setExpenses(mapped);
-            } catch (error: any) {
-                console.error("Error fetching expenses:", error?.message || error);
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+                console.error("Error fetching expenses:", errorMessage);
                 // Mostrar estado vacío en vez de error toast
                 setExpenses([]);
             } finally {
@@ -55,8 +68,8 @@ export default function ExpensesPage() {
             await ExpensesService.payExpense(id);
 
             // Optimistic update
-            setExpenses(prev => prev.map((exp: any) =>
-                exp.id === id ? { ...exp, status: 'paid' as const } : exp
+            setExpenses(prev => prev.map(exp =>
+                exp.id === id ? { ...exp, status: 'paid' } : exp
             ));
 
             toast({
@@ -75,9 +88,9 @@ export default function ExpensesPage() {
         }
     };
 
-    const totalPending = expenses.filter((e: any) => e.status !== 'paid').reduce((acc: number, curr: any) => acc + curr.amount, 0);
-    const totalPaid = expenses.filter((e: any) => e.status === 'paid').reduce((acc: number, curr: any) => acc + curr.amount, 0);
-    const hasOverdue = expenses.some((e: any) => e.status === 'overdue');
+    const totalPending = expenses.filter(e => e.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalPaid = expenses.filter(e => e.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+    const hasOverdue = expenses.some(e => e.status === 'overdue');
 
     const getStatusConfig = (status: string) => {
         switch (status) {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash } from "lucide-react";
+import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 
@@ -12,6 +12,7 @@ interface Message {
     role: "user" | "assistant";
     text: string;
     nav?: string;
+    imageBase64?: string;
 }
 
 const NAV_MAP: Record<string, string> = {
@@ -38,8 +39,11 @@ export default function CoCo() {
         text: "Hola. Soy **CoCo**, tu asistente de ComunidadConnect. ¿En qué te puedo ayudar?",
     }]);
     const [input, setInput] = useState("");
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    
     const bottomRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const pathname = usePathname();
 
@@ -48,14 +52,41 @@ export default function CoCo() {
 
     if (!mounted || !user) return null;
 
-    const send = async (text: string) => {
-        if (!text.trim() || loading) return;
-        setMsgs(p => [...p, { id: Date.now().toString(), role: "user", text }]);
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        // Limit to 5MB roughly
+        if (file.size > 5 * 1024 * 1024) {
+            alert("La imagen es demasiado pesada. El máximo es 5MB.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (evt) => setSelectedImage(evt.target?.result as string);
+        reader.readAsDataURL(file);
+    };
+
+    const removeImage = () => {
+        setSelectedImage(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const send = async (text: string, imageStr: string | null = selectedImage) => {
+        if ((!text.trim() && !imageStr) || loading) return;
+
+        setMsgs(p => [...p, { 
+            id: Date.now().toString(), 
+            role: "user", 
+            text, 
+            imageBase64: imageStr || undefined 
+        }]);
+        
         setInput("");
+        removeImage();
         setLoading(true);
+
         try {
-            // Construct history, excluding the first greeting and the latest message (which is handled separately or all together)
-            // Let's send the last 10 messages for context
             const history = msgs.slice(-10).map(m => ({
                 role: m.role === "assistant" ? "model" : "user",
                 text: m.text
@@ -65,7 +96,8 @@ export default function CoCo() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    message: text,
+                    message: text || "Mira esta imagen",
+                    imageBase64: imageStr,
                     history: history,
                     currentPage: pathname,
                     userName: user?.email || "Residente",
@@ -81,14 +113,10 @@ export default function CoCo() {
             const d = await res.json();
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate }]);
             if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
-        } catch (err: any) {
-            console.error("CoCo connection failed details:", {
-                message: err.message,
-                status: err.status,
-                cause: err.cause,
-                timestamp: new Date().toISOString()
-            });
-            const errorMsg = err.message || "Tuve un problema de conexión 😅";
+        } catch (err: unknown) {
+            const error = err as Error;
+            console.error("CoCo connection failed details:", error);
+            const errorMsg = error.message || "Tuve un problema de conexión 😅";
             setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `${errorMsg} Inténtalo de nuevo.` }]);
         } finally { setLoading(false); }
     };
@@ -117,7 +145,7 @@ export default function CoCo() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-white text-sm">CoCo</p>
-                                <p className="text-white/70 text-[11px] font-medium">Asistente de ComunidadConnect ✨</p>
+                                <p className="text-white/70 text-[11px] font-medium">Asistente Visual y de Texto ✨</p>
                             </div>
                             <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
                                 <ChevronDown className="h-5 w-5 text-white" />
@@ -131,13 +159,22 @@ export default function CoCo() {
                                     {msg.role === "assistant" && (
                                         <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">👩‍💻</div>
                                     )}
-                                    <div
-                                        className={`max-w-[80%] min-w-0 px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
-                                            ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm"
-                                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-pink-100 dark:border-slate-700 rounded-tl-sm"
-                                            }`}
-                                        dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
-                                    />
+                                    <div className="flex flex-col gap-2 max-w-[80%] min-w-0">
+                                        {msg.imageBase64 && (
+                                            <div className="rounded-2xl overflow-hidden border border-pink-200/50 shadow-sm">
+                                                <img src={msg.imageBase64} alt="Upload" className="w-full h-auto object-cover max-h-48" />
+                                            </div>
+                                        )}
+                                        {msg.text && (
+                                            <div
+                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
+                                                    ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm"
+                                                    : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-pink-100 dark:border-slate-700 rounded-tl-sm"
+                                                    }`}
+                                                dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
+                                            />
+                                        )}
+                                    </div>
                                     {msg.role === "user" && (
                                         <div className="w-7 h-7 rounded-xl bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-black text-white flex-shrink-0 mt-1">U</div>
                                     )}
@@ -166,7 +203,7 @@ export default function CoCo() {
                         {msgs.length === 1 && (
                             <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-slate-50 dark:bg-slate-950 border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
                                 {QUICK.map(({ label, icon: Icon }) => (
-                                    <button key={label} onClick={() => send(label)}
+                                    <button key={label} onClick={() => send(label, null)}
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-slate-800 rounded-xl text-[11px] font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-pink-300 hover:text-pink-600 transition-colors">
                                         <Icon className="h-3 w-3" />{label}
                                     </button>
@@ -174,16 +211,50 @@ export default function CoCo() {
                             </div>
                         )}
 
-                        {/* Input */}
-                        <div className="px-3 py-3 bg-white dark:bg-slate-900 border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
-                            <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex gap-2">
+                        {/* Input Area */}
+                        <div className="bg-white dark:bg-slate-900 border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
+                            {/* Image Preview Area */}
+                            {selectedImage && (
+                                <div className="px-3 pt-3 pb-1 flex relative">
+                                    <div className="relative inline-block border-2 border-pink-200 rounded-xl overflow-hidden shadow-sm">
+                                        <img src={selectedImage} alt="Preview" className="h-16 w-16 object-cover" />
+                                        <button 
+                                            onClick={removeImage}
+                                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-black transition-colors"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <form onSubmit={e => { e.preventDefault(); send(input, selectedImage); }} className="flex gap-2 p-3">
+                                {/* Hidden file input */}
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                />
+                                
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={loading}
+                                    className="p-2.5 text-slate-400 hover:text-pink-500 hover:bg-pink-50 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-40"
+                                >
+                                    <Paperclip className="h-5 w-5" />
+                                </button>
+
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
-                                    placeholder="Pregúntale a CoCo..."
+                                    placeholder={selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
                                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium outline-none focus:ring-2 focus:ring-pink-400/30"
                                 />
-                                <button type="submit" disabled={!input.trim() || loading}
-                                    className="p-2.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl text-white disabled:opacity-40 hover:scale-105 transition-transform shadow-md">
+                                
+                                <button type="submit" disabled={(!input.trim() && !selectedImage) || loading}
+                                    className="p-2.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl text-white disabled:opacity-40 hover:scale-105 transition-transform shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
                             </form>
@@ -192,7 +263,7 @@ export default function CoCo() {
                 )}
             </AnimatePresence>
 
-            {/* FAB — girl emoji, pink gradient */}
+            {/* FAB */}
             <motion.button
                 onClick={() => setOpen(o => !o)}
                 whileHover={{ scale: 1.08 }}
@@ -211,10 +282,8 @@ export default function CoCo() {
                     }
                 </AnimatePresence>
 
-                {/* Pulse */}
                 {!open && <span className="absolute inset-0 rounded-2xl animate-ping opacity-30" style={{ background: "linear-gradient(135deg,#ec4899,#a855f7)" }} />}
 
-                {/* Label tooltip */}
                 {!open && (
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-lg text-xs font-black text-pink-600 whitespace-nowrap border border-pink-100 pointer-events-none">
                         👋 ¡Hola! Soy CoCo

@@ -41,9 +41,9 @@ export async function GET() {
 
         if (error) throw error;
         return NextResponse.json(modules);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching modules:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
 
@@ -106,9 +106,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true, module: modData });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating module:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
 
@@ -134,8 +134,8 @@ export async function DELETE(req: Request) {
             }, { status: 403 });
         }
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error deleting module:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }

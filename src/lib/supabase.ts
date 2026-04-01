@@ -18,7 +18,7 @@ const createMockClient = () => {
     insert: () => chain,
     update: () => chain,
     delete: () => chain,
-    then: (cb: any) => mockArrayPromise.then(cb),
+    then: <TResult1 = { data: never[]; error: null }>(cb?: ((value: { data: never[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null | undefined) => mockArrayPromise.then(cb),
   };
 
   return {
@@ -35,4 +35,4 @@ const createMockClient = () => {
 
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createBrowserClient(supabaseUrl, supabaseAnonKey)
-  : createMockClient() as any;
+  : createMockClient() as unknown as ReturnType<typeof createBrowserClient>;

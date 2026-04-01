@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
@@ -27,7 +29,7 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     // Configurar Gemini para responder en JSON estricto
-    const parts: any[] = [{ text: "Extrae a todos los residentes de este archivo. Si el archivo incluye imágenes, escaneos o texto sucio, léelo cuidadosamente e ignora el ruido.\n\n" }];
+    const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: "Extrae a todos los residentes de este archivo. Si el archivo incluye imágenes, escaneos o texto sucio, léelo cuidadosamente e ignora el ruido.\n\n" }];
     
     if (text) {
         parts.push({ text: text });
@@ -67,6 +69,17 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
 
 export async function POST(request: Request) {
     try {
+        const cookieStore = await cookies();
+        const supabaseUser = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+        );
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
@@ -126,8 +139,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ data: parsedJson });
         
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Extractor Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }

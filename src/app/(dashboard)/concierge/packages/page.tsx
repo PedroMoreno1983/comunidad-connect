@@ -24,10 +24,24 @@ import { useToast } from "@/components/ui/Toast";
 import { Package } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface PackageItem {
+    id: string;
+    recipientUnitId: string;
+    description: string;
+    receivedAt: string;
+    status: string;
+    pickedUpAt?: string | null;
+}
+
+interface Unit {
+    id: string;
+    number: string;
+}
+
 export default function PackagesPage() {
     const { user } = useAuth();
-    const [packages, setPackages] = useState<any[]>([]);
-    const [units, setUnits] = useState<any[]>([]);
+    const [packages, setPackages] = useState<PackageItem[]>([]);
+    const [units, setUnits] = useState<Unit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -42,7 +56,7 @@ export default function PackagesPage() {
             setIsLoading(true);
             try {
                 const pkgs = await PackageService.getAll();
-                setPackages(pkgs.map((p: any) => ({
+                setPackages((pkgs as any[]).map((p) => ({
                     id: p.id,
                     recipientUnitId: p.recipient_unit_id,
                     description: p.description,
@@ -72,7 +86,7 @@ export default function PackagesPage() {
                 registered_by: user?.id || 'admin'
             });
 
-            const pkg = {
+            const pkg: PackageItem = {
                 id: data.id,
                 recipientUnitId: data.recipient_unit_id,
                 description: data.description,

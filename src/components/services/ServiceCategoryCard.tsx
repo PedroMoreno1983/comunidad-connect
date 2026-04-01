@@ -1,21 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { Wrench, Zap, Key } from "lucide-react";
+import { Wrench, Zap, Key, Eraser, Briefcase } from "lucide-react";
 
 interface ServiceCategoryCardProps {
     category: {
         id: string;
         name: string;
-        iconName: 'wrench' | 'zap' | 'key';
+        iconName: 'wrench' | 'zap' | 'key' | 'cleaning' | 'toolbox';
         gradient: string;
+        description: string;
         count: number;
     };
 }
 
 export function ServiceCategoryCard({ category }: ServiceCategoryCardProps) {
-    // Select icon based on name
-    const Icon = category.iconName === 'wrench' ? Wrench : category.iconName === 'zap' ? Zap : Key;
+    const Icon = category.iconName === 'wrench' 
+        ? Wrench 
+        : category.iconName === 'zap' 
+        ? Zap 
+        : category.iconName === 'key' 
+        ? Key
+        : category.iconName === 'cleaning'
+        ? Eraser
+        : Briefcase;
 
     return (
         <Link href={`/services/${category.id}`}>

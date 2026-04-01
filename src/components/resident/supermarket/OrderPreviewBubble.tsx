@@ -7,7 +7,7 @@ interface ProductItem {
     brand: string;
     quantity: number;
     price: number;
-    store: 'Jumbo' | 'Lider';
+    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
     isOffer?: boolean;
     originalPrice?: number;
 }

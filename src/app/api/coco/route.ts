@@ -58,7 +58,7 @@ ESPECÍFICO PARA CONSERJERÍA:
 - /concierge/packages → Control de Paquetería y encomiendas
 
 OTROS MÓDULOS GLOBALES:
-- /training → Centro de Capacitación (guías interactivas + cursos externos)
+- /training → Aula Virtual / Centro de Capacitación (guías interactivas, cursos para residentes y administradores)
 `;
 
 const SYSTEM_PROMPT = `Eres CoCo, la asistente virtual inteligente y femenina de ComunidadConnect, una plataforma de gestión comunitaria para condominios y edificios residenciales en Chile.
@@ -87,14 +87,15 @@ Reglas de navegación:
 Funcionalidades Clave y Explicación por PERFIL:
 Si el usuario es "admin":
 - Puede cobrar gastos, emitir multas, subir comprobantes, configurar la base de datos de departamentos, aprobar/rechazar reservas, y enviar alertas masivas. Los módulos están en su panel de administración.
+Si el usuario es "admin" y pregunta por la creación de cursos, dile que en el Aula Virtual (/training) puede crear módulos y subir PDFs.
 Si el usuario es "concierge" (Conserje):
 - Puede anotar patentes, registrar visitas, recibir paquetería de vecinos, apuntar rondas nocturnas o incidentes. Todo esto en las secciones de conserjería.
 Si el usuario es "resident" (Residente):
 - Todo trata sobre su departamento y comunidad: pagos online de GC, reservar el quincho en el calendario, votar en la asamblea, vender cosas en marketplace, y relacionarse humanamente.
 
 Instrucciones Críticas de Explicación:
-- NUNCA sugieras al usuario ir al "Centro de Capacitación". Tu deber es darles las instrucciones escritas paso a paso directamente aquí en este chat para responder su duda.
-- Sé servicial y resolutiva.
+- Sé servicial y resolutiva. Ofrécele siempre las instrucciones paso a paso aquí mismo en el chat.
+- Si el usuario requiere aprendizaje profundo, tutoriales, cursos o certificaciones, infórmale que la plataforma cuenta con un "Aula Virtual" muy completa e invítalo a conocerla escribiendo NAVEGAR:/training al final.
 
 Instrucciones Marketplace:
 - Si el usuario pregunta por el Marketplace, explícale que puede ir al módulo en el menú izquierdo y ahí podrá vender y comprar artículos libremente con sus vecinos mediante publicaciones. Y ofrécete a llevarlo directamente escribiendo NAVEGAR:/marketplace al final.
@@ -145,15 +146,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
 
         // 3. Input validation & sanitization
-        const message = sanitizeString(body.message, 1000);
+        const message = sanitizeString(body.message, 1000) || "Sin mensaje";
         const currentPage = sanitizeString(body.currentPage, 100);
         const userName = sanitizeString(body.userName, 80);
         const userRole = sanitizeString(body.userRole, 20);
         const history: Array<{role: string, text: string}> = Array.isArray(body.history) ? body.history : [];
+        const imageBase64 = body.imageBase64;
 
-        if (!message) {
+        if (!message && !imageBase64) {
             return NextResponse.json(
-                { reply: "Por favor envía un mensaje para que pueda ayudarte. 😊" },
+                { reply: "Por favor envía un mensaje o una imagen para que pueda ayudarte. 😊" },
                 { status: 400 }
             );
         }
@@ -173,6 +175,16 @@ export async function POST(req: NextRequest) {
                 parts: [{ text: msg.text.slice(0, 1000) }]
             }));
 
+        let userParts: any[] = [{ text: message }];
+        if (typeof imageBase64 === "string" && imageBase64.startsWith("data:image/")) {
+            const matches = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+                userParts.push({
+                    inlineData: { mimeType: matches[1], data: matches[2] }
+                });
+            }
+        }
+
         const geminiBody = {
             systemInstruction: {
                 role: "user",
@@ -182,7 +194,7 @@ export async function POST(req: NextRequest) {
                 ...formattedHistory,
                 {
                     role: "user",
-                    parts: [{ text: message }],
+                    parts: userParts,
                 },
             ],
             generationConfig: {
@@ -201,16 +213,11 @@ export async function POST(req: NextRequest) {
         ];
         
         let res: Response | null = null;
-        let data: any = null;
+        let data: { candidates?: Array<{ finishReason: string; content?: { parts?: Array<{ text?: string }> } }> } | null = null;
         let finalModel = "";
         let finalVer = "";
         let firstErrorMessage = "";
         let firstErrorStatus = 0;
-
-        // Masking helper for diagnostics
-        const maskKey = (k: string) => k.length > 10 ? `${k.substring(0, 6)}...${k.substring(k.length - 4)}` : "INV-KEY";
-        const currentMaskedKey = maskKey(GEMINI_API_KEY);
-
         // Try configurations in order
         for (const config of configs) {
             const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent`;
@@ -251,7 +258,7 @@ export async function POST(req: NextRequest) {
             const status = firstErrorStatus || 0;
             const message = firstErrorMessage || "No hubo respuesta del servidor de Google.";
             
-            console.error(`[CoCo API] Todas las opciones fallaron. Key usada: ${currentMaskedKey}. Status final: ${status}`);
+            console.error(`[CoCo API] Todas las opciones fallaron. Status final: ${status}`);
             
             let helpInfo = `(Google Error ${status}: ${message})`;
             const studioLink = "https://aistudio.google.com/app/apikey";
@@ -265,7 +272,7 @@ export async function POST(req: NextRequest) {
             }
 
             return NextResponse.json(
-                { reply: `Lo siento, mis servicios de IA no están respondiendo correctamente. ${helpInfo} [Clave detectada en servidor: ${currentMaskedKey}]. 🛠️ Recuerda hacer un 'Redeploy' en Vercel tras cambiarla.` },
+                { reply: `Lo siento, mis servicios de IA no están respondiendo correctamente. ${helpInfo} 🛠️ Recuerda hacer un 'Redeploy' en Vercel tras cambiarla.` },
                 { status: 200 }
             );
         }

@@ -10,9 +10,20 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface Invitation {
+    id: string;
+    residentId: string;
+    guestName: string;
+    guestDni: string;
+    status: 'active' | 'used' | 'expired' | 'cancelled';
+    validFrom: string;
+    validTo: string;
+    qrCode: string;
+}
+
 export default function ResidentInvitationsPage() {
     const { user } = useAuth();
-    const [invitations, setInvitations] = useState<any[]>([]);
+    const [invitations, setInvitations] = useState<Invitation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -22,12 +33,12 @@ export default function ResidentInvitationsPage() {
                 setIsLoading(true);
                 const data = await InvitationService.getByResident(user.id);
                 if (data) {
-                    setInvitations(data.map((inv: { id: string; resident_id: string; guest_name: string; guest_dni: string; status?: string; valid_from: string; valid_to: string; qr_code: string }) => ({
+                    setInvitations((data as any[]).map((inv) => ({
                         id: inv.id,
                         residentId: inv.resident_id,
                         guestName: inv.guest_name,
-                        guestDni: inv.guest_dni,
-                        status: inv.status || 'active',
+                        guestDni: inv.guest_dni || '',
+                        status: (inv.status as any) || 'active',
                         validFrom: inv.valid_from,
                         validTo: inv.valid_to,
                         qrCode: inv.qr_code

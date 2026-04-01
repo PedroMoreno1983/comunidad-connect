@@ -6,12 +6,22 @@ import {
 } from 'recharts';
 
 // Custom tooltip styles
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: Array<{
+        name: string;
+        value: number;
+        color?: string;
+    }>;
+    label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{label}</p>
-                {payload.map((entry: any, index: number) => (
+                {payload.map((entry, index: number) => (
                     <p key={index} className="text-sm text-slate-600 dark:text-slate-400">
                         {entry.name}: <span className="font-medium text-slate-900 dark:text-white">${entry.value.toLocaleString('es-CL')} CLP</span>
                     </p>

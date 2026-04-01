@@ -54,7 +54,7 @@ export default function HomePage() {
         visitorsToday: 0,
         visitorsExpected: 0, // Placeholder
         pendingPackages: 0,
-        recentAnnouncements: [] as any[]
+        recentAnnouncements: [] as { id: string; title: string; content: string; priority: string; createdAt: string; author: string }[]
     });
 
     useEffect(() => {
@@ -77,14 +77,21 @@ export default function HomePage() {
 
                 let commonStats = {
                     announcements: annCount || 0,
-                    recentAnnouncements: (recentAnn || []).map((a: any) => ({
-                        id: a.id,
-                        title: a.title,
-                        content: a.content,
-                        priority: a.priority,
-                        createdAt: a.created_at,
-                        author: (Array.isArray(a.profiles) ? a.profiles[0]?.name : (a.profiles as any)?.name) || 'Admin',
-                    }))
+                    recentAnnouncements: (recentAnn || []).map((a: any) => {
+                        const profiles = a.profiles;
+                        const authorName = Array.isArray(profiles) 
+                            ? (profiles[0] as any)?.name 
+                            : (profiles as any)?.name;
+
+                        return {
+                            id: a.id,
+                            title: a.title,
+                            content: a.content,
+                            priority: a.priority,
+                            createdAt: a.created_at,
+                            author: authorName || 'Admin',
+                        };
+                    })
                 };
 
                 if (user.role === 'resident') {

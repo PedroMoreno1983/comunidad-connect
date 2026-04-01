@@ -5,7 +5,7 @@ import { RecipeSuggestion } from "@/lib/agentBrain";
 
 interface RecipeBubbleProps {
     suggestion: RecipeSuggestion;
-    onAddMissingToCart: (items: any[]) => void;
+    onAddMissingToCart: (items: (import('@/lib/agentBrain').CartItem | undefined)[]) => void;
 }
 
 export function RecipeBubble({ suggestion, onAddMissingToCart }: RecipeBubbleProps) {

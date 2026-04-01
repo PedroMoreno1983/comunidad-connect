@@ -8,6 +8,7 @@ import {
     UploadCloud, Sparkles, FileText, CheckCircle2, 
     AlertCircle, Users, Save, Trash2, Edit3 
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 
 interface ExtractedUser {
     id: string; // ID temporal
@@ -20,6 +21,7 @@ interface ExtractedUser {
 export default function AdminOnboardingPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
 
     const [file, setFile] = useState<File | null>(null);
     const [isExtracting, setIsExtracting] = useState(false);
@@ -51,7 +53,7 @@ export default function AdminOnboardingPage() {
             
             // Si Vercel devuelve un Timeout 504 (HTML) en lugar de JSON, esto explotaba
             const textResponse = await res.text();
-            let result;
+            let result: { data?: Partial<ExtractedUser>[], error?: string } | null = null;
             try {
                 result = JSON.parse(textResponse);
             } catch (e) {
@@ -60,21 +62,22 @@ export default function AdminOnboardingPage() {
             
             if (res.ok && result?.data) {
                 // Asignarle un ID temporal a cada fila para list keys
-                const mappedData = result.data.map((row: any, i: number) => ({
+                const mappedData = result.data.map((row, i: number) => ({
                     id: `temp-${i}`,
                     name: row.name || '',
                     unit_id: row.unit_id || '',
                     email: row.email || '',
                     phone: row.phone || ''
                 }));
-                setExtractedData(mappedData);
+                setExtractedData(mappedData as ExtractedUser[]);
             } else {
-                alert(result.error || 'Hubo un error al procesar el archivo con IA.');
+                alert((result && result.error) || 'Hubo un error al procesar el archivo con IA.');
                 setFile(null);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert(`Error de red o timeout en los servidores de IA: ${err?.message || 'Falla desconocida'}`);
+            const errorMessage = err instanceof Error ? err.message : 'Falla desconocida';
+            alert(`Error de red o timeout en los servidores de IA: ${errorMessage}`);
             setFile(null);
         } finally {
             setIsExtracting(false);
@@ -142,9 +145,10 @@ export default function AdminOnboardingPage() {
                 const err = await res.json();
                 alert(err.error || 'Hubo un error fatal sincronizando con Supabase.');
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
-            alert('La conexión con Supabase falló.');
+            const errorMessage = error instanceof Error ? error.message : "La conexión con Supabase falló.";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
         } finally {
             setIsSyncing(false);
         }

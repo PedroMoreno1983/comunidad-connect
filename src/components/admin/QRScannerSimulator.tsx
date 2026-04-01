@@ -12,11 +12,12 @@ import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { useAuth } from "@/lib/authContext";
+import { VisitorLog } from "@/lib/types";
 
-export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: any) => void }) {
+export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: VisitorLog) => void }) {
     const { user } = useAuth();
     const [isScanning, setIsScanning] = useState(false);
-    const [scanResult, setScanResult] = useState<any | null>(null);
+    const [scanResult, setScanResult] = useState<Record<string, any> | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const { toast } = useToast();
 
@@ -53,8 +54,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: an
                             visitor_name: data.guest_name,
                             unit_id: data.unit_id,
                             registered_by: user?.id || 'admin',
-                            is_qr: true
-                        } as any);
+                        } as Parameters<typeof VisitorService.register>[0]);
 
                         // Mark invitation as used (optional, depends on your business rules)
                         // await VisitorService.cancel(data.id); 

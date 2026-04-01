@@ -15,7 +15,7 @@ const createMockClient = () => {
         insert: () => chain,
         update: () => chain,
         delete: () => chain,
-        then: (cb: any) => mockArrayPromise.then(cb),
+        then: <TResult1 = { data: never[]; error: null }>(cb?: ((value: { data: never[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null | undefined) => mockArrayPromise.then(cb),
     };
 
     return {
@@ -35,7 +35,7 @@ export function createClient() {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        return createMockClient() as any
+        return createMockClient() as unknown as ReturnType<typeof createBrowserClient>
     }
 
     return createBrowserClient(supabaseUrl, supabaseAnonKey)

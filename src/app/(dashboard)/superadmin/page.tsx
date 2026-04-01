@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Building2, Shield, Settings, Check, X, Search, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import OutreachDemo from "@/components/admin/OutreachDemo";
 
 interface PricingTier {
     id: string;
@@ -67,8 +68,9 @@ export default function SuperAdminDashboard() {
 
             setCommunities(commRes.data || []);
             setTiers(tiersRes.data || []);
-        } catch (error: any) {
-            toast({ title: "Error", description: "No se pudieron cargar los datos", variant: "destructive" });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "No se pudieron cargar los datos";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -84,8 +86,9 @@ export default function SuperAdminDashboard() {
             if (error) throw error;
             toast({ title: "Plan actualizado", description: "El condominio ahora tiene los nuevos módulos habilitados.", variant: "success" });
             fetchData();
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Error al actualizar el plan";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
         }
     };
 
@@ -138,6 +141,9 @@ export default function SuperAdminDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Outreach Campaign Section */}
+            <OutreachDemo />
 
             {/* Communities List */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">

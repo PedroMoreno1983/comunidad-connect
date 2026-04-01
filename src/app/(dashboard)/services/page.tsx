@@ -1,30 +1,45 @@
 import { providersService } from "@/lib/services/providersService";
+import { ServiceProvider } from "@/lib/types";
 import { ServiceCategoryCard } from "@/components/services/ServiceCategoryCard";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
-const CATEGORIES = [
+const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wrench' | 'zap' | 'key' | 'cleaning' | 'toolbox'; gradient: string; description: string }[] = [
     {
         id: 'plumbing',
         name: 'Gasfitería',
-        iconName: 'wrench' as const,
+        iconName: 'wrench',
         gradient: 'from-blue-500 to-cyan-600',
         description: 'Expertos en instalaciones y reparaciones de agua'
     },
     {
         id: 'electrical',
         name: 'Electricidad',
-        iconName: 'zap' as const,
+        iconName: 'zap',
         gradient: 'from-yellow-500 to-orange-600',
         description: 'Electricistas certificados para tu hogar'
     },
     {
         id: 'locksmith',
         name: 'Cerrajería',
-        iconName: 'key' as const,
+        iconName: 'key',
         gradient: 'from-purple-500 to-pink-600',
         description: 'Servicios de cerrajería 24/7'
+    },
+    {
+        id: 'cleaning',
+        name: 'Limpieza',
+        iconName: 'cleaning',
+        gradient: 'from-emerald-500 to-teal-600',
+        description: 'Servicios de limpieza profesional'
+    },
+    {
+        id: 'general',
+        name: 'Multiservicios',
+        iconName: 'toolbox',
+        gradient: 'from-orange-500 to-red-600',
+        description: 'Reparaciones generales y mantención'
     }
 ];
 
@@ -38,7 +53,7 @@ export default async function ServicesPage() {
     // Calculate provider count per category
     const categoryCounts = CATEGORIES.map(cat => ({
         ...cat,
-        count: allProviders.filter(p => p.category === cat.id).length
+        count: allProviders.filter(p => p.category === (cat.id as ServiceProvider['category'])).length
     }));
 
     return (

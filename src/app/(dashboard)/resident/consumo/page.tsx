@@ -32,13 +32,13 @@ export default function WaterConsumptionPage() {
     useEffect(() => {
         async function loadData() {
             if (!user?.unitId) {
-                console.log("No Unit ID found for resident:", user?.name);
+
                 setLoading(false);
                 return;
             }
 
             try {
-                console.log("Fetching readings for unit:", user.unitId);
+
                 const data = await WaterService.getReadingsByUnit(user.unitId);
 
                 // Enrich data with computed consumption
@@ -58,10 +58,10 @@ export default function WaterConsumptionPage() {
                     average: 15.5
                 }));
                 setMetrics(chartData);
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error("Error fetching water data:", error);
-
-                if (error.code !== 'PGRST116' && error.code !== '42P01') {
+                const err = error as any;
+                if (err.code !== 'PGRST116' && err.code !== '42P01') {
                     toast({
                         title: "Error de Conexión",
                         description: "No se pudieron cargar los datos de consumo al conectar con el servidor.",

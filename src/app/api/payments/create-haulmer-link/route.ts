@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HaulmerService } from '@/lib/services/haulmer';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 // Allowed return URL origins to prevent open redirect
 const ALLOWED_ORIGINS = [
@@ -28,6 +30,17 @@ function sanitize(value: unknown, maxLen: number): string {
 
 export async function POST(req: NextRequest) {
     try {
+        const cookieStore = await cookies();
+        const supabaseUser = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+        );
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
         const body = await req.json();
 
         // ─── Validate required fields ─────────────────────────────────────
@@ -53,8 +66,9 @@ export async function POST(req: NextRequest) {
         const clientName = sanitize(body.client.name, 100);
         const clientEmail = sanitize(body.client.email, 150);
 
-        // Basic email format check
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+        // Strict email format check to prevent injection
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(clientEmail)) {
             return NextResponse.json({ error: 'Email del cliente inválido.' }, { status: 400 });
         }
 

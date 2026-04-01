@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
+import { AlertCircle } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -17,6 +19,7 @@ export default function DashboardLayout({
     const { user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const { isDemoUser, demoMessage } = useDemoRestrictions();
 
     useEffect(() => {
         if (!user) {
@@ -32,9 +35,17 @@ export default function DashboardLayout({
             <ErrorBoundary name="Sidebar">
                 <Sidebar />
             </ErrorBoundary>
-            <main className="flex-1 overflow-y-auto relative z-10">
+            <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
+                {/* Demo Banner */}
+                {isDemoUser && (
+                    <div className="bg-indigo-600 dark:bg-indigo-800 text-white px-4 py-2.5 flex items-center justify-center gap-3 text-sm font-medium z-50 sticky top-0 shadow-md">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="text-center">{demoMessage}</span>
+                    </div>
+                )}
+                
                 {/* Main content with page transition */}
-                <div className="relative p-4 pt-20 lg:pt-8 lg:p-8">
+                <div className="relative p-4 lg:p-8 flex-1">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}

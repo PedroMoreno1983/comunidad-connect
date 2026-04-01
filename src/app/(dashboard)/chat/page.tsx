@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
 import { ChatService } from "@/lib/services/supabaseServices";
-import { ChatMessage } from "@/lib/types";
+import { ChatMessage, Conversation } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { Send, Hash, MessageCircle, Users, Loader2, ArrowLeft, Search } from "lucide-react";
@@ -12,12 +12,7 @@ import { supabase } from "@/lib/supabase";
 
 type ChatMode = 'global' | 'direct';
 
-interface Conversation {
-    peerId: string;
-    peerProfile: { name: string; avatar_url?: string };
-    lastMessage: string;
-    lastAt: string;
-}
+// interface Conversation moved to @/lib/types.ts
 
 export default function ChatPage() {
     const { user } = useAuth();
@@ -36,7 +31,7 @@ export default function ChatPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const subscriptionRef = useRef<any>(null);
+    const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
     // Auto-scroll
     useEffect(() => {
@@ -67,7 +62,7 @@ export default function ChatPage() {
         try {
             const data = await ChatService.getGlobalMessages();
             setMessages(data as unknown as ChatMessage[]);
-            subscriptionRef.current = ChatService.subscribeToGlobalChat((newMsg) => {
+            subscriptionRef.current = ChatService.subscribeToGlobalChat((newMsg: ChatMessage) => {
                 setMessages(prev => [...prev, newMsg]);
             });
         } catch (error) {
@@ -106,7 +101,7 @@ export default function ChatPage() {
         try {
             const data = await ChatService.getDirectMessages(user.id, peerId);
             setMessages(data as unknown as ChatMessage[]);
-            subscriptionRef.current = ChatService.subscribeToDirectChat(user.id, peerId, (newMsg) => {
+            subscriptionRef.current = ChatService.subscribeToDirectChat(user.id, peerId, (newMsg: ChatMessage) => {
                 setMessages(prev => [...prev, newMsg]);
             });
         } catch (error) {

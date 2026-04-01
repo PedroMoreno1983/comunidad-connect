@@ -7,8 +7,19 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 
+interface Booking {
+    id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+    created_at: string;
+    users?: { name: string; email: string };
+    amenities?: { name: string; icon_name: string; gradient: string };
+}
+
 export function AdminReservations() {
-    const [bookings, setBookings] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
@@ -54,9 +65,9 @@ export function AdminReservations() {
             });
 
             // Update local state without fetching again
-            setBookings(prev => prev.map((b: any) => b.id === id ? { ...b, status: newStatus } : b));
+            setBookings(prev => prev.map((b: Booking) => b.id === id ? { ...b, status: newStatus } : b));
 
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Error updating booking status", err);
             toast({
                 title: "Error",
@@ -66,7 +77,7 @@ export function AdminReservations() {
         }
     };
 
-    const pendingCount = bookings.filter((b: any) => b.status === 'pending').length;
+    const pendingCount = bookings.filter((b: Booking) => b.status === 'pending').length;
 
     return (
         <div className="space-y-8">
@@ -101,7 +112,7 @@ export function AdminReservations() {
                         </div>
                     )}
 
-                    {!isLoading && bookings.map((booking: any) => (
+                    {!isLoading && bookings.map((booking: Booking) => (
                         <div key={booking.id} className="p-8 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
 
                             <div className="flex items-start gap-6">

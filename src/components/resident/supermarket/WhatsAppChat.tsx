@@ -18,8 +18,8 @@ interface Message {
     type: 'text' | 'audio' | 'order' | 'recipe' | 'system';
     content?: string;
     audioDuration?: string;
-    orderData?: any;
-    recipeData?: any;
+    orderData?: { items: import('@/lib/agentBrain').CartItem[]; total: number; savings: number };
+    recipeData?: import('@/lib/agentBrain').RecipeSuggestion;
     isSender: boolean;
     timestamp: string;
     status: 'sent' | 'delivered' | 'read';
@@ -224,8 +224,8 @@ export function WhatsAppChat() {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
-                                                    amount: msg.orderData.total,
-                                                    description: `Compra Supermercado IA (${msg.orderData.items.length} items)`,
+                                                    amount: msg.orderData!.total,
+                                                    description: `Compra Supermercado IA (${msg.orderData!.items.length} items)`,
                                                     reference: `MARKET_CART_${msg.id}`,
                                                     client: {
                                                         name: user?.name || 'Residente',
