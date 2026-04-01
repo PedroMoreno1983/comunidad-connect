@@ -54,6 +54,13 @@ export interface ChatMessage {
   };
 }
 
+export interface Conversation {
+  peerId: string;
+  peerProfile: { name: string; avatar_url?: string };
+  lastMessage: string;
+  lastAt: string;
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;
@@ -109,6 +116,7 @@ export interface VisitorLog {
   entryTime: string;
   exitTime?: string;
   purpose?: string;
+  isQr?: boolean;
 }
 
 export interface Package {

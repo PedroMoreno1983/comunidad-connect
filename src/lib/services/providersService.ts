@@ -15,7 +15,26 @@ export const providersService = {
             .select('*')
             .order('rating', { ascending: false });
         if (error) throw error;
-        return data || [];
+        
+        return (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        }));
     },
 
     async getByCategory(category: string): Promise<ServiceProvider[]> {
@@ -26,19 +45,58 @@ export const providersService = {
             .eq('category', category)
             .order('rating', { ascending: false });
         if (error) throw error;
-        return data || [];
+        
+        return (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        }));
     },
 
     async getById(id: string): Promise<ServiceProvider | null> {
         if (!id || id === 'undefined') return null;
         const supabase = getSupabase();
-        const { data, error } = await supabase
+        const { data: p, error } = await supabase
             .from('service_providers')
             .select('*')
             .eq('id', id)
             .single();
         if (error) throw error;
-        return data;
+        if (!p) return null;
+
+        return {
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        };
     },
 
     async getFeatured(limit: number = 6): Promise<ServiceProvider[]> {
@@ -50,7 +108,26 @@ export const providersService = {
             .order('rating', { ascending: false })
             .limit(limit);
         if (error) throw error;
-        return data || [];
+        
+        return (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        }));
     },
 
     async search(query: string): Promise<ServiceProvider[]> {
@@ -67,18 +144,50 @@ export const providersService = {
     async create(provider: Omit<ServiceProvider, 'id' | 'rating' | 'reviewCount' | 'completedJobs'>): Promise<ServiceProvider | null> {
         const supabase = getSupabase();
         const newProvider = {
-            ...provider,
+            name: provider.name,
+            category: provider.category,
+            contact_phone: provider.contactPhone,
+            email: provider.email,
+            photo: provider.photo,
+            bio: provider.bio,
+            years_experience: provider.yearsExperience,
+            specialties: provider.specialties,
+            certifications: provider.certifications,
+            hourly_rate: provider.hourlyRate,
+            availability: provider.availability,
+            response_time: provider.responseTime,
             rating: 0,
-            reviewCount: 0,
-            completedJobs: 0,
+            review_count: 0,
+            completed_jobs: 0,
+            verified: false
         };
-        const { data, error } = await supabase
+        const { data: p, error } = await supabase
             .from('service_providers')
             .insert(newProvider)
             .select()
             .single();
         if (error) throw error;
-        return data;
+        if (!p) return null;
+
+        return {
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        };
     },
 
     async update(id: string, updates: Partial<ServiceProvider>): Promise<ServiceProvider | null> {
@@ -121,7 +230,7 @@ export const reviewsService = {
 
         if (error) throw error;
 
-        return (data || []).map((review: any) => ({
+        return (data || []).map((review: { id: string; provider_id: string; user_id: string; rating: number; comment: string; service_type: string; created_at: string }) => ({
             id: review.id,
             providerId: review.provider_id,
             userId: review.user_id,
@@ -180,7 +289,7 @@ export const reviewsService = {
 
             if (!reviews || reviews.length === 0) return;
 
-            const totalRating = reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
+            const totalRating = reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0);
             const avgRating = totalRating / reviews.length;
 
             await supabase

@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/authContext';
 import { 
     GraduationCap, Plus, Trash2, Edit3, 
-    BookOpen, Users, Save, X, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft, ChevronRight
+    BookOpen, Users, Save, X, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft, ChevronRight, Lock
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
 
 export interface Slide {
     id: string;
@@ -37,6 +38,7 @@ const visualThemes: Record<string, string> = {
 export default function AdminTrainingPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const { isDemoUser, demoMessage } = useDemoRestrictions();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -177,6 +179,10 @@ export default function AdminTrainingPage() {
     };
 
     const handleCreate = async () => {
+        if (isDemoUser) {
+            alert("Acción bloqueada en cuenta Demo: " + demoMessage);
+            return;
+        }
         setIsSaving(true);
         try {
             // Guardamos el JSON de las diapositivas
@@ -208,6 +214,10 @@ export default function AdminTrainingPage() {
     };
 
     const handleDelete = async (id: string) => {
+        if (isDemoUser) {
+            alert("Acción bloqueada en cuenta Demo: " + demoMessage);
+            return;
+        }
         if (!confirm('¿Seguro de eliminar este curso? Se borrará todo su contenido.')) return;
         try {
             await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
@@ -453,8 +463,9 @@ export default function AdminTrainingPage() {
                                     <button 
                                         onClick={() => handleDelete(course.id)}
                                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
+                                        title={isDemoUser ? "Bloqueado en Demo" : "Eliminar curso"}
                                     >
-                                        <Trash2 className="h-4 w-4" />
+                                        {isDemoUser ? <Lock className="h-4 w-4 text-slate-300" /> : <Trash2 className="h-4 w-4" />}
                                     </button>
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-2 mb-2">

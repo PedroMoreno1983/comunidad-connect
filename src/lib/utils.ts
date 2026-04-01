@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: any): string {
+export function formatCurrency(amount: string | number | null | undefined): string {
     const num = Number(amount);
     if (isNaN(num)) return '$0';
     return `$${num.toLocaleString('es-CL')}`;

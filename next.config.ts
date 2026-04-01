@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   serverExternalPackages: ['pdf-parse', 'mammoth'],
   // Removing output: 'export' to enable dynamic API routes and Image optimization on Vercel
   images: {
@@ -38,4 +38,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const exportedNextConfig = nextConfig as any;
+export default exportedNextConfig;

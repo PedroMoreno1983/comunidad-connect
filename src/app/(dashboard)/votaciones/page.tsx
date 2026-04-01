@@ -10,12 +10,13 @@ import {
     MessageSquare, ShieldCheck, Filter, Users
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Poll } from "@/lib/types";
 
 export default function VotacionesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [activePolls, setActivePolls] = useState<any[]>([]);
-    const [closedPolls, setClosedPolls] = useState<any[]>([]);
+    const [activePolls, setActivePolls] = useState<Poll[]>([]);
+    const [closedPolls, setClosedPolls] = useState<Poll[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -24,7 +25,7 @@ export default function VotacionesPage() {
         }
     }, [user]);
 
-    const mapSupabasePoll = (pollData: any, userVotesArray: any[]) => {
+    const mapSupabasePoll = (pollData: any, userVotesArray: { poll_id: string; option_id: string }[]): Poll => {
         // Map raw supabase payload into frontend Poll format
         const totalVotes = pollData.votes?.length || 0;
         const optionsWithCounts = (pollData.options || []).map((opt: any) => {
@@ -48,9 +49,13 @@ export default function VotacionesPage() {
             category: pollData.category,
             totalVotes: totalVotes,
             options: optionsWithCounts,
-            hasVotedInit: !!userVote,
-            votedOptionId: userVote?.option_id || null
-        };
+            createdAt: pollData.created_at,
+            // Extensions for UI that are not in the base Poll interface
+            ...({
+                hasVotedInit: !!userVote,
+                votedOptionId: userVote?.option_id || null
+            } as any)
+        } as Poll;
     };
 
     const loadPolls = async () => {
@@ -64,7 +69,7 @@ export default function VotacionesPage() {
             // To be precise for the UI, let's map them.
             // We fetch user vote statuses in parallel.
             const checkVotesPromises = [...(active || []), ...(closed || [])].map((p: any) =>
-                PollsService.hasUserVoted(p.id, user!.id).then(res => ({ poll_id: p.id, vote: res }))
+                PollsService.hasUserVoted(p.id, user!.id).then(res => ({ poll_id: p.id, vote: res as any }))
             );
             const userVotesResults = await Promise.all(checkVotesPromises);
             const validUserVotes = userVotesResults
@@ -74,7 +79,7 @@ export default function VotacionesPage() {
             setActivePolls((active || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
             setClosedPolls((closed || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Error loading polls:", error);
             setActivePolls([]);
             setClosedPolls([]);
@@ -87,20 +92,21 @@ export default function VotacionesPage() {
         if (!user) return;
         try {
             await PollsService.submitVote(pollId, optionId, user.id);
-            // Recargar para obtener números frescos
             await loadPolls();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error voting:", error);
-            if (error.code === '23505') { // Unique constraint violation (already voted)
+            const err = error as any;
+            if (err.code === '23505') {
                 toast({
                     title: "Ya has votado",
                     description: "Solo puedes emitir un voto por consulta.",
                     variant: "destructive"
                 });
             } else {
+                const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexión.";
                 toast({
                     title: "Error al registrar el voto",
-                    description: error.message || "Hubo un problema de conexión.",
+                    description: errorMessage,
                     variant: "destructive"
                 });
             }
@@ -113,7 +119,6 @@ export default function VotacionesPage() {
 
     return (
         <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
-            {/* Professional Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Participación Comunitaria</h2>
@@ -128,7 +133,6 @@ export default function VotacionesPage() {
                 </div>
             </div>
 
-            {/* Info Banner */}
             <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">
                     <ShieldCheck className="h-40 w-40 text-blue-400" />
@@ -145,7 +149,6 @@ export default function VotacionesPage() {
                 </div>
             </div>
 
-            {/* Active Polls Section */}
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
@@ -166,8 +169,8 @@ export default function VotacionesPage() {
                             key={poll.id}
                             poll={poll}
                             onVote={(optionId) => handleVote(poll.id, optionId)}
-                            initialHasVoted={poll.hasVotedInit}
-                            initialSelectedOption={poll.votedOptionId}
+                            initialHasVoted={(poll as any).hasVotedInit}
+                            initialSelectedOption={(poll as any).votedOptionId}
                         />
                     ))}
                     {activePolls.length === 0 && (
@@ -178,7 +181,6 @@ export default function VotacionesPage() {
                 </div>
             </div>
 
-            {/* Closed Polls Highlight */}
             {closedPolls.length > 0 && (
                 <div className="space-y-8">
                     <div className="flex items-center gap-4 px-2">
@@ -192,8 +194,8 @@ export default function VotacionesPage() {
                             <PollCard
                                 key={poll.id}
                                 poll={poll}
-                                initialHasVoted={poll.hasVotedInit}
-                                initialSelectedOption={poll.votedOptionId}
+                                initialHasVoted={(poll as any).hasVotedInit}
+                                initialSelectedOption={(poll as any).votedOptionId}
                             />
                         ))}
                     </div>

@@ -101,10 +101,10 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                     variant: "success"
                 });
                 onClose(); // Close panel after successful save
-            } catch (error: any) {
+            } catch (error: unknown) {
                 toast({
                     title: "Error",
-                    description: error.message || "No se pudo guardar la lectura.",
+                    description: error instanceof Error ? error.message : "No se pudo guardar la lectura.",
                     variant: "destructive"
                 });
             }

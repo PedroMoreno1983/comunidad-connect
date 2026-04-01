@@ -18,23 +18,25 @@ export async function POST(request: Request) {
         const providerData = {
             name: body.name,
             category: body.category,
-            contact_phone: body.contactPhone,
-            email: body.email || null,
-            bio: body.bio || null,
-            years_experience: body.yearsExperience || 0,
+            contactPhone: body.contactPhone,
+            email: body.email || undefined,
+            bio: body.bio || '',
+            yearsExperience: body.yearsExperience || 0,
             specialties: Array.isArray(body.specialties) ? body.specialties : [],
             certifications: Array.isArray(body.certifications) ? body.certifications : [],
-            hourly_rate: body.hourlyRate || 0,
+            hourlyRate: body.hourlyRate || 0,
             verified: false, // Default newly registered to unverified
+            availability: 'available' as const,
+            responseTime: 'N/A'
         };
 
-        const newProvider = await providersService.create(providerData as any);
+        const newProvider = await providersService.create(providerData);
 
         return NextResponse.json(newProvider, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error in POST /api/providers:', error);
         return NextResponse.json(
-            { error: error.message || 'Error interno del servidor al crear proveedor' },
+            { error: error instanceof Error ? error.message : 'Error interno del servidor al crear proveedor' },
             { status: 500 }
         );
     }

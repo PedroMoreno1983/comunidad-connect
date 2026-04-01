@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender timeout a 60s en Vercel Hobby
 
 export async function POST(request: Request) {
     try {
+        const cookieStore = await cookies();
+        const supabaseUser = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+        );
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
@@ -70,10 +83,10 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ text: cleanedText });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error parsing document:', error);
         return NextResponse.json({ 
-            error: 'Ocurrió un error al procesar el archivo. ' + (error.message || '') 
+            error: 'Ocurrió un error al procesar el archivo. ' + (error instanceof Error ? error.message : '') 
         }, { status: 500 });
     }
 }

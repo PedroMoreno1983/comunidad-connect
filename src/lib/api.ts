@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Unit, WaterReading } from './types';
+import { Unit, WaterReading, MarketplaceItem } from './types';
 
 // ==========================================
 // Water Consumption API
@@ -44,9 +44,9 @@ export const WaterService = {
         if (error) {
             console.error('Error loading units:', error);
             // Return empty array instead of throwing so the page shows empty state
-            return [] as (Unit & { profiles: any })[];
+            return [] as (Unit & { profiles: { name: string; email: string; } | null })[];
         }
-        return (data || []) as (Unit & { profiles: any })[];
+        return (data || []) as (Unit & { profiles: { name: string; email: string; } | null })[];
     },
 
     // Crear nueva unidad
@@ -96,7 +96,7 @@ export const WaterService = {
 
         // Calcular consumo promedio (simplificado: asume lectura es consumo directo por ahora)
         // En realidad deberíamos restar lectura anterior, pero para MVP está bien.
-        const total = data.reduce((acc: number, curr: any) => acc + (Number(curr.reading_value) || 0), 0);
+        const total = data.reduce((acc: number, curr: Record<string, unknown>) => acc + (Number(curr.reading_value) || 0), 0);
         return total / data.length;
     }
 };
@@ -107,7 +107,7 @@ export const WaterService = {
 
 export const MarketplaceService = {
     // Obtener todos los productos activos
-    async getItemsV2() {
+    async getItemsV2(): Promise<MarketplaceItem[]> {
         console.log("MARKETPLACE_DEBUG: Llamando a getItemsV2 (Select *)");
         const { data, error } = await supabase
             .from('marketplace_items')
@@ -118,12 +118,12 @@ export const MarketplaceService = {
             console.error("Supabase error in getItemsV2:", error.message);
             throw error;
         }
-        return data;
+        return (data || []) as MarketplaceItem[];
     },
 
     // Publicar un nuevo producto con fotos
-    async createItem(item: any, imageFiles: File[]) {
-        const imageUrls = [];
+    async createItem(item: Partial<MarketplaceItem>, imageFiles: File[]): Promise<MarketplaceItem> {
+        const imageUrls: string[] = [];
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) throw new Error("Debes estar autenticado para publicar");
@@ -167,7 +167,7 @@ export const MarketplaceService = {
             console.error("Supabase error in createItem:", error.message, error.details);
             throw error;
         }
-        return data;
+        return data as MarketplaceItem;
     },
 
     // Marcar como vendido o inactivar
@@ -190,8 +190,8 @@ export const MarketplaceService = {
             return { error: error.message };
         }
 
-        console.log("MARKETPLACE_DEBUG: Buckets encontrados:", data.map((b: any) => b.name));
-        return { buckets: data.map((b: any) => b.name) };
+        console.log("MARKETPLACE_DEBUG: Buckets encontrados:", data.map((b: { name: string }) => b.name));
+        return { buckets: data.map((b: { name: string }) => b.name) };
     }
 };
 

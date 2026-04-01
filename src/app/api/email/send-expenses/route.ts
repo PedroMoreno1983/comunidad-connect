@@ -197,7 +197,7 @@ export async function POST(request: Request) {
     <td align="center" style="padding:32px 0 0;">
       <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
         ComunidadConnect &mdash; Sistema de Gestión Inmobiliaria<br/>
-        Preguntas: <a href="mailto:soporte@comunidadconnect.cl" style="color:#6d28d9;text-decoration:none;">soporte@comunidadconnect.cl</a>
+        Preguntas: <a href="mailto:soporte@datawiseconsultoria.com" style="color:#6d28d9;text-decoration:none;">soporte@datawiseconsultoria.com</a>
       </p>
     </td>
   </tr>

@@ -41,7 +41,7 @@ export function MaintenanceDashboard() {
                 ]);
 
                 if (tasksRes.data) {
-                    setTasks(tasksRes.data.map((t: any) => ({
+                    setTasks(tasksRes.data.map((t: Record<string, any>) => ({
                         id: t.id,
                         assetId: t.asset_id || t.assetId,
                         title: t.title,
@@ -54,7 +54,7 @@ export function MaintenanceDashboard() {
                 }
 
                 if (assetsRes.data) {
-                    setAssets(assetsRes.data.map((dbAsset: any) => ({
+                    setAssets(assetsRes.data.map((dbAsset: Record<string, any>) => ({
                         id: dbAsset.id,
                         name: dbAsset.name,
                         category: dbAsset.category,
@@ -69,7 +69,7 @@ export function MaintenanceDashboard() {
                 }
 
                 if (logsRes.data) {
-                    setLogs(logsRes.data.map((l: any) => ({
+                    setLogs(logsRes.data.map((l: Record<string, any>) => ({
                         id: l.id,
                         assetId: l.asset_id || l.assetId,
                         performedBy: l.performed_by || l.performedBy,
@@ -107,9 +107,9 @@ export function MaintenanceDashboard() {
 
     if (isLoading) return <div className="p-8 text-center">Cargando dashboard de mantenimiento...</div>;
 
-    const overdueCount = tasks.filter((t: any) => t.status === 'overdue').length;
-    const pendingCount = tasks.filter((t: any) => t.status === 'pending').length;
-    const criticalAssets = assets.filter((a: any) => a.healthStatus === 'critical').length;
+    const overdueCount = tasks.filter((t: MaintenanceTask) => t.status === 'overdue').length;
+    const pendingCount = tasks.filter((t: MaintenanceTask) => t.status === 'pending').length;
+    const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
 
     return (
         <div className="space-y-12">
@@ -178,7 +178,7 @@ export function MaintenanceDashboard() {
                     </div>
 
                     <div className="space-y-4">
-                        {tasks.map((task: any) => {
+                        {tasks.map((task: MaintenanceTask) => {
                             const asset = assets.find(a => a.id === task.assetId);
                             return (
                                 <div key={task.id} className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 hover:border-white/80 dark:hover:border-slate-600 hover:shadow-xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">

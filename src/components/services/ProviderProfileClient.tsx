@@ -71,10 +71,10 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             });
             setIsRequestDialogOpen(false);
             setRequestForm({ date: '', time: '', description: '' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 title: "Error",
-                description: error.message || "No se pudo enviar la solicitud",
+                description: error instanceof Error ? error.message : "No se pudo enviar la solicitud",
                 variant: "default",
             });
         }
@@ -119,10 +119,10 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
             // Refresh the page to show new review
             router.refresh();
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 title: "Error",
-                description: error.message || "No se pudo publicar la reseña",
+                description: error instanceof Error ? error.message : "No se pudo publicar la reseña",
                 variant: "default",
             });
         }

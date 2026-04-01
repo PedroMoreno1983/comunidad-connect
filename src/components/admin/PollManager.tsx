@@ -62,7 +62,7 @@ export function PollManager() {
             const createdPoll = await PollService.create(pollData, ['A favor', 'En contra']);
 
             if (createdPoll) {
-                setPolls([createdPoll as any, ...polls]);
+                setPolls([createdPoll as Poll, ...polls]);
                 setIsDialogOpen(false);
                 setNewPoll({ title: "", description: "", category: "community" });
                 toast({

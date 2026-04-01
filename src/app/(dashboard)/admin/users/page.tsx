@@ -7,8 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { User, Mail, Shield, Trash2, Edit, Key, Copy, CheckCheck, Users, HardHat } from "lucide-react";
 
+interface AdminProfile {
+    id: string;
+    name: string | null;
+    email: string | null;
+    role: string | null;
+    units?: { number: string }[] | { number: string } | null;
+}
+
 export default function UsersPage() {
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<AdminProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [communityName, setCommunityName] = useState<string>("");
     const [residentCode, setResidentCode] = useState<string | null>(null);
@@ -183,7 +191,9 @@ export default function UsersPage() {
                                     const name = u.name || 'Usuario Default';
                                     const email = u.email || 'Sin correo';
                                     const initial = name.charAt(0).toUpperCase();
-                                    const unitLabel = Array.isArray(u.units) && u.units.length > 0 ? u.units[0].number : (u.units as any)?.number || '-';
+                                    const unitLabel = Array.isArray(u.units) && u.units.length > 0 
+                                        ? u.units[0].number 
+                                        : (u.units as { number: string } | undefined)?.number || '-';
 
                                     return (
                                         <tr key={u.id} className="hover:bg-slate-50 group">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { QRScannerSimulator } from "@/components/admin/QRScannerSimulator";
 import { useAuth } from "@/lib/authContext";
+import { VisitorLog } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
@@ -23,10 +24,17 @@ import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { motion } from "framer-motion";
 
+// interface VisitorLog moved to @/lib/types.ts
+
+interface Unit {
+    id: string;
+    number: string;
+}
+
 export default function VisitorsPage() {
     const { user } = useAuth();
-    const [visitors, setVisitors] = useState<any[]>([]);
-    const [units, setUnits] = useState<any[]>([]);
+    const [visitors, setVisitors] = useState<VisitorLog[]>([]);
+    const [units, setUnits] = useState<Unit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
@@ -40,9 +48,9 @@ export default function VisitorsPage() {
                 setVisitors(logs.map((v: any) => ({
                     id: v.id,
                     visitorName: v.visitor_name,
-                    unitId: v.units?.number || v.unit_id,
+                    unitId: (v.units as { number: string } | undefined)?.number || v.unit_id,
                     entryTime: v.entry_time,
-                    isQr: v.is_qr
+                    isQr: v.is_qr || false
                 })));
 
                 const uns = await WaterService.getUnits();
@@ -155,7 +163,7 @@ export default function VisitorsPage() {
             </div>
 
             {/* Main Scanner Section */}
-            <QRScannerSimulator onScanSuccess={(newLog) => setVisitors([newLog, ...visitors])} />
+            <QRScannerSimulator onScanSuccess={(newLog: VisitorLog) => setVisitors([newLog, ...visitors])} />
 
             {/* Activity Log Section */}
             <div className="space-y-8">

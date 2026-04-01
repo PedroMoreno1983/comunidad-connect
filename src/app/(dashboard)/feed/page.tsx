@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Info, AlertTriangle, Calendar, Plus, Megaphone, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
+import { Announcement } from "@/lib/types";
 import { SkeletonAnnouncement } from "@/components/ui/Skeleton";
 import {
     Dialog,
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/Input";
 
 export default function FeedPage() {
     const { user } = useAuth();
-    const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newPost, setNewPost] = useState({ title: '', content: '', priority: 'info' });
@@ -32,12 +33,12 @@ export default function FeedPage() {
                 setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
                 // Map the snake_case data to camelCase for the UI
-                const mappedData = data.map((ann: any) => ({
+                const mappedData = data.map((ann: any): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
                     author: ann.author_name || 'Administración',
-                    priority: ann.priority,
+                    priority: ann.priority as any,
                     createdAt: ann.created_at,
                 }));
                 setAnnouncements(mappedData);

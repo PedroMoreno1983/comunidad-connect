@@ -2,8 +2,8 @@ import { Resend } from 'resend';
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const FROM_EMAIL = 'ComunidadConnect <notificaciones@comunidadconnect.cl>';
-export const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'pedro.moreno@comunidadconnect.com';
+export const FROM_EMAIL = 'ComunidadConnect <notificaciones@datawiseconsultoria.com>';
+export const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'pedromoreno1983@gmail.com';
 
 // Format Chilean pesos
 export const formatCLP = (n: number) =>
@@ -39,7 +39,7 @@ export function emailWrapper(content: string, title: string): string {
           <td style="padding:24px 40px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
               ComunidadConnect — Sistema de Gestión Inmobiliaria<br/>
-              Si tienes dudas, escríbenos a <a href="mailto:soporte@comunidadconnect.cl" style="color:#4f46e5;">soporte@comunidadconnect.cl</a>
+              Si tienes dudas, escríbenos a <a href="mailto:soporte@datawiseconsultoria.com" style="color:#4f46e5;">soporte@datawiseconsultoria.com</a>
             </p>
           </td>
         </tr>

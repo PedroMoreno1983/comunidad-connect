@@ -70,7 +70,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
                         {/* Sort dropdown */}
                         <select
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
+                            onChange={(e) => setSortBy(e.target.value as 'rating' | 'price' | 'experience')}
                             className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         >
                             <option value="rating">Mejor calificados</option>

@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/ui/Button";
-import { Booking } from "@/lib/types";
+import { Booking, Amenity } from "@/lib/types";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
@@ -38,11 +38,11 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export default function AmenitiesPage() {
     const { user } = useAuth();
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [amenities, setAmenities] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [amenities, setAmenities] = useState<Amenity[]>([]);
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
-    const [selectedAmenity, setSelectedAmenity] = useState<any | null>(null);
+    const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
@@ -68,10 +68,28 @@ export default function AmenitiesPage() {
                 AmenitiesService.getAmenities(),
                 AmenitiesService.getAllBookings()
             ]);
-            setAmenities(amenitiesData || []);
-            setBookings(bookingsData || []);
-        } catch (error: any) {
-            console.error("Error loading amenities data:", error?.message || error);
+            setAmenities(((amenitiesData as any[]) || []).map(a => ({
+                id: a.id,
+                name: a.name,
+                description: a.description,
+                maxCapacity: a.max_capacity,
+                hourlyRate: a.hourly_rate,
+                iconName: a.icon_name,
+                gradient: a.gradient
+            })));
+            setBookings(((bookingsData as any[]) || []).map(b => ({
+                id: b.id,
+                amenityId: b.amenity_id,
+                userId: b.user_id,
+                date: b.date,
+                startTime: b.start_time,
+                endTime: b.end_time,
+                status: b.status,
+                amenities: b.amenities // Keep nested if it exists
+            })));
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+            console.error("Error loading amenities data:", errorMessage);
             setAmenities([]);
             setBookings([]);
         } finally {
@@ -79,7 +97,7 @@ export default function AmenitiesPage() {
         }
     };
 
-    const handleOpenBooking = (amenity: any) => {
+    const handleOpenBooking = (amenity: Amenity) => {
         setSelectedAmenity(amenity);
         setIsDialogOpen(true);
         setSelectedDate('');
@@ -103,9 +121,9 @@ export default function AmenitiesPage() {
 
         // Validar que no haya una reserva existente para esta amenidad en esta fecha y hora
         const isConflict = bookings.some(b =>
-            b.amenity_id === selectedAmenity.id &&
+            b.amenityId === selectedAmenity.id &&
             b.date === selectedDate &&
-            b.start_time.startsWith(selectedTime.split(':')[0])
+            b.startTime.startsWith(selectedTime.split(':')[0])
         );
 
         if (isConflict) {
@@ -137,10 +155,11 @@ export default function AmenitiesPage() {
                 description: `${selectedAmenity.name} reservado para el ${selectedDate} a las ${selectedTime}.`,
                 variant: "success",
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Hubo un problema procesando tu reserva.";
             toast({
                 title: "Error al reservar",
-                description: error.message || "Hubo un problema procesando tu reserva.",
+                description: errorMessage,
                 variant: "destructive",
             });
         } finally {
@@ -162,7 +181,7 @@ export default function AmenitiesPage() {
     const { daysInMonth, startingDay } = getDaysInMonth(currentMonth);
     const monthName = currentMonth.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
 
-    const userBookings = bookings.filter(b => b.user_id === user?.id);
+    const userBookings = bookings.filter(b => b.userId === user?.id);
 
     const getIcon = (iconName: string) => {
         return iconMap[iconName] || Calendar;
@@ -196,7 +215,7 @@ export default function AmenitiesPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {amenities.map((amenity, idx) => {
-                            const Icon = getIcon(amenity.icon_name);
+                            const Icon = getIcon(amenity.iconName);
                             const gradient = amenity.gradient || 'from-blue-500 to-indigo-600';
                             return (
                                 <article
@@ -217,12 +236,12 @@ export default function AmenitiesPage() {
                                             <Icon className="h-10 w-10 text-white" />
                                         </div>
 
-                                        {amenity.hourly_rate > 0 && (
+                                        {amenity.hourlyRate > 0 && (
                                             <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-full shadow-lg">
-                                                ${amenity.hourly_rate.toLocaleString()}/hr
+                                                ${amenity.hourlyRate.toLocaleString()}/hr
                                             </div>
                                         )}
-                                        {amenity.hourly_rate === 0 && (
+                                        {amenity.hourlyRate === 0 && (
                                             <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1 shadow-lg">
                                                 <Sparkles className="h-3 w-3" />
                                                 Gratis
@@ -238,7 +257,7 @@ export default function AmenitiesPage() {
                                         <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-5">
                                             <div className="flex items-center gap-1.5">
                                                 <Users className="h-4 w-4 text-slate-400" />
-                                                <span>Máx. {amenity.max_capacity}</span>
+                                                <span>Máx. {amenity.maxCapacity}</span>
                                             </div>
                                         </div>
 
@@ -268,7 +287,7 @@ export default function AmenitiesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {userBookings.map((booking) => {
-                                const amenity = booking.amenities;
+                                const amenity = (booking as any).amenities;
                                 if (!amenity) return null;
                                 const Icon = getIcon(amenity.icon_name);
                                 return (
@@ -285,7 +304,7 @@ export default function AmenitiesPage() {
                                                     new Date(`${booking.date}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
                                                 }
                                             </p>
-                                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</p>
+                                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{booking.startTime.substring(0, 5)} - {booking.endTime.substring(0, 5)}</p>
                                         </div>
                                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${booking.status === 'confirmed' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
                                             }`}>
@@ -306,7 +325,7 @@ export default function AmenitiesPage() {
                         <DialogTitle className="flex items-center gap-3">
                             {selectedAmenity && (
                                 <div className={`p-2 rounded-lg bg-gradient-to-br ${selectedAmenity.gradient}`}>
-                                    {(() => { const Icon = getIcon(selectedAmenity.icon_name); return <Icon className="h-5 w-5 text-white" />; })()}
+                                    {(() => { const Icon = getIcon(selectedAmenity.iconName); return <Icon className="h-5 w-5 text-white" />; })()}
                                 </div>
                             )}
                             Reservar {selectedAmenity?.name}
@@ -381,9 +400,9 @@ export default function AmenitiesPage() {
                                 <div className="grid grid-cols-4 gap-2">
                                     {timeSlots.map(time => {
                                         const isBooked = bookings.some(b =>
-                                            b.amenity_id === selectedAmenity?.id &&
+                                            b.amenityId === selectedAmenity?.id &&
                                             b.date === selectedDate &&
-                                            b.start_time.startsWith(time.split(':')[0])
+                                            b.startTime.startsWith(time.split(':')[0])
                                         );
                                         return (
                                             <button

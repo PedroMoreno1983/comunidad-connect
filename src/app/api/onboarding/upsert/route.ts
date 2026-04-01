@@ -127,8 +127,8 @@ export async function POST(request: Request) {
             errors: errorCount
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Upsert Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
