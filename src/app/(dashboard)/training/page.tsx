@@ -7,8 +7,17 @@ import {
     GraduationCap, ChevronDown, CheckCircle2,
     Key, Megaphone, DollarSign, Wrench,
     Vote, BarChart3, Home, Shield, Package,
-    Bell, Eye, BookOpen, PlayCircle, ExternalLink, Award
+    Bell, Eye, BookOpen, PlayCircle, ExternalLink, Award, Sparkles, Upload, FileText
 } from "lucide-react";
+
+interface CommunityCourse {
+    id: string;
+    title: string;
+    description: string;
+    modules: number;
+    color: string;
+    bg: string;
+}
 
 interface Step {
     text: string;
@@ -273,6 +282,68 @@ const EXTERNAL_COURSES: ExternalCourse[] = [
     },
 ];
 
+const COMMUNITY_COURSES: CommunityCourse[] = [
+    {
+        id: "cc-1",
+        title: "Reglamento de Copropiedad 2026",
+        description: "Normativas, uso de piscina, quinchos, multas e información general de la comunidad.",
+        modules: 4,
+        color: "text-indigo-600 dark:text-indigo-400",
+        bg: "bg-indigo-100 dark:bg-indigo-500/20"
+    },
+    {
+        id: "cc-2",
+        title: "Protocolo de Evacuación",
+        description: "Puntos de encuentro, zonas seguras y qué hacer en caso de sismos o incendios.",
+        modules: 3,
+        color: "text-rose-600 dark:text-rose-400",
+        bg: "bg-rose-100 dark:bg-rose-500/20"
+    }
+];
+
+function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-indigo-500" />
+                        {course.title}
+                    </h3>
+                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                        ✖
+                    </button>
+                </div>
+                <div className="flex flex-1 overflow-hidden">
+                    {/* Sidebar */}
+                    <div className="w-1/3 border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 p-4 overflow-y-auto">
+                        <h4 className="text-xs font-bold uppercase text-slate-500 mb-4 tracking-wider">Módulos del Curso</h4>
+                        {[...Array(course.modules)].map((_, i) => (
+                            <div key={i} className={`p-3 text-sm font-bold rounded-xl mb-2 flex items-center gap-3 ${i === 0 ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
+                                <PlayCircle className="h-4 w-4" />
+                                {i === 0 ? '1. Conceptos Generales' : `${i + 1}. Módulo ${i + 1}`}
+                            </div>
+                        ))}
+                    </div>
+                    {/* Player Area */}
+                    <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl mb-4">
+                            <Sparkles className="h-12 w-12 text-indigo-500" />
+                        </div>
+                        <h2 className="text-xl font-black dark:text-white mb-2">Visor de SCORM</h2>
+                        <p className="text-slate-500 text-sm max-w-sm mb-6">
+                            En el entorno de producción, aquí se reproducirá directamente el paquete SCORM generado a través de CoTraining.ai u otros LMS institucionales.
+                        </p>
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full">
+                            Simulación de Integración Activa
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function GuideCard({ guide, index }: { guide: Guide; index: number }) {
     const [open, setOpen] = useState(false);
     const [completed, setCompleted] = useState<Set<number>>(new Set());
@@ -383,6 +454,7 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
 
 export default function TrainingPage() {
     const { user } = useAuth();
+    const [selectedCourse, setSelectedCourse] = useState<CommunityCourse | null>(null);
 
     if (!user) return null;
 
@@ -456,6 +528,103 @@ export default function TrainingPage() {
                 </div>
             </div>
 
+            {/* Panel de Integración CoTraining (Sólo Admins) */}
+            {isAdmin && (
+                <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/50">
+                            <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                Generador de Cursos
+                                <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Nuevo</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                Convierte los documentos de tu comunidad en cursos e-learning.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" />
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]" />
+                        
+                        <div className="flex-1 relative z-10">
+                            <h3 className="text-2xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
+                                Powered by CoTraining.ai
+                            </h3>
+                            <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                                Conecta tu cuenta oficial de CoTraining y sincroniza automáticamente los documentos de tu condominio (reglamentos, circulares) convirtiéndolos en cursos interactivos con evaluación.
+                            </p>
+                            <a 
+                                href="https://www.cotraining.ai/es" 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all"
+                            >
+                                Vincular Cuenta de CoTraining
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                        </div>
+                        <div className="hidden md:flex w-48 h-48 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
+                            <Upload className="h-10 w-10 text-orange-400 mb-3" />
+                            <p className="text-xs font-bold text-slate-300">Arrastra tu PDF exportado en SCORM aquí para cargarlo temporalmente</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cursos Internos Sincronizados (Visible a todos si hay cursos) */}
+            <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+                            <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                Cursos de la Comunidad
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                Capacitación interna gestionada por tu administración.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {COMMUNITY_COURSES.map(course => (
+                        <button
+                            key={course.id}
+                            onClick={() => setSelectedCourse(course)}
+                            className="text-left group bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all flex flex-col h-full"
+                        >
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className={`p-2 rounded-xl ${course.bg}`}>
+                                    <BookOpen className={`h-4 w-4 ${course.color}`} />
+                                </div>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    Generado vía LMS
+                                </span>
+                            </div>
+                            <h3 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-600 transition-colors">
+                                {course.title}
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
+                                {course.description}
+                            </p>
+                            <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                    {course.modules} Módulos
+                                </span>
+                                <PlayCircle className="h-5 w-5 text-emerald-500 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Institutional Courses — visible for admin and concierge */}
             {filteredCourses.length > 0 && (
                 <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
@@ -506,6 +675,10 @@ export default function TrainingPage() {
                         ))}
                     </div>
                 </div>
+            )}
+
+            {selectedCourse && (
+                <CourseModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />
             )}
         </div>
     );
