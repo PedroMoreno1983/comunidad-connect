@@ -473,7 +473,7 @@ export default function LandingPage() {
               className="flex flex-wrap items-center gap-4"
             >
               <button
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/login')}
                 id="cta-hero-primary"
                 className="group flex items-center gap-2 px-7 py-4 rounded-2xl bg-[#FF6B47] hover:bg-[#e8502d] text-white font-bold text-base transition-all shadow-xl shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-1"
               >
