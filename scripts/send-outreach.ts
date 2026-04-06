@@ -26,6 +26,8 @@ function generarHtmlCorreo(nombre: string) {
                 </a>
             </div>
 
+            <p style="font-size: 16px; line-height: 1.6;">Si estás interesado en implementar esta solución o tienes alguna duda, no dudes en contactarnos escribiéndonos a <strong>corporativo@datawiseconsultoria.com</strong>, o simplemente respondiendo a este correo.</p>
+
             <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; color: #666; font-size: 14px;">
                 Atentamente,<br>
                 <strong>Equipo Comunidad Connect</strong>
@@ -43,6 +45,7 @@ async function startTestSend() {
     try {
         const { data, error } = await resend.emails.send({
             from: 'ComunidadConnect <notificaciones@datawiseconsultoria.com>', 
+            replyTo: 'corporativo@datawiseconsultoria.com',
             to: [email],
             subject: `Propuesta de Software para la administración de tus comunidades 🏢`,
             html: generarHtmlCorreo(nombreFormateado),

@@ -12,24 +12,24 @@ nextjs-portal {
    ============================================ */
 :root,
 .light {
-  /* Primary Color Palette - Deep Blue to Purple gradient */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-  --primary-800: #3730a3;
-  --primary-900: #312e81;
+  /* -- NEW PALETTE: Coral + Teal (warm, human, Chilean) -- */
+  --primary-50: #fff3f0;
+  --primary-100: #ffe4db;
+  --primary-200: #ffc4b0;
+  --primary-300: #ff9d80;
+  --primary-400: #ff7a5c;
+  --primary-500: #FF6B47;
+  --primary-600: #e8502d;
+  --primary-700: #c03a1d;
+  --primary-800: #922910;
+  --primary-900: #6a1b08;
 
-  /* Accent Colors - Emerald */
-  --accent-50: #ecfdf5;
-  --accent-100: #d1fae5;
-  --accent-400: #34d399;
-  --accent-500: #10b981;
-  --accent-600: #059669;
+  /* Accent Colors - Teal */
+  --accent-50: #edfaf6;
+  --accent-100: #c8f3e8;
+  --accent-400: #2ed3ac;
+  --accent-500: #0BC9A1;
+  --accent-600: #08a884;
 
   /* Warning/Alert Colors */
   --warning-50: #fffbeb;
@@ -41,47 +41,47 @@ nextjs-portal {
   --danger-500: #ef4444;
   --danger-600: #dc2626;
 
-  /* Neutral Palette - Slate */
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-200: #e2e8f0;
-  --neutral-300: #cbd5e1;
-  --neutral-400: #94a3b8;
-  --neutral-500: #64748b;
-  --neutral-600: #475569;
-  --neutral-700: #334155;
-  --neutral-800: #1e293b;
-  --neutral-900: #0f172a;
+  /* Neutral Palette - Warm Slate */
+  --neutral-50: #faf8f6;
+  --neutral-100: #f5f1ee;
+  --neutral-200: #e8e2dd;
+  --neutral-300: #d4cbc4;
+  --neutral-400: #a89e97;
+  --neutral-500: #7a706a;
+  --neutral-600: #5a534e;
+  --neutral-700: #3d3835;
+  --neutral-800: #252220;
+  --neutral-900: #14120f;
 
   /* Background & Surface Colors */
-  --background: #f8fafc;
-  --background-subtle: #f1f5f9;
+  --background: #FFF8F5;
+  --background-subtle: #f5f0ec;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
-  --surface-overlay: rgba(255, 255, 255, 0.9);
+  --surface-overlay: rgba(255, 248, 245, 0.95);
 
   /* Text Colors */
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-primary: #1A1512;
+  --text-secondary: #5a534e;
+  --text-muted: #a89e97;
   --text-inverse: #ffffff;
 
   /* Border Colors */
-  --border-default: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --border-strong: #cbd5e1;
+  --border-default: #e8e2dd;
+  --border-subtle: #f5f1ee;
+  --border-strong: #d4cbc4;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 40px -10px rgba(99, 102, 241, 0.3);
-  --shadow-colored: 0 4px 14px 0 rgba(99, 102, 241, 0.25);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+  --shadow-glow: 0 0 40px -10px rgba(255, 107, 71, 0.35);
+  --shadow-colored: 0 4px 14px 0 rgba(255, 107, 71, 0.28);
 
   /* Glass Effect */
   --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.5);
 }
 
 /* ============================================
@@ -89,46 +89,46 @@ nextjs-portal {
    ============================================ */
 .dark {
   /* Background & Surface Colors */
-  --background: #0a0a0f;
-  --background-subtle: #111118;
-  --surface: #16161d;
-  --surface-elevated: #1e1e28;
-  --surface-overlay: rgba(10, 10, 15, 0.95);
+  --background: #111008;
+  --background-subtle: #1a1510;
+  --surface: #1e1912;
+  --surface-elevated: #26201a;
+  --surface-overlay: rgba(17, 16, 8, 0.95);
 
   /* Text Colors */
-  --text-primary: #f1f5f9;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-inverse: #0f172a;
+  --text-primary: #f5f0ec;
+  --text-secondary: #b0a8a2;
+  --text-muted: #7a706a;
+  --text-inverse: #1A1512;
 
   /* Border Colors */
-  --border-default: #27272a;
-  --border-subtle: #1e1e24;
-  --border-strong: #3f3f46;
+  --border-default: #2e2820;
+  --border-subtle: #231e18;
+  --border-strong: #3d3530;
 
   /* Adjusted Neutrals for Dark */
-  --neutral-50: #18181b;
-  --neutral-100: #27272a;
-  --neutral-200: #3f3f46;
-  --neutral-300: #52525b;
-  --neutral-400: #71717a;
-  --neutral-500: #a1a1aa;
-  --neutral-600: #d4d4d8;
-  --neutral-700: #e4e4e7;
-  --neutral-800: #f4f4f5;
-  --neutral-900: #fafafa;
+  --neutral-50: #1e1912;
+  --neutral-100: #2e2820;
+  --neutral-200: #3d3530;
+  --neutral-300: #524840;
+  --neutral-400: #7a706a;
+  --neutral-500: #b0a8a2;
+  --neutral-600: #d4cbc4;
+  --neutral-700: #e8e2dd;
+  --neutral-800: #f5f1ee;
+  --neutral-900: #faf8f6;
 
   /* Shadows for Dark */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
-  --shadow-glow: 0 0 40px -10px rgba(129, 140, 248, 0.4);
-  --shadow-colored: 0 4px 14px 0 rgba(129, 140, 248, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-glow: 0 0 40px -10px rgba(255, 107, 71, 0.45);
+  --shadow-colored: 0 4px 14px 0 rgba(255, 107, 71, 0.35);
 
   /* Glass Effect */
-  --glass-bg: rgba(22, 22, 29, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(30, 25, 18, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 /* Border Radius */
@@ -157,7 +157,7 @@ nextjs-portal {
   --color-primary-500: var(--primary-500);
   --color-primary-600: var(--primary-600);
   --color-primary-700: var(--primary-700);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -173,7 +173,7 @@ html {
 body {
   background: var(--background);
   color: var(--text-primary);
-  font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+  font-family: var(--font-jakarta, 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -499,6 +499,56 @@ body {
 
 .animate-spin-slow {
   animation: spinSlow 8s linear infinite;
+}
+
+/* Counter Number Animation */
+@keyframes countUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-count-up {
+  animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Floating Card — staggered vertical drift */
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(0.5deg); }
+  66% { transform: translateY(4px) rotate(-0.3deg); }
+}
+
+.animate-float-card {
+  animation: floatCard 6s ease-in-out infinite;
+}
+
+.animate-float-card-delay-1 {
+  animation: floatCard 6s ease-in-out 1s infinite;
+}
+
+.animate-float-card-delay-2 {
+  animation: floatCard 6s ease-in-out 2s infinite;
+}
+
+/* Morphing blob background */
+@keyframes morphBlob {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+}
+
+.animate-morph-blob {
+  animation: morphBlob 8s ease-in-out infinite;
+}
+
+/* Notification bell ping */
+@keyframes pingOnce {
+  0% { transform: scale(1); opacity: 1; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.animate-ping-once {
+  animation: pingOnce 1.5s cubic-bezier(0, 0, 0.2, 1) forwards;
 }
 
 /* Staggered Animation Delays */

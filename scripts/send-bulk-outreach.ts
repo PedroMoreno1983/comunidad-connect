@@ -2,7 +2,9 @@ import { Resend } from 'resend';
 import * as dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import * as xlsx from 'xlsx';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const xlsx = require('xlsx');
 
 // Load .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -26,6 +28,19 @@ if (fs.existsSync(LOG_FILE)) {
 
 function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getNext9AM() {
+    const now = new Date();
+    // 9:00 AM local time
+    const scheduled = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+    
+    // Si ya pasamos las 9:00 AM de hoy, programamos para mañana a las 9:00 AM
+    if (scheduled <= now) {
+        scheduled.setDate(scheduled.getDate() + 1);
+    }
+    
+    return scheduled.toISOString();
 }
 
 function generarHtmlCorreo(nombre: string) {
@@ -58,7 +73,9 @@ function generarHtmlCorreo(nombre: string) {
 }
 
 async function startBulkOutreach() {
+    const targetSchedule = getNext9AM();
     console.log('Iniciando campaña de envíos masivos...');
+    console.log(`Todos los correos de esta tanda serán programados para: ${targetSchedule}`);
     console.log('Cargando Excel desde:', EXCEL_PATH);
 
     if (!fs.existsSync(EXCEL_PATH)) {
@@ -119,6 +136,7 @@ async function startBulkOutreach() {
                 to: [email],
                 subject: `Propuesta de Software para la administración de tus comunidades 🏢`,
                 html: generarHtmlCorreo(nombreFormateado),
+                scheduledAt: targetSchedule
             });
 
             if (error) {
