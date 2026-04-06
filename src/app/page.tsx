@@ -408,7 +408,7 @@ export default function LandingPage() {
             Iniciar sesión
           </button>
           <button
-            onClick={() => router.push('/signup')}
+            onClick={() => router.push('/login')}
             className="px-5 py-2.5 rounded-xl bg-[#FF6B47] hover:bg-[#e8502d] text-white text-sm font-bold transition-all shadow-md shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-0.5"
           >
             Empezar gratis
