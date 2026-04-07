@@ -255,7 +255,7 @@ export default function AdminTrainingPage() {
                     </div>
                     <button 
                         onClick={() => setIsCreating(true)}
-                        className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 flex items-center gap-2 transition"
+                        className="w-full md:w-auto justify-center px-5 py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 flex items-center gap-2 transition mt-4 md:mt-0"
                     >
                         <Plus className="h-5 w-5" />
                         Nuevo Curso Interactivo
@@ -282,7 +282,7 @@ export default function AdminTrainingPage() {
                             href="https://www.cotraining.ai/es" 
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all"
+                            className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto"
                         >
                             Ir a CoTraining.ai
                         </a>
