@@ -188,7 +188,7 @@ function TrustStats() {
 
   return (
     <div ref={ref} className="w-full max-w-4xl mx-auto mt-16 md:mt-20">
-      <div className="grid grid-cols-3 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 md:gap-8">
         {stats.map((s, i) => (
           <motion.div
             key={i}
@@ -470,19 +470,19 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-wrap items-center gap-4"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
             >
               <button
                 onClick={() => router.push('/login')}
                 id="cta-hero-primary"
-                className="group flex items-center gap-2 px-7 py-4 rounded-2xl bg-[#FF6B47] hover:bg-[#e8502d] text-white font-bold text-base transition-all shadow-xl shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-1"
+                className="group flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#FF6B47] hover:bg-[#e8502d] text-white font-bold text-base transition-all shadow-xl shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-1 w-full sm:w-auto"
               >
                 Probar gratis 30 días
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="flex items-center gap-2 px-7 py-4 rounded-2xl bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] text-[#3d3835] dark:text-[#f5f0ec] font-bold text-base hover:border-[#FF6B47]/40 transition-all shadow-sm"
+                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] text-[#3d3835] dark:text-[#f5f0ec] font-bold text-base hover:border-[#FF6B47]/40 transition-all shadow-sm w-full sm:w-auto"
               >
                 Iniciar sesión
               </button>
@@ -522,7 +522,7 @@ export default function LandingPage() {
         {/* ── Divider ── */}
         <div className="my-20 md:my-28 flex items-center gap-4">
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#e8e2dd] dark:via-[#3d3530] to-transparent" />
-          <span className="text-xs font-bold text-[#a89e97] uppercase tracking-widest px-4">Elige tu rol</span>
+          <span className="text-xs font-bold text-[#a89e97] uppercase tracking-widest px-0 md:px-4 text-center">Elige tu rol</span>
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#e8e2dd] dark:via-[#3d3530] to-transparent" />
         </div>
 
