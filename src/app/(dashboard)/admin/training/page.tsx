@@ -263,6 +263,37 @@ export default function AdminTrainingPage() {
                 </div>
             )}
 
+            {!isCreating && (
+                <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]" />
+                    
+                    <div className="flex-1 relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Integración Oficial</span>
+                        </div>
+                        <h3 className="text-2xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
+                            Extiende tus posibilidades con CoTraining.ai
+                        </h3>
+                        <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                            Nuestra IA integrada es genial para cursos rápidos, pero si necesitas exportaciones SCORM completas, personalización avanzada o 140 idiomas, conecta tu cuenta de la plataforma líder en IA E-Learning.
+                        </p>
+                        <a 
+                            href="https://www.cotraining.ai/es" 
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all"
+                        >
+                            Ir a CoTraining.ai
+                        </a>
+                    </div>
+                    <div className="hidden md:flex w-48 h-48 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
+                        <UploadCloud className="h-10 w-10 text-orange-400 mb-3" />
+                        <p className="text-xs font-bold text-slate-300">Vincula aquí tus paquetes SCORM de CoTraining en el futuro</p>
+                    </div>
+                </div>
+            )}
+
             <AnimatePresence>
                 {isCreating && slides.length === 0 && (
                     <motion.div 
