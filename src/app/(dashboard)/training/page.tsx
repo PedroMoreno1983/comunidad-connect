@@ -561,7 +561,7 @@ export default function TrainingPage() {
                                 href="https://www.cotraining.ai/es" 
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all"
+                                className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto"
                             >
                                 Vincular Cuenta de CoTraining
                                 <ExternalLink className="h-4 w-4" />
