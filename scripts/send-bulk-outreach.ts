@@ -11,7 +11,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const EXCEL_PATH = "C:\\Users\\pedro.moreno\\Downloads\\Administradores_RM.xlsx";
+const EXCEL_PATH = "C:\\Users\\pedro.moreno\\Downloads\\Kimi_Agent_Administradores Onerosos Detallados\\Administradores_RM.xlsx";
 const LOG_FILE = path.resolve(process.cwd(), "scripts", "envios-completados.json");
 
 const BATCH_SIZE = 100; // Plan gratuito de Resend suele limitar a 100 diarios. Ajustar si es necesario.
