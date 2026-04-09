@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Poll } from "@/lib/types";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function VotacionesPage() {
     const { user } = useAuth();
@@ -174,8 +175,12 @@ export default function VotacionesPage() {
                         />
                     ))}
                     {activePolls.length === 0 && (
-                        <div className="lg:col-span-2 text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-700">
-                            <p className="text-slate-500 font-bold">No hay consultas activas en este momento.</p>
+                        <div className="lg:col-span-2">
+                            <EmptyState
+                                icon={Vote}
+                                title="Sin Consultas Activas"
+                                description="No hay votaciones o consultas comunitarias activas en este momento."
+                            />
                         </div>
                     )}
                 </div>

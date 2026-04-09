@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function FeedPage() {
     const { user } = useAuth();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -289,10 +289,11 @@ export default function FeedPage() {
                         })}
 
                         {announcements.length === 0 && (
-                            <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
-                                <Bell className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
-                                <p className="text-slate-500 dark:text-slate-400">No hay avisos recientes.</p>
-                            </div>
+                            <EmptyState
+                                icon={Bell}
+                                title="Sin Comunicados"
+                                description="No hay avisos recientes para la comunidad. Te notificaremos cuando haya novedades."
+                            />
                         )}
                     </>
                 )}

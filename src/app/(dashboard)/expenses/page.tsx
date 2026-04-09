@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Expense {
     id: string;
@@ -292,9 +293,12 @@ export default function ExpensesPage() {
                 </ErrorBoundary>
 
                 {!isLoading && expenses.length === 0 && (
-                    <div className="text-center py-12">
-                        <DollarSign className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
-                        <p className="text-slate-500 dark:text-slate-400">No hay registros de gastos comunes para esta unidad.</p>
+                    <div className="px-6 pb-6">
+                        <EmptyState
+                            icon={DollarSign}
+                            title="Sin Registros"
+                            description="No hay registros de gastos comunes disponibles para esta unidad en este momento."
+                        />
                     </div>
                 )}
             </div>

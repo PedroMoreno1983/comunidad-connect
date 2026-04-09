@@ -30,6 +30,7 @@ import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Category config repeated here for components or exported from types
 const categoryConfig: Record<string, {
@@ -545,25 +546,19 @@ export default function MarketplacePage() {
 
             {/* Empty State Premium */}
             {filteredItems.length === 0 && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-24 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-700"
-                >
-                    <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center shadow-inner">
-                        <Search className="h-10 w-10 text-slate-400" />
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 underline decoration-blue-500 decoration-4">No hay resultados</h3>
-                    <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto font-medium">
-                        No pudimos encontrar tesoros que coincidan con tu búsqueda. Intenta con otros términos o explora nuevas categorías.
-                    </p>
-                    <button
-                        onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
-                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                    >
-                        Ver todo el Catálogo
-                    </button>
-                </motion.div>
+                <EmptyState
+                    icon={Search}
+                    title="No hay resultados"
+                    description="No pudimos encontrar tesoros que coincidan con tu búsqueda. Intenta con otros términos o explora nuevas categorías."
+                    action={
+                        <button
+                            onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
+                            className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                        >
+                            Ver todo el Catálogo
+                        </button>
+                    }
+                />
             )}
 
             {/* Rules Modal */}
