@@ -33,7 +33,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
 
     const body = {
         systemInstruction: {
-            role: "user",
+            role: "system",
             parts: [{ text: systemPrompt }]
         },
         contents: formattedHistory,
@@ -44,10 +44,11 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
     };
 
     const configs = [
-        { ver: "v1beta", model: "gemini-2.5-flash" },
-        { ver: "v1beta", model: "gemini-2.0-flash" },
         { ver: "v1beta", model: "gemini-1.5-flash" },
-        { ver: "v1beta", model: "gemini-pro" },
+        { ver: "v1beta", model: "gemini-flash-latest" },
+        { ver: "v1beta", model: "gemini-1.5-pro" },
+        { ver: "v1beta", model: "gemini-2.0-flash" },
+        { ver: "v1beta", model: "gemini-2.5-flash" },
         { ver: "v1", model: "gemini-pro" }
     ];
 
