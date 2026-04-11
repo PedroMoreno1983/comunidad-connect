@@ -25,8 +25,8 @@ REGLAS ABSOLUTAS:
 `;
 
 async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { mimeType: string, data: string }) {
-    // Usamos el modelo rápido y barato ideal para parsear
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Usamos el modelo rápido y barato ideal para parsear. 1.5-flash es el más estable.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     // Configurar Gemini para responder en JSON estricto
     const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: "Extrae a todos los residentes de este archivo. Si el archivo incluye imágenes, escaneos o texto sucio, léelo cuidadosamente e ignora el ruido.\n\n" }];
@@ -41,7 +41,7 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
 
     const body = {
         systemInstruction: {
-            role: "user",
+            role: "system",
             parts: [{ text: GEMINI_JSON_PROMPT }]
         },
         contents: [

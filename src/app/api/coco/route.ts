@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
 
         const geminiBody = {
             systemInstruction: {
-                role: "user",
+                role: "system",
                 parts: [{ text: `${SYSTEM_PROMPT}\n\nContexto actual: ${contextNote}` }]
             },
             contents: [
@@ -205,11 +205,12 @@ export async function POST(req: NextRequest) {
 
         // 5. Try the most stable combinations
         const configs = [
-            { ver: "v1beta", model: "gemini-2.5-flash" },
-            { ver: "v1beta", model: "gemini-2.0-flash" },
             { ver: "v1beta", model: "gemini-1.5-flash" },
-            { ver: "v1", model: "gemini-1.5-flash" },
-            { ver: "v1beta", model: "gemini-1.5-pro" }
+            { ver: "v1beta", model: "gemini-flash-latest" },
+            { ver: "v1beta", model: "gemini-1.5-pro" },
+            { ver: "v1beta", model: "gemini-2.0-flash" },
+            { ver: "v1beta", model: "gemini-2.5-flash" },
+            { ver: "v1", model: "gemini-pro" }
         ];
         
         let res: Response | null = null;
@@ -247,7 +248,7 @@ export async function POST(req: NextRequest) {
                         firstErrorMessage = error;
                         firstErrorStatus = status;
                     }
-                    console.error(`[CoCo API] Configuracion fallida (${config.ver}/${config.model}): ${status} - ${error}`);
+                    console.error(`[CoCo API] Configuracion fallida (${config.ver}/${config.model}): ${status} - ${error}`, attemptData);
                 }
             } catch (e) {
                 console.error(`[CoCo API] Error critico en fetch (${config.ver}/${config.model}):`, e);
@@ -258,7 +259,7 @@ export async function POST(req: NextRequest) {
             const status = firstErrorStatus || 0;
             const message = firstErrorMessage || "No hubo respuesta del servidor de Google.";
             
-            console.error(`[CoCo API] Todas las opciones fallaron. Status final: ${status}`);
+            console.error(`[CoCo API] Todas las opciones fallaron. Status final: ${status}`, firstErrorMessage);
             
             let helpInfo = `(Google Error ${status}: ${message})`;
             const studioLink = "https://aistudio.google.com/app/apikey";
