@@ -105,9 +105,7 @@ export function Sidebar() {
             title: 'COMUNIDAD',
             links: [
                 { href: '/home', label: 'Inicio', icon: Home, roles: ['admin', 'resident', 'concierge'] },
-                { href: '/feed', label: 'Avisos Oficiales', icon: Bell, roles: ['admin', 'resident', 'concierge'] },
-                { href: '/social', label: 'Muro Social', icon: Hash, roles: ['resident', 'admin'] },
-                { href: '/chat', label: 'Chat Vecinal', icon: MessageSquare, roles: ['resident', 'admin'] },
+                { href: '/comunicaciones', label: 'Comunicaciones', icon: MessageSquare, roles: ['admin', 'resident', 'concierge'] },
                 { href: '/directorio', label: 'Directorio', icon: Users, roles: ['resident', 'admin'] },
             ]
         },
@@ -116,7 +114,6 @@ export function Sidebar() {
             links: [
                 { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'], feature: 'amenities' },
                 { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag, roles: ['resident', 'admin'] },
-                { href: '/resident/supermercado', label: 'Supermercado', icon: ShoppingBag, roles: ['resident'] },
                 { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/resident/invitations', label: 'Mis Invitaciones', icon: QrCode, roles: ['resident', 'admin'] },
