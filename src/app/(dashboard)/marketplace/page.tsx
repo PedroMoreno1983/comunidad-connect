@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { MarketplaceService } from "@/lib/api";
 import {
     Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck, AlertCircle
@@ -28,7 +29,7 @@ import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal"
 import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import {
-    Grid3X3, Smartphone, Armchair, Shirt, Package, Search
+    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -480,6 +481,62 @@ export default function MarketplacePage() {
                     getCategoryConfig={getCategoryConfigForId}
                 />
             </div>
+
+            {/* Servicios de Entrega */}
+            <section className="px-1">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="h-8 w-8 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                        <Truck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <h2 className="text-base font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Servicios de Entrega</h2>
+                </div>
+                <Link href="/resident/supermercado" className="group block">
+                    <motion.div
+                        whileHover={{ scale: 1.015, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 p-6 md:p-8 shadow-2xl shadow-indigo-500/20 cursor-pointer"
+                    >
+                        {/* bg glows */}
+                        <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 blur-[80px] rounded-full translate-x-1/3 -translate-y-1/3" />
+                        <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-purple-400/10 blur-[60px] rounded-full" />
+
+                        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-5">
+                                <div className="h-16 w-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-xl">
+                                    <ShoppingCart className="h-8 w-8 text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">
+                                        <Sparkles className="h-3 w-3" /> Smart Shopping con CoCo IA
+                                    </div>
+                                    <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">Supermercado a Domicilio</h3>
+                                    <p className="text-indigo-200/80 text-sm font-medium max-w-md">
+                                        Crea tu lista con ayuda de IA y recíbela en casa. Integraciones con Jumbo Delivery y Líder App.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 shrink-0">
+                                <div className="hidden md:flex flex-col items-center gap-2">
+                                    <div className="flex gap-2">
+                                        <div className="w-9 h-9 rounded-full bg-blue-100 border-2 border-white/20 flex items-center justify-center">
+                                            <ShoppingCart className="h-4 w-4 text-blue-700" />
+                                        </div>
+                                        <div className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white/20 flex items-center justify-center">
+                                            <ChefHat className="h-4 w-4 text-orange-700" />
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Jumbo · Líder</span>
+                                </div>
+                                <div className="flex items-center gap-2 px-5 py-3 bg-white text-indigo-700 font-black rounded-2xl shadow-lg group-hover:shadow-xl group-hover:bg-indigo-50 transition-all text-sm">
+                                    Ir al Supermercado
+                                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </Link>
+            </section>
 
             {/* Items Grid */}
             <AnimatePresence mode="popLayout">
