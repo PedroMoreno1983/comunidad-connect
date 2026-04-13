@@ -35,7 +35,8 @@ import {
     Hash,
     UserCircle,
     GraduationCap,
-    BookOpen
+    BookOpen,
+    Upload
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -134,12 +135,7 @@ export function Sidebar() {
                 { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'], feature: 'coco_ai' },
             ]
         },
-        {
-            title: 'CONFIGURACIÓN IA',
-            links: [
-                { href: '/admin/onboarding', label: 'Configurar Agentes IA', icon: Sparkles, roles: ['admin'], feature: 'coco_ai' },
-            ]
-        },
+
         {
             title: 'CONSERJERÍA',
             links: [
@@ -156,6 +152,7 @@ export function Sidebar() {
                 { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'], feature: 'maintenance' },
                 { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'], feature: 'voting' },
                 { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
+                { href: '/admin/onboarding', label: 'Carga Masiva de Datos', icon: Upload, roles: ['admin'], feature: 'coco_ai' },
             ]
         },
         {
