@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         const session = await getSession(`web:${sessionKey}`);
 
         // ── 5. Llamar al agente ──────────────────────────────────────────────
-        const { reply, navigate, updatedHistory } = await askCoCo(
+        const { reply, navigate, action, updatedHistory } = await askCoCo(
             message,
             session,
             {
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ reply, navigate }, { status: 200 });
+        return NextResponse.json({ reply, navigate, action }, { status: 200 });
 
     } catch (err) {
         console.error('[CoCo API Error]', err);

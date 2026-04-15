@@ -6,13 +6,13 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
-// Use service role to read all profiles/emails
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: Request) {
+    // Lazy init — avoids build-time crash if SUPABASE_SERVICE_ROLE_KEY is missing
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     try {
         // ─── Auth gate: only authenticated admins can send mass emails ───
         const cookieStore = await cookies();
