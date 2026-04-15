@@ -19,6 +19,7 @@ const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
 export interface CoCoResponse {
     reply: string;
     navigate?: string;
+    action?: string;
     updatedHistory: ConversationMessage[];
 }
 
@@ -107,15 +108,22 @@ export async function askCoCo(
         .map(b => b.text)
         .join('');
 
-    // 6. Extraer comando de navegación si existe (compatibilidad con sistema actual)
+    // 6. Extraer comando de navegación y acción (UI)
     const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
     const navigate = navMatch?.[1];
-    const reply = rawText.replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '').trim();
+    
+    const actMatch = rawText.match(/CMD:([A-Z_]+)/);
+    const action = actMatch?.[1];
+
+    let reply = rawText
+        .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
+        .replace(/CMD:[A-Z_]+/g, '')
+        .trim();
 
     // 7. Actualizar historial con la respuesta final del asistente
     const finalAssistantMessage: ConversationMessage = {
         role: 'assistant',
-        content: rawText,
+        content: reply, // Solo guardar la respuesta limpia en historial 
     };
 
     const updatedHistory: ConversationMessage[] = [
@@ -124,5 +132,5 @@ export async function askCoCo(
         finalAssistantMessage,
     ];
 
-    return { reply, navigate, updatedHistory };
+    return { reply, navigate, action, updatedHistory };
 }

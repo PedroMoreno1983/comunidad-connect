@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
+import confetti from "canvas-confetti";
 
 interface Message {
     id: string;
     role: "user" | "assistant";
     text: string;
     nav?: string;
+    action?: string;
     imageBase64?: string;
 }
 
@@ -31,7 +33,7 @@ const QUICK = [
 ];
 
 export default function CoCo() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [mounted, setMounted] = useState(false);
     const [open, setOpen] = useState(false);
     const [msgs, setMsgs] = useState<Message[]>([{
@@ -111,8 +113,35 @@ export default function CoCo() {
             }
 
             const d = await res.json();
-            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate }]);
+            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate, action: d.action }]);
+            
             if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
+            
+            // Handle UI actions
+            if (d.action) {
+                setTimeout(() => {
+                    switch (d.action) {
+                        case 'THEME_DARK':
+                            document.documentElement.classList.add('dark');
+                            localStorage.setItem('theme', 'dark');
+                            break;
+                        case 'THEME_LIGHT':
+                            document.documentElement.classList.remove('dark');
+                            localStorage.setItem('theme', 'light');
+                            break;
+                        case 'LOGOUT':
+                            logout();
+                            router.push('/');
+                            break;
+                        case 'CONFETTI':
+                            confetti({ zIndex: 99999, particleCount: 150, spread: 80 });
+                            break;
+                        case 'SCROLL_TOP':
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            break;
+                    }
+                }, 500); // 500ms delay to feel natural after message
+            }
         } catch (err: unknown) {
             const error = err as Error;
             console.error("CoCo connection failed details:", error);
