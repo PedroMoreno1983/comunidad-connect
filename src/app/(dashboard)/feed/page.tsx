@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
 export default function FeedPage() {
     const { user } = useAuth();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -65,26 +66,19 @@ export default function FeedPage() {
         }
     };
 
+    const getBadgeTone = (priority: string) => {
+        switch (priority) {
+            case 'alert': return 'danger';
+            case 'event': return 'brand';
+            default: return 'info';
+        }
+    };
+
     const getPriorityStyles = (priority: string) => {
         switch (priority) {
-            case 'alert': return {
-                badge: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 ring-red-600/20',
-                icon: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400',
-                border: 'border-l-red-500',
-                glow: 'shadow-red-500/5'
-            };
-            case 'event': return {
-                badge: 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 ring-purple-600/20',
-                icon: 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400',
-                border: 'border-l-purple-500',
-                glow: 'shadow-purple-500/5'
-            };
-            default: return {
-                badge: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 ring-blue-600/20',
-                icon: 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
-                border: 'border-l-blue-500',
-                glow: 'shadow-blue-500/5'
-            };
+            case 'alert': return { icon: 'bg-danger-bg text-danger-fg' };
+            case 'event': return { icon: 'bg-brand-bg text-brand-fg' };
+            default: return { icon: 'bg-info-bg text-info-fg' };
         }
     };
 
@@ -161,22 +155,22 @@ export default function FeedPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
-                            <Megaphone className="h-5 w-5 text-white" />
+                        <div className="p-2 bg-brand-bg text-brand-fg rounded-xl">
+                            <Megaphone className="h-5 w-5" />
                         </div>
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Muro de Avisos</h1>
+                        <h1 className="text-3xl font-bold text-primary">Muro de Avisos</h1>
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <p className="text-secondary">
                         Noticias y comunicados oficiales de la comunidad
                     </p>
                 </div>
                 {user?.role === 'admin' && (
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300">
-                                <Plus className="h-5 w-5" />
+                            <Button variant="primary" size="md" className="font-semibold shadow-md">
+                                <Plus className="h-5 w-5 mr-2" />
                                 Publicar Aviso
-                            </button>
+                            </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
@@ -205,15 +199,15 @@ export default function FeedPage() {
                                                     key={p}
                                                     type="button"
                                                     onClick={() => setNewPost({ ...newPost, priority: p })}
-                                                    className={`p-3 rounded-xl border-2 transition-all ${newPost.priority === p
-                                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
-                                                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                                                    className={`p-3 rounded-xl border transition-all ${newPost.priority === p
+                                                        ? 'border-brand-500 bg-brand-bg'
+                                                        : 'border-subtle hover:bg-elevated'
                                                         }`}
                                                 >
                                                     <div className={`mx-auto w-8 h-8 rounded-lg ${styles.icon} flex items-center justify-center mb-2`}>
                                                         <Icon className="h-4 w-4" />
                                                     </div>
-                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 text-center">{getPriorityLabel(p)}</p>
+                                                    <p className="text-xs font-medium text-primary text-center">{getPriorityLabel(p)}</p>
                                                 </button>
                                             );
                                         })}
@@ -222,7 +216,7 @@ export default function FeedPage() {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Contenido</label>
                                     <textarea
-                                        className="w-full min-h-[120px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                        className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface px-4 py-3 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                                         required
                                         value={newPost.content}
                                         onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
@@ -252,10 +246,12 @@ export default function FeedPage() {
                             const styles = getPriorityStyles(ann.priority);
                             const Icon = getIcon(ann.priority);
 
+                            const tone = getBadgeTone(ann.priority);
+
                             return (
                                 <article
                                     key={ann.id}
-                                    className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 border-l-4 ${styles.border} shadow-lg dark:shadow-slate-950/50 ${styles.glow} hover:shadow-xl transition-all duration-300 animate-slide-up opacity-0`}
+                                    className="group relative overflow-hidden rounded-2xl bg-surface border border-subtle shadow-md hover:shadow-lg hover:border-default transition-all duration-300 animate-slide-up opacity-0"
                                     style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
                                 >
                                     <div className="p-6">
@@ -265,35 +261,37 @@ export default function FeedPage() {
                                                     <Icon className="h-5 w-5" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                    <h2 className="text-lg font-bold text-primary group-hover:text-brand-500 transition-colors">
                                                         {ann.title}
                                                     </h2>
-                                                    <div className="flex items-center gap-2 mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                    <div className="flex items-center gap-2 mt-1 text-sm text-tertiary">
                                                         <span className="font-medium">{ann.author}</span>
                                                         <span>•</span>
                                                         <span>{getRelativeTime(ann.createdAt)}</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span className={`flex-shrink-0 px-3 py-1 text-xs font-semibold rounded-full ring-1 ring-inset ${styles.badge}`}>
+                                            <Badge variant={tone as any} dot={ann.priority === 'alert'}>
                                                 {getPriorityLabel(ann.priority)}
-                                            </span>
+                                            </Badge>
                                         </div>
-                                        <p className="mt-4 text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap pl-16">
+                                        <p className="mt-4 text-secondary leading-relaxed whitespace-pre-wrap pl-16">
                                             {ann.content}
                                         </p>
                                     </div>
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </article>
                             );
                         })}
 
                         {announcements.length === 0 && (
-                            <EmptyState
-                                icon={Bell}
-                                title="Sin Comunicados"
-                                description="No hay avisos recientes para la comunidad. Te notificaremos cuando haya novedades."
-                            />
+                            <div className="pt-6">
+                                <EmptyState
+                                    icon={<Bell className="h-6 w-6" />}
+                                    title="Sin Comunicados"
+                                    description="No hay avisos recientes para la comunidad. Te notificaremos cuando haya novedades."
+                                />
+                            </div>
                         )}
                     </>
                 )}

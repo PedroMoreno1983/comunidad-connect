@@ -49,6 +49,28 @@ export const TOOL_DEFINITIONS = [
             required: ['unit_id'],
         },
     },
+    {
+        name: 'list_services',
+        description: 'Consulta el directorio de servicios de mantenimiento (gasfíter, eléctrico, limpieza, etc.).',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                category: { type: 'string', description: 'Categoría (ej: plumbing, electrical, locksmith, cleaning, general)' },
+            },
+            required: [],
+        },
+    },
+    {
+        name: 'search_marketplace',
+        description: 'Busca productos o artículos a la venta en el Marketplace de la comunidad.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                query: { type: 'string', description: 'Término de búsqueda (ej: bicicleta, silla, iphone)' },
+            },
+            required: ['query'],
+        },
+    },
 
     // ── MÓDULO: RECLAMOS & MANTENCIÓN ───────────────────────────────────────
     {
@@ -211,6 +233,18 @@ export const TOOL_DEFINITIONS = [
             required: ['unit_id'],
         },
     },
+    {
+        name: 'send_whatsapp_notification',
+        description: 'Envía un mensaje de WhatsApp a un residente. Útil si el conserje o admin te pide avisar de algo urgente o encomienda.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_id: { type: 'string', description: 'ID del departamento al cual notificar' },
+                message: { type: 'string', description: 'El mensaje a enviar por WhatsApp.' },
+            },
+            required: ['unit_id', 'message'],
+        },
+    },
 
     // ── MÓDULO: ADMINISTRADOR ────────────────────────────────────────────────
     {
@@ -241,6 +275,19 @@ export const TOOL_DEFINITIONS = [
                 closes_at: { type: 'string', description: 'Fecha/hora de cierre en formato ISO 8601.' },
             },
             required: ['community_id', 'title', 'options'],
+        },
+    },
+    {
+        name: 'update_unit_data',
+        description: 'Modifica configuración de un departamento. SOLO administradores.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_id: { type: 'string' },
+                number: { type: 'string', description: 'Nuevo número o identificador del departamento' },
+                floor: { type: 'string', description: 'Nuevo piso del departamento' },
+            },
+            required: ['unit_id'],
         },
     },
 
@@ -294,6 +341,31 @@ export async function executeTool(
                     .order('reading_date', { ascending: false })
                     .limit(3);
                 return data ?? { error: 'Sin datos de consumo para ese período' };
+            }
+
+            case 'list_services': {
+                const query = supabase
+                    .from('service_providers')
+                    .select('id, name, category, rating, contact_phone')
+                    .order('rating', { ascending: false });
+                
+                if (input.category) {
+                    query.eq('category', input.category);
+                }
+                
+                const { data, error } = await query.limit(10);
+                if (error) return { error: 'No se pudo obtener el directorio de servicios' };
+                return data ?? [];
+            }
+
+            case 'search_marketplace': {
+                const { data } = await supabase
+                    .from('marketplace_items')
+                    .select('id, title, description, price, category, status')
+                    .ilike('title', `%${input.query}%`)
+                    .eq('status', 'available')
+                    .limit(5);
+                return data ?? [];
             }
 
             // ── RECLAMOS ────────────────────────────────────────────────────
@@ -482,6 +554,45 @@ export async function executeTool(
                 return data ?? [];
             }
 
+            case 'send_whatsapp_notification': {
+                // Find all profiles for this unit
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, name')
+                    .eq('unit_id', input.unit_id);
+                
+                if (!profiles || profiles.length === 0) {
+                    return { error: 'No se encontraron residentes registrados con WhatsApp para ese departamento.' };
+                }
+
+                const secret = process.env.WHATSAPP_WEBHOOK_SECRET || '';
+                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+                
+                let successCount = 0;
+                for (const p of profiles) {
+                    const res = await fetch(`${baseUrl}/api/whatsapp-notify`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${secret}`
+                        },
+                        body: JSON.stringify({
+                            user_id: p.id,
+                            title: 'Notificación de CoCo',
+                            body: input.message,
+                            type: 'info'
+                        })
+                    });
+                    if (res.ok) successCount++;
+                }
+                
+                return { 
+                    success: true, 
+                    message: `Mensaje de WhatsApp enviado a ${successCount} residente(s) del departamento.` 
+                };
+            }
+
             // ── ADMINISTRADOR ────────────────────────────────────────────────
             case 'get_defaulters_list': {
                 if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden acceder a esta información.' };
@@ -515,6 +626,24 @@ export async function executeTool(
                     options.map(text => ({ poll_id: poll.id, text }))
                 );
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+            }
+
+            case 'update_unit_data': {
+                if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden modificar información de departamentos.' };
+                
+                const updates: Record<string, any> = {};
+                if (input.number !== undefined) updates.number = input.number;
+                if (input.floor !== undefined) updates.floor = Number(input.floor);
+
+                if (Object.keys(updates).length === 0) return { error: 'No se enviaron datos para actualizar' };
+
+                const { error } = await supabase
+                    .from('units')
+                    .update(updates)
+                    .eq('id', input.unit_id);
+                
+                if (error) return { error: 'No se pudo actualizar el departamento', detail: error.message };
+                return { success: true, message: `Información de la unidad actualizada correctamente.` };
             }
 
             default:

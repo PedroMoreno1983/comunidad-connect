@@ -228,10 +228,10 @@ export default function MarketplacePage() {
                         >
                             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <button className="flex items-center gap-2 px-8 py-4 bg-white text-slate-950 font-black rounded-2xl hover:bg-blue-50 transition-all shadow-xl shadow-white/5 active:scale-95">
-                                        <Plus className="h-5 w-5" />
+                                    <Button variant="primary" size="lg" className="rounded-2xl shadow-xl font-black px-8 py-4">
+                                        <Plus className="h-5 w-5 mr-2" />
                                         Publicar algo ahora
-                                    </button>
+                                    </Button>
                                 </DialogTrigger>
                                 <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
                                     <div className="max-h-[85vh] overflow-y-auto p-8 md:p-10 space-y-8">
@@ -428,10 +428,10 @@ export default function MarketplacePage() {
                                     </div>
                                 </DialogContent>
                             </Dialog>
-                            <button className="flex items-center gap-2 px-8 py-4 bg-slate-800 text-white font-bold rounded-2xl hover:bg-slate-700 transition-all active:scale-95">
-                                <ShoppingBag className="h-5 w-5" />
+                            <Button variant="secondary" className="rounded-2xl px-8 py-4 font-bold shadow-sm">
+                                <ShoppingBag className="h-5 w-5 mr-2" />
                                 Mis compras
-                            </button>
+                            </Button>
                             <button 
                                 onClick={() => setIsRulesOpen(true)}
                                 className="flex items-center gap-2 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200 dark:border-slate-700"
@@ -604,16 +604,17 @@ export default function MarketplacePage() {
             {/* Empty State Premium */}
             {filteredItems.length === 0 && (
                 <EmptyState
-                    icon={Search}
+                    icon={<Search className="h-6 w-6" />}
                     title="No hay resultados"
                     description="No pudimos encontrar tesoros que coincidan con tu búsqueda. Intenta con otros términos o explora nuevas categorías."
                     action={
-                        <button
+                        <Button
+                            variant="primary"
                             onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
-                            className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                            className="shadow-lg shadow-blue-500/20 px-8 py-3"
                         >
                             Ver todo el Catálogo
-                        </button>
+                        </Button>
                     }
                 />
             )}

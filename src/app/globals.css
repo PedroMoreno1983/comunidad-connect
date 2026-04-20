@@ -1,6 +1,5 @@
 @import "tailwindcss";
-
-/* Suppress hydration error overlay in DEV mode which breaks UX tests */
+@import "./tokens.css";/* Suppress hydration error overlay in DEV mode which breaks UX tests */
 nextjs-portal {
   display: none !important;
 }
@@ -148,6 +147,7 @@ nextjs-portal {
 
 /* Tailwind Integration */
 @theme inline {
+  /* Legacy Mappings */
   --color-background: var(--background);
   --color-foreground: var(--text-primary);
   --color-primary-50: var(--primary-50);
@@ -157,8 +157,88 @@ nextjs-portal {
   --color-primary-500: var(--primary-500);
   --color-primary-600: var(--primary-600);
   --color-primary-700: var(--primary-700);
-  --font-sans: var(--font-jakarta);
-  --font-mono: var(--font-geist-mono);
+  
+  /* ComunidadConnect Design System v1.0 Mappings */
+  --font-display: var(--cc-font-display);
+  --font-sans: var(--cc-font-sans);
+  --font-mono: var(--cc-font-mono);
+
+  --color-canvas: var(--cc-bg-canvas);
+  --color-surface: var(--cc-bg-surface);
+  --color-elevated: var(--cc-bg-elevated);
+  --color-overlay: var(--cc-bg-overlay);
+
+  --color-primary: var(--cc-text-primary);
+  --color-secondary: var(--cc-text-secondary);
+  --color-tertiary: var(--cc-text-tertiary);
+  --color-disabled: var(--cc-text-disabled);
+
+  --color-brand-50: var(--cc-brand-50);
+  --color-brand-100: var(--cc-brand-100);
+  --color-brand-200: var(--cc-brand-200);
+  --color-brand-300: var(--cc-brand-300);
+  --color-brand-400: var(--cc-brand-400);
+  --color-brand-500: var(--cc-brand-500);
+  --color-brand-600: var(--cc-brand-600);
+  --color-brand-700: var(--cc-brand-700);
+  --color-brand-800: var(--cc-brand-800);
+  --color-brand-900: var(--cc-brand-900);
+
+  --color-role-admin: var(--cc-brand-500);
+  --color-role-admin-fg: var(--cc-role-admin-fg);
+  --color-role-admin-bg: var(--cc-role-admin-bg);
+  --color-role-admin-border: var(--cc-role-admin-border);
+
+  --color-role-conserje: var(--cc-role-conserje-500);
+  --color-role-conserje-fg: var(--cc-role-conserje-fg);
+  --color-role-conserje-bg: var(--cc-role-conserje-bg);
+  --color-role-conserje-border: var(--cc-role-conserje-border);
+
+  --color-role-residente: var(--cc-role-residente-500);
+  --color-role-residente-fg: var(--cc-role-residente-fg);
+  --color-role-residente-bg: var(--cc-role-residente-bg);
+  --color-role-residente-border: var(--cc-role-residente-border);
+
+  --color-success-fg: var(--cc-success-fg);
+  --color-success-bg: var(--cc-success-bg);
+  --color-success-border: var(--cc-success-border);
+  --color-success-solid: var(--cc-success-solid);
+
+  --color-warning-fg: var(--cc-warning-fg);
+  --color-warning-bg: var(--cc-warning-bg);
+  --color-warning-border: var(--cc-warning-border);
+  --color-warning-solid: var(--cc-warning-solid);
+
+  --color-danger-fg: var(--cc-danger-fg);
+  --color-danger-bg: var(--cc-danger-bg);
+  --color-danger-border: var(--cc-danger-border);
+  --color-danger-solid: var(--cc-danger-solid);
+
+  --color-info-fg: var(--cc-info-fg);
+  --color-info-bg: var(--cc-info-bg);
+  --color-info-border: var(--cc-info-border);
+  --color-info-solid: var(--cc-info-solid);
+
+  --color-border-default: var(--cc-border-default);
+  --color-border-subtle: var(--cc-border-subtle);
+  --color-border-strong: var(--cc-border-strong);
+  --color-border-focus: var(--cc-border-focus);
+
+  --radius-sm: var(--cc-radius-sm);
+  --radius-md: var(--cc-radius-md);
+  --radius-lg: var(--cc-radius-lg);
+  --radius-xl: var(--cc-radius-xl);
+  --radius-2xl: var(--cc-radius-2xl);
+
+  --shadow-sm: var(--cc-shadow-sm);
+  --shadow-md: var(--cc-shadow-md);
+  --shadow-lg: var(--cc-shadow-lg);
+  --shadow-xl: var(--cc-shadow-xl);
+  --shadow-glow-brand: var(--cc-glow-brand);
+  --shadow-glow-success: var(--cc-glow-success);
+  --shadow-glow-warning: var(--cc-glow-warning);
+  --shadow-glow-danger: var(--cc-glow-danger);
+  --shadow-ring: var(--cc-ring-default);
 }
 
 /* Base Styles */
@@ -171,9 +251,9 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--text-primary);
-  font-family: var(--font-jakarta, 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif);
+  background: var(--cc-bg-canvas, var(--background));
+  color: var(--cc-text-primary, var(--text-primary));
+  font-family: var(--cc-font-sans, var(--font-jakarta, 'Plus Jakarta Sans', system-ui, sans-serif));
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
