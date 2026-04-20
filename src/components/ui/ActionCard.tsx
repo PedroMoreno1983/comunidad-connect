@@ -2,7 +2,6 @@ import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import Link from 'next/link';
-import { cva, type VariantProps } from 'class-variance-authority';
 
 /**
  * ActionCard — the "Acceso Rápido" quick action component.
