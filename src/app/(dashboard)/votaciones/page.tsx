@@ -177,7 +177,7 @@ export default function VotacionesPage() {
                     {activePolls.length === 0 && (
                         <div className="lg:col-span-2">
                             <EmptyState
-                                icon={Vote}
+                                icon={<Vote className="h-6 w-6" />}
                                 title="Sin Consultas Activas"
                                 description="No hay votaciones o consultas comunitarias activas en este momento."
                             />

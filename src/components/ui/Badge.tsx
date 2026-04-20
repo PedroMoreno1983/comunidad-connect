@@ -27,6 +27,8 @@ const badgeStyles = cva(
         danger:    'bg-danger-bg text-danger-fg border-danger-border',
         info:      'bg-info-bg text-info-fg border-info-border',
         neutral:   'bg-elevated text-secondary border-subtle',
+        secondary: 'bg-elevated text-secondary border-subtle',
+        destructive: 'bg-danger-bg text-danger-fg border-danger-border',
       },
     },
     defaultVariants: { variant: 'neutral' },
@@ -44,6 +46,8 @@ const dotStyles = cva('w-[5px] h-[5px] rounded-full flex-shrink-0', {
       danger:    'bg-danger-fg',
       info:      'bg-info-fg',
       neutral:   'bg-tertiary',
+      secondary: 'bg-tertiary',
+      destructive: 'bg-danger-fg',
     },
   },
 });

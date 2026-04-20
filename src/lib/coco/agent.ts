@@ -38,7 +38,7 @@ export async function askCoCo(
     // 1. Construir historial de mensajes
     const history: Anthropic.MessageParam[] = (session?.conversation ?? []).map(msg => ({
         role: msg.role as 'user' | 'assistant',
-        content: typeof msg.content === 'string' ? msg.content : msg.content as Anthropic.ContentBlock[],
+        content: msg.content as any,
     }));
 
     // 2. Contexto del usuario en el system prompt
@@ -66,7 +66,7 @@ export async function askCoCo(
             max_tokens: 2048,
             system: systemPrompt,
             messages: history,
-            tools: TOOL_DEFINITIONS as Anthropic.Tool[],
+            tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
         });
 
         // Si Claude quiere usar herramientas

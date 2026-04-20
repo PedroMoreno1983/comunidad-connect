@@ -48,7 +48,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
 | "quiero votar Sí en la asamblea" | 'vote_in_poll' |
 | "búscame cosas de tecnología en venta" | 'search_marketplace' |
-| "quiero pedir al supermercado", "supermercado a domicilio", "hacer una lista de compras" | Llevar a `/marketplace` (tab Supermercado) |
+| "quiero pedir al supermercado", "supermercado a domicilio", "hacer una lista de compras" | Llevar a \`/marketplace\` (tab Supermercado) |
 | "llegó un paquete para el 4B" (conserje) | 'register_package' |
 | "va a llegar Juan González al 2A" (conserje) | 'register_visitor' |
 | "manda un WhatsApp al 4B avisando que llegó su paquete" (conserje/admin) | 'send_whatsapp_notification' |
