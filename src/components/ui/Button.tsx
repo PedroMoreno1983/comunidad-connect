@@ -34,6 +34,10 @@ const buttonStyles = cva(
           'bg-elevated text-primary border border-default',
           'hover:bg-overlay hover:border-strong',
         ],
+        outline: [
+          'bg-elevated text-primary border border-default',
+          'hover:bg-overlay hover:border-strong',
+        ],
         ghost: [
           'bg-transparent text-secondary',
           'hover:bg-elevated hover:text-primary',

@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
                 user_context: {
                     unit_id:      resident.unit_id,
                     role:         resident.role || 'resident',
-                    community_id: (resident.units as { community_id: string })?.community_id,
+                    community_id: (resident.units as any)?.[0]?.community_id || (resident.units as any)?.community_id,
                     name:         resident.name,
                     channel:      'whatsapp',
                 },
