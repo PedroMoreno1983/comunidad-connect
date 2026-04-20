@@ -1,39 +1,68 @@
-import { motion } from "framer-motion";
-import { Search, LucideIcon } from "lucide-react";
+import { ReactNode } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-interface EmptyStateProps {
-  icon?: LucideIcon;
+/**
+ * EmptyState — the most important component in the current codebase.
+ *
+ * Every list, table, or section that could be empty needs one. Never show
+ * "0" as a bare number when the cause is "no data yet" — use this instead.
+ *
+ * Structure: icon + title + description (what will go here when there IS data)
+ * + primary action (the most likely next step).
+ */
+
+const iconWrapStyles = cva(
+  'w-14 h-14 rounded-xl grid place-items-center mx-auto mb-5',
+  {
+    variants: {
+      tone: {
+        brand:    'bg-role-admin-bg text-role-admin-fg',
+        success:  'bg-success-bg text-success-fg',
+        warning:  'bg-warning-bg text-warning-fg',
+        info:     'bg-info-bg text-info-fg',
+        neutral:  'bg-elevated text-tertiary',
+      },
+    },
+    defaultVariants: { tone: 'neutral' },
+  }
+);
+
+export interface EmptyStateProps extends VariantProps<typeof iconWrapStyles> {
+  icon: ReactNode;
   title: string;
   description: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
+  /** Use dashed border (true, default) for "nothing here yet"; solid for "positive empty" like "all caught up" */
+  dashed?: boolean;
+  className?: string;
 }
 
 export function EmptyState({
-  icon: Icon = Search,
+  icon,
   title,
   description,
   action,
+  tone = 'neutral',
+  dashed = true,
+  className = '',
 }: EmptyStateProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-20 px-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-700 w-full max-w-2xl mx-auto my-8"
+    <div
+      className={`
+        py-12 px-8 text-center
+        bg-surface rounded-xl
+        ${dashed ? 'border border-dashed border-default' : 'border border-subtle'}
+        ${className}
+      `}
     >
-      <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center shadow-inner">
-        <Icon className="h-10 w-10 text-slate-400" />
-      </div>
-      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 underline decoration-[#0BC9A1] decoration-4 underline-offset-4">
+      <div className={iconWrapStyles({ tone })}>{icon}</div>
+      <h4 className="font-display text-xl font-semibold tracking-tight mb-2 text-primary">
         {title}
-      </h3>
-      <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto font-medium">
+      </h4>
+      <p className="text-sm text-secondary max-w-sm mx-auto mb-6 leading-relaxed">
         {description}
       </p>
-      {action && (
-        <div className="flex justify-center">
-          {action}
-        </div>
-      )}
-    </motion.div>
+      {action}
+    </div>
   );
 }

@@ -139,6 +139,21 @@ export default function CoCo() {
                         case 'SCROLL_TOP':
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                             break;
+                        case 'TEXT_ENLARGE':
+                            document.documentElement.style.fontSize = '125%';
+                            break;
+                        case 'TEXT_NORMAL':
+                            document.documentElement.style.fontSize = '';
+                            break;
+                        case 'READ_ALOUD':
+                            if ('speechSynthesis' in window) {
+                                window.speechSynthesis.cancel(); // Stop any previous
+                                const utterance = new SpeechSynthesisUtterance(d.reply.replace(/\*\*/g, '').replace(/\[.*\]\(.*\)/g, ''));
+                                utterance.lang = 'es-CL';
+                                utterance.rate = 1.05;
+                                window.speechSynthesis.speak(utterance);
+                            }
+                            break;
                     }
                 }, 500); // 500ms delay to feel natural after message
             }

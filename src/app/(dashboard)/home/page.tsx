@@ -10,6 +10,9 @@ import {
     ChevronRight, BarChart3, PieChart as PieChartIcon
 } from "lucide-react";
 import Link from "next/link";
+import { StatCard } from "@/components/ui/StatCard";
+import { ActionCard } from "@/components/ui/ActionCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonStats, SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/components/charts/Charts";
@@ -150,32 +153,29 @@ export default function HomePage() {
             label: "Avisos Nuevos",
             value: statsData.announcements,
             icon: Bell,
-            gradient: "from-indigo-500 to-purple-600",
-            bg: "bg-indigo-100 dark:bg-indigo-500/20",
+            tone: "brand",
             link: "/feed"
         },
         {
             label: "En Marketplace",
             value: statsData.marketplace,
             icon: ShoppingBag,
-            gradient: "from-emerald-500 to-teal-600",
-            bg: "bg-emerald-100 dark:bg-emerald-500/20",
+            tone: "success",
             link: "/marketplace"
         },
         {
             label: "Próximas Reservas",
             value: statsData.bookings,
             icon: Calendar,
-            gradient: "from-purple-500 to-pink-600",
-            bg: "bg-purple-100 dark:bg-purple-500/20",
+            tone: "info",
             link: "/amenities"
         },
         {
             label: "Gastos Pendientes",
             value: statsData.pendingExpenses,
             icon: DollarSign,
-            gradient: "from-rose-500 to-pink-600",
-            bg: "bg-rose-100 dark:bg-rose-500/20",
+            tone: "danger",
+            trend: { direction: 'down', value: 'Al día', inverted: true },
             link: "/resident/finances"
         },
     ];
@@ -185,32 +185,29 @@ export default function HomePage() {
             label: "Residentes",
             value: statsData.residents,
             icon: Users,
-            gradient: "from-indigo-500 to-purple-600",
-            bg: "bg-indigo-100 dark:bg-indigo-500/20",
+            tone: "brand",
+            trend: { direction: 'up', value: 'Conectados' },
             link: "/admin/users"
         },
         {
             label: "Avisos Activos",
             value: statsData.announcements,
             icon: Bell,
-            gradient: "from-amber-500 to-orange-600",
-            bg: "bg-amber-100 dark:bg-amber-500/20",
+            tone: "info",
             link: "/feed"
         },
         {
-            label: "Solicitudes Abiertas",
+            label: "Solicitudes",
             value: statsData.pendingRequests,
             icon: Wrench,
-            gradient: "from-emerald-500 to-teal-600",
-            bg: "bg-emerald-100 dark:bg-emerald-500/20",
+            tone: "warning",
             link: "/services"
         },
         {
             label: "Pagos Pendientes",
             value: statsData.pendingExpenses,
             icon: DollarSign,
-            gradient: "from-rose-500 to-pink-600",
-            bg: "bg-rose-100 dark:bg-rose-500/20",
+            tone: "danger",
             link: "/expenses"
         },
     ];
@@ -220,32 +217,28 @@ export default function HomePage() {
             label: "Visitas Hoy",
             value: statsData.visitorsToday,
             icon: ClipboardList,
-            gradient: "from-amber-500 to-orange-600",
-            bg: "bg-amber-100 dark:bg-amber-500/20",
+            tone: "success",
             link: "/concierge/visitors"
         },
         {
             label: "Visitas Esperadas",
             value: statsData.visitorsExpected,
             icon: Users,
-            gradient: "from-blue-500 to-cyan-600",
-            bg: "bg-blue-100 dark:bg-blue-500/20",
+            tone: "brand",
             link: "/concierge/visitors"
         },
         {
-            label: "Paquetes Pendientes",
+            label: "Paquetes",
             value: statsData.pendingPackages,
             icon: ShoppingBag,
-            gradient: "from-emerald-500 to-teal-600",
-            bg: "bg-emerald-100 dark:bg-emerald-500/20",
+            tone: "warning",
             link: "/concierge/packages"
         },
         {
             label: "Avisos",
             value: statsData.announcements,
             icon: Bell,
-            gradient: "from-purple-500 to-pink-600",
-            bg: "bg-purple-100 dark:bg-purple-500/20",
+            tone: "info",
             link: "/feed"
         },
     ];
@@ -336,25 +329,14 @@ export default function HomePage() {
                         const Icon = stat.icon;
                         return (
                             <motion.div key={idx} variants={item}>
-                                <Link
+                                <StatCard
                                     href={stat.link}
-                                    className="group relative overflow-hidden rounded-[2rem] bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl p-6 lg:p-8 shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 hover:shadow-2xl hover:border-white dark:hover:border-slate-600 hover:-translate-y-2 transition-all duration-500 block"
-                                >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br opacity-[0.07] group-hover:opacity-[0.12] transition-opacity rounded-full -translate-y-8 translate-x-8"
-                                        style={{ backgroundImage: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} />
-                                    <div className="relative">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className={`p-3 rounded-xl ${stat.bg}`}>
-                                                <Icon className={`h-5 w-5 bg-gradient-to-r ${stat.gradient} bg-clip-text`} style={{ color: 'inherit' }} />
-                                            </div>
-                                            <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
-                                        </div>
-                                        <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                            {stat.value}
-                                        </p>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
-                                    </div>
-                                </Link>
+                                    icon={<Icon className="h-5 w-5" style={{ color: 'inherit' }} />}
+                                    label={stat.label}
+                                    value={stat.value}
+                                    tone={stat.tone as any}
+                                    trend={(stat as any).trend}
+                                />
                             </motion.div>
                         );
                     })}
@@ -370,10 +352,10 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
+                    <div className="lg:col-span-2 bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
+                                <div className="p-2 bg-brand-bg text-brand-fg rounded-xl">
                                     <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                 </div>
                                 <div>
@@ -391,9 +373,9 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-xl">
+                            <div className="p-2 bg-info-bg text-info-fg rounded-xl">
                                 <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Por Categoría</h2>
@@ -425,10 +407,10 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
+                                <div className="p-2 bg-success-bg text-success-fg rounded-xl">
                                     <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <div>
@@ -457,15 +439,15 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 overflow-hidden">
-                            <div className="p-5 lg:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                        <div className="bg-surface border border-subtle rounded-2xl shadow-md overflow-hidden">
+                            <div className="p-5 lg:p-6 border-b border-subtle flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
-                                        <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                    <div className="p-2 bg-info-bg text-info-fg rounded-xl">
+                                        <Bell className="h-5 w-5" />
                                     </div>
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Avisos Recientes</h2>
+                                    <h2 className="text-lg font-bold text-primary">Avisos Recientes</h2>
                                 </div>
-                                <Link href="/feed" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                                <Link href="/feed" className="text-sm font-medium text-brand-300 hover:text-brand-400 flex items-center gap-1">
                                     Ver todos <ArrowUpRight className="h-4 w-4" />
                                 </Link>
                             </div>
@@ -473,8 +455,18 @@ export default function HomePage() {
                                 <div className="p-6">
                                     <SkeletonList count={3} />
                                 </div>
+                            ) : recentAnnouncements.length === 0 ? (
+                                <div className="p-6">
+                                    <EmptyState
+                                        icon={<Bell className="h-6 w-6" />}
+                                        title="Sin avisos recientes"
+                                        description="No hay comunicados oficiales de la administración en este momento."
+                                        tone="info"
+                                        dashed={false}
+                                    />
+                                </div>
                             ) : (
-                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                                <div className="divide-y divide-subtle">
                                     {recentAnnouncements.map((ann, idx) => (
                                         <motion.div
                                             key={ann.id}
@@ -513,89 +505,68 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/80 dark:border-slate-700/50 p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
-                                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <div className="p-2 bg-brand-100 text-brand-600 rounded-xl">
+                                <TrendingUp className="h-5 w-5" />
                             </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Acceso Rápido</h2>
+                            <h2 className="text-lg font-bold text-primary">Acceso Rápido</h2>
                         </div>
                         <div className="space-y-3">
                             {user.role === 'concierge' ? (
                                 <>
-                                    <Link
+                                    <ActionCard
                                         href="/concierge/visitors"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100 dark:border-amber-500/20 hover:border-amber-200 dark:hover:border-amber-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Registrar Visita</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link
+                                        title="Registrar Visita"
+                                        description="Control de acceso peatonal"
+                                        icon={<Users className="h-5 w-5" />}
+                                        tone="brand"
+                                    />
+                                    <ActionCard
                                         href="/concierge/packages"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100 dark:border-emerald-500/20 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Recibir Paquete</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link
+                                        title="Recibir Paquete"
+                                        description="Encomiendas y delivery"
+                                        icon={<ShoppingBag className="h-5 w-5" />}
+                                        tone="warning"
+                                    />
+                                    <ActionCard
                                         href="/services"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-500/10 dark:to-rose-500/10 border border-red-100 dark:border-red-500/20 hover:border-red-200 dark:hover:border-red-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Bell className="h-5 w-5 text-red-600 dark:text-red-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Activar Emergencia</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-red-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
+                                        title="Activar Emergencia"
+                                        description="Notificar a todos"
+                                        icon={<Bell className="h-5 w-5" />}
+                                        tone="danger"
+                                    />
                                 </>
                             ) : (
                                 <>
-                                    <Link
+                                    <ActionCard
                                         href="/amenities"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10 border border-purple-100 dark:border-purple-500/20 hover:border-purple-200 dark:hover:border-purple-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Reservar Espacio</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-purple-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link
+                                        title="Reservar Espacio"
+                                        description="Quinchos, salas y más"
+                                        icon={<Calendar className="h-5 w-5" />}
+                                        tone="info"
+                                    />
+                                    <ActionCard
                                         href="/marketplace"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100 dark:border-emerald-500/20 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Publicar Artículo</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link
+                                        title="Publicar Artículo"
+                                        description="Vende en el edificio"
+                                        icon={<ShoppingBag className="h-5 w-5" />}
+                                        tone="success"
+                                    />
+                                    <ActionCard
                                         href="/services"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100 dark:border-amber-500/20 hover:border-amber-200 dark:hover:border-amber-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Wrench className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Solicitar Servicio</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link
+                                        title="Solicitar Servicio"
+                                        description="Reportar mantenimientos"
+                                        icon={<Wrench className="h-5 w-5" />}
+                                        tone="warning"
+                                    />
+                                    <ActionCard
                                         href="/resident/finances"
-                                        className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-500/10 dark:to-pink-500/10 border border-rose-100 dark:border-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 transition-all"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <DollarSign className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                                            <span className="font-medium text-slate-900 dark:text-white">Pagar Gastos</span>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 text-rose-400 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
+                                        title="Pagar Gastos"
+                                        description="Ponte al día revisando tu estado"
+                                        icon={<DollarSign className="h-5 w-5" />}
+                                        tone="danger"
+                                    />
                                 </>
                             )}
                         </div>

@@ -3,6 +3,7 @@
 import { MarketplaceItem } from "@/lib/types";
 import { motion } from "framer-motion";
 import { MessageCircle, Heart, Tag, Calendar, User, Search, Repeat, Sparkles, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import Image from "next/image";
 import { type ComponentType, useState } from "react";
 
@@ -38,7 +39,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
             onClick={() => onClick(item)}
             className="group relative cursor-pointer"
         >
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-white/20 dark:border-slate-700/30 overflow-hidden transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-blue-500/10 group-hover:border-blue-500/30">
+            <div className="bg-surface border border-subtle rounded-3xl shadow-md overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-default">
                 {/* Image Area */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-slate-700">
                     {(item.imageUrl || (item.images && item.images.length > 0)) ? (
@@ -60,18 +61,14 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
 
                     {/* Glass Overlay for Category */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
-                        <div className="px-3 py-1.5 bg-white/20 dark:bg-slate-900/40 backdrop-blur-md rounded-full border border-white/20 dark:border-slate-700/30 flex items-center gap-1.5 shadow-sm">
-                            <Icon className="h-3.5 w-3.5 text-white" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-white">
-                                {categoryLabel}
-                            </span>
-                        </div>
+                        <Badge variant="neutral" className="shadow-lg backdrop-blur-md opacity-90">
+                            <Icon className="h-3.5 w-3.5 mr-1" />
+                            {categoryLabel}
+                        </Badge>
                         {item.status === 'reserved' && (
-                            <div className="px-3 py-1.5 bg-amber-500/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-white">
-                                    Reservado
-                                </span>
-                            </div>
+                            <Badge variant="warning" className="shadow-lg p-1.5 opacity-90 backdrop-blur-md">
+                                RESERVADO
+                            </Badge>
                         )}
                     </div>
 
@@ -96,56 +93,56 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     {/* Transaction Badges */}
                     <div className="absolute bottom-4 right-4 flex flex-col gap-2 items-end">
                         {item.allowSale !== false && (
-                            <div className="px-3 py-1.5 bg-blue-500/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg shadow-blue-500/20">
-                                <Tag className="h-3 w-3 text-white" />
-                                <span className="text-[9px] font-black uppercase tracking-wider text-white">Venta</span>
-                            </div>
+                            <Badge variant="info" className="shadow-lg backdrop-blur-sm opacity-95">
+                                <Tag className="h-3 w-3 mr-1" />
+                                VENTA
+                            </Badge>
                         )}
                         {item.allowSwap && (
-                            <div className="px-3 py-1.5 bg-purple-500/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg shadow-purple-500/20">
-                                <Repeat className="h-3 w-3 text-white" />
-                                <span className="text-[9px] font-black uppercase tracking-wider text-white">Permuta</span>
-                            </div>
+                            <Badge variant="conserje" className="shadow-lg backdrop-blur-sm opacity-95">
+                                <Repeat className="h-3 w-3 mr-1" />
+                                PERMUTA
+                            </Badge>
                         )}
                         {item.allowBarter && (
-                            <div className="px-3 py-1.5 bg-emerald-500/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg shadow-emerald-500/20">
-                                <Sparkles className="h-3 w-3 text-white" />
-                                <span className="text-[9px] font-black uppercase tracking-wider text-white">Trueque</span>
-                            </div>
+                            <Badge variant="success" className="shadow-lg backdrop-blur-sm opacity-95">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                TRUEQUE
+                            </Badge>
                         )}
                         {/* Verified Resident Trust Badge */}
-                        <div className="px-3 py-1.5 bg-indigo-600/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1.5 shadow-xl">
-                            <ShieldCheck className="h-3 w-3 text-white" />
-                            <span className="text-[9px] font-black uppercase tracking-wider text-white">Verificado</span>
-                        </div>
+                        <Badge variant="admin" className="shadow-lg backdrop-blur-sm opacity-95">
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                            VERIFICADO
+                        </Badge>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-6">
                     <div className="flex justify-between items-start gap-2 mb-3">
-                        <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-xl leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <h3 className="font-bold text-primary line-clamp-1 text-xl leading-tight group-hover:text-brand-500 transition-colors">
                             {item.title}
                         </h3>
                     </div>
 
-                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-6 h-10 leading-relaxed font-medium">
+                    <p className="text-sm text-secondary line-clamp-2 mb-6 h-10 leading-relaxed font-medium">
                         {item.description}
                     </p>
 
                     <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-700/50">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                            <span className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">
                                 {item.allowSale !== false ? 'Inversión' : 'Modalidad'}
                             </span>
-                            <p className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                            <p className="text-2xl font-black text-brand-500">
                                 {item.allowSale !== false
                                     ? `$${item.price.toLocaleString('es-CL')}`
                                     : 'Intercambio'}
                             </p>
                         </div>
 
-                        <div className="h-12 w-12 bg-blue-50 dark:bg-blue-500/10 rounded-2xl border border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center transition-all group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 group-hover:shadow-lg group-hover:shadow-blue-500/20">
+                        <div className="h-12 w-12 bg-brand-bg rounded-2xl border border-subtle text-brand-fg flex items-center justify-center transition-all group-hover:bg-brand-500 group-hover:text-white group-hover:shadow-md cursor-pointer">
                             <MessageCircle className="h-6 w-6" />
                         </div>
                     </div>
