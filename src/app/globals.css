@@ -1,7 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 @import "tailwindcss";
 @import "./tokens.css";
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 
+@source "../";
+
+@theme inline {
+  --color-surface: var(--cc-bg-surface);
+  --color-elevated: var(--cc-bg-elevated);
+  --color-overlay: var(--cc-bg-overlay);
+
+  --color-default: var(--cc-border-default);
+  --color-subtle: var(--cc-border-subtle);
+  --color-strong: var(--cc-border-strong);
+  
+  --color-primary: var(--cc-text-primary);
+  --color-secondary: var(--cc-text-secondary);
+  --color-tertiary: var(--cc-text-tertiary);
+  
+  --color-brand-400: var(--cc-brand-400);
+  --color-brand-500: var(--cc-brand-500);
+  --color-brand-600: var(--cc-brand-600);
+  --color-brand-bg: var(--cc-brand-bg);
+  --color-brand-fg: var(--cc-brand-fg);
+  --color-brand-border: var(--cc-brand-border);
+  
+  --color-success-bg: var(--cc-success-bg);
+  --color-success-fg: var(--cc-success-fg);
+  --color-success-border: var(--cc-success-border);
+  
+  --color-danger-bg: var(--cc-danger-bg);
+  --color-danger-fg: var(--cc-danger-fg);
+  --color-danger-border: var(--cc-danger-border);
+  
+  --color-warning-bg: var(--cc-warning-bg);
+  --color-warning-fg: var(--cc-warning-fg);
+  --color-warning-border: var(--cc-warning-border);
+  
+  --color-info-bg: var(--cc-info-bg);
+  --color-info-fg: var(--cc-info-fg);
+  --color-info-border: var(--cc-info-border);
+  
+  --color-role-admin-bg: var(--cc-role-admin-bg);
+  --color-role-admin-fg: var(--cc-role-admin-fg);
+  --color-role-admin-border: var(--cc-role-admin-border);
+  --color-role-conserje-bg: var(--cc-role-conserje-bg);
+  --color-role-conserje-fg: var(--cc-role-conserje-fg);
+  --color-role-conserje-border: var(--cc-role-conserje-border);
+  --color-role-residente-bg: var(--cc-role-residente-bg);
+  --color-role-residente-fg: var(--cc-role-residente-fg);
+  --color-role-residente-border: var(--cc-role-residente-border);
+
+  --shadow-sm: var(--cc-shadow-sm);
+  --shadow-md: var(--cc-shadow-md);
+  
+  --radius-sm: var(--cc-radius-sm);
+  --radius-md: var(--cc-radius-md);
+  --radius-lg: var(--cc-radius-lg);
+  --radius-xl: var(--cc-radius-xl);
+  
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
 /* Suppress hydration error overlay in DEV mode which breaks UX tests */
 nextjs-portal {
   display: none !important;
