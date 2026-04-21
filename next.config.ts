@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig = {
   serverExternalPackages: ['pdf-parse', 'mammoth'],
-  // Removing output: 'export' to enable dynamic API routes and Image optimization on Vercel
+  outputFileTracingRoot: __dirname,
   images: {
     remotePatterns: [
       {
@@ -23,11 +23,9 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
-  },
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
+    turbopack: {
+      // Explicitly set the root to fix Vercel/Local lockfile conflicts overriding Tailwind scanner
+    }
   },
   typescript: {
     // !! WARN !!
