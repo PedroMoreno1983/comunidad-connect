@@ -6,60 +6,8 @@
 @source "../../src/components/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../../src/app/**/*.{js,ts,jsx,tsx,mdx}";
 
+/* Font theme tokens only - V4 supports these without var() issues */
 @theme {
-  --color-surface: var(--cc-bg-surface);
-  --color-elevated: var(--cc-bg-elevated);
-  --color-overlay: var(--cc-bg-overlay);
-
-  --color-default: var(--cc-border-default);
-  --color-subtle: var(--cc-border-subtle);
-  --color-strong: var(--cc-border-strong);
-  
-  --color-primary: var(--cc-text-primary);
-  --color-secondary: var(--cc-text-secondary);
-  --color-tertiary: var(--cc-text-tertiary);
-  
-  --color-brand-400: var(--cc-brand-400);
-  --color-brand-500: var(--cc-brand-500);
-  --color-brand-600: var(--cc-brand-600);
-  --color-brand-bg: var(--cc-brand-bg);
-  --color-brand-fg: var(--cc-brand-fg);
-  --color-brand-border: var(--cc-brand-border);
-  
-  --color-success-bg: var(--cc-success-bg);
-  --color-success-fg: var(--cc-success-fg);
-  --color-success-border: var(--cc-success-border);
-  
-  --color-danger-bg: var(--cc-danger-bg);
-  --color-danger-fg: var(--cc-danger-fg);
-  --color-danger-border: var(--cc-danger-border);
-  
-  --color-warning-bg: var(--cc-warning-bg);
-  --color-warning-fg: var(--cc-warning-fg);
-  --color-warning-border: var(--cc-warning-border);
-  
-  --color-info-bg: var(--cc-info-bg);
-  --color-info-fg: var(--cc-info-fg);
-  --color-info-border: var(--cc-info-border);
-  
-  --color-role-admin-bg: var(--cc-role-admin-bg);
-  --color-role-admin-fg: var(--cc-role-admin-fg);
-  --color-role-admin-border: var(--cc-role-admin-border);
-  --color-role-conserje-bg: var(--cc-role-conserje-bg);
-  --color-role-conserje-fg: var(--cc-role-conserje-fg);
-  --color-role-conserje-border: var(--cc-role-conserje-border);
-  --color-role-residente-bg: var(--cc-role-residente-bg);
-  --color-role-residente-fg: var(--cc-role-residente-fg);
-  --color-role-residente-border: var(--cc-role-residente-border);
-
-  --shadow-sm: var(--cc-shadow-sm);
-  --shadow-md: var(--cc-shadow-md);
-  
-  --radius-sm: var(--cc-radius-sm);
-  --radius-md: var(--cc-radius-md);
-  --radius-lg: var(--cc-radius-lg);
-  --radius-xl: var(--cc-radius-xl);
-  
   --font-display: 'Bricolage Grotesque', sans-serif;
   --font-sans: 'Geist', sans-serif;
   --font-mono: 'Geist Mono', monospace;
@@ -210,44 +158,56 @@ nextjs-portal {
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tailwind Integration via Utilities (V4 safe - Forced output) */
-@layer utilities {
-  .bg-canvas { background-color: var(--cc-bg-canvas); }
-  .bg-surface { background-color: var(--cc-bg-surface); }
-  .bg-elevated { background-color: var(--cc-bg-elevated); }
-  .bg-overlay { background-color: var(--cc-bg-overlay); }
+/* ==========================================================
+   ComunidadConnect Design System — Always-on CSS classes.
+   Using @layer base guarantees these are NEVER purged by
+   Tailwind V4 JIT, regardless of file scanner state.
+   ========================================================== */
+@layer base {
+  /* Backgrounds */
+  .bg-canvas   { background-color: var(--cc-bg-canvas)   !important; }
+  .bg-surface  { background-color: var(--cc-bg-surface)  !important; }
+  .bg-elevated { background-color: var(--cc-bg-elevated) !important; }
+  .bg-overlay  { background-color: var(--cc-bg-overlay)  !important; }
 
-  .border-subtle { border-color: var(--cc-border-subtle); }
-  .border-default { border-color: var(--cc-border-default); }
-  .border-strong { border-color: var(--cc-border-strong); }
+  /* Borders */
+  .border-subtle  { border-color: var(--cc-border-subtle)  !important; }
+  .border-default { border-color: var(--cc-border-default) !important; }
+  .border-strong  { border-color: var(--cc-border-strong)  !important; }
 
-  .text-primary { color: var(--cc-text-primary); }
-  .text-secondary { color: var(--cc-text-secondary); }
-  .text-tertiary { color: var(--cc-text-tertiary); }
-  .text-disabled { color: var(--cc-text-disabled); }
+  /* Text */
+  .text-primary   { color: var(--cc-text-primary)   !important; }
+  .text-secondary { color: var(--cc-text-secondary) !important; }
+  .text-tertiary  { color: var(--cc-text-tertiary)  !important; }
+  .text-disabled  { color: var(--cc-text-disabled)  !important; }
 
-  .brand-primary { color: var(--cc-brand-500); }
-  .brand-bg { background-color: var(--cc-role-admin-bg); }
-  .brand-fg { color: var(--cc-role-admin-fg); }
+  /* Brand */
+  .brand-bg { background-color: var(--cc-role-admin-bg) !important; }
+  .brand-fg { color: var(--cc-role-admin-fg) !important; }
+  .text-brand-300 { color: var(--cc-brand-300) !important; }
+  .text-brand-400 { color: var(--cc-brand-400) !important; }
+  .text-brand-500 { color: var(--cc-brand-500) !important; }
+  .bg-brand-bg    { background-color: var(--cc-role-admin-bg) !important; }
+  .ring-brand-500 { --tw-ring-color: var(--cc-brand-500); }
 
-  .role-admin-bg { background-color: var(--cc-role-admin-bg); }
-  .role-admin-fg { color: var(--cc-role-admin-fg); }
-  .role-conserje-bg { background-color: var(--cc-role-conserje-bg); }
-  .role-conserje-fg { color: var(--cc-role-conserje-fg); }
-  .role-residente-bg { background-color: var(--cc-role-residente-bg); }
-  .role-residente-fg { color: var(--cc-role-residente-fg); }
+  /* Roles */
+  .role-admin-bg     { background-color: var(--cc-role-admin-bg)     !important; }
+  .role-admin-fg     { color: var(--cc-role-admin-fg)                 !important; }
+  .role-conserje-bg  { background-color: var(--cc-role-conserje-bg)  !important; }
+  .role-conserje-fg  { color: var(--cc-role-conserje-fg)             !important; }
+  .role-residente-bg { background-color: var(--cc-role-residente-bg) !important; }
+  .role-residente-fg { color: var(--cc-role-residente-fg)            !important; }
 
-  .success-bg { background-color: var(--cc-success-bg); }
-  .success-fg { color: var(--cc-success-fg); }
-  .warning-bg { background-color: var(--cc-warning-bg); }
-  .warning-fg { color: var(--cc-warning-fg); }
-  .danger-bg { background-color: var(--cc-danger-bg); }
-  .danger-fg { color: var(--cc-danger-fg); }
-  .info-bg { background-color: var(--cc-info-bg); }
-  .info-fg { color: var(--cc-info-fg); }
+  /* Semantic */
+  .success-bg { background-color: var(--cc-success-bg) !important; }
+  .success-fg { color: var(--cc-success-fg)            !important; }
+  .warning-bg { background-color: var(--cc-warning-bg) !important; }
+  .warning-fg { color: var(--cc-warning-fg)            !important; }
+  .danger-bg  { background-color: var(--cc-danger-bg)  !important; }
+  .danger-fg  { color: var(--cc-danger-fg)             !important; }
+  .info-bg    { background-color: var(--cc-info-bg)    !important; }
+  .info-fg    { color: var(--cc-info-fg)               !important; }
 }
-
-/* Extraneous mappings removed for V4 stability */
 
 /* Base Styles */
 * {
