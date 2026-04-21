@@ -2,7 +2,9 @@
 @import "./tokens.css";
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 
-@source "../";
+@source "../../src/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../src/components/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../src/app/**/*.{js,ts,jsx,tsx,mdx}";
 
 @theme inline {
   --color-surface: var(--cc-bg-surface);
