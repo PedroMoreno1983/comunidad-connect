@@ -6,7 +6,7 @@
 @source "../../src/components/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../../src/app/**/*.{js,ts,jsx,tsx,mdx}";
 
-@theme inline {
+@theme {
   --color-surface: var(--cc-bg-surface);
   --color-elevated: var(--cc-bg-elevated);
   --color-overlay: var(--cc-bg-overlay);
@@ -210,101 +210,44 @@ nextjs-portal {
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tailwind Integration */
-@theme inline {
-  /* Legacy Mappings */
-  --color-background: var(--background);
-  --color-foreground: var(--text-primary);
-  --color-primary-50: var(--primary-50);
-  --color-primary-100: var(--primary-100);
-  --color-primary-200: var(--primary-200);
-  --color-primary-400: var(--primary-400);
-  --color-primary-500: var(--primary-500);
-  --color-primary-600: var(--primary-600);
-  --color-primary-700: var(--primary-700);
-  
-  /* ComunidadConnect Design System v1.0 Mappings */
-  --font-display: var(--cc-font-display);
-  --font-sans: var(--cc-font-sans);
-  --font-mono: var(--cc-font-mono);
+/* Tailwind Integration via Utilities (V4 safe - Forced output) */
+@layer utilities {
+  .bg-canvas { background-color: var(--cc-bg-canvas); }
+  .bg-surface { background-color: var(--cc-bg-surface); }
+  .bg-elevated { background-color: var(--cc-bg-elevated); }
+  .bg-overlay { background-color: var(--cc-bg-overlay); }
 
-  --color-canvas: var(--cc-bg-canvas);
-  --color-surface: var(--cc-bg-surface);
-  --color-elevated: var(--cc-bg-elevated);
-  --color-overlay: var(--cc-bg-overlay);
+  .border-subtle { border-color: var(--cc-border-subtle); }
+  .border-default { border-color: var(--cc-border-default); }
+  .border-strong { border-color: var(--cc-border-strong); }
 
-  --color-primary: var(--cc-text-primary);
-  --color-secondary: var(--cc-text-secondary);
-  --color-tertiary: var(--cc-text-tertiary);
-  --color-disabled: var(--cc-text-disabled);
+  .text-primary { color: var(--cc-text-primary); }
+  .text-secondary { color: var(--cc-text-secondary); }
+  .text-tertiary { color: var(--cc-text-tertiary); }
+  .text-disabled { color: var(--cc-text-disabled); }
 
-  --color-brand-50: var(--cc-brand-50);
-  --color-brand-100: var(--cc-brand-100);
-  --color-brand-200: var(--cc-brand-200);
-  --color-brand-300: var(--cc-brand-300);
-  --color-brand-400: var(--cc-brand-400);
-  --color-brand-500: var(--cc-brand-500);
-  --color-brand-600: var(--cc-brand-600);
-  --color-brand-700: var(--cc-brand-700);
-  --color-brand-800: var(--cc-brand-800);
-  --color-brand-900: var(--cc-brand-900);
+  .brand-primary { color: var(--cc-brand-500); }
+  .brand-bg { background-color: var(--cc-role-admin-bg); }
+  .brand-fg { color: var(--cc-role-admin-fg); }
 
-  --color-role-admin: var(--cc-brand-500);
-  --color-role-admin-fg: var(--cc-role-admin-fg);
-  --color-role-admin-bg: var(--cc-role-admin-bg);
-  --color-role-admin-border: var(--cc-role-admin-border);
+  .role-admin-bg { background-color: var(--cc-role-admin-bg); }
+  .role-admin-fg { color: var(--cc-role-admin-fg); }
+  .role-conserje-bg { background-color: var(--cc-role-conserje-bg); }
+  .role-conserje-fg { color: var(--cc-role-conserje-fg); }
+  .role-residente-bg { background-color: var(--cc-role-residente-bg); }
+  .role-residente-fg { color: var(--cc-role-residente-fg); }
 
-  --color-role-conserje: var(--cc-role-conserje-500);
-  --color-role-conserje-fg: var(--cc-role-conserje-fg);
-  --color-role-conserje-bg: var(--cc-role-conserje-bg);
-  --color-role-conserje-border: var(--cc-role-conserje-border);
-
-  --color-role-residente: var(--cc-role-residente-500);
-  --color-role-residente-fg: var(--cc-role-residente-fg);
-  --color-role-residente-bg: var(--cc-role-residente-bg);
-  --color-role-residente-border: var(--cc-role-residente-border);
-
-  --color-success-fg: var(--cc-success-fg);
-  --color-success-bg: var(--cc-success-bg);
-  --color-success-border: var(--cc-success-border);
-  --color-success-solid: var(--cc-success-solid);
-
-  --color-warning-fg: var(--cc-warning-fg);
-  --color-warning-bg: var(--cc-warning-bg);
-  --color-warning-border: var(--cc-warning-border);
-  --color-warning-solid: var(--cc-warning-solid);
-
-  --color-danger-fg: var(--cc-danger-fg);
-  --color-danger-bg: var(--cc-danger-bg);
-  --color-danger-border: var(--cc-danger-border);
-  --color-danger-solid: var(--cc-danger-solid);
-
-  --color-info-fg: var(--cc-info-fg);
-  --color-info-bg: var(--cc-info-bg);
-  --color-info-border: var(--cc-info-border);
-  --color-info-solid: var(--cc-info-solid);
-
-  --color-border-default: var(--cc-border-default);
-  --color-border-subtle: var(--cc-border-subtle);
-  --color-border-strong: var(--cc-border-strong);
-  --color-border-focus: var(--cc-border-focus);
-
-  --radius-sm: var(--cc-radius-sm);
-  --radius-md: var(--cc-radius-md);
-  --radius-lg: var(--cc-radius-lg);
-  --radius-xl: var(--cc-radius-xl);
-  --radius-2xl: var(--cc-radius-2xl);
-
-  --shadow-sm: var(--cc-shadow-sm);
-  --shadow-md: var(--cc-shadow-md);
-  --shadow-lg: var(--cc-shadow-lg);
-  --shadow-xl: var(--cc-shadow-xl);
-  --shadow-glow-brand: var(--cc-glow-brand);
-  --shadow-glow-success: var(--cc-glow-success);
-  --shadow-glow-warning: var(--cc-glow-warning);
-  --shadow-glow-danger: var(--cc-glow-danger);
-  --shadow-ring: var(--cc-ring-default);
+  .success-bg { background-color: var(--cc-success-bg); }
+  .success-fg { color: var(--cc-success-fg); }
+  .warning-bg { background-color: var(--cc-warning-bg); }
+  .warning-fg { color: var(--cc-warning-fg); }
+  .danger-bg { background-color: var(--cc-danger-bg); }
+  .danger-fg { color: var(--cc-danger-fg); }
+  .info-bg { background-color: var(--cc-info-bg); }
+  .info-fg { color: var(--cc-info-fg); }
 }
+
+/* Extraneous mappings removed for V4 stability */
 
 /* Base Styles */
 * {
