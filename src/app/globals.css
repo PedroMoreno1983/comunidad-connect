@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./design-system.css";
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 
 @source "../../src/**/*.{js,ts,jsx,tsx,mdx}";
@@ -158,56 +159,8 @@ nextjs-portal {
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ==========================================================
-   ComunidadConnect Design System — Always-on CSS classes.
-   Using @layer base guarantees these are NEVER purged by
-   Tailwind V4 JIT, regardless of file scanner state.
-   ========================================================== */
-@layer base {
-  /* Backgrounds */
-  .bg-canvas   { background-color: var(--cc-bg-canvas)   !important; }
-  .bg-surface  { background-color: var(--cc-bg-surface)  !important; }
-  .bg-elevated { background-color: var(--cc-bg-elevated) !important; }
-  .bg-overlay  { background-color: var(--cc-bg-overlay)  !important; }
-
-  /* Borders */
-  .border-subtle  { border-color: var(--cc-border-subtle)  !important; }
-  .border-default { border-color: var(--cc-border-default) !important; }
-  .border-strong  { border-color: var(--cc-border-strong)  !important; }
-
-  /* Text */
-  .text-primary   { color: var(--cc-text-primary)   !important; }
-  .text-secondary { color: var(--cc-text-secondary) !important; }
-  .text-tertiary  { color: var(--cc-text-tertiary)  !important; }
-  .text-disabled  { color: var(--cc-text-disabled)  !important; }
-
-  /* Brand */
-  .brand-bg { background-color: var(--cc-role-admin-bg) !important; }
-  .brand-fg { color: var(--cc-role-admin-fg) !important; }
-  .text-brand-300 { color: var(--cc-brand-300) !important; }
-  .text-brand-400 { color: var(--cc-brand-400) !important; }
-  .text-brand-500 { color: var(--cc-brand-500) !important; }
-  .bg-brand-bg    { background-color: var(--cc-role-admin-bg) !important; }
-  .ring-brand-500 { --tw-ring-color: var(--cc-brand-500); }
-
-  /* Roles */
-  .role-admin-bg     { background-color: var(--cc-role-admin-bg)     !important; }
-  .role-admin-fg     { color: var(--cc-role-admin-fg)                 !important; }
-  .role-conserje-bg  { background-color: var(--cc-role-conserje-bg)  !important; }
-  .role-conserje-fg  { color: var(--cc-role-conserje-fg)             !important; }
-  .role-residente-bg { background-color: var(--cc-role-residente-bg) !important; }
-  .role-residente-fg { color: var(--cc-role-residente-fg)            !important; }
-
-  /* Semantic */
-  .success-bg { background-color: var(--cc-success-bg) !important; }
-  .success-fg { color: var(--cc-success-fg)            !important; }
-  .warning-bg { background-color: var(--cc-warning-bg) !important; }
-  .warning-fg { color: var(--cc-warning-fg)            !important; }
-  .danger-bg  { background-color: var(--cc-danger-bg)  !important; }
-  .danger-fg  { color: var(--cc-danger-fg)             !important; }
-  .info-bg    { background-color: var(--cc-info-bg)    !important; }
-  .info-fg    { color: var(--cc-info-fg)               !important; }
-}
+/* Design system classes are imported from ./design-system.css */
+/* They are plain CSS, not Tailwind utilities, so they're never purged. */
 
 /* Base Styles */
 * {
