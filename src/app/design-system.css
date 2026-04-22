@@ -1,0 +1,102 @@
+/**
+ * ComunidadConnect — Design System CSS
+ * 
+ * These classes are plain CSS, NOT Tailwind utilities.
+ * They are always included in the bundle regardless of JIT scanner state.
+ * Import this file in globals.css AFTER @import "tailwindcss".
+ */
+
+/* ============================================================
+   BACKGROUNDS
+   ============================================================ */
+.bg-canvas   { background-color: var(--cc-bg-canvas); }
+.bg-surface  { background-color: var(--cc-bg-surface); }
+.bg-elevated { background-color: var(--cc-bg-elevated); }
+.bg-overlay  { background-color: var(--cc-bg-overlay); }
+
+/* ============================================================
+   BORDERS
+   ============================================================ */
+.border-subtle  { border-color: var(--cc-border-subtle); }
+.border-default { border-color: var(--cc-border-default); }
+.border-strong  { border-color: var(--cc-border-strong); }
+
+/* ============================================================
+   TEXT COLORS
+   ============================================================ */
+.text-primary   { color: var(--cc-text-primary); }
+.text-secondary { color: var(--cc-text-secondary); }
+.text-tertiary  { color: var(--cc-text-tertiary); }
+.text-disabled  { color: var(--cc-text-disabled); }
+
+/* ============================================================
+   BRAND / ADMIN ROLE
+   ============================================================ */
+.bg-role-admin-bg          { background-color: var(--cc-role-admin-bg); }
+.text-role-admin-fg        { color: var(--cc-role-admin-fg); }
+.border-role-admin-border  { border-color: var(--cc-role-admin-border); }
+
+/* ============================================================
+   CONSERJE ROLE
+   ============================================================ */
+.bg-role-conserje-bg          { background-color: var(--cc-role-conserje-bg); }
+.text-role-conserje-fg        { color: var(--cc-role-conserje-fg); }
+.border-role-conserje-border  { border-color: var(--cc-role-conserje-border); }
+
+/* ============================================================
+   RESIDENTE ROLE
+   ============================================================ */
+.bg-role-residente-bg          { background-color: var(--cc-role-residente-bg); }
+.text-role-residente-fg        { color: var(--cc-role-residente-fg); }
+.border-role-residente-border  { border-color: var(--cc-role-residente-border); }
+
+/* Dot indicators for Badge component */
+.bg-role-admin-fg     { background-color: var(--cc-role-admin-fg); }
+.bg-role-conserje-fg  { background-color: var(--cc-role-conserje-fg); }
+.bg-role-residente-fg { background-color: var(--cc-role-residente-fg); }
+
+/* ============================================================
+   SEMANTIC — SUCCESS
+   ============================================================ */
+.bg-success-bg          { background-color: var(--cc-success-bg); }
+.text-success-fg        { color: var(--cc-success-fg); }
+.border-success-border  { border-color: var(--cc-success-border); }
+
+/* ============================================================
+   SEMANTIC — WARNING
+   ============================================================ */
+.bg-warning-bg          { background-color: var(--cc-warning-bg); }
+.text-warning-fg        { color: var(--cc-warning-fg); }
+.border-warning-border  { border-color: var(--cc-warning-border); }
+
+/* ============================================================
+   SEMANTIC — DANGER
+   ============================================================ */
+.bg-danger-bg          { background-color: var(--cc-danger-bg); }
+.text-danger-fg        { color: var(--cc-danger-fg); }
+.border-danger-border  { border-color: var(--cc-danger-border); }
+
+/* ============================================================
+   SEMANTIC — INFO
+   ============================================================ */
+.bg-info-bg          { background-color: var(--cc-info-bg); }
+.text-info-fg        { color: var(--cc-info-fg); }
+.border-info-border  { border-color: var(--cc-info-border); }
+
+/* ============================================================
+   BRAND SHADES (text color variants)
+   ============================================================ */
+.text-brand-300 { color: var(--cc-brand-300); }
+.text-brand-400 { color: var(--cc-brand-400); }
+.text-brand-500 { color: var(--cc-brand-500); }
+.bg-brand-bg    { background-color: var(--cc-role-admin-bg); }
+.bg-brand-fg    { background-color: var(--cc-role-admin-fg); }
+
+/* ============================================================
+   HOVER STATES
+   ============================================================ */
+.hover\:bg-elevated:hover   { background-color: var(--cc-bg-elevated); }
+.hover\:bg-surface:hover    { background-color: var(--cc-bg-surface); }
+.hover\:border-default:hover { border-color: var(--cc-border-default); }
+.hover\:text-primary:hover   { color: var(--cc-text-primary); }
+.hover\:text-secondary:hover { color: var(--cc-text-secondary); }
