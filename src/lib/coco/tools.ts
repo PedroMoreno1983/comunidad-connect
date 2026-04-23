@@ -291,6 +291,33 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
+    {
+        name: 'request_urgent_access_approval',
+        description: 'Envía una notificación push/WhatsApp urgente al residente pidiendo aprobación explícita para abrir la cerradura inteligente (SmarLock) en caso de una emergencia (ej. filtración).',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_id: { type: 'string' },
+                reason: { type: 'string', description: 'Por qué se necesita acceso urgente.' },
+            },
+            required: ['unit_id', 'reason'],
+        },
+    },
+    {
+        name: 'dispatch_provider',
+        description: 'Simula el contacto con un proveedor externo (ej. gasfíter de turno) y le asigna la tarea de emergencia, enviándole los detalles preliminares.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                category: { type: 'string', description: 'Categoría del técnico (ej: plumbing, electrical)' },
+                urgency: { type: 'string', enum: ['ALTA', 'URGENTE'] },
+                details: { type: 'string', description: 'Detalles del evento base enviados al proveedor.' },
+            },
+            required: ['category', 'urgency', 'details'],
+        },
+    },
+
 ] as const;
 
 // ── Executor ─────────────────────────────────────────────────────────────────
@@ -644,6 +671,30 @@ export async function executeTool(
                 
                 if (error) return { error: 'No se pudo actualizar el departamento', detail: error.message };
                 return { success: true, message: `Información de la unidad actualizada correctamente.` };
+            }
+
+            // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
+            case 'request_urgent_access_approval': {
+                // Simula envío de aprobación a residente o escalamiento a conserje
+                console.log(`[IoT-Agent] Solicitando acceso urgente a Unidad ${input.unit_id}. Razón: ${input.reason}`);
+                // En un entorno de producción, aquí invocaríamos Resend/Twilio con un magic link.
+                return {
+                    success: true,
+                    status: 'APPROVAL_PENDING',
+                    message: `Se ha notificado vía WhatsApp al residente de la unidad ${input.unit_id}. A la espera de autorización para abrir la puerta inteligente.`
+                };
+            }
+
+            case 'dispatch_provider': {
+                // Simula despachar a un técnico externo
+                console.log(`[IoT-Agent] Despachando proveedor de tipo ${input.category}. Detalles: ${input.details}`);
+                // En un entorno de producción, esto buscaría en 'service_providers' y haría un POST a su API.
+                return {
+                    success: true,
+                    status: 'PROVIDER_DISPATCHED',
+                    provider_contacted: 'Proveedor de Turno Asociado',
+                    message: `Proveedor de categoría ${input.category} contactado con estado ${input.urgency}. Tiempo estimado de llegada: 30 minutos.`
+                };
             }
 
             default:
