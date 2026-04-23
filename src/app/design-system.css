@@ -9,94 +9,94 @@
 /* ============================================================
    BACKGROUNDS
    ============================================================ */
-.bg-canvas   { background-color: var(--cc-bg-canvas); }
-.bg-surface  { background-color: var(--cc-bg-surface); }
-.bg-elevated { background-color: var(--cc-bg-elevated); }
-.bg-overlay  { background-color: var(--cc-bg-overlay); }
+.bg-canvas   { background-color: var(--cc-bg-canvas) !important; }
+.bg-surface  { background-color: var(--cc-bg-surface) !important; }
+.bg-elevated { background-color: var(--cc-bg-elevated) !important; }
+.bg-overlay  { background-color: var(--cc-bg-overlay) !important; }
 
 /* ============================================================
    BORDERS
    ============================================================ */
-.border-subtle  { border-color: var(--cc-border-subtle); }
-.border-default { border-color: var(--cc-border-default); }
-.border-strong  { border-color: var(--cc-border-strong); }
+.border-subtle  { border-color: var(--cc-border-subtle) !important; }
+.border-default { border-color: var(--cc-border-default) !important; }
+.border-strong  { border-color: var(--cc-border-strong) !important; }
 
 /* ============================================================
    TEXT COLORS
    ============================================================ */
-.text-primary   { color: var(--cc-text-primary); }
-.text-secondary { color: var(--cc-text-secondary); }
-.text-tertiary  { color: var(--cc-text-tertiary); }
-.text-disabled  { color: var(--cc-text-disabled); }
+.text-primary   { color: var(--cc-text-primary) !important; }
+.text-secondary { color: var(--cc-text-secondary) !important; }
+.text-tertiary  { color: var(--cc-text-tertiary) !important; }
+.text-disabled  { color: var(--cc-text-disabled) !important; }
 
 /* ============================================================
    BRAND / ADMIN ROLE
    ============================================================ */
-.bg-role-admin-bg          { background-color: var(--cc-role-admin-bg); }
-.text-role-admin-fg        { color: var(--cc-role-admin-fg); }
-.border-role-admin-border  { border-color: var(--cc-role-admin-border); }
+.bg-role-admin-bg          { background-color: var(--cc-role-admin-bg) !important; }
+.text-role-admin-fg        { color: var(--cc-role-admin-fg) !important; }
+.border-role-admin-border  { border-color: var(--cc-role-admin-border) !important; }
 
 /* ============================================================
    CONSERJE ROLE
    ============================================================ */
-.bg-role-conserje-bg          { background-color: var(--cc-role-conserje-bg); }
-.text-role-conserje-fg        { color: var(--cc-role-conserje-fg); }
-.border-role-conserje-border  { border-color: var(--cc-role-conserje-border); }
+.bg-role-conserje-bg          { background-color: var(--cc-role-conserje-bg) !important; }
+.text-role-conserje-fg        { color: var(--cc-role-conserje-fg) !important; }
+.border-role-conserje-border  { border-color: var(--cc-role-conserje-border) !important; }
 
 /* ============================================================
    RESIDENTE ROLE
    ============================================================ */
-.bg-role-residente-bg          { background-color: var(--cc-role-residente-bg); }
-.text-role-residente-fg        { color: var(--cc-role-residente-fg); }
-.border-role-residente-border  { border-color: var(--cc-role-residente-border); }
+.bg-role-residente-bg          { background-color: var(--cc-role-residente-bg) !important; }
+.text-role-residente-fg        { color: var(--cc-role-residente-fg) !important; }
+.border-role-residente-border  { border-color: var(--cc-role-residente-border) !important; }
 
 /* Dot indicators for Badge component */
-.bg-role-admin-fg     { background-color: var(--cc-role-admin-fg); }
-.bg-role-conserje-fg  { background-color: var(--cc-role-conserje-fg); }
-.bg-role-residente-fg { background-color: var(--cc-role-residente-fg); }
+.bg-role-admin-fg     { background-color: var(--cc-role-admin-fg) !important; }
+.bg-role-conserje-fg  { background-color: var(--cc-role-conserje-fg) !important; }
+.bg-role-residente-fg { background-color: var(--cc-role-residente-fg) !important; }
 
 /* ============================================================
    SEMANTIC — SUCCESS
    ============================================================ */
-.bg-success-bg          { background-color: var(--cc-success-bg); }
-.text-success-fg        { color: var(--cc-success-fg); }
-.border-success-border  { border-color: var(--cc-success-border); }
+.bg-success-bg          { background-color: var(--cc-success-bg) !important; }
+.text-success-fg        { color: var(--cc-success-fg) !important; }
+.border-success-border  { border-color: var(--cc-success-border) !important; }
 
 /* ============================================================
    SEMANTIC — WARNING
    ============================================================ */
-.bg-warning-bg          { background-color: var(--cc-warning-bg); }
-.text-warning-fg        { color: var(--cc-warning-fg); }
-.border-warning-border  { border-color: var(--cc-warning-border); }
+.bg-warning-bg          { background-color: var(--cc-warning-bg) !important; }
+.text-warning-fg        { color: var(--cc-warning-fg) !important; }
+.border-warning-border  { border-color: var(--cc-warning-border) !important; }
 
 /* ============================================================
    SEMANTIC — DANGER
    ============================================================ */
-.bg-danger-bg          { background-color: var(--cc-danger-bg); }
-.text-danger-fg        { color: var(--cc-danger-fg); }
-.border-danger-border  { border-color: var(--cc-danger-border); }
+.bg-danger-bg          { background-color: var(--cc-danger-bg) !important; }
+.text-danger-fg        { color: var(--cc-danger-fg) !important; }
+.border-danger-border  { border-color: var(--cc-danger-border) !important; }
 
 /* ============================================================
    SEMANTIC — INFO
    ============================================================ */
-.bg-info-bg          { background-color: var(--cc-info-bg); }
-.text-info-fg        { color: var(--cc-info-fg); }
-.border-info-border  { border-color: var(--cc-info-border); }
+.bg-info-bg          { background-color: var(--cc-info-bg) !important; }
+.text-info-fg        { color: var(--cc-info-fg) !important; }
+.border-info-border  { border-color: var(--cc-info-border) !important; }
 
 /* ============================================================
    BRAND SHADES (text color variants)
    ============================================================ */
-.text-brand-300 { color: var(--cc-brand-300); }
-.text-brand-400 { color: var(--cc-brand-400); }
-.text-brand-500 { color: var(--cc-brand-500); }
-.bg-brand-bg    { background-color: var(--cc-role-admin-bg); }
-.bg-brand-fg    { background-color: var(--cc-role-admin-fg); }
+.text-brand-300 { color: var(--cc-brand-300) !important; }
+.text-brand-400 { color: var(--cc-brand-400) !important; }
+.text-brand-500 { color: var(--cc-brand-500) !important; }
+.bg-brand-bg    { background-color: var(--cc-brand-50) !important; }
+.bg-brand-fg    { background-color: var(--cc-brand-500) !important; }
 
 /* ============================================================
    HOVER STATES
    ============================================================ */
-.hover\:bg-elevated:hover   { background-color: var(--cc-bg-elevated); }
-.hover\:bg-surface:hover    { background-color: var(--cc-bg-surface); }
-.hover\:border-default:hover { border-color: var(--cc-border-default); }
-.hover\:text-primary:hover   { color: var(--cc-text-primary); }
-.hover\:text-secondary:hover { color: var(--cc-text-secondary); }
+.hover\:bg-elevated:hover   { background-color: var(--cc-bg-elevated) !important; }
+.hover\:bg-surface:hover    { background-color: var(--cc-bg-surface) !important; }
+.hover\:border-default:hover { border-color: var(--cc-border-default) !important; }
+.hover\:text-primary:hover   { color: var(--cc-text-primary) !important; }
+.hover\:text-secondary:hover { color: var(--cc-text-secondary) !important; }
