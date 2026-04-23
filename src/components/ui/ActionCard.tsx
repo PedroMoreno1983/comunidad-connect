@@ -10,29 +10,21 @@ import Link from 'next/link';
  * Used in dashboard sidebars to surface the 2–4 most likely next actions.
  */
 
-const iconWrapStyles = cva(
-  'w-9 h-9 rounded-md grid place-items-center flex-shrink-0',
-  {
-    variants: {
-      tone: {
-        brand:    'bg-role-admin-bg text-role-admin-fg',
-        warning:  'bg-role-conserje-bg text-role-conserje-fg',
-        success:  'bg-success-bg text-success-fg',
-        danger:   'bg-danger-bg text-danger-fg',
-        info:     'bg-info-bg text-info-fg',
-      },
-    },
-    defaultVariants: { tone: 'brand' },
-  }
-);
+const iconTones: Record<string, string> = {
+  brand:    'bg-role-admin-bg text-role-admin-fg',
+  warning:  'bg-role-conserje-bg text-role-conserje-fg',
+  success:  'bg-success-bg text-success-fg',
+  danger:   'bg-danger-bg text-danger-fg',
+  info:     'bg-info-bg text-info-fg',
+};
 
 export interface ActionCardProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof iconWrapStyles> {
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: ReactNode;
   title: string;
   description?: string;
   href?: string;
+  tone?: 'brand' | 'warning' | 'success' | 'danger' | 'info';
 }
 
 export function ActionCard({
@@ -55,7 +47,12 @@ export function ActionCard({
 
   const content = (
     <>
-      <div className={iconWrapStyles({ tone })}>{icon}</div>
+      <div 
+        className={`rounded-md flex items-center justify-center flex-shrink-0 ${iconTones[tone] || iconTones.brand}`}
+        style={{ width: '36px', height: '36px', minWidth: '36px', minHeight: '36px' }}
+      >
+        {icon}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-primary mb-0.5">{title}</div>
         {description && <div className="text-xs text-tertiary">{description}</div>}

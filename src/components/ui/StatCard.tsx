@@ -10,25 +10,16 @@ import { cva, type VariantProps } from 'class-variance-authority';
  * don't fake it.
  */
 
-const iconWrapStyles = cva(
-  'w-10 h-10 rounded-md grid place-items-center mb-4',
-  {
-    variants: {
-      tone: {
-        brand:    'bg-role-admin-bg text-role-admin-fg',
-        warning:  'bg-role-conserje-bg text-role-conserje-fg',
-        success:  'bg-role-residente-bg text-role-residente-fg',
-        danger:   'bg-danger-bg text-danger-fg',
-        info:     'bg-info-bg text-info-fg',
-      },
-    },
-    defaultVariants: { tone: 'brand' },
-  }
-);
+const iconTones: Record<string, string> = {
+  brand:    'bg-role-admin-bg text-role-admin-fg',
+  warning:  'bg-role-conserje-bg text-role-conserje-fg',
+  success:  'bg-role-residente-bg text-role-residente-fg',
+  danger:   'bg-danger-bg text-danger-fg',
+  info:     'bg-info-bg text-info-fg',
+};
 
 export interface StatCardProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'>,
-    VariantProps<typeof iconWrapStyles> {
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'> {
   icon: ReactNode;
   value: string | number;
   label: string;
@@ -38,6 +29,7 @@ export interface StatCardProps
     /** When true, an "up" trend is painted red and "down" is green (e.g. overdue payments down is good). */
     inverted?: boolean;
   };
+  tone?: 'brand' | 'warning' | 'success' | 'danger' | 'info';
   onClick?: () => void;
   href?: string;
 }
@@ -63,7 +55,12 @@ export function StatCard({
 
   const content = (
     <>
-      <div className={iconWrapStyles({ tone })}>{icon}</div>
+      <div 
+        className={`rounded-md flex items-center justify-center mb-4 ${iconTones[tone] || iconTones.brand}`}
+        style={{ width: '40px', height: '40px', minWidth: '40px', minHeight: '40px' }}
+      >
+        {icon}
+      </div>
       <div className="font-display text-[32px] font-semibold tracking-tight leading-none mb-1.5">
         {value}
       </div>
