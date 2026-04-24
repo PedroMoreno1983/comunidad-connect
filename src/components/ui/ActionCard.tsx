@@ -5,16 +5,18 @@ import Link from 'next/link';
 /**
  * ActionCard — the "Acceso Rápido" quick action component.
  *
- * Uses CSS custom properties directly (via style={}) so styles are always
- * resolved regardless of Tailwind JIT purge settings in production.
+ * Uses hardcoded fallback colors that match the design tokens,
+ * ensuring correct rendering on first paint.
  */
 
-const iconStyles: Record<string, CSSProperties> = {
-  brand:   { backgroundColor: 'var(--cc-role-admin-bg)',     color: 'var(--cc-role-admin-fg)' },
-  warning: { backgroundColor: 'var(--cc-role-conserje-bg)',  color: 'var(--cc-role-conserje-fg)' },
-  success: { backgroundColor: 'var(--cc-success-bg)',        color: 'var(--cc-success-fg)' },
-  danger:  { backgroundColor: 'var(--cc-danger-bg)',         color: 'var(--cc-danger-fg)' },
-  info:    { backgroundColor: 'var(--cc-info-bg)',           color: 'var(--cc-info-fg)' },
+type ToneKey = 'brand' | 'warning' | 'success' | 'danger' | 'info';
+
+const iconStylesMap: Record<ToneKey, CSSProperties> = {
+  brand:   { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' },
+  warning: { backgroundColor: 'rgba(245, 158, 11, 0.12)',  color: '#FBBF5C' },
+  success: { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399' },
+  danger:  { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171' },
+  info:    { backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' },
 };
 
 export interface ActionCardProps
@@ -23,7 +25,7 @@ export interface ActionCardProps
   title: string;
   description?: string;
   href?: string;
-  tone?: 'brand' | 'warning' | 'success' | 'danger' | 'info';
+  tone?: ToneKey;
 }
 
 export function ActionCard({
@@ -35,19 +37,10 @@ export function ActionCard({
   className = '',
   ...props
 }: ActionCardProps) {
-  const cardStyle: CSSProperties = {
-    backgroundColor: 'var(--cc-bg-surface)',
-    borderColor: 'var(--cc-border-subtle)',
-    color: 'var(--cc-text-primary)',
-  };
+  const baseClasses = `group flex items-center gap-3.5 w-full px-4 py-3.5 border rounded-lg text-left transition-all duration-150 ease-out hover:translate-x-1 focus-visible:outline-none ${className}`;
+  const cardStyle: CSSProperties = { borderColor: 'rgba(128,128,128,0.15)' };
 
-  const baseClasses = `group flex items-center gap-3.5 w-full
-    px-4 py-3.5 border rounded-lg
-    text-left font-sans
-    transition-all duration-150 ease-out
-    hover:translate-x-1
-    focus-visible:outline-none
-    ${className}`;
+  const iconStyle = iconStylesMap[tone] || iconStylesMap.brand;
 
   const content = (
     <>
@@ -63,7 +56,7 @@ export function ActionCard({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          ...(iconStyles[tone] || iconStyles.brand),
+          ...iconStyle,
         }}
       >
         {icon}
@@ -71,18 +64,11 @@ export function ActionCard({
 
       {/* Text content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: '14px',
-            fontWeight: 500,
-            color: 'var(--cc-text-primary)',
-            marginBottom: '2px',
-          }}
-        >
+        <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '2px' }}>
           {title}
         </div>
         {description && (
-          <div style={{ fontSize: '12px', color: 'var(--cc-text-tertiary)' }}>
+          <div style={{ fontSize: '12px', opacity: 0.55 }}>
             {description}
           </div>
         )}
@@ -90,13 +76,7 @@ export function ActionCard({
 
       {/* Chevron */}
       <ChevronRight
-        style={{
-          width: '18px',
-          height: '18px',
-          color: 'var(--cc-text-tertiary)',
-          transition: 'all 200ms ease-out',
-          flexShrink: 0,
-        }}
+        style={{ width: '18px', height: '18px', opacity: 0.4, transition: 'all 200ms ease-out', flexShrink: 0 }}
         strokeWidth={2}
       />
     </>

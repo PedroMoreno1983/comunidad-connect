@@ -352,10 +352,10 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="lg:col-span-2 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-brand-bg text-brand-fg rounded-xl">
+                                <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124,58,237,0.12)', color: '#A58FFC' }}>
                                     <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                 </div>
                                 <div>
@@ -373,9 +373,9 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-info-bg text-info-fg rounded-xl">
+                            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
                                 <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Por Categoría</h2>
@@ -407,10 +407,10 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-success-bg text-success-fg rounded-xl">
+                                <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
                                     <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <div>
@@ -439,15 +439,15 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-surface border border-subtle rounded-2xl shadow-md overflow-hidden">
-                            <div className="p-5 lg:p-6 border-b border-subtle flex items-center justify-between">
+                        <div className="rounded-2xl shadow-md overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
+                            <div className="p-5 lg:p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(128,128,128,0.12)' }}>
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-info-bg text-info-fg rounded-xl">
+                                    <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' }}>
                                         <Bell className="h-5 w-5" />
                                     </div>
-                                    <h2 className="text-lg font-bold text-primary">Avisos Recientes</h2>
+                                    <h2 className="text-lg font-bold">Avisos Recientes</h2>
                                 </div>
-                                <Link href="/feed" className="text-sm font-medium text-brand-300 hover:text-brand-400 flex items-center gap-1">
+                                <Link href="/feed" className="text-sm font-medium flex items-center gap-1" style={{ color: '#A58FFC' }}>
                                     Ver todos <ArrowUpRight className="h-4 w-4" />
                                 </Link>
                             </div>
@@ -505,12 +505,12 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="bg-surface border border-subtle rounded-2xl shadow-md p-6 lg:p-8">
+                    <div className="rounded-2xl shadow-md p-6 lg:p-8" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-brand-100 text-brand-600 rounded-xl">
+                            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' }}>
                                 <TrendingUp className="h-5 w-5" />
                             </div>
-                            <h2 className="text-lg font-bold text-primary">Acceso Rápido</h2>
+                            <h2 className="text-lg font-bold">Acceso Rápido</h2>
                         </div>
                         <div className="space-y-3">
                             {user.role === 'concierge' ? (
