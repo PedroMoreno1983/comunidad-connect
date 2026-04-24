@@ -31,11 +31,11 @@
 @utility border-default { border-color: var(--cc-border-default); }
 @utility border-strong  { border-color: var(--cc-border-strong); }
 
-/* Text */
-@utility text-primary   { color: var(--cc-text-primary); }
-@utility text-secondary { color: var(--cc-text-secondary); }
-@utility text-tertiary  { color: var(--cc-text-tertiary); }
-@utility text-disabled  { color: var(--cc-text-disabled); }
+/* Text — cc-prefixed to avoid conflicts with Tailwind built-ins */
+@utility cc-text-primary   { color: var(--cc-text-primary); }
+@utility cc-text-secondary { color: var(--cc-text-secondary); }
+@utility cc-text-tertiary  { color: var(--cc-text-tertiary); }
+@utility cc-text-disabled  { color: var(--cc-text-disabled); }
 
 /* Role — Admin */
 @utility bg-role-admin-bg         { background-color: var(--cc-role-admin-bg); }
@@ -89,17 +89,6 @@
 @utility bg-danger-fg         { background-color: var(--cc-danger-fg); }
 @utility bg-info-fg           { background-color: var(--cc-info-fg); }
 @utility bg-tertiary          { background-color: var(--cc-text-tertiary); }
-
-/* Transition durations */
-@utility duration-normal { transition-duration: var(--cc-duration-normal); }
-@utility duration-fast   { transition-duration: var(--cc-duration-fast); }
-
-/* Hover variants */
-@utility hover\:bg-elevated  { &:hover { background-color: var(--cc-bg-elevated); } }
-@utility hover\:bg-surface   { &:hover { background-color: var(--cc-bg-surface); } }
-@utility hover\:border-default { &:hover { border-color: var(--cc-border-default); } }
-@utility hover\:text-primary   { &:hover { color: var(--cc-text-primary); } }
-@utility hover\:text-secondary { &:hover { color: var(--cc-text-secondary); } }
 
 /* Font display */
 @utility font-display { font-family: var(--cc-font-display); }
