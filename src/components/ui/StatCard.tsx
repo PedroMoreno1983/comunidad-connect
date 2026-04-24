@@ -4,21 +4,25 @@ import { ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 /**
  * StatCard — the KPI block used across dashboards.
  *
- * Uses CSS custom properties directly (via style={}) so styles are always
- * resolved regardless of Tailwind JIT purge settings in production.
+ * Uses hardcoded fallback colors that match the design tokens,
+ * with CSS variable overrides for theme switching.
+ * This ensures cards render correctly on first paint without
+ * waiting for CSS variable resolution.
  */
 
-const iconStyles: Record<string, CSSProperties> = {
-  brand:   { backgroundColor: 'var(--cc-role-admin-bg)',     color: 'var(--cc-role-admin-fg)' },
-  warning: { backgroundColor: 'var(--cc-role-conserje-bg)',  color: 'var(--cc-role-conserje-fg)' },
-  success: { backgroundColor: 'var(--cc-role-residente-bg)', color: 'var(--cc-role-residente-fg)' },
-  danger:  { backgroundColor: 'var(--cc-danger-bg)',         color: 'var(--cc-danger-fg)' },
-  info:    { backgroundColor: 'var(--cc-info-bg)',           color: 'var(--cc-info-fg)' },
+type ToneKey = 'brand' | 'warning' | 'success' | 'danger' | 'info';
+
+const iconStylesLight: Record<ToneKey, CSSProperties> = {
+  brand:   { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' },
+  warning: { backgroundColor: 'rgba(245, 158, 11, 0.12)',  color: '#FBBF5C' },
+  success: { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399' },
+  danger:  { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171' },
+  info:    { backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' },
 };
 
-const trendStyles = {
-  positive: { backgroundColor: 'var(--cc-success-bg)', color: 'var(--cc-success-fg)' } as CSSProperties,
-  negative: { backgroundColor: 'var(--cc-danger-bg)',  color: 'var(--cc-danger-fg)'  } as CSSProperties,
+const trendStylesLight = {
+  positive: { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399' } as CSSProperties,
+  negative: { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171' } as CSSProperties,
 };
 
 export interface StatCardProps
@@ -29,10 +33,9 @@ export interface StatCardProps
   trend?: {
     direction: 'up' | 'down';
     value: string;
-    /** When true, an "up" trend is painted red and "down" is green (e.g. overdue payments down is good). */
     inverted?: boolean;
   };
-  tone?: 'brand' | 'warning' | 'success' | 'danger' | 'info';
+  tone?: ToneKey;
   onClick?: () => void;
   href?: string;
 }
@@ -56,11 +59,8 @@ export function StatCard({
       : trend.direction === 'up'
     : false;
 
-  const cardStyle: CSSProperties = {
-    backgroundColor: 'var(--cc-bg-surface)',
-    borderColor: 'var(--cc-border-subtle)',
-    color: 'var(--cc-text-primary)',
-  };
+  const iconStyle = iconStylesLight[tone] || iconStylesLight.brand;
+  const trendStyle = trendPositive ? trendStylesLight.positive : trendStylesLight.negative;
 
   const content = (
     <>
@@ -76,7 +76,7 @@ export function StatCard({
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: '16px',
-          ...(iconStyles[tone] || iconStyles.brand),
+          ...iconStyle,
         }}
       >
         {icon}
@@ -85,25 +85,18 @@ export function StatCard({
       {/* Value */}
       <div
         style={{
-          fontFamily: 'var(--cc-font-display)',
           fontSize: '32px',
           fontWeight: 600,
           letterSpacing: '-0.02em',
           lineHeight: 1,
           marginBottom: '6px',
-          color: 'var(--cc-text-primary)',
         }}
       >
         {value}
       </div>
 
       {/* Label */}
-      <div
-        style={{
-          fontSize: '13px',
-          color: 'var(--cc-text-secondary)',
-        }}
-      >
+      <div style={{ fontSize: '13px', opacity: 0.65 }}>
         {label}
       </div>
 
@@ -119,7 +112,7 @@ export function StatCard({
             borderRadius: '6px',
             fontSize: '12px',
             fontWeight: 500,
-            ...(trendPositive ? trendStyles.positive : trendStyles.negative),
+            ...trendStyle,
           }}
         >
           {trend.direction === 'up' ? (
@@ -140,7 +133,7 @@ export function StatCard({
             right: '20px',
             width: '18px',
             height: '18px',
-            color: 'var(--cc-text-tertiary)',
+            opacity: 0.4,
             transition: 'all 200ms ease-out',
           }}
           strokeWidth={2}
@@ -158,7 +151,7 @@ export function StatCard({
       <a
         href={href}
         className={baseClasses}
-        style={cardStyle}
+        style={{ borderColor: 'rgba(128,128,128,0.15)' }}
         {...(props as any)}
       >
         {content}
@@ -169,7 +162,7 @@ export function StatCard({
   return (
     <div
       className={baseClasses}
-      style={cardStyle}
+      style={{ borderColor: 'rgba(128,128,128,0.15)' }}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}

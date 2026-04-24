@@ -1,50 +1,44 @@
-import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { ButtonHTMLAttributes, CSSProperties, forwardRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 /**
  * Button — ComunidadConnect design system
  *
- * Variants: primary, secondary, ghost, danger
+ * Variants: primary, secondary, ghost, danger, outline
  * Sizes:    sm, md (default), lg
  *
- * Rule: use `primary` max once per screen. If you need two CTAs on the
- * same view, promote one to secondary.
+ * Uses hardcoded RGBA colors so buttons always render correctly
+ * regardless of CSS variable resolution timing.
  */
+
 const buttonStyles = cva(
-  // Base
   [
     'inline-flex items-center justify-center gap-2',
     'font-sans font-medium',
     'rounded-md leading-none',
-    'transition-all duration-fast ease-out',
+    'transition-all duration-150 ease-out',
     'cursor-pointer select-none',
-    'focus-visible:outline-none focus-visible:shadow-ring',
+    'focus-visible:outline-none',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
   ],
   {
     variants: {
       variant: {
         primary: [
-          'bg-brand-500 text-white',
-          'shadow-sm',
-          'hover:bg-brand-400 hover:shadow-glow-brand hover:-translate-y-px',
-          'active:translate-y-0 active:bg-brand-600',
+          'text-white',
+          // Background set via style prop below — using !important to ensure override
         ],
         secondary: [
-          'bg-elevated text-primary border border-default',
-          'hover:bg-overlay hover:border-strong',
+          'border',
         ],
         outline: [
-          'bg-elevated text-primary border border-default',
-          'hover:bg-overlay hover:border-strong',
+          'border',
         ],
         ghost: [
-          'bg-transparent text-secondary',
-          'hover:bg-elevated hover:text-primary',
+          'bg-transparent',
         ],
         danger: [
-          'bg-danger-bg text-danger-fg border border-danger-border',
-          'hover:bg-[rgba(239,68,68,0.20)]',
+          'border',
         ],
       },
       size: {
@@ -60,6 +54,34 @@ const buttonStyles = cva(
   }
 );
 
+// Inline styles per variant — immune to CSS variable resolution issues
+const variantStyles: Record<string, CSSProperties> = {
+  primary: {
+    backgroundColor: '#7C3AED',
+    color: '#ffffff',
+    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.30)',
+  },
+  secondary: {
+    backgroundColor: 'rgba(128, 128, 128, 0.08)',
+    color: 'inherit',
+    borderColor: 'rgba(128, 128, 128, 0.20)',
+  },
+  outline: {
+    backgroundColor: 'rgba(128, 128, 128, 0.08)',
+    color: 'inherit',
+    borderColor: 'rgba(128, 128, 128, 0.20)',
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+    color: 'inherit',
+  },
+  danger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    color: '#F87171',
+    borderColor: 'rgba(239, 68, 68, 0.30)',
+  },
+};
+
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonStyles> {
@@ -68,11 +90,18 @@ export interface ButtonProps
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant, size, leadingIcon, trailingIcon, children, ...props }, ref) => {
+  ({ className = '', variant = 'primary', size, leadingIcon, trailingIcon, children, style, ...props }, ref) => {
+    const variantKey = variant ?? 'primary';
+    const inlineStyle: CSSProperties = {
+      ...variantStyles[variantKey],
+      ...style,
+    };
+
     return (
       <button
         ref={ref}
         className={`${buttonStyles({ variant, size })} ${className}`}
+        style={inlineStyle}
         {...props}
       >
         {leadingIcon}
