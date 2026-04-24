@@ -4,32 +4,11 @@
    Import this file once in your app root (globals.css).
    ============================================================ */
 
+/* ============================================================
+   GLOBAL TOKENS — same in both light and dark mode
+   (brand colors, roles, semantic, typography, spacing, etc.)
+   ============================================================ */
 :root {
-  /* ============================================================
-     1. COLOR — FOUNDATIONS
-     ============================================================ */
-
-  /* Backgrounds (dark theme, deep-to-elevated) */
-  --cc-bg-canvas:        #0A0A12;   /* page background (darkest) */
-  --cc-bg-surface:       #12121D;   /* card / panel */
-  --cc-bg-elevated:      #1A1A28;   /* popover / modal / hover target */
-  --cc-bg-overlay:       #252538;   /* hover state on elevated surfaces */
-  --cc-bg-inverted:      #FFFFFF;   /* on light surfaces (rare) */
-
-  /* Borders (progressively stronger opacity) */
-  --cc-border-subtle:    rgba(255, 255, 255, 0.06);
-  --cc-border-default:   rgba(255, 255, 255, 0.10);
-  --cc-border-strong:    rgba(255, 255, 255, 0.18);
-  --cc-border-focus:     rgba(124, 58, 237, 0.60);   /* brand-500 @ 60% */
-
-  /* Text */
-  --cc-text-primary:     #FFFFFF;
-  --cc-text-secondary:   #A1A1B8;
-  --cc-text-tertiary:    #6E6E85;
-  --cc-text-disabled:    #4A4A5E;
-  --cc-text-inverted:    #0A0A12;
-  --cc-text-link:        #A58FFC;   /* brand-300 */
-
   /* ============================================================
      2. COLOR — BRAND & ROLES
      ============================================================ */
@@ -160,13 +139,13 @@
   --cc-radius-full: 9999px;     /* avatars, pills */
 
   /* ============================================================
-     7. SHADOWS & ELEVATION — dark theme tuned
+     7. SHADOWS & ELEVATION
      ============================================================ */
 
-  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.35);
-  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.40);
-  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.50);
-  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.55);
+  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.15);
+  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.20);
+  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.25);
+  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.30);
 
   /* Glows — used for focus + hero CTAs */
   --cc-glow-brand:     0 0 28px -4px rgba(124, 58, 237, 0.50);
@@ -201,6 +180,66 @@
   --cc-z-modal:    1100;
   --cc-z-popover:  1200;
   --cc-z-toast:    1300;
+}
+
+/* ============================================================
+   1a. COLOR — FOUNDATIONS: LIGHT MODE (default)
+   ============================================================ */
+:root,
+:root:not(.dark),
+.light {
+  /* Backgrounds */
+  --cc-bg-canvas:        #F8F7FF;   /* very light violet-tinted white */
+  --cc-bg-surface:       #FFFFFF;   /* pure white card */
+  --cc-bg-elevated:      #F3F1FF;   /* very light violet for hover/elevated */
+  --cc-bg-overlay:       #EAE7FF;   /* slightly deeper hover */
+  --cc-bg-inverted:      #0A0A12;
+
+  /* Borders */
+  --cc-border-subtle:    rgba(0, 0, 0, 0.06);
+  --cc-border-default:   rgba(0, 0, 0, 0.10);
+  --cc-border-strong:    rgba(0, 0, 0, 0.18);
+  --cc-border-focus:     rgba(124, 58, 237, 0.60);
+
+  /* Text */
+  --cc-text-primary:     #0F0C1A;
+  --cc-text-secondary:   #4A4858;
+  --cc-text-tertiary:    #8B8899;
+  --cc-text-disabled:    #C5C3CF;
+  --cc-text-inverted:    #FFFFFF;
+  --cc-text-link:        #7C3AED;
+}
+
+/* ============================================================
+   1b. COLOR — FOUNDATIONS: DARK MODE
+   ============================================================ */
+.dark {
+  /* Backgrounds */
+  --cc-bg-canvas:        #0A0A12;
+  --cc-bg-surface:       #12121D;
+  --cc-bg-elevated:      #1A1A28;
+  --cc-bg-overlay:       #252538;
+  --cc-bg-inverted:      #FFFFFF;
+
+  /* Borders */
+  --cc-border-subtle:    rgba(255, 255, 255, 0.06);
+  --cc-border-default:   rgba(255, 255, 255, 0.10);
+  --cc-border-strong:    rgba(255, 255, 255, 0.18);
+  --cc-border-focus:     rgba(124, 58, 237, 0.60);
+
+  /* Text */
+  --cc-text-primary:     #FFFFFF;
+  --cc-text-secondary:   #A1A1B8;
+  --cc-text-tertiary:    #6E6E85;
+  --cc-text-disabled:    #4A4A5E;
+  --cc-text-inverted:    #0A0A12;
+  --cc-text-link:        #A58FFC;
+
+  /* Shadows (heavier in dark mode) */
+  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.35);
+  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.40);
+  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.50);
+  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.55);
 }
 
 /* Reduced motion preference */
