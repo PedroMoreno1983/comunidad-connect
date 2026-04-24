@@ -352,7 +352,7 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
+                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124,58,237,0.12)', color: '#A58FFC' }}>
@@ -373,7 +373,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
+                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
                                 <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -407,7 +407,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
+                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
@@ -439,8 +439,8 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="rounded-2xl shadow-md overflow-hidden" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
-                            <div className="p-5 lg:p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(128,128,128,0.12)' }}>
+                        <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden">
+                            <div className="p-5 lg:p-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' }}>
                                         <Bell className="h-5 w-5" />
@@ -505,7 +505,7 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="rounded-2xl shadow-md p-6 lg:p-8" style={{ border: '1px solid rgba(128,128,128,0.15)' }}>
+                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' }}>
                                 <TrendingUp className="h-5 w-5" />

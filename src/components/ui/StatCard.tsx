@@ -142,7 +142,7 @@ export function StatCard({
     </>
   );
 
-  const baseClasses = `group relative overflow-hidden rounded-lg p-5 border transition-all duration-200 ease-out ${
+  const baseClasses = `group relative overflow-hidden rounded-lg p-5 border bg-white dark:bg-[#12121D] border-slate-200 dark:border-slate-800 transition-all duration-200 ease-out ${
     isInteractive ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md' : ''
   } ${className}`;
 
@@ -151,7 +151,6 @@ export function StatCard({
       <a
         href={href}
         className={baseClasses}
-        style={{ borderColor: 'rgba(128,128,128,0.15)' }}
         {...(props as any)}
       >
         {content}
@@ -162,7 +161,6 @@ export function StatCard({
   return (
     <div
       className={baseClasses}
-      style={{ borderColor: 'rgba(128,128,128,0.15)' }}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}

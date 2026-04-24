@@ -37,8 +37,7 @@ export function ActionCard({
   className = '',
   ...props
 }: ActionCardProps) {
-  const baseClasses = `group flex items-center gap-3.5 w-full px-4 py-3.5 border rounded-lg text-left transition-all duration-150 ease-out hover:translate-x-1 focus-visible:outline-none ${className}`;
-  const cardStyle: CSSProperties = { borderColor: 'rgba(128,128,128,0.15)' };
+  const baseClasses = `group flex items-center gap-3.5 w-full px-4 py-3.5 border bg-white dark:bg-[#12121D] border-slate-200 dark:border-slate-800 rounded-lg text-left transition-all duration-150 ease-out hover:translate-x-1 focus-visible:outline-none ${className}`;
 
   const iconStyle = iconStylesMap[tone] || iconStylesMap.brand;
 
@@ -84,14 +83,14 @@ export function ActionCard({
 
   if (href) {
     return (
-      <Link href={href} className={baseClasses} style={cardStyle}>
+      <Link href={href} className={baseClasses}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button className={baseClasses} style={cardStyle} {...props}>
+    <button className={baseClasses} {...props}>
       {content}
     </button>
   );
