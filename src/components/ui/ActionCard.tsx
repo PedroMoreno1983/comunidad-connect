@@ -1,21 +1,20 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import Link from 'next/link';
 
 /**
  * ActionCard — the "Acceso Rápido" quick action component.
  *
- * Unlike a plain button, it carries CONTEXT: icon (tone-coded), title, subtitle.
- * Used in dashboard sidebars to surface the 2–4 most likely next actions.
+ * Uses CSS custom properties directly (via style={}) so styles are always
+ * resolved regardless of Tailwind JIT purge settings in production.
  */
 
-const iconTones: Record<string, string> = {
-  brand:    'bg-role-admin-bg text-role-admin-fg',
-  warning:  'bg-role-conserje-bg text-role-conserje-fg',
-  success:  'bg-success-bg text-success-fg',
-  danger:   'bg-danger-bg text-danger-fg',
-  info:     'bg-info-bg text-info-fg',
+const iconStyles: Record<string, CSSProperties> = {
+  brand:   { backgroundColor: 'var(--cc-role-admin-bg)',     color: 'var(--cc-role-admin-fg)' },
+  warning: { backgroundColor: 'var(--cc-role-conserje-bg)',  color: 'var(--cc-role-conserje-fg)' },
+  success: { backgroundColor: 'var(--cc-success-bg)',        color: 'var(--cc-success-fg)' },
+  danger:  { backgroundColor: 'var(--cc-danger-bg)',         color: 'var(--cc-danger-fg)' },
+  info:    { backgroundColor: 'var(--cc-info-bg)',           color: 'var(--cc-info-fg)' },
 };
 
 export interface ActionCardProps
@@ -36,29 +35,68 @@ export function ActionCard({
   className = '',
   ...props
 }: ActionCardProps) {
+  const cardStyle: CSSProperties = {
+    backgroundColor: 'var(--cc-bg-surface)',
+    borderColor: 'var(--cc-border-subtle)',
+    color: 'var(--cc-text-primary)',
+  };
+
   const baseClasses = `group flex items-center gap-3.5 w-full
-    px-4 py-3.5
-    bg-surface border border-subtle rounded-lg
+    px-4 py-3.5 border rounded-lg
     text-left font-sans
-    transition-all duration-fast ease-out
-    hover:bg-elevated hover:border-default hover:translate-x-1
-    focus-visible:outline-none focus-visible:shadow-ring
+    transition-all duration-150 ease-out
+    hover:translate-x-1
+    focus-visible:outline-none
     ${className}`;
 
   const content = (
     <>
-      <div 
-        className={`rounded-md flex items-center justify-center flex-shrink-0 ${iconTones[tone] || iconTones.brand}`}
-        style={{ width: '36px', height: '36px', minWidth: '36px', minHeight: '36px' }}
+      {/* Icon box */}
+      <div
+        style={{
+          width: '36px',
+          height: '36px',
+          minWidth: '36px',
+          minHeight: '36px',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          ...(iconStyles[tone] || iconStyles.brand),
+        }}
       >
         {icon}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-primary mb-0.5">{title}</div>
-        {description && <div className="text-xs text-tertiary">{description}</div>}
+
+      {/* Text content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'var(--cc-text-primary)',
+            marginBottom: '2px',
+          }}
+        >
+          {title}
+        </div>
+        {description && (
+          <div style={{ fontSize: '12px', color: 'var(--cc-text-tertiary)' }}>
+            {description}
+          </div>
+        )}
       </div>
+
+      {/* Chevron */}
       <ChevronRight
-        className="w-[18px] h-[18px] text-tertiary transition-all duration-normal ease-out group-hover:translate-x-0.5 group-hover:text-secondary flex-shrink-0"
+        style={{
+          width: '18px',
+          height: '18px',
+          color: 'var(--cc-text-tertiary)',
+          transition: 'all 200ms ease-out',
+          flexShrink: 0,
+        }}
         strokeWidth={2}
       />
     </>
@@ -66,14 +104,14 @@ export function ActionCard({
 
   if (href) {
     return (
-      <Link href={href} className={baseClasses}>
+      <Link href={href} className={baseClasses} style={cardStyle}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button className={baseClasses} {...props}>
+    <button className={baseClasses} style={cardStyle} {...props}>
       {content}
     </button>
   );

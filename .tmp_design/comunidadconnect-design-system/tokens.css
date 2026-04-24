@@ -1,0 +1,216 @@
+/* ============================================================
+   ComunidadConnect — Design Tokens v1.0
+   Source of truth for all design decisions.
+   Import this file once in your app root (globals.css).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
+
+:root {
+  /* ============================================================
+     1. COLOR — FOUNDATIONS
+     ============================================================ */
+
+  /* Backgrounds (dark theme, deep-to-elevated) */
+  --cc-bg-canvas:        #0A0A12;   /* page background (darkest) */
+  --cc-bg-surface:       #12121D;   /* card / panel */
+  --cc-bg-elevated:      #1A1A28;   /* popover / modal / hover target */
+  --cc-bg-overlay:       #252538;   /* hover state on elevated surfaces */
+  --cc-bg-inverted:      #FFFFFF;   /* on light surfaces (rare) */
+
+  /* Borders (progressively stronger opacity) */
+  --cc-border-subtle:    rgba(255, 255, 255, 0.06);
+  --cc-border-default:   rgba(255, 255, 255, 0.10);
+  --cc-border-strong:    rgba(255, 255, 255, 0.18);
+  --cc-border-focus:     rgba(124, 58, 237, 0.60);   /* brand-500 @ 60% */
+
+  /* Text */
+  --cc-text-primary:     #FFFFFF;
+  --cc-text-secondary:   #A1A1B8;
+  --cc-text-tertiary:    #6E6E85;
+  --cc-text-disabled:    #4A4A5E;
+  --cc-text-inverted:    #0A0A12;
+  --cc-text-link:        #A58FFC;   /* brand-300 */
+
+  /* ============================================================
+     2. COLOR — BRAND & ROLES
+     ============================================================ */
+
+  /* Primary brand (violet) — used for Admin role + default CTAs */
+  --cc-brand-50:   #F3F1FF;
+  --cc-brand-100:  #E4DEFF;
+  --cc-brand-200:  #CABFFE;
+  --cc-brand-300:  #A58FFC;
+  --cc-brand-400:  #8966F7;
+  --cc-brand-500:  #7C3AED;  /* DEFAULT */
+  --cc-brand-600:  #6D28D9;
+  --cc-brand-700:  #5B21B6;
+  --cc-brand-800:  #4C1D95;
+  --cc-brand-900:  #2E1065;
+
+  /* Role — Admin (aliases brand) */
+  --cc-role-admin-fg:    #A58FFC;
+  --cc-role-admin-bg:    rgba(124, 58, 237, 0.12);
+  --cc-role-admin-border: rgba(124, 58, 237, 0.28);
+
+  /* Role — Conserje (amber/copper) */
+  --cc-role-conserje-fg:     #FBBF5C;
+  --cc-role-conserje-bg:     rgba(245, 158, 11, 0.12);
+  --cc-role-conserje-border: rgba(245, 158, 11, 0.30);
+  --cc-role-conserje-500:    #F59E0B;
+  --cc-role-conserje-600:    #D97706;
+
+  /* Role — Residente (emerald) */
+  --cc-role-residente-fg:     #34D399;
+  --cc-role-residente-bg:     rgba(16, 185, 129, 0.12);
+  --cc-role-residente-border: rgba(16, 185, 129, 0.30);
+  --cc-role-residente-500:    #10B981;
+  --cc-role-residente-600:    #059669;
+
+  /* ============================================================
+     3. COLOR — SEMANTIC (status, feedback)
+     ============================================================ */
+
+  /* Success */
+  --cc-success-fg:       #34D399;
+  --cc-success-bg:       rgba(16, 185, 129, 0.12);
+  --cc-success-border:   rgba(16, 185, 129, 0.30);
+  --cc-success-solid:    #10B981;
+
+  /* Warning */
+  --cc-warning-fg:       #FBBF5C;
+  --cc-warning-bg:       rgba(245, 158, 11, 0.12);
+  --cc-warning-border:   rgba(245, 158, 11, 0.30);
+  --cc-warning-solid:    #F59E0B;
+
+  /* Danger */
+  --cc-danger-fg:        #F87171;
+  --cc-danger-bg:        rgba(239, 68, 68, 0.12);
+  --cc-danger-border:    rgba(239, 68, 68, 0.30);
+  --cc-danger-solid:     #EF4444;
+
+  /* Info */
+  --cc-info-fg:          #60A5FA;
+  --cc-info-bg:          rgba(59, 130, 246, 0.12);
+  --cc-info-border:      rgba(59, 130, 246, 0.30);
+  --cc-info-solid:       #3B82F6;
+
+  /* ============================================================
+     4. TYPOGRAPHY
+     ============================================================ */
+
+  /* Font families */
+  --cc-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Font sizes — fluid but predictable */
+  --cc-text-xs:      0.75rem;     /* 12px — captions, metadata */
+  --cc-text-sm:      0.8125rem;   /* 13px — helper text */
+  --cc-text-base:    0.875rem;    /* 14px — body default */
+  --cc-text-md:      1rem;        /* 16px — emphasis / inputs */
+  --cc-text-lg:      1.125rem;    /* 18px — section titles */
+  --cc-text-xl:      1.25rem;     /* 20px — card titles */
+  --cc-text-2xl:     1.5rem;      /* 24px — page H2 */
+  --cc-text-3xl:     1.875rem;    /* 30px — page H1 */
+  --cc-text-4xl:     2.25rem;     /* 36px — display M */
+  --cc-text-5xl:     3rem;        /* 48px — display L (hero) */
+
+  /* Font weights */
+  --cc-weight-regular:  400;
+  --cc-weight-medium:   500;
+  --cc-weight-semibold: 600;
+  --cc-weight-bold:     700;
+
+  /* Line heights */
+  --cc-leading-tight:   1.15;  /* display */
+  --cc-leading-snug:    1.3;   /* headings */
+  --cc-leading-normal:  1.5;   /* body */
+  --cc-leading-relaxed: 1.7;   /* long-form */
+
+  /* Letter spacing */
+  --cc-tracking-tight:  -0.02em;  /* display */
+  --cc-tracking-normal: 0;
+  --cc-tracking-wide:   0.08em;   /* uppercase labels */
+
+  /* ============================================================
+     5. SPACING — 4px base scale
+     ============================================================ */
+
+  --cc-space-0:   0;
+  --cc-space-1:   0.25rem;   /*  4px */
+  --cc-space-2:   0.5rem;    /*  8px */
+  --cc-space-3:   0.75rem;   /* 12px */
+  --cc-space-4:   1rem;      /* 16px — default rhythm */
+  --cc-space-5:   1.25rem;   /* 20px */
+  --cc-space-6:   1.5rem;    /* 24px — card padding */
+  --cc-space-8:   2rem;      /* 32px — section gap */
+  --cc-space-10:  2.5rem;    /* 40px */
+  --cc-space-12:  3rem;      /* 48px — major section gap */
+  --cc-space-16:  4rem;      /* 64px — hero spacing */
+  --cc-space-20:  5rem;      /* 80px */
+
+  /* ============================================================
+     6. RADIUS
+     ============================================================ */
+
+  --cc-radius-sm:   0.375rem;   /*  6px — small pills, tags */
+  --cc-radius-md:   0.5rem;     /*  8px — buttons, inputs */
+  --cc-radius-lg:   0.75rem;    /* 12px — cards (default) */
+  --cc-radius-xl:   1rem;       /* 16px — elevated cards */
+  --cc-radius-2xl:  1.5rem;     /* 24px — modals, hero */
+  --cc-radius-full: 9999px;     /* avatars, pills */
+
+  /* ============================================================
+     7. SHADOWS & ELEVATION — dark theme tuned
+     ============================================================ */
+
+  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.35);
+  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.40);
+  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.50);
+  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.55);
+
+  /* Glows — used for focus + hero CTAs */
+  --cc-glow-brand:     0 0 28px -4px rgba(124, 58, 237, 0.50);
+  --cc-glow-success:   0 0 20px -4px rgba(16, 185, 129, 0.40);
+  --cc-glow-warning:   0 0 20px -4px rgba(245, 158, 11, 0.40);
+  --cc-glow-danger:    0 0 20px -4px rgba(239, 68, 68, 0.40);
+
+  /* Focus ring */
+  --cc-ring-default: 0 0 0 3px rgba(124, 58, 237, 0.35);
+
+  /* ============================================================
+     8. MOTION
+     ============================================================ */
+
+  --cc-duration-instant: 80ms;
+  --cc-duration-fast:    120ms;
+  --cc-duration-normal:  200ms;
+  --cc-duration-slow:    320ms;
+
+  --cc-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --cc-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --cc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ============================================================
+     9. Z-INDEX
+     ============================================================ */
+
+  --cc-z-base:     0;
+  --cc-z-elevated: 10;
+  --cc-z-sticky:   100;
+  --cc-z-overlay:  1000;
+  --cc-z-modal:    1100;
+  --cc-z-popover:  1200;
+  --cc-z-toast:    1300;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cc-duration-instant: 0ms;
+    --cc-duration-fast:    0ms;
+    --cc-duration-normal:  0ms;
+    --cc-duration-slow:    0ms;
+  }
+}

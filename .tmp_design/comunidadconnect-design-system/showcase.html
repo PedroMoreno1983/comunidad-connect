@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComunidadConnect · Design System v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cc-bg-canvas: #0A0A12; --cc-bg-surface: #12121D; --cc-bg-elevated: #1A1A28; --cc-bg-overlay: #252538;
+    --cc-border-subtle: rgba(255,255,255,0.06); --cc-border-default: rgba(255,255,255,0.10); --cc-border-strong: rgba(255,255,255,0.18);
+    --cc-text-primary: #FFFFFF; --cc-text-secondary: #A1A1B8; --cc-text-tertiary: #6E6E85; --cc-text-disabled: #4A4A5E;
+    --cc-brand-50: #F3F1FF; --cc-brand-100: #E4DEFF; --cc-brand-200: #CABFFE; --cc-brand-300: #A58FFC;
+    --cc-brand-400: #8966F7; --cc-brand-500: #7C3AED; --cc-brand-600: #6D28D9; --cc-brand-700: #5B21B6; --cc-brand-800: #4C1D95; --cc-brand-900: #2E1065;
+    --cc-role-admin-fg: #A58FFC; --cc-role-admin-bg: rgba(124,58,237,0.12); --cc-role-admin-border: rgba(124,58,237,0.28);
+    --cc-role-conserje-fg: #FBBF5C; --cc-role-conserje-bg: rgba(245,158,11,0.12); --cc-role-conserje-border: rgba(245,158,11,0.30); --cc-role-conserje-500: #F59E0B;
+    --cc-role-residente-fg: #34D399; --cc-role-residente-bg: rgba(16,185,129,0.12); --cc-role-residente-border: rgba(16,185,129,0.30); --cc-role-residente-500: #10B981;
+    --cc-success-fg: #34D399; --cc-success-bg: rgba(16,185,129,0.12); --cc-success-border: rgba(16,185,129,0.30);
+    --cc-warning-fg: #FBBF5C; --cc-warning-bg: rgba(245,158,11,0.12); --cc-warning-border: rgba(245,158,11,0.30);
+    --cc-danger-fg: #F87171; --cc-danger-bg: rgba(239,68,68,0.12); --cc-danger-border: rgba(239,68,68,0.30);
+    --cc-info-fg: #60A5FA; --cc-info-bg: rgba(59,130,246,0.12); --cc-info-border: rgba(59,130,246,0.30);
+    --cc-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    --cc-font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --cc-font-mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    --cc-radius-sm: 6px; --cc-radius-md: 8px; --cc-radius-lg: 12px; --cc-radius-xl: 16px; --cc-radius-2xl: 24px;
+    --cc-shadow-sm: 0 1px 2px rgba(0,0,0,0.35); --cc-shadow-md: 0 4px 12px rgba(0,0,0,0.40); --cc-shadow-lg: 0 8px 24px rgba(0,0,0,0.50);
+    --cc-glow-brand: 0 0 28px -4px rgba(124,58,237,0.50);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--cc-bg-canvas); color: var(--cc-text-primary); font-family: var(--cc-font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  body { background-image: radial-gradient(circle at 20% 0%, rgba(124,58,237,0.08) 0%, transparent 45%), radial-gradient(circle at 80% 30%, rgba(16,185,129,0.05) 0%, transparent 40%); min-height: 100vh; }
+
+  .container { max-width: 1240px; margin: 0 auto; padding: 64px 32px; }
+
+  /* === Header === */
+  header.hero { padding: 48px 0 80px; border-bottom: 1px solid var(--cc-border-subtle); margin-bottom: 64px; }
+  header.hero .kicker { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--cc-role-admin-bg); border: 1px solid var(--cc-role-admin-border); border-radius: 9999px; font-size: 12px; font-weight: 500; color: var(--cc-brand-300); letter-spacing: 0.02em; margin-bottom: 20px; }
+  header.hero .kicker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cc-brand-400); box-shadow: 0 0 12px var(--cc-brand-400); }
+  header.hero h1 { font-family: var(--cc-font-display); font-weight: 600; font-size: clamp(40px, 6vw, 64px); letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 20px; }
+  header.hero h1 .accent { color: var(--cc-brand-400); font-style: italic; }
+  header.hero .lead { font-size: 18px; color: var(--cc-text-secondary); max-width: 640px; line-height: 1.6; }
+  header.hero .meta { display: flex; gap: 24px; margin-top: 28px; font-size: 13px; color: var(--cc-text-tertiary); }
+  header.hero .meta strong { color: var(--cc-text-secondary); font-weight: 500; }
+
+  /* === Sections === */
+  section { margin-bottom: 96px; }
+  .section-label { font-family: var(--cc-font-mono); font-size: 12px; font-weight: 500; color: var(--cc-brand-400); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; }
+  .section-title { font-family: var(--cc-font-display); font-size: 36px; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 16px; }
+  .section-lead { font-size: 16px; color: var(--cc-text-secondary); max-width: 640px; line-height: 1.6; margin-bottom: 48px; }
+
+  .subsection { margin-bottom: 56px; }
+  .subsection-title { font-size: 18px; font-weight: 500; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  .subsection-title::before { content: ''; width: 3px; height: 18px; background: var(--cc-brand-500); border-radius: 2px; }
+
+  /* === Color swatches === */
+  .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .swatch { border-radius: var(--cc-radius-lg); overflow: hidden; border: 1px solid var(--cc-border-subtle); background: var(--cc-bg-surface); transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+  .swatch:hover { transform: translateY(-2px); border-color: var(--cc-border-strong); }
+  .swatch-color { height: 72px; }
+  .swatch-meta { padding: 10px 12px; }
+  .swatch-name { font-size: 12px; font-weight: 500; color: var(--cc-text-primary); }
+  .swatch-hex { font-family: var(--cc-font-mono); font-size: 11px; color: var(--cc-text-tertiary); margin-top: 2px; }
+
+  .role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .role-grid { grid-template-columns: 1fr; } }
+  .role-card { padding: 24px; border-radius: var(--cc-radius-xl); border: 1px solid; }
+  .role-card.admin { background: var(--cc-role-admin-bg); border-color: var(--cc-role-admin-border); }
+  .role-card.conserje { background: var(--cc-role-conserje-bg); border-color: var(--cc-role-conserje-border); }
+  .role-card.residente { background: var(--cc-role-residente-bg); border-color: var(--cc-role-residente-border); }
+  .role-card h4 { font-family: var(--cc-font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .role-card.admin h4 { color: var(--cc-role-admin-fg); }
+  .role-card.conserje h4 { color: var(--cc-role-conserje-fg); }
+  .role-card.residente h4 { color: var(--cc-role-residente-fg); }
+  .role-card p { font-size: 13px; color: var(--cc-text-secondary); line-height: 1.55; }
+  .role-card .role-swatches { display: flex; gap: 6px; margin-top: 16px; }
+  .role-card .role-swatches span { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--cc-border-subtle); }
+
+  /* === Typography spec === */
+  .type-specimen { display: grid; grid-template-columns: 140px 1fr 180px; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--cc-border-subtle); align-items: baseline; }
+  .type-specimen:last-child { border-bottom: none; }
+  .type-label { font-family: var(--cc-font-mono); font-size: 11px; color: var(--cc-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+  .type-sample { color: var(--cc-text-primary); }
+  .type-sample.display-lg { font-family: var(--cc-font-display); font-size: 48px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+  .type-sample.display-md { font-family: var(--cc-font-display); font-size: 36px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
+  .type-sample.heading-xl { font-size: 24px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.3; }
+  .type-sample.heading-lg { font-size: 20px; font-weight: 600; line-height: 1.35; }
+  .type-sample.heading-md { font-size: 18px; font-weight: 500; line-height: 1.4; }
+  .type-sample.body-lg  { font-size: 16px; font-weight: 400; line-height: 1.6; }
+  .type-sample.body-md  { font-size: 14px; font-weight: 400; line-height: 1.6; }
+  .type-sample.body-sm  { font-size: 13px; font-weight: 400; line-height: 1.55; color: var(--cc-text-secondary); }
+  .type-sample.caption  { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cc-text-secondary); }
+  .type-sample.mono     { font-family: var(--cc-font-mono); font-size: 13px; color: var(--cc-text-secondary); }
+  .type-token { font-family: var(--cc-font-mono); font-size: 11px; color: var(--cc-text-tertiary); text-align: right; }
+
+  /* === Buttons === */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: var(--cc-radius-md); font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; cursor: pointer; border: 1px solid transparent; transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1); text-decoration: none; }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(124,58,237,0.35); }
+  .btn-primary { background: var(--cc-brand-500); color: #fff; box-shadow: var(--cc-shadow-sm), inset 0 1px 0 rgba(255,255,255,0.12); }
+  .btn-primary:hover { background: var(--cc-brand-400); box-shadow: var(--cc-glow-brand), inset 0 1px 0 rgba(255,255,255,0.12); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); background: var(--cc-brand-600); }
+  .btn-secondary { background: var(--cc-bg-elevated); color: var(--cc-text-primary); border-color: var(--cc-border-default); }
+  .btn-secondary:hover { background: var(--cc-bg-overlay); border-color: var(--cc-border-strong); }
+  .btn-ghost { background: transparent; color: var(--cc-text-secondary); }
+  .btn-ghost:hover { background: var(--cc-bg-elevated); color: var(--cc-text-primary); }
+  .btn-danger { background: var(--cc-danger-bg); color: var(--cc-danger-fg); border-color: var(--cc-danger-border); }
+  .btn-danger:hover { background: rgba(239,68,68,0.20); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-lg { padding: 12px 20px; font-size: 15px; }
+  .btn-group { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  /* === Badges === */
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 500; border: 1px solid transparent; letter-spacing: 0.02em; }
+  .badge .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .badge-admin { background: var(--cc-role-admin-bg); color: var(--cc-role-admin-fg); border-color: var(--cc-role-admin-border); }
+  .badge-admin .dot { background: var(--cc-role-admin-fg); }
+  .badge-conserje { background: var(--cc-role-conserje-bg); color: var(--cc-role-conserje-fg); border-color: var(--cc-role-conserje-border); }
+  .badge-conserje .dot { background: var(--cc-role-conserje-fg); }
+  .badge-residente { background: var(--cc-role-residente-bg); color: var(--cc-role-residente-fg); border-color: var(--cc-role-residente-border); }
+  .badge-residente .dot { background: var(--cc-role-residente-fg); }
+  .badge-success { background: var(--cc-success-bg); color: var(--cc-success-fg); border-color: var(--cc-success-border); }
+  .badge-warning { background: var(--cc-warning-bg); color: var(--cc-warning-fg); border-color: var(--cc-warning-border); }
+  .badge-danger { background: var(--cc-danger-bg); color: var(--cc-danger-fg); border-color: var(--cc-danger-border); }
+  .badge-info { background: var(--cc-info-bg); color: var(--cc-info-fg); border-color: var(--cc-info-border); }
+  .badge-group { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* === Stat cards === */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .stat-card { background: var(--cc-bg-surface); border: 1px solid var(--cc-border-subtle); border-radius: var(--cc-radius-lg); padding: 20px; cursor: pointer; transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1); position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%); pointer-events: none; }
+  .stat-card:hover { border-color: var(--cc-border-default); transform: translateY(-2px); box-shadow: var(--cc-shadow-md); }
+  .stat-card .icon-wrap { width: 40px; height: 40px; border-radius: var(--cc-radius-md); display: grid; place-items: center; margin-bottom: 16px; }
+  .stat-card.brand .icon-wrap { background: var(--cc-role-admin-bg); color: var(--cc-role-admin-fg); }
+  .stat-card.warning .icon-wrap { background: var(--cc-role-conserje-bg); color: var(--cc-role-conserje-fg); }
+  .stat-card.success .icon-wrap { background: var(--cc-role-residente-bg); color: var(--cc-role-residente-fg); }
+  .stat-card.danger .icon-wrap { background: var(--cc-danger-bg); color: var(--cc-danger-fg); }
+  .stat-card .value { font-family: var(--cc-font-display); font-size: 32px; font-weight: 600; letter-spacing: -0.025em; line-height: 1; margin-bottom: 6px; }
+  .stat-card .label { font-size: 13px; color: var(--cc-text-secondary); }
+  .stat-card .trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; margin-top: 12px; padding: 3px 8px; border-radius: 6px; }
+  .stat-card .trend.up { background: var(--cc-success-bg); color: var(--cc-success-fg); }
+  .stat-card .trend.down { background: var(--cc-danger-bg); color: var(--cc-danger-fg); }
+  .stat-card .arrow { position: absolute; top: 20px; right: 20px; color: var(--cc-text-tertiary); transition: transform 200ms; }
+  .stat-card:hover .arrow { transform: translateX(3px); color: var(--cc-text-secondary); }
+
+  /* === Action cards === */
+  .action-grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 420px; }
+  .action-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--cc-bg-surface); border: 1px solid var(--cc-border-subtle); border-radius: var(--cc-radius-lg); cursor: pointer; transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1); text-align: left; font: inherit; color: inherit; width: 100%; }
+  .action-card:hover { border-color: var(--cc-border-default); background: var(--cc-bg-elevated); transform: translateX(4px); }
+  .action-card .icon-wrap { width: 36px; height: 36px; border-radius: var(--cc-radius-md); display: grid; place-items: center; flex-shrink: 0; }
+  .action-card.warning .icon-wrap { background: var(--cc-role-conserje-bg); color: var(--cc-role-conserje-fg); }
+  .action-card.success .icon-wrap { background: var(--cc-success-bg); color: var(--cc-success-fg); }
+  .action-card.danger .icon-wrap { background: var(--cc-danger-bg); color: var(--cc-danger-fg); }
+  .action-card .action-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .action-card .action-sub { font-size: 12px; color: var(--cc-text-tertiary); }
+  .action-card .chevron { margin-left: auto; color: var(--cc-text-tertiary); transition: transform 200ms; }
+  .action-card:hover .chevron { transform: translateX(2px); color: var(--cc-text-secondary); }
+
+  /* === Empty state === */
+  .empty-state { padding: 48px 32px; text-align: center; background: var(--cc-bg-surface); border: 1px dashed var(--cc-border-default); border-radius: var(--cc-radius-xl); }
+  .empty-state .empty-icon { width: 56px; height: 56px; border-radius: var(--cc-radius-xl); background: var(--cc-role-admin-bg); color: var(--cc-role-admin-fg); display: grid; place-items: center; margin: 0 auto 20px; }
+  .empty-state h4 { font-family: var(--cc-font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; color: var(--cc-text-secondary); max-width: 380px; margin: 0 auto 24px; line-height: 1.6; }
+
+  /* === Page header === */
+  .page-header-demo { padding: 28px; background: var(--cc-bg-surface); border: 1px solid var(--cc-border-subtle); border-radius: var(--cc-radius-xl); }
+  .ph-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .ph-left .greeting { font-family: var(--cc-font-display); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 6px; }
+  .ph-left .greeting .name { color: var(--cc-brand-400); }
+  .ph-left .sub { font-size: 14px; color: var(--cc-text-secondary); }
+  .ph-right { display: flex; align-items: center; gap: 12px; }
+  .ph-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--cc-bg-elevated); border: 1px solid var(--cc-border-subtle); border-radius: 9999px; font-size: 13px; color: var(--cc-text-secondary); }
+
+  /* === Token chips === */
+  .tokens-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .token-chip { padding: 14px 16px; background: var(--cc-bg-surface); border: 1px solid var(--cc-border-subtle); border-radius: var(--cc-radius-md); display: flex; align-items: center; gap: 12px; font-family: var(--cc-font-mono); font-size: 12px; }
+  .token-chip .visual { flex-shrink: 0; }
+  .token-chip .info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .token-chip .name { color: var(--cc-text-primary); font-weight: 500; }
+  .token-chip .val { color: var(--cc-text-tertiary); font-size: 11px; }
+
+  /* === Footer === */
+  footer { padding: 48px 0; border-top: 1px solid var(--cc-border-subtle); color: var(--cc-text-tertiary); font-size: 13px; text-align: center; }
+  footer strong { color: var(--cc-text-secondary); font-weight: 500; }
+
+  /* Inline SVG icons consistently sized */
+  .i { width: 18px; height: 18px; stroke-width: 2; }
+  .i-sm { width: 16px; height: 16px; stroke-width: 2; }
+  .i-lg { width: 22px; height: 22px; stroke-width: 2; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ========== HERO ========== -->
+  <header class="hero">
+    <div class="kicker"><span class="dot"></span>DESIGN SYSTEM v1.0 · ABRIL 2026</div>
+    <h1>ComunidadConnect.<br><span class="accent">Un lenguaje visual</span> para tres roles.</h1>
+    <p class="lead">Sistema de diseño unificado para administradores, conserjes y residentes. Tokens, componentes y patrones construidos sobre el dark theme existente — refinado, consistente y listo para escalar.</p>
+    <div class="meta">
+      <span><strong>Base:</strong> Dark theme violeta</span>
+      <span><strong>Fuentes:</strong> Bricolage Grotesque + Geist</span>
+      <span><strong>Stack:</strong> Next.js + Tailwind</span>
+    </div>
+  </header>
+
+  <!-- ========== COLOR ========== -->
+  <section>
+    <div class="section-label">01 · Foundations</div>
+    <h2 class="section-title">Color.</h2>
+    <p class="section-lead">Base oscura con violeta como identidad. Los roles se distinguen con acentos específicos. Los semánticos (success, warning, danger, info) son universales.</p>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Paleta de marca — Violeta</h3>
+      <div class="palette" id="brand-palette"></div>
+    </div>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Roles</h3>
+      <div class="role-grid">
+        <div class="role-card admin">
+          <h4>Administración</h4>
+          <p>Violeta — autoridad, gestión, visión completa. Usa la paleta de marca.</p>
+          <div class="role-swatches"><span style="background:#7C3AED"></span><span style="background:#A58FFC"></span><span style="background:rgba(124,58,237,0.12)"></span></div>
+        </div>
+        <div class="role-card conserje">
+          <h4>Conserjería</h4>
+          <p>Ámbar — operación, atención, alerta. Refleja vigilancia y servicio.</p>
+          <div class="role-swatches"><span style="background:#F59E0B"></span><span style="background:#FBBF5C"></span><span style="background:rgba(245,158,11,0.12)"></span></div>
+        </div>
+        <div class="role-card residente">
+          <h4>Residente</h4>
+          <p>Esmeralda — comunidad, cercanía, hogar. Transmite confort.</p>
+          <div class="role-swatches"><span style="background:#10B981"></span><span style="background:#34D399"></span><span style="background:rgba(16,185,129,0.12)"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Superficies — Backgrounds y bordes</h3>
+      <div class="tokens-grid">
+        <div class="token-chip"><div class="visual" style="width:36px;height:36px;border-radius:6px;background:#0A0A12;border:1px solid var(--cc-border-subtle)"></div><div class="info"><span class="name">bg-canvas</span><span class="val">#0A0A12</span></div></div>
+        <div class="token-chip"><div class="visual" style="width:36px;height:36px;border-radius:6px;background:#12121D;border:1px solid var(--cc-border-subtle)"></div><div class="info"><span class="name">bg-surface</span><span class="val">#12121D</span></div></div>
+        <div class="token-chip"><div class="visual" style="width:36px;height:36px;border-radius:6px;background:#1A1A28;border:1px solid var(--cc-border-subtle)"></div><div class="info"><span class="name">bg-elevated</span><span class="val">#1A1A28</span></div></div>
+        <div class="token-chip"><div class="visual" style="width:36px;height:36px;border-radius:6px;background:#252538;border:1px solid var(--cc-border-subtle)"></div><div class="info"><span class="name">bg-overlay</span><span class="val">#252538</span></div></div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Semántica — Feedback universal</h3>
+      <div class="badge-group">
+        <span class="badge badge-success"><span class="dot"></span>Pagado</span>
+        <span class="badge badge-warning"><span class="dot"></span>Pendiente</span>
+        <span class="badge badge-danger"><span class="dot"></span>Vencido</span>
+        <span class="badge badge-info"><span class="dot"></span>Información</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TYPOGRAPHY ========== -->
+  <section>
+    <div class="section-label">02 · Foundations</div>
+    <h2 class="section-title">Tipografía.</h2>
+    <p class="section-lead"><strong style="color:var(--cc-text-primary);font-weight:500">Bricolage Grotesque</strong> para display — carácter, personalidad, ligeramente humanista. <strong style="color:var(--cc-text-primary);font-weight:500">Geist</strong> para body — limpia, legible, técnica. Mono para datos.</p>
+
+    <div>
+      <div class="type-specimen">
+        <span class="type-label">Display L</span>
+        <span class="type-sample display-lg">Tu edificio, más humano.</span>
+        <span class="type-token">48 / 600 / -0.03em</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Display M</span>
+        <span class="type-sample display-md">Buenas noches, Pedro</span>
+        <span class="type-token">36 / 600 / -0.025em</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Heading XL</span>
+        <span class="type-sample heading-xl">Gastos mensuales</span>
+        <span class="type-token">24 / 600 / -0.015em</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Heading L</span>
+        <span class="type-sample heading-lg">Actividad reciente</span>
+        <span class="type-token">20 / 600 / 0</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Heading M</span>
+        <span class="type-sample heading-md">Por Categoría</span>
+        <span class="type-token">18 / 500 / 0</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Body L</span>
+        <span class="type-sample body-lg">Gestiona tu comunidad desde un solo lugar con herramientas claras y eficientes.</span>
+        <span class="type-token">16 / 400 / 1.6</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Body M (default)</span>
+        <span class="type-sample body-md">Asamblea de propietarios programada para el sábado 19 de abril a las 19:00 horas.</span>
+        <span class="type-token">14 / 400 / 1.6</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Body S</span>
+        <span class="type-sample body-sm">Últimos 6 meses · Actualizado hace 2 minutos</span>
+        <span class="type-token">13 / 400 / 1.55</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Caption</span>
+        <span class="type-sample caption">FINANZAS PERSONALES</span>
+        <span class="type-token">12 / 500 / 0.08em</span>
+      </div>
+      <div class="type-specimen">
+        <span class="type-label">Mono</span>
+        <span class="type-sample mono">$45.200 CLP · 2026-04-17</span>
+        <span class="type-token">Geist Mono</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== BUTTONS ========== -->
+  <section>
+    <div class="section-label">03 · Components</div>
+    <h2 class="section-title">Botones.</h2>
+    <p class="section-lead">Cuatro variantes, tres tamaños. El primario carga la marca — usarlo una vez por pantalla. El resto es jerarquía funcional.</p>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Variantes</h3>
+      <div class="btn-group">
+        <button class="btn btn-primary">Crear comunidad<svg class="i-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button class="btn btn-secondary">Ver detalles</button>
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-danger">Eliminar</button>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Tamaños</h3>
+      <div class="btn-group">
+        <button class="btn btn-primary btn-sm">Pequeño</button>
+        <button class="btn btn-primary">Default</button>
+        <button class="btn btn-primary btn-lg">Grande</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== BADGES ========== -->
+  <section>
+    <div class="section-label">04 · Components</div>
+    <h2 class="section-title">Badges.</h2>
+    <p class="section-lead">Para roles, estados y metadatos. Siempre en pill shape, siempre con buena relación de contraste. El punto opcional indica estado "vivo".</p>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Badges de rol</h3>
+      <div class="badge-group">
+        <span class="badge badge-admin"><span class="dot"></span>Admin</span>
+        <span class="badge badge-conserje"><span class="dot"></span>Conserjería</span>
+        <span class="badge badge-residente"><span class="dot"></span>Residente</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3 class="subsection-title">Badges de estado</h3>
+      <div class="badge-group">
+        <span class="badge badge-success">Pagado</span>
+        <span class="badge badge-warning">Pendiente</span>
+        <span class="badge badge-danger">Vencido</span>
+        <span class="badge badge-info">Programado</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== STAT CARDS ========== -->
+  <section>
+    <div class="section-label">05 · Components</div>
+    <h2 class="section-title">Stat cards.</h2>
+    <p class="section-lead">Los KPIs del dashboard. Datos reales, no ceros. Incluyen trend indicator cuando hay comparación temporal — ese contexto convierte un número en información.</p>
+
+    <div class="stat-grid">
+      <div class="stat-card brand">
+        <div class="icon-wrap"><svg class="i-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="value">48</div>
+        <div class="label">Residentes activos</div>
+        <div class="trend up"><svg class="i-sm" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg>+3 este mes</div>
+        <svg class="i arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="stat-card warning">
+        <div class="icon-wrap"><svg class="i-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="value">12</div>
+        <div class="label">Solicitudes abiertas</div>
+        <div class="trend down"><svg class="i-sm" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg>-4 vs semana</div>
+        <svg class="i arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="stat-card success">
+        <div class="icon-wrap"><svg class="i-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div class="value">98%</div>
+        <div class="label">Recaudo del mes</div>
+        <div class="trend up"><svg class="i-sm" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg>+5% vs marzo</div>
+        <svg class="i arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="stat-card danger">
+        <div class="icon-wrap"><svg class="i-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="value">3</div>
+        <div class="label">Pagos vencidos</div>
+        <div class="trend down"><svg class="i-sm" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg>-2 esta semana</div>
+        <svg class="i arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ACTION CARDS ========== -->
+  <section>
+    <div class="section-label">06 · Components</div>
+    <h2 class="section-title">Action cards.</h2>
+    <p class="section-lead">Los atajos del panel "Acceso Rápido". Más informativos que los actuales — subtítulo con contexto, hover con desplazamiento, jerarquía por color semántico.</p>
+
+    <div class="action-grid">
+      <button class="action-card warning">
+        <div class="icon-wrap"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></div>
+        <div>
+          <div class="action-title">Registrar visita</div>
+          <div class="action-sub">Nuevo visitante o proveedor</div>
+        </div>
+        <svg class="i chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button class="action-card success">
+        <div class="icon-wrap"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div>
+          <div class="action-title">Recibir paquete</div>
+          <div class="action-sub">Registrar para entrega</div>
+        </div>
+        <svg class="i chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button class="action-card danger">
+        <div class="icon-wrap"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div>
+          <div class="action-title">Activar emergencia</div>
+          <div class="action-sub">Alerta al edificio completo</div>
+        </div>
+        <svg class="i chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ========== PAGE HEADER ========== -->
+  <section>
+    <div class="section-label">07 · Components</div>
+    <h2 class="section-title">Page header.</h2>
+    <p class="section-lead">El encabezado de dashboard — unifica los 3 roles. Usa nombre real (no "Admin"), muestra el edificio activo, y la fecha pasa a ser una pill sutil.</p>
+
+    <div class="page-header-demo">
+      <div class="ph-top">
+        <div class="ph-left">
+          <span class="badge badge-admin" style="margin-bottom:14px"><span class="dot"></span>ADMIN · Edificio Las Araucarias</span>
+          <h3 class="greeting">Buenas noches, <span class="name">Pedro</span></h3>
+          <p class="sub">Tu comunidad en una vista — 48 unidades, 12 solicitudes abiertas</p>
+        </div>
+        <div class="ph-right">
+          <div class="ph-pill"><svg class="i-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Viernes 17 abr · 21:42</div>
+          <button class="btn btn-primary btn-sm">Nueva circular</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== EMPTY STATE ========== -->
+  <section>
+    <div class="section-label">08 · Patterns</div>
+    <h2 class="section-title">Empty states.</h2>
+    <p class="section-lead">Crítico para tu situación actual. Cada pantalla sin datos debe tener un empty state con propósito — explica qué verá el usuario y qué puede hacer ahora.</p>
+
+    <div class="two-col">
+      <div class="empty-state">
+        <div class="empty-icon"><svg class="i-lg" style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <h4>Todo al día</h4>
+        <p>No tienes pagos pendientes. Tu próximo gasto común vence el 5 de mayo.</p>
+        <button class="btn btn-secondary btn-sm">Ver historial</button>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon"><svg class="i-lg" style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <h4>Aún no hay circulares</h4>
+        <p>Cuando la administración publique avisos, aparecerán aquí. Puedes crear el primero.</p>
+        <button class="btn btn-primary btn-sm">Crear circular</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== RADIUS & SHADOW ========== -->
+  <section>
+    <div class="section-label">09 · Tokens</div>
+    <h2 class="section-title">Radios y sombras.</h2>
+    <p class="section-lead">Sistema consistente de esquinas y elevaciones. En dark theme las sombras son menos visibles — usamos glows selectivos para jerarquía.</p>
+
+    <div class="tokens-grid">
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-elevated);border-radius:6px;border:1px solid var(--cc-border-default)"></div><div class="info"><span class="name">radius-sm</span><span class="val">6px · tags, pills</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-elevated);border-radius:8px;border:1px solid var(--cc-border-default)"></div><div class="info"><span class="name">radius-md</span><span class="val">8px · botones, inputs</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-elevated);border-radius:12px;border:1px solid var(--cc-border-default)"></div><div class="info"><span class="name">radius-lg</span><span class="val">12px · cards default</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-elevated);border-radius:16px;border:1px solid var(--cc-border-default)"></div><div class="info"><span class="name">radius-xl</span><span class="val">16px · cards elevadas</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-surface);border-radius:10px;box-shadow:var(--cc-shadow-sm)"></div><div class="info"><span class="name">shadow-sm</span><span class="val">Leve elevación</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-surface);border-radius:10px;box-shadow:var(--cc-shadow-md)"></div><div class="info"><span class="name">shadow-md</span><span class="val">Hover en cards</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-bg-surface);border-radius:10px;box-shadow:var(--cc-shadow-lg)"></div><div class="info"><span class="name">shadow-lg</span><span class="val">Modales, popovers</span></div></div>
+      <div class="token-chip"><div class="visual" style="width:44px;height:44px;background:var(--cc-brand-500);border-radius:10px;box-shadow:var(--cc-glow-brand)"></div><div class="info"><span class="name">glow-brand</span><span class="val">CTAs, focus</span></div></div>
+    </div>
+  </section>
+
+  <!-- ========== FOOTER ========== -->
+  <footer>
+    <p><strong>ComunidadConnect Design System v1.0</strong> · Abril 2026</p>
+    <p style="margin-top:6px">Tokens base: <span style="font-family:var(--cc-font-mono);color:var(--cc-text-secondary)">tokens.css</span> · Tailwind: <span style="font-family:var(--cc-font-mono);color:var(--cc-text-secondary)">tailwind.config.ts</span></p>
+  </footer>
+
+</div>
+
+<script>
+  // Generate the brand palette swatches dynamically
+  const brandStops = [
+    ['50',  '#F3F1FF'], ['100', '#E4DEFF'], ['200', '#CABFFE'], ['300', '#A58FFC'],
+    ['400', '#8966F7'], ['500', '#7C3AED'], ['600', '#6D28D9'], ['700', '#5B21B6'],
+    ['800', '#4C1D95'], ['900', '#2E1065']
+  ];
+  const container = document.getElementById('brand-palette');
+  if (container) {
+    brandStops.forEach(([stop, hex]) => {
+      const el = document.createElement('div');
+      el.className = 'swatch';
+      el.innerHTML = `
+        <div class="swatch-color" style="background:${hex}"></div>
+        <div class="swatch-meta">
+          <div class="swatch-name">brand-${stop}${stop === '500' ? ' · default' : ''}</div>
+          <div class="swatch-hex">${hex}</div>
+        </div>
+      `;
+      el.addEventListener('click', () => navigator.clipboard?.writeText(hex));
+      container.appendChild(el);
+    });
+  }
+</script>
+</body>
+</html>
