@@ -328,8 +328,9 @@ export default function HomePage() {
                     {stats.map((stat, idx) => {
                         const Icon = stat.icon;
                         return (
-                            <motion.div key={idx} variants={item}>
+                            <motion.div key={idx} variants={item} className="h-full">
                                 <StatCard
+                                    className="h-full"
                                     href={stat.link}
                                     icon={<Icon className="h-5 w-5" style={{ color: 'inherit' }} />}
                                     label={stat.label}
