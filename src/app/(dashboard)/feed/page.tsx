@@ -179,7 +179,7 @@ export default function FeedPage() {
                             </DialogHeader>
                             <form onSubmit={handlePostSubmit} className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Título</label>
+                                    <label className="text-sm font-medium cc-text-secondary">Título</label>
                                     <Input
                                         required
                                         value={newPost.title}
@@ -189,7 +189,7 @@ export default function FeedPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Prioridad</label>
+                                    <label className="text-sm font-medium cc-text-secondary">Prioridad</label>
                                     <div className="grid grid-cols-3 gap-3">
                                         {['info', 'alert', 'event'].map((p) => {
                                             const styles = getPriorityStyles(p);
@@ -214,7 +214,7 @@ export default function FeedPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Contenido</label>
+                                    <label className="text-sm font-medium cc-text-secondary">Contenido</label>
                                     <textarea
                                         className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface px-4 py-3 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                                         required

@@ -166,15 +166,15 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-[85vh] w-full bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl shadow-indigo-500/10 overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-[85vh] w-full bg-canvas rounded-[2.5rem] border border-subtle shadow-2xl shadow-indigo-500/10 overflow-hidden">
             
             {/* LEFT PANEL: BLACKBOARD / PRESENTATION CANVAS */}
-            <div className="w-full lg:w-[65%] h-[40vh] lg:h-full bg-white dark:bg-slate-950 flex flex-col relative overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
+            <div className="w-full lg:w-[65%] h-[40vh] lg:h-full bg-surface flex flex-col relative overflow-hidden border-b lg:border-b-0 lg:border-r border-subtle">
                 {parsedSlides ? (
                     // ✨ NEW PRESENTATION PLAYER ✨
                     <div className="flex flex-col h-full bg-slate-100 dark:bg-black p-4 lg:p-10 relative group">
                         <div className="flex items-center justify-between mb-4 z-20">
-                            <span className="bg-white/50 dark:bg-slate-800/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span className="bg-white/50 dark:bg-slate-800/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold cc-text-secondary">
                                 Presentación Interactiva
                             </span>
                             <span className="bg-black/80 px-3 py-1 text-white text-xs font-bold rounded-full">
@@ -242,13 +242,13 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     </div>
                 ) : (
                     // LEGACY BLACKBOARD PLAYER
-                    <div className="p-6 lg:p-12 flex flex-col h-full bg-white dark:bg-slate-950">
+                    <div className="p-6 lg:p-12 flex flex-col h-full bg-surface">
                         <div className="flex items-center gap-3 mb-8 relative z-10">
-                            <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400">
+                            <div className="p-3 bg-role-admin-bg rounded-2xl text-role-admin-fg">
                                 <Monitor className="w-6 h-6" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 dark:text-white">Pizarra Interactiva</h2>
+                                <h2 className="text-xl font-black cc-text-primary">Pizarra Interactiva</h2>
                                 <p className="text-sm font-medium text-slate-500">Contenido guiado por la Tutora</p>
                             </div>
                         </div>
@@ -274,22 +274,22 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
             </div>
             
             {/* RIGHT PANEL: CHAT / MULTI-AGENT FEED */}
-            <div className="w-full lg:w-[35%] h-[45vh] lg:h-full flex flex-col bg-slate-50 dark:bg-slate-900 border-l border-white/50 dark:border-slate-800">
-                <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md flex items-center justify-between z-10">
+            <div className="w-full lg:w-[35%] h-[45vh] lg:h-full flex flex-col bg-canvas border-l border-white/50 dark:border-slate-800">
+                <div className="p-5 border-b border-subtle bg-white/90 dark:bg-slate-950/90 backdrop-blur-md flex items-center justify-between z-10">
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 shadow flex items-center justify-center text-emerald-600 z-20">
+                            <div className="w-8 h-8 rounded-full bg-success-bg shadow flex items-center justify-center text-emerald-600 z-20">
                                 <GraduationCap className="w-4 h-4" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 shadow flex items-center justify-center text-amber-600 z-10">
+                            <div className="w-8 h-8 rounded-full bg-warning-bg shadow flex items-center justify-center text-amber-600 z-10">
                                 <Users className="w-4 h-4" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 shadow flex items-center justify-center text-indigo-600 z-0">
+                            <div className="w-8 h-8 rounded-full bg-role-admin-bg shadow flex items-center justify-center text-indigo-600 z-0">
                                 <User className="w-4 h-4" />
                             </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Aula Guiada CoCo</h3>
+                            <h3 className="font-bold cc-text-primary text-sm">Aula Guiada CoCo</h3>
                             <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">Tutora Activa en vivo</p>
                         </div>
                     </div>
@@ -305,16 +305,16 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 className={`flex flex-col ${msg.role === 'user' ? 'items-end' : msg.role === 'system' ? 'items-center' : 'items-start'}`}
                             >
                                 {msg.role !== 'system' && (
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === 'user' ? 'text-indigo-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === 'user' ? 'text-indigo-500' : 'text-success-fg'}`}>
                                         {msg.role === 'tutor' ? 'Profesora CoCo' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
                                     </span>
                                 )}
                                 <div className={`
                                     max-w-[85%] rounded-2xl p-4
                                     ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-500/20' : ''}
-                                    ${msg.role === 'tutor' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700/50 rounded-bl-none shadow' : ''}
-                                    ${msg.role === 'classmate' ? 'bg-amber-50 dark:bg-amber-500/10 text-slate-800 dark:text-slate-200 border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6' : ''}
-                                    ${msg.role === 'system' ? 'bg-transparent text-slate-400 text-xs text-center border-b border-slate-200 dark:border-slate-800' : ''}
+                                    ${msg.role === 'tutor' ? 'bg-surface text-slate-800 dark:text-slate-200 border border-subtle/50 rounded-bl-none shadow' : ''}
+                                    ${msg.role === 'classmate' ? 'bg-warning-bg text-slate-800 dark:text-slate-200 border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6' : ''}
+                                    ${msg.role === 'system' ? 'bg-transparent text-slate-400 text-xs text-center border-b border-subtle' : ''}
                                 `}>
                                     <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                 </div>
@@ -324,7 +324,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     
                     {isTyping && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start">
-                            <div className="bg-white dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700 rounded-2xl rounded-bl-none p-4 shadow-sm flex items-center gap-1">
+                            <div className="bg-surface text-slate-400 border border-subtle rounded-2xl rounded-bl-none p-4 shadow-sm flex items-center gap-1">
                                 <Lightbulb className="w-4 h-4 mr-1 animate-pulse text-emerald-500" />
                                 <span className="animate-bounce">.</span><span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span><span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
                             </div>
@@ -334,15 +334,15 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 </div>
 
                 {/* INPUT AREA */}
-                <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-4 bg-surface border-t border-subtle">
                     <form 
                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                        className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1.5 border border-slate-200 dark:border-slate-800 focus-within:ring-2 focus-within:ring-indigo-500/30 transition-shadow"
+                        className="flex items-center gap-3 bg-canvas rounded-full p-1.5 border border-subtle focus-within:ring-2 focus-within:ring-indigo-500/30 transition-shadow"
                     >
                         <input
                             type="text" value={input} onChange={(e) => setInput(e.target.value)}
                             placeholder="Pregunta o comenta sobre esta diapositiva..."
-                            className="flex-1 bg-transparent px-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                            className="flex-1 bg-transparent px-4 text-sm cc-text-primary placeholder:text-slate-400 focus:outline-none"
                             disabled={isTyping}
                         />
                         <button

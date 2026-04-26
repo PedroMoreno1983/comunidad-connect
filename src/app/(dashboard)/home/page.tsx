@@ -284,18 +284,18 @@ export default function HomePage() {
                                 <Building2 className="h-5 w-5 text-white" />
                             </div>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20 rounded-full">
-                                <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                <Sparkles className="h-3.5 w-3.5 text-warning-fg" />
+                                <span className="text-xs font-semibold text-warning-fg">
                                     {user.role === 'admin' ? 'Panel Admin' : user.role === 'concierge' ? 'Conserjería' : 'Mi Edificio'}
                                 </span>
                             </div>
                         </div>
-                        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">
+                        <h1 className="text-2xl lg:text-3xl font-bold cc-text-primary">
                             {getGreeting()}, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 {user.name.split(' ')[0]}
                             </span>
                         </h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="cc-text-secondary mt-1">
                             {user.role === 'admin'
                                 ? 'Gestiona tu comunidad desde un solo lugar'
                                 : user.role === 'concierge'
@@ -305,9 +305,9 @@ export default function HomePage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                        <div className="px-4 py-2 bg-surface rounded-xl shadow-sm border border-subtle flex items-center gap-2">
                             <Clock className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                            <span className="text-sm font-medium cc-text-secondary">
                                 {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </span>
                         </div>
@@ -353,18 +353,18 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124,58,237,0.12)', color: '#A58FFC' }}>
-                                    <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                    <BarChart3 className="h-5 w-5 text-role-admin-fg" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Gastos Mensuales</h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Últimos 6 meses</p>
+                                    <h2 className="text-lg font-bold cc-text-primary">Gastos Mensuales</h2>
+                                    <p className="text-xs cc-text-secondary">Últimos 6 meses</p>
                                 </div>
                             </div>
-                            <Link href="/expenses" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                            <Link href="/expenses" className="text-sm font-medium text-role-admin-fg hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
                                 Ver más <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
@@ -374,12 +374,12 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
                                 <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Por Categoría</h2>
+                            <h2 className="text-lg font-bold cc-text-primary">Por Categoría</h2>
                         </div>
                         <ErrorBoundary name="Distribución por categoría">
                             <ExpensePieChart data={expenseCategoryData} />
@@ -389,9 +389,9 @@ export default function HomePage() {
                                 <div key={item.name} className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">{item.name}</span>
+                                        <span className="text-sm cc-text-secondary">{item.name}</span>
                                     </div>
-                                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                    <span className="text-sm font-medium cc-text-primary">
                                         ${item.value.toLocaleString('es-CL')}
                                     </span>
                                 </div>
@@ -408,18 +408,18 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
-                                    <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                    <Calendar className="h-5 w-5 text-success-fg" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Uso de Amenidades</h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Reservas este mes</p>
+                                    <h2 className="text-lg font-bold cc-text-primary">Uso de Amenidades</h2>
+                                    <p className="text-xs cc-text-secondary">Reservas este mes</p>
                                 </div>
                             </div>
-                            <Link href="/amenities" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1">
+                            <Link href="/amenities" className="text-sm font-medium text-success-fg hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1">
                                 Gestionar <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
@@ -440,8 +440,8 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden">
-                            <div className="p-5 lg:p-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+                        <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md overflow-hidden">
+                            <div className="p-5 lg:p-6 flex items-center justify-between border-b border-subtle">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' }}>
                                         <Bell className="h-5 w-5" />
@@ -478,7 +478,7 @@ export default function HomePage() {
                                         >
                                             <div className="flex items-start gap-4">
                                                 <div className={`p-2 rounded-xl flex-shrink-0 ${ann.priority === 'alert'
-                                                    ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+                                                    ? 'bg-danger-bg text-danger-fg'
                                                     : ann.priority === 'event'
                                                         ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
                                                         : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
@@ -486,9 +486,9 @@ export default function HomePage() {
                                                     <Bell className="h-4 w-4" />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{ann.title}</h3>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{ann.content}</p>
-                                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{ann.author} • {new Date(ann.createdAt).toLocaleDateString('es-CL')}</p>
+                                                    <h3 className="font-semibold cc-text-primary truncate">{ann.title}</h3>
+                                                    <p className="text-sm cc-text-secondary line-clamp-1 mt-0.5">{ann.content}</p>
+                                                    <p className="text-xs cc-text-tertiary mt-2">{ann.author} • {new Date(ann.createdAt).toLocaleDateString('es-CL')}</p>
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -506,7 +506,7 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="bg-white dark:bg-[#12121D] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md p-6 lg:p-8">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' }}>
                                 <TrendingUp className="h-5 w-5" />

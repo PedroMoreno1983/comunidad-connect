@@ -162,12 +162,12 @@ export default function FinancesPage() {
                                 <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
-                                    className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mb-6"
+                                    className="w-20 h-20 bg-success-bg rounded-full flex items-center justify-center mb-6"
                                 >
-                                    <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+                                    <CheckCircle2 className="w-10 h-10 text-success-fg" />
                                 </motion.div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">¡Todo al día!</h3>
-                                <p className="text-slate-500 dark:text-slate-400 max-w-[280px] font-medium leading-relaxed">
+                                <h3 className="text-2xl font-black cc-text-primary mb-2">¡Todo al día!</h3>
+                                <p className="cc-text-secondary max-w-[280px] font-medium leading-relaxed">
                                     No tienes pagos pendientes en este momento. Sigue disfrutando de tu comunidad.
                                 </p>
                             </div>

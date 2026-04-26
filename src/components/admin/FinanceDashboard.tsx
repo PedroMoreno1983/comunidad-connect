@@ -105,8 +105,8 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     <div className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-md">
                         <span className="text-sm font-bold text-white">Marzo 2026</span>
                     </div>
-                    <button className="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95">
-                        <Calendar className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                    <button className="p-3 hover:bg-elevated rounded-xl transition-all hover:scale-105 active:scale-95">
+                        <Calendar className="h-5 w-5 cc-text-secondary" />
                     </button>
                 </div>
             </motion.div>
@@ -136,9 +136,9 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                     {stat.change}
                                 </div>
                             </div>
-                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">{stat.label}</p>
-                            <h3 className="text-3xl font-black text-slate-800 dark:text-white mb-3 tracking-tight">{stat.value}</h3>
-                            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                            <p className="text-sm font-bold cc-text-secondary uppercase tracking-widest mb-2">{stat.label}</p>
+                            <h3 className="text-3xl font-black cc-text-primary mb-3 tracking-tight">{stat.value}</h3>
+                            <p className="text-xs font-semibold cc-text-tertiary">
                                 {stat.description}
                             </p>
                         </div>
@@ -163,11 +163,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                     <BarChart3 className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white">Evolución de Egresos</h3>
+                                    <h3 className="text-2xl font-black cc-text-primary">Evolución de Egresos</h3>
                                     <p className="text-sm font-bold text-slate-500">Histórico de 6 meses operativos</p>
                                 </div>
                             </div>
-                            <button className="hidden sm:flex text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/20 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-colors">
+                            <button className="hidden sm:flex text-sm font-bold text-role-admin-fg bg-indigo-50 dark:bg-indigo-500/20 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-colors">
                                 Descargar PDF
                             </button>
                         </div>
@@ -189,19 +189,19 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                             <div className="p-3 bg-purple-100 dark:bg-purple-500/20 rounded-2xl">
                                 <PieChart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white">Distribución</h3>
+                            <h3 className="text-xl font-black cc-text-primary">Distribución</h3>
                         </div>
                         <div className="flex-1 w-full flex items-center justify-center min-h-[200px]">
                             <ExpensePieChart data={expenseCategoryData} />
                         </div>
                         <div className="mt-6 space-y-3">
                             {expenseCategoryData.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-white/50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-700/50 transition-all cursor-crosshair hover:scale-[1.02]">
+                                <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-white/50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-subtle/50 transition-all cursor-crosshair hover:scale-[1.02]">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full shadow-md" style={{ backgroundColor: item.color }} />
-                                        <span className="font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                        <span className="font-bold cc-text-secondary">{item.name}</span>
                                     </div>
-                                    <span className="font-black text-slate-900 dark:text-white">
+                                    <span className="font-black cc-text-primary">
                                         ${(item.value / 1000000).toFixed(1)}M
                                     </span>
                                 </div>
@@ -220,12 +220,12 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     transition={{ delay: 0.4 }}
                     className="lg:col-span-2 bg-white/70 dark:bg-slate-800/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/80 dark:border-slate-700/50 overflow-hidden shadow-xl"
                 >
-                    <div className="p-8 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-white/40 dark:bg-slate-800/40">
+                    <div className="p-8 border-b border-subtle/50 flex justify-between items-center bg-white/40 dark:bg-slate-800/40">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-2xl">
                                 <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white">Movimientos Recientes</h3>
+                            <h3 className="text-xl font-black cc-text-primary">Movimientos Recientes</h3>
                         </div>
                         <button className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">Ver todo</button>
                     </div>
@@ -234,7 +234,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                             <div key={activity.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors">
                                 <div className="flex items-center gap-5">
                                     <div className={`h-14 w-14 rounded-2xl shadow-sm flex items-center justify-center ${activity.type === 'income'
-                                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'
+                                        ? 'bg-success-bg text-emerald-500'
                                         : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'
                                         }`}>
                                         {activity.type === 'income' ? <TrendingUp className="h-6 w-6" /> : <TrendingDown className="h-6 w-6" />}
@@ -245,10 +245,10 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-xl font-black ${activity.type === 'income' ? 'text-emerald-500' : 'text-slate-800 dark:text-white'}`}>
+                                    <p className={`text-xl font-black ${activity.type === 'income' ? 'text-emerald-500' : 'cc-text-primary'}`}>
                                         {activity.type === 'income' ? '+' : '-'}${(activity.amount || 0).toLocaleString('es-CL')}
                                     </p>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md mt-1 inline-block">Liquidado</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-elevated px-2 py-1 rounded-md mt-1 inline-block">Liquidado</span>
                                 </div>
                             </div>
                         ))}
@@ -307,11 +307,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         </div>
                         <div className="space-y-3">
                             <div className="flex justify-between items-center bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl">
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Morosos crónicos (+3m)</span>
+                                <span className="text-sm font-bold cc-text-secondary">Morosos crónicos (+3m)</span>
                                 <span className="font-black text-rose-600 dark:text-rose-500 text-lg">4</span>
                             </div>
                             <div className="flex justify-between items-center bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl">
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Avisos de corte enviados</span>
+                                <span className="text-sm font-bold cc-text-secondary">Avisos de corte enviados</span>
                                 <span className="font-black text-amber-600 dark:text-amber-500 text-lg">2</span>
                             </div>
                             <button className="w-full mt-2 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md transition-colors">

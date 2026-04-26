@@ -37,7 +37,7 @@ export function ActionCard({
   className = '',
   ...props
 }: ActionCardProps) {
-  const baseClasses = `group flex items-center gap-3.5 w-full px-4 py-3.5 border bg-white dark:bg-[#12121D] border-slate-200 dark:border-slate-800 rounded-lg text-left transition-all duration-150 ease-out hover:translate-x-1 focus-visible:outline-none ${className}`;
+  const baseClasses = `group flex items-center gap-3.5 w-full px-4 py-3.5 border bg-white dark:bg-[#12121D] border-subtle rounded-lg text-left transition-all duration-150 ease-out hover:translate-x-1 focus-visible:outline-none ${className}`;
 
   const iconStyle = iconStylesMap[tone] || iconStylesMap.brand;
 

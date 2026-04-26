@@ -133,18 +133,18 @@ export function StatusBadge({
     size?: "sm" | "md" | "lg";
 }) {
     const configs: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-        active: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Activo" },
-        paid: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Pagado" },
-        confirmed: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Confirmado" },
-        completed: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Completado" },
-        pending: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500", label: "Pendiente" },
-        overdue: { bg: "bg-red-50 dark:bg-red-500/10", text: "text-red-700 dark:text-red-400", dot: "bg-red-500", label: "Vencido" },
-        cancelled: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "text-slate-600 dark:text-slate-400", dot: "bg-slate-400", label: "Cancelado" },
-        expired: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "text-slate-600 dark:text-slate-400", dot: "bg-slate-400", label: "Expirado" },
+        active: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Activo" },
+        paid: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Pagado" },
+        confirmed: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Confirmado" },
+        completed: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Completado" },
+        pending: { bg: "bg-warning-bg", text: "text-warning-fg", dot: "bg-amber-500", label: "Pendiente" },
+        overdue: { bg: "bg-danger-bg", text: "text-danger-fg", dot: "bg-red-500", label: "Vencido" },
+        cancelled: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "cc-text-secondary", dot: "bg-slate-400", label: "Cancelado" },
+        expired: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "cc-text-secondary", dot: "bg-slate-400", label: "Expirado" },
         used: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500", label: "Utilizado" },
         "in-progress": { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500", label: "En Progreso" },
-        closed: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "text-slate-600 dark:text-slate-400", dot: "bg-slate-400", label: "Cerrada" },
-        available: { bg: "bg-emerald-50 dark:bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Disponible" },
+        closed: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "cc-text-secondary", dot: "bg-slate-400", label: "Cerrada" },
+        available: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Disponible" },
         sold: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-500", label: "Vendido" },
         reserved: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500", label: "Reservado" },
     };

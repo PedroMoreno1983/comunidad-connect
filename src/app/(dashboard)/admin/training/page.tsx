@@ -245,7 +245,7 @@ export default function AdminTrainingPage() {
             {!isCreating && (
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                        <h1 className="text-3xl font-bold cc-text-primary flex items-center gap-3">
                             <GraduationCap className="h-8 w-8 text-indigo-600" />
                             Generador de Cursos Educativos IA
                         </h1>
@@ -300,17 +300,17 @@ export default function AdminTrainingPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0 }}
-                        className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                        className="bg-surface rounded-3xl shadow-xl border border-subtle overflow-hidden"
                     >
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 mx-auto">
-                            <h2 className="text-2xl font-bold flex items-center gap-3 justify-center text-slate-900 dark:text-white">
+                        <div className="p-6 border-b border-subtle mx-auto">
+                            <h2 className="text-2xl font-bold flex items-center gap-3 justify-center cc-text-primary">
                                 <Wand2 className="h-7 w-7 text-indigo-500" />
                                 Paso 1: Alimentar a la IA
                             </h2>
                         </div>
                         
                         <div className="p-8 max-w-4xl mx-auto space-y-8">
-                            <div className="relative p-10 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-center overflow-hidden">
+                            <div className="relative p-10 border-2 border-dashed border-default rounded-2xl bg-canvas/50 hover:bg-elevated transition text-center overflow-hidden">
                                 <input 
                                     type="file" multiple accept=".pdf,.docx,.doc,.txt" 
                                     onChange={handleFileUpload} disabled={isUploading || isGenerating}
@@ -322,7 +322,7 @@ export default function AdminTrainingPage() {
                                     ) : (
                                         <UploadCloud className="w-14 h-14 text-indigo-400 mb-2" />
                                     )}
-                                    <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                    <h3 className="text-lg font-bold cc-text-secondary">
                                         {isUploading ? 'Extrayendo textos...' : 'Sube tus PDFs, Documentos o Reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
@@ -332,7 +332,7 @@ export default function AdminTrainingPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <label className="text-sm font-bold cc-text-secondary flex items-center gap-2">
                                     O pega el temario / contenido manualmente
                                 </label>
                                 <textarea 
@@ -340,12 +340,12 @@ export default function AdminTrainingPage() {
                                     value={rawText}
                                     onChange={e => setRawText(e.target.value)}
                                     disabled={isGenerating}
-                                    className="w-full px-5 py-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 resize-y"
+                                    className="w-full px-5 py-4 rounded-xl border border-default bg-surface resize-y"
                                     placeholder="Ej: Módulo 1. Cómo reciclar en el condominio..."
                                 />
                             </div>
 
-                            <div className="flex justify-between items-center pt-6 border-t border-slate-100 dark:border-slate-700">
+                            <div className="flex justify-between items-center pt-6 border-t border-subtle">
                                 <button onClick={cancelCreation} disabled={isUploading || isGenerating} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
                                 <button 
                                     onClick={generateSlidesFromText} 
@@ -364,25 +364,25 @@ export default function AdminTrainingPage() {
                      <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-[#fcfdff] dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col min-h-[85vh]"
+                        className="bg-[#fcfdff] dark:bg-slate-900 rounded-3xl shadow-2xl border border-subtle overflow-hidden flex flex-col min-h-[85vh]"
                      >
                         {/* Editor Header Bar */}
-                        <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950">
+                        <div className="h-16 px-6 border-b border-subtle flex items-center justify-between bg-surface">
                             <div className="flex items-center gap-4 w-1/3">
-                                <button onClick={() => setSlides([])} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                <button onClick={() => setSlides([])} className="p-2 text-slate-500 hover:bg-elevated rounded-lg">
                                     <ChevronLeft className="h-5 w-5" />
                                 </button>
                                 <input 
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
-                                    className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-indigo-500 rounded px-2 w-full text-slate-900 dark:text-white"
+                                    className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-indigo-500 rounded px-2 w-full cc-text-primary"
                                     placeholder="Título de la Presentación..."
                                 />
                             </div>
                             <div className="flex gap-4">
                                 <select 
                                     value={newAudience} onChange={e => setNewAudience(e.target.value)}
-                                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-slate-50 dark:bg-slate-900"
+                                    className="px-3 py-1.5 rounded-lg border border-subtle text-sm bg-canvas"
                                 >
                                     <option value="all">Público: Todos</option>
                                     <option value="resident">Público: Residentes</option>
@@ -401,7 +401,7 @@ export default function AdminTrainingPage() {
                         <div className="flex flex-1 overflow-hidden">
                             
                             {/* Left Sidebar: Thumbnails */}
-                            <div className="w-64 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 overflow-y-auto p-4 space-y-3">
+                            <div className="w-64 border-r border-subtle bg-canvas/50 overflow-y-auto p-4 space-y-3">
                                 {slides.map((slide, idx) => (
                                     <div 
                                         key={slide.id || idx}
@@ -409,13 +409,13 @@ export default function AdminTrainingPage() {
                                         className={`group relative rounded-xl aspect-video border-[3px] p-2 cursor-pointer transition-all overflow-hidden flex flex-col justify-center ${
                                             activeSlideIndex === idx 
                                                 ? 'border-indigo-500 shadow-md ring-4 ring-indigo-500/20' 
-                                                : 'border-transparent bg-white dark:bg-slate-800 hover:border-slate-300'
+                                                : 'border-transparent bg-surface hover:border-slate-300'
                                         }`}
                                     >
                                         <div className="absolute top-2 left-2 bg-black/50 backdrop-blur text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                                             {idx + 1}
                                         </div>
-                                        <h4 className="text-[11px] font-bold text-center leading-tight mt-3 truncate px-2 text-slate-700 dark:text-slate-300">
+                                        <h4 className="text-[11px] font-bold text-center leading-tight mt-3 truncate px-2 cc-text-secondary">
                                             {slide.title}
                                         </h4>
                                     </div>
@@ -454,8 +454,8 @@ export default function AdminTrainingPage() {
                             </div>
 
                             {/* Right Sidebar: Speaker Notes */}
-                            <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="w-80 border-l border-subtle bg-surface flex flex-col">
+                                <div className="p-5 border-b border-subtle flex items-center justify-between">
                                     <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
                                         <FileText className="h-4 w-4 text-emerald-500" />
                                         Notas de Orador (IA)
@@ -466,7 +466,7 @@ export default function AdminTrainingPage() {
                                         Este es el guion que la profesora CoCo explicará de forma verbal y escrita en el Aula Virtual durante esta diapositiva específica. Siéntete libre de ajustarlo.
                                     </p>
                                     <textarea 
-                                        className="w-full flex-1 resize-none p-4 rounded-xl border-none bg-amber-50/50 dark:bg-amber-900/10 focus:ring-2 ring-emerald-500/50 outline-none text-sm text-slate-700 dark:text-slate-300 leading-relaxed shadow-inner"
+                                        className="w-full flex-1 resize-none p-4 rounded-xl border-none bg-amber-50/50 dark:bg-amber-900/10 focus:ring-2 ring-emerald-500/50 outline-none text-sm cc-text-secondary leading-relaxed shadow-inner"
                                         value={activeSlide.notes}
                                         onChange={(e) => handleNotesChange(e.target.value)}
                                     />
@@ -480,15 +480,15 @@ export default function AdminTrainingPage() {
             {!isCreating && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {courses.length === 0 ? (
-                        <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                        <div className="col-span-full py-12 text-center border-2 border-dashed border-default rounded-2xl">
                             <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-white">Aún no hay cursos creados</h3>
+                            <h3 className="text-lg font-medium cc-text-primary">Aún no hay cursos creados</h3>
                         </div>
                     ) : (
                         courses.map(course => (
-                            <div key={course.id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg transition group">
+                            <div key={course.id} className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-lg transition group">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 rounded-xl">
+                                    <div className="p-3 bg-role-admin-bg text-indigo-600 rounded-xl">
                                         <Play className="h-6 w-6" />
                                     </div>
                                     <button 
@@ -499,7 +499,7 @@ export default function AdminTrainingPage() {
                                         {isDemoUser ? <Lock className="h-4 w-4 text-slate-300" /> : <Trash2 className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-2 mb-2">
+                                <h3 className="text-xl font-bold cc-text-primary line-clamp-2 mb-2">
                                     {course.title}
                                 </h3>
                                 <p className="text-sm text-slate-500 flex items-center gap-2 mb-4">

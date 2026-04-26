@@ -35,10 +35,10 @@ export default function Error({
                 </motion.div>
 
                 {/* Text */}
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
+                <h1 className="text-3xl font-bold cc-text-primary mb-3">
                     ¡Algo salió mal!
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                <p className="cc-text-secondary mb-8 leading-relaxed">
                     Ocurrió un error inesperado. Puedes intentar recargar la página o volver al inicio.
                 </p>
 
@@ -53,7 +53,7 @@ export default function Error({
                     </button>
                     <Link
                         href="/"
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all"
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-surface cc-text-secondary font-semibold border border-subtle hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all"
                     >
                         <Home className="h-4 w-4" />
                         Ir al Inicio
@@ -66,9 +66,9 @@ export default function Error({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="mt-8 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-left"
+                        className="mt-8 p-4 rounded-xl bg-elevated/50 border border-subtle text-left"
                     >
-                        <p className="text-xs font-mono text-slate-500 dark:text-slate-400 break-all">
+                        <p className="text-xs font-mono cc-text-secondary break-all">
                             {error.message}
                         </p>
                     </motion.div>

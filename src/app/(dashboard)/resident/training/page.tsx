@@ -69,7 +69,7 @@ export default function ResidentTrainingPage() {
                     </button>
                     <div className="flex items-center gap-2 mb-4">
                         <BookOpen className="h-6 w-6 text-indigo-500" />
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white border-b-2 border-indigo-100 dark:border-indigo-900 pb-1 inline-block">
+                        <h2 className="text-2xl font-bold cc-text-primary border-b-2 border-indigo-100 dark:border-indigo-900 pb-1 inline-block">
                             {selectedCourseTitle}
                         </h2>
                     </div>
@@ -86,24 +86,24 @@ export default function ResidentTrainingPage() {
         <ErrorBoundary name="Resident Training Module List">
             <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex flex-col mb-8">
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white border-l-4 border-indigo-500 pl-4 py-1 flex items-center gap-3">
+                    <h1 className="text-3xl font-black tracking-tight cc-text-primary border-l-4 border-indigo-500 pl-4 py-1 flex items-center gap-3">
                         <GraduationCap className="w-8 h-8 text-indigo-500" />
                         Centro de Formación Interactivo
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-3 ml-5 max-w-2xl text-sm font-medium">
+                    <p className="cc-text-secondary mt-3 ml-5 max-w-2xl text-sm font-medium">
                         Selecciona un módulo oficial creado por la administración. La Tutora CoCo IA y tus compañeros virtuales te enseñarán de forma interactiva.
                     </p>
                 </div>
 
                 {loading ? (
-                    <div className="py-12 text-center text-slate-500 dark:text-slate-400">Cargando cursos disponibles...</div>
+                    <div className="py-12 text-center cc-text-secondary">Cargando cursos disponibles...</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-5">
                         {courses.length === 0 ? (
-                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700/50 rounded-2xl">
+                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-default/50 rounded-2xl">
                                 <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Sin cursos específicos</h3>
-                                <p className="text-slate-500 dark:text-slate-400">Pide a tu administración que agregue módulos oficiales.</p>
+                                <h3 className="text-lg font-medium cc-text-primary">Sin cursos específicos</h3>
+                                <p className="cc-text-secondary">Pide a tu administración que agregue módulos oficiales.</p>
                             </div>
                         ) : (
                             courses.map(course => (
@@ -113,7 +113,7 @@ export default function ResidentTrainingPage() {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group relative overflow-hidden"
+                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group relative overflow-hidden"
                                 >
                                     {user?.role === 'admin' && (
                                         <button 
@@ -124,14 +124,14 @@ export default function ResidentTrainingPage() {
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     )}
-                                    <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                        <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-role-admin-bg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <BookOpen className="h-6 w-6 text-role-admin-fg" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 break-all line-clamp-2 pr-8">{course.title}</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4 break-words">
+                                    <h3 className="text-xl font-bold cc-text-primary mb-2 break-all line-clamp-2 pr-8">{course.title}</h3>
+                                    <p className="text-sm cc-text-secondary line-clamp-3 mb-4 break-words">
                                         {course.description || "Inicia este curso interactivo con la Tutora CoCo."}
                                     </p>
-                                    <div className="text-indigo-600 dark:text-indigo-400 text-sm font-semibold flex items-center">
+                                    <div className="text-role-admin-fg text-sm font-semibold flex items-center">
                                         Iniciar Clase &rarr;
                                     </div>
                                 </div>
@@ -144,13 +144,13 @@ export default function ResidentTrainingPage() {
                                 setSelectedCourseContent(""); 
                                 setSelectedCourseTitle("Modo Libre (Pregúntale a la Tutora CoCo)");
                             }}
-                            className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
+                            className="bg-elevated/50 rounded-2xl p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
                         >
-                            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <GraduationCap className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                            <div className="w-12 h-12 rounded-xl bg-elevated flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <GraduationCap className="h-6 w-6 cc-text-secondary" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Modo Abierto</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <h3 className="text-lg font-bold cc-text-secondary">Modo Abierto</h3>
+                            <p className="text-xs cc-text-secondary mt-1">
                                 La Tutora usará su inteligencia general sin guiarse estrictamente por un manual interno.
                             </p>
                         </div>

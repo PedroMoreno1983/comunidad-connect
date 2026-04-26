@@ -97,11 +97,11 @@ export function CondoFeesTable() {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden"
+            className="w-full bg-surface rounded-[2rem] border border-subtle shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden"
         >
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <div className="p-8 border-b border-subtle flex justify-between items-center">
                 <div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white">Registro de Cobros</h3>
+                    <h3 className="text-xl font-black cc-text-primary">Registro de Cobros</h3>
                     <p className="text-sm font-medium text-slate-500 mt-1">Historial y estado de los Gastos Comunes</p>
                 </div>
                 <button
@@ -116,7 +116,7 @@ export function CondoFeesTable() {
 
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
+                    <thead className="bg-elevated/50 cc-text-secondary">
                         <tr>
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Unidad</th>
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Mes / Vencimiento</th>
@@ -134,13 +134,13 @@ export function CondoFeesTable() {
                                             {fee.units?.tower ? fee.units.tower[0] : ''}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900 dark:text-white">Torre {fee.units?.tower || 'A'}</p>
+                                            <p className="font-bold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
                                             <p className="text-xs text-slate-500 font-medium">Auto {fee.units?.number}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="py-4 px-6">
-                                    <p className="font-bold text-slate-700 dark:text-slate-200 capitalize">
+                                    <p className="font-bold cc-text-secondary capitalize">
                                         {safeFormatDate(fee.month, 'MMMM yyyy', true)}
                                     </p>
                                     <p className="text-xs text-slate-400">
@@ -148,7 +148,7 @@ export function CondoFeesTable() {
                                     </p>
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className="font-black text-slate-900 dark:text-white">{formatCurrency(fee.amount)}</span>
+                                    <span className="font-black cc-text-primary">{formatCurrency(fee.amount)}</span>
                                 </td>
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' && (
@@ -170,7 +170,7 @@ export function CondoFeesTable() {
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' ? (
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                            <span className="text-xs font-bold cc-text-secondary flex items-center gap-1">
                                                 <CreditCard className="w-3 h-3 text-slate-400" />
                                                 {fee.payment_method === 'haulmer' ? 'Haulmer Pay' : 'Transferencia'}
                                             </span>
@@ -181,7 +181,7 @@ export function CondoFeesTable() {
                                             )}
                                         </div>
                                     ) : (
-                                        <span className="text-xs text-slate-400 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 inline-block">
+                                        <span className="text-xs text-slate-400 border border-subtle rounded-md px-2 py-1 inline-block">
                                             Esperando pago
                                         </span>
                                     )}

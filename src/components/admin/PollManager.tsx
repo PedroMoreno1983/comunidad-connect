@@ -90,9 +90,9 @@ export function PollManager() {
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <Vote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white">Consultas Activas</h3>
+                        <h3 className="font-black cc-text-primary">Consultas Activas</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">
+                    <p className="text-4xl font-black cc-text-primary mb-1">
                         {polls.filter(p => p.status === 'active').length}
                     </p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-emerald-500">Participación 68%</p>
@@ -100,12 +100,12 @@ export function PollManager() {
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl">
-                            <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        <div className="p-3 bg-warning-bg rounded-2xl">
+                            <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white">Cierran Pronto</h3>
+                        <h3 className="font-black cc-text-primary">Cierran Pronto</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">2</p>
+                    <p className="text-4xl font-black cc-text-primary mb-1">2</p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">En las próximas 48 horas</p>
                 </div>
 
@@ -130,10 +130,10 @@ export function PollManager() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                            <Settings className="h-6 w-6 text-slate-900 dark:text-white" />
+                        <div className="p-3 bg-elevated rounded-2xl">
+                            <Settings className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Gestor de Consultas</h2>
+                        <h2 className="text-2xl font-black cc-text-primary">Gestor de Consultas</h2>
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -164,7 +164,7 @@ export function PollManager() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
                                     <select
-                                        className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                        className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                         value={newPoll.category}
                                         onChange={(e) => setNewPoll({ ...newPoll, category: e.target.value })}
                                     >
@@ -176,14 +176,14 @@ export function PollManager() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción / Contexto</label>
                                     <textarea
-                                        className="w-full h-32 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                                        className="w-full h-32 rounded-2xl border border-subtle bg-surface cc-text-primary p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                                         placeholder="Detalle los beneficios y costos de la propuesta..."
                                         required
                                         value={newPoll.description}
                                         onChange={(e) => setNewPoll({ ...newPoll, description: e.target.value })}
                                     />
                                 </div>
-                                <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-2xl flex gap-3 border border-amber-100 dark:border-amber-500/20">
+                                <div className="p-4 bg-warning-bg rounded-2xl flex gap-3 border border-amber-100 dark:border-amber-500/20">
                                     <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
                                     <p className="text-[11px] font-medium text-amber-700 leading-relaxed">
                                         Las consultas publicadas como **Mantenimiento** o **Reglamento** requieren un quórum legal mínimo del **60%** según la ley vigente.
@@ -228,7 +228,7 @@ export function PollManager() {
                                                     <Vote className="h-5 w-5" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-slate-900 dark:text-white leading-none mb-1">{poll.title}</p>
+                                                    <p className="font-black cc-text-primary leading-none mb-1">{poll.title}</p>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: {poll.id}</p>
                                                 </div>
                                             </div>
@@ -236,10 +236,10 @@ export function PollManager() {
                                         <td className="px-10 py-8">
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-end">
-                                                    <span className="text-sm font-black text-slate-900 dark:text-white">{poll.totalVotes}</span>
+                                                    <span className="text-sm font-black cc-text-primary">{poll.totalVotes}</span>
                                                     <span className="text-[10px] font-black text-slate-400">Objetivo: 80</span>
                                                 </div>
-                                                <div className="h-1.5 w-32 bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-1.5 w-32 bg-elevated rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-blue-500 rounded-full"
                                                         style={{ width: `${Math.min(100, (poll.totalVotes / 80) * 100)}%` }}
@@ -255,11 +255,11 @@ export function PollManager() {
                                                 {poll.status === 'active' ? "Activa" : "Cerrada"}
                                             </span>
                                         </td>
-                                        <td className="px-10 py-8 text-sm font-bold text-slate-600 dark:text-slate-400">
+                                        <td className="px-10 py-8 text-sm font-bold cc-text-secondary">
                                             {Math.max(0, Math.ceil((new Date(poll.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} días
                                         </td>
                                         <td className="px-10 py-8 text-right">
-                                            <button className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                            <button className="p-3 hover:bg-elevated rounded-xl transition-colors">
                                                 <MoreHorizontal className="h-5 w-5 text-slate-400" />
                                             </button>
                                         </td>

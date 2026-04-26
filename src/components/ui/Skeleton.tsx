@@ -18,7 +18,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function SkeletonCard({ className }: SkeletonProps) {
     return (
-        <div className={clsx("bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 space-y-4", className)}>
+        <div className={clsx("bg-surface rounded-[2.5rem] border border-subtle p-6 space-y-4", className)}>
             <div className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -41,7 +41,7 @@ export function SkeletonStats() {
     return (
         <div className="grid grid-cols-3 gap-4">
             {[0, 1, 2].map(i => (
-                <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                <div key={i} className="bg-surface rounded-2xl p-5 border border-subtle">
                     <Skeleton className="h-10 w-10 rounded-xl mb-3" />
                     <Skeleton className="h-6 w-12 mb-1" />
                     <Skeleton className="h-3 w-20" />
@@ -56,7 +56,7 @@ export function SkeletonList({ rows = 3, count }: { rows?: number; count?: numbe
     return (
         <div className="space-y-3">
             {Array.from({ length: n }).map((_, i) => (
-                <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+                <div key={i} className="bg-surface rounded-2xl p-4 border border-subtle flex items-center gap-4">
                     <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
                     <div className="flex-1 space-y-2">
                         <Skeleton className="h-3 w-3/4" />
@@ -73,7 +73,7 @@ export function SkeletonTable({ rows = 3 }: { rows?: number }) {
     return (
         <div className="w-full">
             {Array.from({ length: rows }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+                <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-subtle">
                     <Skeleton className="h-4 w-28" />
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-4 w-20" />
@@ -89,7 +89,7 @@ export function SkeletonAnnouncement({ count = 3 }: { count?: number }) {
     return (
         <div className="space-y-4">
             {Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 space-y-3">
+                <div key={i} className="bg-surface rounded-2xl border border-subtle p-5 space-y-3">
                     <div className="flex items-center gap-3">
                         <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
                         <div className="flex-1 space-y-2">

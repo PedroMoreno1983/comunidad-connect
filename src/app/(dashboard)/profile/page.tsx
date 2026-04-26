@@ -202,7 +202,7 @@ export default function ProfilePage() {
                     <User className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white">Mi Perfil</h1>
+                    <h1 className="text-3xl font-black cc-text-primary">Mi Perfil</h1>
                     <p className="text-sm font-medium text-slate-500">Gestiona tu información personal</p>
                 </div>
             </div>
@@ -211,7 +211,7 @@ export default function ProfilePage() {
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-lg shadow-slate-200/40 dark:shadow-none overflow-hidden"
+                className="bg-surface rounded-3xl border border-subtle shadow-lg shadow-slate-200/40 dark:shadow-none overflow-hidden"
             >
                 {/* Banner */}
                 <div className={`h-24 bg-gradient-to-r ${gradient} relative`}>
@@ -246,7 +246,7 @@ export default function ProfilePage() {
                             {ROLE_LABEL[user?.role || 'resident']}
                         </span>
                         {user?.unitName && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-elevated cc-text-secondary">
                                 <Home className="h-3 w-3" />
                                 {user.unitName}
                             </span>
@@ -255,44 +255,44 @@ export default function ProfilePage() {
 
                     {/* Full Name input */}
                     <div className="space-y-2 mb-6">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nombre completo</label>
+                        <label className="text-sm font-bold cc-text-secondary">Nombre completo</label>
                         <input
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                         />
                     </div>
 
                     {/* Email (read-only) */}
                     <div className="space-y-2 mb-6">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Email</label>
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <label className="text-sm font-bold cc-text-secondary">Email</label>
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-canvas border border-subtle">
                             <Mail className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{user?.email}</span>
+                            <span className="text-sm font-medium cc-text-secondary">{user?.email}</span>
                         </div>
                     </div>
 
                     {/* Unit Info (Enrollment) */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">N° Depto / Casa</label>
+                            <label className="text-sm font-bold cc-text-secondary">N° Depto / Casa</label>
                             <input
                                 type="text"
                                 value={unitNumber}
                                 onChange={(e) => setUnitNumber(e.target.value)}
                                 placeholder="Ej: 402"
-                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Torre / Block</label>
+                            <label className="text-sm font-bold cc-text-secondary">Torre / Block</label>
                             <input
                                 type="text"
                                 value={unitTower}
                                 onChange={(e) => setUnitTower(e.target.value)}
                                 placeholder="Ej: A"
-                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                             />
                         </div>
                     </div>
@@ -313,23 +313,23 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+                className="bg-surface rounded-3xl border border-subtle p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
             >
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                    <div className="p-2.5 bg-success-bg rounded-xl">
                         <MessageCircle className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
-                        <h2 className="font-black text-slate-900 dark:text-white">Notificaciones WhatsApp</h2>
+                        <h2 className="font-black cc-text-primary">Notificaciones WhatsApp</h2>
                         <p className="text-xs text-slate-400">Recibe avisos importantes en tu WhatsApp</p>
                     </div>
                 </div>
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Número de WhatsApp</label>
+                        <label className="text-sm font-bold cc-text-secondary">Número de WhatsApp</label>
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2 px-3 py-3 rounded-2xl bg-canvas border border-subtle">
                                 <Smartphone className="h-4 w-4 text-slate-400" />
                                 <span className="text-sm font-bold text-slate-400">+56</span>
                             </div>
@@ -344,16 +344,16 @@ export default function ProfilePage() {
                                     setPhoneNumber(val.substring(0, 9));
                                 }}
                                 placeholder="912345678"
-                                className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                className="flex-1 px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
                         </div>
                         <p className="text-xs text-slate-400">Ingresa los 9 dígitos de tu móvil (ej: 912345678)</p>
                     </div>
 
                     {/* Toggle */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-canvas border border-subtle">
                         <div>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white">Activar notificaciones</p>
+                            <p className="text-sm font-bold cc-text-primary">Activar notificaciones</p>
                             <p className="text-xs text-slate-400">Recibirás avisos, pagos y mensajes por WhatsApp</p>
                         </div>
                         <button
@@ -399,37 +399,37 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+                className="bg-surface rounded-3xl border border-subtle p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
             >
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2.5 bg-red-50 dark:bg-red-500/10 rounded-xl">
+                    <div className="p-2.5 bg-danger-bg rounded-xl">
                         <Lock className="h-5 w-5 text-red-500" />
                     </div>
                     <div>
-                        <h2 className="font-black text-slate-900 dark:text-white">Seguridad</h2>
+                        <h2 className="font-black cc-text-primary">Seguridad</h2>
                         <p className="text-xs text-slate-400">Gestiona tu contraseña</p>
                     </div>
                 </div>
 
                 {showEmailConfirm ? (
-                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-success-bg border border-emerald-200 dark:border-emerald-500/20">
                         <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                         <div>
-                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Email enviado</p>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            <p className="text-sm font-bold text-success-fg">Email enviado</p>
+                            <p className="text-xs text-success-fg mt-0.5">
                                 Revisa tu bandeja en <strong>{user?.email}</strong> para cambiar la contraseña.
                             </p>
                         </div>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                        <p className="text-sm font-medium cc-text-secondary">
                             Te enviaremos un link a <strong>{user?.email}</strong> para que puedas cambiar tu contraseña de forma segura.
                         </p>
                         <button
                             onClick={handlePasswordReset}
                             disabled={isSendingReset}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-60"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-danger-bg border border-red-200 dark:border-red-500/20 text-danger-fg text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-60"
                         >
                             {isSendingReset ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
                             Cambiar contraseña

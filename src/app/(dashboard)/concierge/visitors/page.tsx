@@ -108,13 +108,13 @@ export default function VisitorsPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Módulo de Seguridad</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Control de Accesos</h1>
+                    <h1 className="text-4xl font-black cc-text-primary">Control de Accesos</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl text-slate-900 dark:text-white font-black rounded-2xl border border-white/50 dark:border-slate-700/50 hover:bg-white/80 dark:hover:bg-slate-800/60 transition-all shadow-xl shadow-slate-200/20 dark:shadow-black/20 active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl cc-text-primary font-black rounded-2xl border border-white/50 dark:border-slate-700/50 hover:bg-white/80 dark:hover:bg-slate-800/60 transition-all shadow-xl shadow-slate-200/20 dark:shadow-black/20 active:scale-95">
                                 <Plus className="h-5 w-5 text-blue-600" />
                                 Registro Manual
                             </button>
@@ -140,7 +140,7 @@ export default function VisitorsPage() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Unidad Destino</label>
                                     <select
-                                        className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                        className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                         required
                                         value={newVisitor.unit}
                                         onChange={(e) => setNewVisitor({ ...newVisitor, unit: e.target.value })}
@@ -169,10 +169,10 @@ export default function VisitorsPage() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                            <ClipboardList className="h-6 w-6 text-slate-900 dark:text-white" />
+                        <div className="p-3 bg-elevated rounded-2xl">
+                            <ClipboardList className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Bitácora de Ingresos</h2>
+                        <h2 className="text-2xl font-black cc-text-primary">Bitácora de Ingresos</h2>
                     </div>
                 </div>
 
@@ -193,11 +193,11 @@ export default function VisitorsPage() {
                                     <tr key={visitor.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
+                                                <div className="h-12 w-12 rounded-xl bg-elevated flex items-center justify-center text-slate-400 font-bold">
                                                     {visitor.visitorName.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-slate-900 dark:text-white">{visitor.visitorName}</p>
+                                                    <p className="font-black cc-text-primary">{visitor.visitorName}</p>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registrado hoy</p>
                                                 </div>
                                             </div>
@@ -207,7 +207,7 @@ export default function VisitorsPage() {
                                                 Unidad {visitor.unitId}
                                             </span>
                                         </td>
-                                        <td className="px-10 py-8 text-sm font-bold text-slate-600 dark:text-slate-400">
+                                        <td className="px-10 py-8 text-sm font-bold cc-text-secondary">
                                             {new Date(visitor.entryTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs
                                         </td>
                                         <td className="px-10 py-8">
@@ -217,7 +217,7 @@ export default function VisitorsPage() {
                                             </div>
                                         </td>
                                         <td className="px-10 py-8 text-right">
-                                            <button className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                            <button className="p-3 hover:bg-elevated rounded-xl transition-colors">
                                                 <MoreHorizontal className="h-5 w-5 text-slate-400" />
                                             </button>
                                         </td>

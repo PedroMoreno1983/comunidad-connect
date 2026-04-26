@@ -152,12 +152,12 @@ export default function ChatPage() {
     const chatSubtitle = mode === 'global' ? 'Toda la comunidad' : (activePeer ? '1‑a‑1 privado' : 'Selecciona un vecino');
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 rounded-[2.5rem] bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="h-[calc(100vh-8rem)] flex shadow-xl shadow-slate-200/50 dark:shadow-none border border-subtle rounded-[2.5rem] bg-surface overflow-hidden">
 
             {/* ===== LEFT SIDEBAR ===== */}
-            <div className="hidden lg:flex flex-col w-80 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="hidden lg:flex flex-col w-80 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="p-6 pb-3">
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <h2 className="text-xl font-black cc-text-primary flex items-center gap-2">
                         <MessageCircle className="h-6 w-6 text-indigo-500" />
                         Mensajes
                     </h2>
@@ -165,16 +165,16 @@ export default function ChatPage() {
 
                 {/* Tab Switcher */}
                 <div className="px-4 pb-3">
-                    <div className="grid grid-cols-2 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 gap-1">
+                    <div className="grid grid-cols-2 bg-elevated rounded-2xl p-1 gap-1">
                         <button
                             onClick={() => { setMode('global'); setActivePeer(null); }}
-                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'global' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'global' ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
                         >
                             🌐 Global
                         </button>
                         <button
                             onClick={() => setMode('direct')}
-                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'direct' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'direct' ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
                         >
                             💬 Directos
                         </button>
@@ -183,8 +183,8 @@ export default function ChatPage() {
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {mode === 'global' ? (
-                        <button className="w-full flex items-center gap-3 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
+                        <button className="w-full flex items-center gap-3 p-3 rounded-2xl bg-role-admin-bg text-role-admin-fg">
+                            <div className="p-2 bg-role-admin-bg rounded-xl">
                                 <Hash className="h-4 w-4" />
                             </div>
                             <div className="text-left">
@@ -202,7 +202,7 @@ export default function ChatPage() {
                                     placeholder="Buscar vecino..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                                 />
                             </div>
 
@@ -217,8 +217,8 @@ export default function ChatPage() {
                                             className={clsx(
                                                 "w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1",
                                                 activePeer?.peerId === conv.peerId
-                                                    ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600"
-                                                    : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                                    ? "bg-role-admin-bg text-indigo-600"
+                                                    : "hover:bg-elevated cc-text-secondary"
                                             )}
                                         >
                                             <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-300 flex-shrink-0">
@@ -251,8 +251,8 @@ export default function ChatPage() {
                                         className={clsx(
                                             "w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1",
                                             activePeer?.peerId === neighbor.id
-                                                ? "bg-indigo-50 dark:bg-indigo-500/10"
-                                                : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                ? "bg-role-admin-bg"
+                                                : "hover:bg-elevated"
                                         )}
                                     >
                                         <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-indigo-400 to-purple-500 flex-shrink-0">
@@ -264,7 +264,7 @@ export default function ChatPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="font-bold text-sm text-slate-700 dark:text-slate-300 truncate">{neighbor.name}</p>
+                                        <p className="font-bold text-sm cc-text-secondary truncate">{neighbor.name}</p>
                                     </button>
                                 ))
                             )}
@@ -274,13 +274,13 @@ export default function ChatPage() {
             </div>
 
             {/* ===== CHAT AREA ===== */}
-            <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 relative">
+            <div className="flex-1 flex flex-col bg-surface relative">
 
                 {/* Chat Header */}
-                <div className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
+                <div className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-subtle bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
                     <div className="flex items-center gap-4">
                         {mode === 'direct' && activePeer && (
-                            <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-elevated">
                                 <ArrowLeft className="h-5 w-5 text-slate-400" />
                             </button>
                         )}
@@ -288,7 +288,7 @@ export default function ChatPage() {
                             {mode === 'global' ? <Hash className="h-5 w-5 text-white" /> : <MessageCircle className="h-5 w-5 text-white" />}
                         </div>
                         <div>
-                            <h3 className="font-black text-lg text-slate-900 dark:text-white">{chatTitle}</h3>
+                            <h3 className="font-black text-lg cc-text-primary">{chatTitle}</h3>
                             <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
                                 <Users className="h-3 w-3" /> {chatSubtitle}
                             </p>
@@ -299,10 +299,10 @@ export default function ChatPage() {
                 {/* Empty state for DM mode without a selected peer */}
                 {mode === 'direct' && !activePeer ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-                        <div className="p-6 bg-indigo-50 dark:bg-indigo-500/10 rounded-3xl mb-2">
+                        <div className="p-6 bg-role-admin-bg rounded-3xl mb-2">
                             <MessageCircle className="h-14 w-14 text-indigo-400" />
                         </div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Mensajes Directos</h3>
+                        <h3 className="text-xl font-black cc-text-primary">Mensajes Directos</h3>
                         <p className="text-sm font-medium text-slate-400 max-w-xs">
                             Selecciona un vecino del panel izquierdo para iniciar una conversación privada.
                         </p>
@@ -355,7 +355,7 @@ export default function ChatPage() {
                                                             "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
                                                             isMe
                                                                 ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-sm"
-                                                                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
+                                                                : "bg-elevated text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
                                                         )}>
                                                             {msg.content}
                                                         </div>
@@ -375,14 +375,14 @@ export default function ChatPage() {
                         </div>
 
                         {/* Chat Input */}
-                        <div className="p-4 sm:p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-4 sm:p-6 bg-surface border-t border-subtle">
                             <form onSubmit={handleSendMessage} className="relative flex items-center max-w-4xl mx-auto">
                                 <input
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder={mode === 'global' ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
-                                    className="w-full pl-6 pr-14 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
+                                    className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
                                 />
                                 <button
                                     type="submit"

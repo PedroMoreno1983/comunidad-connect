@@ -24,7 +24,7 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
             {/* Back Button */}
             <Link
                 href="/services"
-                className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Servicios

@@ -39,11 +39,11 @@ const categoryConfig: Record<string, {
     gradient: string;
     bg: string;
 }> = {
-    all: { icon: Grid3X3, gradient: 'from-slate-500 to-slate-700', bg: 'bg-slate-100 dark:bg-slate-700' },
+    all: { icon: Grid3X3, gradient: 'from-slate-500 to-slate-700', bg: 'bg-elevated' },
     electronics: { icon: Smartphone, gradient: 'from-blue-500 to-indigo-600', bg: 'bg-blue-100 dark:bg-blue-500/20' },
-    furniture: { icon: Armchair, gradient: 'from-amber-500 to-orange-600', bg: 'bg-amber-100 dark:bg-amber-500/20' },
+    furniture: { icon: Armchair, gradient: 'from-amber-500 to-orange-600', bg: 'bg-warning-bg' },
     clothing: { icon: Shirt, gradient: 'from-pink-500 to-rose-600', bg: 'bg-pink-100 dark:bg-pink-500/20' },
-    other: { icon: Package, gradient: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-100 dark:bg-emerald-500/20' },
+    other: { icon: Package, gradient: 'from-emerald-500 to-teal-600', bg: 'bg-success-bg' },
 };
 
 export default function MarketplacePage() {
@@ -236,7 +236,7 @@ export default function MarketplacePage() {
                                 <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
                                     <div className="max-h-[85vh] overflow-y-auto p-8 md:p-10 space-y-8">
                                         <DialogHeader className="space-y-3">
-                                            <DialogTitle className="text-3xl font-black text-slate-900 dark:text-white">Publicar Producto</DialogTitle>
+                                            <DialogTitle className="text-3xl font-black cc-text-primary">Publicar Producto</DialogTitle>
                                             <DialogDescription className="text-slate-500 font-medium text-lg leading-snug">
                                                 Conecta con tus vecinos y dale una nueva vida a tus artículos.
                                             </DialogDescription>
@@ -248,7 +248,7 @@ export default function MarketplacePage() {
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Fotos del Producto</label>
                                                 <div className="grid grid-cols-4 gap-4">
                                                     {previewUrls.map((url, i) => (
-                                                        <div key={i} className="aspect-square rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 overflow-hidden relative group">
+                                                        <div key={i} className="aspect-square rounded-2xl bg-elevated border-2 border-subtle overflow-hidden relative group">
                                                             <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
                                                             <button
                                                                 type="button"
@@ -263,7 +263,7 @@ export default function MarketplacePage() {
                                                         </div>
                                                     ))}
                                                     {previewUrls.length < 4 && (
-                                                        <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-all flex flex-col items-center justify-center cursor-pointer group">
+                                                        <label className="aspect-square rounded-2xl border-2 border-dashed border-subtle hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-all flex flex-col items-center justify-center cursor-pointer group">
                                                             <Plus className="h-6 w-6 text-slate-400 group-hover:text-blue-500 mb-1" />
                                                             <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-500">Añadir</span>
                                                             <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
@@ -278,7 +278,7 @@ export default function MarketplacePage() {
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Título del Anuncio</label>
                                                     <Input
                                                         placeholder="Ej: Bicicleta de Montaña Trek"
-                                                        className="h-14 rounded-2xl bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:ring-blue-500/20 text-lg font-bold"
+                                                        className="h-14 rounded-2xl bg-surface/50 border-subtle focus:ring-blue-500/20 text-lg font-bold"
                                                         required
                                                         value={newItem.title}
                                                         onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
@@ -289,7 +289,7 @@ export default function MarketplacePage() {
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
                                                         <select
-                                                            className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-900 dark:text-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                                            className="w-full h-14 rounded-2xl border border-subtle bg-surface/50 cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                                             value={newItem.category}
                                                             onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
                                                         >
@@ -301,7 +301,7 @@ export default function MarketplacePage() {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Estado General</label>
-                                                        <select className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-900 dark:text-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer">
+                                                        <select className="w-full h-14 rounded-2xl border border-subtle bg-surface/50 cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer">
                                                             <option>Nuevo</option>
                                                             <option>Como Nuevo</option>
                                                             <option>Usado Excelente</option>
@@ -317,16 +317,16 @@ export default function MarketplacePage() {
 
                                                 <div className="space-y-4">
                                                     {/* Opción Venta */}
-                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowSale ? 'border-blue-600 bg-blue-50/30' : 'border-slate-100 dark:border-slate-800'}`}
+                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowSale ? 'border-blue-600 bg-blue-50/30' : 'border-subtle'}`}
                                                         onClick={() => setNewItem({ ...newItem, allowSale: !newItem.allowSale })}>
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Tag className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black text-slate-900 dark:text-white">Venta Directa</span>
+                                                                <span className="font-black cc-text-primary">Venta Directa</span>
                                                             </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-slate-200 dark:border-slate-700'}`}>
+                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-subtle'}`}>
                                                                 {newItem.allowSale && <div className="h-2 w-2 rounded-full bg-white" />}
                                                             </div>
                                                         </div>
@@ -335,7 +335,7 @@ export default function MarketplacePage() {
                                                                 <Input
                                                                     type="number"
                                                                     placeholder="Precio sugerido (Ej: 150000)"
-                                                                    className="h-12 rounded-xl bg-white dark:bg-slate-900/50"
+                                                                    className="h-12 rounded-xl bg-surface/50"
                                                                     required={newItem.allowSale}
                                                                     value={newItem.price}
                                                                     onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
@@ -345,23 +345,23 @@ export default function MarketplacePage() {
                                                     </div>
 
                                                     {/* Opción Permuta */}
-                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowSwap ? 'border-purple-600 bg-purple-50/30' : 'border-slate-100 dark:border-slate-800'}`}
+                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowSwap ? 'border-purple-600 bg-purple-50/30' : 'border-subtle'}`}
                                                         onClick={() => setNewItem({ ...newItem, allowSwap: !newItem.allowSwap })}>
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Repeat className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black text-slate-900 dark:text-white">Permuta</span>
+                                                                <span className="font-black cc-text-primary">Permuta</span>
                                                             </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 border-purple-600' : 'border-slate-200 dark:border-slate-700'}`}>
+                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 border-purple-600' : 'border-subtle'}`}>
                                                                 {newItem.allowSwap && <div className="h-2 w-2 rounded-full bg-white" />}
                                                             </div>
                                                         </div>
                                                         {newItem.allowSwap && (
                                                             <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
                                                                 <textarea
-                                                                    className="w-full min-h-[80px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                                                                     placeholder="¿Qué buscas a cambio? (Ej: Una tablet o una TV más pequeña)"
                                                                     required={newItem.allowSwap}
                                                                     value={newItem.swapDetails}
@@ -372,23 +372,23 @@ export default function MarketplacePage() {
                                                     </div>
 
                                                     {/* Opción Trueque */}
-                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowBarter ? 'border-emerald-600 bg-emerald-50/30' : 'border-slate-100 dark:border-slate-800'}`}
+                                                    <div className={`p-5 rounded-3xl border-2 transition-all cursor-pointer ${newItem.allowBarter ? 'border-emerald-600 bg-emerald-50/30' : 'border-subtle'}`}
                                                         onClick={() => setNewItem({ ...newItem, allowBarter: !newItem.allowBarter })}>
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Sparkles className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black text-slate-900 dark:text-white">Trueque Abierto</span>
+                                                                <span className="font-black cc-text-primary">Trueque Abierto</span>
                                                             </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 border-emerald-600' : 'border-slate-200 dark:border-slate-700'}`}>
+                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 border-emerald-600' : 'border-subtle'}`}>
                                                                 {newItem.allowBarter && <div className="h-2 w-2 rounded-full bg-white" />}
                                                             </div>
                                                         </div>
                                                         {newItem.allowBarter && (
                                                             <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
                                                                 <textarea
-                                                                    className="w-full min-h-[80px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                                                                     placeholder="Cualquier artículo interesante que sea de utilidad..."
                                                                     value={newItem.barterDetails}
                                                                     onChange={(e) => setNewItem({ ...newItem, barterDetails: e.target.value })}
@@ -402,7 +402,7 @@ export default function MarketplacePage() {
                                             <div className="space-y-4">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción del Artículo</label>
                                                 <textarea
-                                                    className="w-full min-h-[120px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-900 dark:text-white px-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                                    className="w-full min-h-[120px] rounded-2xl border border-subtle bg-surface/50 cc-text-primary px-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                                                     placeholder="Cuenta más detalles sobre el artículo..."
                                                     required
                                                     value={newItem.description}
@@ -434,7 +434,7 @@ export default function MarketplacePage() {
                             </Button>
                             <button 
                                 onClick={() => setIsRulesOpen(true)}
-                                className="flex items-center gap-2 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200 dark:border-slate-700"
+                                className="flex items-center gap-2 px-6 py-4 bg-elevated cc-text-secondary font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-subtle"
                             >
                                 <Info className="h-5 w-5" />
                                 Reglamento
@@ -442,7 +442,7 @@ export default function MarketplacePage() {
 
                             {user?.role === 'admin' && (
                                 <button 
-                                    className="flex items-center gap-2 px-6 py-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold rounded-2xl hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all active:scale-95 border border-emerald-200 dark:border-emerald-800"
+                                    className="flex items-center gap-2 px-6 py-4 bg-emerald-100 dark:bg-emerald-900/30 text-success-fg font-bold rounded-2xl hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all active:scale-95 border border-emerald-200 dark:border-emerald-800"
                                 >
                                     <ShieldCheck className="h-5 w-5" />
                                     Moderación
@@ -485,10 +485,10 @@ export default function MarketplacePage() {
             {/* Servicios de Entrega */}
             <section className="px-1">
                 <div className="flex items-center gap-3 mb-5">
-                    <div className="h-8 w-8 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                        <Truck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="h-8 w-8 rounded-xl bg-role-admin-bg flex items-center justify-center">
+                        <Truck className="h-4 w-4 text-role-admin-fg" />
                     </div>
-                    <h2 className="text-base font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Servicios de Entrega</h2>
+                    <h2 className="text-base font-black uppercase tracking-widest cc-text-secondary">Servicios de Entrega</h2>
                 </div>
                 <Link href="/resident/supermercado" className="group block">
                     <motion.div
@@ -621,7 +621,7 @@ export default function MarketplacePage() {
 
             {/* Rules Modal */}
             <Dialog open={isRulesOpen} onOpenChange={setIsRulesOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-white dark:bg-slate-900 rounded-3xl p-8">
+                <DialogContent className="sm:max-w-[600px] bg-surface rounded-3xl p-8">
                     <DialogHeader>
                         <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
                             <Info className="h-6 w-6 text-blue-600" />
@@ -632,21 +632,21 @@ export default function MarketplacePage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-6 my-6 text-slate-700 dark:text-slate-300">
+                    <div className="space-y-6 my-6 cc-text-secondary">
                         <div className="flex gap-4">
-                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">1</div>
+                            <div className="h-6 w-6 rounded-full bg-elevated flex items-center justify-center flex-shrink-0 font-bold text-xs">1</div>
                             <p><span className="font-bold">Solo Residentes:</span> Solo usuarios verificados de la comunidad pueden publicar.</p>
                         </div>
                         <div className="flex gap-4">
-                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">2</div>
+                            <div className="h-6 w-6 rounded-full bg-elevated flex items-center justify-center flex-shrink-0 font-bold text-xs">2</div>
                             <p><span className="font-bold">Fotos Reales:</span> Asegúrate de subir fotos propias del producto, no de internet.</p>
                         </div>
                         <div className="flex gap-4">
-                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">3</div>
+                            <div className="h-6 w-6 rounded-full bg-elevated flex items-center justify-center flex-shrink-0 font-bold text-xs">3</div>
                             <p><span className="font-bold">Sin Ilegalidades:</span> Prohibida la venta de alcohol, tabaco, armas o medicamentos.</p>
                         </div>
                         <div className="flex gap-4">
-                            <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 font-bold text-xs">4</div>
+                            <div className="h-6 w-6 rounded-full bg-elevated flex items-center justify-center flex-shrink-0 font-bold text-xs">4</div>
                             <p><span className="font-bold">Respeto:</span> La administración se reserva el derecho de eliminar posts ofensivos o fraudulentos.</p>
                         </div>
                     </div>

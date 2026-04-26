@@ -21,7 +21,7 @@ interface OrderPreviewBubbleProps {
 
 export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPreviewBubbleProps) {
     return (
-        <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-lg overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="w-full max-w-sm bg-surface rounded-lg overflow-hidden shadow-sm border border-subtle">
             {/* Header */}
             <div className="bg-emerald-500 p-4 text-white flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-full">
@@ -40,12 +40,12 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
                         <div className="flex gap-2">
                             <div className={`mt-0.5 h-3 w-3 rounded-full ${item.store === 'Jumbo' ? 'bg-green-600' : 'bg-blue-600'}`} title={item.store} />
                             <div>
-                                <p className="font-semibold text-slate-700 dark:text-slate-200">{item.quantity}x {item.name}</p>
+                                <p className="font-semibold cc-text-secondary">{item.quantity}x {item.name}</p>
                                 <p className="text-xs text-slate-400">{item.brand}</p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="font-bold text-slate-700 dark:text-slate-200">${item.price.toLocaleString('es-CL')}</p>
+                            <p className="font-bold cc-text-secondary">${item.price.toLocaleString('es-CL')}</p>
                             {item.isOffer && (
                                 <p className="text-[10px] text-emerald-500 font-bold line-through decoration-slate-300">
                                     ${item.originalPrice?.toLocaleString('es-CL')}
@@ -57,7 +57,7 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
             </div>
 
             {/* Footer / Total */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
+            <div className="bg-canvas/50 p-4 space-y-3">
                 <div className="flex justify-between items-end">
                     <div>
                         <p className="text-xs text-slate-500">Total a Pagar</p>
@@ -67,7 +67,7 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
                             </p>
                         )}
                     </div>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white">
+                    <p className="text-2xl font-black cc-text-primary">
                         ${total.toLocaleString('es-CL')}
                     </p>
                 </div>

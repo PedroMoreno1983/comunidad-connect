@@ -106,7 +106,7 @@ export function AssetInventory() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     whileHover={{ y: -5 }}
-                    className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden group"
+                    className="bg-surface rounded-[3rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden group"
                 >
                     <div className="p-8 space-y-8">
                         {/* Header */}
@@ -117,9 +117,9 @@ export function AssetInventory() {
                                 }`}>
                                 {getCategoryIcon(asset.category)}
                             </div>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center gap-2 px-4 py-2 bg-elevated rounded-full border border-subtle">
                                 <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(asset.healthStatus)}`} />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                <span className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">
                                     {asset.healthStatus === 'optimal' ? 'Operativo' :
                                         asset.healthStatus === 'warning' ? 'Atención' : 'Crítico'}
                                 </span>
@@ -128,7 +128,7 @@ export function AssetInventory() {
 
                         {/* Title & Stats */}
                         <div className="space-y-2">
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight group-hover:text-blue-600 transition-colors">
+                            <h3 className="text-xl font-black cc-text-primary leading-tight group-hover:text-blue-600 transition-colors">
                                 {asset.name}
                             </h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -141,11 +141,11 @@ export function AssetInventory() {
                         <div className="grid grid-cols-2 gap-4 py-6 border-y border-slate-50 dark:border-slate-800">
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Marca / Modelo</p>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{asset.brand} {asset.model}</p>
+                                <p className="text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Instalación</p>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{new Date(asset.installationDate).getFullYear()}</p>
+                                <p className="text-sm font-bold cc-text-secondary">{new Date(asset.installationDate).getFullYear()}</p>
                             </div>
                         </div>
 
@@ -153,13 +153,13 @@ export function AssetInventory() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between text-xs font-bold">
                                 <span className="text-slate-400 uppercase tracking-widest">Próxima Revisión</span>
-                                <span className={`flex items-center gap-2 ${asset.healthStatus === 'critical' ? 'text-red-600' : 'text-slate-900 dark:text-white'
+                                <span className={`flex items-center gap-2 ${asset.healthStatus === 'critical' ? 'text-red-600' : 'cc-text-primary'
                                     }`}>
                                     <Clock className="h-3 w-3" />
                                     {new Date(asset.nextMaintenance).toLocaleDateString()}
                                 </span>
                             </div>
-                            <div className="h-1.5 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-1.5 w-full bg-elevated rounded-full overflow-hidden">
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: asset.healthStatus === 'optimal' ? '85%' : asset.healthStatus === 'warning' ? '45%' : '15%' }}
@@ -174,7 +174,7 @@ export function AssetInventory() {
                     {/* Footer Action */}
                     <button
                         onClick={() => handleOpenLog(asset)}
-                        className="w-full py-6 bg-slate-50 dark:bg-slate-800/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 border-t border-slate-50 dark:border-slate-800"
+                        className="w-full py-6 bg-elevated/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-elevated transition-all flex items-center justify-center gap-2 border-t border-slate-50 dark:border-slate-800"
                     >
                         Ver Bitácora Técnica
                         <ChevronRight className="h-4 w-4" />
@@ -209,7 +209,7 @@ export function AssetInventory() {
                                 {assetLogs.map((log, i) => (
                                     <div key={log.id} className="relative pl-8">
                                         {i !== assetLogs.length - 1 && (
-                                            <div className="absolute left-0 top-6 bottom-[-32px] w-[2px] bg-slate-100 dark:bg-slate-800" />
+                                            <div className="absolute left-0 top-6 bottom-[-32px] w-[2px] bg-elevated" />
                                         )}
                                         <div className="absolute left-[-4px] top-1.5 h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
 
@@ -218,13 +218,13 @@ export function AssetInventory() {
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                     {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}
                                                 </span>
-                                                <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black tracking-wider uppercase">
+                                                <span className="px-3 py-1 bg-success-bg text-success-fg rounded-lg text-[10px] font-black tracking-wider uppercase">
                                                     Realizado
                                                 </span>
                                             </div>
 
-                                            <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl space-y-3">
-                                                <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
+                                            <div className="bg-elevated/50 p-6 rounded-2xl space-y-3">
+                                                <p className="text-sm font-bold cc-text-primary leading-relaxed">
                                                     {log.description}
                                                 </p>
                                                 <div className="flex flex-wrap gap-4 pt-2">
@@ -244,7 +244,7 @@ export function AssetInventory() {
                             </div>
                         ) : (
                             <div className="text-center py-10 space-y-4">
-                                <div className="mx-auto w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300">
+                                <div className="mx-auto w-16 h-16 bg-elevated rounded-2xl flex items-center justify-center text-slate-300">
                                     <Activity className="h-8 w-8" />
                                 </div>
                                 <p className="text-slate-500 font-bold italic">No hay registros previos para este activo.</p>

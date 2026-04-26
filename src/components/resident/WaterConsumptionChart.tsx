@@ -14,7 +14,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
     // Si no hay datos, mostrar estado vacío
     if (!data || data.length === 0) {
         return (
-            <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 text-center">
+            <div className="p-8 bg-elevated/50 rounded-[2.5rem] border border-subtle text-center">
                 <p className="text-slate-500">No hay datos de consumo registrados aún.</p>
             </div>
         );
@@ -40,7 +40,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             {isEfficient ? <TrendingDown className="h-8 w-8" /> : <AlertTriangle className="h-8 w-8" />}
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                            <h3 className="text-2xl font-black cc-text-primary leading-tight">
                                 {isEfficient ? 'Consumo Eficiente' : 'Consumo Elevado'}
                             </h3>
                             <p className="text-sm font-medium text-slate-500">
@@ -50,21 +50,21 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             </p>
                         </div>
                     </div>
-                    <div className="px-6 py-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <div className="px-6 py-4 bg-surface rounded-2xl shadow-sm border border-subtle">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tu Consumo Ene</p>
-                        <p className="text-2xl font-black text-slate-900 dark:text-white">{currentMonth.personal} m³</p>
+                        <p className="text-2xl font-black cc-text-primary">{currentMonth.personal} m³</p>
                     </div>
                 </div>
             </div>
 
             {/* Main Chart Container */}
-            <div className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none space-y-10">
+            <div className="bg-surface p-8 md:p-12 rounded-[3rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-400">
                             <Droplets className="h-6 w-6" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Tendencia Histórica</h2>
+                        <h2 className="text-2xl font-black cc-text-primary">Tendencia Histórica</h2>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -129,7 +129,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                 </div>
 
                 {/* Legend / Info */}
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex gap-4 items-start border border-slate-100 dark:border-slate-700">
+                <div className="p-6 bg-elevated/50 rounded-2xl flex gap-4 items-start border border-subtle">
                     <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-xs font-medium text-slate-500 leading-relaxed">
                         Los consumos se calculan en base a la lectura de su remarcador individual. El promedio de la torre incluye todas las unidades de su misma tipología (mismos dormitorios/baños).

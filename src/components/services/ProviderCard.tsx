@@ -28,23 +28,23 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
             return {
                 dot: 'bg-emerald-500',
                 label: 'Disponible',
-                bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-                text: 'text-emerald-700 dark:text-emerald-400'
+                bg: 'bg-success-bg',
+                text: 'text-success-fg'
             };
         }
         if (availability === 'busy') {
             return {
                 dot: 'bg-amber-500',
                 label: 'Ocupado',
-                bg: 'bg-amber-50 dark:bg-amber-500/10',
-                text: 'text-amber-700 dark:text-amber-400'
+                bg: 'bg-warning-bg',
+                text: 'text-warning-fg'
             };
         }
         return {
             dot: 'bg-red-500',
             label: 'No disponible',
-            bg: 'bg-red-50 dark:bg-red-500/10',
-            text: 'text-red-700 dark:text-red-400'
+            bg: 'bg-danger-bg',
+            text: 'text-danger-fg'
         };
     };
 
@@ -83,20 +83,20 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                 <div className="p-6 pt-4 space-y-4 flex flex-col flex-1">
                     {/* Nombre y rating */}
                     <div>
-                        <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <h3 className="font-bold text-lg cc-text-primary group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {provider.name}
                         </h3>
                         {showCategory && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-sm cc-text-secondary mt-0.5">
                                 {getCategoryLabel(provider.category)}
                             </p>
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
                             <div className="flex items-center gap-1 text-amber-500">
                                 <Star className="h-4 w-4 fill-current" />
-                                <span className="font-semibold text-slate-900 dark:text-white">{provider.rating}</span>
+                                <span className="font-semibold cc-text-primary">{provider.rating}</span>
                             </div>
-                            <span className="text-sm text-slate-400 dark:text-slate-500">
+                            <span className="text-sm cc-text-tertiary">
                                 ({provider.reviewCount} {provider.reviewCount === 1 ? 'reseña' : 'reseñas'})
                             </span>
                         </div>
@@ -104,18 +104,18 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
 
                     {/* Info rápida */}
                     <div className="space-y-2 text-sm flex-1">
-                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-2 cc-text-secondary">
                             <TrendingUp className="h-4 w-4 text-slate-400" />
                             <span>{provider.yearsExperience} años de experiencia</span>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-2 cc-text-secondary">
                             <Clock className="h-4 w-4 text-slate-400" />
                             <span>Responde en {provider.responseTime}</span>
                         </div>
                         {provider.hourlyRate && (
-                            <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white mt-3">
+                            <div className="flex items-center gap-2 font-semibold cc-text-primary mt-3">
                                 <span className="text-xl">${provider.hourlyRate.toLocaleString('es-CL')}</span>
-                                <span className="text-sm font-normal text-slate-500 dark:text-slate-400">/hora</span>
+                                <span className="text-sm font-normal cc-text-secondary">/hora</span>
                             </div>
                         )}
                     </div>
@@ -127,7 +127,7 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                     </div>
 
                     {/* Botón de acción */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                    <div className="mt-4 pt-4 border-t border-subtle/50">
                         <button className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.39)] group-hover:shadow-[0_6px_20px_rgba(59,130,246,0.23)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2">
                             Ver Perfil
                             <svg className="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -127,20 +127,20 @@ export default function SignUpPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white text-2xl font-bold mb-4 shadow-lg">
                         CC
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold cc-text-primary mb-2">
                         Crear Cuenta
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-300">
+                    <p className="cc-text-secondary">
                         Únete a ComunidadConnect
                     </p>
                 </div>
 
                 {/* Sign Up Form */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
+                <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Profile Type Selection */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Tipo de Perfil
                             </label>
                             <div className="grid grid-cols-3 gap-2">
@@ -163,7 +163,7 @@ export default function SignUpPage() {
 
                         {/* Full Name Field */}
                         <div>
-                            <label htmlFor="fullName" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="fullName" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Nombre Completo
                             </label>
                             <div className="relative">
@@ -182,7 +182,7 @@ export default function SignUpPage() {
 
                         {/* Email Field */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="email" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Email
                             </label>
                             <div className="relative">
@@ -201,7 +201,7 @@ export default function SignUpPage() {
 
                         {/* Password Field */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="password" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Contraseña
                             </label>
                             <div className="relative">
@@ -227,7 +227,7 @@ export default function SignUpPage() {
 
                         {/* Confirm Password Field */}
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="confirmPassword" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Confirmar Contraseña
                             </label>
                             <div className="relative">
@@ -246,7 +246,7 @@ export default function SignUpPage() {
 
                         {/* Access Code Field */}
                         <div>
-                            <label htmlFor="accessCode" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="accessCode" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Código de Invitación
                             </label>
                             <div className="relative">
@@ -261,7 +261,7 @@ export default function SignUpPage() {
                                     className="pl-10 tracking-widest font-mono uppercase"
                                 />
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <p className="text-xs cc-text-secondary mt-1">
                                 {selectedRole === 'admin' 
                                     ? "Ingresa el código maestro de administrador."
                                     : "Ingresa el código que te proporcionó el administrador de tu comunidad."}
@@ -271,7 +271,7 @@ export default function SignUpPage() {
                         {/* Department Number - only for residents */}
                         {selectedRole === 'resident' && (
                             <div>
-                                <label htmlFor="departmentNumber" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                <label htmlFor="departmentNumber" className="block text-sm font-semibold cc-text-secondary mb-2">
                                     Número de Departamento
                                 </label>
                                 <div className="relative">
@@ -286,7 +286,7 @@ export default function SignUpPage() {
                                         className="pl-10"
                                     />
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-xs cc-text-secondary mt-1">
                                     Número o identificador de tu departamento.
                                 </p>
                             </div>
@@ -305,10 +305,10 @@ export default function SignUpPage() {
                     {/* Divider */}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                            <div className="w-full border-t border-subtle"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            <span className="px-4 bg-surface cc-text-secondary">
                                 ¿Ya tienes cuenta?
                             </span>
                         </div>
@@ -317,7 +317,7 @@ export default function SignUpPage() {
                     {/* Login Link */}
                     <Link
                         href="/login"
-                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
                         Iniciar Sesión
                     </Link>
@@ -327,7 +327,7 @@ export default function SignUpPage() {
                 <div className="text-center mt-6">
                     <Link
                         href="/"
-                        className="text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                         ← Volver al inicio
                     </Link>

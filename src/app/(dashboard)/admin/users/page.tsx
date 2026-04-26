@@ -108,15 +108,15 @@ export default function UsersPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Resident Code */}
                             {residentCode && (
-                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-900 p-4">
+                                <div className="bg-surface rounded-xl border border-emerald-200 dark:border-emerald-900 p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                                            <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                            <Users className="h-4 w-4 text-success-fg" />
                                         </div>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Residentes</span>
+                                        <span className="text-sm font-semibold cc-text-secondary">Residentes</span>
                                     </div>
                                     <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-4 py-3 border border-emerald-200 dark:border-emerald-900">
-                                        <span className="font-mono text-xl font-bold tracking-widest text-emerald-700 dark:text-emerald-400">
+                                        <span className="font-mono text-xl font-bold tracking-widest text-success-fg">
                                             {residentCode}
                                         </span>
                                         <button
@@ -130,7 +130,7 @@ export default function UsersPage() {
                                             }
                                         </button>
                                     </div>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                    <p className="text-xs cc-text-secondary mt-2">
                                         Para propietarios e inquilinos
                                     </p>
                                 </div>
@@ -138,12 +138,12 @@ export default function UsersPage() {
 
                             {/* Concierge Code */}
                             {conciergeCode && (
-                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-200 dark:border-orange-900 p-4">
+                                <div className="bg-surface rounded-xl border border-orange-200 dark:border-orange-900 p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
                                             <HardHat className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                                         </div>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Conserjes</span>
+                                        <span className="text-sm font-semibold cc-text-secondary">Conserjes</span>
                                     </div>
                                     <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950/30 rounded-lg px-4 py-3 border border-orange-200 dark:border-orange-900">
                                         <span className="font-mono text-xl font-bold tracking-widest text-orange-700 dark:text-orange-400">
@@ -160,7 +160,7 @@ export default function UsersPage() {
                                             }
                                         </button>
                                     </div>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                    <p className="text-xs cc-text-secondary mt-2">
                                         Para personal de conserjería
                                     </p>
                                 </div>

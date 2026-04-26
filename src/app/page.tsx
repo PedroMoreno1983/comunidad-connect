@@ -62,7 +62,7 @@ function AppMockup() {
       label: "Reserva confirmada",
       sub: "Piscina — Domingo 20 Abr, 11:00",
       tag: "Confirmada",
-      tagColor: "bg-amber-400/10 text-amber-600 dark:text-amber-400",
+      tagColor: "bg-amber-400/10 text-warning-fg",
       delay: "animate-float-card-delay-2",
     },
   ];

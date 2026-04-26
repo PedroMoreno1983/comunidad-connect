@@ -55,11 +55,11 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
     const progress = totalUnits > 0 ? Math.round((readUnits / totalUnits) * 100) : 0;
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none space-y-10">
+        <div className="bg-surface p-10 rounded-[3rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-10">
             {/* Header / Stats */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <div className="space-y-2">
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white">Mapa de Lecturas de la Comunidad</h3>
+                    <h3 className="text-xl font-black cc-text-primary">Mapa de Lecturas de la Comunidad</h3>
                     <p className="text-sm font-medium text-slate-500">Visualización de cobertura del edificio por unidad habitacional.</p>
                 </div>
 
@@ -93,8 +93,8 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                                     : 'bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-700'
                                 }`}
                         >
-                            <span className={`text-[9px] font-black ${isHigh ? 'text-amber-700 dark:text-amber-400' :
-                                isRead ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                            <span className={`text-[9px] font-black ${isHigh ? 'text-warning-fg' :
+                                isRead ? 'text-success-fg' : 'text-slate-400'
                                 }`}>
                                 {unit.number}
                             </span>
@@ -119,11 +119,11 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Leído</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-md bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30" />
+                    <div className="h-3 w-3 rounded-md bg-warning-bg border border-amber-200 dark:border-amber-500/30" />
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Alerta de Consumo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700" />
+                    <div className="h-3 w-3 rounded-md bg-elevated border border-subtle" />
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pendiente</span>
                 </div>
             </div>

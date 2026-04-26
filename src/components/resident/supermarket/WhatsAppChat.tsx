@@ -207,7 +207,7 @@ export function WhatsAppChat() {
                                 />
 
                                 {msg.type === 'text' && (
-                                    <p className="text-sm text-slate-900 dark:text-slate-100 pr-8">{msg.content}</p>
+                                    <p className="text-sm cc-text-primary pr-8">{msg.content}</p>
                                 )}
 
                                 {msg.type === 'audio' && (
@@ -272,7 +272,7 @@ export function WhatsAppChat() {
                                 )}
 
                                 <div className="flex justify-end items-center gap-1 mt-1 -mb-1">
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 min-w-[30px] text-right">{msg.timestamp}</span>
+                                    <span className="text-[10px] cc-text-secondary min-w-[30px] text-right">{msg.timestamp}</span>
                                     {msg.isSender && (
                                         <CheckCheck className={`h-3 w-3 ${msg.status === 'read' ? 'text-blue-500' : 'text-slate-400'}`} />
                                     )}
@@ -308,7 +308,7 @@ export function WhatsAppChat() {
                 <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-lg px-4 py-2 flex items-center">
                     <input
                         type="text"
-                        className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder-slate-400"
+                        className="w-full bg-transparent border-none outline-none cc-text-primary placeholder-slate-400"
                         placeholder="Escribe un mensaje"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}

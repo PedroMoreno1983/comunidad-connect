@@ -108,7 +108,7 @@ export default function SuperAdminDashboard() {
                         <Shield className="h-8 w-8 text-red-500" />
                         Panel SuperAdmin (SaaS)
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2">
+                    <p className="cc-text-secondary mt-2">
                         Gestiona los condominios clientes, sus planes y módulos activos.
                     </p>
                 </div>
@@ -116,25 +116,25 @@ export default function SuperAdminDashboard() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="bg-surface p-6 rounded-2xl shadow-sm border border-subtle">
                     <div className="flex items-center gap-4">
                         <div className="p-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600">
                             <Building2 className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Total Condominios</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{communities.length}</p>
+                            <p className="text-2xl font-bold cc-text-primary">{communities.length}</p>
                         </div>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="bg-surface p-6 rounded-2xl shadow-sm border border-subtle">
                     <div className="flex items-center gap-4">
                         <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
                             <Check className="h-6 w-6" />
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Planes Activos</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                            <p className="text-2xl font-bold cc-text-primary">
                                 {communities.filter(c => c.subscription_status === 'active').length}
                             </p>
                         </div>
@@ -146,9 +146,9 @@ export default function SuperAdminDashboard() {
             <OutreachDemo />
 
             {/* Communities List */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">
-                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row justify-between gap-4">
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="bg-surface rounded-2xl shadow-xl overflow-hidden border border-subtle">
+                <div className="p-6 border-b border-subtle flex flex-col md:flex-row justify-between gap-4">
+                    <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-indigo-500" />
                         Directorio de Clientes
                     </h2>
@@ -165,7 +165,7 @@ export default function SuperAdminDashboard() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-medium text-sm">
+                        <thead className="bg-canvas/50 text-slate-500 font-medium text-sm">
                             <tr>
                                 <th className="p-4">Condominio</th>
                                 <th className="p-4 text-center">Plan Actual</th>
@@ -177,8 +177,8 @@ export default function SuperAdminDashboard() {
                             {filteredCommunities.map((community) => {
                                 const currentTier = tiers.find(t => t.id === community.tier_id);
                                 return (
-                                    <tr key={community.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="p-4 font-semibold text-slate-900 dark:text-white">
+                                    <tr key={community.id} className="hover:bg-elevated/50 transition-colors">
+                                        <td className="p-4 font-semibold cc-text-primary">
                                             {community.name}
                                             <div className="text-xs font-normal text-slate-500 flex gap-2 mt-1">
                                                 <span>ID: {community.id.split('-')[0]}...</span>
@@ -188,7 +188,7 @@ export default function SuperAdminDashboard() {
                                             <select 
                                                 value={community.tier_id || ""}
                                                 onChange={(e) => handleTierChange(community.id, e.target.value)}
-                                                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 font-medium text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 font-medium text-role-admin-fg focus:ring-2 focus:ring-indigo-500"
                                             >
                                                 <option value="" disabled>Selecciona un plan</option>
                                                 {tiers.map(t => (
@@ -209,7 +209,7 @@ export default function SuperAdminDashboard() {
                                                 {community.subscription_status || 'desconocido'}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-center text-slate-600 dark:text-slate-300 font-mono font-bold tracking-widest bg-slate-50 dark:bg-slate-900 rounded-lg">
+                                        <td className="p-4 text-center cc-text-secondary font-mono font-bold tracking-widest bg-canvas rounded-lg">
                                             {community.admin_code || '---'}
                                         </td>
                                     </tr>
@@ -232,7 +232,7 @@ export default function SuperAdminDashboard() {
                 <p className="text-sm text-blue-800 dark:text-blue-400 leading-relaxed">
                     Para registrar un nuevo administrador y su condominio, envíales este link:
                     <br/><br/>
-                    <code className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg font-mono font-bold select-all tracking-wider text-blue-600 dark:text-blue-400 shadow-sm">
+                    <code className="bg-surface px-3 py-2 rounded-lg font-mono font-bold select-all tracking-wider text-blue-600 dark:text-blue-400 shadow-sm">
                         https://comunidadconnect.com/admin-onboarding
                     </code>
                     <br/><br/>

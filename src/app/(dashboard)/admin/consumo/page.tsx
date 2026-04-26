@@ -37,11 +37,11 @@ export default function AdminConsumoPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Operaciones & Suministros</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Control Hídrico</h1>
+                    <h1 className="text-4xl font-black cc-text-primary">Control Hídrico</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-xl active:scale-95">
+                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-xl active:scale-95">
                         <Printer className="h-5 w-5 text-slate-400" />
                         Imprimir Planillas
                     </button>
@@ -54,28 +54,28 @@ export default function AdminConsumoPage() {
 
             {/* Performance KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none">
+                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <Waves className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Consumo Total Mes</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Consumo Total Mes</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">1.240 m³</p>
+                    <p className="text-4xl font-black cc-text-primary mb-1">1.240 m³</p>
                     <p className="text-xs font-bold text-emerald-500 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3 rotate-180" />
                         -4% vs mes anterior
                     </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none">
+                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl">
-                            <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        <div className="p-3 bg-warning-bg rounded-2xl">
+                            <AlertCircle className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Alertas de Fuga</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Alertas de Fuga</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">3</p>
+                    <p className="text-4xl font-black cc-text-primary mb-1">3</p>
                     <p className="text-xs font-bold text-amber-500 uppercase tracking-widest">Unidades con sobreconsumo</p>
                 </div>
 
@@ -102,7 +102,7 @@ export default function AdminConsumoPage() {
                     <div className="p-3 bg-blue-100 dark:bg-blue-500/10 rounded-2xl">
                         <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">Estado de Lecturas Comunidad</h2>
+                    <h2 className="text-2xl font-black cc-text-primary">Estado de Lecturas Comunidad</h2>
                 </div>
                 <UnitStatusGrid onUnitSelect={setSelectedUnit} />
             </div>
@@ -110,10 +110,10 @@ export default function AdminConsumoPage() {
             {/* Entry System */}
             <div className="space-y-8">
                 <div className="flex items-center gap-4 px-2">
-                    <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                        <Settings className="h-6 w-6 text-slate-900 dark:text-white" />
+                    <div className="p-3 bg-elevated rounded-2xl">
+                        <Settings className="h-6 w-6 cc-text-primary" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">Ingreso de Lecturas</h2>
+                    <h2 className="text-2xl font-black cc-text-primary">Ingreso de Lecturas</h2>
                 </div>
                 <AdminMeterEntry onUnitSelect={setSelectedUnit} />
             </div>

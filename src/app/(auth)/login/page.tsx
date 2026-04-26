@@ -86,20 +86,20 @@ export default function LoginPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white text-2xl font-bold mb-4 shadow-lg">
                         CC
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold cc-text-primary mb-2">
                         Iniciar Sesión
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-300">
+                    <p className="cc-text-secondary">
                         Accede a tu cuenta de ComunidadConnect
                     </p>
                 </div>
 
                 {/* Login Form */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
+                <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email Field */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="email" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Email
                             </label>
                             <div className="relative">
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
                         {/* Password Field */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                            <label htmlFor="password" className="block text-sm font-semibold cc-text-secondary mb-2">
                                 Contraseña
                             </label>
                             <div className="relative">
@@ -155,10 +155,10 @@ export default function LoginPage() {
                     {/* Divider */}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                            <div className="w-full border-t border-subtle"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            <span className="px-4 bg-surface cc-text-secondary">
                                 ¿No tienes cuenta?
                             </span>
                         </div>
@@ -167,7 +167,7 @@ export default function LoginPage() {
                     {/* Sign Up Link */}
                     <Link
                         href="/signup"
-                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
                         Crear Cuenta
                     </Link>
@@ -216,7 +216,7 @@ export default function LoginPage() {
                 <div className="mt-4 text-center">
                     <Link
                         href="/admin-onboarding"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-role-admin-fg hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
                     >
                         🏢 ¿Eres administrador? Registra tu edificio aquí →
                     </Link>
@@ -226,7 +226,7 @@ export default function LoginPage() {
                 <div className="text-center mt-6">
                     <Link
                         href="/"
-                        className="text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                         ← Volver al inicio
                     </Link>

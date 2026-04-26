@@ -133,23 +133,23 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             return {
                 dot: 'bg-emerald-500',
                 label: 'Disponible',
-                bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-                text: 'text-emerald-700 dark:text-emerald-400'
+                bg: 'bg-success-bg',
+                text: 'text-success-fg'
             };
         }
         if (availability === 'busy') {
             return {
                 dot: 'bg-amber-500',
                 label: 'Ocupado',
-                bg: 'bg-amber-50 dark:bg-amber-500/10',
-                text: 'text-amber-700 dark:text-amber-400'
+                bg: 'bg-warning-bg',
+                text: 'text-warning-fg'
             };
         }
         return {
             dot: 'bg-red-500',
             label: 'No disponible',
-            bg: 'bg-red-50 dark:bg-red-500/10',
-            text: 'text-red-700 dark:text-red-400'
+            bg: 'bg-danger-bg',
+            text: 'text-danger-fg'
         };
     };
 
@@ -158,7 +158,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     return (
         <>
             {/* Header Card */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="bg-surface rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
                 {/* Cover */}
                 <div className="h-32 bg-gradient-to-br from-blue-500 to-cyan-600"></div>
 
@@ -182,17 +182,17 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                                        <h1 className="text-3xl font-bold cc-text-primary">
                                             {provider.name}
                                         </h1>
                                         {provider.verified && (
                                             <BadgeCheck className="h-7 w-7 text-blue-500 fill-blue-100 dark:fill-blue-500/20" />
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                                    <div className="flex items-center gap-3 cc-text-secondary">
                                         <div className="flex items-center gap-1">
                                             <Star className="h-5 w-5 text-amber-500 fill-current" />
-                                            <span className="font-bold text-slate-900 dark:text-white">{provider.rating}</span>
+                                            <span className="font-bold cc-text-primary">{provider.rating}</span>
                                             <span className="text-sm">({provider.reviewCount} reseñas)</span>
                                         </div>
                                         <span>•</span>
@@ -220,7 +220,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                 </Button>
                                 <a
                                     href={`tel:${provider.contactPhone}`}
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                 >
                                     <Phone className="h-4 w-4" />
                                     Llamar
@@ -228,7 +228,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                 {provider.email && (
                                     <a
                                         href={`mailto:${provider.email}`}
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                     >
                                         <Mail className="h-4 w-4" />
                                         Email
@@ -244,19 +244,19 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* About */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                        <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                             <Briefcase className="h-5 w-5 text-blue-600" />
                             Sobre Mí
                         </h2>
-                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="cc-text-secondary leading-relaxed">
                             {provider.bio}
                         </p>
                     </div>
 
                     {/* Specialties */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                        <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                             <Award className="h-5 w-5 text-blue-600" />
                             Especialidades
                         </h2>
@@ -274,8 +274,8 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
                     {/* Certifications */}
                     {provider.certifications.length > 0 && (
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                            <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                                 <CheckCircle className="h-5 w-5 text-blue-600" />
                                 Certificaciones
                             </h2>
@@ -283,7 +283,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                 {provider.certifications.map((cert, idx) => (
                                     <div key={idx} className="flex items-start gap-3">
                                         <Award className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                        <span className="text-slate-700 dark:text-slate-300">{cert}</span>
+                                        <span className="cc-text-secondary">{cert}</span>
                                     </div>
                                 ))}
                             </div>
@@ -291,9 +291,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     )}
 
                     {/* Reviews */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
+                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5 text-blue-600" />
                                 Reseñas ({reviews.length})
                             </h2>
@@ -309,7 +309,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         <div className="space-y-4">
                             {reviews.length > 0 ? (
                                 reviews.map((review) => (
-                                    <div key={review.id} className="border-b border-slate-100 dark:border-slate-700 last:border-0 pb-4 last:pb-0">
+                                    <div key={review.id} className="border-b border-subtle last:border-0 pb-4 last:pb-0">
                                         <div className="flex items-start gap-3 mb-2">
                                             {review.userAvatar ? (
                                                 <div className="relative w-10 h-10 rounded-full overflow-hidden">
@@ -322,32 +322,32 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-semibold">
+                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center cc-text-secondary font-semibold">
                                                     {review.userName.charAt(0)}
                                                 </div>
                                             )}
                                             <div className="flex-grow">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <h4 className="font-semibold text-slate-900 dark:text-white">{review.userName}</h4>
+                                                    <h4 className="font-semibold cc-text-primary">{review.userName}</h4>
                                                     <div className="flex items-center gap-1">
                                                         {Array.from({ length: 5 }).map((_, i) => (
                                                             <Star
                                                                 key={i}
-                                                                className={`h-4 w-4 ${i < review.rating ? 'text-amber-500 fill-current' : 'text-slate-300 dark:text-slate-600'}`}
+                                                                className={`h-4 w-4 ${i < review.rating ? 'text-amber-500 fill-current' : 'cc-text-tertiary'}`}
                                                             />
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                                                <p className="text-sm cc-text-secondary mb-2">
                                                     {review.serviceType} • {new Date(review.createdAt).toLocaleDateString('es-CL')}
                                                 </p>
-                                                <p className="text-slate-700 dark:text-slate-300">{review.comment}</p>
+                                                <p className="cc-text-secondary">{review.comment}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-center text-slate-500 dark:text-slate-400 py-8">
+                                <p className="text-center cc-text-secondary py-8">
                                     Aún no hay reseñas para este proveedor
                                 </p>
                             )}
@@ -358,24 +358,24 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Contact Info */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-4">Información de Contacto</h3>
+                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                        <h3 className="font-bold cc-text-primary mb-4">Información de Contacto</h3>
                         <div className="space-y-3">
-                            <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+                            <div className="flex items-center gap-3 cc-text-secondary">
                                 <Phone className="h-5 w-5 text-slate-400" />
                                 <a href={`tel:${provider.contactPhone}`} className="hover:text-blue-600 dark:hover:text-blue-400">
                                     {provider.contactPhone}
                                 </a>
                             </div>
                             {provider.email && (
-                                <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+                                <div className="flex items-center gap-3 cc-text-secondary">
                                     <Mail className="h-5 w-5 text-slate-400" />
                                     <a href={`mailto:${provider.email}`} className="hover:text-blue-600 dark:hover:text-blue-400 break-all">
                                         {provider.email}
                                     </a>
                                 </div>
                             )}
-                            <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+                            <div className="flex items-center gap-3 cc-text-secondary">
                                 <Clock className="h-5 w-5 text-slate-400" />
                                 <span>Responde en {provider.responseTime}</span>
                             </div>
@@ -383,26 +383,26 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </div>
 
                     {/* Stats */}
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-4">Estadísticas</h3>
+                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                        <h3 className="font-bold cc-text-primary mb-4">Estadísticas</h3>
                         <div className="space-y-4">
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Trabajos Completados</span>
-                                    <span className="font-bold text-slate-900 dark:text-white">{provider.completedJobs}</span>
+                                    <span className="text-sm cc-text-secondary">Trabajos Completados</span>
+                                    <span className="font-bold cc-text-primary">{provider.completedJobs}</span>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Calificación</span>
-                                    <span className="font-bold text-slate-900 dark:text-white">{provider.rating}/5.0</span>
+                                    <span className="text-sm cc-text-secondary">Calificación</span>
+                                    <span className="font-bold cc-text-primary">{provider.rating}/5.0</span>
                                 </div>
                             </div>
                             {provider.hourlyRate && (
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">Tarifa por Hora</span>
-                                        <span className="font-bold text-slate-900 dark:text-white">${provider.hourlyRate.toLocaleString('es-CL')}</span>
+                                        <span className="text-sm cc-text-secondary">Tarifa por Hora</span>
+                                        <span className="font-bold cc-text-primary">${provider.hourlyRate.toLocaleString('es-CL')}</span>
                                     </div>
                                 </div>
                             )}
@@ -435,7 +435,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </DialogHeader>
                     <form onSubmit={handleRequestService} className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Fecha Preferida</label>
+                            <label className="text-sm font-medium cc-text-secondary">Fecha Preferida</label>
                             <Input
                                 type="date"
                                 required
@@ -444,7 +444,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Hora Preferida</label>
+                            <label className="text-sm font-medium cc-text-secondary">Hora Preferida</label>
                             <Input
                                 type="time"
                                 required
@@ -453,9 +453,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Descripción del Servicio</label>
+                            <label className="text-sm font-medium cc-text-secondary">Descripción del Servicio</label>
                             <textarea
-                                className="w-full min-h-[100px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full min-h-[100px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                                 placeholder="Describe el servicio que necesitas..."
                                 required
                                 value={requestForm.description}
@@ -480,7 +480,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </DialogHeader>
                     <form onSubmit={handleSubmitReview} className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calificación</label>
+                            <label className="text-sm font-medium cc-text-secondary">Calificación</label>
                             <div className="flex gap-2">
                                 {Array.from({ length: 5 }).map((_, i) => (
                                     <button
@@ -490,16 +490,16 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                         className="focus:outline-none"
                                     >
                                         <Star
-                                            className={`h-8 w-8 ${i < reviewForm.rating ? 'text-amber-500 fill-current' : 'text-slate-300 dark:text-slate-600'} hover:text-amber-400 transition-colors`}
+                                            className={`h-8 w-8 ${i < reviewForm.rating ? 'text-amber-500 fill-current' : 'cc-text-tertiary'} hover:text-amber-400 transition-colors`}
                                         />
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tu Comentario</label>
+                            <label className="text-sm font-medium cc-text-secondary">Tu Comentario</label>
                             <textarea
-                                className="w-full min-h-[120px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                                 placeholder="Cuéntanos sobre tu experiencia..."
                                 required
                                 value={reviewForm.comment}

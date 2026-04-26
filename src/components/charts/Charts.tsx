@@ -19,11 +19,11 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">{label}</p>
+            <div className="bg-surface p-3 rounded-xl shadow-xl border border-subtle">
+                <p className="text-sm font-semibold cc-text-primary">{label}</p>
                 {payload.map((entry, index: number) => (
-                    <p key={index} className="text-sm text-slate-600 dark:text-slate-400">
-                        {entry.name}: <span className="font-medium text-slate-900 dark:text-white">${entry.value.toLocaleString('es-CL')} CLP</span>
+                    <p key={index} className="text-sm cc-text-secondary">
+                        {entry.name}: <span className="font-medium cc-text-primary">${entry.value.toLocaleString('es-CL')} CLP</span>
                     </p>
                 ))}
             </div>
