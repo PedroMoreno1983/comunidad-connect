@@ -575,8 +575,8 @@ export default function LandingPage() {
                   style={{
                     background: isHovered
                       ? `linear-gradient(145deg, ${role.color}15, ${role.color}08)`
-                      : 'var(--surface)',
-                    border: `2px solid ${isHovered ? role.color + '50' : 'var(--border-default)'}`,
+                      : 'var(--cc-bg-surface)',
+                    border: `2px solid ${isHovered ? role.color + '50' : 'var(--cc-border-default)'}`,
                     boxShadow: isHovered
                       ? `0 30px 60px -15px ${role.color}35, 0 0 0 1px ${role.color}20`
                       : '0 2px 8px rgba(0,0,0,0.06)',
@@ -600,8 +600,8 @@ export default function LandingPage() {
                           animate={{
                             background: isHovered
                               ? `linear-gradient(135deg, ${role.color}18, ${role.color}08)`
-                              : 'var(--background-subtle)',
-                            borderColor: isHovered ? `${role.color}40` : 'var(--border-subtle)',
+                              : 'var(--cc-bg-elevated)',
+                            borderColor: isHovered ? `${role.color}40` : 'var(--cc-border-subtle)',
                           }}
                           transition={{ duration: 0.3, delay: wi * 0.04 }}
                           className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-center"
@@ -621,7 +621,7 @@ export default function LandingPage() {
                         style={{
                           background: isHovered
                             ? `linear-gradient(135deg, ${role.color}, ${role.color}cc)`
-                            : 'var(--background-subtle)',
+                            : 'var(--cc-bg-elevated)',
                           boxShadow: isHovered ? `0 6px 20px ${role.color}40` : 'none',
                         }}
                       >
@@ -638,14 +638,14 @@ export default function LandingPage() {
                     <div className="flex-1" />
 
                     <div className="flex items-center justify-between pt-4 border-t border-[#f5f1ee] dark:border-[#2e2820]">
-                      <span className="text-sm font-bold transition-colors duration-300" style={{ color: isHovered ? role.color : 'var(--text-muted)' }}>
+                      <span className="text-sm font-bold transition-colors duration-300" style={{ color: isHovered ? role.color : 'var(--cc-text-tertiary)' }}>
                         Explorar funciones
                       </span>
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
                         style={{
-                          background: isHovered ? role.color : 'var(--background-subtle)',
-                          color: isHovered ? 'white' : 'var(--text-muted)',
+                          background: isHovered ? role.color : 'var(--cc-bg-elevated)',
+                          color: isHovered ? 'white' : 'var(--cc-text-tertiary)',
                           transform: isHovered ? 'translateX(3px)' : 'none',
                         }}
                       >

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
@@ -44,7 +45,7 @@ export function MobileMenuButton({ onClick, isOpen }: { onClick: () => void; isO
     return (
         <button
             onClick={onClick}
-            className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+            className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-surface shadow-md border border-subtle cc-text-primary"
         >
             <AnimatePresence mode="wait">
                 {isOpen ? (
@@ -172,21 +173,30 @@ export function Sidebar() {
         });
     }
 
-    const getRoleGradient = () => {
+    const getAvatarStyle = (): CSSProperties => {
         switch (user.role) {
-            case 'admin': return 'from-indigo-500 to-purple-600';
-            case 'resident': return 'from-emerald-500 to-teal-600';
-            case 'concierge': return 'from-amber-500 to-orange-600';
-            default: return 'from-indigo-500 to-purple-600';
+            case 'admin':    return { background: 'linear-gradient(135deg, var(--cc-brand-500), var(--cc-brand-700))' };
+            case 'resident': return { background: 'linear-gradient(135deg, var(--cc-role-residente-500), var(--cc-role-residente-600))' };
+            case 'concierge':return { background: 'linear-gradient(135deg, var(--cc-role-conserje-500), var(--cc-role-conserje-600))' };
+            default:         return { background: 'linear-gradient(135deg, var(--cc-brand-500), var(--cc-brand-700))' };
         }
     };
 
-    const getRoleBg = () => {
+    const getActiveStyle = (): CSSProperties => {
         switch (user.role) {
-            case 'admin': return 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300';
-            case 'resident': return 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300';
-            case 'concierge': return 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300';
-            default: return 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300';
+            case 'admin':    return { backgroundColor: 'var(--cc-brand-500)' };
+            case 'resident': return { backgroundColor: 'var(--cc-role-residente-500)' };
+            case 'concierge':return { backgroundColor: 'var(--cc-role-conserje-500)' };
+            default:         return { backgroundColor: 'var(--cc-brand-500)' };
+        }
+    };
+
+    const getRoleBadgeClass = () => {
+        switch (user.role) {
+            case 'admin':    return 'bg-role-admin-bg text-role-admin-fg border border-role-admin-border';
+            case 'resident': return 'bg-role-residente-bg text-role-residente-fg border border-role-residente-border';
+            case 'concierge':return 'bg-role-conserje-bg text-role-conserje-fg border border-role-conserje-border';
+            default:         return 'bg-role-admin-bg text-role-admin-fg border border-role-admin-border';
         }
     };
 
@@ -195,14 +205,14 @@ export function Sidebar() {
     const sidebarContent = (
         <>
             {/* Header / Logo */}
-            <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b border-subtle">
                 <div className="flex items-center">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${getRoleGradient()} shadow-lg shadow-indigo-500/30`}>
+                    <div className="p-2.5 rounded-xl shadow-md" style={getAvatarStyle()}>
                         <Building2 className="h-6 w-6 text-white" />
                     </div>
                     <div className="ml-3">
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">Comunidad</span>
-                        <span className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Connect</span>
+                        <span className="text-lg font-bold cc-text-primary">Comunidad</span>
+                        <span className="text-lg font-bold text-brand-500">Connect</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -213,18 +223,18 @@ export function Sidebar() {
 
             {/* User Profile Card */}
             <div className="p-4 shrink-0">
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/10 shadow-sm backdrop-blur-md">
+                <div className="p-4 rounded-2xl bg-elevated border border-subtle shadow-sm">
                     <div className="flex items-center">
-                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${getRoleGradient()} flex items-center justify-center text-white font-bold text-lg shadow-lg shrink-0`}>
+                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0" style={getAvatarStyle()}>
                             {user.name.charAt(0)}
                         </div>
                         <div className="ml-3 overflow-hidden flex-1">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            <p className="text-sm font-semibold cc-text-primary truncate">
                                 {user.name.includes('@')
                                     ? (user.name.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.name.split('@')[0].split('.')[0].slice(1))
                                     : user.name}
                             </p>
-                            <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRoleBg()}`}>
+                            <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRoleBadgeClass()}`}>
                                 <Sparkles className="h-3 w-3" />
                                 {user.role === 'admin' ? 'Admin' : user.role === 'resident' ? 'Residente' : 'Conserjería'}
                             </span>
@@ -251,7 +261,7 @@ export function Sidebar() {
 
                     return (
                         <div key={sIdx} className="space-y-1">
-                            <h3 className="px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+                            <h3 className="px-4 text-[10px] font-black uppercase tracking-widest cc-text-tertiary mb-2">
                                 {section.title}
                             </h3>
                             {validLinks.map((link, lIdx) => {
@@ -271,16 +281,17 @@ export function Sidebar() {
                                         <Link
                                             href={link.href}
                                             onClick={() => setIsMobileOpen(false)}
+                                            style={isActive ? getActiveStyle() : undefined}
                                             className={clsx(
                                                 "relative group overflow-hidden flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300",
                                                 isActive
-                                                    ? `bg-gradient-to-r ${getRoleGradient()} text-white shadow-md ring-1 ring-white/20`
-                                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                                                    ? "text-white shadow-md"
+                                                    : "cc-text-secondary hover:bg-elevated hover:text-primary"
                                             )}
                                         >
                                             <Icon className={clsx(
                                                 "relative z-10 mr-3 h-5 w-5 transition-transform group-hover:scale-110",
-                                                isActive ? "text-white" : "text-slate-400 dark:text-slate-500 group-hover:text-indigo-500"
+                                                isActive ? "text-white" : "cc-text-tertiary group-hover:text-brand-500"
                                             )} />
                                             <span className="flex-1">{link.label}</span>
                                         </Link>
@@ -293,17 +304,15 @@ export function Sidebar() {
             </nav>
 
             {/* Footer / Logout */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-
-
+            <div className="p-4 border-t border-subtle space-y-2">
                 <button
                     onClick={handleLogout}
-                    className="w-full group flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
+                    className="w-full group flex items-center px-4 py-3 text-sm font-medium rounded-xl cc-text-secondary hover:bg-danger-bg hover:text-danger-fg transition-all duration-200"
                 >
-                    <LogOut className="mr-3 h-5 w-5 text-slate-400 dark:text-slate-500 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
+                    <LogOut className="mr-3 h-5 w-5 cc-text-tertiary group-hover:text-danger-fg transition-colors" />
                     Cerrar Sesión
                 </button>
-                <p className="mt-3 text-center text-xs text-slate-400 dark:text-slate-600">
+                <p className="mt-3 text-center text-xs cc-text-tertiary">
                     v2.0 Pro • ComunidadConnect
                 </p>
             </div>
@@ -315,7 +324,7 @@ export function Sidebar() {
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-surface shadow-md border border-subtle cc-text-primary"
             >
                 <AnimatePresence mode="wait">
                     {isMobileOpen ? (
@@ -364,7 +373,7 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: -288 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="lg:hidden fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col bg-slate-50/90 dark:bg-[#0B0F19]/90 backdrop-blur-2xl border-r border-slate-200/50 dark:border-white/5 shadow-[20px_0_40px_-15px_rgba(0,0,0,0.3)]"
+                        className="lg:hidden fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col bg-canvas border-r border-subtle shadow-xl"
                     >
                         {sidebarContent}
                     </motion.div>
@@ -372,7 +381,7 @@ export function Sidebar() {
             </AnimatePresence>
 
             {/* Desktop Sidebar */}
-            <div className="hidden lg:flex h-screen w-72 flex-col bg-slate-50/80 dark:bg-[#0B0F19]/80 backdrop-blur-2xl border-r border-slate-200/50 dark:border-white/5 z-10 relative shadow-[10px_0_30px_-15px_rgba(0,0,0,0.1)] dark:shadow-[10px_0_30px_-15px_rgba(0,0,0,0.5)]">
+            <div className="hidden lg:flex h-screen w-72 flex-col bg-canvas border-r border-subtle z-10 relative shadow-sm">
                 {sidebarContent}
             </div>
         </>
