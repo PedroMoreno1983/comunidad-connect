@@ -16,7 +16,7 @@ export function Skeleton({
 }) {
     return (
         <div
-            className={`animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 ${className}`}
+            className={`animate-pulse rounded-xl bg-elevated ${className}`}
             style={{ width, height }}
         />
     );
@@ -25,7 +25,7 @@ export function Skeleton({
 // Card Skeleton
 export function CardSkeleton({ lines = 3 }: { lines?: number }) {
     return (
-        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+        <div className="p-6 rounded-2xl border border-subtle bg-surface space-y-4">
             <div className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-xl" />
                 <div className="space-y-2 flex-1">
@@ -47,7 +47,7 @@ export function StatsSkeleton({ count = 4 }: { count?: number }) {
             {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
-                    className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                    className="p-5 rounded-2xl border border-subtle bg-surface"
                 >
                     <Skeleton className="h-4 w-20 mb-3" />
                     <Skeleton className="h-8 w-24 mb-2" />
@@ -61,16 +61,16 @@ export function StatsSkeleton({ count = 4 }: { count?: number }) {
 // Table Skeleton
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
     return (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
+        <div className="rounded-2xl border border-subtle bg-surface overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex gap-4">
+            <div className="p-4 border-b border-subtle flex gap-4">
                 {Array.from({ length: cols }).map((_, i) => (
                     <Skeleton key={i} className="h-4 flex-1" />
                 ))}
             </div>
             {/* Rows */}
             {Array.from({ length: rows }).map((_, r) => (
-                <div key={r} className="p-4 border-b border-slate-50 dark:border-slate-800/50 flex gap-4">
+                <div key={r} className="p-4 border-b border-subtle flex gap-4">
                     {Array.from({ length: cols }).map((_, c) => (
                         <Skeleton key={c} className="h-4 flex-1" />
                     ))}
@@ -103,16 +103,17 @@ export function EmptyState({
             className="flex flex-col items-center justify-center py-16 px-8 text-center"
         >
             {Icon && (
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center mb-6">
-                    <Icon className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                <div className="w-20 h-20 rounded-3xl bg-elevated flex items-center justify-center mb-6">
+                    <Icon className="w-10 h-10 cc-text-tertiary" />
                 </div>
             )}
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
-            <p className="text-slate-500 dark:text-slate-400 max-w-md mb-6">{description}</p>
+            <h3 className="text-xl font-bold cc-text-primary mb-2">{title}</h3>
+            <p className="cc-text-secondary max-w-md mb-6">{description}</p>
             {action && actionLabel && (
                 <button
                     onClick={action}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300"
+                    className="px-6 py-3 text-white font-bold rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
+                    style={{ backgroundColor: 'var(--cc-brand-500)', boxShadow: 'var(--cc-glow-brand)' }}
                 >
                     {actionLabel}
                 </button>
@@ -192,9 +193,9 @@ export function PageHeader({
                     </div>
                 )}
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white">{title}</h1>
+                    <h1 className="text-2xl lg:text-3xl font-black cc-text-primary">{title}</h1>
                     {description && (
-                        <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">{description}</p>
+                        <p className="cc-text-secondary font-medium mt-1">{description}</p>
                     )}
                 </div>
             </div>
@@ -228,15 +229,15 @@ export function StatCard({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ y: -4 }}
-            className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden"
+            className="group relative p-5 rounded-2xl bg-surface border border-subtle shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden"
         >
             {/* Gradient accent */}
             <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</p>
-                    <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">{value}</p>
+                    <p className="text-sm font-semibold cc-text-secondary uppercase tracking-wider">{title}</p>
+                    <p className="text-3xl font-black cc-text-primary mt-2">{value}</p>
                     {subtitle && (
                         <div className="flex items-center gap-2 mt-2">
                             {trend && (
@@ -244,7 +245,7 @@ export function StatCard({
                                     {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} {trendValue}
                                 </span>
                             )}
-                            <span className="text-xs text-slate-400">{subtitle}</span>
+                            <span className="text-xs cc-text-tertiary">{subtitle}</span>
                         </div>
                     )}
                 </div>

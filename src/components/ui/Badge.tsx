@@ -5,9 +5,6 @@ import { HTMLAttributes, CSSProperties } from 'react';
  *
  * Two families: role (admin / conserje / residente) and status (success / warning / danger / info).
  * Optional live dot indicates "currently active / happening now" — omit for static metadata.
- *
- * Uses hardcoded RGBA colors to ensure correct rendering on first paint
- * without depending on CSS variable resolution.
  */
 
 type BadgeVariant = 
@@ -16,29 +13,29 @@ type BadgeVariant =
   | 'neutral' | 'secondary' | 'destructive';
 
 const badgeStyleMap: Record<BadgeVariant, CSSProperties> = {
-  admin:       { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC', borderColor: 'rgba(124, 58, 237, 0.28)' },
-  conserje:    { backgroundColor: 'rgba(245, 158, 11, 0.12)',  color: '#FBBF5C', borderColor: 'rgba(245, 158, 11, 0.30)' },
-  residente:   { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399', borderColor: 'rgba(16, 185, 129, 0.30)' },
-  success:     { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399', borderColor: 'rgba(16, 185, 129, 0.30)' },
-  warning:     { backgroundColor: 'rgba(245, 158, 11, 0.12)',  color: '#FBBF5C', borderColor: 'rgba(245, 158, 11, 0.30)' },
-  danger:      { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171', borderColor: 'rgba(239, 68, 68, 0.30)' },
-  destructive: { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171', borderColor: 'rgba(239, 68, 68, 0.30)' },
-  info:        { backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA', borderColor: 'rgba(59, 130, 246, 0.30)' },
-  neutral:     { backgroundColor: 'rgba(128, 128, 128, 0.10)', color: 'inherit', borderColor: 'rgba(128, 128, 128, 0.18)' },
-  secondary:   { backgroundColor: 'rgba(128, 128, 128, 0.10)', color: 'inherit', borderColor: 'rgba(128, 128, 128, 0.18)' },
+  admin:       { backgroundColor: 'var(--cc-role-admin-bg)',     color: 'var(--cc-role-admin-fg)',     borderColor: 'var(--cc-role-admin-border)' },
+  conserje:    { backgroundColor: 'var(--cc-role-conserje-bg)',  color: 'var(--cc-role-conserje-fg)',  borderColor: 'var(--cc-role-conserje-border)' },
+  residente:   { backgroundColor: 'var(--cc-role-residente-bg)', color: 'var(--cc-role-residente-fg)', borderColor: 'var(--cc-role-residente-border)' },
+  success:     { backgroundColor: 'var(--cc-success-bg)',        color: 'var(--cc-success-fg)',        borderColor: 'var(--cc-success-border)' },
+  warning:     { backgroundColor: 'var(--cc-warning-bg)',        color: 'var(--cc-warning-fg)',        borderColor: 'var(--cc-warning-border)' },
+  danger:      { backgroundColor: 'var(--cc-danger-bg)',         color: 'var(--cc-danger-fg)',         borderColor: 'var(--cc-danger-border)' },
+  destructive: { backgroundColor: 'var(--cc-danger-bg)',         color: 'var(--cc-danger-fg)',         borderColor: 'var(--cc-danger-border)' },
+  info:        { backgroundColor: 'var(--cc-info-bg)',           color: 'var(--cc-info-fg)',           borderColor: 'var(--cc-info-border)' },
+  neutral:     { backgroundColor: 'var(--cc-bg-elevated)',       color: 'var(--cc-text-secondary)',    borderColor: 'var(--cc-border-default)' },
+  secondary:   { backgroundColor: 'var(--cc-bg-elevated)',       color: 'var(--cc-text-secondary)',    borderColor: 'var(--cc-border-default)' },
 };
 
 const dotColorMap: Record<BadgeVariant, string> = {
-  admin:       '#A58FFC',
-  conserje:    '#FBBF5C',
-  residente:   '#34D399',
-  success:     '#34D399',
-  warning:     '#FBBF5C',
-  danger:      '#F87171',
-  destructive: '#F87171',
-  info:        '#60A5FA',
-  neutral:     'currentColor',
-  secondary:   'currentColor',
+  admin:       'var(--cc-role-admin-fg)',
+  conserje:    'var(--cc-role-conserje-fg)',
+  residente:   'var(--cc-role-residente-fg)',
+  success:     'var(--cc-success-fg)',
+  warning:     'var(--cc-warning-fg)',
+  danger:      'var(--cc-danger-fg)',
+  destructive: 'var(--cc-danger-fg)',
+  info:        'var(--cc-info-fg)',
+  neutral:     'var(--cc-text-tertiary)',
+  secondary:   'var(--cc-text-tertiary)',
 };
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
