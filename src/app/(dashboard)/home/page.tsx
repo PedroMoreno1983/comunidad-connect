@@ -30,7 +30,7 @@ const expenseChartData = [
 ];
 
 const expenseCategoryData = [
-    { name: 'Mantención', value: 35000, color: '#6366f1' },
+    { name: 'Mantención', value: 35000, color: '#7C3AED' },
     { name: 'Limpieza', value: 25000, color: '#10b981' },
     { name: 'Seguridad', value: 15000, color: '#f59e0b' },
     { name: 'Servicios', value: 10000, color: '#ef4444' },
