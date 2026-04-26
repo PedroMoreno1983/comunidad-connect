@@ -46,7 +46,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
     const isClosed = poll.status === 'closed' || new Date(poll.endDate) < new Date();
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden h-full flex flex-col">
+        <div className="bg-surface rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden h-full flex flex-col">
             <div className="p-8 md:p-10 flex-1 space-y-8">
                 {/* Header */}
                 <div className="space-y-4">
@@ -59,13 +59,13 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                                 poll.category === 'rules' ? 'Reglamento' : 'Comunidad'}
                         </span>
                         {isClosed && (
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-800 px-3 py-1.5 rounded-xl">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border border-subtle px-3 py-1.5 rounded-xl">
                                 Cerrado
                             </span>
                         )}
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{poll.title}</h3>
+                        <h3 className="text-2xl font-black cc-text-primary leading-tight">{poll.title}</h3>
                         <p className="text-sm font-medium text-slate-400 leading-relaxed">{poll.description}</p>
                     </div>
                 </div>
@@ -90,13 +90,13 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                                             : 'border-slate-50 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
                                             }`}
                                     >
-                                        <span className={`font-bold transition-colors ${selectedOption === option.id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'
+                                        <span className={`font-bold transition-colors ${selectedOption === option.id ? 'text-blue-600 dark:text-blue-400' : 'cc-text-secondary'
                                             }`}>
                                             {option.text}
                                         </span>
                                         <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedOption === option.id
                                             ? 'border-blue-600 bg-blue-600'
-                                            : 'border-slate-200 dark:border-slate-700'
+                                            : 'border-subtle'
                                             }`}>
                                             {selectedOption === option.id && <CheckCircle2 className="h-4 w-4 text-white" />}
                                         </div>
@@ -117,9 +117,9 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                                         <div key={option.id} className="space-y-2">
                                             <div className="flex justify-between text-sm font-black uppercase tracking-widest text-slate-400 px-1">
                                                 <span>{option.text}</span>
-                                                <span className="text-slate-900 dark:text-white">{percentage}%</span>
+                                                <span className="cc-text-primary">{percentage}%</span>
                                             </div>
-                                            <div className="h-4 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <div className="h-4 w-full bg-elevated rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${percentage}%` }}
@@ -140,7 +140,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
             </div>
 
             {/* Footer */}
-            <div className="p-8 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 mt-auto">
+            <div className="p-8 bg-slate-50/50 dark:bg-slate-800/30 border-t border-subtle mt-auto">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">

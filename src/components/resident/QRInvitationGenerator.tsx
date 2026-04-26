@@ -87,13 +87,13 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none space-y-8"
+                        className="bg-surface rounded-[2.5rem] p-10 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-8"
                     >
                         <div className="text-center space-y-2">
                             <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                                 <UserPlus className="h-8 w-8" />
                             </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Nueva Invitación</h2>
+                            <h2 className="text-2xl font-black cc-text-primary">Nueva Invitación</h2>
                             <p className="text-sm font-medium text-slate-400">Genere un acceso digital para su visita</p>
                         </div>
 
@@ -117,7 +117,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                 />
                             </div>
 
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex gap-3">
+                            <div className="p-4 bg-elevated/50 rounded-2xl flex gap-3">
                                 <Info className="h-5 w-5 text-blue-500 shrink-0" />
                                 <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
                                     Esta invitación es válida por **24 horas** a partir de ahora. El invitado deberá presentar su documento de identidad original.

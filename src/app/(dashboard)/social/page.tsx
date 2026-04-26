@@ -192,13 +192,13 @@ export default function SocialFeedPage() {
                     <Hash className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white">Muro Social</h1>
+                    <h1 className="text-3xl font-black cc-text-primary">Muro Social</h1>
                     <p className="text-sm font-medium text-slate-500 mt-1">Comparte novedades, datos y fotos con tus vecinos.</p>
                 </div>
             </div>
 
             {/* Create Post Field */}
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-2xl">
+            <div className="bg-surface rounded-[2.5rem] p-6 sm:p-8 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-2xl">
                 <form onSubmit={handleCreatePost}>
                     <div className="flex gap-4 sm:gap-6">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
@@ -215,11 +215,11 @@ export default function SocialFeedPage() {
                                 value={newPostContent}
                                 onChange={(e) => setNewPostContent(e.target.value)}
                                 placeholder="¿Qué está pasando en el edificio?"
-                                className="w-full min-h-[100px] resize-none bg-transparent text-lg font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                                className="w-full min-h-[100px] resize-none bg-transparent text-lg font-medium cc-text-primary placeholder:text-slate-400 focus:outline-none"
                             />
 
                             {/* Actions Footer */}
-                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center justify-between pt-4 border-t border-subtle">
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
@@ -248,7 +248,7 @@ export default function SocialFeedPage() {
 
                             {/* Image Preview */}
                             {newPostImagePreview && (
-                                <div className="relative mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                                <div className="relative mt-3 rounded-2xl overflow-hidden border border-subtle">
                                     <img src={newPostImagePreview} alt="preview" className="w-full max-h-64 object-cover" />
                                     <button
                                         type="button"
@@ -275,7 +275,7 @@ export default function SocialFeedPage() {
                 )}
 
                 {!isLoading && posts.length === 0 && (
-                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800 p-16 text-center space-y-4">
+                    <div className="bg-canvas/50 rounded-[3rem] border border-dashed border-subtle p-16 text-center space-y-4">
                         <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" />
                         <h3 className="text-xl font-black text-slate-500">Nada por aquí aún</h3>
                         <p className="text-sm font-medium text-slate-400">Sé el primero en saludar a tus vecinos.</p>
@@ -288,7 +288,7 @@ export default function SocialFeedPage() {
                             key={post.id}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-white dark:bg-slate-900 flex flex-col rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/20 dark:shadow-none overflow-hidden"
+                            className="bg-surface flex flex-col rounded-[2.5rem] border border-subtle shadow-lg shadow-slate-200/20 dark:shadow-none overflow-hidden"
                         >
                             {/* Post Header */}
                             <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
@@ -303,10 +303,10 @@ export default function SocialFeedPage() {
                                         )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <h3 className="font-bold cc-text-primary flex items-center gap-2">
                                             {post.profiles?.name || 'Residente'}
                                             {post.profiles?.unit_id && (
-                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">
                                                     Depto {post.profiles.unit_id}
                                                 </span>
                                             )}
@@ -316,7 +316,7 @@ export default function SocialFeedPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <button className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                                <button className="p-2 text-slate-400 hover:bg-elevated rounded-full transition-colors">
                                     <MoreHorizontal className="h-5 w-5" />
                                 </button>
                             </div>
@@ -327,7 +327,7 @@ export default function SocialFeedPage() {
                                     {post.content}
                                 </p>
                                 {post.image_url && (
-                                    <div className="mt-4 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+                                    <div className="mt-4 rounded-2xl overflow-hidden border border-subtle">
                                         <img src={post.image_url} alt="post image" className="w-full h-auto object-cover max-h-[500px]" />
                                     </div>
                                 )}
@@ -372,7 +372,7 @@ export default function SocialFeedPage() {
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: "auto", opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        className="bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 overflow-hidden"
+                                        className="bg-elevated/30 border-t border-subtle overflow-hidden"
                                     >
                                         <div className="p-6 sm:p-8 space-y-6">
                                             {/* List of comments */}
@@ -392,9 +392,9 @@ export default function SocialFeedPage() {
                                                                 )}
                                                             </div>
                                                             <div className="flex-1">
-                                                                <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700 inline-block">
-                                                                    <p className="text-xs font-black text-slate-900 dark:text-white mb-0.5">{comment.profiles?.name}</p>
-                                                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{comment.content}</p>
+                                                                <div className="bg-surface px-4 py-3 rounded-2xl rounded-tl-none border border-subtle inline-block">
+                                                                    <p className="text-xs font-black cc-text-primary mb-0.5">{comment.profiles?.name}</p>
+                                                                    <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-400 mt-1 ml-2">
                                                                     {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -426,7 +426,7 @@ export default function SocialFeedPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Escribe un comentario..."
-                                                        className="w-full h-10 pl-4 pr-12 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                        className="w-full h-10 pl-4 pr-12 rounded-full border border-subtle bg-surface text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                                         value={newCommentContent}
                                                         onChange={(e) => setNewCommentContent(e.target.value)}
                                                     />

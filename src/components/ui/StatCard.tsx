@@ -142,7 +142,7 @@ export function StatCard({
     </>
   );
 
-  const baseClasses = `block group relative overflow-hidden rounded-lg p-5 border bg-white dark:bg-[#12121D] border-slate-200 dark:border-slate-800 transition-all duration-200 ease-out ${
+  const baseClasses = `block group relative overflow-hidden rounded-lg p-5 border bg-white dark:bg-[#12121D] border-subtle transition-all duration-200 ease-out ${
     isInteractive ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md' : ''
   } ${className}`;
 

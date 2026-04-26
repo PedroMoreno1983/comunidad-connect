@@ -71,7 +71,7 @@ function MockPaymentContent() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-8 font-sans overflow-hidden relative">
+        <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-4 sm:p-8 font-sans overflow-hidden relative">
             {/* Background Decorativo */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -83,32 +83,32 @@ function MockPaymentContent() {
                 className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/80 dark:border-slate-800 rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden"
             >
                 {/* Columna Izquierda: Detalle del Pago */}
-                <div className="p-8 md:p-12 lg:pr-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
+                <div className="p-8 md:p-12 lg:pr-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-subtle">
                     <div>
                         <button onClick={() => router.push(callback)} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors mb-12">
                             <ArrowLeft className="w-4 h-4" /> Volver al portal
                         </button>
 
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
-                                <Building2 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                            <div className="p-3 bg-role-admin-bg rounded-2xl">
+                                <Building2 className="w-6 h-6 text-role-admin-fg" />
                             </div>
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white">ComunidadConnect</h2>
+                            <h2 className="text-xl font-black cc-text-primary">ComunidadConnect</h2>
                         </div>
 
-                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Total a Pagar</p>
+                        <p className="text-sm font-bold cc-text-secondary uppercase tracking-widest mb-2">Total a Pagar</p>
                         <div className="text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 tracking-tighter mb-8">
                             ${Number(amount).toLocaleString('es-CL')}
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex justify-between items-center py-4 border-b border-slate-100 dark:border-slate-800/50">
-                                <span className="font-semibold text-slate-600 dark:text-slate-300">Detalle</span>
-                                <span className="font-bold text-slate-900 dark:text-white">Gastos Comunes</span>
+                            <div className="flex justify-between items-center py-4 border-b border-subtle/50">
+                                <span className="font-semibold cc-text-secondary">Detalle</span>
+                                <span className="font-bold cc-text-primary">Gastos Comunes</span>
                             </div>
-                            <div className="flex justify-between items-center py-4 border-b border-slate-100 dark:border-slate-800/50">
-                                <span className="font-semibold text-slate-600 dark:text-slate-300">Referencia</span>
-                                <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-300">{ref}</span>
+                            <div className="flex justify-between items-center py-4 border-b border-subtle/50">
+                                <span className="font-semibold cc-text-secondary">Referencia</span>
+                                <span className="font-mono text-xs font-bold bg-elevated px-2 py-1 rounded cc-text-secondary">{ref}</span>
                             </div>
                         </div>
                     </div>
@@ -142,7 +142,7 @@ function MockPaymentContent() {
                                     <div className="inline-flex items-center justify-center p-3 bg-[#1b4382]/10 rounded-2xl mb-4">
                                         <ShieldCheck className="w-8 h-8 text-[#1b4382] dark:text-blue-400" />
                                     </div>
-                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white">Haulmer Sandbox</h3>
+                                    <h3 className="text-2xl font-black cc-text-primary">Haulmer Sandbox</h3>
                                     <p className="text-sm text-slate-500 font-medium mt-1">Simula una transacción segura</p>
                                 </div>
 
@@ -174,7 +174,7 @@ function MockPaymentContent() {
                                         Pagar Exitosamente
                                     </Button>
                                     <button
-                                        className="w-full h-14 bg-transparent border-2 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-xl text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-[0.98]"
+                                        className="w-full h-14 bg-transparent border-2 border-subtle cc-text-secondary font-bold rounded-xl text-sm hover:bg-elevated transition-colors active:scale-[0.98]"
                                         onClick={() => handleSimulatePayment(false)}
                                     >
                                         Simular Pago Fallido
@@ -195,7 +195,7 @@ function MockPaymentContent() {
                                     <div className="absolute inset-0 bg-[#1b4382]/20 blur-xl rounded-full animate-pulse" />
                                     <Loader2 className="w-16 h-16 text-[#1b4382] dark:text-blue-400 animate-spin relative z-10" />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white mt-8 mb-2">Procesando Pago Seguro...</h3>
+                                <h3 className="text-xl font-black cc-text-primary mt-8 mb-2">Procesando Pago Seguro...</h3>
                                 <p className="text-slate-500 font-medium">Conectando con Haulmer via API</p>
                             </motion.div>
                         )}
@@ -208,10 +208,10 @@ function MockPaymentContent() {
                                 transition={{ type: "spring", stiffness: 150, damping: 15 }}
                                 className="flex flex-col items-center justify-center h-full min-h-[400px] text-emerald-500"
                             >
-                                <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/20">
+                                <div className="w-24 h-24 bg-success-bg rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/20">
                                     <CheckCircle2 className="w-12 h-12" />
                                 </div>
-                                <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-2">¡Pago Aprobado!</h3>
+                                <h3 className="text-3xl font-black cc-text-primary mb-2">¡Pago Aprobado!</h3>
                                 <p className="text-slate-500 font-bold">Redirigiendo de vuelta a la comunidad...</p>
                             </motion.div>
                         )}
@@ -227,7 +227,7 @@ function MockPaymentContent() {
                                 <div className="w-24 h-24 bg-rose-100 dark:bg-rose-500/20 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-rose-500/20">
                                     <AlertCircle className="w-12 h-12" />
                                 </div>
-                                <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Pago Rechazado</h3>
+                                <h3 className="text-3xl font-black cc-text-primary mb-2">Pago Rechazado</h3>
                                 <p className="text-slate-500 font-bold">La tarjeta fue declinada en el ambiente local</p>
                             </motion.div>
                         )}

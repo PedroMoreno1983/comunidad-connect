@@ -51,8 +51,8 @@ const ADMIN_GUIDES: Guide[] = [
         icon: Home,
         title: "Gestionar Unidades (Departamentos)",
         duration: "5 min",
-        color: "text-indigo-600 dark:text-indigo-400",
-        bg: "bg-indigo-100 dark:bg-indigo-500/20",
+        color: "text-role-admin-fg",
+        bg: "bg-role-admin-bg",
         steps: [
             { text: "Ve al menú lateral → **Unidades**." },
             { text: "Haz clic en **\"Nueva Unidad\"** para agregar un departamento." },
@@ -65,8 +65,8 @@ const ADMIN_GUIDES: Guide[] = [
         icon: Key,
         title: "Invitar Residentes y Conserjes",
         duration: "3 min",
-        color: "text-emerald-600 dark:text-emerald-400",
-        bg: "bg-emerald-100 dark:bg-emerald-500/20",
+        color: "text-success-fg",
+        bg: "bg-success-bg",
         steps: [
             { text: "Ve al menú lateral → **Usuarios**." },
             { text: "Al tope de la página verás el panel **\"Códigos de Invitación\"** con 2 códigos únicos." },
@@ -80,8 +80,8 @@ const ADMIN_GUIDES: Guide[] = [
         icon: Megaphone,
         title: "Publicar Avisos Oficiales",
         duration: "2 min",
-        color: "text-amber-600 dark:text-amber-400",
-        bg: "bg-amber-100 dark:bg-amber-500/20",
+        color: "text-warning-fg",
+        bg: "bg-warning-bg",
         steps: [
             { text: "Ve al menú lateral → **Avisos Oficiales**." },
             { text: "Haz clic en **\"Nuevo Aviso\"**." },
@@ -155,8 +155,8 @@ const CONCIERGE_GUIDES: Guide[] = [
         icon: Shield,
         title: "Registrar una Visita",
         duration: "2 min",
-        color: "text-amber-600 dark:text-amber-400",
-        bg: "bg-amber-100 dark:bg-amber-500/20",
+        color: "text-warning-fg",
+        bg: "bg-warning-bg",
         steps: [
             { text: "Ve al menú lateral → **Visitas**." },
             { text: "Haz clic en **\"Registrar Visita\"**." },
@@ -184,8 +184,8 @@ const CONCIERGE_GUIDES: Guide[] = [
         icon: Eye,
         title: "Ver el Historial de Accesos",
         duration: "2 min",
-        color: "text-indigo-600 dark:text-indigo-400",
-        bg: "bg-indigo-100 dark:bg-indigo-500/20",
+        color: "text-role-admin-fg",
+        bg: "bg-role-admin-bg",
         steps: [
             { text: "Ve al menú lateral → **Visitas**." },
             { text: "El historial completo aparece en la tabla, ordenado por fecha y hora." },
@@ -216,8 +216,8 @@ const EXTERNAL_COURSES: ExternalCourse[] = [
         provider: "Inacap",
         duration: "120 horas",
         link: "https://www.inacap.cl",
-        color: "text-red-600 dark:text-red-400",
-        bg: "bg-red-100 dark:bg-red-500/20",
+        color: "text-danger-fg",
+        bg: "bg-danger-bg",
         roles: ["admin", "concierge"],
     },
     {
@@ -236,8 +236,8 @@ const EXTERNAL_COURSES: ExternalCourse[] = [
         provider: "Duoc UC",
         duration: "40 horas",
         link: "https://www.duoc.cl",
-        color: "text-amber-600 dark:text-amber-400",
-        bg: "bg-amber-100 dark:bg-amber-500/20",
+        color: "text-warning-fg",
+        bg: "bg-warning-bg",
         roles: ["admin", "concierge"],
     },
     {
@@ -288,8 +288,8 @@ const COMMUNITY_COURSES: CommunityCourse[] = [
         title: "Reglamento de Copropiedad 2026",
         description: "Normativas, uso de piscina, quinchos, multas e información general de la comunidad.",
         modules: 4,
-        color: "text-indigo-600 dark:text-indigo-400",
-        bg: "bg-indigo-100 dark:bg-indigo-500/20"
+        color: "text-role-admin-fg",
+        bg: "bg-role-admin-bg"
     },
     {
         id: "cc-2",
@@ -304,22 +304,22 @@ const COMMUNITY_COURSES: CommunityCourse[] = [
 function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center p-4 border-b border-subtle">
                     <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-indigo-500" />
                         {course.title}
                     </h3>
-                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <button onClick={onClose} className="p-2 bg-elevated rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
                         ✖
                     </button>
                 </div>
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar */}
-                    <div className="w-1/3 border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 p-4 overflow-y-auto">
+                    <div className="w-1/3 border-r border-subtle bg-elevated/50 p-4 overflow-y-auto">
                         <h4 className="text-xs font-bold uppercase text-slate-500 mb-4 tracking-wider">Módulos del Curso</h4>
                         {[...Array(course.modules)].map((_, i) => (
-                            <div key={i} className={`p-3 text-sm font-bold rounded-xl mb-2 flex items-center gap-3 ${i === 0 ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
+                            <div key={i} className={`p-3 text-sm font-bold rounded-xl mb-2 flex items-center gap-3 ${i === 0 ? 'bg-indigo-100 dark:bg-indigo-900/50 text-role-admin-fg' : 'cc-text-secondary'}`}>
                                 <PlayCircle className="h-4 w-4" />
                                 {i === 0 ? '1. Conceptos Generales' : `${i + 1}. Módulo ${i + 1}`}
                             </div>
@@ -334,7 +334,7 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
                         <p className="text-slate-500 text-sm max-w-sm mb-6">
                             En el entorno de producción, aquí se reproducirá directamente el paquete SCORM generado a través de CoTraining.ai u otros LMS institucionales.
                         </p>
-                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 border border-subtle px-3 py-1 rounded-full">
                             Simulación de Integración Activa
                         </span>
                     </div>
@@ -367,7 +367,7 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
             transition={{ delay: index * 0.06 }}
             className={`rounded-2xl border transition-all duration-300 overflow-hidden ${done
                 ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                : "border-subtle bg-surface"
                 }`}
         >
             {/* Header */}
@@ -380,15 +380,15 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-slate-900 dark:text-white">{guide.title}</p>
+                        <p className="font-semibold cc-text-primary">{guide.title}</p>
                         {done && (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-success-fg">
                                 <CheckCircle2 className="h-3 w-3" /> Completado
                             </span>
                         )}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">⏱ {guide.duration}</span>
+                        <span className="text-xs cc-text-secondary">⏱ {guide.duration}</span>
                         {completed.size > 0 && !done && (
                             <span className="text-xs text-slate-400">{completed.size}/{guide.steps.length} pasos</span>
                         )}
@@ -416,28 +416,28 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
                         transition={{ duration: 0.25, ease: "easeInOut" }}
                         className="overflow-hidden"
                     >
-                        <div className="px-5 pb-5 pt-2 space-y-3 border-t border-slate-100 dark:border-slate-700">
+                        <div className="px-5 pb-5 pt-2 space-y-3 border-t border-subtle">
                             {guide.steps.map((step, i) => (
                                 <div key={i} className="flex items-start gap-3">
                                     <button
                                         onClick={() => toggleStep(i)}
                                         className={`mt-0.5 flex-shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${completed.has(i)
                                             ? "bg-emerald-500 border-emerald-500"
-                                            : "border-slate-300 dark:border-slate-600 hover:border-emerald-400"
+                                            : "border-default hover:border-emerald-400"
                                             }`}
                                     >
                                         {completed.has(i) && <CheckCircle2 className="h-3.5 w-3.5 text-white fill-white" />}
                                     </button>
                                     <div>
                                         <p
-                                            className={`text-sm leading-relaxed transition-colors ${completed.has(i) ? "text-slate-400 dark:text-slate-500 line-through" : "text-slate-700 dark:text-slate-300"
+                                            className={`text-sm leading-relaxed transition-colors ${completed.has(i) ? "cc-text-tertiary line-through" : "cc-text-secondary"
                                                 }`}
                                             dangerouslySetInnerHTML={{
-                                                __html: step.text.replace(/\*\*(.*?)\*\*/g, "<strong class='font-semibold text-slate-900 dark:text-white'>$1</strong>")
+                                                __html: step.text.replace(/\*\*(.*?)\*\*/g, "<strong class='font-semibold cc-text-primary'>$1</strong>")
                                             }}
                                         />
                                         {step.tip && (
-                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                                            <p className="mt-1 text-xs text-warning-fg bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
                                                 💡 {step.tip}
                                             </p>
                                         )}
@@ -518,7 +518,7 @@ export default function TrainingPage() {
 
             {/* Guides */}
             <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider cc-text-tertiary mb-4">
                     Guías disponibles para {roleLabel}
                 </h2>
                 <div className="space-y-3">
@@ -530,17 +530,17 @@ export default function TrainingPage() {
 
             {/* Panel de Integración CoTraining (Sólo Admins) */}
             {isAdmin && (
-                <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
+                <div className="pt-8 mt-8 border-t border-subtle">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/50">
                             <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <h2 className="text-lg font-bold cc-text-primary flex items-center gap-2">
                                 Generador de Cursos
                                 <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Nuevo</span>
                             </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs cc-text-secondary mt-0.5">
                                 Convierte los documentos de tu comunidad en cursos e-learning.
                             </p>
                         </div>
@@ -576,17 +576,17 @@ export default function TrainingPage() {
             )}
 
             {/* Cursos Internos Sincronizados (Visible a todos si hay cursos) */}
-            <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
+            <div className="pt-8 mt-8 border-t border-subtle">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
-                            <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <FileText className="h-5 w-5 text-success-fg" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                            <h2 className="text-lg font-bold cc-text-primary">
                                 Cursos de la Comunidad
                             </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs cc-text-secondary mt-0.5">
                                 Capacitación interna gestionada por tu administración.
                             </p>
                         </div>
@@ -598,24 +598,24 @@ export default function TrainingPage() {
                         <button
                             key={course.id}
                             onClick={() => setSelectedCourse(course)}
-                            className="text-left group bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all flex flex-col h-full"
+                            className="text-left group bg-surface p-5 rounded-2xl border border-subtle hover:border-emerald-400 dark:hover:border-emerald-500 transition-all flex flex-col h-full"
                         >
                             <div className="flex items-center gap-3 mb-3">
                                 <div className={`p-2 rounded-xl ${course.bg}`}>
                                     <BookOpen className={`h-4 w-4 ${course.color}`} />
                                 </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-elevated cc-text-secondary uppercase tracking-wider">
                                     Generado vía LMS
                                 </span>
                             </div>
-                            <h3 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-600 transition-colors">
+                            <h3 className="font-bold cc-text-primary mb-1 group-hover:text-emerald-600 transition-colors">
                                 {course.title}
                             </h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
+                            <p className="text-xs cc-text-secondary mb-4 line-clamp-2">
                                 {course.description}
                             </p>
-                            <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                            <div className="mt-auto flex items-center justify-between pt-4 border-t border-subtle/50">
+                                <span className="text-xs font-semibold cc-text-secondary">
                                     {course.modules} Módulos
                                 </span>
                                 <PlayCircle className="h-5 w-5 text-emerald-500 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
@@ -627,16 +627,16 @@ export default function TrainingPage() {
 
             {/* Institutional Courses — visible for admin and concierge */}
             {filteredCourses.length > 0 && (
-                <div className="pt-8 mt-8 border-t border-slate-200 dark:border-slate-800">
+                <div className="pt-8 mt-8 border-t border-subtle">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
-                            <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            <GraduationCap className="h-5 w-5 text-role-admin-fg" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                            <h2 className="text-lg font-bold cc-text-primary">
                                 Especialización Externa
                             </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs cc-text-secondary mt-0.5">
                                 Cursos impartidos por universidades, institutos profesionales y centros de formación técnica.
                             </p>
                         </div>
@@ -649,7 +649,7 @@ export default function TrainingPage() {
                                 href={course.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
+                                className="group p-5 rounded-2xl border border-subtle bg-surface hover:border-indigo-300 dark:hover:border-indigo-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
                             >
                                 <div className="flex items-start justify-between mb-4">
                                     <div className={`p-2.5 rounded-xl ${course.bg}`}>
@@ -658,16 +658,16 @@ export default function TrainingPage() {
                                     <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                                 </div>
 
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1.5 line-clamp-2">
+                                <h3 className="text-sm font-bold cc-text-primary mb-1.5 line-clamp-2">
                                     {course.title}
                                 </h3>
 
-                                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">
+                                <p className="text-xs font-semibold cc-text-secondary mb-3">
                                     {course.provider}
                                 </p>
 
                                 <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-700/50">
-                                    <span className="text-[11px] font-medium px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300">
+                                    <span className="text-[11px] font-medium px-2 py-1 rounded-md bg-elevated/50 cc-text-secondary">
                                         Duración: {course.duration}
                                     </span>
                                 </div>

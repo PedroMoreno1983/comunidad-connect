@@ -37,10 +37,10 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-4xl p-0 bg-white dark:bg-slate-900 border-none rounded-[3rem] overflow-hidden shadow-2xl">
+            <DialogContent className="sm:max-w-4xl p-0 bg-surface border-none rounded-[3rem] overflow-hidden shadow-2xl">
                 <div className="flex flex-col md:flex-row h-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
                     {/* Left: Image Section */}
-                    <div className="md:w-1/2 relative bg-slate-100 dark:bg-slate-800 flex items-center justify-center p-0">
+                    <div className="md:w-1/2 relative bg-elevated flex items-center justify-center p-0">
                         {(imgSrc) ? (
                             <Image
                                 src={imgSrc}
@@ -62,7 +62,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                     </div>
 
                     {/* Right: Content Section */}
-                    <div className="md:w-1/2 p-12 md:p-16 space-y-14 bg-white dark:bg-slate-900 overflow-y-auto">
+                    <div className="md:w-1/2 p-12 md:p-16 space-y-14 bg-surface overflow-y-auto">
                         <div className="space-y-12">
                             {/* Header & Verification */}
                             <div className="space-y-6">
@@ -74,14 +74,14 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                     <ShieldCheck className="h-4 w-4" />
                                     Artículo Verificado Comunitario • Depto {deptNumber}
                                 </motion.div>
-                                <DialogTitle className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white leading-[1.05] tracking-tight">
+                                <DialogTitle className="text-5xl md:text-6xl font-black cc-text-primary leading-[1.05] tracking-tight">
                                     {item.title}
                                 </DialogTitle>
                             </div>
 
                             {/* Modalities Section (Venta, Permuta, Trueque) */}
                             <div className="space-y-6">
-                                <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-1">Modalidades de Adquisición</h4>
+                                <h4 className="text-[11px] font-black cc-text-tertiary uppercase tracking-[0.3em] ml-1">Modalidades de Adquisición</h4>
                                 <div className="grid grid-cols-1 gap-5">
                                     {/* Venta */}
                                     {(item.allowSale !== false) && (
@@ -91,7 +91,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                                     <Tag className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 dark:text-white text-lg">Venta Directa</span>
+                                                    <span className="font-black cc-text-primary text-lg">Venta Directa</span>
                                                     <span className="text-xs font-bold text-slate-400 uppercase">Pago inmediato seguro</span>
                                                 </div>
                                             </div>
@@ -109,7 +109,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                                     <Repeat className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 dark:text-white text-lg">Permuta (Swap)</span>
+                                                    <span className="font-black cc-text-primary text-lg">Permuta (Swap)</span>
                                                     <span className="text-xs font-bold text-slate-400 uppercase">Intercambio de valor similar</span>
                                                 </div>
                                             </div>
@@ -125,11 +125,11 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                     {item.allowBarter && (
                                         <div className="group p-6 bg-emerald-50/30 dark:bg-emerald-500/5 rounded-[2.5rem] border border-emerald-100/30 dark:border-emerald-500/10 hover:border-emerald-500/30 transition-all duration-500 space-y-4">
                                             <div className="flex items-center gap-5">
-                                                <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-                                                    <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                                <div className="h-12 w-12 rounded-2xl bg-success-bg flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                                                    <Sparkles className="h-6 w-6 text-success-fg" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 dark:text-white text-lg">Trueque Comunitario</span>
+                                                    <span className="font-black cc-text-primary text-lg">Trueque Comunitario</span>
                                                     <span className="text-xs font-bold text-slate-400 uppercase">Abierto a ofertas creativas</span>
                                                 </div>
                                             </div>
@@ -145,30 +145,30 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
 
                             {/* Description */}
                             <div className="space-y-6">
-                                <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-1">Descripción del Vendedor</h4>
-                                <p className="text-xl text-slate-600 dark:text-slate-400 leading-[1.6] font-medium pr-4">
+                                <h4 className="text-[11px] font-black cc-text-tertiary uppercase tracking-[0.3em] ml-1">Descripción del Vendedor</h4>
+                                <p className="text-xl cc-text-secondary leading-[1.6] font-medium pr-4">
                                     {item.description}
                                 </p>
                             </div>
 
                             {/* Trust Badges */}
                             <div className="grid grid-cols-2 gap-6 pt-4">
-                                <div className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-slate-800/30 rounded-[2rem] border border-slate-100 dark:border-slate-800 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                <div className="flex flex-col gap-2 p-6 bg-elevated/30 rounded-[2rem] border border-subtle transition-colors hover:bg-elevated/50">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Garantía</p>
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
-                                            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                        <div className="p-2 bg-success-bg rounded-xl">
+                                            <ShieldCheck className="h-4 w-4 text-success-fg" />
                                         </div>
-                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Compra Segura</span>
+                                        <span className="text-sm font-bold cc-text-secondary">Compra Segura</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-slate-800/30 rounded-[2rem] border border-slate-100 dark:border-slate-800 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                <div className="flex flex-col gap-2 p-6 bg-elevated/30 rounded-[2rem] border border-subtle transition-colors hover:bg-elevated/50">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Publicado en</p>
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-xl">
                                             <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                         </div>
-                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                        <span className="text-sm font-bold cc-text-secondary">
                                             {new Date(item.createdAt).toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
                                         </span>
                                     </div>
@@ -177,8 +177,8 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                         </div>
 
                         {/* Seller & Action Footer */}
-                        <div className="pt-12 border-t border-slate-100 dark:border-slate-800 space-y-8">
-                            <div className="group flex items-center gap-5 p-6 bg-slate-50/50 dark:bg-slate-800/20 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500/20 transition-all duration-500">
+                        <div className="pt-12 border-t border-subtle space-y-8">
+                            <div className="group flex items-center gap-5 p-6 bg-slate-50/50 dark:bg-slate-800/20 rounded-[2.5rem] border border-subtle hover:border-blue-500/20 transition-all duration-500">
                                 <div className="relative">
                                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-blue-500/20 group-hover:rotate-3 transition-transform">
                                         V
@@ -187,11 +187,11 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Vendedor Residente</p>
-                                    <p className="text-xl font-black text-slate-900 dark:text-white">Valentina Rivas</p>
+                                    <p className="text-xl font-black cc-text-primary">Valentina Rivas</p>
                                     <p className="text-xs font-bold text-slate-400 mt-0.5">⭐ 4.9 • 24 ventas completadas</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="inline-flex px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-500/20">
+                                    <span className="inline-flex px-3 py-1 bg-emerald-500/10 text-success-fg rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-500/20">
                                         Online
                                     </span>
                                 </div>
@@ -200,7 +200,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                             <div className="flex gap-5">
                                 <button
                                     onClick={() => onChat(item)}
-                                    className="flex-1 h-20 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black text-xl rounded-[2rem] border-2 border-slate-200 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-4 shadow-xl shadow-slate-200/20 dark:shadow-none"
+                                    className="flex-1 h-20 bg-surface cc-text-primary font-black text-xl rounded-[2rem] border-2 border-subtle hover:border-blue-600 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-4 shadow-xl shadow-slate-200/20 dark:shadow-none"
                                 >
                                     <MessageCircle className="h-7 w-7" />
                                     Preguntar

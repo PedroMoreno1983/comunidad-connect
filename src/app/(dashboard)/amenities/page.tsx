@@ -195,9 +195,9 @@ export default function AmenitiesPage() {
                     <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
                         <Calendar className="h-5 w-5 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Espacios Comunes</h1>
+                    <h1 className="text-3xl font-bold cc-text-primary">Espacios Comunes</h1>
                 </div>
-                <p className="text-slate-500 dark:text-slate-400">
+                <p className="cc-text-secondary">
                     Reserva amenidades del edificio para tu uso exclusivo
                 </p>
             </div>
@@ -237,12 +237,12 @@ export default function AmenitiesPage() {
                                         </div>
 
                                         {amenity.hourlyRate > 0 && (
-                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-full shadow-lg">
+                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm cc-text-secondary text-xs font-semibold rounded-full shadow-lg">
                                                 ${amenity.hourlyRate.toLocaleString()}/hr
                                             </div>
                                         )}
                                         {amenity.hourlyRate === 0 && (
-                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1 shadow-lg">
+                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-success-fg text-xs font-semibold rounded-full flex items-center gap-1 shadow-lg">
                                                 <Sparkles className="h-3 w-3" />
                                                 Gratis
                                             </div>
@@ -251,10 +251,10 @@ export default function AmenitiesPage() {
 
                                     {/* Content */}
                                     <div className="p-5">
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{amenity.name}</h3>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">{amenity.description}</p>
+                                        <h3 className="text-lg font-bold cc-text-primary mb-2">{amenity.name}</h3>
+                                        <p className="text-sm cc-text-secondary mb-4 line-clamp-2">{amenity.description}</p>
 
-                                        <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-5">
+                                        <div className="flex items-center gap-4 text-sm cc-text-secondary mb-5">
                                             <div className="flex items-center gap-1.5">
                                                 <Users className="h-4 w-4 text-slate-400" />
                                                 <span>Máx. {amenity.maxCapacity}</span>
@@ -283,7 +283,7 @@ export default function AmenitiesPage() {
                             <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
                                 <Check className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Mis Reservas</h2>
+                            <h2 className="text-lg font-bold cc-text-primary">Mis Reservas</h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {userBookings.map((booking) => {
@@ -297,16 +297,16 @@ export default function AmenitiesPage() {
                                             <Icon className="h-5 w-5 text-white" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-slate-900 dark:text-white truncate">{amenity.name}</p>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                            <p className="font-semibold cc-text-primary truncate">{amenity.name}</p>
+                                            <p className="text-sm cc-text-secondary">
                                                 {
                                                     // Prevenir desfase de zona horaria forzando el parseo local a mediodía
                                                     new Date(`${booking.date}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
                                                 }
                                             </p>
-                                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{booking.startTime.substring(0, 5)} - {booking.endTime.substring(0, 5)}</p>
+                                            <p className="text-sm cc-text-secondary font-medium">{booking.startTime.substring(0, 5)} - {booking.endTime.substring(0, 5)}</p>
                                         </div>
-                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${booking.status === 'confirmed' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${booking.status === 'confirmed' ? 'bg-success-bg text-success-fg' : 'bg-warning-bg text-warning-fg'
                                             }`}>
                                             {booking.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
                                         </span>
@@ -341,21 +341,21 @@ export default function AmenitiesPage() {
                             <div className="flex items-center justify-between">
                                 <button
                                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    className="p-2 hover:bg-elevated rounded-lg transition-colors"
                                 >
-                                    <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                    <ChevronLeft className="h-5 w-5 cc-text-secondary" />
                                 </button>
-                                <span className="text-sm font-semibold text-slate-900 dark:text-white capitalize">{monthName}</span>
+                                <span className="text-sm font-semibold cc-text-primary capitalize">{monthName}</span>
                                 <button
                                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    className="p-2 hover:bg-elevated rounded-lg transition-colors"
                                 >
-                                    <ChevronRight className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                    <ChevronRight className="h-5 w-5 cc-text-secondary" />
                                 </button>
                             </div>
                             <div className="grid grid-cols-7 gap-1 text-center">
                                 {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(day => (
-                                    <div key={day} className="text-xs font-medium text-slate-500 dark:text-slate-400 py-2">{day}</div>
+                                    <div key={day} className="text-xs font-medium cc-text-secondary py-2">{day}</div>
                                 ))}
                                 {Array.from({ length: startingDay }).map((_, i) => (
                                     <div key={`empty-${i}`} />
@@ -379,8 +379,8 @@ export default function AmenitiesPage() {
                                             className={`py-2 rounded-lg text-sm font-medium transition-all ${isSelected
                                                 ? `bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} text-white shadow-lg`
                                                 : isPast
-                                                    ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                                    ? 'cc-text-tertiary cursor-not-allowed'
+                                                    : 'cc-text-secondary hover:bg-elevated'
                                                 }`}
                                         >
                                             {day}
@@ -393,7 +393,7 @@ export default function AmenitiesPage() {
                         {/* Time Slots */}
                         {selectedDate && (
                             <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <label className="text-sm font-medium cc-text-secondary flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-slate-400" />
                                     Horario Disponible
                                 </label>
@@ -410,10 +410,10 @@ export default function AmenitiesPage() {
                                                 disabled={isBooked}
                                                 onClick={() => setSelectedTime(time)}
                                                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${isBooked
-                                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed line-through'
+                                                    ? 'bg-elevated cc-text-tertiary cursor-not-allowed line-through'
                                                     : selectedTime === time
                                                         ? `bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} text-white shadow-lg`
-                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                                        : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-600'
                                                     }`}
                                             >
                                                 {time}

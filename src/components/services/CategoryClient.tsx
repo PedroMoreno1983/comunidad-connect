@@ -46,23 +46,23 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
     return (
         <>
             {/* Filters & Sort */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-100 dark:border-slate-700">
+            <div className="bg-surface rounded-xl p-4 shadow-lg border border-subtle">
                 <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
                     <div className="flex items-center gap-2">
                         <SlidersHorizontal className="h-5 w-5 text-slate-400" />
-                        <span className="font-semibold text-slate-900 dark:text-white">Filtros</span>
+                        <span className="font-semibold cc-text-primary">Filtros</span>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
                         {/* Availability filter */}
-                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-elevated cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                             <input
                                 type="checkbox"
                                 checked={filterAvailable}
                                 onChange={(e) => setFilterAvailable(e.target.checked)}
-                                className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                                className="rounded border-default text-blue-600 focus:ring-blue-500"
                             />
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                            <span className="text-sm font-medium cc-text-secondary">
                                 Solo disponibles
                             </span>
                         </label>
@@ -71,7 +71,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as 'rating' | 'price' | 'experience')}
-                            className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            className="px-4 py-2 rounded-lg border border-subtle bg-surface cc-text-primary text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         >
                             <option value="rating">Mejor calificados</option>
                             <option value="price">Menor precio</option>
@@ -95,14 +95,14 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                        <Icon className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+                <div className="text-center py-16 bg-surface rounded-2xl shadow-lg border border-subtle">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-elevated rounded-full flex items-center justify-center">
+                        <Icon className="h-8 w-8 cc-text-tertiary" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                    <h3 className="text-lg font-semibold cc-text-primary mb-2">
                         No hay técnicos disponibles
                     </h3>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <p className="cc-text-secondary">
                         Intenta ajustar los filtros de búsqueda
                     </p>
                 </div>

@@ -159,13 +159,13 @@ export default function SupermarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* List Management */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
+                    <div className="bg-surface rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-subtle">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                            <h2 className="text-2xl font-black cc-text-primary flex items-center gap-3">
                                 <ListChecks className="text-indigo-600" />
                                 Lista de Compras
                             </h2>
-                            <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-slate-500">
+                            <span className="px-4 py-1.5 bg-elevated rounded-full text-xs font-bold text-slate-500">
                                 {list.length} artículos
                             </span>
                         </div>
@@ -173,7 +173,7 @@ export default function SupermarketPage() {
                         <form onSubmit={addItem} className="flex gap-3 mb-8">
                             <Input 
                                 placeholder="Añade un producto..."
-                                className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-transparent focus:bg-white dark:focus:bg-slate-800 transition-all text-lg"
+                                className="h-14 rounded-2xl bg-elevated/50 border-transparent focus:bg-white dark:focus:bg-slate-800 transition-all text-lg"
                                 value={newItem}
                                 onChange={(e) => setNewItem(e.target.value)}
                             />
@@ -193,31 +193,31 @@ export default function SupermarketPage() {
                                         className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
                                             item.checked 
                                             ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 opacity-60' 
-                                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/40'
+                                            : 'bg-surface border-subtle hover:border-indigo-200 dark:hover:border-indigo-900/40'
                                         }`}
                                     >
                                         <div className="flex items-center gap-4">
                                             <button 
                                                 onClick={() => toggleItem(item.id)}
                                                 className={`h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                                    item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700'
+                                                    item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-subtle'
                                                 }`}
                                             >
                                                 {item.checked && <CheckCircle2 className="h-4 w-4" />}
                                             </button>
                                             <div className="flex flex-col">
-                                                <span className={`text-lg font-medium ${item.checked ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                <span className={`text-lg font-medium ${item.checked ? 'line-through text-slate-400' : 'cc-text-secondary'}`}>
                                                     {item.name}
                                                 </span>
                                                 {(item.price || item.store) && (
                                                     <div className="flex items-center gap-2 mt-1">
                                                         {item.price && (
-                                                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                                            <span className="text-sm font-bold text-success-fg">
                                                                 ${item.price.toLocaleString('es-CL')}
                                                             </span>
                                                         )}
                                                         {item.store && (
-                                                            <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full font-bold uppercase tracking-wider">
+                                                            <span className="text-[10px] px-2 py-0.5 bg-elevated text-slate-500 rounded-full font-bold uppercase tracking-wider">
                                                                 {item.store}
                                                             </span>
                                                         )}
@@ -271,7 +271,7 @@ export default function SupermarketPage() {
                     </div>
 
                     {/* Checkout Card - Target: Lider/Jumbo Chile */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-xl">
+                    <div className="bg-surface rounded-[2.5rem] p-8 border border-subtle shadow-xl">
                         <div className="flex items-center justify-between mb-8">
                             <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
                                 <ShoppingCart className="h-6 w-6 text-emerald-600" />
@@ -286,13 +286,13 @@ export default function SupermarketPage() {
                             </Button>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                            <div className="flex items-center gap-3 p-3 rounded-2xl bg-elevated/50">
                                 <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200" />
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Jumbo Delivery</span>
+                                <span className="text-sm font-bold cc-text-secondary">Jumbo Delivery</span>
                             </div>
-                            <div className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 opacity-40">
+                            <div className="flex items-center gap-3 p-3 rounded-2xl border border-subtle opacity-40">
                                 <div className="w-8 h-8 rounded-full bg-orange-100 border border-orange-200" />
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Líder App</span>
+                                <span className="text-sm font-bold cc-text-secondary">Líder App</span>
                             </div>
                         </div>
                         <p className="mt-6 text-[10px] uppercase font-black tracking-widest text-slate-400 text-center">Próximamente Integración API Directa</p>

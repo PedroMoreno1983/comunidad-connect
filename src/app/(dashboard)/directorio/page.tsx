@@ -35,9 +35,9 @@ const ROLE_STYLES: Record<string, string> = {
 };
 
 const ROLE_BADGE: Record<string, string> = {
-    admin: 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300',
-    resident: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
-    concierge: 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300'
+    admin: 'bg-role-admin-bg text-role-admin-fg',
+    resident: 'bg-success-bg text-success-fg',
+    concierge: 'bg-warning-bg text-warning-fg'
 };
 
 export default function DirectoryPage() {
@@ -107,7 +107,7 @@ export default function DirectoryPage() {
                         <Users className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Directorio</h1>
+                        <h1 className="text-3xl font-black cc-text-primary">Directorio</h1>
                         <p className="text-sm font-medium text-slate-500 mt-1">{neighbors.length} personas en la comunidad</p>
                     </div>
                 </div>
@@ -120,7 +120,7 @@ export default function DirectoryPage() {
                         placeholder="Buscar por nombre o depto..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-5 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 shadow-sm"
+                        className="w-full pl-11 pr-5 py-3 rounded-2xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 shadow-sm"
                     />
                 </div>
             </div>
@@ -139,7 +139,7 @@ export default function DirectoryPage() {
                             "relative rounded-2xl p-4 sm:p-5 border transition-all overflow-hidden text-left",
                             activeFilter === s.filter
                                 ? "border-transparent shadow-lg ring-2 ring-offset-2 ring-indigo-400/60 dark:ring-offset-slate-900"
-                                : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600 shadow-sm"
+                                : "bg-surface border-subtle hover:border-slate-200 dark:hover:border-slate-600 shadow-sm"
                         )}
                     >
                         {activeFilter === s.filter && (
@@ -148,7 +148,7 @@ export default function DirectoryPage() {
                         <div className={`inline-flex p-2 rounded-xl bg-gradient-to-br ${s.gradient} mb-3`}>
                             <s.icon className="h-4 w-4 text-white" />
                         </div>
-                        <p className="text-2xl font-black text-slate-900 dark:text-white">{s.count}</p>
+                        <p className="text-2xl font-black cc-text-primary">{s.count}</p>
                         <p className="text-xs font-bold text-slate-500 mt-0.5">{s.label}</p>
                     </button>
                 ))}
@@ -179,7 +179,7 @@ export default function DirectoryPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.04 }}
                                     layout
-                                    className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-md shadow-slate-200/40 dark:shadow-none overflow-hidden group cursor-pointer hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-none transition-all"
+                                    className="bg-surface rounded-3xl border border-subtle shadow-md shadow-slate-200/40 dark:shadow-none overflow-hidden group cursor-pointer hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-none transition-all"
                                     onClick={() => setExpandedId(isExpanded ? null : neighbor.id)}
                                 >
                                     {/* Card Top Banner */}
@@ -200,8 +200,8 @@ export default function DirectoryPage() {
                                         </div>
 
                                         {/* Name & Role */}
-                                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{neighbor.name || 'Vecino'}</h3>
-                                        <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-slate-100 dark:bg-slate-800 text-slate-600'}`}>
+                                        <h3 className="font-black cc-text-primary text-base leading-tight">{neighbor.name || 'Vecino'}</h3>
+                                        <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-elevated text-slate-600'}`}>
                                             {ROLE_LABELS[neighbor.role] || 'Residente'}
                                         </span>
 
@@ -222,7 +222,7 @@ export default function DirectoryPage() {
                                                     exit={{ height: 0, opacity: 0 }}
                                                     className="overflow-hidden"
                                                 >
-                                                    <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700">
+                                                    <div className="pt-4 mt-4 border-t border-subtle">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();

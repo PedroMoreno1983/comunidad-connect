@@ -179,7 +179,7 @@ export default function CoCo() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 12 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="flex flex-col overflow-hidden rounded-3xl border border-pink-100 dark:border-slate-700 bg-white dark:bg-slate-900"
+                        className="flex flex-col overflow-hidden rounded-3xl border border-pink-100 dark:border-slate-700 bg-surface"
                         style={{ width: 360, height: 500, boxShadow: "0 20px 60px rgba(236,72,153,0.25)" }}
                     >
                         {/* Header */}
@@ -197,7 +197,7 @@ export default function CoCo() {
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-950">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-canvas">
                             {msgs.map(msg => (
                                 <div key={msg.id} className={`flex gap-2 w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                                     {msg.role === "assistant" && (
@@ -213,7 +213,7 @@ export default function CoCo() {
                                             <div
                                                 className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
                                                     ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm"
-                                                    : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-pink-100 dark:border-slate-700 rounded-tl-sm"
+                                                    : "bg-surface text-slate-800 dark:text-slate-200 shadow-sm border border-pink-100 dark:border-slate-700 rounded-tl-sm"
                                                     }`}
                                                 dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
                                             />
@@ -235,7 +235,7 @@ export default function CoCo() {
                             {loading && (
                                 <div className="flex gap-2">
                                     <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">👩‍💻</div>
-                                    <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 border border-pink-100 dark:border-slate-700 flex gap-1.5">
+                                    <div className="bg-surface rounded-2xl rounded-tl-sm px-4 py-3 border border-pink-100 dark:border-slate-700 flex gap-1.5">
                                         {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                                     </div>
                                 </div>
@@ -245,10 +245,10 @@ export default function CoCo() {
 
                         {/* Quick actions */}
                         {msgs.length === 1 && (
-                            <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-slate-50 dark:bg-slate-950 border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
+                            <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-canvas border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
                                 {QUICK.map(({ label, icon: Icon }) => (
                                     <button key={label} onClick={() => send(label, null)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-slate-800 rounded-xl text-[11px] font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-pink-300 hover:text-pink-600 transition-colors">
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface rounded-xl text-[11px] font-semibold cc-text-secondary border border-subtle hover:border-pink-300 hover:text-pink-600 transition-colors">
                                         <Icon className="h-3 w-3" />{label}
                                     </button>
                                 ))}
@@ -256,7 +256,7 @@ export default function CoCo() {
                         )}
 
                         {/* Input Area */}
-                        <div className="bg-white dark:bg-slate-900 border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
+                        <div className="bg-surface border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
                             {/* Image Preview Area */}
                             {selectedImage && (
                                 <div className="px-3 pt-3 pb-1 flex relative">
@@ -294,7 +294,7 @@ export default function CoCo() {
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
                                     placeholder={selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
-                                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium outline-none focus:ring-2 focus:ring-pink-400/30"
+                                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-pink-400/30"
                                 />
                                 
                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || loading}
@@ -329,7 +329,7 @@ export default function CoCo() {
                 {!open && <span className="absolute inset-0 rounded-2xl animate-ping opacity-30" style={{ background: "linear-gradient(135deg,#ec4899,#a855f7)" }} />}
 
                 {!open && (
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-lg text-xs font-black text-pink-600 whitespace-nowrap border border-pink-100 pointer-events-none">
+                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-surface rounded-xl shadow-lg text-xs font-black text-pink-600 whitespace-nowrap border border-pink-100 pointer-events-none">
                         👋 ¡Hola! Soy CoCo
                     </span>
                 )}

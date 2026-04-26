@@ -98,24 +98,24 @@ export default function ExpensesPage() {
             case 'paid': return {
                 icon: CheckCircle,
                 label: 'Pagado',
-                bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-                text: 'text-emerald-700 dark:text-emerald-400',
+                bg: 'bg-success-bg',
+                text: 'text-success-fg',
                 border: 'border-emerald-200 dark:border-emerald-500/20',
                 ring: 'ring-emerald-500/20'
             };
             case 'pending': return {
                 icon: Clock,
                 label: 'Pendiente',
-                bg: 'bg-amber-50 dark:bg-amber-500/10',
-                text: 'text-amber-700 dark:text-amber-400',
+                bg: 'bg-warning-bg',
+                text: 'text-warning-fg',
                 border: 'border-amber-200 dark:border-amber-500/20',
                 ring: 'ring-amber-500/20'
             };
             case 'overdue': return {
                 icon: AlertCircle,
                 label: 'Vencido',
-                bg: 'bg-red-50 dark:bg-red-500/10',
-                text: 'text-red-700 dark:text-red-400',
+                bg: 'bg-danger-bg',
+                text: 'text-danger-fg',
                 border: 'border-red-200 dark:border-red-500/20',
                 ring: 'ring-red-500/20'
             };
@@ -123,7 +123,7 @@ export default function ExpensesPage() {
                 icon: Clock,
                 label: status,
                 bg: 'bg-slate-50 dark:bg-slate-700',
-                text: 'text-slate-700 dark:text-slate-300',
+                text: 'cc-text-secondary',
                 border: 'border-slate-200 dark:border-slate-600',
                 ring: 'ring-slate-500/20'
             };
@@ -144,9 +144,9 @@ export default function ExpensesPage() {
                     <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl">
                         <DollarSign className="h-5 w-5 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Gastos Comunes</h1>
+                    <h1 className="text-3xl font-bold cc-text-primary">Gastos Comunes</h1>
                 </div>
-                <p className="text-slate-500 dark:text-slate-400">
+                <p className="cc-text-secondary">
                     Historial de cobros y pagos de tu unidad • Depto {user?.unitId || '101'}
                 </p>
             </div>
@@ -171,27 +171,27 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Total Paid Card */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700">
+                <div className="bg-surface rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl">
-                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        <div className="p-3 bg-success-bg rounded-xl">
+                            <TrendingUp className="h-5 w-5 text-success-fg" />
                         </div>
-                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
+                        <span className="text-xs font-medium text-success-fg bg-success-bg px-2 py-1 rounded-full">
                             Al día
                         </span>
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Total Pagado</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">${totalPaid.toLocaleString('es-CL')}</p>
+                    <p className="text-sm cc-text-secondary">Total Pagado</p>
+                    <p className="text-2xl font-bold cc-text-primary mt-1">${totalPaid.toLocaleString('es-CL')}</p>
                 </div>
 
                 {/* Quick Pay Card */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700">
+                <div className="bg-surface rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl">
-                            <CreditCard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        <div className="p-3 bg-role-admin-bg rounded-xl">
+                            <CreditCard className="h-5 w-5 text-role-admin-fg" />
                         </div>
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Métodos de Pago</p>
+                    <p className="text-sm cc-text-secondary">Métodos de Pago</p>
                     <div className="flex items-center gap-2 mt-3">
                         <div className="h-8 w-12 bg-gradient-to-r from-blue-600 to-blue-400 rounded-md flex items-center justify-center text-white text-xs font-bold">VISA</div>
                         <div className="h-8 w-12 bg-gradient-to-r from-red-500 to-orange-400 rounded-md flex items-center justify-center text-white text-xs font-bold">MC</div>
@@ -201,16 +201,16 @@ export default function ExpensesPage() {
             </div>
 
             {/* Payment History Table */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-700 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+            <div className="bg-surface rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
+                <div className="p-6 border-b border-subtle">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-xl">
-                                <Receipt className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-elevated rounded-xl">
+                                <Receipt className="h-5 w-5 cc-text-secondary" />
                             </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Historial de Pagos</h2>
+                            <h2 className="text-lg font-bold cc-text-primary">Historial de Pagos</h2>
                         </div>
-                        <button className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                        <button className="text-sm font-medium text-role-admin-fg hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
                             Descargar todo <Download className="h-4 w-4" />
                         </button>
                     </div>
@@ -220,7 +220,7 @@ export default function ExpensesPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-medium">
+                                <tr className="bg-slate-50 dark:bg-slate-700/50 cc-text-secondary font-medium">
                                     <th className="px-6 py-4 text-left">Período</th>
                                     <th className="px-6 py-4 text-left">Vencimiento</th>
                                     <th className="px-6 py-4 text-left">Monto</th>
@@ -247,13 +247,13 @@ export default function ExpensesPage() {
                                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'forwards' }}
                                             >
                                                 <td className="px-6 py-4">
-                                                    <p className="font-semibold text-slate-900 dark:text-white capitalize">{formatMonth(expense.month)}</p>
+                                                    <p className="font-semibold cc-text-primary capitalize">{formatMonth(expense.month)}</p>
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                                                <td className="px-6 py-4 cc-text-secondary">
                                                     {new Date(expense.dueDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="text-lg font-bold text-slate-900 dark:text-white">
+                                                    <span className="text-lg font-bold cc-text-primary">
                                                         ${expense.amount.toLocaleString('es-CL')}
                                                     </span>
                                                 </td>
@@ -277,7 +277,7 @@ export default function ExpensesPage() {
                                                             )}
                                                         </button>
                                                     ) : (
-                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm">
+                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-elevated cc-text-secondary font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm">
                                                             <Download className="h-4 w-4" />
                                                             Comprobante
                                                         </button>

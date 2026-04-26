@@ -192,10 +192,10 @@ export default function AdminOnboardingPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-2xl font-bold mb-4 shadow-lg">
                         CC
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold cc-text-primary mb-2">
                         Registra tu Condominio
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-300">
+                    <p className="cc-text-secondary">
                         Empieza gratis con 30 días de prueba
                     </p>
                 </div>
@@ -235,7 +235,7 @@ export default function AdminOnboardingPage() {
                                         className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all ${
                                             isSelected
                                                 ? colorMap[plan.color]
-                                                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
+                                                : "border-subtle bg-surface hover:border-slate-300"
                                         }`}
                                     >
                                         {plan.badge && (
@@ -246,12 +246,12 @@ export default function AdminOnboardingPage() {
                                         <div className={`mb-3 ${iconColorMap[plan.color]}`}>
                                             <Icon className="h-7 w-7" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{plan.name}</h3>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{plan.price}</p>
+                                        <h3 className="text-lg font-bold cc-text-primary mb-1">{plan.name}</h3>
+                                        <p className="text-2xl font-bold cc-text-primary">{plan.price}</p>
                                         <p className="text-xs text-slate-500 mb-4">{plan.unit}</p>
                                         <ul className="space-y-1">
                                             {plan.features.map((f, i) => (
-                                                <li key={i} className="text-xs text-slate-600 dark:text-slate-400">{f}</li>
+                                                <li key={i} className="text-xs cc-text-secondary">{f}</li>
                                             ))}
                                         </ul>
                                         {isSelected && (
@@ -286,14 +286,14 @@ export default function AdminOnboardingPage() {
 
                 {/* Step 1: Community Info */}
                 {step === 1 && (
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
+                        <h2 className="text-xl font-bold cc-text-primary mb-6 flex items-center gap-2">
                             <Building className="h-5 w-5 text-indigo-500" />
                             Datos del Condominio
                         </h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                <label className="block text-sm font-semibold cc-text-secondary mb-2">
                                     Nombre del Condominio *
                                 </label>
                                 <Input
@@ -305,7 +305,7 @@ export default function AdminOnboardingPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                <label className="block text-sm font-semibold cc-text-secondary mb-2">
                                     Dirección
                                 </label>
                                 <Input
@@ -316,7 +316,7 @@ export default function AdminOnboardingPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                                <label className="block text-sm font-semibold cc-text-secondary mb-2">
                                     N° de Unidades / Departamentos
                                 </label>
                                 <Input
@@ -346,8 +346,8 @@ export default function AdminOnboardingPage() {
 
                 {/* Step 2: Account Info */}
                 {step === 2 && (
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
+                        <h2 className="text-xl font-bold cc-text-primary mb-6 flex items-center gap-2">
                             <User className="h-5 w-5 text-indigo-500" />
                             Tu Cuenta de Administrador
                         </h2>
@@ -405,7 +405,7 @@ export default function AdminOnboardingPage() {
                             </div>
 
                             {/* Summary */}
-                            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-sm cc-text-secondary space-y-1">
                                 <p><span className="font-semibold">Condominio:</span> {communityName}</p>
                                 {address && <p><span className="font-semibold">Dirección:</span> {address}</p>}
                                 <p><span className="font-semibold">Plan:</span> {PLANS.find(p => p.id === selectedPlan)?.name || "Por definir"}</p>
@@ -430,7 +430,7 @@ export default function AdminOnboardingPage() {
                 <div className="text-center mt-6">
                     <Link
                         href="/login"
-                        className="text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        className="text-sm cc-text-secondary hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                     >
                         ← Ya tengo cuenta, Iniciar Sesión
                     </Link>

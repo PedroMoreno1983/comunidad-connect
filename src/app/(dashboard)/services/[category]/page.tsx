@@ -47,7 +47,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
             <div>
                 <Link
                     href="/services"
-                    className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-4"
+                    className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-4"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Volver a Servicios
@@ -56,14 +56,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <div className="mb-3">
-                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
+                            <h1 className="text-3xl md:text-4xl font-bold cc-text-primary">
                                 {config.name}
                             </h1>
-                            <p className="text-slate-500 dark:text-slate-400 mt-1">
+                            <p className="cc-text-secondary mt-1">
                                 {categoryProviders.length} {categoryProviders.length === 1 ? 'técnico disponible' : 'técnicos disponibles'}
                             </p>
                         </div>
-                        <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="text-lg cc-text-secondary max-w-2xl">
                             {config.description}
                         </p>
                     </div>

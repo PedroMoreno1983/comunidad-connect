@@ -88,7 +88,7 @@ export default function WaterConsumptionPage() {
         return (
             <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-center px-4">
                 <Waves className="h-12 w-12 text-slate-300" />
-                <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">Sin Unidad Asignada</h2>
+                <h2 className="text-xl font-bold cc-text-secondary">Sin Unidad Asignada</h2>
                 <p className="text-slate-500">Contacta a la administración para vincular tu usuario a un departamento.</p>
             </div>
         );
@@ -108,13 +108,13 @@ export default function WaterConsumptionPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Eficiencia Hídrica</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Consumo de Agua</h1>
+                    <h1 className="text-4xl font-black cc-text-primary">Consumo de Agua</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-6 py-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                    <button className="flex items-center gap-3 px-6 py-4 bg-surface rounded-2xl border border-subtle shadow-sm hover:shadow-md transition-shadow">
                         <Waves className="h-5 w-5 text-blue-500" />
-                        <span className="text-sm font-black text-slate-900 dark:text-white">Reportar Fuga</span>
+                        <span className="text-sm font-black cc-text-primary">Reportar Fuga</span>
                     </button>
                 </div>
             </div>
@@ -141,27 +141,27 @@ export default function WaterConsumptionPage() {
 
                     {/* Quick Stats (Last Reading) */}
                     {lastReading && (
-                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none space-y-6">
+                        <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600">
                                     <Calculator className="h-6 w-6" />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white">Lectura del Mes</h3>
+                                <h3 className="text-xl font-black cc-text-primary">Lectura del Mes</h3>
                             </div>
 
                             <div className="flex justify-between items-end pb-4 border-b border-slate-50 dark:border-slate-800">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lectura Actual</p>
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{lastReading.reading_value.toFixed(1)}</p>
+                                    <p className="text-sm font-bold cc-text-secondary">{lastReading.reading_value.toFixed(1)}</p>
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-slate-300 mb-1" />
                                 <div className="text-right space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Anterior</p>
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{prevReading?.reading_value.toFixed(1) || '0.0'}</p>
+                                    <p className="text-sm font-bold cc-text-secondary">{prevReading?.reading_value.toFixed(1) || '0.0'}</p>
                                 </div>
                             </div>
 
-                            <div className="flex justify-between items-center px-4 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                            <div className="flex justify-between items-center px-4 py-4 bg-elevated/50 rounded-2xl">
                                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Consumo Neto</span>
                                 <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{currentConsumption.toFixed(1)} m³</span>
                             </div>
@@ -172,18 +172,18 @@ export default function WaterConsumptionPage() {
                     <div className="space-y-6 px-2">
                         <div className="flex items-center gap-4">
                             <History className="h-5 w-5 text-slate-400" />
-                            <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Historial Reciente</h2>
+                            <h2 className="text-xs font-black cc-text-primary uppercase tracking-widest">Historial Reciente</h2>
                         </div>
 
                         <div className="space-y-3">
                             {readings.slice(0, 3).reverse().map((reading) => (
-                                <div key={reading.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-blue-100 dark:hover:border-blue-900/50 transition-all group">
+                                <div key={reading.id} className="p-4 bg-surface border border-subtle rounded-2xl flex items-center justify-between hover:border-blue-100 dark:hover:border-blue-900/50 transition-all group">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-400 text-xs">
+                                        <div className="h-10 w-10 rounded-xl bg-elevated flex items-center justify-center font-bold text-slate-400 text-xs">
                                             {reading.month.substring(0, 3)}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-slate-900 dark:text-white">{reading.month} {reading.year}</p>
+                                            <p className="text-sm font-black cc-text-primary">{reading.month} {reading.year}</p>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lectura {reading.reading_value}</p>
                                         </div>
                                     </div>

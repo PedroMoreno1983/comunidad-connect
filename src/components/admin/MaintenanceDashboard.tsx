@@ -117,12 +117,12 @@ export function MaintenanceDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-2xl">
-                            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        <div className="p-3 bg-danger-bg rounded-2xl">
+                            <AlertCircle className="h-6 w-6 text-danger-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Tareas Vencidas</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Tareas Vencidas</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white">{overdueCount}</p>
+                    <p className="text-4xl font-black cc-text-primary">{overdueCount}</p>
                     <p className="text-xs font-bold text-red-500 mt-2 flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         Requiere acción inmediata
@@ -134,20 +134,20 @@ export function MaintenanceDashboard() {
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Pendientes</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Pendientes</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white">{pendingCount}</p>
+                    <p className="text-4xl font-black cc-text-primary">{pendingCount}</p>
                     <p className="text-xs font-bold text-slate-400 mt-2">Próximos 7 días</p>
                 </div>
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl">
-                            <Activity className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        <div className="p-3 bg-warning-bg rounded-2xl">
+                            <Activity className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Activos Críticos</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Activos Críticos</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white">{criticalAssets}</p>
+                    <p className="text-4xl font-black cc-text-primary">{criticalAssets}</p>
                     <p className="text-xs font-bold text-amber-500 mt-2">Revisar hoja de vida</p>
                 </div>
 
@@ -170,10 +170,10 @@ export function MaintenanceDashboard() {
                 <div className="lg:col-span-2 space-y-8">
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                                <CalendarDays className="h-6 w-6 text-slate-900 dark:text-white" />
+                            <div className="p-3 bg-elevated rounded-2xl">
+                                <CalendarDays className="h-6 w-6 cc-text-primary" />
                             </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Tareas de Mantenimiento</h2>
+                            <h2 className="text-2xl font-black cc-text-primary">Tareas de Mantenimiento</h2>
                         </div>
                     </div>
 
@@ -189,7 +189,7 @@ export function MaintenanceDashboard() {
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{asset?.name}</p>
-                                            <h4 className="text-lg font-black text-slate-900 dark:text-white">{task.title}</h4>
+                                            <h4 className="text-lg font-black cc-text-primary">{task.title}</h4>
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <Calendar className="h-3 w-3" />
                                                 Vence: {new Date(task.dueDate).toLocaleDateString()}
@@ -207,7 +207,7 @@ export function MaintenanceDashboard() {
                                                 setSelectedTask(task);
                                                 setIsDetailOpen(true);
                                             }}
-                                            className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"
+                                            className="p-4 bg-elevated rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"
                                         >
                                             <ArrowRight className="h-5 w-5" />
                                         </button>
@@ -221,25 +221,25 @@ export function MaintenanceDashboard() {
                 {/* Technical History Snippet */}
                 <div className="space-y-8">
                     <div className="flex items-center gap-4 px-2">
-                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                            <History className="h-6 w-6 text-slate-900 dark:text-white" />
+                        <div className="p-3 bg-elevated rounded-2xl">
+                            <History className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Historial Reciente</h2>
+                        <h2 className="text-2xl font-black cc-text-primary">Historial Reciente</h2>
                     </div>
 
                     <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white/50 dark:border-slate-700/50 space-y-8 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                         {logs.length === 0 && <p className="text-slate-500 text-sm">No hay historial reciente.</p>}
                         {logs.map((log: MaintenanceLog, i: number) => (
                             <div key={log.id} className="flex gap-4 relative">
-                                {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-slate-100 dark:bg-slate-800" />}
+                                {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-elevated" />}
                                 <div className="h-6 w-6 rounded-full border-4 border-white dark:border-slate-900 bg-blue-500 z-10 shrink-0" />
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
                                     </p>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{log.description}</p>
+                                    <p className="text-sm font-bold cc-text-primary">{log.description}</p>
                                     <div className="text-right flex-shrink-0">
-                                        <p className="text-sm font-black text-slate-900 dark:text-white">${(log.cost || 0).toLocaleString('es-CL')}</p>
+                                        <p className="text-sm font-black cc-text-primary">${(log.cost || 0).toLocaleString('es-CL')}</p>
                                         <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Costo</p>
                                     </div>
                                 </div>
@@ -265,18 +265,18 @@ export function MaintenanceDashboard() {
                                     </span>
                                     <span className="text-xs font-bold text-slate-400">ID: {selectedTask.id}</span>
                                 </div>
-                                <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">{selectedTask.title}</h3>
+                                <h3 className="text-3xl font-black cc-text-primary leading-tight">{selectedTask.title}</h3>
                                 <p className="text-slate-500 font-medium leading-relaxed">{selectedTask.description}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem]">
+                            <div className="grid grid-cols-2 gap-6 p-6 bg-elevated/50 rounded-[2rem]">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Frecuencia</p>
-                                    <p className="font-bold text-slate-900 dark:text-white capitalize">{selectedTask.frequency === 'weekly' ? 'Semanal' : selectedTask.frequency === 'monthly' ? 'Mensual' : selectedTask.frequency === 'quarterly' ? 'Trimestral' : 'Anual'}</p>
+                                    <p className="font-bold cc-text-primary capitalize">{selectedTask.frequency === 'weekly' ? 'Semanal' : selectedTask.frequency === 'monthly' ? 'Mensual' : selectedTask.frequency === 'quarterly' ? 'Trimestral' : 'Anual'}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vencimiento</p>
-                                    <p className="font-bold text-slate-900 dark:text-white">{new Date(selectedTask.dueDate).toLocaleDateString()}</p>
+                                    <p className="font-bold cc-text-primary">{new Date(selectedTask.dueDate).toLocaleDateString()}</p>
                                 </div>
                             </div>
 

@@ -57,7 +57,7 @@ export function WhatsNew() {
                     exit={{ opacity: 0, x: 100 }}
                     className="fixed bottom-6 right-24 z-[100] w-80"
                 >
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-indigo-100 dark:border-slate-700 overflow-hidden">
+                    <div className="bg-surface rounded-3xl shadow-2xl border border-indigo-100 dark:border-slate-700 overflow-hidden">
                         {/* Header */}
                         <div className="p-4 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -82,10 +82,10 @@ export function WhatsNew() {
                                         <item.icon className={`h-4 w-4 ${item.color}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                                        <h4 className="text-xs font-black cc-text-primary group-hover:text-indigo-600 transition-colors">
                                             {item.title}
                                         </h4>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        <p className="text-[10px] cc-text-secondary leading-relaxed">
                                             {item.desc}
                                         </p>
                                     </div>
@@ -94,10 +94,10 @@ export function WhatsNew() {
                             ))}
                         </div>
 
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-3 bg-canvas/50 border-t border-subtle">
                             <button 
                                 onClick={close}
-                                className="w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors"
+                                className="w-full py-2 bg-surface border border-subtle rounded-xl text-xs font-bold cc-text-secondary hover:bg-slate-50 transition-colors"
                             >
                                 Entendido
                             </button>

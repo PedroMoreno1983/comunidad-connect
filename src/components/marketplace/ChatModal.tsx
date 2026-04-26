@@ -63,14 +63,14 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-                <div className="flex flex-col h-[600px] bg-slate-50 dark:bg-slate-950">
+                <div className="flex flex-col h-[600px] bg-canvas">
                     {/* Header */}
-                    <div className="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                    <div className="p-6 bg-surface border-b border-subtle flex items-center gap-4">
                         <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
                             V
                         </div>
                         <div className="flex-1">
-                            <DialogTitle className="font-bold text-slate-900 dark:text-white">Valentina Rivas</DialogTitle>
+                            <DialogTitle className="font-bold cc-text-primary">Valentina Rivas</DialogTitle>
                             <p className="text-xs text-emerald-500 font-bold uppercase tracking-widest">Vendedor Online</p>
                         </div>
                         <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
@@ -92,7 +92,7 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
                                         ? 'bg-blue-600 text-white rounded-tr-none'
                                         : msg.sender === 'system'
                                             ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 text-center text-xs w-full'
-                                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-tl-none'
+                                            : 'bg-surface cc-text-secondary rounded-tl-none'
                                         }`}>
                                         {msg.text}
                                         {msg.sender !== 'system' && (
@@ -107,12 +107,12 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={handleSendMessage} className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                    <form onSubmit={handleSendMessage} className="p-6 bg-surface border-t border-subtle">
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 placeholder="Escribe un mensaje..."
-                                className="flex-1 h-12 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 border-none text-sm font-medium focus:ring-2 focus:ring-blue-500/20"
+                                className="flex-1 h-12 px-4 rounded-xl bg-elevated border-none text-sm font-medium focus:ring-2 focus:ring-blue-500/20"
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                             />

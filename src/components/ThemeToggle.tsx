@@ -37,7 +37,7 @@ export function ThemeToggle() {
             {/* Toggle Button */}
             <motion.button
                 onClick={() => setShowMenu(!showMenu)}
-                className="relative p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="relative p-2.5 rounded-xl bg-elevated hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                 whileTap={{ scale: 0.95 }}
                 aria-label="Cambiar tema"
             >
@@ -66,7 +66,7 @@ export function ThemeToggle() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-40 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50"
+                        className="absolute right-0 mt-2 w-40 py-2 bg-surface rounded-xl shadow-xl border border-subtle z-50"
                     >
                         {themes.map(({ id, icon: Icon, label }) => (
                             <button
@@ -76,8 +76,8 @@ export function ThemeToggle() {
                                     setShowMenu(false);
                                 }}
                                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${theme === id
-                                    ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
-                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    ? 'text-role-admin-fg bg-role-admin-bg'
+                                    : 'cc-text-secondary hover:bg-elevated'
                                     }`}
                             >
                                 <Icon className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function ThemeToggleCompact() {
             aria-label="Cambiar tema"
         >
             <motion.div
-                className="absolute w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center"
+                className="absolute w-6 h-6 rounded-full bg-surface shadow-md flex items-center justify-center"
                 animate={{ x: resolvedTheme === 'dark' ? 24 : 0 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             >

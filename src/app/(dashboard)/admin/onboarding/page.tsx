@@ -157,7 +157,7 @@ export default function AdminOnboardingPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-12">
             <div>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                <h1 className="text-3xl font-black cc-text-primary flex items-center gap-3">
                     <Sparkles className="h-8 w-8 text-indigo-600" />
                     Asistente Mágico de Migración con IA
                 </h1>
@@ -174,7 +174,7 @@ export default function AdminOnboardingPage() {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`bg-white dark:bg-slate-800 rounded-3xl p-12 text-center shadow-xl border relative overflow-hidden group transition-all duration-300 ${
+                    className={`bg-surface rounded-3xl p-12 text-center shadow-xl border relative overflow-hidden group transition-all duration-300 ${
                         isDragging 
                             ? 'border-indigo-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20' 
                             : 'border-indigo-100 dark:border-indigo-500/20'
@@ -183,7 +183,7 @@ export default function AdminOnboardingPage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50 z-0"></div>
                     
                     <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
-                        <div className={`p-6 rounded-full bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
+                        <div className={`p-6 rounded-full bg-surface shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
                             {isExtracting ? (
                                 <Sparkles className="w-16 h-16 text-indigo-600 animate-spin-slow" />
                             ) : (
@@ -191,7 +191,7 @@ export default function AdminOnboardingPage() {
                             )}
                         </div>
                         
-                        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h3 className="text-2xl font-bold tracking-tight cc-text-primary">
                             {isExtracting ? 'La IA está leyendo y estructurando tu archivo...' : 'Arrastra tu archivo PDF o Word aquí'}
                         </h3>
                         
@@ -230,7 +230,7 @@ export default function AdminOnboardingPage() {
                     <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg mb-6">
                         <CheckCircle2 className="h-12 w-12" />
                     </div>
-                    <h2 className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mb-2">¡Sincronización Mágica Completada!</h2>
+                    <h2 className="text-3xl font-black text-success-fg mb-2">¡Sincronización Mágica Completada!</h2>
                     <p className="text-emerald-600 dark:text-emerald-500 font-medium mb-8">Todos los residentes han sido inyectados y creados exitosamente en Supabase de forma estructurada.</p>
                     <button 
                         onClick={() => setSyncSuccess(false)}
@@ -247,7 +247,7 @@ export default function AdminOnboardingPage() {
                     <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+                        className="bg-surface rounded-2xl shadow-xl overflow-hidden border border-subtle"
                     >
                         <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div>
@@ -277,8 +277,8 @@ export default function AdminOnboardingPage() {
                         </div>
 
                         <div className="overflow-x-auto w-full">
-                            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider border-b border-slate-200 dark:border-slate-700">
+                            <table className="w-full text-left text-sm cc-text-secondary">
+                                <thead className="bg-canvas/50 text-slate-900 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider border-b border-subtle">
                                     <tr>
                                         <th className="px-6 py-4 w-1/4">Nombre del Residente</th>
                                         <th className="px-6 py-4 w-1/6">Depto / Unidad</th>
@@ -295,7 +295,7 @@ export default function AdminOnboardingPage() {
                                                 <input 
                                                     value={row.name} 
                                                     onChange={e => handleFieldChange(row.id, 'name', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-medium"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 cc-text-primary font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-2">
@@ -309,7 +309,7 @@ export default function AdminOnboardingPage() {
                                                 <input 
                                                     value={row.email} 
                                                     onChange={e => handleFieldChange(row.id, 'email', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 text-slate-500 dark:text-slate-400"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 cc-text-secondary"
                                                 />
                                             </td>
                                             <td className="px-4 py-2">

@@ -130,8 +130,8 @@ export default function UnitsPage() {
         <div className="space-y-6 max-w-6xl mx-auto p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Gestión de Unidades</h1>
-                    <p className="text-slate-500 dark:text-slate-400">Administra departamentos y asigna residentes.</p>
+                    <h1 className="text-3xl font-bold cc-text-primary">Gestión de Unidades</h1>
+                    <p className="cc-text-secondary">Administra departamentos y asigna residentes.</p>
                 </div>
 
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -189,8 +189,8 @@ export default function UnitsPage() {
                 </Dialog>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-                <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800/50">
+            <Card className="border-subtle shadow-sm">
+                <CardHeader className="pb-4 border-b border-subtle/50">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-lg font-semibold flex items-center gap-2">
                             <Building2 className="h-5 w-5 text-slate-500" />
@@ -205,7 +205,7 @@ export default function UnitsPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-medium border-b border-slate-100 dark:border-slate-800">
+                            <thead className="bg-canvas/50 text-slate-500 font-medium border-b border-subtle">
                                 <tr>
                                     <th className="px-6 py-4">Unidad</th>
                                     <th className="px-6 py-4">Ubicación</th>
@@ -215,8 +215,8 @@ export default function UnitsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {units.map((unit) => (
-                                    <tr key={unit.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                                    <tr key={unit.id} className="hover:bg-elevated/50 transition-colors">
+                                        <td className="px-6 py-4 font-medium cc-text-primary">
                                             Depto {unit.number}
                                         </td>
                                         <td className="px-6 py-4 text-slate-500">
@@ -228,7 +228,7 @@ export default function UnitsPage() {
                                                     <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                                                         {(unit.profiles.name || unit.profiles.name)?.charAt(0) || 'U'}
                                                     </div>
-                                                    <span className="text-slate-700 dark:text-slate-300">
+                                                    <span className="cc-text-secondary">
                                                         {unit.profiles.name || unit.profiles.name || unit.profiles.email}
                                                     </span>
                                                 </div>
@@ -260,7 +260,7 @@ export default function UnitsPage() {
                                                     </DialogHeader>
                                                     <div className="py-4">
                                                         <select
-                                                            className="w-full p-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                                                            className="w-full p-2 rounded-md border border-default bg-surface"
                                                             value={selectedResident}
                                                             onChange={(e) => setSelectedResident(e.target.value)}
                                                         >

@@ -37,8 +37,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="mx-auto w-12 h-12 rounded-xl bg-rose-500 shadow-lg shadow-rose-500/30 flex items-center justify-center">
             <AlertTriangle className="h-6 w-6 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Lo sentimos, hubo un error en este módulo</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <h2 className="text-xl font-bold cc-text-primary">Lo sentimos, hubo un error en este módulo</h2>
+          <p className="text-sm cc-text-secondary max-w-sm mx-auto">
             {this.props.name ? `El módulo "${this.props.name}"` : 'Esta sección'} no pudo cargarse correctamente.
           </p>
           <button

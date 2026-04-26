@@ -130,7 +130,7 @@ export default function ProviderRegisterPage() {
             {/* Back Button */}
             <Link
                 href="/services"
-                className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Servicios
@@ -138,10 +138,10 @@ export default function ProviderRegisterPage() {
 
             {/* Header */}
             <div className="text-center space-y-3">
-                <h1 className="text-4xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-4xl font-bold cc-text-primary">
                     Regístrate como <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">Técnico Profesional</span>
                 </h1>
-                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                <p className="text-lg cc-text-secondary max-w-2xl mx-auto">
                     Une a nuestra plataforma y conecta con cientos de clientes potenciales
                 </p>
             </div>
@@ -166,16 +166,16 @@ export default function ProviderRegisterPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-8">
+            <form onSubmit={handleSubmit} className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
                 {/* Step 1: Basic Info */}
                 {step === 1 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Información Básica</h2>
+                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Información Básica</h2>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Nombre Completo *
                             </label>
                             <Input
@@ -188,7 +188,7 @@ export default function ProviderRegisterPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <label className="text-sm font-medium cc-text-secondary">
                                     Email *
                                 </label>
                                 <Input
@@ -201,7 +201,7 @@ export default function ProviderRegisterPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <label className="text-sm font-medium cc-text-secondary">
                                     Teléfono *
                                 </label>
                                 <Input
@@ -215,14 +215,14 @@ export default function ProviderRegisterPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Categoría Principal *
                             </label>
                             <select
                                 required
                                 value={formData.category}
                                 onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                             >
                                 <option value="plumbing">Gasfitería</option>
                                 <option value="electrical">Electricidad</option>
@@ -245,12 +245,12 @@ export default function ProviderRegisterPage() {
                 {step === 2 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Información Profesional</h2>
+                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Información Profesional</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <label className="text-sm font-medium cc-text-secondary">
                                     Años de Experiencia *
                                 </label>
                                 <Input
@@ -264,7 +264,7 @@ export default function ProviderRegisterPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <label className="text-sm font-medium cc-text-secondary">
                                     Tarifa por Hora (CLP)
                                 </label>
                                 <Input
@@ -278,14 +278,14 @@ export default function ProviderRegisterPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Tiempo de Respuesta *
                             </label>
                             <select
                                 required
                                 value={formData.responseTime}
                                 onChange={(e) => setFormData({ ...formData, responseTime: e.target.value })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                             >
                                 <option value="< 30 minutos">Menos de 30 minutos</option>
                                 <option value="< 1 hora">Menos de 1 hora</option>
@@ -296,12 +296,12 @@ export default function ProviderRegisterPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Sobre Ti (Biografía) *
                             </label>
                             <textarea
                                 required
-                                className="w-full min-h-[120px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                                 placeholder="Cuenta sobre tu experiencia, especialidades y qué te hace único..."
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
@@ -330,12 +330,12 @@ export default function ProviderRegisterPage() {
                 {step === 3 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Especialidades y Certificaciones</h2>
+                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Especialidades y Certificaciones</h2>
                         </div>
 
                         {/* Specialties */}
                         <div className="space-y-3">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Especialidades *
                             </label>
                             <div className="flex gap-2">
@@ -377,7 +377,7 @@ export default function ProviderRegisterPage() {
 
                         {/* Certifications */}
                         <div className="space-y-3">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Certificaciones
                             </label>
                             <div className="flex gap-2">
@@ -401,7 +401,7 @@ export default function ProviderRegisterPage() {
                                     {formData.certifications.map((cert, idx) => (
                                         <span
                                             key={idx}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-100 dark:border-amber-500/20"
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-warning-bg text-warning-fg rounded-lg text-sm border border-amber-100 dark:border-amber-500/20"
                                         >
                                             {cert}
                                             <button
@@ -419,15 +419,15 @@ export default function ProviderRegisterPage() {
 
                         {/* Photo Upload Placeholder */}
                         <div className="space-y-3">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <label className="text-sm font-medium cc-text-secondary">
                                 Foto de Perfil
                             </label>
-                            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer">
+                            <div className="border-2 border-dashed border-default rounded-xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer">
                                 <Upload className="h-12 w-12 mx-auto mb-3 text-slate-400" />
-                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                <p className="text-sm cc-text-secondary">
                                     Haz clic para subir una foto o arrastra aquí
                                 </p>
-                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                <p className="text-xs cc-text-tertiary mt-1">
                                     JPG, PNG hasta 5MB
                                 </p>
                             </div>

@@ -15,11 +15,11 @@ export default function AdminVotacionesPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Gestión de Asambleas</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Centro de Mando Electoral</h1>
+                    <h1 className="text-4xl font-black cc-text-primary">Centro de Mando Electoral</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-xl active:scale-95">
+                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-xl active:scale-95">
                         <Calendar className="h-5 w-5 text-blue-600" />
                         Historial Legal
                     </button>
@@ -28,21 +28,21 @@ export default function AdminVotacionesPage() {
 
             {/* Voting Command Center KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden group">
+                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden group">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600">
                             <Users className="h-6 w-6" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Quórum Legal Asamblea</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Quórum Legal Asamblea</h3>
                     </div>
                     <div className="flex items-end gap-3 text-emerald-500">
-                        <p className="text-4xl font-black text-slate-900 dark:text-white">65.4%</p>
+                        <p className="text-4xl font-black cc-text-primary">65.4%</p>
                         <span className="text-xs font-bold mb-1.5 uppercase tracking-widest flex items-center gap-1">
                             <ShieldCheck className="h-3 w-3" />
                             Alcanzado
                         </span>
                     </div>
-                    <div className="mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="mt-4 h-1.5 w-full bg-elevated rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: '65.4%' }}
@@ -51,14 +51,14 @@ export default function AdminVotacionesPage() {
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none">
+                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl text-indigo-600">
+                        <div className="p-3 bg-role-admin-bg rounded-2xl text-indigo-600">
                             <Activity className="h-6 w-6" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest">Participación Activa</h3>
+                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Participación Activa</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white">142</p>
+                    <p className="text-4xl font-black cc-text-primary">142</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Votantes únicos este mes</p>
                 </div>
 

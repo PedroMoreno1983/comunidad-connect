@@ -60,10 +60,10 @@ export default async function ServicesPage() {
         <div className="max-w-7xl space-y-8">
             {/* Header */}
             <div className="text-center max-w-3xl mx-auto">
-                <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+                <h1 className="text-4xl md:text-5xl font-bold cc-text-primary mb-4">
                     Encuentra el Técnico Perfecto
                 </h1>
-                <p className="text-lg text-slate-600 dark:text-slate-300">
+                <p className="text-lg cc-text-secondary">
                     Conecta con profesionales verificados de confianza en tu comunidad
                 </p>
             </div>
@@ -76,14 +76,14 @@ export default async function ServicesPage() {
                     <input
                         type="text"
                         placeholder="Buscar técnicos por nombre o especialidad..."
-                        className="w-full pl-12 pr-4 py-4 rounded-3xl border border-white/50 dark:border-slate-700/50 bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-xl shadow-slate-200/20 dark:shadow-black/40 transition-all"
+                        className="w-full pl-12 pr-4 py-4 rounded-3xl border border-white/50 dark:border-slate-700/50 bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl cc-text-primary placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 shadow-xl shadow-slate-200/20 dark:shadow-black/40 transition-all"
                     />
                 </div>
             </div>
 
             {/* Categories Grid */}
             <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+                <h2 className="text-2xl font-bold cc-text-primary mb-6">
                     Categorías de Servicio
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -100,10 +100,10 @@ export default async function ServicesPage() {
             {featuredProviders.length > 0 && (
                 <div>
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <h2 className="text-2xl font-bold cc-text-primary">
                             Técnicos Destacados
                         </h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm cc-text-secondary">
                             Los mejor calificados de la semana
                         </p>
                     </div>

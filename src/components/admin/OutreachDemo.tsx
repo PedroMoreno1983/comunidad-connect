@@ -49,14 +49,14 @@ export default function OutreachDemo() {
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl p-6 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1 space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-role-admin-fg rounded-full text-xs font-bold uppercase tracking-wider">
                         <Sparkles className="h-3 w-3" />
                         Campaña de Captación
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <h2 className="text-2xl font-bold cc-text-primary">
                         Envía una propuesta personalizada 🚀
                     </h2>
-                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed max-w-lg">
+                    <p className="cc-text-secondary leading-relaxed max-w-lg">
                         Invita a administradores a conocer **ComunidadConnect**. El correo incluye 
                         detalles de IA Onboarding, Gestión Financiera y App Residente con un diseño 
                         premium para causar una excelente primera impresión.
@@ -78,9 +78,9 @@ export default function OutreachDemo() {
                     </div>
                 </div>
 
-                <form onSubmit={handleSend} className="w-full md:w-96 bg-white dark:bg-slate-900 p-6 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <form onSubmit={handleSend} className="w-full md:w-96 bg-surface p-6 rounded-xl shadow-xl border border-subtle space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
                             <User className="h-4 w-4 text-indigo-500" />
                             Nombre del Administrador
                         </label>
@@ -94,7 +94,7 @@ export default function OutreachDemo() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
                             <Mail className="h-4 w-4 text-indigo-500" />
                             Email de destino
                         </label>
@@ -109,7 +109,7 @@ export default function OutreachDemo() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
                             <Building className="h-4 w-4 text-indigo-500" />
                             Nombre del Condominio (Opcional)
                         </label>

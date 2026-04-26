@@ -131,7 +131,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                         <div className="relative h-full">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                             <Input
-                                className="h-full pl-12 pr-6 w-80 rounded-2xl bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 font-bold"
+                                className="h-full pl-12 pr-6 w-80 rounded-2xl bg-surface border-subtle font-bold"
                                 placeholder="Buscar unidad (Piso, depto)..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -159,7 +159,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-sm">
                         <Download className="h-5 w-5" />
                         Formato Excel
                     </button>
@@ -175,7 +175,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
             </div>
 
             {/* Entry Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
+            <div className="bg-surface rounded-[3rem] border border-subtle overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
@@ -203,11 +203,11 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                     >
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-black text-xs">
+                                                <div className="h-12 w-12 rounded-2xl bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-black text-xs">
                                                     {unit.number}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-slate-900 dark:text-white leading-none mb-1">Unidad {unit.number}</p>
+                                                    <p className="font-black cc-text-primary leading-none mb-1">Unidad {unit.number}</p>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Torre {unit.tower}</p>
                                                 </div>
                                             </div>
@@ -218,7 +218,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                         <td className="px-10 py-8">
                                             <Input
                                                 type="number"
-                                                className="w-32 h-14 rounded-xl border-slate-100 dark:border-slate-800 font-bold focus:ring-blue-500/20 focus:border-blue-500 text-center"
+                                                className="w-32 h-14 rounded-xl border-subtle font-bold focus:ring-blue-500/20 focus:border-blue-500 text-center"
                                                 placeholder="0.0"
                                                 value={readings[unit.id] || ""}
                                                 onChange={(e) => setReadings({ ...readings, [unit.id]: parseFloat(e.target.value) })}

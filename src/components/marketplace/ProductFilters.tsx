@@ -30,14 +30,14 @@ export function ProductFilters({
                     <input
                         type="text"
                         placeholder="¿Qué estás buscando para tu hogar hoy?"
-                        className="w-full h-14 pl-14 pr-12 rounded-2xl bg-white dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium"
+                        className="w-full h-14 pl-14 pr-12 rounded-2xl bg-surface/80 backdrop-blur-md border border-subtle/50 cc-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     {searchTerm && (
                         <button
                             onClick={() => setSearchTerm('')}
-                            className="absolute right-5 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
+                            className="absolute right-5 p-1 rounded-full hover:bg-elevated text-slate-400"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -62,10 +62,10 @@ export function ProductFilters({
                             onClick={() => setSelectedCategory(cat.id === 'all' ? null : cat.id)}
                             className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all duration-300 ${isActive
                                 ? `bg-gradient-to-r ${config.gradient} text-white shadow-xl shadow-blue-500/25 scale-105 border border-white/20`
-                                : 'bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl text-slate-600 dark:text-slate-400 border border-white/50 dark:border-slate-700/50 hover:bg-white/80 dark:hover:bg-slate-800/60 hover:shadow-lg'
+                                : 'bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl cc-text-secondary border border-white/50 dark:border-slate-700/50 hover:bg-white/80 dark:hover:bg-slate-800/60 hover:shadow-lg'
                                 }`}
                         >
-                            <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                            <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'cc-text-tertiary'}`} />
                             {cat.label}
                         </motion.button>
                     );

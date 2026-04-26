@@ -157,7 +157,7 @@ export default function PackagesPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Operaciones de Conserjería</h2>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white">Bitácora de Encomiendas</h1>
+                    <h1 className="text-4xl font-black cc-text-primary">Bitácora de Encomiendas</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -183,14 +183,14 @@ export default function PackagesPage() {
                                     disabled={isScanning}
                                     className={`w-full py-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 transition-all ${isScanning
                                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-500/10'
-                                        : 'border-slate-200 dark:border-slate-800 hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                        : 'border-subtle hover:border-blue-500/50 hover:bg-elevated/50'
                                         }`}
                                 >
-                                    <div className={`p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-xl ${isScanning ? 'animate-pulse' : ''}`}>
+                                    <div className={`p-4 rounded-2xl bg-surface shadow-xl ${isScanning ? 'animate-pulse' : ''}`}>
                                         <Scan className={`h-8 w-8 ${isScanning ? 'text-blue-500' : 'text-slate-400'}`} />
                                     </div>
                                     <div className="text-center">
-                                        <p className="font-black text-slate-900 dark:text-white">
+                                        <p className="font-black cc-text-primary">
                                             {isScanning ? 'Escaneando Etiqueta...' : 'Simular Escaneo OCR'}
                                         </p>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Detección automática de Depto</p>
@@ -201,7 +201,7 @@ export default function PackagesPage() {
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Unidad Destino</label>
                                         <select
-                                            className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                            className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                             required
                                             value={newPackage.unit}
                                             onChange={(e) => setNewPackage({ ...newPackage, unit: e.target.value })}
@@ -238,23 +238,23 @@ export default function PackagesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl">
-                            <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        <div className="p-3 bg-warning-bg rounded-2xl">
+                            <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white">Por Entregar</h3>
+                        <h3 className="font-black cc-text-primary">Por Entregar</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{pendingPackages.length}</p>
+                    <p className="text-4xl font-black cc-text-primary mb-1">{pendingPackages.length}</p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Paquetes en Bodega</p>
                 </div>
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
-                            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                        <div className="p-3 bg-success-bg rounded-2xl">
+                            <CheckCircle2 className="h-6 w-6 text-success-fg" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white">Entregados</h3>
+                        <h3 className="font-black cc-text-primary">Entregados</h3>
                     </div>
-                    <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{deliveredPackages.length}</p>
+                    <p className="text-4xl font-black cc-text-primary mb-1">{deliveredPackages.length}</p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoy Completados</p>
                 </div>
 
@@ -282,13 +282,13 @@ export default function PackagesPage() {
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <Package2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Encomiendas en Bodega</h2>
+                        <h2 className="text-2xl font-black cc-text-primary">Encomiendas en Bodega</h2>
                     </div>
                     <div className="relative hidden md:block w-72">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             placeholder="Buscar por Depto o ID..."
-                            className="w-full h-12 pl-12 pr-4 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            className="w-full h-12 pl-12 pr-4 bg-elevated border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                     </div>
                 </div>
@@ -311,7 +311,7 @@ export default function PackagesPage() {
                                             <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                                                 <PackageIcon className="h-7 w-7" />
                                             </div>
-                                            <span className="px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
+                                            <span className="px-3 py-1.5 bg-warning-bg text-warning-fg rounded-xl text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
                                                 En Bodega
                                             </span>
                                         </div>
@@ -319,9 +319,9 @@ export default function PackagesPage() {
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidad</span>
-                                                <span className="text-xl font-black text-slate-900 dark:text-white">{pkg.recipientUnitId}</span>
+                                                <span className="text-xl font-black cc-text-primary">{pkg.recipientUnitId}</span>
                                             </div>
-                                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 line-clamp-1">{pkg.description}</h3>
+                                            <h3 className="text-lg font-bold cc-text-secondary line-clamp-1">{pkg.description}</h3>
                                         </div>
 
                                         <div className="pt-6 border-t border-slate-50 dark:border-slate-800 space-y-4">
@@ -343,12 +343,12 @@ export default function PackagesPage() {
                         </AnimatePresence>
                     </div>
                 ) : (
-                    <div className="text-center py-24 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-700">
-                        <div className="w-20 h-20 mx-auto mb-6 bg-slate-100 dark:bg-slate-700 rounded-3xl flex items-center justify-center">
+                    <div className="text-center py-24 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-[3rem] border border-dashed border-subtle">
+                        <div className="w-20 h-20 mx-auto mb-6 bg-elevated rounded-3xl flex items-center justify-center">
                             <CheckCircle2 className="h-10 w-10 text-slate-400" />
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Bodega Vacía</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-xs mx-auto font-medium">
+                        <h3 className="text-2xl font-black cc-text-primary mb-2">Bodega Vacía</h3>
+                        <p className="cc-text-secondary mb-8 max-w-xs mx-auto font-medium">
                             No hay encomiendas pendientes por retirar. El registro está al día.
                         </p>
                     </div>

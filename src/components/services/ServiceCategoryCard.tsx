@@ -39,11 +39,11 @@ export function ServiceCategoryCard({ category }: ServiceCategoryCardProps) {
                     </div>
 
                     {/* Texto */}
-                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-cyan-600 transition-all">
+                    <h3 className="text-2xl font-bold cc-text-primary mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-cyan-600 transition-all">
                         {category.name}
                     </h3>
 
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                    <p className="cc-text-secondary text-sm mb-4">
                         {category.count} {category.count === 1 ? 'técnico disponible' : 'técnicos disponibles'}
                     </p>
 
