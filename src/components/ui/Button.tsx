@@ -6,9 +6,6 @@ import { cva, type VariantProps } from 'class-variance-authority';
  *
  * Variants: primary, secondary, ghost, danger, outline
  * Sizes:    sm, md (default), lg
- *
- * Uses hardcoded RGBA colors so buttons always render correctly
- * regardless of CSS variable resolution timing.
  */
 
 const buttonStyles = cva(
@@ -54,31 +51,30 @@ const buttonStyles = cva(
   }
 );
 
-// Inline styles per variant — immune to CSS variable resolution issues
 const variantStyles: Record<string, CSSProperties> = {
   primary: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: 'var(--cc-brand-500)',
     color: '#ffffff',
-    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.30)',
+    boxShadow: 'var(--cc-glow-brand)',
   },
   secondary: {
-    backgroundColor: 'rgba(128, 128, 128, 0.08)',
-    color: 'inherit',
-    borderColor: 'rgba(128, 128, 128, 0.20)',
+    backgroundColor: 'var(--cc-bg-elevated)',
+    color: 'var(--cc-text-primary)',
+    borderColor: 'var(--cc-border-default)',
   },
   outline: {
-    backgroundColor: 'rgba(128, 128, 128, 0.08)',
-    color: 'inherit',
-    borderColor: 'rgba(128, 128, 128, 0.20)',
+    backgroundColor: 'var(--cc-bg-elevated)',
+    color: 'var(--cc-text-primary)',
+    borderColor: 'var(--cc-border-default)',
   },
   ghost: {
     backgroundColor: 'transparent',
-    color: 'inherit',
+    color: 'var(--cc-text-primary)',
   },
   danger: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    color: '#F87171',
-    borderColor: 'rgba(239, 68, 68, 0.30)',
+    backgroundColor: 'var(--cc-danger-bg)',
+    color: 'var(--cc-danger-fg)',
+    borderColor: 'var(--cc-danger-border)',
   },
 };
 
