@@ -324,7 +324,7 @@ export default function PackagesPage() {
                                             <h3 className="text-lg font-bold cc-text-secondary line-clamp-1">{pkg.description}</h3>
                                         </div>
 
-                                        <div className="pt-6 border-t border-slate-50 dark:border-slate-800 space-y-4">
+                                        <div className="pt-6 border-t border-subtle space-y-4">
                                             <div className="flex items-center gap-3 text-xs text-slate-400 font-bold">
                                                 <History className="h-4 w-4" />
                                                 <span>Recibido hace {Math.floor(Math.random() * 5) + 1} horas</span>

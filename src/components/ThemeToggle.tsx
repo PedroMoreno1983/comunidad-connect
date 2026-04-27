@@ -37,7 +37,7 @@ export function ThemeToggle() {
             {/* Toggle Button */}
             <motion.button
                 onClick={() => setShowMenu(!showMenu)}
-                className="relative p-2.5 rounded-xl bg-elevated hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="relative p-2.5 rounded-xl bg-elevated hover:bg-elevated transition-colors"
                 whileTap={{ scale: 0.95 }}
                 aria-label="Cambiar tema"
             >
@@ -50,7 +50,7 @@ export function ThemeToggle() {
                         transition={{ duration: 0.2 }}
                     >
                         {resolvedTheme === 'dark' ? (
-                            <Moon className="h-5 w-5 text-indigo-400" />
+                            <Moon className="h-5 w-5 text-brand-400" />
                         ) : (
                             <Sun className="h-5 w-5 text-amber-500" />
                         )}
@@ -85,7 +85,7 @@ export function ThemeToggle() {
                                 {theme === id && (
                                     <motion.div
                                         layoutId="theme-check"
-                                        className="ml-auto w-2 h-2 rounded-full bg-indigo-500"
+                                        className="ml-auto w-2 h-2 rounded-full bg-brand-500"
                                     />
                                 )}
                             </button>
@@ -113,7 +113,7 @@ export function ThemeToggleCompact() {
     return (
         <motion.button
             onClick={toggleTheme}
-            className="relative w-14 h-8 rounded-full bg-slate-200 dark:bg-slate-700 p-1 transition-colors"
+            className="relative w-14 h-8 rounded-full bg-elevated p-1 transition-colors"
             whileTap={{ scale: 0.95 }}
             aria-label="Cambiar tema"
         >
@@ -131,7 +131,7 @@ export function ThemeToggleCompact() {
                         transition={{ duration: 0.2 }}
                     >
                         {resolvedTheme === 'dark' ? (
-                            <Moon className="h-3.5 w-3.5 text-indigo-400" />
+                            <Moon className="h-3.5 w-3.5 text-brand-400" />
                         ) : (
                             <Sun className="h-3.5 w-3.5 text-amber-500" />
                         )}

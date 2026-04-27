@@ -145,8 +145,8 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
                                 className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${filterStatus === status
-                                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900'
-                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400'
+                                    ? 'bg-canvas text-white border-slate-900 dark:bg-white dark:text-canvas'
+                                    : 'bg-white text-slate-500 border-default hover:border-default bg-surface cc-text-tertiary'
                                     }`}
                             >
                                 {status === 'all' && 'Todos'}
@@ -179,7 +179,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-slate-50 dark:border-slate-800">
+                            <tr className="border-b border-subtle">
                                 <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidad</th>
                                 <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Anterior (m³)</th>
                                 <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Nueva Lectura</th>

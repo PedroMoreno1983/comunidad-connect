@@ -73,7 +73,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Personal</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full bg-slate-200 dark:bg-slate-700" />
+                            <div className="h-3 w-3 rounded-full bg-elevated" />
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Promedio Torre</span>
                         </div>
                     </div>
@@ -100,7 +100,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                                 content={({ active, payload }) => {
                                     if (active && payload && payload.length) {
                                         return (
-                                            <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-2xl border border-white/10 space-y-4">
+                                            <div className="bg-canvas text-white p-6 rounded-2xl shadow-2xl border border-white/10 space-y-4">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{payload[0].payload.month}</p>
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between gap-8">

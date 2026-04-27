@@ -107,7 +107,7 @@ export function CondoFeesTable() {
                 <button
                     onClick={handleSendEmails}
                     disabled={sending || fees.length === 0}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors shadow-lg shadow-indigo-500/20"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors shadow-lg shadow-indigo-500/20"
                 >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                     {sending ? 'Enviando...' : 'Enviar a Residentes'}
@@ -125,7 +125,7 @@ export function CondoFeesTable() {
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Pago</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                    <tbody className="divide-y divide-subtle/50">
                         {fees.map((fee) => (
                             <tr key={fee.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                 <td className="py-4 px-6">

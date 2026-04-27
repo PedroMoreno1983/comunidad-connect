@@ -49,7 +49,7 @@ export default function OutreachDemo() {
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl p-6 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1 space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-role-admin-fg rounded-full text-xs font-bold uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-100 dark:bg-brand-900/30 text-role-admin-fg rounded-full text-xs font-bold uppercase tracking-wider">
                         <Sparkles className="h-3 w-3" />
                         Campaña de Captación
                     </div>
@@ -72,7 +72,7 @@ export default function OutreachDemo() {
                             Enfoque en IA
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                            <div className="h-1.5 w-1.5 rounded-full bg-brand-500" />
                             Directo a Demo
                         </div>
                     </div>
@@ -81,7 +81,7 @@ export default function OutreachDemo() {
                 <form onSubmit={handleSend} className="w-full md:w-96 bg-surface p-6 rounded-xl shadow-xl border border-subtle space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
-                            <User className="h-4 w-4 text-indigo-500" />
+                            <User className="h-4 w-4 text-brand-500" />
                             Nombre del Administrador
                         </label>
                         <Input 
@@ -95,7 +95,7 @@ export default function OutreachDemo() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-indigo-500" />
+                            <Mail className="h-4 w-4 text-brand-500" />
                             Email de destino
                         </label>
                         <Input 
@@ -110,7 +110,7 @@ export default function OutreachDemo() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
-                            <Building className="h-4 w-4 text-indigo-500" />
+                            <Building className="h-4 w-4 text-brand-500" />
                             Nombre del Condominio (Opcional)
                         </label>
                         <Input 
@@ -132,7 +132,7 @@ export default function OutreachDemo() {
                         type="submit" 
                         disabled={loading || isDemoUser}
                         className={`w-full text-white font-bold py-6 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] mt-2 group ${
-                            isDemoUser ? "bg-slate-400" : "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
+                            isDemoUser ? "bg-slate-400" : "bg-gradient-to-r from-[#6D28D9] to-[#2563EB] hover:from-indigo-700 hover:to-blue-700"
                         }`}
                     >
                         {loading ? (

@@ -50,7 +50,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                 className="object-cover"
                             />
                         ) : (
-                            <div className="w-full h-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center min-h-[300px]">
+                            <div className="w-full h-full bg-elevated flex items-center justify-center min-h-[300px]">
                                 <AlertCircle className="h-16 w-16 text-slate-400" />
                             </div>
                         )}
@@ -105,8 +105,8 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                     {item.allowSwap && (
                                         <div className="group p-6 bg-purple-50/30 dark:bg-purple-500/5 rounded-[2.5rem] border border-purple-100/30 dark:border-purple-500/10 hover:border-purple-500/30 transition-all duration-500 space-y-4">
                                             <div className="flex items-center gap-5">
-                                                <div className="h-12 w-12 rounded-2xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center shadow-lg shadow-purple-500/10">
-                                                    <Repeat className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                                                <div className="h-12 w-12 rounded-2xl bg-brand-100 dark:bg-purple-500/20 flex items-center justify-center shadow-lg shadow-purple-500/10">
+                                                    <Repeat className="h-6 w-6 text-brand-600 dark:text-brand-400" />
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-black cc-text-primary text-lg">Permuta (Swap)</span>
@@ -114,7 +114,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                                 </div>
                                             </div>
                                             <div className="pl-16">
-                                                <p className="text-sm md:text-base text-purple-700/80 dark:text-purple-300/80 font-medium leading-relaxed italic">
+                                                <p className="text-sm md:text-base text-purple-700/80 dark:text-brand-300/80 font-medium leading-relaxed italic">
                                                     &ldquo;{item.swapDetails || "Busco artículos de similar valor o categoría."}&rdquo;
                                                 </p>
                                             </div>
@@ -180,7 +180,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                         <div className="pt-12 border-t border-subtle space-y-8">
                             <div className="group flex items-center gap-5 p-6 bg-slate-50/50 dark:bg-slate-800/20 rounded-[2.5rem] border border-subtle hover:border-blue-500/20 transition-all duration-500">
                                 <div className="relative">
-                                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-blue-500/20 group-hover:rotate-3 transition-transform">
+                                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-blue-500/20 group-hover:rotate-3 transition-transform">
                                         V
                                     </div>
                                     <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full" />
@@ -200,7 +200,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                             <div className="flex gap-5">
                                 <button
                                     onClick={() => onChat(item)}
-                                    className="flex-1 h-20 bg-surface cc-text-primary font-black text-xl rounded-[2rem] border-2 border-subtle hover:border-blue-600 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-4 shadow-xl shadow-slate-200/20 dark:shadow-none"
+                                    className="flex-1 h-20 bg-surface cc-text-primary font-black text-xl rounded-[2rem] border-2 border-subtle hover:border-blue-600 dark:hover:border-blue-500 hover:bg-elevated transition-all active:scale-95 flex items-center justify-center gap-4 shadow-xl shadow-slate-200/20 dark:shadow-none"
                                 >
                                     <MessageCircle className="h-7 w-7" />
                                     Preguntar

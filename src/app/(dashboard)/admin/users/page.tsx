@@ -199,11 +199,11 @@ export default function UsersPage() {
                                         <tr key={u.id} className="hover:bg-slate-50 group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center mr-3 text-slate-600 font-bold uppercase transition-all duration-300 group-hover:bg-indigo-100 group-hover:text-indigo-700">
+                                                    <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center mr-3 text-slate-600 font-bold uppercase transition-all duration-300 group-hover:bg-brand-100 group-hover:text-brand-700">
                                                         {initial}
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-slate-900 group-hover:text-indigo-700 transition-colors">{name}</p>
+                                                        <p className="font-medium text-slate-900 group-hover:text-brand-700 transition-colors">{name}</p>
                                                         <div className="flex items-center text-slate-500 text-xs mt-0.5">
                                                             <Mail className="h-3 w-3 mr-1" />
                                                             {email}
@@ -213,7 +213,7 @@ export default function UsersPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                            ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                                            ${u.role === 'admin' ? 'bg-brand-100 text-purple-800' :
                                                         u.role === 'concierge' ? 'bg-orange-100 text-orange-800' :
                                                             'bg-emerald-100 text-emerald-800'}`}>
                                                     {u.role === 'admin' && <Shield className="h-3 w-3 mr-1" />}
@@ -225,7 +225,7 @@ export default function UsersPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600">
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-brand-600">
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50">

@@ -40,9 +40,9 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; color: string; de
 ];
 
 const TAB_COLORS: Record<Tab, { active: string; badge: string; icon: string }> = {
-    oficial:   { active: "from-indigo-500 to-purple-600",  badge: "bg-role-admin-bg text-role-admin-fg",  icon: "bg-gradient-to-br from-indigo-500 to-purple-600"  },
+    oficial:   { active: "from-[#7C3AED] to-[#5B21B6]",  badge: "bg-role-admin-bg text-role-admin-fg",  icon: "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6]"  },
     comunidad: { active: "from-fuchsia-500 to-pink-600",   badge: "bg-fuchsia-100 dark:bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-300", icon: "bg-gradient-to-br from-fuchsia-500 to-pink-600"   },
-    mensajes:  { active: "from-emerald-500 to-teal-600",   badge: "bg-success-bg text-success-fg", icon: "bg-gradient-to-br from-emerald-500 to-teal-600"   },
+    mensajes:  { active: "from-[#10B981] to-[#0D9488]",   badge: "bg-success-bg text-success-fg", icon: "bg-gradient-to-br from-[#10B981] to-[#0D9488]"   },
 };
 
 // ─── OFICIAL TAB ────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ function OficialTab() {
     const getIcon = (priority: string) => ({ alert: AlertTriangle, event: Calendar } as Record<string, React.ElementType>)[priority] || Info;
     const getPriorityStyles = (priority: string) => ({
         alert: { badge: "bg-danger-bg text-danger-fg ring-red-600/20", icon: "bg-danger-bg text-danger-fg", border: "border-l-red-500", glow: "shadow-red-500/5" },
-        event: { badge: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 ring-purple-600/20", icon: "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400", border: "border-l-purple-500", glow: "shadow-purple-500/5" },
+        event: { badge: "bg-brand-100 dark:bg-purple-500/20 text-brand-700 dark:text-brand-400 ring-purple-600/20", icon: "bg-brand-100 dark:bg-purple-500/20 text-brand-600 dark:text-brand-400", border: "border-l-purple-500", glow: "shadow-purple-500/5" },
     } as Record<string, any>)[priority] || { badge: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 ring-blue-600/20", icon: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400", border: "border-l-blue-500", glow: "shadow-blue-500/5" };
     const getPriorityLabel = (p: string) => ({ alert: "Urgente", event: "Evento" } as Record<string, string>)[p] || "Información";
     const getRelativeTime = (d: string) => {
@@ -121,7 +121,7 @@ function OficialTab() {
                 {user?.role === "admin" && (
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
                                 <Plus className="h-4 w-4" /> Publicar Aviso
                             </button>
                         </DialogTrigger>
@@ -143,7 +143,7 @@ function OficialTab() {
                                             const Icon = getIcon(p);
                                             return (
                                                 <button key={p} type="button" onClick={() => setNewPost({ ...newPost, priority: p })}
-                                                    className={`p-3 rounded-xl border-2 transition-all ${newPost.priority === p ? "border-indigo-500 bg-role-admin-bg" : "border-subtle hover:border-slate-300"}`}>
+                                                    className={`p-3 rounded-xl border-2 transition-all ${newPost.priority === p ? "border-brand-500 bg-role-admin-bg" : "border-subtle hover:border-slate-300"}`}>
                                                     <div className={`mx-auto w-8 h-8 rounded-lg ${styles.icon} flex items-center justify-center mb-2`}><Icon className="h-4 w-4" /></div>
                                                     <p className="text-xs font-medium cc-text-secondary text-center">{getPriorityLabel(p)}</p>
                                                 </button>
@@ -153,7 +153,7 @@ function OficialTab() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium cc-text-secondary">Contenido</label>
-                                    <textarea className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                    <textarea className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                                         required value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} placeholder="Escribe el detalle del comunicado..." />
                                 </div>
                                 <DialogFooter><Button type="submit">Publicar</Button></DialogFooter>
@@ -180,7 +180,7 @@ function OficialTab() {
                                         <div className="flex items-start gap-4">
                                             <div className={`flex-shrink-0 p-3 rounded-xl ${styles.icon}`}><Icon className="h-5 w-5" /></div>
                                             <div className="min-w-0">
-                                                <h2 className="text-lg font-bold cc-text-primary group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{ann.title}</h2>
+                                                <h2 className="text-lg font-bold cc-text-primary group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{ann.title}</h2>
                                                 <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
                                                     <span className="font-medium">{ann.author}</span>
                                                     <span>•</span>
@@ -346,7 +346,7 @@ function ComunidadTab() {
                                 className="bg-surface flex flex-col rounded-[2.5rem] border border-subtle shadow-lg overflow-hidden">
                                 <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
                                             {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-slate-400">{post.profiles?.name?.charAt(0) || "?"}</div>}
                                         </div>
                                         <div>
@@ -359,10 +359,10 @@ function ComunidadTab() {
                                     <button className="p-2 text-slate-400 hover:bg-elevated rounded-full transition-colors"><MoreHorizontal className="h-5 w-5" /></button>
                                 </div>
                                 <div className="px-6 sm:px-8 py-2">
-                                    <p className="text-slate-800 dark:text-slate-200 text-base leading-relaxed whitespace-pre-line">{post.content}</p>
+                                    <p className="cc-text-primary text-base leading-relaxed whitespace-pre-line">{post.content}</p>
                                     {post.image_url && <div className="mt-4 rounded-2xl overflow-hidden border border-subtle"><img src={post.image_url} alt="post" className="w-full h-auto object-cover max-h-[500px]" /></div>}
                                 </div>
-                                <div className="px-6 sm:px-8 py-4 mt-2 border-t border-slate-50 dark:border-slate-800/50 flex items-center gap-6">
+                                <div className="px-6 sm:px-8 py-4 mt-2 border-t border-subtle/50 flex items-center gap-6">
                                     <button onClick={() => handleLike(post.id)} className={clsx("flex items-center gap-2 group transition-colors", post.has_liked ? "text-rose-500" : "text-slate-400 hover:text-rose-500")}>
                                         <div className={clsx("p-2 rounded-full transition-all", post.has_liked ? "bg-rose-50 dark:bg-rose-500/10" : "group-hover:bg-rose-50 dark:group-hover:bg-rose-500/10")}><Heart className={clsx("h-5 w-5", post.has_liked && "fill-current")} /></div>
                                         <span className="font-bold">{post.likes_count > 0 ? post.likes_count : "Me gusta"}</span>
@@ -384,7 +384,7 @@ function ComunidadTab() {
                                                     <div className="space-y-5">
                                                         {(comments[post.id] || []).map((comment) => (
                                                             <div key={comment.id} className="flex gap-4">
-                                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-700 flex-shrink-0">
+                                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-elevated flex-shrink-0">
                                                                     {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{comment.profiles?.name?.charAt(0) || "?"}</div>}
                                                                 </div>
                                                                 <div className="flex-1">
@@ -557,7 +557,7 @@ function MensajesTab() {
                 <div className="h-16 flex items-center justify-between px-6 border-b border-subtle bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
                     <div className="flex items-center gap-3">
                         {mode === "direct" && activePeer && <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-elevated"><ArrowLeft className="h-5 w-5 text-slate-400" /></button>}
-                        <div className={clsx("p-2 rounded-xl", mode === "global" ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30" : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/30", "shadow-lg")}>
+                        <div className={clsx("p-2 rounded-xl", mode === "global" ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30" : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/30", "shadow-lg")}>
                             <MessageSquare className="h-4 w-4 text-white" />
                         </div>
                         <div>
@@ -588,14 +588,14 @@ function MensajesTab() {
                                             <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={clsx("flex flex-col", isMe ? "items-end" : "items-start")}>
                                                 <div className={clsx("flex items-end gap-2 max-w-[85%] lg:max-w-[70%]", isMe && "flex-row-reverse")}>
                                                     {!isMe && (
-                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 mb-1">
+                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-elevated mb-1">
                                                             {showAvatar ? (msg.profiles?.avatar_url ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{msg.profiles?.name?.charAt(0) || "?"}</div>) : null}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
                                                         {!isMe && showAvatar && <span className="text-[11px] font-black text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>}
                                                         <div className={clsx("px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
-                                                            isMe ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-2xl rounded-tr-sm" : "bg-elevated text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
+                                                            isMe ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] text-white rounded-2xl rounded-tr-sm" : "bg-elevated cc-text-primary rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
                                                             {msg.content}
                                                         </div>
                                                     </div>
@@ -613,7 +613,7 @@ function MensajesTab() {
                                 <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder={mode === "global" ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
                                     className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-inner" />
-                                <button type="submit" disabled={!newMessage.trim() || isSending} className="absolute right-2 p-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md">
+                                <button type="submit" disabled={!newMessage.trim() || isSending} className="absolute right-2 p-2.5 bg-gradient-to-r from-[#10B981] to-[#0D9488] text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md">
                                     {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
                             </form>

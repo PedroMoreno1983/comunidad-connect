@@ -180,7 +180,7 @@ export default function VisitorsPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-slate-50 dark:border-slate-800">
+                                <tr className="border-b border-subtle">
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Visitante</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Hora Entrada</th>
@@ -212,7 +212,7 @@ export default function VisitorsPage() {
                                         </td>
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${visitor.isQr ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${visitor.isQr ? 'bg-brand-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
                                                 <span className="text-xs font-bold text-slate-500">{visitor.isQr ? "Código QR" : "Manual"}</span>
                                             </div>
                                         </td>

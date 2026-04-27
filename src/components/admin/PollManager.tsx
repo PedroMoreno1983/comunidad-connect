@@ -109,7 +109,7 @@ export function PollManager() {
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">En las próximas 48 horas</p>
                 </div>
 
-                <div className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
+                <div className="bg-canvas/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                         <BarChart3 className="h-20 w-20 text-blue-500" />
                     </div>
@@ -138,7 +138,7 @@ export function PollManager() {
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-canvas text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
                                 <Plus className="h-5 w-5" />
                                 Nueva Votación
                             </button>
@@ -204,7 +204,7 @@ export function PollManager() {
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-slate-50 dark:border-slate-800">
+                                <tr className="border-b border-subtle">
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Votación</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Participación</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>

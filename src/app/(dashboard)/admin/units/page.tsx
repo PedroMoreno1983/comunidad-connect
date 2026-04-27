@@ -213,7 +213,7 @@ export default function UnitsPage() {
                                     <th className="px-6 py-4 text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tbody className="divide-y divide-subtle">
                                 {units.map((unit) => (
                                     <tr key={unit.id} className="hover:bg-elevated/50 transition-colors">
                                         <td className="px-6 py-4 font-medium cc-text-primary">

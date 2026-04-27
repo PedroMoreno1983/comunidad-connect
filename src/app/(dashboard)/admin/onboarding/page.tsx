@@ -158,7 +158,7 @@ export default function AdminOnboardingPage() {
         <div className="max-w-7xl mx-auto space-y-8 pb-12">
             <div>
                 <h1 className="text-3xl font-black cc-text-primary flex items-center gap-3">
-                    <Sparkles className="h-8 w-8 text-indigo-600" />
+                    <Sparkles className="h-8 w-8 text-brand-600" />
                     Asistente Mágico de Migración con IA
                 </h1>
                 <p className="mt-2 text-slate-500 max-w-3xl">
@@ -176,7 +176,7 @@ export default function AdminOnboardingPage() {
                     onDrop={handleDrop}
                     className={`bg-surface rounded-3xl p-12 text-center shadow-xl border relative overflow-hidden group transition-all duration-300 ${
                         isDragging 
-                            ? 'border-indigo-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20' 
+                            ? 'border-brand-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20' 
                             : 'border-indigo-100 dark:border-indigo-500/20'
                     }`}
                 >
@@ -185,9 +185,9 @@ export default function AdminOnboardingPage() {
                     <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
                         <div className={`p-6 rounded-full bg-surface shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
                             {isExtracting ? (
-                                <Sparkles className="w-16 h-16 text-indigo-600 animate-spin-slow" />
+                                <Sparkles className="w-16 h-16 text-brand-600 animate-spin-slow" />
                             ) : (
-                                <UploadCloud className="w-16 h-16 text-indigo-500" />
+                                <UploadCloud className="w-16 h-16 text-brand-500" />
                             )}
                         </div>
                         
@@ -203,7 +203,7 @@ export default function AdminOnboardingPage() {
 
                         {!isExtracting && (
                             <div className="mt-6 relative">
-                                <label className="cursor-pointer px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl shadow-lg transition duration-200 inline-flex items-center gap-2 group/btn">
+                                <label className="cursor-pointer px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg transition duration-200 inline-flex items-center gap-2 group/btn">
                                     <UploadCloud className="w-5 h-5 group-hover/btn:-translate-y-1 transition" />
                                     Subir Archivo Manualmente
                                     <input 
@@ -252,7 +252,7 @@ export default function AdminOnboardingPage() {
                         <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div>
                                 <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <FileText className="h-6 w-6 text-indigo-400" />
+                                    <FileText className="h-6 w-6 text-brand-400" />
                                     Tabla de Triaje para Revisión Humana
                                 </h2>
                                 <p className="text-sm text-slate-400 mt-1">
@@ -295,21 +295,21 @@ export default function AdminOnboardingPage() {
                                                 <input 
                                                     value={row.name} 
                                                     onChange={e => handleFieldChange(row.id, 'name', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 cc-text-primary font-medium"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1 cc-text-primary font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-2">
                                                 <input 
                                                     value={row.unit_id} 
                                                     onChange={e => handleFieldChange(row.id, 'unit_id', e.target.value)}
-                                                    className="w-full bg-slate-100 dark:bg-slate-900 border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-3 py-1 font-mono text-xs"
+                                                    className="w-full bg-slate-100 dark:bg-slate-900 border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-3 py-1 font-mono text-xs"
                                                 />
                                             </td>
                                             <td className="px-4 py-2">
                                                 <input 
                                                     value={row.email} 
                                                     onChange={e => handleFieldChange(row.id, 'email', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 cc-text-secondary"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1 cc-text-secondary"
                                                 />
                                             </td>
                                             <td className="px-4 py-2">
@@ -317,7 +317,7 @@ export default function AdminOnboardingPage() {
                                                     value={row.phone || ''} 
                                                     onChange={e => handleFieldChange(row.id, 'phone', e.target.value)}
                                                     placeholder="N/A"
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1"
+                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1"
                                                 />
                                             </td>
                                             <td className="px-4 py-2 text-center">

@@ -149,7 +149,7 @@ export default function WaterConsumptionPage() {
                                 <h3 className="text-xl font-black cc-text-primary">Lectura del Mes</h3>
                             </div>
 
-                            <div className="flex justify-between items-end pb-4 border-b border-slate-50 dark:border-slate-800">
+                            <div className="flex justify-between items-end pb-4 border-b border-subtle">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lectura Actual</p>
                                     <p className="text-sm font-bold cc-text-secondary">{lastReading.reading_value.toFixed(1)}</p>

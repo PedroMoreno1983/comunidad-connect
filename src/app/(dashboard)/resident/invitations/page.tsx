@@ -105,7 +105,7 @@ export default function ResidentInvitationsPage() {
                                         <h3 className="text-lg font-black cc-text-primary">{inv.guestName}</h3>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{inv.guestDni}</p>
                                     </div>
-                                    <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                                    <div className="pt-4 border-t border-subtle flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-xs text-slate-400 font-bold">
                                             <Clock className="h-4 w-4" />
                                             <span>

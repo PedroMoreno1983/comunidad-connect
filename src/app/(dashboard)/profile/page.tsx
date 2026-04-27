@@ -187,9 +187,9 @@ export default function ProfilePage() {
     };
 
     const ROLE_GRADIENT: Record<string, string> = {
-        admin: 'from-indigo-500 to-purple-600',
-        resident: 'from-emerald-500 to-teal-600',
-        concierge: 'from-amber-500 to-orange-500'
+        admin: 'from-[#7C3AED] to-[#5B21B6]',
+        resident: 'from-[#10B981] to-[#0D9488]',
+        concierge: 'from-[#F59E0B] to-[#F97316]'
     };
 
     const gradient = ROLE_GRADIENT[user?.role || 'resident'];
@@ -233,7 +233,7 @@ export default function ProfilePage() {
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploadingAvatar}
-                            className="absolute -bottom-2 -right-2 p-2 bg-indigo-500 text-white rounded-xl shadow-lg hover:bg-indigo-600 transition-colors disabled:opacity-60"
+                            className="absolute -bottom-2 -right-2 p-2 bg-brand-500 text-white rounded-xl shadow-lg hover:bg-brand-600 transition-colors disabled:opacity-60"
                         >
                             {isUploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                         </button>
@@ -260,7 +260,7 @@ export default function ProfilePage() {
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                         />
                     </div>
 
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                                 value={unitNumber}
                                 onChange={(e) => setUnitNumber(e.target.value)}
                                 placeholder="Ej: 402"
-                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                             />
                         </div>
                         <div className="space-y-2">
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                                 value={unitTower}
                                 onChange={(e) => setUnitTower(e.target.value)}
                                 placeholder="Ej: A"
-                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                             />
                         </div>
                     </div>
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                         </div>
                         <button
                             onClick={() => setWhatsappEnabled(v => !v)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+                            className={`relative w-12 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-emerald-500' : 'bg-elevated'
                                 }`}
                         >
                             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${whatsappEnabled ? 'translate-x-6' : 'translate-x-0'
@@ -386,7 +386,7 @@ export default function ProfilePage() {
                             setIsSavingWa(false);
                         }}
                         disabled={isSavingWa || !phoneNumber}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-[#10B981] to-[#0D9488] text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100"
                     >
                         {isSavingWa ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                         Guardar WhatsApp

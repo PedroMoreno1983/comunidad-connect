@@ -29,9 +29,9 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_STYLES: Record<string, string> = {
-    admin: 'from-indigo-500 to-purple-600',
-    resident: 'from-emerald-500 to-teal-600',
-    concierge: 'from-amber-500 to-orange-500'
+    admin: 'from-[#7C3AED] to-[#5B21B6]',
+    resident: 'from-[#10B981] to-[#0D9488]',
+    concierge: 'from-[#F59E0B] to-[#F97316]'
 };
 
 const ROLE_BADGE: Record<string, string> = {
@@ -103,7 +103,7 @@ export default function DirectoryPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/30">
+                    <div className="p-3 bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] rounded-2xl shadow-lg shadow-blue-500/30">
                         <Users className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -120,7 +120,7 @@ export default function DirectoryPage() {
                         placeholder="Buscar por nombre o depto..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-5 py-3 rounded-2xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 shadow-sm"
+                        className="w-full pl-11 pr-5 py-3 rounded-2xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/30 shadow-sm"
                     />
                 </div>
             </div>
@@ -128,9 +128,9 @@ export default function DirectoryPage() {
             {/* Stats Strip */}
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: 'Residentes', count: residentCount, icon: Home, gradient: 'from-emerald-500 to-teal-500', filter: 'resident' as const },
-                    { label: 'Administración', count: adminCount, icon: Shield, gradient: 'from-indigo-500 to-purple-600', filter: 'admin' as const },
-                    { label: 'Conserjería', count: conciergeCount, icon: Star, gradient: 'from-amber-500 to-orange-500', filter: 'concierge' as const },
+                    { label: 'Residentes', count: residentCount, icon: Home, gradient: 'from-[#10B981] to-[#14B8A6]', filter: 'resident' as const },
+                    { label: 'Administración', count: adminCount, icon: Shield, gradient: 'from-[#7C3AED] to-[#5B21B6]', filter: 'admin' as const },
+                    { label: 'Conserjería', count: conciergeCount, icon: Star, gradient: 'from-[#F59E0B] to-[#F97316]', filter: 'concierge' as const },
                 ].map((s) => (
                     <button
                         key={s.filter}
@@ -157,7 +157,7 @@ export default function DirectoryPage() {
             {/* Directory Grid */}
             {isLoading ? (
                 <div className="flex justify-center py-20">
-                    <Loader2 className="h-10 w-10 animate-spin text-indigo-400" />
+                    <Loader2 className="h-10 w-10 animate-spin text-brand-400" />
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="text-center py-20 space-y-3">
@@ -228,7 +228,7 @@ export default function DirectoryPage() {
                                                                 e.stopPropagation();
                                                                 handleStartDM(neighbor);
                                                             }}
-                                                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${ROLE_STYLES[neighbor.role] || 'from-indigo-500 to-purple-600'} text-white text-sm font-bold shadow-md hover:scale-105 transition-transform`}
+                                                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${ROLE_STYLES[neighbor.role] || 'from-[#7C3AED] to-[#5B21B6]'} text-white text-sm font-bold shadow-md hover:scale-105 transition-transform`}
                                                         >
                                                             <MessageSquare className="h-4 w-4" />
                                                             Enviar mensaje

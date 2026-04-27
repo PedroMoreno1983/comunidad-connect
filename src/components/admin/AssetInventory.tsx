@@ -138,7 +138,7 @@ export function AssetInventory() {
                         </div>
 
                         {/* Specs Table */}
-                        <div className="grid grid-cols-2 gap-4 py-6 border-y border-slate-50 dark:border-slate-800">
+                        <div className="grid grid-cols-2 gap-4 py-6 border-y border-subtle">
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Marca / Modelo</p>
                                 <p className="text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
@@ -174,7 +174,7 @@ export function AssetInventory() {
                     {/* Footer Action */}
                     <button
                         onClick={() => handleOpenLog(asset)}
-                        className="w-full py-6 bg-elevated/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-elevated transition-all flex items-center justify-center gap-2 border-t border-slate-50 dark:border-slate-800"
+                        className="w-full py-6 bg-elevated/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-elevated transition-all flex items-center justify-center gap-2 border-t border-subtle"
                     >
                         Ver Bitácora Técnica
                         <ChevronRight className="h-4 w-4" />
@@ -185,7 +185,7 @@ export function AssetInventory() {
             {/* Technical Log Dialog */}
             <Dialog open={isLogOpen} onOpenChange={setIsLogOpen}>
                 <DialogContent className="sm:max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 shadow-2xl overflow-hidden">
-                    <div className="bg-slate-900 p-10 text-white relative">
+                    <div className="bg-canvas p-10 text-white relative">
                         <div className="absolute top-0 right-0 p-8 opacity-10">
                             <History className="h-24 w-24 text-blue-400" />
                         </div>

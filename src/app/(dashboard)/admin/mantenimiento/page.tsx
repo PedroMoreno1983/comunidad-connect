@@ -70,7 +70,7 @@ export default function MantenimientoAdminPage() {
 
                 <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-role-admin-bg rounded-2xl text-indigo-600">
+                        <div className="p-3 bg-role-admin-bg rounded-2xl text-brand-600">
                             <DollarSign className="h-6 w-6" />
                         </div>
                         <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Gasto Operativo Mes</h3>
@@ -124,7 +124,7 @@ export default function MantenimientoAdminPage() {
                 >
                     Sensores IoT
                     {activeTab === 'iot' && (
-                        <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" />
+                        <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-brand-600 rounded-full" />
                     )}
                 </button>
             </div>

@@ -52,7 +52,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${poll.category === 'maintenance' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' :
-                            poll.category === 'rules' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' :
+                            poll.category === 'rules' ? 'bg-brand-50 text-brand-600 dark:bg-indigo-500/10 dark:text-indigo-400' :
                                 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
                             }`}>
                             {poll.category === 'maintenance' ? 'Mantenimiento' :
@@ -87,7 +87,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                                         onClick={() => setSelectedOption(option.id)}
                                         className={`w-full p-6 rounded-2xl border-2 transition-all flex items-center justify-between group ${selectedOption === option.id
                                             ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-500/10'
-                                            : 'border-slate-50 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
+                                            : 'border-subtle hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
                                             }`}
                                     >
                                         <span className={`font-bold transition-colors ${selectedOption === option.id ? 'text-blue-600 dark:text-blue-400' : 'cc-text-secondary'
@@ -125,7 +125,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                                                     animate={{ width: `${percentage}%` }}
                                                     transition={{ duration: 1, ease: "easeOut" }}
                                                     className={`h-full rounded-full ${poll.category === 'maintenance' ? 'bg-amber-500' :
-                                                        poll.category === 'rules' ? 'bg-indigo-500' :
+                                                        poll.category === 'rules' ? 'bg-brand-500' :
                                                             'bg-blue-500'
                                                         }`}
                                                 />
@@ -145,7 +145,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
                             {[...Array(3)].map((_, i) => (
-                                <div key={i} className="h-8 w-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700" />
+                                <div key={i} className="h-8 w-8 rounded-full border-2 border-white dark:border-slate-900 bg-elevated" />
                             ))}
                         </div>
                         <span className="text-xs font-bold text-slate-400">
@@ -162,7 +162,7 @@ export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initi
                     <Button
                         onClick={handleVote}
                         disabled={!selectedOption}
-                        className="w-full h-16 rounded-2xl bg-slate-900 dark:bg-slate-700 text-white font-black text-lg shadow-xl transition-all active:scale-[0.98] disabled:opacity-50"
+                        className="w-full h-16 rounded-2xl bg-canvas text-white font-black text-lg shadow-xl transition-all active:scale-[0.98] disabled:opacity-50"
                     >
                         <VoteIcon className="mr-2 h-5 w-5" />
                         Enviar mi Voto

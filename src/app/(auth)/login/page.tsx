@@ -167,15 +167,15 @@ export default function LoginPage() {
                     {/* Sign Up Link */}
                     <Link
                         href="/signup"
-                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-elevated transition-colors"
                     >
                         Crear Cuenta
                     </Link>
                 </div>
 
                 {/* Demo Access */}
-                <div className="mt-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/50 text-center">
-                    <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-4">
+                <div className="mt-8 bg-brand-50 dark:bg-indigo-900/20 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/50 text-center">
+                    <h3 className="text-sm font-bold text-indigo-900 dark:text-brand-300 mb-4">
                         ¿Quieres probar la plataforma?
                     </h3>
                     <div className="flex flex-col gap-3">
@@ -184,7 +184,7 @@ export default function LoginPage() {
                             variant="outline"
                             onClick={() => handleDemoLogin("admin@demo.com", "demo123", "admin")}
                             disabled={loading}
-                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
                         >
                             🏢 Ver Demo Administrador
                         </Button>
@@ -193,7 +193,7 @@ export default function LoginPage() {
                             variant="outline"
                             onClick={() => handleDemoLogin("conserje@demo.com", "demo123", "concierge")}
                             disabled={loading}
-                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
                         >
                             🔐 Ver Demo Conserje
                         </Button>
@@ -202,12 +202,12 @@ export default function LoginPage() {
                             variant="outline"
                             onClick={() => handleDemoLogin("residente@demo.com", "demo123", "resident")}
                             disabled={loading}
-                            className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
+                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
                         >
                             🏠 Ver Demo Residente
                         </Button>
                     </div>
-                    <p className="text-xs text-indigo-500 mt-4">
+                    <p className="text-xs text-brand-500 mt-4">
                         Acceso completo a todos los módulos — sin datos reales
                     </p>
                 </div>
@@ -216,7 +216,7 @@ export default function LoginPage() {
                 <div className="mt-4 text-center">
                     <Link
                         href="/admin-onboarding"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-role-admin-fg hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-role-admin-fg hover:text-indigo-800 dark:hover:text-brand-300 transition-colors"
                     >
                         🏢 ¿Eres administrador? Registra tu edificio aquí →
                     </Link>

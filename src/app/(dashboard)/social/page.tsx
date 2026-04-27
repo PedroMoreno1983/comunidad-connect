@@ -201,7 +201,7 @@ export default function SocialFeedPage() {
             <div className="bg-surface rounded-[2.5rem] p-6 sm:p-8 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-2xl">
                 <form onSubmit={handleCreatePost}>
                     <div className="flex gap-4 sm:gap-6">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[#7C3AED] to-[#7C3AED] flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
                             {user?.photo ? (
                                 <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                             ) : (
@@ -293,7 +293,7 @@ export default function SocialFeedPage() {
                             {/* Post Header */}
                             <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
                                         {post.profiles?.avatar_url ? (
                                             <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                                         ) : (
@@ -323,7 +323,7 @@ export default function SocialFeedPage() {
 
                             {/* Post Body */}
                             <div className="px-6 sm:px-8 py-2">
-                                <p className="text-slate-800 dark:text-slate-200 text-base leading-relaxed whitespace-pre-line">
+                                <p className="cc-text-primary text-base leading-relaxed whitespace-pre-line">
                                     {post.content}
                                 </p>
                                 {post.image_url && (
@@ -334,7 +334,7 @@ export default function SocialFeedPage() {
                             </div>
 
                             {/* Interaction Bar */}
-                            <div className="px-6 sm:px-8 py-4 mt-2 border-t border-slate-50 dark:border-slate-800/50 flex items-center gap-6">
+                            <div className="px-6 sm:px-8 py-4 mt-2 border-t border-subtle/50 flex items-center gap-6">
                                 <button
                                     onClick={() => handleLike(post.id)}
                                     className={clsx(
@@ -382,7 +382,7 @@ export default function SocialFeedPage() {
                                                 <div className="space-y-5">
                                                     {(comments[post.id] || []).map((comment) => (
                                                         <div key={comment.id} className="flex gap-4">
-                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-700 flex-shrink-0">
+                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-elevated flex-shrink-0">
                                                                 {comment.profiles?.avatar_url ? (
                                                                     <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
                                                                 ) : (

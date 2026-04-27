@@ -109,8 +109,8 @@ const ADMIN_GUIDES: Guide[] = [
         icon: Wrench,
         title: "Aprobar Solicitudes de Servicio",
         duration: "3 min",
-        color: "text-purple-600 dark:text-purple-400",
-        bg: "bg-purple-100 dark:bg-purple-500/20",
+        color: "text-brand-600 dark:text-brand-400",
+        bg: "bg-brand-100 dark:bg-purple-500/20",
         steps: [
             { text: "Ve al menú lateral → **Mantenimiento**." },
             { text: "Verás todas las solicitudes de los residentes ordenadas por fecha." },
@@ -256,8 +256,8 @@ const EXTERNAL_COURSES: ExternalCourse[] = [
         provider: "CFT San Agustín",
         duration: "60 horas",
         link: "https://www.cftsa.cl",
-        color: "text-purple-600 dark:text-purple-400",
-        bg: "bg-purple-100 dark:bg-purple-500/20",
+        color: "text-brand-600 dark:text-brand-400",
+        bg: "bg-brand-100 dark:bg-purple-500/20",
         roles: ["concierge"],
     },
     {
@@ -307,10 +307,10 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
             <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-subtle">
                     <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-indigo-500" />
+                        <BookOpen className="h-5 w-5 text-brand-500" />
                         {course.title}
                     </h3>
-                    <button onClick={onClose} className="p-2 bg-elevated rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <button onClick={onClose} className="p-2 bg-elevated rounded-full hover:bg-elevated">
                         ✖
                     </button>
                 </div>
@@ -319,7 +319,7 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
                     <div className="w-1/3 border-r border-subtle bg-elevated/50 p-4 overflow-y-auto">
                         <h4 className="text-xs font-bold uppercase text-slate-500 mb-4 tracking-wider">Módulos del Curso</h4>
                         {[...Array(course.modules)].map((_, i) => (
-                            <div key={i} className={`p-3 text-sm font-bold rounded-xl mb-2 flex items-center gap-3 ${i === 0 ? 'bg-indigo-100 dark:bg-indigo-900/50 text-role-admin-fg' : 'cc-text-secondary'}`}>
+                            <div key={i} className={`p-3 text-sm font-bold rounded-xl mb-2 flex items-center gap-3 ${i === 0 ? 'bg-brand-100 dark:bg-indigo-900/50 text-role-admin-fg' : 'cc-text-secondary'}`}>
                                 <PlayCircle className="h-4 w-4" />
                                 {i === 0 ? '1. Conceptos Generales' : `${i + 1}. Módulo ${i + 1}`}
                             </div>
@@ -327,8 +327,8 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
                     </div>
                     {/* Player Area */}
                     <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-slate-900/50">
-                        <div className="p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl mb-4">
-                            <Sparkles className="h-12 w-12 text-indigo-500" />
+                        <div className="p-4 bg-brand-100 dark:bg-indigo-900/50 rounded-2xl mb-4">
+                            <Sparkles className="h-12 w-12 text-brand-500" />
                         </div>
                         <h2 className="text-xl font-black dark:text-white mb-2">Visor de SCORM</h2>
                         <p className="text-slate-500 text-sm max-w-sm mb-6">
@@ -373,7 +373,7 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
             {/* Header */}
             <button
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center gap-4 p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                className="w-full flex items-center gap-4 p-5 text-left hover:bg-elevated/50 transition-colors"
             >
                 <div className={`p-3 rounded-xl flex-shrink-0 ${guide.bg}`}>
                     <Icon className={`h-5 w-5 ${guide.color}`} />
@@ -395,7 +395,7 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
                     </div>
                     {/* Progress bar */}
                     {completed.size > 0 && (
-                        <div className="mt-2 h-1 rounded-full bg-slate-200 dark:bg-slate-700 w-32">
+                        <div className="mt-2 h-1 rounded-full bg-elevated w-32">
                             <div
                                 className="h-1 rounded-full bg-emerald-500 transition-all duration-500"
                                 style={{ width: `${progress}%` }}
@@ -471,7 +471,7 @@ export default function TrainingPage() {
 
     const guides = isAdmin ? ADMIN_GUIDES : CONCIERGE_GUIDES;
     const roleLabel = isAdmin ? "Administrador" : "Conserje";
-    const roleGradient = isAdmin ? "from-indigo-500 to-purple-600" : "from-amber-500 to-orange-600";
+    const roleGradient = isAdmin ? "from-[#7C3AED] to-[#5B21B6]" : "from-[#F59E0B] to-[#EA580C]";
     const totalTime = guides.reduce((acc, g) => acc + parseInt(g.duration), 0);
     const filteredCourses = EXTERNAL_COURSES.filter(c => c.roles.includes(user.role));
 
@@ -629,7 +629,7 @@ export default function TrainingPage() {
             {filteredCourses.length > 0 && (
                 <div className="pt-8 mt-8 border-t border-subtle">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
+                        <div className="p-2 rounded-xl bg-brand-100 dark:bg-indigo-900/50">
                             <GraduationCap className="h-5 w-5 text-role-admin-fg" />
                         </div>
                         <div>
@@ -649,13 +649,13 @@ export default function TrainingPage() {
                                 href={course.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group p-5 rounded-2xl border border-subtle bg-surface hover:border-indigo-300 dark:hover:border-indigo-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
+                                className="group p-5 rounded-2xl border border-subtle bg-surface hover:border-brand-300 dark:hover:border-brand-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
                             >
                                 <div className="flex items-start justify-between mb-4">
                                     <div className={`p-2.5 rounded-xl ${course.bg}`}>
                                         <Award className={`h-5 w-5 ${course.color}`} />
                                     </div>
-                                    <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                                    <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-brand-500 transition-colors" />
                                 </div>
 
                                 <h3 className="text-sm font-bold cc-text-primary mb-1.5 line-clamp-2">

@@ -40,10 +40,10 @@ const categoryConfig: Record<string, {
     bg: string;
 }> = {
     all: { icon: Grid3X3, gradient: 'from-slate-500 to-slate-700', bg: 'bg-elevated' },
-    electronics: { icon: Smartphone, gradient: 'from-blue-500 to-indigo-600', bg: 'bg-blue-100 dark:bg-blue-500/20' },
-    furniture: { icon: Armchair, gradient: 'from-amber-500 to-orange-600', bg: 'bg-warning-bg' },
-    clothing: { icon: Shirt, gradient: 'from-pink-500 to-rose-600', bg: 'bg-pink-100 dark:bg-pink-500/20' },
-    other: { icon: Package, gradient: 'from-emerald-500 to-teal-600', bg: 'bg-success-bg' },
+    electronics: { icon: Smartphone, gradient: 'from-[#3B82F6] to-[#6D28D9]', bg: 'bg-blue-100 dark:bg-blue-500/20' },
+    furniture: { icon: Armchair, gradient: 'from-[#F59E0B] to-[#EA580C]', bg: 'bg-warning-bg' },
+    clothing: { icon: Shirt, gradient: 'from-[#EC4899] to-[#E11D48]', bg: 'bg-pink-100 dark:bg-pink-500/20' },
+    other: { icon: Package, gradient: 'from-[#10B981] to-[#0D9488]', bg: 'bg-success-bg' },
 };
 
 export default function MarketplacePage() {
@@ -349,19 +349,19 @@ export default function MarketplacePage() {
                                                         onClick={() => setNewItem({ ...newItem, allowSwap: !newItem.allowSwap })}>
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 text-white' : 'bg-elevated text-slate-400'}`}>
+                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Repeat className="h-5 w-5" />
                                                                 </div>
                                                                 <span className="font-black cc-text-primary">Permuta</span>
                                                             </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-purple-600 border-purple-600' : 'border-subtle'}`}>
+                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 border-purple-600' : 'border-subtle'}`}>
                                                                 {newItem.allowSwap && <div className="h-2 w-2 rounded-full bg-white" />}
                                                             </div>
                                                         </div>
                                                         {newItem.allowSwap && (
                                                             <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
                                                                 <textarea
-                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                                                     placeholder="¿Qué buscas a cambio? (Ej: Una tablet o una TV más pequeña)"
                                                                     required={newItem.allowSwap}
                                                                     value={newItem.swapDetails}
@@ -434,7 +434,7 @@ export default function MarketplacePage() {
                             </Button>
                             <button 
                                 onClick={() => setIsRulesOpen(true)}
-                                className="flex items-center gap-2 px-6 py-4 bg-elevated cc-text-secondary font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-subtle"
+                                className="flex items-center gap-2 px-6 py-4 bg-elevated cc-text-secondary font-bold rounded-2xl hover:bg-elevated transition-all active:scale-95 border border-subtle"
                             >
                                 <Info className="h-5 w-5" />
                                 Reglamento
@@ -528,7 +528,7 @@ export default function MarketplacePage() {
                                     </div>
                                     <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Jumbo · Líder</span>
                                 </div>
-                                <div className="flex items-center gap-2 px-5 py-3 bg-white text-indigo-700 font-black rounded-2xl shadow-lg group-hover:shadow-xl group-hover:bg-indigo-50 transition-all text-sm">
+                                <div className="flex items-center gap-2 px-5 py-3 bg-white text-brand-700 font-black rounded-2xl shadow-lg group-hover:shadow-xl group-hover:bg-brand-50 transition-all text-sm">
                                     Ir al Supermercado
                                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                                 </div>

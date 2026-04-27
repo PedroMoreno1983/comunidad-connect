@@ -149,7 +149,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 1.1 }}
-                        className="bg-slate-900 dark:bg-slate-950 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden text-center space-y-8"
+                        className="bg-canvas rounded-[3rem] p-10 shadow-2xl relative overflow-hidden text-center space-y-8"
                     >
                         {/* Decorative Background */}
                         <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12">
@@ -169,7 +169,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                     {qrPattern.map((isFilled, i) => (
                                         <div
                                             key={i}
-                                            className={`rounded-sm ${isFilled ? 'bg-slate-900' : 'bg-transparent'
+                                            className={`rounded-sm ${isFilled ? 'bg-canvas' : 'bg-transparent'
                                                 } ${i === 0 || i === 3 || i === 12 || i === 15 ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
                                         />
                                     ))}

@@ -68,7 +68,7 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
 
                 {/* Foto de perfil superpuesta */}
                 <div className="px-6 -mt-12 relative z-10">
-                    <div className="relative w-24 h-24 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl bg-slate-200 dark:bg-slate-700">
+                    <div className="relative w-24 h-24 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl bg-elevated">
                         <Image
                             src={getProviderAvatar(provider.name, provider.photo)}
                             alt={provider.name}

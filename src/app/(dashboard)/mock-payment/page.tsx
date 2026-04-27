@@ -116,9 +116,9 @@ function MockPaymentContent() {
                     <div className="mt-12 flex items-center justify-between opacity-60">
                         <span className="text-xs font-bold text-slate-400">Desarrollado para testing local</span>
                         <div className="flex gap-1">
-                             <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-                             <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-                             <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
+                             <div className="w-2 h-2 rounded-full bg-elevated" />
+                             <div className="w-2 h-2 rounded-full bg-elevated" />
+                             <div className="w-2 h-2 rounded-full bg-elevated" />
                         </div>
                     </div>
                 </div>

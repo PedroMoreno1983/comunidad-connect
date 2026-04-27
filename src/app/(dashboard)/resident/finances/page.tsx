@@ -134,7 +134,7 @@ export default function FinancesPage() {
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 border-l-4 border-indigo-500 pl-4 py-1">Finanzas y Pagos</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 border-l-4 border-brand-500 pl-4 py-1">Finanzas y Pagos</h1>
                     <p className="text-slate-500 mt-2 ml-5">
                         Gestiona tus pagos de Gastos Comunes a través de Haulmer 💸
                     </p>
@@ -210,7 +210,7 @@ export default function FinancesPage() {
                 <Card className="border-0 shadow-lg shadow-slate-200/50 self-start">
                     <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-2">
-                            <History className="w-5 h-5 text-indigo-500" />
+                            <History className="w-5 h-5 text-brand-500" />
                             <CardTitle className="text-lg">Historial de Pagos</CardTitle>
                         </div>
                     </CardHeader>

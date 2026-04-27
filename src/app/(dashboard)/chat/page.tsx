@@ -158,7 +158,7 @@ export default function ChatPage() {
             <div className="hidden lg:flex flex-col w-80 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="p-6 pb-3">
                     <h2 className="text-xl font-black cc-text-primary flex items-center gap-2">
-                        <MessageCircle className="h-6 w-6 text-indigo-500" />
+                        <MessageCircle className="h-6 w-6 text-brand-500" />
                         Mensajes
                     </h2>
                 </div>
@@ -189,7 +189,7 @@ export default function ChatPage() {
                             </div>
                             <div className="text-left">
                                 <p className="font-bold text-sm">Canal General</p>
-                                <p className="text-[11px] font-medium text-indigo-400">Todos los vecinos</p>
+                                <p className="text-[11px] font-medium text-brand-400">Todos los vecinos</p>
                             </div>
                         </button>
                     ) : (
@@ -202,7 +202,7 @@ export default function ChatPage() {
                                     placeholder="Buscar vecino..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                                 />
                             </div>
 
@@ -217,7 +217,7 @@ export default function ChatPage() {
                                             className={clsx(
                                                 "w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1",
                                                 activePeer?.peerId === conv.peerId
-                                                    ? "bg-role-admin-bg text-indigo-600"
+                                                    ? "bg-role-admin-bg text-brand-600"
                                                     : "hover:bg-elevated cc-text-secondary"
                                             )}
                                         >
@@ -284,7 +284,7 @@ export default function ChatPage() {
                                 <ArrowLeft className="h-5 w-5 text-slate-400" />
                             </button>
                         )}
-                        <div className={clsx("p-2.5 rounded-xl shadow-lg", mode === 'global' ? "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30" : "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30")}>
+                        <div className={clsx("p-2.5 rounded-xl shadow-lg", mode === 'global' ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] shadow-indigo-500/30" : "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30")}>
                             {mode === 'global' ? <Hash className="h-5 w-5 text-white" /> : <MessageCircle className="h-5 w-5 text-white" />}
                         </div>
                         <div>
@@ -300,7 +300,7 @@ export default function ChatPage() {
                 {mode === 'direct' && !activePeer ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
                         <div className="p-6 bg-role-admin-bg rounded-3xl mb-2">
-                            <MessageCircle className="h-14 w-14 text-indigo-400" />
+                            <MessageCircle className="h-14 w-14 text-brand-400" />
                         </div>
                         <h3 className="text-xl font-black cc-text-primary">Mensajes Directos</h3>
                         <p className="text-sm font-medium text-slate-400 max-w-xs">
@@ -313,7 +313,7 @@ export default function ChatPage() {
                         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
                             {isLoading ? (
                                 <div className="flex items-center justify-center h-full">
-                                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                    <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
                                 </div>
                             ) : (
                                 <AnimatePresence initial={false}>
@@ -339,7 +339,7 @@ export default function ChatPage() {
                                             >
                                                 <div className={clsx("flex items-end gap-2 max-w-[85%] lg:max-w-[70%]", isMe && "flex-row-reverse")}>
                                                     {!isMe && (
-                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 mb-1">
+                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-elevated mb-1">
                                                             {showAvatar ? (
                                                                 msg.profiles?.avatar_url
                                                                     ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
@@ -354,8 +354,8 @@ export default function ChatPage() {
                                                         <div className={clsx(
                                                             "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
                                                             isMe
-                                                                ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-sm"
-                                                                : "bg-elevated text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
+                                                                ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white rounded-2xl rounded-tr-sm"
+                                                                : "bg-elevated cc-text-primary rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
                                                         )}>
                                                             {msg.content}
                                                         </div>
@@ -382,12 +382,12 @@ export default function ChatPage() {
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder={mode === 'global' ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
-                                    className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
+                                    className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-brand-500/50 transition-all shadow-inner"
                                 />
                                 <button
                                     type="submit"
                                     disabled={!newMessage.trim() || isSending}
-                                    className="absolute right-2 p-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md"
+                                    className="absolute right-2 p-2.5 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md"
                                 >
                                     {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>

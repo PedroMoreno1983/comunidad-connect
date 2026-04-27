@@ -154,7 +154,7 @@ export default function ExpensesPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Total Pending Card */}
-                <div className={`relative overflow-hidden rounded-2xl p-6 ${hasOverdue ? 'bg-gradient-to-br from-red-500 to-pink-600' : 'bg-gradient-to-br from-rose-500 to-pink-600'} text-white shadow-xl shadow-rose-500/25`}>
+                <div className={`relative overflow-hidden rounded-2xl p-6 ${hasOverdue ? 'bg-gradient-to-br from-[#EF4444] to-[#DB2777]' : 'bg-gradient-to-br from-rose-500 to-pink-600'} text-white shadow-xl shadow-rose-500/25`}>
                     <div className="absolute top-0 right-0 p-4 opacity-20">
                         <DollarSign className="h-24 w-24" />
                     </div>
@@ -210,7 +210,7 @@ export default function ExpensesPage() {
                             </div>
                             <h2 className="text-lg font-bold cc-text-primary">Historial de Pagos</h2>
                         </div>
-                        <button className="text-sm font-medium text-role-admin-fg hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                        <button className="text-sm font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1">
                             Descargar todo <Download className="h-4 w-4" />
                         </button>
                     </div>
@@ -243,7 +243,7 @@ export default function ExpensesPage() {
                                         return (
                                             <tr
                                                 key={expense.id}
-                                                className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors animate-slide-up opacity-0"
+                                                className="hover:bg-elevated/50 transition-colors animate-slide-up opacity-0"
                                                 style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'forwards' }}
                                             >
                                                 <td className="px-6 py-4">
@@ -277,7 +277,7 @@ export default function ExpensesPage() {
                                                             )}
                                                         </button>
                                                     ) : (
-                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-elevated cc-text-secondary font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm">
+                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-elevated cc-text-secondary font-medium rounded-xl hover:bg-elevated transition-colors text-sm">
                                                             <Download className="h-4 w-4" />
                                                             Comprobante
                                                         </button>

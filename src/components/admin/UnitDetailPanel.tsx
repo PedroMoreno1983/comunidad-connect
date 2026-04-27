@@ -140,7 +140,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"
+                                className="p-2 hover:bg-elevated rounded-full transition-colors"
                             >
                                 <X className="h-6 w-6 text-slate-400" />
                             </button>
@@ -214,7 +214,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                             {/* History */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-black cc-text-primary flex items-center gap-2">
-                                    <HistoryIcon className="h-4 w-4 text-purple-500" />
+                                    <HistoryIcon className="h-4 w-4 text-brand-500" />
                                     Historial de Consumo
                                 </h3>
                                 <div className="space-y-3">
