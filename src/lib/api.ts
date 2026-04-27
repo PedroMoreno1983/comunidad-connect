@@ -108,7 +108,6 @@ export const WaterService = {
 export const MarketplaceService = {
     // Obtener todos los productos activos
     async getItemsV2(): Promise<MarketplaceItem[]> {
-        console.log("MARKETPLACE_DEBUG: Llamando a getItemsV2 (Select *)");
         const { data, error } = await supabase
             .from('marketplace_items')
             .select('*')
@@ -180,17 +179,9 @@ export const MarketplaceService = {
         if (error) throw error;
     },
 
-    // Diagnóstico de Storage
     async diagnosticStorage() {
-        console.log("MARKETPLACE_DEBUG: Iniciando diagnóstico de Storage...");
         const { data, error } = await supabase.storage.listBuckets();
-
-        if (error) {
-            console.error("MARKETPLACE_DEBUG: Error al listar buckets:", error.message);
-            return { error: error.message };
-        }
-
-        console.log("MARKETPLACE_DEBUG: Buckets encontrados:", data.map((b: { name: string }) => b.name));
+        if (error) return { error: error.message };
         return { buckets: data.map((b: { name: string }) => b.name) };
     }
 };

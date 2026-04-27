@@ -31,11 +31,13 @@ export default function ExpensesPage() {
 
     useEffect(() => {
         const fetchExpenses = async () => {
-            // For demo purposes, fallback to a mocked unitId if user isn't fully linked
-            const activeUnit = user?.unitId || 'c4a96bdf-6f7f-4b02-8f9f-5c2f354f9aeb';
+            if (!user?.unitId) {
+                setIsLoading(false);
+                return;
+            }
             try {
                 setIsLoading(true);
-                const data = await ExpensesService.getExpenses(activeUnit);
+                const data = await ExpensesService.getExpenses(user.unitId);
 
                 // Map snake_case to camelCase
                 const mapped = data.map((exp: any) => ({
@@ -136,6 +138,16 @@ export default function ExpensesPage() {
         return date.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
     };
 
+    if (!user?.unitId && !isLoading) {
+        return (
+            <EmptyState
+                icon={DollarSign}
+                title="Unidad no asignada"
+                description="Tu cuenta aún no tiene una unidad asignada. Contacta al administrador de tu comunidad para vincularte."
+            />
+        );
+    }
+
     return (
         <div className="max-w-6xl space-y-8">
             {/* Header */}
@@ -147,7 +159,7 @@ export default function ExpensesPage() {
                     <h1 className="text-3xl font-bold cc-text-primary">Gastos Comunes</h1>
                 </div>
                 <p className="cc-text-secondary">
-                    Historial de cobros y pagos de tu unidad • Depto {user?.unitId || '101'}
+                    Historial de cobros y pagos de tu unidad{user?.unitId ? ` • Depto ${user.unitId}` : ''}
                 </p>
             </div>
 

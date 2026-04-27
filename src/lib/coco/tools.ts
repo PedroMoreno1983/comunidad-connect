@@ -676,7 +676,6 @@ export async function executeTool(
             // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
             case 'request_urgent_access_approval': {
                 // Simula envío de aprobación a residente o escalamiento a conserje
-                console.log(`[IoT-Agent] Solicitando acceso urgente a Unidad ${input.unit_id}. Razón: ${input.reason}`);
                 // En un entorno de producción, aquí invocaríamos Resend/Twilio con un magic link.
                 return {
                     success: true,
@@ -687,7 +686,6 @@ export async function executeTool(
 
             case 'dispatch_provider': {
                 // Simula despachar a un técnico externo
-                console.log(`[IoT-Agent] Despachando proveedor de tipo ${input.category}. Detalles: ${input.details}`);
                 // En un entorno de producción, esto buscaría en 'service_providers' y haría un POST a su API.
                 return {
                     success: true,

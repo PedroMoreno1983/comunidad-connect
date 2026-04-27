@@ -81,7 +81,6 @@ export async function askCoCo(
             // Ejecutar herramientas en paralelo
             const toolResults = await Promise.all(
                 toolUses.map(async (tu) => {
-                    console.log(`[CoCo] Ejecutando herramienta: ${tu.name}`, tu.input);
                     const result = await executeTool(
                         tu.name,
                         tu.input as Record<string, string>,
