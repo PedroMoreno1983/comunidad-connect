@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         
         if (!isSupabaseConfigured) {
-            console.log("Supabase not configured - running in demo mode");
             setLoading(false);
             return;
         }
@@ -51,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => {
                 setLoading(false);
-                console.warn("Auth session check timed out");
             }, 8000);
 
             try {
@@ -70,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setLoading(false);
                 }
             } catch (err) {
-                console.warn("Auth session check failed (likely expired token or timeout):", err);
+                console.error("Auth session check failed:", err);
 
                 // Self-healing: aggressively clear corrupted auth tokens from localStorage
                 if (typeof window !== 'undefined') {
@@ -172,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unit.number ? `Depto ${unit.number}` : undefined }) : null);
             }
         } catch (err) {
-            console.warn("Could not fetch unit for user (ignoring):", err);
+            console.error("Could not fetch unit for user:", err);
         }
     };
 

@@ -13,9 +13,12 @@ const supabase = createClient(
  */
 export async function POST(req: NextRequest) {
     try {
-        // Validador básico de Token de Integración (Webhook Secret)
         const authHeader = req.headers.get('authorization');
-        const secret = process.env.IOT_WEBHOOK_SECRET || 'dev-iot-secret-123';
+        const secret = process.env.IOT_WEBHOOK_SECRET;
+        if (!secret) {
+            console.error('[IoT] IOT_WEBHOOK_SECRET env var not set');
+            return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+        }
         if (!authHeader || authHeader !== `Bearer ${secret}`) {
             return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
         }
@@ -56,7 +59,6 @@ Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejec
             name: 'AWS IoT Core Monitor',
         };
 
-        console.log('[IoT Webhook] Activando CoCo Autónomo para evento:', type);
 
         // Disparamos la IA sin bloquear el webhook indefinidamente (Fire-and-Forget).
         // Next.js (fuera de serverless functions estrictas o usando waitUntil en Vercel) continuará ejecutando.

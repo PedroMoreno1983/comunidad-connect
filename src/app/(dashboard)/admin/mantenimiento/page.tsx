@@ -205,16 +205,12 @@ export default function MantenimientoAdminPage() {
                                             </span>
                                         </div>
                                         <p className="text-sm cc-text-secondary mb-6 font-medium">Batería: 98% • Señal: Excelente</p>
-                                        <button 
+                                        <button
                                             onClick={async () => {
-                                                alert('Enviando payload al webhook...');
                                                 try {
-                                                    const res = await fetch('/api/webhooks/iot', {
+                                                    const res = await fetch('/api/iot/test-trigger', {
                                                         method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Authorization': 'Bearer dev-iot-secret-123'
-                                                        },
+                                                        headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({
                                                             sensor_id: 'SN-AGUA-402',
                                                             type: 'FILTRACION_CRITICA',
@@ -224,9 +220,11 @@ export default function MantenimientoAdminPage() {
                                                             location_detail: 'Cocina - Lavaplatos'
                                                         })
                                                     });
-                                                    const data = await res.json();
-                                                    console.log(data);
-                                                    alert('Evento procesado por IA. Revisa la consola o panel de mantención.');
+                                                    if (res.ok) {
+                                                        toast({ title: 'Evento enviado', description: 'CoCo activado. Revisa el panel de mantención.' });
+                                                    } else {
+                                                        toast({ title: 'Error', description: 'No se pudo enviar el evento de prueba.', variant: 'destructive' });
+                                                    }
                                                 } catch(e) { console.error(e); }
                                             }}
                                             className="w-full py-3 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 rounded-xl font-bold transition-all text-sm flex justify-center items-center gap-2"

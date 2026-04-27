@@ -1,13 +1,30 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import crypto from 'crypto';
+
+function verifyHaulmerSignature(body: string, signature: string | null, secret: string): boolean {
+    if (!signature) return false;
+    const expected = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
 
 export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        console.log("🔔 Haulmer Webhook Received:", body);
+    const rawBody = await req.text();
+    const signature = req.headers.get('x-haulmer-signature') ?? req.headers.get('x-webhook-signature');
+    const secret = process.env.HAULMER_WEBHOOK_SECRET;
 
-        // Seguridad: Idealmente aquí validaríamos la firma del webhook con un secret
-        // Pero para el propósito de MVP/Mock validamos el tipo de evento:
+    if (!secret) {
+        console.error('[Haulmer] HAULMER_WEBHOOK_SECRET env var not set');
+        return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
+
+    if (!verifyHaulmerSignature(rawBody, signature, secret)) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    try {
+        const body = JSON.parse(rawBody);
+
         if (body.event === 'payment.success' || body.status === 'paid') {
             const data = body.data || body;
             const external_id = data.external_id || data.payment_id;
@@ -16,14 +33,9 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: 'Missing external_id reference' }, { status: 400 });
             }
 
-            console.log(`✅ Procesando pago exitoso para Ref: ${external_id}`);
-
-            // Parse external_id
-            // En nuestra app, external_id lo armaremos como: "TYPE_ID" (ej: "MARKET_123", "FEE_456")
             const [type, recordId] = external_id.split('_');
 
             if (type === 'FEE') {
-                // Actualizar Gasto Común en base de datos
                 const { error } = await supabaseAdmin
                     .from('condo_fees')
                     .update({
@@ -35,18 +47,12 @@ export async function POST(req: Request) {
 
                 if (error) throw error;
             } else if (type === 'MARKET') {
-                // Actualizar Marketplace Order
                 const { error } = await supabaseAdmin
                     .from('marketplace')
-                    .update({
-                        status: 'sold',
-                    })
+                    .update({ status: 'sold' })
                     .eq('id', recordId);
 
-                // TODO: Notificar al vendedor aquí
                 if (error) throw error;
-            } else {
-                console.log("Tipo de pago no reconocido/no requiere update:", type);
             }
 
             return NextResponse.json({ received: true, status: 'processed' });
@@ -55,7 +61,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true, status: 'ignored' });
 
     } catch (error) {
-        console.error("Haulmer Webhook Error:", error);
+        console.error('[Haulmer] Webhook processing failed:', error);
         return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
     }
 }

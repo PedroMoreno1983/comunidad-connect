@@ -7,7 +7,6 @@ import { NotificationProvider } from "@/lib/notificationContext";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    console.log("[Providers Debug] Rendering Providers component!");
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AuthProvider>
