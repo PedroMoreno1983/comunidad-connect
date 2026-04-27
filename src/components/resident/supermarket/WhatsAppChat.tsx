@@ -298,10 +298,10 @@ export function WhatsAppChat() {
 
             {/* Input Area */}
             <div className="bg-[#f0f2f5] dark:bg-[#202c33] p-2 flex items-center gap-2">
-                <button className="p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-full">
+                <button className="p-2 text-slate-500 hover:bg-elevated/50 rounded-full">
                     <Smile className="h-6 w-6" />
                 </button>
-                <button className="p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-full">
+                <button className="p-2 text-slate-500 hover:bg-elevated/50 rounded-full">
                     <Plus className="h-6 w-6" />
                 </button>
 

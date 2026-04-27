@@ -114,7 +114,7 @@ export default function SupermarketPage() {
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-10 px-4 sm:px-0">
             {/* Hero Section Premium - Optimized */}
-            <section className="relative overflow-hidden rounded-[2.5rem] bg-indigo-600 p-8 md:p-12 text-white shadow-xl">
+            <section className="relative overflow-hidden rounded-[2.5rem] bg-brand-600 p-8 md:p-12 text-white shadow-xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
                 
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -146,7 +146,7 @@ export default function SupermarketPage() {
                                 <button 
                                     onClick={processAiInput}
                                     disabled={loading}
-                                    className="absolute bottom-3 right-3 p-2 bg-white text-indigo-600 rounded-lg shadow-lg disabled:opacity-50"
+                                    className="absolute bottom-3 right-3 p-2 bg-white text-brand-600 rounded-lg shadow-lg disabled:opacity-50"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>
@@ -162,7 +162,7 @@ export default function SupermarketPage() {
                     <div className="bg-surface rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-subtle">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-2xl font-black cc-text-primary flex items-center gap-3">
-                                <ListChecks className="text-indigo-600" />
+                                <ListChecks className="text-brand-600" />
                                 Lista de Compras
                             </h2>
                             <span className="px-4 py-1.5 bg-elevated rounded-full text-xs font-bold text-slate-500">
@@ -177,7 +177,7 @@ export default function SupermarketPage() {
                                 value={newItem}
                                 onChange={(e) => setNewItem(e.target.value)}
                             />
-                            <Button type="submit" className="h-14 w-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 p-0 shadow-lg shadow-indigo-600/20">
+                            <Button type="submit" className="h-14 w-14 rounded-2xl bg-brand-600 hover:bg-brand-700 p-0 shadow-lg shadow-indigo-600/20">
                                 <Plus className="h-6 w-6 text-white" />
                             </Button>
                         </form>
@@ -246,7 +246,7 @@ export default function SupermarketPage() {
                 <div className="space-y-6">
                     <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white shadow-2xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <ChefHat className="text-indigo-400" />
+                            <ChefHat className="text-brand-400" />
                             <h3 className="text-xl font-black">Planes de CoCo</h3>
                         </div>
                         <div className="space-y-4">
@@ -259,7 +259,7 @@ export default function SupermarketPage() {
                                         className="w-full p-5 bg-white/5 border border-white/10 rounded-3xl hover:bg-white/10 transition-all text-left group"
                                     >
                                         <div className="flex items-center justify-between mb-2">
-                                            <PlanIcon className="h-6 w-6 text-indigo-400" />
+                                            <PlanIcon className="h-6 w-6 text-brand-400" />
                                             <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-white transition-all opacity-0 group-hover:opacity-100" />
                                         </div>
                                         <h4 className="font-bold text-lg mb-1">{plan.title}</h4>

@@ -42,7 +42,7 @@ export function CostEstimator({ consumption }: CostEstimatorProps) {
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">CLP Aprox.</span>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-slate-50 dark:border-slate-800">
+                <div className="space-y-3 pt-4 border-t border-subtle">
                     <div className="flex justify-between text-sm">
                         <span className="text-slate-500 font-medium">Cargo Fijo</span>
                         <span className="cc-text-primary font-bold">${FIXED_CHARGE.toLocaleString('es-CL')}</span>

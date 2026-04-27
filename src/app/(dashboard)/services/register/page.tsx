@@ -154,12 +154,12 @@ export default function ProviderRegisterPage() {
                             ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
                             : s < step
                                 ? 'bg-emerald-500 text-white'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+                                : 'bg-elevated text-slate-400'
                             }`}>
                             {s < step ? <CheckCircle2 className="h-5 w-5" /> : s}
                         </div>
                         {s < 3 && (
-                            <div className={`w-16 h-1 rounded-full ${s < step ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                            <div className={`w-16 h-1 rounded-full ${s < step ? 'bg-emerald-500' : 'bg-elevated'}`} />
                         )}
                     </div>
                 ))}

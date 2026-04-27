@@ -254,7 +254,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
 
             {/* Recent Logs (Simulated) */}
             <div className="bg-surface rounded-[3rem] border border-subtle overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
-                <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center">
+                <div className="p-10 border-b border-subtle flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <History className="h-6 w-6 text-blue-600 dark:text-blue-400" />

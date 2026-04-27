@@ -175,13 +175,13 @@ export default function AdminOnboardingPage() {
 
     const colorMap: Record<string, string> = {
         blue: "border-blue-500 bg-blue-50 dark:bg-blue-900/20",
-        indigo: "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20",
-        purple: "border-purple-500 bg-purple-50 dark:bg-purple-900/20",
+        indigo: "border-brand-500 bg-brand-50 dark:bg-indigo-900/20",
+        purple: "border-brand-500 bg-brand-50 dark:bg-purple-900/20",
     };
     const iconColorMap: Record<string, string> = {
         blue: "text-blue-500",
-        indigo: "text-indigo-500",
-        purple: "text-purple-500",
+        indigo: "text-brand-500",
+        purple: "text-brand-500",
     };
 
     return (
@@ -206,16 +206,16 @@ export default function AdminOnboardingPage() {
                         <div key={i} className="flex items-center gap-2">
                             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                                 i === step
-                                    ? "bg-indigo-600 text-white"
+                                    ? "bg-brand-600 text-white"
                                     : i < step
                                     ? "bg-green-500 text-white"
-                                    : "bg-slate-200 dark:bg-slate-700 text-slate-500"
+                                    : "bg-elevated text-slate-500"
                             }`}>
                                 {i < step ? <CheckCircle className="h-4 w-4" /> : <span>{i + 1}</span>}
                                 <span className="hidden sm:inline">{label}</span>
                             </div>
                             {i < STEP_LABELS.length - 1 && (
-                                <div className={`w-8 h-0.5 ${i < step ? "bg-green-500" : "bg-slate-200 dark:bg-slate-700"}`} />
+                                <div className={`w-8 h-0.5 ${i < step ? "bg-green-500" : "bg-elevated"}`} />
                             )}
                         </div>
                     ))}
@@ -239,7 +239,7 @@ export default function AdminOnboardingPage() {
                                         }`}
                                     >
                                         {plan.badge && (
-                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-xs font-bold px-3 py-1 rounded-full">
                                                 {plan.badge}
                                             </div>
                                         )}
@@ -288,7 +288,7 @@ export default function AdminOnboardingPage() {
                 {step === 1 && (
                     <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
                         <h2 className="text-xl font-bold cc-text-primary mb-6 flex items-center gap-2">
-                            <Building className="h-5 w-5 text-indigo-500" />
+                            <Building className="h-5 w-5 text-brand-500" />
                             Datos del Condominio
                         </h2>
                         <div className="space-y-4">
@@ -348,7 +348,7 @@ export default function AdminOnboardingPage() {
                 {step === 2 && (
                     <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
                         <h2 className="text-xl font-bold cc-text-primary mb-6 flex items-center gap-2">
-                            <User className="h-5 w-5 text-indigo-500" />
+                            <User className="h-5 w-5 text-brand-500" />
                             Tu Cuenta de Administrador
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -430,7 +430,7 @@ export default function AdminOnboardingPage() {
                 <div className="text-center mt-6">
                     <Link
                         href="/login"
-                        className="text-sm cc-text-secondary hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        className="text-sm cc-text-secondary hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                     >
                         ← Ya tengo cuenta, Iniciar Sesión
                     </Link>

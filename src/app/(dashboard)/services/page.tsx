@@ -31,7 +31,7 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
         id: 'cleaning',
         name: 'Limpieza',
         iconName: 'cleaning',
-        gradient: 'from-emerald-500 to-teal-600',
+        gradient: 'from-[#10B981] to-[#0D9488]',
         description: 'Servicios de limpieza profesional'
     },
     {

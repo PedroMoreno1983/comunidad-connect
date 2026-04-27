@@ -66,7 +66,7 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
                 <div className="flex flex-col h-[600px] bg-canvas">
                     {/* Header */}
                     <div className="p-6 bg-surface border-b border-subtle flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] flex items-center justify-center text-white font-bold text-lg">
                             V
                         </div>
                         <div className="flex-1">
@@ -91,7 +91,7 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
                                     <div className={`max-w-[80%] p-4 rounded-2xl text-sm font-medium shadow-sm ${msg.sender === 'me'
                                         ? 'bg-blue-600 text-white rounded-tr-none'
                                         : msg.sender === 'system'
-                                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 text-center text-xs w-full'
+                                            ? 'bg-elevated text-slate-500 text-center text-xs w-full'
                                             : 'bg-surface cc-text-secondary rounded-tl-none'
                                         }`}>
                                         {msg.text}

@@ -24,7 +24,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 // TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
 // from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
 // from-slate-600 to-slate-900 from-emerald-400 to-teal-600 from-violet-500 to-purple-700 
-// from-purple-500 to-pink-500 from-blue-500 to-indigo-600
+// from-purple-500 to-pink-500 from-[#3B82F6] to-[#6D28D9]
 
 // Icon mapping for amenities
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -216,7 +216,7 @@ export default function AmenitiesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {amenities.map((amenity, idx) => {
                             const Icon = getIcon(amenity.iconName);
-                            const gradient = amenity.gradient || 'from-blue-500 to-indigo-600';
+                            const gradient = amenity.gradient || 'from-[#3B82F6] to-[#6D28D9]';
                             return (
                                 <article
                                     key={amenity.id}
@@ -280,8 +280,8 @@ export default function AmenitiesPage() {
                 <ErrorBoundary name="Mis Reservas">
                     <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 p-6">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
-                                <Check className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <div className="p-2 bg-brand-100 dark:bg-purple-500/20 rounded-lg">
+                                <Check className="h-5 w-5 text-brand-600 dark:text-brand-400" />
                             </div>
                             <h2 className="text-lg font-bold cc-text-primary">Mis Reservas</h2>
                         </div>
@@ -413,7 +413,7 @@ export default function AmenitiesPage() {
                                                     ? 'bg-elevated cc-text-tertiary cursor-not-allowed line-through'
                                                     : selectedTime === time
                                                         ? `bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} text-white shadow-lg`
-                                                        : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-600'
+                                                        : 'bg-elevated cc-text-secondary hover:bg-elevated'
                                                     }`}
                                             >
                                                 {time}

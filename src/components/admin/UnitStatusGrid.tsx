@@ -90,7 +90,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                                 ? 'bg-amber-100 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20'
                                 : isRead
                                     ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20'
-                                    : 'bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-700'
+                                    : 'bg-elevated border-subtle'
                                 }`}
                         >
                             <span className={`text-[9px] font-black ${isHigh ? 'text-warning-fg' :
@@ -113,7 +113,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap items-center gap-8 pt-6 border-t border-slate-50 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-8 pt-6 border-t border-subtle">
                 <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-md bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-100 dark:border-emerald-500/30" />
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Leído</span>

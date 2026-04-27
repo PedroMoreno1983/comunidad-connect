@@ -179,7 +179,7 @@ export default function CoCo() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 12 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="flex flex-col overflow-hidden rounded-3xl border border-pink-100 dark:border-slate-700 bg-surface"
+                        className="flex flex-col overflow-hidden rounded-3xl border border-subtle bg-surface"
                         style={{ width: 360, height: 500, boxShadow: "0 20px 60px rgba(236,72,153,0.25)" }}
                     >
                         {/* Header */}
@@ -213,14 +213,14 @@ export default function CoCo() {
                                             <div
                                                 className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
                                                     ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm"
-                                                    : "bg-surface text-slate-800 dark:text-slate-200 shadow-sm border border-pink-100 dark:border-slate-700 rounded-tl-sm"
+                                                    : "bg-surface cc-text-primary shadow-sm border border-subtle rounded-tl-sm"
                                                     }`}
                                                 dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
                                             />
                                         )}
                                     </div>
                                     {msg.role === "user" && (
-                                        <div className="w-7 h-7 rounded-xl bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-black text-white flex-shrink-0 mt-1">U</div>
+                                        <div className="w-7 h-7 rounded-xl bg-elevated flex items-center justify-center text-xs font-black text-white flex-shrink-0 mt-1">U</div>
                                     )}
                                 </div>
                             ))}
@@ -235,7 +235,7 @@ export default function CoCo() {
                             {loading && (
                                 <div className="flex gap-2">
                                     <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">👩‍💻</div>
-                                    <div className="bg-surface rounded-2xl rounded-tl-sm px-4 py-3 border border-pink-100 dark:border-slate-700 flex gap-1.5">
+                                    <div className="bg-surface rounded-2xl rounded-tl-sm px-4 py-3 border border-subtle flex gap-1.5">
                                         {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                                     </div>
                                 </div>
@@ -245,7 +245,7 @@ export default function CoCo() {
 
                         {/* Quick actions */}
                         {msgs.length === 1 && (
-                            <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-canvas border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
+                            <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-canvas border-t border-subtle flex-shrink-0">
                                 {QUICK.map(({ label, icon: Icon }) => (
                                     <button key={label} onClick={() => send(label, null)}
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface rounded-xl text-[11px] font-semibold cc-text-secondary border border-subtle hover:border-pink-300 hover:text-pink-600 transition-colors">
@@ -256,7 +256,7 @@ export default function CoCo() {
                         )}
 
                         {/* Input Area */}
-                        <div className="bg-surface border-t border-pink-100 dark:border-slate-800 flex-shrink-0">
+                        <div className="bg-surface border-t border-subtle flex-shrink-0">
                             {/* Image Preview Area */}
                             {selectedImage && (
                                 <div className="px-3 pt-3 pb-1 flex relative">

@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, User, ChevronRight, ChevronLeft, GraduationCap, Monitor, Users, Lightbulb } from "lucide-react";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import ReactMarkdown from treact-markdownt;
+import remarkGfm from tremark-gfmt;
 import { useAuth } from "@/lib/authContext";
 
 interface ChatMessage {
     id: string;
-    role: 'tutor' | 'classmate' | 'user' | 'system';
+    role: ttutort | tclassmatet | tusert | tsystemt;
     text: string;
     blackboard?: string;
     name?: string;
@@ -24,12 +24,12 @@ export interface Slide {
 }
 
 const visualThemes: Record<string, string> = {
-    'purple-gradient': 'bg-gradient-to-br from-violet-600 to-indigo-800',
-    'blue-glass': 'bg-gradient-to-tr from-blue-500 to-cyan-500',
-    'tech-abstract': 'bg-gradient-to-br from-slate-800 to-indigo-900',
-    'sunset-orange': 'bg-gradient-to-tr from-amber-500 to-rose-600',
-    'nature-green': 'bg-gradient-to-br from-emerald-500 to-teal-700',
-    'default': 'bg-gradient-to-br from-slate-700 to-slate-900'
+    tpurple-gradientt: tbg-gradient-to-br from-[#6D28D9] to-[#3730A3]t,
+    tblue-glasst: tbg-gradient-to-tr from-blue-500 to-cyan-500t,
+    ttech-abstractt: tbg-gradient-to-br from-slate-800 to-indigo-900t,
+    tsunset-oranget: tbg-gradient-to-tr from-[#F59E0B] to-[#E11D48]t,
+    tnature-greent: tbg-gradient-to-br from-[#10B981] to-[#0F766E]t,
+    tdefaultt: tbg-gradient-to-br from-[#334155] to-[#0F172A]t
 };
 
 interface MultiAgentClassroomProps {
@@ -71,16 +71,16 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         if (isPresentation && pSlides) {
             setMessages([{
-                id: 'system-1',
-                role: 'system',
-                text: '¡Clase Magistral Iniciada! CoCo presentará las diapositivas.'
+                id: tsystem-1t,
+                role: tsystemt,
+                text: t¡Clase Magistral Iniciada! CoCo presentará las diapositivas.t
             }]);
             // El useEffect de currentSlideIndex se disparará y agregará la lectura inicial
         } else {
             setMessages([{
-                id: 'system-1',
-                role: 'system',
-                text: '¡Bienvenid@ al Aula Virtual Multi-Agente! Tu Tutora CoCo está preparándose...'
+                id: tsystem-1t,
+                role: tsystemt,
+                text: t¡Bienvenid@ al Aula Virtual Multi-Agente! Tu Tutora CoCo está preparándose...t
             }]);
             setBlackboardContent(courseContent || "# Bienvenido a la Capacitación\n\nAquí aparecerán los conceptos clave.");
         }
@@ -94,7 +94,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 ...prev,
                 {
                     id: `slide-notes-${currentSlideIndex}-${Date.now()}`,
-                    role: 'tutor',
+                    role: ttutort,
                     text: slide.notes
                 }
             ]);
@@ -114,7 +114,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         const newUserMsg: ChatMessage = {
             id: `user-${Date.now()}`,
-            role: 'user',
+            role: tusert,
             text: input.trim()
         };
 
@@ -125,9 +125,9 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         try {
             // Pasamos el JSON crudo (o texto crudo) más la pregunta actual
-            const res = await fetch('/api/training/multi-agent', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const res = await fetch(t/api/training/multi-agentt, {
+                method: tPOSTt,
+                headers: { tContent-Typet: tapplication/jsont },
                 body: JSON.stringify({ 
                     message: newUserMsg.text,
                     history: updatedMessages,
@@ -135,14 +135,14 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 })
             });
 
-            if (!res.ok) throw new Error('Error de red');
+            if (!res.ok) throw new Error(tError de redt);
 
             const data = await res.json();
             const newResponses: ChatMessage[] = data.responses || [];
 
-            // Update Blackboard ONLY if it's Legacy Mode
+            // Update Blackboard ONLY if itts Legacy Mode
             if (!parsedSlides) {
-                const tutorMsg = newResponses.find(m => m.role === 'tutor' && m.blackboard);
+                const tutorMsg = newResponses.find(m => m.role === ttutort && m.blackboard);
                 if (tutorMsg?.blackboard) {
                     setBlackboardContent(tutorMsg.blackboard);
                 }
@@ -157,8 +157,8 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
             console.error(error);
             setMessages(prev => [...prev, {
                 id: `sys-err-${Date.now()}`,
-                role: 'system',
-                text: 'Hubo un error de conexión con la sala.'
+                role: tsystemt,
+                text: tHubo un error de conexión con la sala.t
             }]);
         } finally {
             setIsTyping(false);
@@ -191,7 +191,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                     exit={{ opacity: 0, x: -20 }}
                                     transition={{ duration: 0.3 }}
                                     className={`w-full max-w-4xl aspect-[16/9] rounded-[2rem] shadow-2xl flex flex-col justify-center p-8 lg:p-14 relative ${
-                                        visualThemes[parsedSlides[currentSlideIndex].visual_theme] || visualThemes['default']
+                                        visualThemes[parsedSlides[currentSlideIndex].visual_theme] || visualThemes[tdefaultt]
                                     }`}
                                 >
                                     <div className="bg-white/10 dark:bg-black/20 backdrop-blur-2xl border border-white/20 p-6 sm:p-10 rounded-3xl shadow-xl w-full">
@@ -233,7 +233,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         {/* Progress Bar */}
                         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20 z-30">
                             <motion.div 
-                                className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,1)]"
+                                className="h-full bg-brand-500 shadow-[0_0_10px_rgba(99,102,241,1)]"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${((currentSlideIndex + 1) / parsedSlides.length) * 100}%` }}
                                 transition={{ duration: 0.3 }}
@@ -255,7 +255,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                         <div className="flex-1 overflow-y-auto px-2 relative z-10 prose prose-slate dark:prose-invert max-w-none 
                             prose-headings:font-black prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                            prose-a:text-indigo-500 prose-strong:text-indigo-600 dark:prose-strong:text-indigo-400">
+                            prose-a:text-brand-500 prose-strong:text-brand-600 dark:prose-strong:text-brand-400">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={blackboardContent.substring(0, 50)}
@@ -284,7 +284,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             <div className="w-8 h-8 rounded-full bg-warning-bg shadow flex items-center justify-center text-amber-600 z-10">
                                 <Users className="w-4 h-4" />
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-role-admin-bg shadow flex items-center justify-center text-indigo-600 z-0">
+                            <div className="w-8 h-8 rounded-full bg-role-admin-bg shadow flex items-center justify-center text-brand-600 z-0">
                                 <User className="w-4 h-4" />
                             </div>
                         </div>
@@ -302,19 +302,19 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 key={msg.id}
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : msg.role === 'system' ? 'items-center' : 'items-start'}`}
+                                className={`flex flex-col ${msg.role === tusert ? titems-endt : msg.role === tsystemt ? titems-centert : titems-startt}`}
                             >
-                                {msg.role !== 'system' && (
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === 'user' ? 'text-indigo-500' : 'text-success-fg'}`}>
-                                        {msg.role === 'tutor' ? 'Profesora CoCo' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
+                                {msg.role !== tsystemt && (
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === tusert ? ttext-indigo-500t : ttext-success-fgt}`}>
+                                        {msg.role === ttutort ? tProfesora CoCot : msg.role === tclassmatet ? (msg.name || tCompañero IAt) : tTút}
                                     </span>
                                 )}
                                 <div className={`
                                     max-w-[85%] rounded-2xl p-4
-                                    ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-500/20' : ''}
-                                    ${msg.role === 'tutor' ? 'bg-surface text-slate-800 dark:text-slate-200 border border-subtle/50 rounded-bl-none shadow' : ''}
-                                    ${msg.role === 'classmate' ? 'bg-warning-bg text-slate-800 dark:text-slate-200 border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6' : ''}
-                                    ${msg.role === 'system' ? 'bg-transparent text-slate-400 text-xs text-center border-b border-subtle' : ''}
+                                    ${msg.role === tusert ? tbg-brand-600 text-white rounded-br-none shadow-md shadow-indigo-500/20t : tt}
+                                    ${msg.role === ttutort ? tbg-surface cc-text-primary border border-subtle/50 rounded-bl-none shadowt : tt}
+                                    ${msg.role === tclassmatet ? tbg-warning-bg cc-text-primary border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6t : tt}
+                                    ${msg.role === tsystemt ? tbg-transparent text-slate-400 text-xs text-center border-b border-subtlet : tt}
                                 `}>
                                     <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                 </div>
@@ -337,7 +337,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 <div className="p-4 bg-surface border-t border-subtle">
                     <form 
                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                        className="flex items-center gap-3 bg-canvas rounded-full p-1.5 border border-subtle focus-within:ring-2 focus-within:ring-indigo-500/30 transition-shadow"
+                        className="flex items-center gap-3 bg-canvas rounded-full p-1.5 border border-subtle focus-within:ring-2 focus-within:ring-brand-500/30 transition-shadow"
                     >
                         <input
                             type="text" value={input} onChange={(e) => setInput(e.target.value)}
@@ -347,7 +347,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         />
                         <button
                             type="submit" disabled={!input.trim() || isTyping}
-                            className="p-3 shadow bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-full transition-colors flex items-center justify-center"
+                            className="p-3 shadow bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-full transition-colors flex items-center justify-center"
                         >
                             <Send className="w-4 h-4 -ml-0.5" />
                         </button>

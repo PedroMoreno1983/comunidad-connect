@@ -32,7 +32,7 @@ const visualThemes: Record<string, string> = {
     'tech-abstract': 'bg-gradient-to-br from-slate-800 to-indigo-900',
     'sunset-orange': 'bg-gradient-to-tr from-amber-500 to-rose-600',
     'nature-green': 'bg-gradient-to-br from-emerald-500 to-teal-700',
-    'default': 'bg-gradient-to-br from-slate-700 to-slate-900'
+    'default': 'bg-gradient-to-br from-[#334155] to-[#0F172A]'
 };
 
 export default function AdminTrainingPage() {
@@ -246,7 +246,7 @@ export default function AdminTrainingPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                     <div>
                         <h1 className="text-3xl font-bold cc-text-primary flex items-center gap-3">
-                            <GraduationCap className="h-8 w-8 text-indigo-600" />
+                            <GraduationCap className="h-8 w-8 text-brand-600" />
                             Generador de Cursos Educativos IA
                         </h1>
                         <p className="mt-2 text-slate-500 max-w-2xl">
@@ -255,7 +255,7 @@ export default function AdminTrainingPage() {
                     </div>
                     <button 
                         onClick={() => setIsCreating(true)}
-                        className="w-full md:w-auto justify-center px-5 py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 flex items-center gap-2 transition mt-4 md:mt-0"
+                        className="w-full md:w-auto justify-center px-5 py-3 bg-brand-600 text-white rounded-xl font-medium shadow-lg hover:bg-brand-700 flex items-center gap-2 transition mt-4 md:mt-0"
                     >
                         <Plus className="h-5 w-5" />
                         Nuevo Curso Interactivo
@@ -304,7 +304,7 @@ export default function AdminTrainingPage() {
                     >
                         <div className="p-6 border-b border-subtle mx-auto">
                             <h2 className="text-2xl font-bold flex items-center gap-3 justify-center cc-text-primary">
-                                <Wand2 className="h-7 w-7 text-indigo-500" />
+                                <Wand2 className="h-7 w-7 text-brand-500" />
                                 Paso 1: Alimentar a la IA
                             </h2>
                         </div>
@@ -320,7 +320,7 @@ export default function AdminTrainingPage() {
                                     {isUploading ? (
                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
                                     ) : (
-                                        <UploadCloud className="w-14 h-14 text-indigo-400 mb-2" />
+                                        <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
                                     <h3 className="text-lg font-bold cc-text-secondary">
                                         {isUploading ? 'Extrayendo textos...' : 'Sube tus PDFs, Documentos o Reglamentos'}
@@ -350,7 +350,7 @@ export default function AdminTrainingPage() {
                                 <button 
                                     onClick={generateSlidesFromText} 
                                     disabled={isGenerating || isUploading || !rawText.trim()}
-                                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2"
+                                    className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2"
                                 >
                                     {isGenerating ? '🌟 Diseñando Presentación IA...' : 'Crear Película Diapositivas'}
                                 </button>
@@ -375,7 +375,7 @@ export default function AdminTrainingPage() {
                                 <input 
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
-                                    className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-indigo-500 rounded px-2 w-full cc-text-primary"
+                                    className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-brand-500 rounded px-2 w-full cc-text-primary"
                                     placeholder="Título de la Presentación..."
                                 />
                             </div>
@@ -390,7 +390,7 @@ export default function AdminTrainingPage() {
                                 </select>
                                 <button 
                                     onClick={handleCreate} disabled={isSaving}
-                                    className="px-6 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg disabled:opacity-50 flex items-center gap-2 shadow"
+                                    className="px-6 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg disabled:opacity-50 flex items-center gap-2 shadow"
                                 >
                                     {isSaving ? 'Guardando...' : <><Save className="h-4 w-4" /> Publicar Oficialmente</>}
                                 </button>
@@ -408,7 +408,7 @@ export default function AdminTrainingPage() {
                                         onClick={() => setActiveSlideIndex(idx)}
                                         className={`group relative rounded-xl aspect-video border-[3px] p-2 cursor-pointer transition-all overflow-hidden flex flex-col justify-center ${
                                             activeSlideIndex === idx 
-                                                ? 'border-indigo-500 shadow-md ring-4 ring-indigo-500/20' 
+                                                ? 'border-brand-500 shadow-md ring-4 ring-brand-500/20' 
                                                 : 'border-transparent bg-surface hover:border-slate-300'
                                         }`}
                                     >
@@ -456,7 +456,7 @@ export default function AdminTrainingPage() {
                             {/* Right Sidebar: Speaker Notes */}
                             <div className="w-80 border-l border-subtle bg-surface flex flex-col">
                                 <div className="p-5 border-b border-subtle flex items-center justify-between">
-                                    <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                                    <h3 className="font-bold flex items-center gap-2 cc-text-primary">
                                         <FileText className="h-4 w-4 text-emerald-500" />
                                         Notas de Orador (IA)
                                     </h3>
@@ -488,7 +488,7 @@ export default function AdminTrainingPage() {
                         courses.map(course => (
                             <div key={course.id} className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-lg transition group">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-role-admin-bg text-indigo-600 rounded-xl">
+                                    <div className="p-3 bg-role-admin-bg text-brand-600 rounded-xl">
                                         <Play className="h-6 w-6" />
                                     </div>
                                     <button 

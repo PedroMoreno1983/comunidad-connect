@@ -96,7 +96,7 @@ export default function MyRequestsPage() {
                 </div>
                 <Link
                     href="/services"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface cc-text-secondary font-semibold border border-subtle hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface cc-text-secondary font-semibold border border-subtle hover:bg-elevated transition-all shadow-sm"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Volver a Catálogo

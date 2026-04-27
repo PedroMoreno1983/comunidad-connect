@@ -62,13 +62,13 @@ export default function ResidentTrainingPage() {
                 <div className="p-8 max-w-[1600px] mx-auto space-y-4 animate-in fade-in zoom-in-95 duration-500">
                     <button 
                         onClick={() => { setSelectedCourseContent(null); setSelectedCourseTitle(null); }}
-                        className="mb-2 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition"
+                        className="mb-2 flex items-center text-sm font-medium text-slate-500 hover:text-brand-600 transition"
                     >
                         <ArrowLeft className="h-4 w-4 mr-1" />
                         Volver al Catálogo de Cursos
                     </button>
                     <div className="flex items-center gap-2 mb-4">
-                        <BookOpen className="h-6 w-6 text-indigo-500" />
+                        <BookOpen className="h-6 w-6 text-brand-500" />
                         <h2 className="text-2xl font-bold cc-text-primary border-b-2 border-indigo-100 dark:border-indigo-900 pb-1 inline-block">
                             {selectedCourseTitle}
                         </h2>
@@ -86,8 +86,8 @@ export default function ResidentTrainingPage() {
         <ErrorBoundary name="Resident Training Module List">
             <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex flex-col mb-8">
-                    <h1 className="text-3xl font-black tracking-tight cc-text-primary border-l-4 border-indigo-500 pl-4 py-1 flex items-center gap-3">
-                        <GraduationCap className="w-8 h-8 text-indigo-500" />
+                    <h1 className="text-3xl font-black tracking-tight cc-text-primary border-l-4 border-brand-500 pl-4 py-1 flex items-center gap-3">
+                        <GraduationCap className="w-8 h-8 text-brand-500" />
                         Centro de Formación Interactivo
                     </h1>
                     <p className="cc-text-secondary mt-3 ml-5 max-w-2xl text-sm font-medium">
@@ -113,7 +113,7 @@ export default function ResidentTrainingPage() {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition cursor-pointer group relative overflow-hidden"
+                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-xl hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
                                 >
                                     {user?.role === 'admin' && (
                                         <button 
@@ -144,7 +144,7 @@ export default function ResidentTrainingPage() {
                                 setSelectedCourseContent(""); 
                                 setSelectedCourseTitle("Modo Libre (Pregúntale a la Tutora CoCo)");
                             }}
-                            className="bg-elevated/50 rounded-2xl p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
+                            className="bg-elevated/50 rounded-2xl p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-brand-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
                         >
                             <div className="w-12 h-12 rounded-xl bg-elevated flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                 <GraduationCap className="h-6 w-6 cc-text-secondary" />

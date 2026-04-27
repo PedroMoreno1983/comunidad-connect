@@ -49,7 +49,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
                 : 'bg-surface border-subtle shadow-sm'
             }`}>
             {!notification.read && (
-                <div className="absolute top-4 right-4 w-2 h-2 bg-indigo-500 rounded-full" />
+                <div className="absolute top-4 right-4 w-2 h-2 bg-brand-500 rounded-full" />
             )}
             <div className="flex gap-3">
                 <div className={`p-2 rounded-lg flex-shrink-0 ${colorMap[notification.type]}`}>
@@ -71,7 +71,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
                         {!notification.read && (
                             <button
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRead(); }}
-                                className="text-xs font-medium text-role-admin-fg hover:text-indigo-700 dark:hover:text-indigo-300"
+                                className="text-xs font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300"
                             >
                                 Marcar leído
                             </button>
@@ -129,7 +129,7 @@ export function NotificationCenter() {
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2.5 rounded-xl bg-elevated hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="relative p-2.5 rounded-xl bg-elevated hover:bg-elevated transition-colors"
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (

@@ -53,7 +53,7 @@ export default function AdminVotacionesPage() {
 
                 <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-role-admin-bg rounded-2xl text-indigo-600">
+                        <div className="p-3 bg-role-admin-bg rounded-2xl text-brand-600">
                             <Activity className="h-6 w-6" />
                         </div>
                         <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest">Participación Activa</h3>

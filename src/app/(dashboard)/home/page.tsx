@@ -280,7 +280,7 @@ export default function HomePage() {
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/30">
+                            <div className="p-2 bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] rounded-xl shadow-lg shadow-indigo-500/30">
                                 <Building2 className="h-5 w-5 text-white" />
                             </div>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20 rounded-full">
@@ -291,7 +291,7 @@ export default function HomePage() {
                             </div>
                         </div>
                         <h1 className="text-2xl lg:text-3xl font-bold cc-text-primary">
-                            {getGreeting()}, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            {getGreeting()}, <span className="bg-gradient-to-r from-[#6D28D9] to-[#5B21B6] bg-clip-text text-transparent">
                                 {user.name.split(' ')[0]}
                             </span>
                         </h1>
@@ -364,7 +364,7 @@ export default function HomePage() {
                                     <p className="text-xs cc-text-secondary">Últimos 6 meses</p>
                                 </div>
                             </div>
-                            <Link href="/expenses" className="text-sm font-medium text-role-admin-fg hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1">
+                            <Link href="/expenses" className="text-sm font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1">
                                 Ver más <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
@@ -377,7 +377,7 @@ export default function HomePage() {
                     <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
-                                <PieChartIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                <PieChartIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
                             </div>
                             <h2 className="text-lg font-bold cc-text-primary">Por Categoría</h2>
                         </div>
@@ -474,13 +474,13 @@ export default function HomePage() {
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: 0.4 + idx * 0.1 }}
-                                            className="p-4 lg:p-5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                            className="p-4 lg:p-5 hover:bg-elevated/50 transition-colors"
                                         >
                                             <div className="flex items-start gap-4">
                                                 <div className={`p-2 rounded-xl flex-shrink-0 ${ann.priority === 'alert'
                                                     ? 'bg-danger-bg text-danger-fg'
                                                     : ann.priority === 'event'
-                                                        ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400'
+                                                        ? 'bg-brand-100 dark:bg-purple-500/20 text-brand-600 dark:text-purple-400'
                                                         : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                                     }`}>
                                                     <Bell className="h-4 w-4" />

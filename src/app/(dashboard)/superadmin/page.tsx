@@ -149,7 +149,7 @@ export default function SuperAdminDashboard() {
             <div className="bg-surface rounded-2xl shadow-xl overflow-hidden border border-subtle">
                 <div className="p-6 border-b border-subtle flex flex-col md:flex-row justify-between gap-4">
                     <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-indigo-500" />
+                        <Building2 className="h-5 w-5 text-brand-500" />
                         Directorio de Clientes
                     </h2>
                     <div className="relative">
@@ -188,7 +188,7 @@ export default function SuperAdminDashboard() {
                                             <select 
                                                 value={community.tier_id || ""}
                                                 onChange={(e) => handleTierChange(community.id, e.target.value)}
-                                                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 font-medium text-role-admin-fg focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 font-medium text-role-admin-fg focus:ring-2 focus:ring-brand-500"
                                             >
                                                 <option value="" disabled>Selecciona un plan</option>
                                                 {tiers.map(t => (

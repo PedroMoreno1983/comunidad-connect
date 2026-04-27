@@ -167,7 +167,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     {/* Avatar */}
                     <div className="flex flex-col md:flex-row gap-6 -mt-16 relative z-10">
                         {/* Foto de perfil */}
-                        <div className="relative w-40 h-40 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-2xl bg-slate-200 dark:bg-slate-700">
+                        <div className="relative w-40 h-40 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-2xl bg-elevated">
                             <Image
                                 src={getProviderAvatar(provider.name, provider.photo)}
                                 alt={provider.name}
@@ -220,7 +220,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                 </Button>
                                 <a
                                     href={`tel:${provider.contactPhone}`}
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-elevated transition-colors"
                                 >
                                     <Phone className="h-4 w-4" />
                                     Llamar
@@ -228,7 +228,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                 {provider.email && (
                                     <a
                                         href={`mailto:${provider.email}`}
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-elevated transition-colors"
                                     >
                                         <Mail className="h-4 w-4" />
                                         Email
@@ -322,7 +322,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center cc-text-secondary font-semibold">
+                                                <div className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center cc-text-secondary font-semibold">
                                                     {review.userName.charAt(0)}
                                                 </div>
                                             )}

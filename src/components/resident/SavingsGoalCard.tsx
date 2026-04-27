@@ -26,7 +26,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
     const isOnTrack = currentConsumption <= targetConsumption;
 
     return (
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white relative overflow-hidden">
+        <div className="bg-canvas p-8 rounded-[2.5rem] text-white relative overflow-hidden">
             {/* Background */}
             <div className="absolute top-0 right-0 p-8 opacity-10">
                 <Target className="h-40 w-40 text-blue-500" />

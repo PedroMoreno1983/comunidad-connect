@@ -55,7 +55,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
 
                     <div className="flex flex-wrap gap-3">
                         {/* Availability filter */}
-                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-elevated cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-elevated cursor-pointer hover:bg-elevated transition-colors">
                             <input
                                 type="checkbox"
                                 checked={filterAvailable}

@@ -317,7 +317,7 @@ export default function SignUpPage() {
                     {/* Login Link */}
                     <Link
                         href="/login"
-                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-elevated transition-colors"
                     >
                         Iniciar Sesión
                     </Link>

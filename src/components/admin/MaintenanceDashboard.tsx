@@ -151,7 +151,7 @@ export function MaintenanceDashboard() {
                     <p className="text-xs font-bold text-amber-500 mt-2">Revisar hoja de vida</p>
                 </div>
 
-                <div className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
+                <div className="bg-canvas/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                         <TrendingUp className="h-20 w-20 text-blue-500" />
                     </div>

@@ -145,7 +145,7 @@ export function StatusBadge({
         "in-progress": { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500", label: "En Progreso" },
         closed: { bg: "bg-slate-100 dark:bg-slate-500/10", text: "cc-text-secondary", dot: "bg-slate-400", label: "Cerrada" },
         available: { bg: "bg-success-bg", text: "text-success-fg", dot: "bg-emerald-500", label: "Disponible" },
-        sold: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-500", label: "Vendido" },
+        sold: { bg: "bg-brand-50 dark:bg-purple-500/10", text: "text-brand-700 dark:text-brand-400", dot: "bg-brand-500", label: "Vendido" },
         reserved: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500", label: "Reservado" },
     };
 
@@ -171,7 +171,7 @@ export function PageHeader({
     title,
     description,
     icon: Icon,
-    gradient = "from-indigo-500 to-purple-600",
+    gradient = "from-[#7C3AED] to-[#5B21B6]",
     action,
 }: {
     title: string;
@@ -214,7 +214,7 @@ export function StatCard({
     icon: Icon,
     trend,
     trendValue,
-    gradient = "from-indigo-500 to-purple-600",
+    gradient = "from-[#7C3AED] to-[#5B21B6]",
 }: {
     title: string;
     value: string | number;

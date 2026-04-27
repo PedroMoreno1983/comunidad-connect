@@ -41,7 +41,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
         >
             <div className="bg-surface border border-subtle rounded-3xl shadow-md overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-default">
                 {/* Image Area */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-slate-700">
+                <div className="relative aspect-[4/3] overflow-hidden bg-elevated">
                     {(item.imageUrl || (item.images && item.images.length > 0)) ? (
                         <Image
                             src={imgSrc!}

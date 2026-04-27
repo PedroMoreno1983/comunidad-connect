@@ -159,7 +159,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
-                                <div className="p-4 bg-indigo-600 shadow-lg shadow-indigo-600/30 rounded-2xl transform group-hover:rotate-6 transition-transform">
+                                <div className="p-4 bg-brand-600 shadow-lg shadow-indigo-600/30 rounded-2xl transform group-hover:rotate-6 transition-transform">
                                     <BarChart3 className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
@@ -167,7 +167,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                     <p className="text-sm font-bold text-slate-500">Histórico de 6 meses operativos</p>
                                 </div>
                             </div>
-                            <button className="hidden sm:flex text-sm font-bold text-role-admin-fg bg-indigo-50 dark:bg-indigo-500/20 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-colors">
+                            <button className="hidden sm:flex text-sm font-bold text-role-admin-fg bg-brand-50 dark:bg-indigo-500/20 px-4 py-2 rounded-xl hover:bg-brand-100 transition-colors">
                                 Descargar PDF
                             </button>
                         </div>
@@ -186,8 +186,8 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                 >
                     <div className="relative z-10 flex flex-col h-full">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="p-3 bg-purple-100 dark:bg-purple-500/20 rounded-2xl">
-                                <PieChart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                            <div className="p-3 bg-brand-100 dark:bg-purple-500/20 rounded-2xl">
+                                <PieChart className="h-6 w-6 text-brand-600 dark:text-brand-400" />
                             </div>
                             <h3 className="text-xl font-black cc-text-primary">Distribución</h3>
                         </div>
@@ -196,7 +196,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         </div>
                         <div className="mt-6 space-y-3">
                             {expenseCategoryData.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-white/50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-subtle/50 transition-all cursor-crosshair hover:scale-[1.02]">
+                                <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-surface/50 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-subtle/50 transition-all cursor-crosshair hover:scale-[1.02]">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full shadow-md" style={{ backgroundColor: item.color }} />
                                         <span className="font-bold cc-text-secondary">{item.name}</span>
@@ -240,7 +240,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                         {activity.type === 'income' ? <TrendingUp className="h-6 w-6" /> : <TrendingDown className="h-6 w-6" />}
                                     </div>
                                     <div>
-                                        <p className="font-extrabold text-slate-800 dark:text-slate-100 text-lg">{activity.title}</p>
+                                        <p className="font-extrabold cc-text-primary text-lg">{activity.title}</p>
                                         <p className="text-sm font-semibold text-slate-500">{new Date(activity.date).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                     </div>
                                 </div>
