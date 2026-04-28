@@ -159,7 +159,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         <div className="relative z-10 space-y-6">
                             <div className="space-y-1">
                                 <h3 className="text-xl font-black text-white">¡Pase Listo!</h3>
-                                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Unidad 101 • Válido 24hrs</p>
+                                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">{user?.unitName ?? user?.unitId ?? 'Mi Unidad'} • Válido 24hrs</p>
                             </div>
 
                             {/* QR Simulation Component */}

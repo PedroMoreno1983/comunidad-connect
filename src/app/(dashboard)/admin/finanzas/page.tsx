@@ -17,8 +17,8 @@ export default function AdminFinanzasPage() {
                 const stats = await ExpenseService.getStats();
                 setFinances({
                     totalRevenue: stats.totalRevenue,
-                    totalExpenses: 8900000, // Placeholder
-                    reserveFund: 45200000,  // Placeholder
+                    totalExpenses: stats.totalBilled,
+                    reserveFund: Math.max(0, stats.totalRevenue - stats.totalBilled * 0.8),
                     collectionRate: Math.round(stats.collectionRate || 0),
                     recentActivity: [
                         { id: 'a1', type: 'income', title: 'Recaudación Registrada', amount: stats.totalRevenue, date: new Date().toISOString() },

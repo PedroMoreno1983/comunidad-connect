@@ -4,7 +4,6 @@ import { ThemeProvider } from "next-themes";
 import { ToastProviderComponent } from "@/components/ui/Toast";
 import { AuthProvider } from "@/lib/authContext";
 import { NotificationProvider } from "@/lib/notificationContext";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
@@ -13,7 +12,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 <NotificationProvider>
                     <ToastProviderComponent>
                         {children}
-                        <RoleSwitcher />
                     </ToastProviderComponent>
                 </NotificationProvider>
             </AuthProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AssetInventory } from "@/components/admin/AssetInventory";
 import { MaintenanceDashboard } from "@/components/admin/MaintenanceDashboard";
 import {
@@ -10,9 +10,50 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/Toast";
+
+interface MaintenanceKPIs {
+    healthPct: number;
+    completedThisMonth: number;
+    totalThisMonth: number;
+    operatingCost: number;
+}
 
 export default function MantenimientoAdminPage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'iot'>('overview');
+    const [kpis, setKpis] = useState<MaintenanceKPIs | null>(null);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchKPIs = async () => {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+            const [allRes, monthRes] = await Promise.all([
+                supabase.from('service_requests').select('status, estimated_cost'),
+                supabase.from('service_requests').select('status, estimated_cost').gte('created_at', monthStart),
+            ]);
+
+            if (allRes.error || monthRes.error) return;
+
+            const all = allRes.data ?? [];
+            const month = monthRes.data ?? [];
+
+            const completed = all.filter((r: { status: string }) => r.status === 'completed').length;
+            const healthPct = all.length > 0 ? Math.round((completed / all.length) * 100) : 100;
+
+            const completedMonth = month.filter((r: { status: string }) => r.status === 'completed').length;
+
+            const operatingCost = month.reduce((sum: number, r: { estimated_cost?: number }) => {
+                return sum + (Number(r.estimated_cost) || 0);
+            }, 0);
+
+            setKpis({ healthPct, completedThisMonth: completedMonth, totalThisMonth: month.length, operatingCost });
+        };
+
+        fetchKPIs();
+    }, []);
 
     return (
         <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
@@ -45,14 +86,16 @@ export default function MantenimientoAdminPage() {
                         <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Salud Global Infraestructura</h3>
                     </div>
                     <div className="flex items-end gap-3">
-                        <p className="text-4xl font-black cc-text-primary">94%</p>
-                        <span className="text-xs font-bold text-emerald-500 mb-1.5 uppercase tracking-widest">Óptimo</span>
+                        <p className="text-4xl font-black cc-text-primary">{kpis ? `${kpis.healthPct}%` : '—'}</p>
+                        <span className={`text-xs font-bold mb-1.5 uppercase tracking-widest ${(kpis?.healthPct ?? 0) >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                            {(kpis?.healthPct ?? 0) >= 80 ? 'Óptimo' : 'Atención'}
+                        </span>
                     </div>
                     <div className="mt-4 h-1.5 w-full bg-elevated rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: '94%' }}
-                            className="h-full bg-emerald-500"
+                            animate={{ width: kpis ? `${kpis.healthPct}%` : '0%' }}
+                            className={`h-full ${(kpis?.healthPct ?? 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-500'}`}
                         />
                     </div>
                 </div>
@@ -64,8 +107,14 @@ export default function MantenimientoAdminPage() {
                         </div>
                         <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Mantenimientos al Día</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary">12/15</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">80% cumplimiento mensual</p>
+                    <p className="text-4xl font-black cc-text-primary">
+                        {kpis ? `${kpis.completedThisMonth}/${kpis.totalThisMonth}` : '—'}
+                    </p>
+                    <p className="text-[10px] font-bold cc-text-tertiary uppercase tracking-widest mt-2">
+                        {kpis && kpis.totalThisMonth > 0
+                            ? `${Math.round((kpis.completedThisMonth / kpis.totalThisMonth) * 100)}% cumplimiento mensual`
+                            : 'Sin solicitudes este mes'}
+                    </p>
                 </div>
 
                 <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
@@ -75,8 +124,10 @@ export default function MantenimientoAdminPage() {
                         </div>
                         <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Gasto Operativo Mes</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary">$840.5k</p>
-                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mt-2">+12% vs promedios históricos</p>
+                    <p className="text-4xl font-black cc-text-primary">
+                        {kpis ? (kpis.operatingCost > 0 ? `$${(kpis.operatingCost / 1000).toFixed(0)}k` : '$0') : '—'}
+                    </p>
+                    <p className="text-[10px] font-bold cc-text-tertiary uppercase tracking-widest mt-2">Basado en solicitudes del mes</p>
                 </div>
 
                 <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group border border-white/10">
