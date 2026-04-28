@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
+import { useToast } from "@/components/ui/Toast";
 import confetti from "canvas-confetti";
 
 interface Message {
@@ -34,6 +35,7 @@ const QUICK = [
 
 export default function CoCo() {
     const { user, logout } = useAuth();
+    const { toast } = useToast();
     const [mounted, setMounted] = useState(false);
     const [open, setOpen] = useState(false);
     const [msgs, setMsgs] = useState<Message[]>([{
@@ -60,7 +62,7 @@ export default function CoCo() {
         
         // Limit to 5MB roughly
         if (file.size > 5 * 1024 * 1024) {
-            alert("La imagen es demasiado pesada. El máximo es 5MB.");
+            toast({ title: "Imagen demasiado grande", description: "El máximo es 5MB.", variant: "destructive" });
             return;
         }
 

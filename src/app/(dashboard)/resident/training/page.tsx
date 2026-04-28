@@ -5,6 +5,7 @@ import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
 import { BookOpen, AlertCircle, ArrowLeft, GraduationCap, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { useToast } from "@/components/ui/Toast";
 
 interface Course {
     id: string;
@@ -19,22 +20,28 @@ export default function ResidentTrainingPage() {
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
     const { user } = useAuth();
+    const { toast } = useToast();
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const handleDeleteCourse = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm("¿Estás seguro de querer eliminar permanentemente este curso oficial?")) return;
-        
+        if (deletingId !== id) {
+            setDeletingId(id);
+            return;
+        }
+        setDeletingId(null);
         try {
             const res = await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setCourses(prev => prev.filter(c => c.id !== id));
+                toast({ title: "Curso eliminado", variant: "success" });
             } else {
                 const data = await res.json();
-                alert(`No se pudo eliminar el curso:\n\n${data.error || 'Permisos de base de datos insuficientes (RLS)'}`);
+                toast({ title: "No se pudo eliminar", description: data.error || 'Permisos insuficientes (RLS)', variant: "destructive" });
             }
         } catch (err) {
             console.error(err);
-            alert("Error de red al eliminar el curso.");
+            toast({ title: "Error de red", description: "No se pudo eliminar el curso.", variant: "destructive" });
         }
     };
 

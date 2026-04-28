@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
+import { useToast } from '@/components/ui/Toast';
 
 export interface Slide {
     id: string;
@@ -39,6 +40,8 @@ export default function AdminTrainingPage() {
     const { user } = useAuth();
     const router = useRouter();
     const { isDemoUser, demoMessage } = useDemoRestrictions();
+    const { toast } = useToast();
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -93,7 +96,7 @@ export default function AdminTrainingPage() {
         const MAX_SIZE_MB = 4;
         const oversized = files.filter(f => f.size > MAX_SIZE_MB * 1024 * 1024);
         if (oversized.length > 0) {
-            alert(`⚠️ Archivo demasiado grande: ${oversized.map(f => f.name).join(', ')}\n\nEl límite es ${MAX_SIZE_MB}MB por archivo. Por favor comprime el PDF o divídelo en partes más pequeñas.`);
+            toast({ title: "Archivo demasiado grande", description: `${oversized.map(f => f.name).join(', ')} supera el límite de ${MAX_SIZE_MB}MB. Comprime el PDF o divídelo.`, variant: "destructive" });
             e.target.value = '';
             return;
         }
@@ -117,7 +120,7 @@ export default function AdminTrainingPage() {
                     combinedText += (combinedText ? '\n\n' : '') + data.text;
                     lastFileName = file.name;
                 } else {
-                    alert(`Error procesando ${file.name}: ${data.error || 'Desconocido'}`);
+                    toast({ title: `Error: ${file.name}`, description: data.error || 'Error desconocido al procesar el archivo.', variant: "destructive" });
                 }
             }
 
@@ -130,7 +133,7 @@ export default function AdminTrainingPage() {
         } catch (err) {
             console.error(err);
             const msg = err instanceof Error ? err.message : 'Error desconocido';
-            alert('Error extrayendo texto: ' + msg);
+            toast({ title: "Error extrayendo texto", description: msg, variant: "destructive" });
         } finally {
             setIsUploading(false);
             e.target.value = '';
@@ -139,7 +142,7 @@ export default function AdminTrainingPage() {
 
     const generateSlidesFromText = async () => {
         if (!rawText.trim()) {
-            alert("Sube un archivo primero o escribe un temario para que la IA diseñe el curso.");
+            toast({ title: "Falta contenido", description: "Sube un archivo o escribe un temario para que la IA diseñe el curso.", variant: "destructive" });
             return;
         }
         setIsGenerating(true);
@@ -156,15 +159,15 @@ export default function AdminTrainingPage() {
                     setSlides(data.slides);
                     setActiveSlideIndex(0);
                 } else {
-                    alert("La IA generó un formato vacío. Intenta agregar más texto.");
+                    toast({ title: "Sin resultado", description: "La IA generó un formato vacío. Agrega más texto e intenta de nuevo.", variant: "destructive" });
                 }
             } else {
                 const errorData = await res.json();
-                alert("Error generando diapositivas: " + errorData.error);
+                toast({ title: "Error generando diapositivas", description: errorData.error, variant: "destructive" });
             }
         } catch (error) {
             console.error(error);
-            alert("Error de conexión con la IA.");
+            toast({ title: "Error de conexión", description: "No se pudo contactar al servidor de IA.", variant: "destructive" });
         } finally {
             setIsGenerating(false);
         }
@@ -180,7 +183,7 @@ export default function AdminTrainingPage() {
 
     const handleCreate = async () => {
         if (isDemoUser) {
-            alert("Acción bloqueada en cuenta Demo: " + demoMessage);
+            toast({ title: "Cuenta Demo", description: demoMessage, variant: "destructive" });
             return;
         }
         setIsSaving(true);
@@ -203,11 +206,11 @@ export default function AdminTrainingPage() {
                 fetchCourses();
             } else {
                 const errData = await res.json();
-                alert(`Error al guardar: ${errData.error || 'Desconocido'}`);
+                toast({ title: "Error al guardar", description: errData.error || 'Error desconocido', variant: "destructive" });
             }
         } catch (err) {
             console.error(err);
-            alert("Error de conexión al guardar el curso.");
+            toast({ title: "Error de conexión", description: "No se pudo guardar el curso.", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -215,10 +218,14 @@ export default function AdminTrainingPage() {
 
     const handleDelete = async (id: string) => {
         if (isDemoUser) {
-            alert("Acción bloqueada en cuenta Demo: " + demoMessage);
+            toast({ title: "Cuenta Demo", description: demoMessage, variant: "destructive" });
             return;
         }
-        if (!confirm('¿Seguro de eliminar este curso? Se borrará todo su contenido.')) return;
+        if (deletingId !== id) {
+            setDeletingId(id);
+            return;
+        }
+        setDeletingId(null);
         try {
             await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
             setCourses(c => c.filter(course => course.id !== id));
