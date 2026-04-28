@@ -19,30 +19,7 @@ import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/componen
 import { WhatsNew } from "@/components/ui/WhatsNew";
 import { DebugStats } from "@/components/ui/DebugStats";
 
-// Mock data for charts
-const expenseChartData = [
-    { month: 'Sep', monto: 82000 },
-    { month: 'Oct', monto: 85000 },
-    { month: 'Nov', monto: 83500 },
-    { month: 'Dic', monto: 90000 },
-    { month: 'Ene', monto: 87000 },
-    { month: 'Feb', monto: 85000 },
-];
-
-const expenseCategoryData = [
-    { name: 'Mantención', value: 35000, color: '#7C3AED' },
-    { name: 'Limpieza', value: 25000, color: '#10b981' },
-    { name: 'Seguridad', value: 15000, color: '#f59e0b' },
-    { name: 'Servicios', value: 10000, color: '#ef4444' },
-];
-
-const amenityUsageData = [
-    { name: 'Quincho', reservas: 12 },
-    { name: 'Piscina', reservas: 28 },
-    { name: 'Gimnasio', reservas: 45 },
-    { name: 'Cowork', reservas: 18 },
-    { name: 'Eventos', reservas: 8 },
-];
+const CATEGORY_COLORS = ['#7C3AED', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
 
 export default function HomePage() {
     const { user } = useAuth();
@@ -55,10 +32,12 @@ export default function HomePage() {
         residents: 0,
         pendingRequests: 0,
         visitorsToday: 0,
-        visitorsExpected: 0, // Placeholder
         pendingPackages: 0,
         recentAnnouncements: [] as { id: string; title: string; content: string; priority: string; createdAt: string; author: string }[]
     });
+    const [expenseChartData, setExpenseChartData] = useState<{ month: string; monto: number }[]>([]);
+    const [expenseCategoryData, setExpenseCategoryData] = useState<{ name: string; value: number; color: string }[]>([]);
+    const [amenityUsageData, setAmenityUsageData] = useState<{ name: string; reservas: number }[]>([]);
 
     useEffect(() => {
         if (!user) return;
@@ -111,11 +90,49 @@ export default function HomePage() {
                         bookings: bookRes.count || 0
                     }));
                 } else if (user.role === 'admin') {
-                    const [resProp, reqProp, expProp] = await Promise.all([
+                    const since6m = new Date();
+                    since6m.setMonth(since6m.getMonth() - 6);
+
+                    const [resProp, reqProp, expProp, expTrend, bookingsData] = await Promise.all([
                         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'resident'),
                         supabase.from('service_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                        supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid')
+                        supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid'),
+                        supabase.from('expenses').select('month, amount').gte('month', since6m.toISOString().slice(0, 7)).order('month'),
+                        supabase.from('bookings').select('amenities:amenity_id(name)'),
                     ]);
+
+                    // Monthly expense trend
+                    const byMonth: Record<string, number> = {};
+                    (expTrend.data ?? []).forEach((e: { month: string; amount: number }) => {
+                        byMonth[e.month] = (byMonth[e.month] ?? 0) + Number(e.amount);
+                    });
+                    setExpenseChartData(Object.entries(byMonth).map(([m, monto]) => {
+                        const [y, mo] = m.split('-');
+                        return { month: new Date(Number(y), Number(mo) - 1).toLocaleDateString('es-CL', { month: 'short' }), monto };
+                    }));
+
+                    // Expense category breakdown (by status as proxy)
+                    const catMap: Record<string, number> = { 'Pagadas': 0, 'Pendientes': 0, 'Vencidas': 0 };
+                    const catColors: Record<string, string> = { 'Pagadas': '#10b981', 'Pendientes': '#f59e0b', 'Vencidas': '#ef4444' };
+                    (expTrend.data ?? []).forEach((e: { amount: number }) => {});
+                    // Use service_requests categories instead
+                    const reqCatRes = await supabase.from('service_requests').select('category');
+                    const catCount: Record<string, number> = {};
+                    (reqCatRes.data ?? []).forEach((r: { category: string }) => {
+                        const cat = r.category || 'Otro';
+                        catCount[cat] = (catCount[cat] ?? 0) + 1;
+                    });
+                    setExpenseCategoryData(Object.entries(catCount).map(([name, value], i) => ({
+                        name, value, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
+                    })));
+
+                    // Amenity booking counts
+                    const amenityCount: Record<string, number> = {};
+                    (bookingsData.data ?? []).forEach((b: { amenities: { name: string } | null }) => {
+                        const name = b.amenities?.name ?? 'Otro';
+                        amenityCount[name] = (amenityCount[name] ?? 0) + 1;
+                    });
+                    setAmenityUsageData(Object.entries(amenityCount).map(([name, reservas]) => ({ name, reservas })));
 
                     setStatsData(prev => ({
                         ...prev, ...commonStats,

@@ -285,7 +285,7 @@ export const ExpenseService = {
     async getStats() {
         const { data, error } = await supabase
             .from('expenses')
-            .select('status, amount');
+            .select('status, amount, month');
 
         if (error) throw error;
 
@@ -295,18 +295,48 @@ export const ExpenseService = {
             totalOverdue: 0,
             collectionRate: 0,
             total: data?.length || 0,
+            totalBilled: 0,
         };
 
         data?.forEach((e: { status: string; amount: number }) => {
-            if (e.status === 'paid') stats.totalRevenue += Number(e.amount);
-            if (e.status === 'pending') stats.totalPending += Number(e.amount);
-            if (e.status === 'overdue') stats.totalOverdue += Number(e.amount);
+            const amt = Number(e.amount);
+            stats.totalBilled += amt;
+            if (e.status === 'paid') stats.totalRevenue += amt;
+            if (e.status === 'pending') stats.totalPending += amt;
+            if (e.status === 'overdue') stats.totalOverdue += amt;
         });
 
-        const totalAmount = stats.totalRevenue + stats.totalPending + stats.totalOverdue;
-        stats.collectionRate = totalAmount > 0 ? (stats.totalRevenue / totalAmount) * 100 : 0;
+        stats.collectionRate = stats.totalBilled > 0
+            ? (stats.totalRevenue / stats.totalBilled) * 100
+            : 0;
 
         return stats;
+    },
+
+    async getMonthlyTrend(months = 6) {
+        const since = new Date();
+        since.setMonth(since.getMonth() - months);
+        const sinceStr = since.toISOString().slice(0, 7); // YYYY-MM
+
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('month, amount, status')
+            .gte('month', sinceStr)
+            .order('month', { ascending: true });
+
+        if (error) throw error;
+
+        const byMonth: Record<string, number> = {};
+        data?.forEach((e: { month: string; amount: number; status: string }) => {
+            if (!byMonth[e.month]) byMonth[e.month] = 0;
+            byMonth[e.month] += Number(e.amount);
+        });
+
+        return Object.entries(byMonth).map(([month, monto]) => {
+            const [year, m] = month.split('-');
+            const label = new Date(Number(year), Number(m) - 1).toLocaleDateString('es-CL', { month: 'short' });
+            return { month: label, monto };
+        });
     },
 };
 
