@@ -6,12 +6,13 @@ import { MaintenanceDashboard } from "@/components/admin/MaintenanceDashboard";
 import {
     Wrench, ClipboardList, Activity,
     Plus, Download, Filter, Search,
-    BarChart3, ShieldCheck, HeartPulse, DollarSign
+    BarChart3, ShieldCheck, HeartPulse, DollarSign, X, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/authContext";
 
 interface MaintenanceKPIs {
     healthPct: number;
@@ -20,10 +21,99 @@ interface MaintenanceKPIs {
     operatingCost: number;
 }
 
+const CATEGORIES = ['plomería', 'eléctrico', 'cerrajería', 'limpieza', 'pintura', 'jardinería', 'ascensor', 'otro'] as const;
+const PRIORITIES = ['urgente', 'alta', 'media', 'baja'] as const;
+
 export default function MantenimientoAdminPage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'iot'>('overview');
     const [kpis, setKpis] = useState<MaintenanceKPIs | null>(null);
     const { toast } = useToast();
+    const { user } = useAuth();
+
+    // Nueva Tarea modal
+    const [showNewTask, setShowNewTask] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        title: '',
+        description: '',
+        category: 'otro' as typeof CATEGORIES[number],
+        priority: 'media' as typeof PRIORITIES[number],
+        scheduled_date: '',
+        estimated_cost: '',
+    });
+
+    const handleExport = async () => {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const { data, error } = await supabase
+            .from('service_requests')
+            .select('id, category, description, status, estimated_cost, created_at')
+            .gte('created_at', monthStart)
+            .order('created_at', { ascending: false });
+
+        if (error || !data?.length) {
+            toast({ title: 'Sin datos', description: 'No hay solicitudes este mes para exportar.', variant: 'destructive' });
+            return;
+        }
+
+        const headers = ['ID', 'Categoría', 'Descripción', 'Estado', 'Costo Est.', 'Fecha'];
+        const rows = data.map((r: Record<string, string | number | null>) => [
+            r.id, r.category, `"${String(r.description ?? '').replace(/"/g, '""')}"`,
+            r.status, r.estimated_cost ?? 0,
+            new Date(r.created_at as string).toLocaleDateString('es-CL')
+        ]);
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mantenimiento_${now.toISOString().slice(0,7)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'Reporte exportado', variant: 'success' });
+    };
+
+    const handleSaveTask = async () => {
+        if (!form.title.trim() || !form.description.trim()) {
+            toast({ title: 'Campos requeridos', description: 'Título y descripción son obligatorios.', variant: 'destructive' });
+            return;
+        }
+        setSaving(true);
+        const { error } = await supabase.from('service_requests').insert({
+            category: form.category,
+            description: `[${form.title}] ${form.description}`,
+            status: 'pending',
+            priority: form.priority,
+            scheduled_date: form.scheduled_date || null,
+            estimated_cost: form.estimated_cost ? Number(form.estimated_cost) : null,
+            requester_id: user?.id,
+        });
+        setSaving(false);
+        if (error) {
+            toast({ title: 'Error al guardar', description: error.message, variant: 'destructive' });
+        } else {
+            toast({ title: 'Tarea creada', variant: 'success' });
+            setShowNewTask(false);
+            setForm({ title: '', description: '', category: 'otro', priority: 'media', scheduled_date: '', estimated_cost: '' });
+            // Refresca KPIs
+            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+            const [allRes, monthRes] = await Promise.all([
+                supabase.from('service_requests').select('status, estimated_cost'),
+                supabase.from('service_requests').select('status, estimated_cost').gte('created_at', monthStart),
+            ]);
+            if (!allRes.error && !monthRes.error) {
+                const all = allRes.data ?? [];
+                const month = monthRes.data ?? [];
+                const completed = all.filter((r: { status: string }) => r.status === 'completed').length;
+                setKpis({
+                    healthPct: all.length > 0 ? Math.round((completed / all.length) * 100) : 100,
+                    completedThisMonth: month.filter((r: { status: string }) => r.status === 'completed').length,
+                    totalThisMonth: month.length,
+                    operatingCost: month.reduce((s: number, r: { estimated_cost?: number }) => s + (Number(r.estimated_cost) || 0), 0),
+                });
+            }
+        }
+    };
 
     useEffect(() => {
         const fetchKPIs = async () => {
@@ -65,11 +155,11 @@ export default function MantenimientoAdminPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-xl active:scale-95">
+                    <button onClick={handleExport} className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-xl active:scale-95">
                         <Download className="h-5 w-5 text-blue-600" />
                         Exportar Reporte
                     </button>
-                    <button className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                    <button onClick={() => setShowNewTask(true)} className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
                         <Plus className="h-5 w-5" />
                         Nueva Tarea
                     </button>
@@ -308,6 +398,122 @@ export default function MantenimientoAdminPage() {
                 </AnimatePresence>
                 </ErrorBoundary>
             </div>
+
+            {/* Modal: Nueva Tarea */}
+            <AnimatePresence>
+                {showNewTask && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowNewTask(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                            className="bg-surface rounded-3xl shadow-2xl border border-subtle w-full max-w-lg"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-subtle">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                        <Wrench className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <h2 className="text-xl font-black cc-text-primary">Nueva Tarea de Mantenimiento</h2>
+                                </div>
+                                <button onClick={() => setShowNewTask(false)} className="p-2 hover:bg-elevated rounded-xl transition-colors">
+                                    <X className="h-5 w-5 cc-text-secondary" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Título *</label>
+                                    <input
+                                        value={form.title}
+                                        onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                                        placeholder="Ej: Revisar bomba de agua"
+                                        className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Descripción *</label>
+                                    <textarea
+                                        value={form.description}
+                                        onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                                        placeholder="Detalla el trabajo a realizar..."
+                                        rows={3}
+                                        className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Categoría</label>
+                                        <select
+                                            value={form.category}
+                                            onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof CATEGORIES[number] }))}
+                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        >
+                                            {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Prioridad</label>
+                                        <select
+                                            value={form.priority}
+                                            onChange={e => setForm(f => ({ ...f, priority: e.target.value as typeof PRIORITIES[number] }))}
+                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        >
+                                            {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Fecha Programada</label>
+                                        <input
+                                            type="date"
+                                            value={form.scheduled_date}
+                                            onChange={e => setForm(f => ({ ...f, scheduled_date: e.target.value }))}
+                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Costo Estimado ($)</label>
+                                        <input
+                                            type="number"
+                                            value={form.estimated_cost}
+                                            onChange={e => setForm(f => ({ ...f, estimated_cost: e.target.value }))}
+                                            placeholder="0"
+                                            min="0"
+                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 p-6 pt-0">
+                                <button onClick={() => setShowNewTask(false)} className="flex-1 py-3 rounded-xl border border-subtle cc-text-secondary font-bold text-sm hover:bg-elevated transition-colors">
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveTask}
+                                    disabled={saving}
+                                    className="flex-1 py-3 rounded-xl bg-slate-900 dark:bg-blue-600 text-white font-black text-sm hover:bg-slate-800 dark:hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</> : <><ClipboardList className="h-4 w-4" /> Crear Tarea</>}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
