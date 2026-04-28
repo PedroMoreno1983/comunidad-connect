@@ -71,13 +71,13 @@ export default function AdminOnboardingPage() {
                 }));
                 setExtractedData(mappedData as ExtractedUser[]);
             } else {
-                alert((result && result.error) || 'Hubo un error al procesar el archivo con IA.');
+                toast({ title: "Error de extracción", description: (result && result.error) || 'Hubo un error al procesar el archivo con IA.', variant: "destructive" });
                 setFile(null);
             }
         } catch (err: unknown) {
             console.error(err);
             const errorMessage = err instanceof Error ? err.message : 'Falla desconocida';
-            alert(`Error de red o timeout en los servidores de IA: ${errorMessage}`);
+            toast({ title: "Error de conexión", description: `Timeout o error de red: ${errorMessage}`, variant: "destructive" });
             setFile(null);
         } finally {
             setIsExtracting(false);
@@ -123,12 +123,17 @@ export default function AdminOnboardingPage() {
         setExtractedData(prev => prev ? prev.filter(row => row.id !== id) : null);
     };
 
+    const [confirmingSync, setConfirmingSync] = useState(false);
+
     const handleSyncToDatabase = async () => {
         if (!extractedData || extractedData.length === 0) return;
-        
-        const confirmSync = confirm(`¿Estás completamente seguro de inyectar estos ${extractedData.length} residentes a tu Base de Datos en la nube?`);
-        if (!confirmSync) return;
 
+        if (!confirmingSync) {
+            setConfirmingSync(true);
+            return;
+        }
+
+        setConfirmingSync(false);
         setIsSyncing(true);
         try {
             const res = await fetch('/api/onboarding/upsert', {
@@ -143,7 +148,7 @@ export default function AdminOnboardingPage() {
                 setFile(null);
             } else {
                 const err = await res.json();
-                alert(err.error || 'Hubo un error fatal sincronizando con Supabase.');
+                toast({ title: "Error al sincronizar", description: err.error || 'Error fatal al sincronizar con Supabase.', variant: "destructive" });
             }
         } catch (error: unknown) {
             console.error(error);
@@ -266,12 +271,17 @@ export default function AdminOnboardingPage() {
                                 >
                                     Cancelar y Subir Otro
                                 </button>
-                                <button 
+                                <button
                                     onClick={handleSyncToDatabase}
                                     disabled={isSyncing}
-                                    className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className={`px-6 py-2 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${confirmingSync ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                 >
-                                    {isSyncing ? <span className="animate-pulse">Guardando en Supabase...</span> : <><Save className="h-5 w-5" /> Inyectar a Base de Datos</>}
+                                    {isSyncing
+                                        ? <span className="animate-pulse">Guardando en Supabase...</span>
+                                        : confirmingSync
+                                            ? <><AlertCircle className="h-5 w-5" /> ¿Confirmar? Haz clic de nuevo</>
+                                            : <><Save className="h-5 w-5" /> Inyectar a Base de Datos</>
+                                    }
                                 </button>
                             </div>
                         </div>

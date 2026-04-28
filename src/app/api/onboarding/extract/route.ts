@@ -13,7 +13,7 @@ Debes devolver un JSON estrictamente válido que sea un Array de objetos. Cada o
 {
   "name": "Nombre completo de la persona",
   "unit_id": "Número de departamento o unidad (ej: '101', 'A5', o 'Desconocido' si no se menciona)",
-  "email": "Correo electrónico (Si no aparece en el texto, inventa uno falso pero realista uniendo el nombre y apellido con el dominio @comunidad.cl, ej: juan.perez@comunidad.cl)",
+  "email": "Correo electrónico (o un string vacío '' si no aparece en el texto — NUNCA inventes ni deduzcas emails)",
   "phone": "Teléfono (o un string vacío '' si no hay)"
 }
 
