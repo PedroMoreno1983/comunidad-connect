@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, User, ChevronRight, ChevronLeft, GraduationCap, Monitor, Users, Lightbulb } from "lucide-react";
-import ReactMarkdown from treact-markdownt;
-import remarkGfm from tremark-gfmt;
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useAuth } from "@/lib/authContext";
 
 interface ChatMessage {
     id: string;
-    role: ttutort | tclassmatet | tusert | tsystemt;
+    role: 'tutor' | 'classmate' | 'user' | 'system';
     text: string;
     blackboard?: string;
     name?: string;
@@ -24,12 +24,12 @@ export interface Slide {
 }
 
 const visualThemes: Record<string, string> = {
-    tpurple-gradientt: tbg-gradient-to-br from-[#6D28D9] to-[#3730A3]t,
-    tblue-glasst: tbg-gradient-to-tr from-blue-500 to-cyan-500t,
-    ttech-abstractt: tbg-gradient-to-br from-slate-800 to-indigo-900t,
-    tsunset-oranget: tbg-gradient-to-tr from-[#F59E0B] to-[#E11D48]t,
-    tnature-greent: tbg-gradient-to-br from-[#10B981] to-[#0F766E]t,
-    tdefaultt: tbg-gradient-to-br from-[#334155] to-[#0F172A]t
+    'purple-gradient': 'bg-gradient-to-br from-[#6D28D9] to-[#3730A3]',
+    'blue-glass': 'bg-gradient-to-tr from-blue-500 to-cyan-500',
+    'tech-abstract': 'bg-gradient-to-br from-slate-800 to-indigo-900',
+    'sunset-orange': 'bg-gradient-to-tr from-[#F59E0B] to-[#E11D48]',
+    'nature-green': 'bg-gradient-to-br from-[#10B981] to-[#0F766E]',
+    'default': 'bg-gradient-to-br from-[#334155] to-[#0F172A]'
 };
 
 interface MultiAgentClassroomProps {
@@ -38,7 +38,7 @@ interface MultiAgentClassroomProps {
 
 export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps) {
     const { user } = useAuth();
-    
+
     // Attempt to parse new Presentation format
     const [parsedSlides, setParsedSlides] = useState<Slide[] | null>(null);
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -49,7 +49,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     const [blackboardContent, setBlackboardContent] = useState<string>(
         "# Generando pizarra interactiva...\n\nPor favor espera."
     );
-    
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Initialization
@@ -71,16 +71,16 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         if (isPresentation && pSlides) {
             setMessages([{
-                id: tsystem-1t,
-                role: tsystemt,
-                text: t¡Clase Magistral Iniciada! CoCo presentará las diapositivas.t
+                id: 'system-1',
+                role: 'system',
+                text: '¡Clase Magistral Iniciada! CoCo presentará las diapositivas.'
             }]);
             // El useEffect de currentSlideIndex se disparará y agregará la lectura inicial
         } else {
             setMessages([{
-                id: tsystem-1t,
-                role: tsystemt,
-                text: t¡Bienvenid@ al Aula Virtual Multi-Agente! Tu Tutora CoCo está preparándose...t
+                id: 'system-1',
+                role: 'system',
+                text: '¡Bienvenid@ al Aula Virtual Multi-Agente! Tu Tutora CoCo está preparándose...'
             }]);
             setBlackboardContent(courseContent || "# Bienvenido a la Capacitación\n\nAquí aparecerán los conceptos clave.");
         }
@@ -94,7 +94,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 ...prev,
                 {
                     id: `slide-notes-${currentSlideIndex}-${Date.now()}`,
-                    role: ttutort,
+                    role: 'tutor',
                     text: slide.notes
                 }
             ]);
@@ -114,7 +114,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         const newUserMsg: ChatMessage = {
             id: `user-${Date.now()}`,
-            role: tusert,
+            role: 'user',
             text: input.trim()
         };
 
@@ -125,24 +125,24 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
         try {
             // Pasamos el JSON crudo (o texto crudo) más la pregunta actual
-            const res = await fetch(t/api/training/multi-agentt, {
-                method: tPOSTt,
-                headers: { tContent-Typet: tapplication/jsont },
-                body: JSON.stringify({ 
+            const res = await fetch('/api/training/multi-agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     message: newUserMsg.text,
                     history: updatedMessages,
                     courseContent
                 })
             });
 
-            if (!res.ok) throw new Error(tError de redt);
+            if (!res.ok) throw new Error('Error de red');
 
             const data = await res.json();
             const newResponses: ChatMessage[] = data.responses || [];
 
-            // Update Blackboard ONLY if itts Legacy Mode
+            // Update Blackboard ONLY if it's Legacy Mode
             if (!parsedSlides) {
-                const tutorMsg = newResponses.find(m => m.role === ttutort && m.blackboard);
+                const tutorMsg = newResponses.find(m => m.role === 'tutor' && m.blackboard);
                 if (tutorMsg?.blackboard) {
                     setBlackboardContent(tutorMsg.blackboard);
                 }
@@ -157,17 +157,20 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
             console.error(error);
             setMessages(prev => [...prev, {
                 id: `sys-err-${Date.now()}`,
-                role: tsystemt,
-                text: tHubo un error de conexión con la sala.t
+                role: 'system',
+                text: 'Hubo un error de conexión con la sala.'
             }]);
         } finally {
             setIsTyping(false);
         }
     };
 
+    // Suppress unused warning — user is available for future personalization
+    void user;
+
     return (
         <div className="flex flex-col lg:flex-row h-[85vh] w-full bg-canvas rounded-[2.5rem] border border-subtle shadow-2xl shadow-indigo-500/10 overflow-hidden">
-            
+
             {/* LEFT PANEL: BLACKBOARD / PRESENTATION CANVAS */}
             <div className="w-full lg:w-[65%] h-[40vh] lg:h-full bg-surface flex flex-col relative overflow-hidden border-b lg:border-b-0 lg:border-r border-subtle">
                 {parsedSlides ? (
@@ -191,14 +194,14 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                     exit={{ opacity: 0, x: -20 }}
                                     transition={{ duration: 0.3 }}
                                     className={`w-full max-w-4xl aspect-[16/9] rounded-[2rem] shadow-2xl flex flex-col justify-center p-8 lg:p-14 relative ${
-                                        visualThemes[parsedSlides[currentSlideIndex].visual_theme] || visualThemes[tdefaultt]
+                                        visualThemes[parsedSlides[currentSlideIndex].visual_theme] || visualThemes['default']
                                     }`}
                                 >
                                     <div className="bg-white/10 dark:bg-black/20 backdrop-blur-2xl border border-white/20 p-6 sm:p-10 rounded-3xl shadow-xl w-full">
                                         <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight mb-6 leading-tight">
                                             {parsedSlides[currentSlideIndex].title}
                                         </h1>
-                                        
+
                                         <ul className="space-y-3 sm:space-y-4 text-white/90 font-medium text-base sm:text-lg md:text-xl">
                                             {parsedSlides[currentSlideIndex].bullets.map((b, i) => (
                                                 <li key={i} className="flex items-start gap-4">
@@ -214,14 +217,14 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                         {/* Player Controls */}
                         <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex justify-between px-2 sm:px-4 pointer-events-none z-30">
-                            <button 
+                            <button
                                 onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
                                 disabled={currentSlideIndex === 0}
                                 className="pointer-events-auto p-3 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur disabled:opacity-0 transition-all text-white shadow-xl"
                             >
                                 <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setCurrentSlideIndex(Math.min(parsedSlides.length - 1, currentSlideIndex + 1))}
                                 disabled={currentSlideIndex === parsedSlides.length - 1}
                                 className="pointer-events-auto p-3 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur disabled:opacity-0 transition-all text-white shadow-xl"
@@ -232,7 +235,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                         {/* Progress Bar */}
                         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20 z-30">
-                            <motion.div 
+                            <motion.div
                                 className="h-full bg-brand-500 shadow-[0_0_10px_rgba(99,102,241,1)]"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${((currentSlideIndex + 1) / parsedSlides.length) * 100}%` }}
@@ -253,7 +256,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto px-2 relative z-10 prose prose-slate dark:prose-invert max-w-none 
+                        <div className="flex-1 overflow-y-auto px-2 relative z-10 prose prose-slate dark:prose-invert max-w-none
                             prose-headings:font-black prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
                             prose-a:text-brand-500 prose-strong:text-brand-600 dark:prose-strong:text-brand-400">
                             <AnimatePresence mode="wait">
@@ -272,7 +275,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     </div>
                 )}
             </div>
-            
+
             {/* RIGHT PANEL: CHAT / MULTI-AGENT FEED */}
             <div className="w-full lg:w-[35%] h-[45vh] lg:h-full flex flex-col bg-canvas border-l border-white/50 dark:border-slate-800">
                 <div className="p-5 border-b border-subtle bg-white/90 dark:bg-slate-950/90 backdrop-blur-md flex items-center justify-between z-10">
@@ -302,26 +305,26 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 key={msg.id}
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                className={`flex flex-col ${msg.role === tusert ? titems-endt : msg.role === tsystemt ? titems-centert : titems-startt}`}
+                                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : msg.role === 'system' ? 'items-center' : 'items-start'}`}
                             >
-                                {msg.role !== tsystemt && (
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === tusert ? ttext-indigo-500t : ttext-success-fgt}`}>
-                                        {msg.role === ttutort ? tProfesora CoCot : msg.role === tclassmatet ? (msg.name || tCompañero IAt) : tTút}
+                                {msg.role !== 'system' && (
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 mx-2 ${msg.role === 'user' ? 'text-indigo-500' : 'text-success-fg'}`}>
+                                        {msg.role === 'tutor' ? 'Profesora CoCo' : msg.role === 'classmate' ? (msg.name || 'Compañero IA') : 'Tú'}
                                     </span>
                                 )}
                                 <div className={`
                                     max-w-[85%] rounded-2xl p-4
-                                    ${msg.role === tusert ? tbg-brand-600 text-white rounded-br-none shadow-md shadow-indigo-500/20t : tt}
-                                    ${msg.role === ttutort ? tbg-surface cc-text-primary border border-subtle/50 rounded-bl-none shadowt : tt}
-                                    ${msg.role === tclassmatet ? tbg-warning-bg cc-text-primary border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6t : tt}
-                                    ${msg.role === tsystemt ? tbg-transparent text-slate-400 text-xs text-center border-b border-subtlet : tt}
+                                    ${msg.role === 'user' ? 'bg-brand-600 text-white rounded-br-none shadow-md shadow-indigo-500/20' : ''}
+                                    ${msg.role === 'tutor' ? 'bg-surface cc-text-primary border border-subtle/50 rounded-bl-none shadow' : ''}
+                                    ${msg.role === 'classmate' ? 'bg-warning-bg cc-text-primary border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6' : ''}
+                                    ${msg.role === 'system' ? 'bg-transparent text-slate-400 text-xs text-center border-b border-subtle' : ''}
                                 `}>
                                     <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                 </div>
                             </motion.div>
                         ))}
                     </AnimatePresence>
-                    
+
                     {isTyping && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start">
                             <div className="bg-surface text-slate-400 border border-subtle rounded-2xl rounded-bl-none p-4 shadow-sm flex items-center gap-1">
@@ -335,7 +338,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                 {/* INPUT AREA */}
                 <div className="p-4 bg-surface border-t border-subtle">
-                    <form 
+                    <form
                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                         className="flex items-center gap-3 bg-canvas rounded-full p-1.5 border border-subtle focus-within:ring-2 focus-within:ring-brand-500/30 transition-shadow"
                     >
