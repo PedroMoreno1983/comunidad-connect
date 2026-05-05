@@ -1,0 +1,68 @@
+/* Dashboard Filters - Inline Compact */
+.dashboard-filters-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-inline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--card-bg);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  min-width: 160px;
+}
+
+.filter-inline:hover {
+  border-color: var(--primary);
+}
+
+.filter-inline-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.filter-inline-select {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  flex: 1;
+  appearance: none;
+}
+
+.filter-inline-select:focus {
+  outline: none;
+}
+
+.filter-inline-select option {
+  background: var(--bg-body);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+.filter-inline-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-filters-inline {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .filter-inline {
+    width: 100%;
+  }
+}

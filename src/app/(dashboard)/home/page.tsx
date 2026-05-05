@@ -239,7 +239,7 @@ export default function HomePage() {
         },
         {
             label: "Visitas Esperadas",
-            value: statsData.visitorsExpected,
+            value: statsData.visitorsToday,
             icon: Users,
             tone: "brand",
             link: "/concierge/visitors"

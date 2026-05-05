@@ -44,14 +44,14 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { message, history, courseContent } = body;
+        const { message, history, courseContent, userId, communityId } = body;
 
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
 
         // Call the orchestrator, passing the injected courseContent if available
-        const responses = await runMultiAgentTurn(GEMINI_API_KEY, history || [], message, courseContent);
+        const responses = await runMultiAgentTurn(GEMINI_API_KEY, history || [], message, courseContent, userId, communityId);
 
         return NextResponse.json({ responses }, { status: 200 });
 

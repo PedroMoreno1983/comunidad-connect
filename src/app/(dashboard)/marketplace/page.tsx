@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { MarketplaceService } from "@/lib/api";
 import {
@@ -49,6 +49,8 @@ const categoryConfig: Record<string, {
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [items, setItems] = useState<MarketplaceItem[]>([]);
+    const [searchResults, setSearchResults] = useState<MarketplaceItem[] | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
@@ -91,7 +93,6 @@ export default function MarketplacePage() {
     const loadItems = async () => {
         setLoading(true);
         try {
-
             const realItems = await MarketplaceService.getItemsV2();
             setItems(realItems || []);
         } catch (error: unknown) {
@@ -105,6 +106,55 @@ export default function MarketplacePage() {
             setLoading(false);
         }
     };
+
+    // ── Búsqueda híbrida con debounce 400ms ─────────────────────────────────
+    const runSearch = useCallback(async (query: string) => {
+        if (query.length < 2) {
+            setSearchResults(null);
+            return;
+        }
+        setIsSearching(true);
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&scope=marketplace`);
+            if (!res.ok) throw new Error('Search failed');
+            const data = await res.json();
+            // Map API results back to MarketplaceItem shape
+            setSearchResults(
+                (data.results ?? []).map((r: Record<string, unknown>) => ({
+                    id: r.id as string,
+                    title: r.title as string,
+                    description: r.description as string,
+                    price: r.price as number,
+                    category: r.category as string,
+                    imageUrl: r.image_url as string | undefined,
+                    images: r.image_url ? [r.image_url as string] : [],
+                    sellerId: r.seller_id as string,
+                    status: r.status as 'available' | 'sold',
+                    createdAt: r.created_at as string,
+                }))
+            );
+        } catch (err) {
+            console.error('[Search] API error:', err);
+            // Fallback: filtrado JS local
+            setSearchResults(
+                items.filter(item =>
+                    item.title.toLowerCase().includes(query.toLowerCase()) ||
+                    item.description.toLowerCase().includes(query.toLowerCase())
+                )
+            );
+        } finally {
+            setIsSearching(false);
+        }
+    }, [items]);
+
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            setSearchResults(null);
+            return;
+        }
+        const timer = setTimeout(() => runSearch(searchTerm), 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm, runSearch]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -124,11 +174,11 @@ export default function MarketplacePage() {
         { id: 'other', label: 'Otros' },
     ];
 
-    const filteredItems = items.filter(item => {
-        const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    // Usa resultados de búsqueda híbrida si hay query; si no, la lista completa
+    const baseItems = searchResults !== null ? searchResults : items;
+    const filteredItems = baseItems.filter(item => {
         const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+        return matchesCategory;
     });
 
     const handleAddItem = async (e: React.FormEvent) => {
@@ -480,6 +530,23 @@ export default function MarketplacePage() {
                     categories={categories}
                     getCategoryConfig={getCategoryConfigForId}
                 />
+                {/* Indicadores de búsqueda */}
+                {isSearching && (
+                    <div className="flex items-center gap-2 mt-3 px-1 text-sm text-slate-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Buscando en la comunidad...</span>
+                    </div>
+                )}
+                {!isSearching && searchResults !== null && (
+                    <div className="flex items-center gap-2 mt-3 px-1">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                            🔍 Búsqueda híbrida
+                        </span>
+                        <span className="text-xs text-slate-400">
+                            {filteredItems.length} resultado{filteredItems.length !== 1 ? 's' : ''} para &quot;{searchTerm}&quot;
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Servicios de Entrega */}

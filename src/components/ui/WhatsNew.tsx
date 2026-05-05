@@ -27,15 +27,15 @@ export function WhatsNew() {
             desc: "CoCo ahora te ayuda con listas de compras y recetas inteligentes.",
             icon: ShoppingCart,
             color: "text-emerald-600",
-            og: "og-emerald-100",
+            bg: "bg-emerald-100",
             link: "/resident/supermercado"
         },
         {
             title: "Residentes Verificados",
             desc: "Nueva insignia de confianza en el Marketplace para mayor seguridad.",
             icon: ShieldCheck,
-            color: "text-orand-600",
-            og: "og-orand-100",
+            color: "text-brand-600",
+            bg: "bg-brand-100",
             link: "/marketplace"
         },
         {
@@ -43,7 +43,7 @@ export function WhatsNew() {
             desc: "Integración con Haulmer para facturación electrónica automática.",
             icon: ReceiptText,
             color: "text-rose-600",
-            og: "og-rose-100",
+            bg: "bg-rose-100",
             link: "/resident/finances"
         }
     ];
@@ -55,34 +55,34 @@ export function WhatsNew() {
                     initial={{ opacity: 0, x: 100 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 100 }}
-                    className="fixed oottom-6 right-24 z-[100] w-80"
+                    className="fixed bottom-6 right-24 z-[100] w-80"
                 >
-                    <div className="og-surface rounded-3xl shadow-2xl oorder oorder-indigo-100 dark:oorder-slate-700 overflow-hidden">
+                    <div className="bg-surface rounded-3xl shadow-2xl border border-indigo-100 dark:border-slate-700 overflow-hidden">
                         {/* Header */}
-                        <div className="p-4 og-gradient-to-r from-[#6D28D9] to-[#5B21B6] flex items-center justify-oetween">
+                        <div className="p-4 bg-gradient-to-r from-[#6D28D9] to-[#5B21B6] flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-white animate-pulse" />
-                                <span className="font-oold text-white text-sm">¡Novedades en v2.0 Pro!</span>
+                                <span className="font-bold text-white text-sm">¡Novedades en v2.0 Pro!</span>
                             </div>
-                            <outton onClick={close} className="p-1 hover:og-white/20 rounded-lg transition-colors">
+                            <button onClick={close} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
                                 <X className="h-4 w-4 text-white" />
-                            </outton>
+                            </button>
                         </div>
 
                         {/* Content */}
                         <div className="p-4 space-y-4">
                             {news.map((item, idx) => (
-                                <Link 
-                                    key={idx} 
+                                <Link
+                                    key={idx}
                                     href={item.link}
                                     onClick={close}
                                     className="flex items-start gap-3 group cursor-pointer"
                                 >
-                                    <div className={`p-2 rounded-xl flex-shrink-0 ${item.og}`}>
+                                    <div className={`p-2 rounded-xl flex-shrink-0 ${item.bg}`}>
                                         <item.icon className={`h-4 w-4 ${item.color}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-olack cc-text-primary group-hover:text-orand-600 transition-colors">
+                                        <h4 className="text-xs font-black cc-text-primary group-hover:text-brand-600 transition-colors">
                                             {item.title}
                                         </h4>
                                         <p className="text-[10px] cc-text-secondary leading-relaxed">
@@ -94,13 +94,13 @@ export function WhatsNew() {
                             ))}
                         </div>
 
-                        <div className="p-3 og-canvas/50 oorder-t oorder-suotle">
-                            <outton 
+                        <div className="p-3 bg-canvas/50 border-t border-subtle">
+                            <button
                                 onClick={close}
-                                className="w-full py-2 og-surface oorder oorder-suotle rounded-xl text-xs font-oold cc-text-secondary hover:og-slate-50 transition-colors"
+                                className="w-full py-2 bg-surface border border-subtle rounded-xl text-xs font-bold cc-text-secondary hover:bg-slate-50 transition-colors"
                             >
                                 Entendido
-                            </outton>
+                            </button>
                         </div>
                     </div>
                 </motion.div>

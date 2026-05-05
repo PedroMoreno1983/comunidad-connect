@@ -1,14 +1,7 @@
 /**
- * coco-gateway.js — ComunidadConnect
+ * coco-gateway.js — ComunidadConnect (Arquitectura CoCo IA v2)
  *
- * npm install @anthropic-ai/sdk express
- * Variables de entorno:
- *   ANTHROPIC_API_KEY
- *   COCO_AGENT_ID          (tras correr setupAgent())
- *   COCO_ENVIRONMENT_ID    (tras correr setupAgent())
- *   COMUNIDAD_API_URL      (ej: https://api.tudominio.com)
- *   REDIS_URL              (opcional)
- *   PORT                   (default 3000)
+ * Usa prompt CoT estructurado, parseo XML y Memory Stream (pgvector).
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -20,239 +13,85 @@ import {
   checkRateLimit,
 } from "./session-store.js";
 
+// Nuevos módulos de Arquitectura IA
+import { PROMPT_RESIDENTE, PROMPT_CONSERJE } from "./src/ai/cocoPrompts.js";
+import { CoCoParser } from "./src/ai/cocoParser.js";
+import { MemoryService } from "./src/ai/memoryService.js";
+import { ActionRouter } from "./src/ai/actionRouter.js";
+
 const app = express();
 app.use(express.json());
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const API = process.env.COMUNIDAD_API_URL;
-const BETA = { headers: { "anthropic-beta": "managed-agents-2026-04-01" } };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SETUP — correr UNA SOLA VEZ para registrar el agente en Anthropic
-// node --input-type=module <<< "import('./coco-gateway.js').then(m => m.setupAgent())"
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function setupAgent() {
-  const agent = await anthropic.beta.agents.create({
-    name: "CoCo IA",
-    model: "claude-sonnet-4-6",
-    system: process.env.COCO_SYSTEM_PROMPT, // contenido de coco-system-prompt.md
-    tools: TOOL_DEFINITIONS,
-  }, BETA);
-
-  const environment = await anthropic.beta.environments.create({
-    name: "coco-prod",
-    config: { type: "cloud", networking: { type: "unrestricted" } },
-  }, BETA);
-
-  console.log("\n✅ Agente creado. Agrega al .env:\n");
-  console.log(`COCO_AGENT_ID=${agent.id}`);
-  console.log(`COCO_ENVIRONMENT_ID=${environment.id}\n`);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HERRAMIENTAS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const TOOL_DEFINITIONS = [
-  {
-    name: "get_resident_info",
-    description: "Obtiene nombre, depto y comunidad del residente.",
-    input_schema: {
-      type: "object",
-      properties: { unit_id: { type: "string" } },
-      required: ["unit_id"],
-    },
-  },
-  {
-    name: "get_payment_status",
-    description: "Consulta gastos comunes: monto, estado y fecha de vencimiento.",
-    input_schema: {
-      type: "object",
-      properties: {
-        unit_id: { type: "string" },
-        month: { type: "string", description: "YYYY-MM, opcional" },
-      },
-      required: ["unit_id"],
-    },
-  },
-  {
-    name: "create_claim",
-    description: "Registra un reclamo o solicitud de mantención.",
-    input_schema: {
-      type: "object",
-      properties: {
-        unit_id: { type: "string" },
-        category: {
-          type: "string",
-          enum: ["MANTENCIÓN", "RUIDO", "ÁREA_COMÚN", "ASCENSOR", "SEGURIDAD", "ESCALACIÓN_URGENTE", "OTRO"],
-        },
-        description: { type: "string" },
-        priority: { type: "string", enum: ["BAJA", "MEDIA", "ALTA", "URGENTE"] },
-      },
-      required: ["unit_id", "category", "description"],
-    },
-  },
-  {
-    name: "get_claim_status",
-    description: "Consulta el estado de un reclamo existente.",
-    input_schema: {
-      type: "object",
-      properties: { claim_id: { type: "string" } },
-      required: ["claim_id"],
-    },
-  },
-  {
-    name: "check_availability",
-    description: "Consulta disponibilidad de un espacio común en una fecha.",
-    input_schema: {
-      type: "object",
-      properties: {
-        space_id: { type: "string" },
-        date: { type: "string", description: "YYYY-MM-DD" },
-      },
-      required: ["space_id", "date"],
-    },
-  },
-  {
-    name: "create_reservation",
-    description: "Reserva un espacio común para el residente.",
-    input_schema: {
-      type: "object",
-      properties: {
-        unit_id: { type: "string" },
-        space_id: { type: "string" },
-        date: { type: "string" },
-        start_time: { type: "string" },
-        end_time: { type: "string" },
-      },
-      required: ["unit_id", "space_id", "date", "start_time", "end_time"],
-    },
-  },
-  {
-    name: "create_circular",
-    description: "Envía una circular a la comunidad. Solo administradores.",
-    input_schema: {
-      type: "object",
-      properties: {
-        community_id: { type: "string" },
-        title: { type: "string" },
-        body: { type: "string" },
-        audience: {
-          type: "string",
-          enum: ["TODOS", "PROPIETARIOS", "ARRENDATARIOS"],
-        },
-      },
-      required: ["community_id", "title", "body"],
-    },
-  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EJECUCIÓN DE HERRAMIENTAS → llaman a tu API existente
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function executeTool(name, input, userCtx) {
-  const h = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${userCtx.token}`,
-  };
-  const call = (path, opts = {}) =>
-    fetch(`${API}${path}`, { headers: h, ...opts }).then((r) => r.json());
-
-  switch (name) {
-    case "get_resident_info":
-      return call(`/residents/${input.unit_id}`);
-
-    case "get_payment_status": {
-      const month = input.month || new Date().toISOString().slice(0, 7);
-      return call(`/payments/${input.unit_id}?month=${month}`);
-    }
-
-    case "create_claim":
-      return call("/claims", {
-        method: "POST",
-        body: JSON.stringify({ ...input, source: "COCO_IA" }),
-      });
-
-    case "get_claim_status":
-      return call(`/claims/${input.claim_id}`);
-
-    case "check_availability":
-      return call(`/spaces/${input.space_id}/availability?date=${input.date}`);
-
-    case "create_reservation":
-      return call("/reservations", {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
-
-    case "create_circular":
-      if (userCtx.role !== "ADMIN") {
-        return { error: "Solo los administradores pueden enviar circulares." };
-      }
-      return call("/circulars", {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
-
-    default:
-      return { error: `Herramienta desconocida: ${name}` };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NÚCLEO: enviar un mensaje a CoCo y obtener respuesta
+// NÚCLEO: enviar un mensaje a CoCo, extraer XML y ejecutar
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function askCoCo(message, sessionId, userCtx) {
-  // Crear sesión nueva si no existe
-  if (!sessionId) {
-    const session = await anthropic.beta.sessions.create({
-      agent: process.env.COCO_AGENT_ID,
-      environment_id: process.env.COCO_ENVIRONMENT_ID,
-      title: `${userCtx.unit_id} — ${userCtx.channel || "web"}`,
-    }, BETA);
-    sessionId = session.id;
+  // 1. Obtener historial de la sesión (Redis/Memoria)
+  // Para simplificar, en este ejemplo asumimos que la sesión a corto plazo 
+  // se pasaría en 'messages' de Anthropic.
+  // Aquí usamos la Memoria a Largo Plazo (pgvector).
+  
+  const memories = await MemoryService.getRelevantMemories(
+    userCtx.community_id,
+    userCtx.unit_id || userCtx.id,
+    message,
+    5
+  );
+  
+  let memoriesText = "";
+  if (memories && memories.length > 0) {
+    memoriesText = "\n<recuerdos_relevantes>\n" + 
+      memories.map(m => `- [Hace un tiempo, Importancia: ${m.importance}/10]: ${m.content}`).join("\n") +
+      "\n</recuerdos_relevantes>\n";
   }
 
-  // Enviar mensaje
-  await anthropic.beta.sessions.events.create(sessionId, {
-    events: [{ type: "user.message", content: [{ type: "text", text: message }] }],
-  }, BETA);
+  const basePrompt = (userCtx.role === 'admin' || userCtx.role === 'conserje') 
+    ? PROMPT_CONSERJE 
+    : PROMPT_RESIDENTE;
 
-  // Leer stream + manejar tool calls en tiempo real
-  let response = "";
-  const stream = await anthropic.beta.sessions.events.stream(sessionId, BETA);
+  const systemPrompt = basePrompt + memoriesText;
 
-  for await (const event of stream) {
-    if (event.type === "agent.message") {
-      for (const block of event.content) {
-        if (block.type === "text") response += block.text;
-      }
-    }
+  // 2. Llamada a Claude (messages.create estándar)
+  const response = await anthropic.messages.create({
+    model: "claude-3-5-sonnet-20241022", // O el modelo que prefieras usar
+    max_tokens: 1500,
+    temperature: 0.2,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: message }
+    ]
+  });
 
-    if (event.type === "agent.tool_use") {
-      const result = await executeTool(event.name, event.input, userCtx);
-      await anthropic.beta.sessions.events.create(sessionId, {
-        events: [{
-          type: "tool_result",
-          tool_use_id: event.id,
-          content: JSON.stringify(result),
-        }],
-      }, BETA);
-    }
+  const rawText = response.content[0].text;
 
-    if (event.type === "session.status_idle") break;
-  }
+  // 3. Parsear el XML
+  const parsed = CoCoParser.parseLLMResponse(rawText, userCtx.role);
 
-  return { response, sessionId };
+  // 4. Ejecutar la acción
+  const actionResult = await ActionRouter.executeAction(userCtx.unit_id, parsed, userCtx);
+
+  // 5. Guardar la nueva interacción como un recuerdo
+  // En background (no bloqueamos la respuesta)
+  MemoryService.addMemory(
+    userCtx.community_id,
+    userCtx.unit_id || 'unknown',
+    userCtx.role,
+    `El residente dijo: "${message}". CoCo interpretó: "${parsed.decision.razon_breve}".`
+  ).catch(console.error);
+
+  // Devolvemos la respuesta formateada al usuario
+  return { 
+    response: parsed.respuestaUsuario, 
+    sessionId: sessionId || `sess_${Date.now()}` // Mock session id
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT WEB / MÓVIL
-// El usuario ya viene autenticado (JWT verificado por tu middleware)
-// POST /chat  →  { message, user_id, unit_id, role, community_id, token }
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post("/chat", async (req, res) => {
@@ -268,7 +107,7 @@ app.post("/chat", async (req, res) => {
 
   try {
     const saved = await getWebSession(user_id);
-    const userCtx = { unit_id, role, community_id, token, channel: "web" };
+    const userCtx = { id: user_id, unit_id, role, community_id, token, channel: "web" };
 
     const { response, sessionId } = await askCoCo(
       message,
@@ -287,14 +126,6 @@ app.post("/chat", async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WEBHOOK WHATSAPP (Twilio)
-// POST /webhook/whatsapp
-//
-// Flujo de auth:
-//   Paso 1 — primer mensaje → CoCo pide el número de depto
-//   Paso 2 — usuario responde "8B" → verificamos contra tu API
-//            (¿ese teléfono está registrado para ese depto?)
-//   OK  → sesión autenticada, CoCo atiende normal
-//   NOK → hasta 3 intentos, luego bloqueo temporal
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post("/webhook/whatsapp", async (req, res) => {
@@ -308,7 +139,6 @@ app.post("/webhook/whatsapp", async (req, res) => {
   }
 
   try {
-    // ── ¿Ya está autenticado? ──────────────────────────────────────────────
     const session = await getWhatsAppSession(waId);
 
     if (session?.auth_state === "verified") {
@@ -321,11 +151,9 @@ app.post("/webhook/whatsapp", async (req, res) => {
       return twiml(res, response);
     }
 
-    // ── Flujo de autenticación ─────────────────────────────────────────────
     const auth = (await getWhatsAppAuth(waId)) || { state: "pending", attempts: 0 };
 
     if (auth.attempts === 0) {
-      // Primera vez que escribe → saludar y pedir depto
       await setWhatsAppAuth(waId, { state: "pending", attempts: 1 });
       return twiml(res,
         "👋 Hola, soy *CoCo*, el asistente de tu comunidad.\n\n" +
@@ -334,7 +162,6 @@ app.post("/webhook/whatsapp", async (req, res) => {
       );
     }
 
-    // Usuario respondió → verificar en tu API
     const ok = await verifyResident(waId, message);
 
     if (ok.success) {
@@ -355,19 +182,16 @@ app.post("/webhook/whatsapp", async (req, res) => {
       );
     }
 
-    // Intento fallido
     const attempts = auth.attempts + 1;
     if (attempts > 3) {
       await clearWhatsAppAuth(waId);
       return twiml(res,
-        "No pude verificar tu identidad. Si crees que hay un error, " +
-        "contacta al administrador de tu comunidad."
+        "No pude verificar tu identidad. Si crees que hay un error, contacta al administrador de tu comunidad."
       );
     }
     await setWhatsAppAuth(waId, { state: "pending", attempts });
     return twiml(res,
-      `No encontré ese depto con tu número. Intento ${attempts - 1}/3. ` +
-      "¿Puedes revisar cómo aparece en tu app?"
+      `No encontré ese depto con tu número. Intento ${attempts - 1}/3. ¿Puedes revisar cómo aparece en tu app?`
     );
 
   } catch (err) {
@@ -375,12 +199,6 @@ app.post("/webhook/whatsapp", async (req, res) => {
     return twiml(res, "Ocurrió un error. Intenta de nuevo en unos segundos.");
   }
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VERIFICACIÓN DE RESIDENTE POR WHATSAPP
-// Tu API debe tener un endpoint que reciba { phone, unit } y
-// devuelva { unit_id, name, role, community_id, community_name, token }
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function verifyResident(waId, unitInput) {
   try {
@@ -396,10 +214,6 @@ async function verifyResident(waId, unitInput) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
 function twiml(res, text) {
   res.set("Content-Type", "text/xml");
   res.send(`<Response><Message>${esc(text)}</Message></Response>`);
@@ -409,7 +223,6 @@ function esc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 app.listen(process.env.PORT || 3000, () =>
   console.log(`CoCo Gateway en puerto ${process.env.PORT || 3000}`)
 );
