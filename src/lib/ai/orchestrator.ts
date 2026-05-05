@@ -116,6 +116,11 @@ export async function runMultiAgentTurn(
         }
     }
 
+    // Asegurar que el historial comience siempre con "user" para evitar Error 400
+    if (geminiHistory.length > 0 && geminiHistory[0].role !== 'user') {
+        geminiHistory.unshift({ role: 'user', text: '[USER]: (Inicia la sesión)' });
+    }
+
     // Agregar mensaje actual del usuario (asegurando alternancia)
     if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'user') {
         geminiHistory[geminiHistory.length - 1].text += `\n\n[USER]: ${userMessage}`;
@@ -207,7 +212,11 @@ export async function runMultiAgentTurn(
         const persona1 = CLASSMATE_PERSONAS[Math.floor(Math.random() * CLASSMATE_PERSONAS.length)];
         
         // Le damos contexto sobre lo que acaba de responder el tutor
-        geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
+        if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'model') {
+            geminiHistory[geminiHistory.length - 1].text += `\n\n[TUTORA]: ${tutorChatText}`;
+        } else {
+            geminiHistory.push({ role: 'model', text: `[TUTORA]: ${tutorChatText}` });
+        }
         
         // Forzamos un turno falso de "user" para romper la continuidad de la IA y que no asuma el rol anterior
         const classmate1History = [...geminiHistory];
@@ -225,7 +234,11 @@ export async function runMultiAgentTurn(
                 name: persona1.name,
                 text: classmate1FinalText
             });
-            geminiHistory.push({ role: 'model', text: `[${persona1.name}]: ${classmate1FinalText}` });
+            if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'model') {
+                geminiHistory[geminiHistory.length - 1].text += `\n\n[${persona1.name}]: ${classmate1FinalText}`;
+            } else {
+                geminiHistory.push({ role: 'model', text: `[${persona1.name}]: ${classmate1FinalText}` });
+            }
             
             // 3. INTERVENCIÓN DE CLASSMATE 2 (50% de probabilidad de que otro vecino le responda o acote algo)
             if (Math.random() < 0.5) {
