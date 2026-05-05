@@ -1,10 +1,5 @@
 import OpenAI from 'openai';
 
-// Inicializamos el cliente de OpenAI.
-// Asume que process.env.OPENAI_API_KEY está configurado.
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
 
 export class ImageService {
   /**
@@ -22,6 +17,10 @@ export class ImageService {
     }
 
     try {
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
       console.log(`[ImageService] Generando imagen con DALL-E 3: "${prompt.substring(0, 50)}..."`);
       const response = await openai.images.generate({
         model: "dall-e-3",
