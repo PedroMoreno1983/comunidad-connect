@@ -73,9 +73,12 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
                 const candidate = data?.candidates?.[0];
                 return (candidate?.content?.parts?.[0]?.text || "").trim();
             } else {
-                lastError = new Error(`Gemini API Error: ${res.status}`);
+                const errData = await res.text();
+                console.error(`Gemini API Error [${config.model}]:`, res.status, errData);
+                lastError = new Error(`Gemini [${config.model}]: ${res.status} - ${errData.substring(0, 150)}`);
             }
         } catch (err) {
+            console.error(`Network Error [${config.model}]:`, err);
             lastError = err;
         }
     }
