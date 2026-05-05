@@ -1,0 +1,431 @@
+/* ============================================
+   ESTILOS PARA COMPONENTE DE GRÁFICOS
+   ============================================ */
+
+/* Asegurar que los tooltips de Recharts sean visibles */
+.recharts-tooltip-wrapper {
+  z-index: 1000;
+}
+
+/* Mejorar legibilidad de tooltips */
+.recharts-default-tooltip {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.recharts-tooltip-label {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+.recharts-tooltip-item {
+  color: var(--text-secondary) !important;
+  padding: 2px 0 !important;
+}
+
+/* Leyenda del gráfico */
+.recharts-legend-wrapper {
+  padding-top: 16px !important;
+}
+
+.recharts-legend-item-text {
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+}
+
+/* Animaciones suaves para tabs */
+.tab-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.tab-button:hover {
+  transform: translateY(-1px);
+}
+
+.tab-button.active {
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+/* Selectores mejorados */
+.metric-selector {
+  transition: all 0.2s ease-in-out;
+}
+
+.metric-selector:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: scale(1.01);
+}
+
+.metric-selector:hover {
+  border-color: var(--primary);
+}
+
+/* Cards de estadísticas en el panel inferior */
+.stat-summary-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.stat-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading skeleton para gráficos */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.chart-skeleton {
+  background: linear-gradient(
+    to right,
+    var(--bg-body) 0%,
+    var(--border-color) 20%,
+    var(--bg-body) 40%,
+    var(--bg-body) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Botones de acción (IA, Informe) */
+.action-button {
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.action-button:hover::before {
+  left: 100%;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+/* Mejoras para dark mode */
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .recharts-text {
+  fill: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Responsive: ocultar leyenda en mobile */
+@media (max-width: 640px) {
+  .recharts-legend-wrapper {
+    display: none;
+  }
+  
+  /* Aumentar padding de tooltips en mobile para mejor touch */
+  .recharts-default-tooltip {
+    padding: 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* Asegurar que los gráficos no se desborden */
+.recharts-wrapper {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.recharts-surface {
+  overflow: visible;
+}
+
+/* Estados de error */
+.chart-error {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-left: 4px solid #ef4444;
+}
+
+.dark .chart-error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+/* Estados de carga */
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.chart-loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Filtros de período (Días/Semanas/Meses) */
+.period-filter {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.period-filter button {
+  padding: 8px 16px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  background: transparent;
+}
+
+.period-filter button:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.period-filter button.active {
+  background: var(--primary);
+  color: white;
+}
+
+.period-filter button:not(.active):hover {
+  background: var(--bg-body);
+}
+
+/* Gradientes para gráficos de área */
+.chart-gradient-blue {
+  --gradient-start: rgba(59, 130, 246, 0.3);
+  --gradient-end: rgba(59, 130, 246, 0);
+}
+
+.chart-gradient-green {
+  --gradient-start: rgba(16, 185, 129, 0.3);
+  --gradient-end: rgba(16, 185, 129, 0);
+}
+
+.chart-gradient-purple {
+  --gradient-start: rgba(139, 92, 246, 0.3);
+  --gradient-end: rgba(139, 92, 246, 0);
+}
+
+/* Mejoras de accesibilidad */
+.chart-container:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Ocultar elementos de Recharts que no son necesarios */
+.recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+  fill: var(--text-muted);
+}
+
+/* Mejorar contraste de líneas en gráficos */
+.recharts-line-curve,
+.recharts-area-curve {
+  stroke-width: 2.5;
+}
+
+/* Animaciones de entrada */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chart-section {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Personalización de scrollbar si hay overflow */
+.chart-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chart-container::-webkit-scrollbar-track {
+  background: var(--bg-body);
+  border-radius: 4px;
+}
+
+.chart-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.chart-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Fix para Safari - evitar corte de gráficos */
+@supports (-webkit-touch-callout: none) {
+  .recharts-wrapper {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Empty state mejorado */
+.chart-empty-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.chart-empty-state svg {
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+
+/* Badges de sentimiento */
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sentiment-badge.positive {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.sentiment-badge.negative {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.sentiment-badge.neutral {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+/* Transitions suaves para cambios de datos */
+.recharts-line,
+.recharts-area {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Print styles - optimizar para impresión */
+@media print {
+  .action-button,
+  .metric-selector,
+  .period-filter {
+    display: none !important;
+  }
+  
+  .recharts-wrapper {
+    page-break-inside: avoid;
+  }
+  
+  .chart-section {
+    background: white !important;
+  }
+}
+
+/* Variables CSS adicionales (si no existen en tu proyecto) */
+:root {
+  --chart-grid: rgba(0, 0, 0, 0.1);
+  --chart-text: #6b7280;
+  --chart-tooltip-bg: white;
+  --chart-tooltip-border: #e5e7eb;
+}
+
+.dark {
+  --chart-grid: rgba(255, 255, 255, 0.1);
+  --chart-text: #9ca3af;
+  --chart-tooltip-bg: #1f2937;
+  --chart-tooltip-border: #374151;
+}
+
+/* Asegurar que los iconos en botones estén alineados */
+.btn svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Mejoras para tabs con iconos */
+.tab-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-with-icon svg {
+  transition: transform 0.2s ease-in-out;
+}
+
+.tab-with-icon:hover svg {
+  transform: scale(1.1);
+}
+
+/* Efecto de brillo en gráfico activo */
+.chart-active {
+  position: relative;
+}
+
+.chart-active::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  border-radius: 12px;
+  opacity: 0.1;
+  z-index: -1;
+}
+
+/* Optimización de performance */
+.recharts-surface {
+  will-change: transform;
+}
+
+.recharts-wrapper {
+  contain: layout style paint;
+}

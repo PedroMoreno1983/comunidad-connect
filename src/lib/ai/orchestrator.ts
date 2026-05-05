@@ -1,5 +1,9 @@
 import { TUTOR_PROMPT } from './agents/tutor';
 import { CLASSMATE_PERSONAS } from './agents/classmate';
+import { ImageService } from './imageService';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { MemoryService } from '../../ai/memoryService.js';
 
 type MessageRole = 'user' | 'model';
 type AgentRole = 'system' | 'tutor' | 'classmate' | 'user';
@@ -87,7 +91,9 @@ export async function runMultiAgentTurn(
     apiKey: string,
     history: ChatMessage[],
     userMessage: string,
-    courseContent?: string
+    courseContent?: string,
+    userId?: string,
+    communityId?: string
 ): Promise<ChatMessage[]> {
     const newResponses: ChatMessage[] = [];
     const geminiHistory: {role: MessageRole, text: string}[] = [];
@@ -117,22 +123,37 @@ export async function runMultiAgentTurn(
         geminiHistory.push({ role: 'user', text: `[USER]: ${userMessage}` });
     }
 
+    // --- INTEGRACIÓN DE MEMORIA A LARGO PLAZO ---
+    let memoryContext = "";
+    if (userId && communityId) {
+        try {
+            const memories = await MemoryService.getRelevantMemories(communityId, userId, userMessage, 3);
+            if (memories && memories.length > 0) {
+                memoryContext = "\n\nRECUERDOS DE ESTE VECINO DE CLASES ANTERIORES:\n" + 
+                    memories.map((m: any) => `- ${m.content}`).join("\n") +
+                    "\nUsa esta información para personalizar tu respuesta si es relevante.";
+            }
+        } catch (e) {
+            console.warn("No se pudo obtener la memoria del agente:", e);
+        }
+    }
+
     // Gemini exige que si el ultimo no es user (casi imposible aca), o el primero no es user...
     // Pero con el SystemPrompt como 'user' instruction, Gemini suele aceptar si history empieza como model.
     try {
         // 1. TURNO DEL TUTOR
-        let tutorContextParam = "MODO PIZARRA REGLAS: Si usas la etiqueta <pizarra> ... </pizarra> DEBES incluir ayudas visuales. 1) Para imágenes: ![Alt](https://image.pollinations.ai/prompt/palabra-ingles-sin-espacios) (NUNCA uses espacios ni mayúsculas). 2) NUEVA CAPACIDAD: Para mostrar videos explicaivos reales de YouTube usa enlaces estándar: [Ver Video](https://www.youtube.com/watch?v=ID_EJEMPLO). La pizarra detectará mágicamente los enlaces de YouTube y los transformará en reproductores de video incrustados. Usa videos libremente si crees que aportan a la clase.";
+        let tutorContextParam = "MODO PIZARRA REGLAS: Si usas la etiqueta <pizarra> ... </pizarra> DEBES incluir ayudas visuales. 1) Para imágenes: Usa ESTRICTAMENTE la etiqueta XML <generar_imagen>Descripción detallada de lo que quieres mostrar, en inglés</generar_imagen>. NO uses Markdown para las imágenes. 2) NUEVA CAPACIDAD: Para mostrar videos explicaivos reales de YouTube usa enlaces estándar: [Ver Video](https://www.youtube.com/watch?v=ID_EJEMPLO). La pizarra detectará mágicamente los enlaces de YouTube y los transformará en reproductores de video incrustados. Usa videos libremente si crees que aportan a la clase.";
         
         // Forzar la pizarra visual al inicio de la conversación
         if (history.length <= 2) {
-            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título\n\n![Ilustracion](https://image.pollinations.ai/prompt/condominium)\n\n[Ver Video](https://www.youtube.com/watch?v=kR2C2B6u-M4)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1\n</pizarra>\n\n¡Fuera de esas etiquetas, saluda amigablemente en el chat.";
+            tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título\n\n<generar_imagen>A modern residential condominium building lobby, welcoming, warm lights</generar_imagen>\n\n[Ver Video](https://www.youtube.com/watch?v=kR2C2B6u-M4)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1\n</pizarra>\n\n¡Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
         const tutorCourseContext = courseContent 
             ? `\n\nCONTENIDO DEL CURSO: A continuación tienes el contenido estricto sobre el cual debes basar tu clase hoy. Úsalo como tu fuente principal de verdad:\n${courseContent}\n\n`
             : "";
 
-        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + "\n\n" + tutorContextParam, geminiHistory);
+        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory);
         
         let tutorChatText = sanitizeAgentResponse(rawTutorResponse);
         let tutorBlackboard = "";
@@ -151,6 +172,22 @@ export async function runMultiAgentTurn(
             if (fallbackMatch && fallbackMatch[1].length > 20) {
                tutorBlackboard = fallbackMatch[1].trim();
                tutorChatText = tutorChatText.replace(fallbackRegex, "").trim();
+            }
+        }
+
+        // --- INTERCEPTAR GENERACIÓN DE IMÁGENES (DALL-E 3) ---
+        if (tutorBlackboard) {
+            const imgRegex = /<generar_imagen>([\s\S]*?)<\/generar_imagen>/gi;
+            let imgMatch;
+            // Procesamos todas las imágenes que haya pedido
+            while ((imgMatch = imgRegex.exec(tutorBlackboard)) !== null) {
+                const prompt = imgMatch[1].trim();
+                const imgUrl = await ImageService.generateTutorImage(prompt);
+                if (imgUrl) {
+                    tutorBlackboard = tutorBlackboard.replace(imgMatch[0], `![Imagen Generada](${imgUrl})`);
+                } else {
+                    tutorBlackboard = tutorBlackboard.replace(imgMatch[0], ""); // Fallback si todo falla
+                }
             }
         }
 

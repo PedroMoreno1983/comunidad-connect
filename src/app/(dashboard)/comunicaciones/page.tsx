@@ -167,7 +167,7 @@ function OficialTab() {
                 {isLoading ? (
                     [1, 2, 3].map((i) => <SkeletonAnnouncement key={i} />)
                 ) : announcements.length === 0 ? (
-                    <EmptyState icon={Bell} title="Sin Comunicados" description="No hay avisos recientes. Te notificaremos cuando haya novedades." />
+                    <EmptyState icon={<Bell className="h-6 w-6" />} title="Sin Comunicados" description="No hay avisos recientes. Te notificaremos cuando haya novedades." />
                 ) : (
                     announcements.map((ann, idx) => {
                         const styles = getPriorityStyles(ann.priority);

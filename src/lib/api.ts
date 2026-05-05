@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Unit, WaterReading, MarketplaceItem } from './types';
+import { sendBookingConfirmation } from './email';
 
 // ==========================================
 // Water Consumption API
@@ -154,10 +155,8 @@ export const MarketplaceService = {
                 description: item.description,
                 price: Number(item.price),
                 category: item.category,
-                images: imageUrls,
-                seller_id: user.id,
-                allow_barter: item.allowBarter || false,
-                is_active: true
+                image_url: imageUrls.length > 0 ? imageUrls[0] : null,
+                seller_id: user.id
             })
             .select()
             .single();
@@ -246,13 +245,37 @@ export const AmenitiesService = {
                 ...bookingData,
                 status: 'confirmed'
             })
-            .select()
+            .select('*, amenities(name)')
             .single();
 
         if (error) {
             console.error("Error creating booking:", error);
             throw error;
         }
+
+        // Disparar email de confirmación (no bloquea si falla)
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('email, name')
+                .eq('id', bookingData.user_id)
+                .single();
+
+            if (profile?.email) {
+                await sendBookingConfirmation({
+                    to: profile.email,
+                    residentName: profile.name || 'Residente',
+                    amenityName: (data as { amenities?: { name: string } }).amenities?.name || 'Instalación',
+                    date: bookingData.date,
+                    startTime: bookingData.start_time,
+                    endTime: bookingData.end_time,
+                });
+            }
+        } catch (emailError) {
+            // El email falla silenciosamente — la reserva ya fue creada
+            console.warn('[Email] Booking confirmation failed to send:', emailError);
+        }
+
         return data;
     }
 };

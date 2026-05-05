@@ -141,7 +141,7 @@ export default function ExpensesPage() {
     if (!user?.unitId && !isLoading) {
         return (
             <EmptyState
-                icon={DollarSign}
+                icon={<DollarSign className="h-6 w-6" />}
                 title="Unidad no asignada"
                 description="Tu cuenta aún no tiene una unidad asignada. Contacta al administrador de tu comunidad para vincularte."
             />
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
                 {!isLoading && expenses.length === 0 && (
                     <div className="px-6 pb-6">
                         <EmptyState
-                            icon={DollarSign}
+                            icon={<DollarSign className="h-6 w-6" />}
                             title="Sin Registros"
                             description="No hay registros de gastos comunes disponibles para esta unidad en este momento."
                         />
