@@ -1,29 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
-import { VoyageAIClient } from 'voyageai';
 
 // Inicializar cliente Supabase (asume que estas variables existen en el entorno)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Inicializar cliente Voyage AI para embeddings
-const voyageClient = new VoyageAIClient({ apiKey: process.env.VOYAGE_API_KEY });
-
 
 export class MemoryService {
   /**
    * Genera un vector de embeddings usando Voyage AI (recomendado por Anthropic).
-   * Modelo: voyage-3 (dimensión 1024).
+   * Modelo: voyage-3 (dimensión 1024). Usando fetch para evitar bugs del SDK en Vercel.
    */
   static async embedText(text) {
     try {
-      const response = await voyageClient.embed({
-        input: text,
-        model: "voyage-3", 
+      const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.VOYAGE_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: [text],
+          model: "voyage-3"
+        })
       });
-      return response.data[0].embedding;
+      
+      const data = await response.json();
+      return data.data[0].embedding;
     } catch (err) {
-      console.error("Error al generar embedding con Voyage AI:", err);
+      console.error("Error al generar embedding con Voyage AI REST:", err);
       // Fallback seguro de 1024 ceros si falla la API
       return Array(1024).fill(0);
     }
