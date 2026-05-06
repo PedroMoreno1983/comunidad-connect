@@ -65,6 +65,9 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 
 NO uses herramientas para preguntas generales, orientación o explicar la plataforma.
 
+Si el residente pregunta por el estado de un reclamo, caso o reporte hecho por chat, usa 'list_my_claims' cuando tengas unidad disponible y termina con:
+NAVEGAR:/resident/cases
+
 ## Navegación
 Cuando sea útil llevar al usuario a una sección, incluye al FINAL de tu respuesta (en línea separada):
 NAVEGAR:/ruta
@@ -80,6 +83,7 @@ Rutas para Residentes:
 - /marketplace → Marketplace vecinal y Supermercado a domicilio (la página tiene dos pestañas: "Marketplace" para comprar/vender entre vecinos, y "Supermercado" para hacer pedidos de productos a domicilio con carrito de compras)
 - /services → Directorio de Servicios y Mantención
 - /services/my-requests → Mis Solicitudes de mantención
+- /resident/cases → Mis Casos CoCo, seguimiento de reportes hechos por chat
 - /resident/invitations → Mis invitaciones y códigos QR
 - /votaciones → Votaciones y asambleas
 - /resident/finances → Mis Gastos Comunes (cuánto debo, pagos)
