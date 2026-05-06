@@ -5,7 +5,7 @@ import {
     Calendar, AlertCircle, Clock, CheckCircle2,
     CalendarDays, Wrench, TrendingUp,
     AlertTriangle, History, ArrowRight, Activity,
-    Check, Info, Bot, ShieldAlert, RefreshCw
+    Check, Info, Bot, ShieldAlert, RefreshCw, MessageSquare, Send
 } from "lucide-react";
 import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
@@ -17,6 +17,32 @@ import {
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
+type CoCoCase = {
+    id: string;
+    title: string;
+    type: string;
+    category: string;
+    urgency: 'baja' | 'media' | 'alta' | 'emergencia';
+    action: string;
+    status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+    reason: string | null;
+    source_message: string;
+    assistant_reply: string | null;
+    unit_label: string | null;
+    created_at: string;
+};
+
+type CoCoCaseEvent = {
+    id: string;
+    case_id: string;
+    event_type: 'created' | 'status_changed' | 'comment' | 'system';
+    from_status: string | null;
+    to_status: string | null;
+    body: string | null;
+    actor_role: string | null;
+    created_at: string;
+};
+
 export function MaintenanceDashboard() {
     const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
     const [assets, setAssets] = useState<BuildingAsset[]>([]);
@@ -24,24 +50,15 @@ export function MaintenanceDashboard() {
     const [cocoCases, setCocoCases] = useState<CoCoCase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [caseUpdatingId, setCaseUpdatingId] = useState<string | null>(null);
+    const [selectedCase, setSelectedCase] = useState<CoCoCase | null>(null);
+    const [isCaseDetailOpen, setIsCaseDetailOpen] = useState(false);
+    const [caseEvents, setCaseEvents] = useState<CoCoCaseEvent[]>([]);
+    const [caseEventsLoading, setCaseEventsLoading] = useState(false);
+    const [caseComment, setCaseComment] = useState('');
+    const [caseCommentSaving, setCaseCommentSaving] = useState(false);
     const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
-
-    type CoCoCase = {
-        id: string;
-        title: string;
-        type: string;
-        category: string;
-        urgency: 'baja' | 'media' | 'alta' | 'emergencia';
-        action: string;
-        status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
-        reason: string | null;
-        source_message: string;
-        assistant_reply: string | null;
-        unit_label: string | null;
-        created_at: string;
-    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -155,6 +172,63 @@ export function MaintenanceDashboard() {
             });
         } finally {
             setCaseUpdatingId(null);
+        }
+    };
+
+    const fetchCaseEvents = async (caseId: string) => {
+        setCaseEventsLoading(true);
+        try {
+            const response = await fetch(getApiUrl(`/api/coco/cases/${caseId}/events`));
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'No se pudo cargar la bitacora');
+            setCaseEvents(data.events || []);
+        } catch (error) {
+            toast({
+                title: "No se pudo cargar el detalle",
+                description: error instanceof Error ? error.message : 'Intentalo nuevamente.',
+                variant: "destructive"
+            });
+        } finally {
+            setCaseEventsLoading(false);
+        }
+    };
+
+    const openCaseDetail = (item: CoCoCase) => {
+        setSelectedCase(item);
+        setCaseComment('');
+        setCaseEvents([]);
+        setIsCaseDetailOpen(true);
+        fetchCaseEvents(item.id);
+    };
+
+    const handleAddCaseComment = async () => {
+        if (!selectedCase || !caseComment.trim()) return;
+
+        setCaseCommentSaving(true);
+        try {
+            const response = await fetch(getApiUrl(`/api/coco/cases/${selectedCase.id}/events`), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ body: caseComment }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'No se pudo comentar');
+
+            setCaseEvents(prev => [data.event, ...prev]);
+            setCaseComment('');
+            toast({
+                title: "Comentario agregado",
+                description: "Quedo en la bitacora y se notifico al residente.",
+                variant: "success"
+            });
+        } catch (error) {
+            toast({
+                title: "No se pudo comentar",
+                description: error instanceof Error ? error.message : 'Intentalo nuevamente.',
+                variant: "destructive"
+            });
+        } finally {
+            setCaseCommentSaving(false);
         }
     };
 
@@ -353,6 +427,13 @@ export function MaintenanceDashboard() {
 
                                         <div className="flex items-center gap-2 md:justify-end">
                                             <button
+                                                onClick={() => openCaseDetail(item)}
+                                                className="inline-flex h-11 items-center gap-2 rounded-xl border border-subtle px-4 text-xs font-black cc-text-secondary transition-colors hover:bg-elevated"
+                                            >
+                                                <MessageSquare className="h-4 w-4" />
+                                                Detalle
+                                            </button>
+                                            <button
                                                 onClick={() => handleUpdateCaseStatus(item.id, 'in_progress')}
                                                 disabled={caseUpdatingId === item.id || isClosed}
                                                 className="inline-flex h-11 items-center gap-2 rounded-xl border border-subtle px-4 text-xs font-black cc-text-secondary transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-40"
@@ -516,6 +597,100 @@ export function MaintenanceDashboard() {
                                         Marcar como Completada
                                     </Button>
                                 )}
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* CoCo Case Detail Dialog */}
+            <Dialog open={isCaseDetailOpen} onOpenChange={setIsCaseDetailOpen}>
+                <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[760px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2rem] p-8 shadow-2xl">
+                    {selectedCase && (
+                        <div className="space-y-6">
+                            <div className="space-y-3 pr-8">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                        {selectedCase.status.replace('_', ' ')}
+                                    </span>
+                                    <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${selectedCase.urgency === 'emergencia' || selectedCase.urgency === 'alta' ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                                        {selectedCase.urgency}
+                                    </span>
+                                    <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                        {selectedCase.category}
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-black cc-text-primary">{selectedCase.title}</h3>
+                                <p className="text-sm font-medium cc-text-secondary">{selectedCase.source_message}</p>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="rounded-2xl bg-elevated p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">Decision CoCo</p>
+                                    <p className="mt-2 text-sm font-bold cc-text-secondary">{selectedCase.reason || 'Sin razon registrada.'}</p>
+                                </div>
+                                <div className="rounded-2xl bg-elevated p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">Respuesta al residente</p>
+                                    <p className="mt-2 line-clamp-4 text-sm font-bold cc-text-secondary">{selectedCase.assistant_reply || 'Sin respuesta registrada.'}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-black uppercase tracking-widest cc-text-primary">Bitacora</h4>
+                                {caseEventsLoading ? (
+                                    <div className="space-y-3">
+                                        {[0, 1, 2].map(item => <div key={item} className="h-16 animate-pulse rounded-2xl bg-elevated" />)}
+                                    </div>
+                                ) : caseEvents.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-subtle p-6 text-center text-sm font-bold cc-text-secondary">
+                                        Sin movimientos registrados todavia.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {caseEvents.map(event => (
+                                            <div key={event.id} className="rounded-2xl border border-subtle bg-surface p-4">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                                        {event.event_type === 'status_changed' ? 'Cambio de estado' : event.event_type}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold cc-text-tertiary">
+                                                        {new Date(event.created_at).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-2 text-sm font-medium cc-text-secondary">{event.body || 'Movimiento registrado.'}</p>
+                                                {event.from_status && event.to_status && (
+                                                    <p className="mt-2 text-[11px] font-bold cc-text-tertiary">
+                                                        {event.from_status} {"->"} {event.to_status}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="rounded-2xl border border-subtle bg-elevated/40 p-4">
+                                <label className="block text-[10px] font-black uppercase tracking-widest cc-text-tertiary">
+                                    Agregar comentario visible
+                                </label>
+                                <textarea
+                                    value={caseComment}
+                                    onChange={event => setCaseComment(event.target.value)}
+                                    rows={3}
+                                    maxLength={1200}
+                                    placeholder="Ej: Se coordino visita tecnica para revisar la filtracion."
+                                    className="mt-3 w-full resize-none rounded-xl border border-subtle bg-surface px-4 py-3 text-sm font-medium cc-text-primary outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                />
+                                <div className="mt-3 flex justify-end">
+                                    <button
+                                        onClick={handleAddCaseComment}
+                                        disabled={caseCommentSaving || !caseComment.trim()}
+                                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-xs font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        {caseCommentSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                        Comentar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
