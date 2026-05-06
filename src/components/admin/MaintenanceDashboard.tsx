@@ -5,7 +5,7 @@ import {
     Calendar, AlertCircle, Clock, CheckCircle2,
     CalendarDays, Wrench, TrendingUp,
     AlertTriangle, History, ArrowRight, Activity,
-    Check, Info, Bot, ShieldAlert, RefreshCw, MessageSquare, Send
+    Check, Info, Bot, ShieldAlert, RefreshCw, MessageSquare, Send, Filter
 } from "lucide-react";
 import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
@@ -56,6 +56,8 @@ export function MaintenanceDashboard() {
     const [caseEventsLoading, setCaseEventsLoading] = useState(false);
     const [caseComment, setCaseComment] = useState('');
     const [caseCommentSaving, setCaseCommentSaving] = useState(false);
+    const [caseStatusFilter, setCaseStatusFilter] = useState<'active' | 'resolved' | 'all'>('active');
+    const [caseUrgencyFilter, setCaseUrgencyFilter] = useState<'all' | 'hot'>('all');
     const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
@@ -239,6 +241,16 @@ export function MaintenanceDashboard() {
     const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
     const openCocoCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress').length;
     const emergencyCocoCases = cocoCases.filter(item => item.urgency === 'emergencia' || item.urgency === 'alta').length;
+    const visibleCocoCases = cocoCases.filter(item => {
+        const isActive = item.status === 'open' || item.status === 'in_progress';
+        const isResolved = item.status === 'resolved' || item.status === 'closed';
+        const isHot = item.urgency === 'emergencia' || item.urgency === 'alta';
+
+        if (caseStatusFilter === 'active' && !isActive) return false;
+        if (caseStatusFilter === 'resolved' && !isResolved) return false;
+        if (caseUrgencyFilter === 'hot' && !isHot) return false;
+        return true;
+    });
     const cocoInsights = (() => {
         const activeCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress');
         const byCategory = activeCases.reduce<Record<string, number>>((acc, item) => {
@@ -349,7 +361,36 @@ export function MaintenanceDashboard() {
                             <h2 className="text-2xl font-black cc-text-primary">Casos detectados por IA</h2>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex rounded-2xl border border-subtle bg-surface p-1">
+                            {[
+                                { key: 'active', label: 'Activos' },
+                                { key: 'resolved', label: 'Resueltos' },
+                                { key: 'all', label: 'Todos' },
+                            ].map(option => (
+                                <button
+                                    key={option.key}
+                                    onClick={() => setCaseStatusFilter(option.key as typeof caseStatusFilter)}
+                                    className={`rounded-xl px-3 py-1.5 text-[11px] font-black transition-colors ${
+                                        caseStatusFilter === option.key
+                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                            : 'cc-text-secondary hover:bg-elevated'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setCaseUrgencyFilter(prev => prev === 'hot' ? 'all' : 'hot')}
+                            className={`rounded-2xl px-4 py-2 text-xs font-black transition-colors ${
+                                caseUrgencyFilter === 'hot'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
+                            }`}
+                        >
+                            Solo urgentes
+                        </button>
                         <span className="rounded-2xl bg-elevated px-4 py-2 text-xs font-black cc-text-secondary">
                             {openCocoCases} abiertos
                         </span>
@@ -387,9 +428,23 @@ export function MaintenanceDashboard() {
                                 Cuando un residente reporte filtraciones, ruidos, seguridad o mantencion, apareceran aqui.
                             </p>
                         </div>
+                    ) : visibleCocoCases.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+                            <Filter className="h-9 w-9 text-slate-300" />
+                            <p className="text-sm font-bold cc-text-secondary">No hay casos para estos filtros.</p>
+                            <button
+                                onClick={() => {
+                                    setCaseStatusFilter('all');
+                                    setCaseUrgencyFilter('all');
+                                }}
+                                className="rounded-xl bg-elevated px-4 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                            >
+                                Limpiar filtros
+                            </button>
+                        </div>
                     ) : (
                         <div className="divide-y divide-subtle">
-                            {cocoCases.map(item => {
+                            {visibleCocoCases.map(item => {
                                 const isHot = item.urgency === 'emergencia' || item.urgency === 'alta';
                                 const isClosed = item.status === 'resolved' || item.status === 'closed';
 
