@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
             responses: [{
                 id: `sys-err-${Date.now()}`,
                 role: 'system',
-                text: `Error de los modelos de IA: ${error instanceof Error ? error.message : "Desconocido"}. Revisa los logs o tu clave de API.`
+                text: 'La sala de IA tuvo una intermitencia. Intenta de nuevo en unos segundos; la clase sigue disponible.'
             }]
         }, { status: 200 });
     }

@@ -25,8 +25,9 @@ REGLAS ABSOLUTAS:
 `;
 
 async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { mimeType: string, data: string }) {
-    // Usamos el modelo rápido y barato ideal para parsear. gemini-flash-latest es el más compatible con esta clave.
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    // Usamos un ID estable de Gemini; los alias "-latest" pueden saturarse o cambiar.
+    const model = process.env.GEMINI_EXTRACT_MODEL || "gemini-2.5-flash-lite";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     // Configurar Gemini para responder en JSON estricto
     const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: "Extrae a todos los residentes de este archivo. Si el archivo incluye imágenes, escaneos o texto sucio, léelo cuidadosamente e ignora el ruido.\n\n" }];
