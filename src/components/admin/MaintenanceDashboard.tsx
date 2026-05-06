@@ -158,6 +158,49 @@ export function MaintenanceDashboard() {
     const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
     const openCocoCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress').length;
     const emergencyCocoCases = cocoCases.filter(item => item.urgency === 'emergencia' || item.urgency === 'alta').length;
+    const cocoInsights = (() => {
+        const activeCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress');
+        const byCategory = activeCases.reduce<Record<string, number>>((acc, item) => {
+            acc[item.category] = (acc[item.category] || 0) + 1;
+            return acc;
+        }, {});
+        const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+        const oldestOpen = activeCases
+            .slice()
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+
+        const insights: { title: string; body: string; tone: 'red' | 'amber' | 'blue' | 'emerald' }[] = [];
+        if (emergencyCocoCases > 0) {
+            insights.push({
+                title: 'Prioridad operacional',
+                body: `${emergencyCocoCases} caso(s) de alta prioridad requieren seguimiento visible.`,
+                tone: 'red',
+            });
+        }
+        if (topCategory && topCategory[1] >= 2) {
+            insights.push({
+                title: 'Patron recurrente',
+                body: `${topCategory[1]} caso(s) abiertos se concentran en ${topCategory[0]}. Conviene revisar causa comun.`,
+                tone: 'amber',
+            });
+        }
+        if (oldestOpen) {
+            const hours = Math.max(1, Math.round((Date.now() - new Date(oldestOpen.created_at).getTime()) / 36e5));
+            insights.push({
+                title: 'Caso mas antiguo',
+                body: `${oldestOpen.title.slice(0, 70)}${oldestOpen.title.length > 70 ? '...' : ''} lleva ${hours} h abierto.`,
+                tone: 'blue',
+            });
+        }
+        if (insights.length === 0) {
+            insights.push({
+                title: 'Sin alertas acumuladas',
+                body: 'La cola CoCo no muestra concentraciones criticas en este momento.',
+                tone: 'emerald',
+            });
+        }
+        return insights.slice(0, 3);
+    })();
 
     return (
         <div className="space-y-12">
@@ -236,6 +279,25 @@ export function MaintenanceDashboard() {
                 </div>
 
                 <div className="overflow-hidden rounded-[2rem] border border-subtle bg-surface shadow-xl shadow-slate-200/20 dark:shadow-black/30">
+                    <div className="grid gap-3 border-b border-subtle bg-elevated/40 p-4 md:grid-cols-3">
+                        {cocoInsights.map(insight => (
+                            <div
+                                key={insight.title}
+                                className={`rounded-2xl border p-4 ${
+                                    insight.tone === 'red'
+                                        ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200'
+                                        : insight.tone === 'amber'
+                                            ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                            : insight.tone === 'blue'
+                                                ? 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200'
+                                                : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                }`}
+                            >
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{insight.title}</p>
+                                <p className="mt-1 text-xs font-bold leading-relaxed">{insight.body}</p>
+                            </div>
+                        ))}
+                    </div>
                     {cocoCases.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
                             <Bot className="h-10 w-10 text-slate-300" />
