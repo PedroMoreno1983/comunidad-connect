@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import { getApiUrl } from "@/lib/config";
 import {
     Dialog,
     DialogContent
@@ -128,27 +129,33 @@ export function MaintenanceDashboard() {
 
     const handleUpdateCaseStatus = async (caseId: string, status: CoCoCase['status']) => {
         setCaseUpdatingId(caseId);
-        const { error } = await supabase
-            .from('coco_cases')
-            .update({ status })
-            .eq('id', caseId);
-        setCaseUpdatingId(null);
+        try {
+            const response = await fetch(getApiUrl(`/api/coco/cases/${caseId}/status`), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            const data = await response.json().catch(() => ({}));
 
-        if (error) {
+            if (!response.ok) {
+                throw new Error(data.error || 'No se pudo actualizar');
+            }
+
+            setCocoCases(prev => prev.map(item => item.id === caseId ? { ...item, ...data.case } : item));
+            toast({
+                title: "Caso actualizado",
+                description: status === 'resolved' ? "Marcado como resuelto y residente notificado." : "Estado cambiado y residente notificado.",
+                variant: "success"
+            });
+        } catch (error) {
             toast({
                 title: "No se pudo actualizar",
-                description: error.message,
+                description: error instanceof Error ? error.message : 'Intentalo nuevamente.',
                 variant: "destructive"
             });
-            return;
+        } finally {
+            setCaseUpdatingId(null);
         }
-
-        setCocoCases(prev => prev.map(item => item.id === caseId ? { ...item, status } : item));
-        toast({
-            title: "Caso actualizado",
-            description: status === 'resolved' ? "Marcado como resuelto." : "Estado cambiado.",
-            variant: "success"
-        });
     };
 
     if (isLoading) return <div className="p-8 text-center">Cargando dashboard de mantenimiento...</div>;
