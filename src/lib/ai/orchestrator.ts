@@ -66,6 +66,26 @@ function buildFallbackTurn(history: ChatMessage[], userMessage: string): ChatMes
     }];
 }
 
+function hasMarkdownImage(markdown: string) {
+    return /!\[[^\]]*\]\([^)]+\)/.test(markdown) || /<img\b/i.test(markdown);
+}
+
+function buildBlackboardImagePrompt(blackboard: string) {
+    const brief = blackboard
+        .replace(/<[^>]+>/g, " ")
+        .replace(/[#*_`>\-\[\]\(\)]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 500);
+
+    return [
+        "Editorial training illustration for a Chilean residential condominium community classroom.",
+        "Show realistic condominium residents, concierge staff, maintenance or shared spaces depending on this lesson topic.",
+        "Warm, modern, practical, vivid lighting, no text, no logos, professional educational style.",
+        `Lesson topic: ${brief || "condominium community management and good coexistence"}`,
+    ].join(" ");
+}
+
 /**
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
@@ -187,6 +207,34 @@ export async function runMultiAgentTurn(
             tutorContextParam = "OBLIGATORIO EN ESTE TURNO: Debes generar contenido para la pizarra. FORMATO ESTRICTO DE EJEMPLO:\n<pizarra>\n# 🎨 Título\n\n<generar_imagen>A modern residential condominium building lobby, welcoming, warm lights</generar_imagen>\n\n[Ver Video](https://www.youtube.com/watch?v=kR2C2B6u-M4)\n\n## 📋 Puntos Clave\n\n* ✅ Punto 1\n</pizarra>\n\n¡Fuera de esas etiquetas, saluda amigablemente en el chat.";
         }
 
+        tutorContextParam = history.length <= 2
+            ? [
+                "OBLIGATORIO EN ESTE TURNO: Debes generar una pizarra visual y entretenida.",
+                "FORMATO ESTRICTO:",
+                "<pizarra>",
+                "# Titulo corto de la leccion",
+                "",
+                "<generar_imagen>A realistic warm educational scene inside a Chilean condominium community, residents and concierge learning together, modern building common area, vivid light, no text, no logos</generar_imagen>",
+                "",
+                "## Idea central",
+                "- **Concepto clave:** explicacion corta.",
+                "- **Caso practico:** ejemplo concreto del edificio.",
+                "- **Decision CoCo:** que accion conviene tomar.",
+                "</pizarra>",
+                "",
+                "Fuera de esas etiquetas, saluda brevemente y haz una pregunta."
+            ].join("\n")
+            : [
+                "MODO PIZARRA REGLAS:",
+                "Si actualizas la pizarra, usa <pizarra>...</pizarra>.",
+                "Dentro de la pizarra debes usar Markdown expresivo: titulos cortos, bullets, tablas simples si ayudan, y **negritas** para conceptos clave.",
+                "Toda pizarra nueva debe incluir una imagen visual con esta etiqueta exacta:",
+                "<generar_imagen>Detailed English prompt for a vivid realistic educational image, no text, no logos</generar_imagen>",
+                "No uses imagenes Markdown directamente; el sistema convertira <generar_imagen> en una imagen real.",
+                "En el chat tambien puedes usar **negritas** para ideas importantes, pero responde en un parrafo breve.",
+                "Evita listas largas sin jerarquia visual."
+            ].join("\n");
+
         const tutorCourseContext = courseContent 
             ? `\n\nCONTENIDO DEL CURSO: A continuación tienes el contenido estricto sobre el cual debes basar tu clase hoy. Úsalo como tu fuente principal de verdad:\n${courseContent}\n\n`
             : "";
@@ -216,15 +264,23 @@ export async function runMultiAgentTurn(
         // --- INTERCEPTAR GENERACIÓN DE IMÁGENES (DALL-E 3) ---
         if (tutorBlackboard) {
             const imgRegex = /<generar_imagen>([\s\S]*?)<\/generar_imagen>/gi;
-            let imgMatch;
+            const imageRequests = [...tutorBlackboard.matchAll(imgRegex)];
             // Procesamos todas las imágenes que haya pedido
-            while ((imgMatch = imgRegex.exec(tutorBlackboard)) !== null) {
+            for (const imgMatch of imageRequests) {
                 const prompt = imgMatch[1].trim();
                 const imgUrl = await ImageService.generateTutorImage(prompt);
                 if (imgUrl) {
                     tutorBlackboard = tutorBlackboard.replace(imgMatch[0], `![Imagen Generada](${imgUrl})`);
                 } else {
                     tutorBlackboard = tutorBlackboard.replace(imgMatch[0], ""); // Fallback si todo falla
+                }
+            }
+
+            if (!hasMarkdownImage(tutorBlackboard)) {
+                const autoPrompt = buildBlackboardImagePrompt(tutorBlackboard);
+                const imgUrl = await ImageService.generateTutorImage(autoPrompt);
+                if (imgUrl) {
+                    tutorBlackboard = `![Imagen de apoyo](${imgUrl})\n\n${tutorBlackboard}`;
                 }
             }
         }

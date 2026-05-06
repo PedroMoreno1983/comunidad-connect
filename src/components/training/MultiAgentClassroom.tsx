@@ -36,6 +36,33 @@ interface MultiAgentClassroomProps {
     courseContent?: string;
 }
 
+function ChatMarkdown({ text }: { text: string }) {
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+                p: ({ children }) => (
+                    <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap">{children}</p>
+                ),
+                strong: ({ children }) => (
+                    <strong className="font-black text-current">{children}</strong>
+                ),
+                em: ({ children }) => (
+                    <em className="font-semibold italic text-current">{children}</em>
+                ),
+                ul: ({ children }) => (
+                    <ul className="list-disc pl-4 space-y-1 text-[13px] sm:text-sm leading-relaxed">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                    <ol className="list-decimal pl-4 space-y-1 text-[13px] sm:text-sm leading-relaxed">{children}</ol>
+                ),
+            }}
+        >
+            {text}
+        </ReactMarkdown>
+    );
+}
+
 export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps) {
     const { user } = useAuth();
 
@@ -258,7 +285,8 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
 
                         <div className="flex-1 overflow-y-auto px-2 relative z-10 prose prose-slate dark:prose-invert max-w-none
                             prose-headings:font-black prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                            prose-a:text-brand-500 prose-strong:text-brand-600 dark:prose-strong:text-brand-400">
+                            prose-a:text-brand-500 prose-strong:text-brand-600 dark:prose-strong:text-brand-400
+                            prose-img:w-full prose-img:max-h-[360px] prose-img:object-cover prose-img:rounded-2xl prose-img:shadow-xl prose-img:border prose-img:border-subtle">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={blackboardContent.substring(0, 50)}
@@ -319,7 +347,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                     ${msg.role === 'classmate' ? 'bg-warning-bg cc-text-primary border border-amber-100 dark:border-amber-500/20 rounded-bl-none ml-6' : ''}
                                     ${msg.role === 'system' ? 'bg-transparent text-slate-400 text-xs text-center border-b border-subtle' : ''}
                                 `}>
-                                    <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                                    <ChatMarkdown text={msg.text} />
                                 </div>
                             </motion.div>
                         ))}
