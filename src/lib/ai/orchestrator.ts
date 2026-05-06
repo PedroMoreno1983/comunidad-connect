@@ -1,6 +1,7 @@
 import { TUTOR_PROMPT } from './agents/tutor';
 import { CLASSMATE_PERSONAS } from './agents/classmate';
 import { ImageService } from './imageService';
+import { recordAiEvent } from './telemetry';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { MemoryService } from '../../ai/memoryService.js';
@@ -129,6 +130,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
 
     for (const model of getGeminiModels()) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const startedAt = Date.now();
         
         try {
             const res = await fetch(url, {
@@ -141,14 +143,50 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
                 const data = await res.json();
                 const candidate = data?.candidates?.[0];
                 const text = (candidate?.content?.parts?.[0]?.text || "").trim();
-                if (text) return text;
+                if (text) {
+                    recordAiEvent({
+                        provider: 'gemini',
+                        feature: 'training.multi_agent',
+                        status: 'success',
+                        model,
+                        latencyMs: Date.now() - startedAt,
+                        promptChars: systemPrompt.length + history.reduce((sum, msg) => sum + msg.text.length, 0),
+                        outputChars: text.length,
+                    });
+                    return text;
+                }
                 errors.push(`[${model}]: empty response (${candidate?.finishReason || "unknown"})`);
+                recordAiEvent({
+                    provider: 'gemini',
+                    feature: 'training.multi_agent',
+                    status: 'error',
+                    model,
+                    latencyMs: Date.now() - startedAt,
+                    error: `empty response (${candidate?.finishReason || "unknown"})`,
+                });
             } else {
                 const errData = await res.text();
-                errors.push(`[${model}]: ${res.status} - ${extractGeminiError(errData).substring(0, 180)}`);
+                const error = extractGeminiError(errData).substring(0, 180);
+                errors.push(`[${model}]: ${res.status} - ${error}`);
+                recordAiEvent({
+                    provider: 'gemini',
+                    feature: 'training.multi_agent',
+                    status: 'error',
+                    model,
+                    latencyMs: Date.now() - startedAt,
+                    error,
+                });
             }
-        } catch {
+        } catch (error) {
             errors.push(`[${model}]: Network Error`);
+            recordAiEvent({
+                provider: 'gemini',
+                feature: 'training.multi_agent',
+                status: 'error',
+                model,
+                latencyMs: Date.now() - startedAt,
+                error,
+            });
         }
     }
 
@@ -388,6 +426,13 @@ export async function runMultiAgentTurn(
 
     } catch (err) {
         console.error("MultiAgent Orchestrator Error:", err);
+        recordAiEvent({
+            provider: 'system',
+            feature: 'training.multi_agent',
+            status: 'fallback',
+            fallbackUsed: 'auto_tutor_turn',
+            error: err,
+        });
         return buildFallbackTurn(history, userMessage);
     }
 }
