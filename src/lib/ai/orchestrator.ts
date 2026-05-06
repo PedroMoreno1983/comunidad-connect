@@ -47,11 +47,13 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
     };
 
     const configs = [
-        { ver: "v1beta", model: "gemini-1.5-flash-latest" },
-        { ver: "v1beta", model: "gemini-2.0-flash-exp" }
+        { ver: "v1beta", model: "gemini-flash-latest" },
+        { ver: "v1beta", model: "gemini-1.5-flash" },
+        { ver: "v1beta", model: "gemini-1.5-pro" },
+        { ver: "v1", model: "gemini-pro" }
     ];
 
-    let lastError = null;
+    let errors: string[] = [];
 
     for (const config of configs) {
         const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${apiKey}`;
@@ -69,16 +71,14 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
                 return (candidate?.content?.parts?.[0]?.text || "").trim();
             } else {
                 const errData = await res.text();
-                console.error(`Gemini API Error [${config.model}]:`, res.status, errData);
-                lastError = new Error(`Gemini [${config.model}]: ${res.status} - ${errData.substring(0, 150)}`);
+                errors.push(`[${config.model}]: ${res.status} - ${errData.substring(0, 150)}`);
             }
         } catch (err) {
-            console.error(`Network Error [${config.model}]:`, err);
-            lastError = err;
+            errors.push(`[${config.model}]: Network Error`);
         }
     }
 
-    throw lastError || new Error("All Gemini configurations failed");
+    throw new Error(`All Gemini configs failed: \n${errors.join('\n')}`);
 }
 
 /**
