@@ -1,22 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import {
     Calendar, AlertCircle, Clock, CheckCircle2,
-    CalendarDays, Wrench, BarChart3, TrendingUp,
+    CalendarDays, Wrench, TrendingUp,
     AlertTriangle, History, ArrowRight, Activity,
-    Check, X, Trash2, Info
+    Check, Info, Bot, ShieldAlert, RefreshCw
 } from "lucide-react";
 import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import {
     Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter
+    DialogContent
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -25,19 +20,41 @@ export function MaintenanceDashboard() {
     const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
     const [assets, setAssets] = useState<BuildingAsset[]>([]);
     const [logs, setLogs] = useState<MaintenanceLog[]>([]);
+    const [cocoCases, setCocoCases] = useState<CoCoCase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [caseUpdatingId, setCaseUpdatingId] = useState<string | null>(null);
     const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { toast } = useToast();
+
+    type CoCoCase = {
+        id: string;
+        title: string;
+        type: string;
+        category: string;
+        urgency: 'baja' | 'media' | 'alta' | 'emergencia';
+        action: string;
+        status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+        reason: string | null;
+        source_message: string;
+        assistant_reply: string | null;
+        unit_label: string | null;
+        created_at: string;
+    };
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [tasksRes, assetsRes, logsRes] = await Promise.all([
+                const [tasksRes, assetsRes, logsRes, cocoCasesRes] = await Promise.all([
                     supabase.from('maintenance_tasks').select('*'),
                     supabase.from('building_assets').select('*'),
-                    supabase.from('maintenance_logs').select('*').order('date', { ascending: false }).limit(5)
+                    supabase.from('maintenance_logs').select('*').order('date', { ascending: false }).limit(5),
+                    supabase
+                        .from('coco_cases')
+                        .select('id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at')
+                        .order('created_at', { ascending: false })
+                        .limit(8)
                 ]);
 
                 if (tasksRes.data) {
@@ -78,6 +95,10 @@ export function MaintenanceDashboard() {
                         date: l.date
                     })));
                 }
+
+                if (cocoCasesRes.data) {
+                    setCocoCases(cocoCasesRes.data as CoCoCase[]);
+                }
             } catch (err) {
                 console.error("Error fetching maintenance data:", err);
             } finally {
@@ -105,11 +126,38 @@ export function MaintenanceDashboard() {
         }
     };
 
+    const handleUpdateCaseStatus = async (caseId: string, status: CoCoCase['status']) => {
+        setCaseUpdatingId(caseId);
+        const { error } = await supabase
+            .from('coco_cases')
+            .update({ status })
+            .eq('id', caseId);
+        setCaseUpdatingId(null);
+
+        if (error) {
+            toast({
+                title: "No se pudo actualizar",
+                description: error.message,
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setCocoCases(prev => prev.map(item => item.id === caseId ? { ...item, status } : item));
+        toast({
+            title: "Caso actualizado",
+            description: status === 'resolved' ? "Marcado como resuelto." : "Estado cambiado.",
+            variant: "success"
+        });
+    };
+
     if (isLoading) return <div className="p-8 text-center">Cargando dashboard de mantenimiento...</div>;
 
     const overdueCount = tasks.filter((t: MaintenanceTask) => t.status === 'overdue').length;
     const pendingCount = tasks.filter((t: MaintenanceTask) => t.status === 'pending').length;
     const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
+    const openCocoCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress').length;
+    const emergencyCocoCases = cocoCases.filter(item => item.urgency === 'emergencia' || item.urgency === 'alta').length;
 
     return (
         <div className="space-y-12">
@@ -164,6 +212,101 @@ export function MaintenanceDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* CoCo Operational Queue */}
+            <section className="space-y-6">
+                <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
+                            <Bot className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.25em]">Operacion CoCo</p>
+                            <h2 className="text-2xl font-black cc-text-primary">Casos detectados por IA</h2>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="rounded-2xl bg-elevated px-4 py-2 text-xs font-black cc-text-secondary">
+                            {openCocoCases} abiertos
+                        </span>
+                        <span className="rounded-2xl bg-red-50 px-4 py-2 text-xs font-black text-red-600 dark:bg-red-500/10 dark:text-red-300">
+                            {emergencyCocoCases} alta prioridad
+                        </span>
+                    </div>
+                </div>
+
+                <div className="overflow-hidden rounded-[2rem] border border-subtle bg-surface shadow-xl shadow-slate-200/20 dark:shadow-black/30">
+                    {cocoCases.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+                            <Bot className="h-10 w-10 text-slate-300" />
+                            <p className="text-sm font-bold cc-text-secondary">Todavia no hay casos creados por CoCo.</p>
+                            <p className="max-w-md text-xs cc-text-tertiary">
+                                Cuando un residente reporte filtraciones, ruidos, seguridad o mantencion, apareceran aqui.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-subtle">
+                            {cocoCases.map(item => {
+                                const isHot = item.urgency === 'emergencia' || item.urgency === 'alta';
+                                const isClosed = item.status === 'resolved' || item.status === 'closed';
+
+                                return (
+                                    <article key={item.id} className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
+                                        <div className="min-w-0 space-y-3">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${isHot ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                                                    {isHot && <ShieldAlert className="h-3 w-3" />}
+                                                    {item.urgency}
+                                                </span>
+                                                <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                                    {item.category}
+                                                </span>
+                                                <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                                    {item.status.replace('_', ' ')}
+                                                </span>
+                                                {item.unit_label && (
+                                                    <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                                                        {item.unit_label}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <h3 className="truncate text-lg font-black cc-text-primary">{item.title}</h3>
+                                                <p className="mt-1 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message}</p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-bold cc-text-tertiary">
+                                                <span>{new Date(item.created_at).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                                {item.reason && <span className="line-clamp-1">Decision: {item.reason}</span>}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 md:justify-end">
+                                            <button
+                                                onClick={() => handleUpdateCaseStatus(item.id, 'in_progress')}
+                                                disabled={caseUpdatingId === item.id || isClosed}
+                                                className="inline-flex h-11 items-center gap-2 rounded-xl border border-subtle px-4 text-xs font-black cc-text-secondary transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                {caseUpdatingId === item.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                                                Tomar
+                                            </button>
+                                            <button
+                                                onClick={() => handleUpdateCaseStatus(item.id, 'resolved')}
+                                                disabled={caseUpdatingId === item.id || isClosed}
+                                                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                Resolver
+                                            </button>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
 
             {/* Task List & Calendar Highlight */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
