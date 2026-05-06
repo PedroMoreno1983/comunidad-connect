@@ -19,9 +19,7 @@ import {
     Package,
     ClipboardList,
     Calendar,
-    Bell,
     DollarSign,
-    ChevronRight,
     Sparkles,
     Menu,
     X,
@@ -31,13 +29,12 @@ import {
     Vote,
     BarChart3,
     MessageSquare,
-    Filter,
     Waves,
-    Hash,
     UserCircle,
     GraduationCap,
     BookOpen,
-    Upload
+    Upload,
+    Bot
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -83,6 +80,7 @@ export function Sidebar() {
 
     // Close mobile menu on route change
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsMobileOpen(false);
     }, [pathname]);
 
@@ -118,6 +116,7 @@ export function Sidebar() {
                 { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag, roles: ['resident', 'admin'] },
                 { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'], feature: 'maintenance' },
+                { href: '/resident/cases', label: 'Mis Casos CoCo', icon: Bot, roles: ['resident', 'admin'], feature: 'coco_ai' },
                 { href: '/resident/invitations', label: 'Mis Invitaciones', icon: QrCode, roles: ['resident', 'admin'] },
                 { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'], feature: 'voting' },
             ]

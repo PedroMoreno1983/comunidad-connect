@@ -33,6 +33,7 @@ const NAV_MAP: Record<string, string> = {
     "/expenses": "Mis Gastos", "/feed": "Avisos Oficiales",
     "/profile": "Mi Perfil", "/votaciones": "Votaciones",
     "/resident/finances": "Mis Gastos", "/resident/supermercado": "Supermercado",
+    "/resident/cases": "Mis Casos CoCo",
 };
 
 const QUICK = [
