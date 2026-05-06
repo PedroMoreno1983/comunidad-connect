@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 // Inicializar cliente Supabase (asume que estas variables existen en el entorno)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 
 export class MemoryService {
@@ -12,6 +12,10 @@ export class MemoryService {
    * Modelo: voyage-3 (dimensión 1024). Usando fetch para evitar bugs del SDK en Vercel.
    */
   static async embedText(text) {
+    if (!process.env.VOYAGE_API_KEY) {
+      return Array(1024).fill(0);
+    }
+
     try {
       const response = await fetch("https://api.voyageai.com/v1/embeddings", {
         method: "POST",
@@ -51,6 +55,10 @@ export class MemoryService {
    * Guarda una nueva memoria en el stream (PostgreSQL con pgvector)
    */
   static async addMemory(condominioId, userId, role, content) {
+    if (!supabase) {
+      return null;
+    }
+
     try {
       const embedding = await this.embedText(content);
       const importance = await this.scoreImportance(content);
@@ -78,6 +86,10 @@ export class MemoryService {
    * Recupera los recuerdos más relevantes usando pgvector
    */
   static async getRelevantMemories(condominioId, userId, queryText, limit = 5) {
+    if (!supabase) {
+      return [];
+    }
+
     try {
       const queryEmbedding = await this.embedText(queryText);
       

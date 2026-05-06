@@ -8,6 +8,12 @@ import { MemoryService } from '../../ai/memoryService.js';
 type MessageRole = 'user' | 'model';
 type AgentRole = 'system' | 'tutor' | 'classmate' | 'user';
 
+const DEFAULT_GEMINI_MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+];
+
 export interface ChatMessage {
     id: string;
     role: AgentRole;
@@ -24,6 +30,40 @@ function sanitizeAgentResponse(text: string) {
         .replace(HALLUCINATED_SPEAKER_TAG_REGEX, "$1")
         .replace(/\[USER\]/gi, "vecino(a)")
         .trim();
+}
+
+function getGeminiModels() {
+    const configured = process.env.GEMINI_TRAINING_MODELS
+        ?.split(",")
+        .map(model => model.trim())
+        .filter(Boolean);
+
+    return configured?.length ? configured : DEFAULT_GEMINI_MODELS;
+}
+
+function extractGeminiError(text: string) {
+    try {
+        const data = JSON.parse(text);
+        return data?.error?.message || text;
+    } catch {
+        return text;
+    }
+}
+
+function buildFallbackTurn(history: ChatMessage[], userMessage: string): ChatMessage[] {
+    const needsBlackboard = history.length <= 2;
+    const shortAnswer = userMessage.trim().length <= 4
+        ? "Si. Una charla no arregla la convivencia por si sola, pero sirve para dejar criterios claros, practicar casos reales y ordenar que hacer cuando alguien no respeta las reglas. La disciplina mejora cuando la comunidad entiende el protocolo y lo aplica de forma pareja."
+        : "Estoy con alta demanda en el motor de IA, pero sigo contigo: tomemos tu punto como caso de clase. La clave es separar opinion, reglamento y accion concreta: que paso, que norma aplica, quien debe actuar y en que plazo.";
+
+    return [{
+        id: `tutor-fallback-${Date.now()}`,
+        role: 'tutor',
+        text: shortAnswer,
+        blackboard: needsBlackboard
+            ? "## Criterio CoCo\n\n- Escuchar el caso sin pelear.\n- Identificar la regla aplicable.\n- Definir una accion concreta y responsable.\n- Dejar registro para seguimiento."
+            : undefined
+    }];
 }
 
 /**
@@ -46,17 +86,10 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
         },
     };
 
-    const configs = [
-        { ver: "v1beta", model: "gemini-flash-latest" },
-        { ver: "v1beta", model: "gemini-1.5-flash" },
-        { ver: "v1beta", model: "gemini-1.5-pro" },
-        { ver: "v1", model: "gemini-pro" }
-    ];
-
     let errors: string[] = [];
 
-    for (const config of configs) {
-        const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${apiKey}`;
+    for (const model of getGeminiModels()) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         
         try {
             const res = await fetch(url, {
@@ -68,17 +101,19 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
             if (res.ok) {
                 const data = await res.json();
                 const candidate = data?.candidates?.[0];
-                return (candidate?.content?.parts?.[0]?.text || "").trim();
+                const text = (candidate?.content?.parts?.[0]?.text || "").trim();
+                if (text) return text;
+                errors.push(`[${model}]: empty response (${candidate?.finishReason || "unknown"})`);
             } else {
                 const errData = await res.text();
-                errors.push(`[${config.model}]: ${res.status} - ${errData.substring(0, 150)}`);
+                errors.push(`[${model}]: ${res.status} - ${extractGeminiError(errData).substring(0, 180)}`);
             }
-        } catch (err) {
-            errors.push(`[${config.model}]: Network Error`);
+        } catch {
+            errors.push(`[${model}]: Network Error`);
         }
     }
 
-    throw new Error(`All Gemini configs failed: \n${errors.join('\n')}`);
+    throw new Error(`All Gemini models failed: ${errors.join(' | ')}`);
 }
 
 /**
@@ -221,7 +256,12 @@ export async function runMultiAgentTurn(
         classmate1History.push({ role: 'user', text: `Instrucción del Sistema: La Tutora CoCo acaba de terminar de hablar. Ahora debes actuar estrictamente como el alumno ${persona1.name} y dar tu opinión corta.` });
 
         const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina o duda sobre la Tutora.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
-        const classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History);
+        let classmateResponse = "";
+        try {
+            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History);
+        } catch (err) {
+            console.warn("Classmate 1 unavailable:", err);
+        }
         
         let classmate1FinalText = "";
         if (classmateResponse && classmateResponse.length > 5 && !classmateResponse.includes("BLACKBOARD") && !classmateResponse.includes("PIZARRA")) {
@@ -247,7 +287,12 @@ export async function runMultiAgentTurn(
                 classmate2History.push({ role: 'user', text: `Instrucción del Sistema: El vecino ${persona1.name} acaba de opinar. Ahora debes actuar estrictamente como el alumno ${persona2.name} y responderle o acotar algo a la clase.` });
 
                 const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente.\n3. NO uses etiquetas de nombre ni asteriscos de acciones.`;
-                const classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History);
+                let classmate2Response = "";
+                try {
+                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History);
+                } catch (err) {
+                    console.warn("Classmate 2 unavailable:", err);
+                }
                 
                 if (classmate2Response && classmate2Response.length > 5 && !classmate2Response.includes("BLACKBOARD")) {
                     newResponses.push({
@@ -264,6 +309,6 @@ export async function runMultiAgentTurn(
 
     } catch (err) {
         console.error("MultiAgent Orchestrator Error:", err);
-        throw err;
+        return buildFallbackTurn(history, userMessage);
     }
 }
