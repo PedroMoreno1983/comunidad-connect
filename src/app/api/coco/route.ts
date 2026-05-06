@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
+import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -107,6 +108,7 @@ export async function POST(req: NextRequest) {
         const userRole    = sanitize(body.userRole, 20);
         const userId      = sanitize(body.userId, 100);
         const unitId      = sanitize(body.unitId, 50);
+        const unitName    = sanitize(body.unitName, 80);
         const communityId = sanitize(body.communityId, 50);
         const currentPage = sanitize(body.currentPage, 100);
 
@@ -119,6 +121,15 @@ export async function POST(req: NextRequest) {
 
         const validRoles = ['admin', 'resident', 'concierge'];
         const safeRole = validRoles.includes(userRole) ? userRole : 'resident';
+        const caseContext = {
+            userId,
+            unitId,
+            unitName,
+            communityId,
+            role: safeRole,
+            currentPage,
+            channel: 'web',
+        };
 
         if (!process.env.ANTHROPIC_API_KEY) {
             const fallback = await askGeminiFallback(message, {
@@ -126,8 +137,9 @@ export async function POST(req: NextRequest) {
                 role: safeRole,
                 currentPage,
             });
+            const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
-            return NextResponse.json(fallback, { status: 200 });
+            return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
         }
 
         // ── 3. Cargar sesión ─────────────────────────────────────────────────
@@ -157,11 +169,13 @@ export async function POST(req: NextRequest) {
                 role: safeRole,
                 currentPage,
             });
+            const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
-            return NextResponse.json(fallback, { status: 200 });
+            return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
         }
 
         const { reply, navigate, action, updatedHistory } = agentResponse;
+        const cocoCase = await maybeCreateCoCoCase(message, caseContext, reply);
 
         // ── 5. Guardar sesión actualizada ────────────────────────────────────
         await saveSession(`web:${sessionKey}`, {
@@ -175,7 +189,7 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ reply, navigate, action }, { status: 200 });
+        return NextResponse.json({ reply, navigate, action, case: cocoCase }, { status: 200 });
 
     } catch (err) {
         console.error('[CoCo API Error]', err);
