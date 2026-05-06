@@ -86,6 +86,25 @@ function buildBlackboardImagePrompt(blackboard: string) {
     ].join(" ");
 }
 
+function buildAutoBlackboard(userMessage: string, tutorText: string) {
+    const topic = userMessage.trim().slice(0, 160) || "convivencia en condominios";
+    const summary = tutorText
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 260);
+
+    return [
+        "# Aula CoCo en accion",
+        "",
+        `<generar_imagen>A realistic warm educational scene inside a Chilean condominium community, residents and concierge learning about ${topic}, modern shared space, vivid light, practical atmosphere, no text, no logos</generar_imagen>`,
+        "",
+        "## Punto clave",
+        `- **Tema:** ${topic}`,
+        `- **Criterio CoCo:** ${summary || "ordenar el problema, aplicar la regla y definir una accion concreta."}`,
+        "- **Siguiente paso:** convertir la conversacion en una decision clara para la comunidad."
+    ].join("\n");
+}
+
 /**
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
@@ -262,6 +281,10 @@ export async function runMultiAgentTurn(
         }
 
         // --- INTERCEPTAR GENERACIÓN DE IMÁGENES (DALL-E 3) ---
+        if (!tutorBlackboard) {
+            tutorBlackboard = buildAutoBlackboard(userMessage, tutorChatText);
+        }
+
         if (tutorBlackboard) {
             const imgRegex = /<generar_imagen>([\s\S]*?)<\/generar_imagen>/gi;
             const imageRequests = [...tutorBlackboard.matchAll(imgRegex)];
