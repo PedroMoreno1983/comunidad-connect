@@ -5,6 +5,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { maybeCreateCoCoCase } from './caseService';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -397,38 +399,42 @@ export async function executeTool(
 
             // ── RECLAMOS ────────────────────────────────────────────────────
             case 'create_claim': {
-                const { data, error } = await supabase
-                    .from('maintenance_requests')
-                    .insert({
-                        unit_id: input.unit_id,
-                        category: input.category,
-                        description: input.description,
-                        priority: input.priority || 'MEDIA',
-                        status: 'PENDIENTE',
-                        source: 'COCO_IA',
-                        created_at: new Date().toISOString(),
-                    })
-                    .select('id')
-                    .single();
-                if (error) return { error: 'No se pudo registrar el reclamo', detail: error.message };
-                return { success: true, claim_id: data.id, message: 'Reclamo registrado correctamente.' };
+                const result = await maybeCreateCoCoCase(
+                    input.description,
+                    {
+                        unitId: input.unit_id || userCtx.unit_id,
+                        communityId: userCtx.community_id,
+                        role: userCtx.role || 'resident',
+                        channel: 'coco_tool',
+                    },
+                    'Reclamo registrado desde herramienta CoCo.'
+                );
+
+                if (!result.created) {
+                    return {
+                        error: 'No se pudo registrar el reclamo',
+                        detail: result.error || result.reason || 'El router de casos no generó un registro.',
+                    };
+                }
+
+                return { success: true, claim_id: result.id, message: 'Reclamo registrado correctamente.' };
             }
 
             case 'get_claim_status': {
-                const { data } = await supabase
-                    .from('maintenance_requests')
-                    .select('id, category, description, status, priority, created_at, updated_at')
+                const { data } = await supabaseAdmin
+                    .from('coco_cases')
+                    .select('id, category, description, status, urgency, created_at, updated_at')
                     .eq('id', input.claim_id)
                     .maybeSingle();
                 return data ?? { error: 'Reclamo no encontrado' };
             }
 
             case 'list_my_claims': {
-                const { data } = await supabase
-                    .from('maintenance_requests')
-                    .select('id, category, description, status, priority, created_at')
+                const { data } = await supabaseAdmin
+                    .from('coco_cases')
+                    .select('id, category, description, status, urgency, created_at')
                     .eq('unit_id', input.unit_id)
-                    .neq('status', 'CERRADO')
+                    .neq('status', 'closed')
                     .order('created_at', { ascending: false })
                     .limit(10);
                 return data ?? [];

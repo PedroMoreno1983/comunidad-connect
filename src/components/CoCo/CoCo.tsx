@@ -16,6 +16,15 @@ interface Message {
     nav?: string;
     action?: string;
     imageBase64?: string;
+    case?: {
+        created: boolean;
+        id?: string;
+        title?: string;
+        type?: string;
+        category?: string;
+        urgency?: "baja" | "media" | "alta" | "emergencia";
+        status?: string;
+    };
 }
 
 const NAV_MAP: Record<string, string> = {
@@ -106,6 +115,10 @@ export default function CoCo() {
                     currentPage: pathname,
                     userName: user?.email || "Residente",
                     userRole: user?.role || "resident",
+                    userId: user?.id,
+                    unitId: user?.unitId,
+                    unitName: user?.unitName,
+                    communityId: user?.communityId,
                 }),
             });
 
@@ -115,7 +128,14 @@ export default function CoCo() {
             }
 
             const d = await res.json();
-            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: d.reply || "No pude responder.", nav: d.navigate, action: d.action }]);
+            setMsgs(p => [...p, {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                text: d.reply || "No pude responder.",
+                nav: d.navigate,
+                action: d.action,
+                case: d.case?.created ? d.case : undefined,
+            }]);
             
             if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
             
@@ -219,6 +239,16 @@ export default function CoCo() {
                                                     }`}
                                                 dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
                                             />
+                                        )}
+                                        {msg.role === "assistant" && msg.case?.created && (
+                                            <div className="rounded-2xl rounded-tl-sm border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                                Caso registrado: {msg.case.title || msg.case.id}
+                                                {msg.case.urgency && (
+                                                    <span className="ml-2 rounded-full bg-white/70 px-2 py-0.5 uppercase tracking-wide dark:bg-black/20">
+                                                        {msg.case.urgency}
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                     {msg.role === "user" && (
