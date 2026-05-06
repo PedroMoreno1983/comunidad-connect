@@ -30,6 +30,17 @@ type CoCoCase = {
     updated_at: string;
 };
 
+type CoCoCaseEvent = {
+    id: string;
+    case_id: string;
+    event_type: "created" | "status_changed" | "comment" | "system";
+    from_status: string | null;
+    to_status: string | null;
+    body: string | null;
+    actor_role: string | null;
+    created_at: string;
+};
+
 const statusCopy: Record<CoCoCase["status"], { label: string; icon: typeof Clock; className: string }> = {
     open: {
         label: "Recibido",
@@ -73,6 +84,7 @@ function uniqueCases(cases: CoCoCase[]) {
 export default function ResidentCasesPage() {
     const { user } = useAuth();
     const [cases, setCases] = useState<CoCoCase[]>([]);
+    const [eventsByCase, setEventsByCase] = useState<Record<string, CoCoCaseEvent[]>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -103,7 +115,25 @@ export default function ResidentCasesPage() {
 
             const results = await Promise.all(queries);
             const rows = results.flatMap(result => (result.data || []) as CoCoCase[]);
-            setCases(uniqueCases(rows));
+            const uniqueRows = uniqueCases(rows);
+            setCases(uniqueRows);
+
+            if (uniqueRows.length > 0) {
+                const { data: events } = await supabase
+                    .from("coco_case_events")
+                    .select("id, case_id, event_type, from_status, to_status, body, actor_role, created_at")
+                    .in("case_id", uniqueRows.map(item => item.id))
+                    .order("created_at", { ascending: false });
+
+                const grouped = ((events || []) as CoCoCaseEvent[]).reduce<Record<string, CoCoCaseEvent[]>>((acc, event) => {
+                    acc[event.case_id] ||= [];
+                    acc[event.case_id].push(event);
+                    return acc;
+                }, {});
+                setEventsByCase(grouped);
+            } else {
+                setEventsByCase({});
+            }
             setLoading(false);
         };
 
@@ -182,6 +212,7 @@ export default function ResidentCasesPage() {
                             const status = statusCopy[item.status] || statusCopy.open;
                             const StatusIcon = status.icon;
                             const isHot = item.urgency === "alta" || item.urgency === "emergencia";
+                            const latestEvent = eventsByCase[item.id]?.[0];
 
                             return (
                                 <article key={item.id} className="grid gap-5 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -216,10 +247,15 @@ export default function ResidentCasesPage() {
                                             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
                                             <div>
                                                 <p className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">
-                                                    Ultima respuesta
+                                                    Ultimo movimiento
                                                 </p>
                                                 <p className="mt-1 line-clamp-4 text-xs font-medium cc-text-secondary">
-                                                    {item.assistant_reply || "CoCo registro el caso para seguimiento."}
+                                                    {latestEvent?.body || item.assistant_reply || "CoCo registro el caso para seguimiento."}
+                                                </p>
+                                                <p className="mt-2 text-[10px] font-bold cc-text-tertiary">
+                                                    {latestEvent
+                                                        ? new Date(latestEvent.created_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })
+                                                        : new Date(item.updated_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
                                                 </p>
                                             </div>
                                         </div>

@@ -146,6 +146,33 @@ export async function PATCH(
             }
         }
 
+        const { error: eventError } = await supabaseAdmin
+            .from('coco_case_events')
+            .insert({
+                case_id: currentCase.id,
+                community_id: currentCase.community_id || actorProfile.community_id,
+                actor_id: actorProfile.id,
+                actor_role: actorProfile.role,
+                event_type: 'status_changed',
+                from_status: currentCase.status,
+                to_status: status,
+                body: `${actorProfile.name || 'Equipo'} cambio el caso a ${statusLabel(status)}.`,
+                metadata: {
+                    source: 'admin_dashboard',
+                },
+            });
+
+        if (eventError) {
+            recordAiEvent({
+                provider: 'system',
+                feature: 'coco.case_events',
+                status: 'error',
+                model: 'api-v1',
+                latencyMs: Date.now() - started,
+                error: eventError,
+            });
+        }
+
         recordAiEvent({
             provider: 'system',
             feature: 'coco.case_status',
