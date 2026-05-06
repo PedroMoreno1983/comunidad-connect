@@ -71,6 +71,16 @@ export interface CoCoCaseSummary {
     error?: string;
 }
 
+type StoredCoCoCase = {
+    id: string;
+    title: string;
+    type: CaseType;
+    category: CaseCategory;
+    urgency: CaseUrgency;
+    action: CaseAction;
+    status: string;
+};
+
 function validUuid(value?: string | null) {
     if (!value) return null;
     return UUID_RE.test(value) ? value : null;
@@ -89,6 +99,108 @@ function compactTitle(message: string, category: CaseCategory, urgency: CaseUrge
     const prefix = urgency === 'emergencia' ? 'Emergencia' : urgency === 'alta' ? 'Alta prioridad' : 'Caso CoCo';
     if (!clean) return `${prefix}: ${category}`;
     return `${prefix}: ${clean.slice(0, 72)}${clean.length > 72 ? '...' : ''}`;
+}
+
+function toSummary(data: StoredCoCoCase, reason: string): CoCoCaseSummary {
+    return {
+        created: true,
+        id: data.id,
+        title: data.title,
+        type: data.type,
+        category: data.category,
+        urgency: data.urgency,
+        action: data.action,
+        status: data.status,
+        reason,
+    };
+}
+
+async function findRecentDuplicate(message: string, context: CoCoCaseContext): Promise<StoredCoCoCase | null> {
+    const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    let query = supabaseAdmin
+        .from('coco_cases')
+        .select('id, title, type, category, urgency, action, status')
+        .eq('source_message', message.slice(0, 4000))
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    const userId = validUuid(context.userId);
+    const unitId = validUuid(context.unitId);
+    if (userId) query = query.eq('user_id', userId);
+    if (unitId) query = query.eq('unit_id', unitId);
+
+    const { data, error } = await query.maybeSingle();
+    if (error) return null;
+    return data as StoredCoCoCase | null;
+}
+
+async function notifyStaffForCase(data: StoredCoCoCase, context: CoCoCaseContext, sourceMessage: string) {
+    if (data.urgency !== 'alta' && data.urgency !== 'emergencia') {
+        recordAiEvent({
+            provider: 'system',
+            feature: 'coco.case_notifications',
+            status: 'skipped',
+            model: 'rules-v1',
+            outputChars: data.title.length,
+            fallbackUsed: 'low_urgency',
+        });
+        return;
+    }
+
+    const communityId = validUuid(context.communityId) ?? DEFAULT_COMMUNITY_ID;
+    const { data: staff, error: staffError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('community_id', communityId)
+        .in('role', ['admin', 'concierge']);
+
+    if (staffError || !staff?.length) {
+        recordAiEvent({
+            provider: 'system',
+            feature: 'coco.case_notifications',
+            status: staffError ? 'error' : 'skipped',
+            model: 'rules-v1',
+            outputChars: data.title.length,
+            error: staffError || 'No staff recipients',
+        });
+        return;
+    }
+
+    const type = data.urgency === 'emergencia' ? 'alert' : 'warning';
+    const notifications = staff.map(member => ({
+        user_id: member.id,
+        type,
+        category: 'coco_case',
+        title: data.urgency === 'emergencia' ? 'Emergencia detectada por CoCo' : 'Caso urgente detectado por CoCo',
+        body: `${data.title}\n${sourceMessage.slice(0, 240)}`,
+        link: '/admin/mantenimiento',
+        community_id: communityId,
+    }));
+
+    let insert = await supabaseAdmin.from('notifications').insert(notifications);
+
+    if (insert.error?.message.toLowerCase().includes('community_id')) {
+        insert = await supabaseAdmin.from('notifications').insert(
+            notifications.map(notification => ({
+                user_id: notification.user_id,
+                type: notification.type,
+                category: notification.category,
+                title: notification.title,
+                body: notification.body,
+                link: notification.link,
+            }))
+        );
+    }
+
+    recordAiEvent({
+        provider: 'system',
+        feature: 'coco.case_notifications',
+        status: insert.error ? 'error' : 'success',
+        model: 'rules-v1',
+        outputChars: data.title.length,
+        error: insert.error,
+    });
 }
 
 export function classifyCoCoMessage(message: string, context: CoCoCaseContext = {}): CoCoCaseDecision {
@@ -232,6 +344,21 @@ export async function maybeCreateCoCoCase(
         },
     };
 
+    const duplicate = await findRecentDuplicate(message, context);
+    if (duplicate) {
+        recordAiEvent({
+            provider: 'system',
+            feature: 'coco.case_router',
+            status: 'skipped',
+            model: 'rules-v1',
+            latencyMs: Date.now() - started,
+            promptChars: message.length,
+            outputChars: decision.reason.length,
+            fallbackUsed: 'recent_duplicate',
+        });
+        return toSummary(duplicate, decision.reason);
+    }
+
     const { data, error } = await supabaseAdmin
         .from('coco_cases')
         .insert(payload)
@@ -251,6 +378,8 @@ export async function maybeCreateCoCoCase(
         });
         return { created: false, ...decision, error: error.message };
     }
+
+    await notifyStaffForCase(data as StoredCoCoCase, context, message);
 
     recordAiEvent({
         provider: 'system',
