@@ -114,6 +114,7 @@ export function Sidebar() {
             links: [
                 { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'], feature: 'amenities' },
                 { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag, roles: ['resident', 'admin'] },
+                { href: '/marketplace/my-listings', label: 'Mis Publicaciones', icon: ShoppingBag, roles: ['resident', 'admin'] },
                 { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/resident/cases', label: 'Mis Casos CoCo', icon: Bot, roles: ['resident', 'admin'], feature: 'coco_ai' },
@@ -149,6 +150,7 @@ export function Sidebar() {
                 { href: '/admin/finanzas', label: 'Control Finanzas', icon: PieChart, roles: ['admin'] },
                 { href: '/admin/units', label: 'Unidades', icon: Home, roles: ['admin'] },
                 { href: '/admin/consumo', label: 'Control Hídrico', icon: Waves, roles: ['admin'] },
+                { href: '/admin/marketplace', label: 'Marketplace Admin', icon: ShoppingBag, roles: ['admin'] },
                 { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'], feature: 'maintenance' },
                 { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'], feature: 'voting' },
                 { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },

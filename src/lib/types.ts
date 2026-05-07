@@ -32,7 +32,7 @@ export interface MarketplaceItem {
   images?: string[];
   category: 'electronics' | 'furniture' | 'clothing' | 'other';
   createdAt: string;
-  status: 'available' | 'sold' | 'reserved';
+  status: 'available' | 'sold' | 'reserved' | 'hidden';
   allowSale?: boolean; // New: accepts money
   allowSwap?: boolean; // New: swap for similar/specific item (Permuta)
   swapDetails?: string; // New: details for swap

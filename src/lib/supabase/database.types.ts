@@ -74,7 +74,7 @@ export interface Database {
                     price: number
                     category: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id: string
-                    status: 'available' | 'reserved' | 'sold'
+                    status: 'available' | 'reserved' | 'sold' | 'hidden'
                     image_url: string | null
                     images: string[] | null
                     allow_sale: boolean
@@ -92,7 +92,7 @@ export interface Database {
                     price: number
                     category: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id: string
-                    status?: 'available' | 'reserved' | 'sold'
+                    status?: 'available' | 'reserved' | 'sold' | 'hidden'
                     image_url?: string | null
                     images?: string[] | null
                     allow_sale?: boolean
@@ -110,7 +110,7 @@ export interface Database {
                     price?: number
                     category?: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id?: string
-                    status?: 'available' | 'reserved' | 'sold'
+                    status?: 'available' | 'reserved' | 'sold' | 'hidden'
                     image_url?: string | null
                     images?: string[] | null
                     allow_sale?: boolean

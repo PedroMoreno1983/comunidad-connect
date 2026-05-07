@@ -131,7 +131,7 @@ export default function MarketplacePage() {
                     imageUrl: r.image_url as string | undefined,
                     images: Array.isArray(r.images) ? r.images as string[] : r.image_url ? [r.image_url as string] : [],
                     sellerId: r.seller_id as string,
-                    status: r.status as 'available' | 'reserved' | 'sold',
+                    status: r.status as 'available' | 'reserved' | 'sold' | 'hidden',
                     allowSale: r.allow_sale as boolean | undefined,
                     allowSwap: r.allow_swap as boolean | undefined,
                     swapDetails: r.swap_details as string | undefined,
@@ -529,10 +529,12 @@ export default function MarketplacePage() {
                                     </div>
                                 </DialogContent>
                             </Dialog>
-                            <Button variant="secondary" className="rounded-2xl px-8 py-4 font-bold shadow-sm">
-                                <ShoppingBag className="h-5 w-5 mr-2" />
-                                Mis compras
-                            </Button>
+                            <Link href="/marketplace/my-listings">
+                                <Button variant="secondary" className="rounded-2xl px-8 py-4 font-bold shadow-sm">
+                                    <ShoppingBag className="h-5 w-5 mr-2" />
+                                    Mis publicaciones
+                                </Button>
+                            </Link>
                             <button 
                                 onClick={() => setIsRulesOpen(true)}
                                 className="flex items-center gap-2 px-6 py-4 bg-elevated cc-text-secondary font-bold rounded-2xl hover:bg-elevated transition-all active:scale-95 border border-subtle"
@@ -542,12 +544,13 @@ export default function MarketplacePage() {
                             </button>
 
                             {user?.role === 'admin' && (
-                                <button 
+                                <Link
+                                    href="/admin/marketplace"
                                     className="flex items-center gap-2 px-6 py-4 bg-emerald-100 dark:bg-emerald-900/30 text-success-fg font-bold rounded-2xl hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all active:scale-95 border border-emerald-200 dark:border-emerald-800"
                                 >
                                     <ShieldCheck className="h-5 w-5" />
                                     Moderación
-                                </button>
+                                </Link>
                             )}
                         </motion.div>
                     </div>
