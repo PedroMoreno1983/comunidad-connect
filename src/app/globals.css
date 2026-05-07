@@ -530,3 +530,33 @@ h2,
   background-image: none !important;
   background-color: var(--cc-brand-500) !important;
 }
+
+.cc-dashboard .backdrop-blur-xl,
+.cc-dashboard .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+}
+
+.cc-dashboard .bg-white\/60,
+.cc-dashboard .bg-white\/40 {
+  background-color: var(--cc-surface) !important;
+}
+
+.cc-dashboard .border-white\/50,
+.cc-dashboard .border-white\/80,
+.cc-dashboard .border-white\/20 {
+  border-color: var(--cc-border-subtle) !important;
+}
+
+.cc-dashboard .rounded-\[3rem\],
+.cc-dashboard .rounded-\[2\.5rem\],
+.cc-dashboard .rounded-\[2rem\],
+.cc-dashboard .rounded-3xl,
+.cc-dashboard .rounded-2xl {
+  border-radius: 10px !important;
+}
+
+.cc-dashboard .shadow-lg,
+.cc-dashboard .shadow-xl,
+.cc-dashboard .shadow-2xl {
+  box-shadow: var(--cc-product-shadow) !important;
+}

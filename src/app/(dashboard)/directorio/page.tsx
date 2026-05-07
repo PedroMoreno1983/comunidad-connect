@@ -10,8 +10,8 @@ import {
     Shield, Star, Loader2, Home
 } from "lucide-react";
 import Image from "next/image";
-import clsx from "clsx";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
 
 interface Neighbor {
     id: string;
@@ -30,9 +30,9 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_STYLES: Record<string, string> = {
-    admin: 'from-[#7C3AED] to-[#5B21B6]',
-    resident: 'from-[#10B981] to-[#0D9488]',
-    concierge: 'from-[#F59E0B] to-[#F97316]'
+    admin: '#F45B3D',
+    resident: '#10B981',
+    concierge: '#F59E0B'
 };
 
 const ROLE_BADGE: Record<string, string> = {
@@ -158,56 +158,45 @@ export default function DirectoryPage() {
     return (
         <ErrorBoundary name="Directorio de Vecinos">
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-7">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] rounded-2xl shadow-lg shadow-blue-500/30">
-                        <Users className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black cc-text-primary">Directorio</h1>
-                        <p className="text-sm font-medium text-slate-500 mt-1">{neighbors.length} personas en la comunidad</p>
-                    </div>
-                </div>
-
-                {/* Search bar */}
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre o depto..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-5 py-3 rounded-2xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/30 shadow-sm"
-                    />
-                </div>
-            </div>
+                <ModuleHeader
+                    eyebrow="Comunidad"
+                    title="Directorio"
+                    description="Encuentra residentes, administración y conserjería con búsqueda por nombre o departamento."
+                    icon={<Users className="h-5 w-5" />}
+                    meta={`${neighbors.length} personas registradas`}
+                    actions={
+                        <div className="relative w-full md:w-80">
+                            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar nombre o depto"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="h-11 w-full rounded-lg border border-subtle bg-surface pl-10 pr-4 text-sm font-medium shadow-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
+                            />
+                        </div>
+                    }
+                />
 
             {/* Stats Strip */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                    { label: 'Residentes', count: residentCount, icon: Home, gradient: 'from-[#10B981] to-[#14B8A6]', filter: 'resident' as const },
-                    { label: 'Administración', count: adminCount, icon: Shield, gradient: 'from-[#7C3AED] to-[#5B21B6]', filter: 'admin' as const },
-                    { label: 'Conserjería', count: conciergeCount, icon: Star, gradient: 'from-[#F59E0B] to-[#F97316]', filter: 'concierge' as const },
+                    { label: 'Residentes', count: residentCount, icon: Home, filter: 'resident' as const },
+                    { label: 'Administración', count: adminCount, icon: Shield, filter: 'admin' as const },
+                    { label: 'Conserjería', count: conciergeCount, icon: Star, filter: 'concierge' as const },
                 ].map((s) => (
                     <button
                         key={s.filter}
                         onClick={() => setActiveFilter(activeFilter === s.filter ? 'all' : s.filter)}
-                        className={clsx(
-                            "relative rounded-2xl p-4 border transition-all overflow-hidden text-left",
-                            activeFilter === s.filter
-                                ? "border-transparent shadow-lg ring-2 ring-offset-2 ring-indigo-400/60 dark:ring-offset-slate-900"
-                                : "bg-surface border-subtle hover:border-slate-200 dark:hover:border-slate-600 shadow-sm"
-                        )}
+                        className={`relative overflow-hidden rounded-lg border bg-surface p-4 text-left shadow-sm transition-colors ${
+                            activeFilter === s.filter ? "border-brand-300 bg-brand-50" : "border-subtle hover:border-default"
+                        }`}
                     >
-                        {activeFilter === s.filter && (
-                            <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-10 dark:opacity-20`} />
-                        )}
-                        <div className={`inline-flex p-2 rounded-xl bg-gradient-to-br ${s.gradient} mb-3`}>
-                            <s.icon className="h-4 w-4 text-white" />
+                        <div className="mb-3 inline-flex rounded-lg bg-elevated p-2 cc-text-secondary">
+                            <s.icon className="h-4 w-4" />
                         </div>
-                        <p className="text-2xl font-black cc-text-primary">{s.count}</p>
-                        <p className="text-xs font-bold text-slate-500 mt-0.5">{s.label}</p>
+                        <p className="text-2xl font-semibold cc-text-primary">{s.count}</p>
+                        <p className="mt-0.5 text-xs font-semibold cc-text-secondary">{s.label}</p>
                     </button>
                 ))}
             </div>
@@ -228,7 +217,7 @@ export default function DirectoryPage() {
                     <AnimatePresence>
                         {filtered.map((neighbor, idx) => {
                             const isExpanded = expandedId === neighbor.id;
-                            const gradient = ROLE_STYLES[neighbor.role] || 'from-slate-400 to-slate-500';
+                            const accent = ROLE_STYLES[neighbor.role] || '#64748B';
 
                             return (
                                 <motion.div
@@ -237,18 +226,16 @@ export default function DirectoryPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.04 }}
                                     layout
-                                    className="bg-surface rounded-2xl border border-subtle shadow-sm overflow-hidden group cursor-pointer hover:border-blue-200 hover:shadow-md dark:hover:border-blue-900/50 transition-all"
+                                    className="group cursor-pointer overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm transition-colors hover:border-brand-200"
                                     onClick={() => setExpandedId(isExpanded ? null : neighbor.id)}
                                 >
                                     {/* Card Top Banner */}
-                                    <div className={`h-3 bg-gradient-to-r ${gradient} relative`}>
-                                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-                                    </div>
+                                    <div className="h-1.5" style={{ backgroundColor: accent }} />
 
                                     {/* Avatar (overlapping banner) */}
                                     <div className="p-5">
                                         <div className="flex items-start gap-4">
-                                            <div className={`h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${gradient} shadow-md`}>
+                                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg shadow-sm" style={{ backgroundColor: accent }}>
                                                 {neighbor.avatar_url ? (
                                                     <Image src={neighbor.avatar_url} alt={neighbor.name} width={48} height={48} className="h-full w-full object-cover" />
                                                 ) : (
@@ -296,7 +283,7 @@ export default function DirectoryPage() {
                                                                 e.stopPropagation();
                                                                 handleStartDM(neighbor);
                                                             }}
-                                                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r ${ROLE_STYLES[neighbor.role] || 'from-[#7C3AED] to-[#5B21B6]'} text-white text-sm font-bold shadow-md hover:scale-105 transition-transform`}
+                                                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-600"
                                                         >
                                                             <MessageSquare className="h-4 w-4" />
                                                             Enviar mensaje

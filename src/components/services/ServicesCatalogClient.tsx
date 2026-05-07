@@ -65,17 +65,18 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
     };
 
     return (
-        <div className="max-w-7xl space-y-8">
-            <div className="text-center max-w-3xl mx-auto">
-                <h1 className="text-4xl md:text-5xl font-bold cc-text-primary mb-4">
-                    Encuentra el Tecnico Perfecto
+        <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
+            <div className="border-b border-subtle pb-6">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Servicios</p>
+                <h1 className="text-2xl font-bold cc-text-primary md:text-3xl">
+                    Directorio de técnicos
                 </h1>
-                <p className="text-lg cc-text-secondary">
+                <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
                     Conecta con profesionales verificados de confianza en tu comunidad
                 </p>
             </div>
 
-            <section className="rounded-3xl border border-subtle bg-surface p-5 shadow-xl shadow-slate-200/20 dark:shadow-black/30">
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -84,14 +85,14 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                             value={query}
                             onChange={event => setQuery(event.target.value)}
                             placeholder="Buscar por nombre, especialidad o certificacion..."
-                            className="w-full rounded-2xl border border-subtle bg-elevated py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all focus:ring-2 focus:ring-blue-500/20"
+                            className="w-full rounded-lg border border-subtle bg-elevated py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all focus:ring-2 focus:ring-brand-500/20"
                         />
                     </div>
 
                     <select
                         value={category}
                         onChange={event => setCategory(event.target.value as ServiceProvider['category'] | "all")}
-                        className="h-12 rounded-2xl border border-subtle bg-elevated px-4 text-sm font-bold cc-text-secondary outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="h-12 rounded-lg border border-subtle bg-elevated px-4 text-sm font-bold cc-text-secondary outline-none focus:ring-2 focus:ring-brand-500/20"
                     >
                         <option value="all">Todas las categorias</option>
                         {categories.map(item => (
@@ -99,7 +100,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         ))}
                     </select>
 
-                    <div className="flex rounded-2xl border border-subtle bg-elevated p-1">
+                    <div className="flex rounded-lg border border-subtle bg-elevated p-1">
                         {[
                             { key: "all", label: "Todos" },
                             { key: "available", label: "Disponibles" },
@@ -109,9 +110,9 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                 key={option.key}
                                 type="button"
                                 onClick={() => setAvailability(option.key as typeof availability)}
-                                className={`rounded-xl px-3 py-2 text-[11px] font-black transition-colors ${
+                                className={`rounded-md px-3 py-2 text-[11px] font-black transition-colors ${
                                     availability === option.key
-                                        ? "bg-blue-600 text-white"
+                                        ? "bg-brand-500 text-white"
                                         : "cc-text-secondary hover:bg-surface"
                                 }`}
                             >
@@ -130,7 +131,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         <button
                             type="button"
                             onClick={clearFilters}
-                            className="inline-flex items-center gap-2 rounded-xl bg-elevated px-3 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                            className="inline-flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
                         >
                             <X className="h-3.5 w-3.5" />
                             Limpiar filtros
@@ -149,7 +150,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                             ))}
                         </div>
                     ) : (
-                        <div className="rounded-3xl border border-dashed border-subtle bg-surface p-12 text-center">
+                        <div className="rounded-lg border border-dashed border-subtle bg-surface p-12 text-center">
                             <h3 className="text-xl font-bold cc-text-primary">No encontramos tecnicos con esos filtros</h3>
                             <p className="mt-2 text-sm cc-text-secondary">Prueba con otra categoria o una busqueda mas amplia.</p>
                         </div>
@@ -188,24 +189,24 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                 </>
             )}
 
-            <section className="relative overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-br from-blue-600 to-cyan-700 p-8 text-center text-white shadow-2xl md:p-12">
+            <section className="rounded-lg border border-subtle bg-surface p-6 md:p-8">
                 <div className="relative z-10">
-                    <h2 className="mb-4 text-3xl font-bold">
-                        Eres un Tecnico Profesional?
+                    <h2 className="mb-3 text-xl font-bold cc-text-primary">
+                        ¿Eres técnico profesional?
                     </h2>
-                    <p className="mx-auto mb-8 max-w-2xl text-lg text-blue-100">
-                        Unete a nuestra red de profesionales verificados y conecta con clientes en tu comunidad
+                    <p className="mb-6 max-w-2xl text-sm cc-text-secondary">
+                        Únete a la red de profesionales verificados y recibe solicitudes de tu comunidad.
                     </p>
-                    <div className="flex flex-wrap justify-center gap-3">
+                    <div className="flex flex-wrap gap-3">
                         <Link
                             href="/services/register"
-                            className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 font-bold text-blue-600 shadow-xl shadow-blue-950/20 transition-colors hover:bg-blue-50"
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-600"
                         >
                             Registrarse como Tecnico
                         </Link>
                         <Link
                             href="/services/provider-dashboard"
-                            className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-8 py-4 font-bold text-white shadow-xl shadow-blue-950/20 transition-colors hover:bg-white/20"
+                            className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-elevated px-5 py-3 text-sm font-bold cc-text-primary transition-colors hover:bg-surface"
                         >
                             Panel Proveedor
                         </Link>

@@ -21,6 +21,7 @@ import { Booking, Amenity } from "@/lib/types";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 
 // TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
 // from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
@@ -211,18 +212,19 @@ export default function AmenitiesPage() {
     };
 
     return (
-        <div className="max-w-7xl space-y-8">
-            {/* Header */}
-            <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
-                        <Calendar className="h-5 w-5 text-white" />
-                    </div>
-                    <h1 className="text-3xl font-bold cc-text-primary">Espacios Comunes</h1>
-                </div>
-                <p className="cc-text-secondary">
-                    Reserva amenidades del edificio para tu uso exclusivo
-                </p>
+        <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
+            <ModuleHeader
+                eyebrow="Reservas"
+                title="Espacios Comunes"
+                description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
+                icon={<Calendar className="h-5 w-5" />}
+                meta={`${amenities.length} espacios activos · ${userBookings.length} reservas tuyas`}
+            />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <ModuleStat label="Espacios activos" value={amenities.length} icon={<Calendar className="h-4 w-4" />} />
+                <ModuleStat label="Mis reservas" value={userBookings.length} icon={<Check className="h-4 w-4" />} />
+                <ModuleStat label="Horarios diarios" value={timeSlots.length} icon={<Clock className="h-4 w-4" />} />
             </div>
 
             {/* Amenities Grid */}
@@ -242,48 +244,37 @@ export default function AmenitiesPage() {
                         description="Cuando administración active quinchos, salas o piscinas, aparecerán acá para reservar."
                     />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {amenities.map((amenity, idx) => {
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {amenities.map((amenity) => {
                             const Icon = getIcon(amenity.iconName);
-                            const gradient = amenity.gradient || 'from-[#3B82F6] to-[#6D28D9]';
                             return (
                                 <article
                                     key={amenity.id}
-                                    className="group relative bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 overflow-hidden hover:shadow-2xl hover:border-white/80 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 animate-slide-up"
-                                    style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
+                                    className="group flex min-h-[280px] flex-col rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-colors hover:border-brand-200"
                                 >
-                                    {/* Background glow effect behind the card */}
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`}></div>
-                                    {/* Professional Icon Banner */}
-                                    <div className={`relative h-32 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
-                                        {/* Decorative circles */}
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12" />
-                                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
-
-                                        {/* Icon */}
-                                        <div className="relative p-4 bg-white/20 backdrop-blur-sm rounded-2xl group-hover:scale-110 transition-transform duration-300">
-                                            <Icon className="h-10 w-10 text-white" />
+                                    <div className="mb-5 flex items-start justify-between gap-4">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                                            <Icon className="h-6 w-6" />
                                         </div>
 
                                         {amenity.hourlyRate > 0 && (
-                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm cc-text-secondary text-xs font-semibold rounded-full shadow-lg">
+                                            <div className="rounded-full bg-elevated px-2.5 py-1 text-xs font-semibold cc-text-secondary">
                                                 ${amenity.hourlyRate.toLocaleString()}/hr
                                             </div>
                                         )}
                                         {amenity.hourlyRate === 0 && (
-                                            <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-success-fg text-xs font-semibold rounded-full flex items-center gap-1 shadow-lg">
+                                            <div className="flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg">
                                                 <Sparkles className="h-3 w-3" />
                                                 Gratis
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Content */}
-                                    <div className="p-5">
-                                        <h3 className="text-lg font-bold cc-text-primary mb-2">{amenity.name}</h3>
-                                        <p className="text-sm cc-text-secondary mb-4 line-clamp-2">{amenity.description}</p>
+                                    <div className="flex flex-1 flex-col">
+                                        <h3 className="mb-2 text-lg font-bold cc-text-primary">{amenity.name}</h3>
+                                        <p className="mb-4 line-clamp-3 text-sm leading-6 cc-text-secondary">{amenity.description}</p>
 
-                                        <div className="flex items-center gap-4 text-sm cc-text-secondary mb-5">
+                                        <div className="mb-5 flex items-center gap-4 text-sm cc-text-secondary">
                                             <div className="flex items-center gap-1.5">
                                                 <Users className="h-4 w-4 text-slate-400" />
                                                 <span>Máx. {amenity.maxCapacity}</span>
@@ -292,9 +283,9 @@ export default function AmenitiesPage() {
 
                                         <button
                                             onClick={() => handleOpenBooking(amenity)}
-                                            className={`w-full py-3 bg-gradient-to-r ${gradient} text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative z-10`}
+                                            className="mt-auto w-full rounded-lg bg-brand-500 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
                                         >
-                                            Reservar Ahora
+                                            Reservar ahora
                                         </button>
                                     </div>
                                 </article>
@@ -307,10 +298,10 @@ export default function AmenitiesPage() {
             {/* My Bookings */}
             {!loading && userBookings.length > 0 && (
                 <ErrorBoundary name="Mis Reservas">
-                    <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 p-6">
+                    <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-brand-100 dark:bg-purple-500/20 rounded-lg">
-                                <Check className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                            <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
+                                <Check className="h-5 w-5" />
                             </div>
                             <h2 className="text-lg font-bold cc-text-primary">Mis Reservas</h2>
                         </div>
@@ -320,12 +311,10 @@ export default function AmenitiesPage() {
                                 if (!amenity) return null;
                                 const Icon = getIcon(String(amenity.icon_name || amenity.iconName || "Calendar"));
                                 const amenityName = String(amenity.name || "Espacio común");
-                                const amenityGradient = String(amenity.gradient || "from-[#3B82F6] to-[#6D28D9]");
                                 return (
-                                    <div key={booking.id} className={`flex items-center gap-4 p-4 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}>
-                                        <div className={`absolute inset-0 bg-gradient-to-r ${amenityGradient} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
-                                        <div className={`p-2 rounded-lg bg-gradient-to-br ${amenityGradient}`}>
-                                            <Icon className="h-5 w-5 text-white" />
+                                    <div key={booking.id} className="flex items-center gap-4 rounded-lg border border-subtle bg-elevated p-4">
+                                        <div className="rounded-lg bg-surface p-2 cc-text-secondary">
+                                            <Icon className="h-5 w-5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-semibold cc-text-primary truncate">{amenityName}</p>
@@ -355,8 +344,8 @@ export default function AmenitiesPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-3">
                             {selectedAmenity && (
-                                <div className={`p-2 rounded-lg bg-gradient-to-br ${selectedAmenity.gradient}`}>
-                                    {(() => { const Icon = getIcon(selectedAmenity.iconName); return <Icon className="h-5 w-5 text-white" />; })()}
+                                <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
+                                    {(() => { const Icon = getIcon(selectedAmenity.iconName); return <Icon className="h-5 w-5" />; })()}
                                 </div>
                             )}
                             Reservar {selectedAmenity?.name}
@@ -408,7 +397,7 @@ export default function AmenitiesPage() {
                                             disabled={isPast}
                                             onClick={() => setSelectedDate(dateStr)}
                                             className={`py-2 rounded-lg text-sm font-medium transition-all ${isSelected
-                                                ? `bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} text-white shadow-lg`
+                                                ? 'bg-brand-500 text-white shadow-sm'
                                                 : isPast
                                                     ? 'cc-text-tertiary cursor-not-allowed'
                                                     : 'cc-text-secondary hover:bg-elevated'
@@ -443,7 +432,7 @@ export default function AmenitiesPage() {
                                                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${isBooked
                                                     ? 'bg-elevated cc-text-tertiary cursor-not-allowed line-through'
                                                     : selectedTime === time
-                                                        ? `bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} text-white shadow-lg`
+                                                        ? 'bg-brand-500 text-white shadow-sm'
                                                         : 'bg-elevated cc-text-secondary hover:bg-elevated'
                                                     }`}
                                             >
@@ -461,7 +450,7 @@ export default function AmenitiesPage() {
                         <Button
                             onClick={handleBook}
                             disabled={bookingLoading}
-                            className={`bg-gradient-to-r ${selectedAmenity?.gradient || 'from-purple-500 to-pink-500'} border-0 flex gap-2`}
+                            className="flex gap-2 border-0 bg-brand-500 hover:bg-brand-600"
                         >
                             {bookingLoading && <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent" />}
                             {bookingLoading ? 'Reservando...' : 'Confirmar Reserva'}

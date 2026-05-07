@@ -30,7 +30,7 @@ export default function DashboardLayout({
     if (!user) return null;
 
     return (
-        <div className="flex h-screen bg-transparent overflow-hidden relative">
+        <div className="cc-dashboard flex h-screen bg-transparent overflow-hidden relative">
             <AnimatedBackground />
             <ErrorBoundary name="Sidebar">
                 <Sidebar />
