@@ -161,17 +161,17 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     }
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6">
-            <div className="flex flex-col gap-4 rounded-3xl border border-subtle bg-surface p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto max-w-6xl space-y-6 p-6">
+            <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">
                         {isAdminMode ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
                         {isAdminMode ? "Moderación" : "Mis publicaciones"}
                     </div>
-                    <h1 className="text-3xl font-black cc-text-primary">
+                    <h1 className="text-3xl font-bold cc-text-primary">
                         {isAdminMode ? "Control del Marketplace" : "Gestiona tus publicaciones"}
                     </h1>
-                    <p className="mt-2 max-w-2xl text-sm font-medium cc-text-secondary">
+                    <p className="mt-1 max-w-2xl cc-text-secondary">
                         {isAdminMode
                             ? "Revisa estados, oculta anuncios problemáticos y mantén ordenada la vitrina comunitaria."
                             : "Marca artículos como reservados o vendidos y retira lo que ya no quieras mostrar."}
@@ -186,7 +186,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                         <Button>Ir al Marketplace</Button>
                     </Link>
                 </div>
-            </div>
+            </header>
 
             <div className="grid gap-3 md:grid-cols-5">
                 {([
@@ -200,20 +200,20 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                         key={key}
                         type="button"
                         onClick={() => setFilter(key)}
-                        className={`rounded-2xl border p-4 text-left transition-colors ${
+                        className={`rounded-lg border p-4 text-left transition-colors ${
                             filter === key
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
+                                ? "border-brand-300 bg-brand-50"
                                 : "border-subtle bg-surface hover:bg-elevated"
                         }`}
                     >
-                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">{label}</p>
-                        <p className="mt-1 text-2xl font-black cc-text-primary">{value}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{label}</p>
+                        <p className="mt-1 text-2xl font-semibold cc-text-primary">{value}</p>
                     </button>
                 ))}
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center gap-3 rounded-3xl border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
+                <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                     Cargando publicaciones...
                 </div>
@@ -235,7 +235,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                         const isSaving = savingId === item.id;
 
                         return (
-                            <article key={item.id} className="overflow-hidden rounded-3xl border border-subtle bg-surface shadow-sm">
+                            <article key={item.id} className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
                                 <div className="grid gap-0 md:grid-cols-[180px_1fr]">
                                     <div className="relative h-48 bg-elevated md:h-full">
                                         {image ? (
@@ -255,14 +255,14 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                                     {item.allowSwap && <Badge variant="conserje">Permuta</Badge>}
                                                     {item.allowBarter && <Badge variant="success">Trueque</Badge>}
                                                 </div>
-                                                <h2 className="truncate text-xl font-black cc-text-primary">{item.title}</h2>
+                                                <h2 className="truncate text-lg font-semibold cc-text-primary">{item.title}</h2>
                                                 <p className="mt-1 line-clamp-2 text-sm cc-text-secondary">{item.description}</p>
                                             </div>
                                             <div className="shrink-0 text-left md:text-right">
-                                                <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">
                                                     {isAdminMode ? `Depto ${getDeptNumber(item)}` : "Precio"}
                                                 </p>
-                                                <p className="text-xl font-black text-blue-600">
+                                                <p className="text-lg font-semibold text-brand-600">
                                                     {item.allowSale !== false ? `$${item.price.toLocaleString("es-CL")}` : "Intercambio"}
                                                 </p>
                                             </div>
@@ -297,7 +297,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                         </div>
 
                                         {item.status === "hidden" && (
-                                            <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                                            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
                                                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                                                 Esta publicación está oculta para residentes en el marketplace público.
                                             </div>

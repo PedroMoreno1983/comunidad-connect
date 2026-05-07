@@ -38,10 +38,10 @@ export default function AdminFinanzasPage() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="max-w-7xl mx-auto py-10 px-4 md:px-8"
+                className="mx-auto max-w-6xl space-y-6 p-6"
             >
                 <FinanceDashboard data={finances} />
-                <div className="mt-12">
+                <div>
                     <CondoFeesTable />
                 </div>
             </motion.div>

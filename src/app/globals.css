@@ -560,3 +560,36 @@ h2,
 .cc-dashboard .shadow-2xl {
   box-shadow: var(--cc-product-shadow) !important;
 }
+
+.cc-dashboard .font-black {
+  font-weight: 700 !important;
+}
+
+.cc-dashboard .text-5xl,
+.cc-dashboard .text-4xl {
+  font-size: 1.875rem !important;
+  line-height: 2.25rem !important;
+}
+
+.cc-dashboard .tracking-widest {
+  letter-spacing: 0.08em !important;
+}
+
+.cc-dashboard .bg-gradient-to-r.from-blue-500,
+.cc-dashboard .bg-gradient-to-r.from-blue-600,
+.cc-dashboard .bg-gradient-to-r.from-rose-500,
+.cc-dashboard .bg-gradient-to-r.from-indigo-500,
+.cc-dashboard .bg-gradient-to-br.from-blue-500,
+.cc-dashboard .bg-gradient-to-br.from-slate-900,
+.cc-dashboard .bg-gradient-to-br.from-rose-500,
+.cc-dashboard .bg-gradient-to-br.from-fuchsia-500,
+.cc-dashboard .bg-gradient-to-br.from-emerald-400,
+.cc-dashboard .bg-gradient-to-br.from-indigo-400 {
+  background-image: none !important;
+  background-color: var(--cc-brand-500) !important;
+}
+
+.cc-dashboard .backdrop-blur-md,
+.cc-dashboard .backdrop-blur-lg {
+  backdrop-filter: none !important;
+}
