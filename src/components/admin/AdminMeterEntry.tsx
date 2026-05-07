@@ -1,18 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-    Plus, Calculator, Save, Search,
-    Home, Hash, ArrowRight, CheckCircle2,
-    AlertTriangle, Filter, Download
+    Calculator, Save, Search,
+    CheckCircle2, AlertTriangle, Download
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { WaterService } from "@/lib/api";
 import { WaterReading, Unit } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
-import { Loader2 } from "lucide-react";
+import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 
 interface AdminMeterEntryProps {
     onUnitSelect?: (unit: Unit) => void;
@@ -25,11 +22,11 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed' | 'alert'>('all');
     const [readings, setReadings] = useState<Record<string, number>>({});
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
-    const currentMonth = "Febrero"; // En un app real, esto sería dinámico
-    const currentYear = 2026;
+    const currentPeriod = getCurrentWaterPeriod();
+    const currentMonth = currentPeriod.month;
+    const currentYear = currentPeriod.year;
 
     useEffect(() => {
         async function loadData() {
@@ -54,8 +51,6 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 setLastReadings(readingsMap);
             } catch (error) {
                 console.error("Error loading admin meter data:", error);
-            } finally {
-                setIsLoading(false);
             }
         }
         loadData();

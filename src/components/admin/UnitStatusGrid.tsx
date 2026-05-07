@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { WaterService } from "@/lib/api";
 import { Unit, WaterReading } from "@/lib/types";
-import { Waves, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 
 interface UnitStatusGridProps {
     onUnitSelect?: (unit: Unit) => void;
@@ -13,8 +14,9 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
     const [readings, setReadings] = useState<Record<string, WaterReading>>({});
     const [loading, setLoading] = useState(true);
 
-    const currentMonth = "Febrero";
-    const currentYear = 2026;
+    const currentPeriod = getCurrentWaterPeriod();
+    const currentMonth = currentPeriod.month;
+    const currentYear = currentPeriod.year;
 
     useEffect(() => {
         async function loadData() {
@@ -40,7 +42,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
             }
         }
         loadData();
-    }, []);
+    }, [currentMonth, currentYear]);
 
     if (loading) {
         return (
