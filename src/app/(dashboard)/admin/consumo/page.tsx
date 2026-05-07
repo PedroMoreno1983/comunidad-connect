@@ -7,7 +7,6 @@ import { UnitDetailPanel } from "@/components/admin/UnitDetailPanel";
 import {
     Activity,
     AlertCircle,
-    BarChart3,
     Filter,
     Printer,
     Settings,
@@ -109,138 +108,157 @@ export default function AdminConsumoPage() {
     const coverage = stats.totalUnits > 0 ? Math.round((stats.readUnits / stats.totalUnits) * 100) : 0;
 
     return (
-        <div className="mx-auto max-w-7xl space-y-12 px-4 py-10 md:px-8">
-            <header className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 dark:text-blue-400">
-                        Operaciones & suministros
-                    </p>
-                    <h1 className="text-4xl font-black cc-text-primary">Control hídrico</h1>
-                    <p className="cc-text-secondary">
-                        Periodo activo: {currentPeriod.month} {currentPeriod.year}
-                    </p>
+        <div className="mx-auto max-w-6xl space-y-6 p-6">
+            <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                    <h1 className="text-3xl font-bold cc-text-primary">Control hídrico</h1>
+                    <p className="cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    <button className="flex items-center gap-3 rounded-2xl border border-subtle bg-surface px-8 py-4 font-black cc-text-primary shadow-xl transition-all hover:bg-slate-50 active:scale-95">
-                        <Printer className="h-5 w-5 text-slate-400" />
+                <div className="flex flex-wrap items-center gap-3">
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated">
+                        <Printer className="h-4 w-4 cc-text-secondary" />
                         Imprimir planillas
                     </button>
-                    <button className="flex items-center gap-3 rounded-2xl bg-slate-900 px-8 py-4 font-black text-white shadow-xl transition-all hover:bg-slate-800 active:scale-95 dark:bg-slate-800">
-                        <Filter className="h-5 w-5" />
+                    <button className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                        <Filter className="h-4 w-4" />
                         Ver reportes
                     </button>
                 </div>
             </header>
 
-            <section className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                <div className="rounded-[2.5rem] border border-subtle bg-surface p-8 shadow-xl shadow-slate-200/20 dark:shadow-none">
-                    <div className="mb-6 flex items-center gap-4">
-                        <div className="rounded-2xl bg-blue-50 p-3 dark:bg-blue-500/10">
-                            <Waves className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-subtle p-5 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                        <Waves className="h-5 w-5 text-slate-500" />
+                        <div>
+                            <h2 className="text-lg font-semibold cc-text-primary">Resumen del periodo</h2>
+                            <p className="text-sm cc-text-secondary">Lecturas, consumo y alertas del mes activo.</p>
                         </div>
-                        <h2 className="text-[10px] font-black uppercase tracking-widest cc-text-primary">Consumo total mes</h2>
                     </div>
-                    <p className="mb-1 text-4xl font-black cc-text-primary">{stats.totalConsumption.toFixed(1)} m³</p>
-                    <p className="flex items-center gap-1 text-xs font-bold text-emerald-500">
-                        <TrendingUp className="h-3 w-3 rotate-180" />
-                        Promedio {stats.averageConsumption.toFixed(1)} m³ por unidad
-                    </p>
+                    <div className="min-w-[220px]">
+                        <div className="mb-1 flex items-center justify-between text-xs font-semibold cc-text-secondary">
+                            <span>Cobertura de lectura</span>
+                            <span>{coverage}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-elevated">
+                            <div className="h-full bg-brand-500" style={{ width: `${coverage}%` }} />
+                        </div>
+                    </div>
                 </div>
 
-                <div className="rounded-[2.5rem] border border-subtle bg-surface p-8 shadow-xl shadow-slate-200/20 dark:shadow-none">
-                    <div className="mb-6 flex items-center gap-4">
-                        <div className="rounded-2xl bg-warning-bg p-3">
-                            <AlertCircle className="h-6 w-6 text-warning-fg" />
+                <div className="grid grid-cols-1 divide-y divide-subtle md:grid-cols-3 md:divide-x md:divide-y-0">
+                    <div className="p-5">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                            <Waves className="h-4 w-4" />
+                            Consumo total mes
                         </div>
-                        <h2 className="text-[10px] font-black uppercase tracking-widest cc-text-primary">Alertas de fuga</h2>
+                        <p className="text-3xl font-semibold cc-text-primary">{stats.totalConsumption.toFixed(1)} m3</p>
+                        <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-success-fg">
+                            <TrendingUp className="h-3 w-3 rotate-180" />
+                            Promedio {stats.averageConsumption.toFixed(1)} m3 por unidad
+                        </p>
                     </div>
-                    <p className="mb-1 text-4xl font-black cc-text-primary">{stats.alertCount}</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-amber-500">Unidades con sobreconsumo</p>
-                </div>
 
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl">
-                    <div className="absolute right-0 top-0 p-6 opacity-10 transition-transform duration-500 group-hover:rotate-12">
-                        <BarChart3 className="h-20 w-20 text-blue-500" />
+                    <div className="p-5">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                            <AlertCircle className="h-4 w-4" />
+                            Alertas de fuga
+                        </div>
+                        <p className="text-3xl font-semibold cc-text-primary">{stats.alertCount}</p>
+                        <p className="mt-2 text-xs font-semibold text-warning-fg">Unidades con sobreconsumo</p>
                     </div>
-                    <div className="relative z-10 flex h-full flex-col justify-between">
-                        <div className="mb-6">
-                            <h2 className="font-black text-white">Cobertura de lectura</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Lecturas del periodo</p>
+
+                    <div className="p-5">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                            <Activity className="h-4 w-4" />
+                            Lecturas registradas
                         </div>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
-                                <span className="text-sm font-bold text-slate-300">
-                                    {stats.readUnits} de {stats.totalUnits} unidades registradas
-                                </span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                                <div className="h-full rounded-full bg-blue-500" style={{ width: `${coverage}%` }} />
-                            </div>
-                        </div>
+                        <p className="text-3xl font-semibold cc-text-primary">{stats.readUnits} / {stats.totalUnits}</p>
+                        <p className="mt-2 text-xs font-semibold cc-text-secondary">Unidades del periodo</p>
                     </div>
                 </div>
             </section>
 
-            <section className="space-y-8">
-                <div className="flex items-center gap-4 px-2">
-                    <div className="rounded-2xl bg-blue-100 p-3 dark:bg-blue-500/10">
-                        <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+                <div className="flex items-center justify-between border-b border-subtle p-5">
+                    <div className="flex items-center gap-3">
+                        <Activity className="h-5 w-5 text-slate-500" />
+                        <h2 className="text-lg font-semibold cc-text-primary">Estado de lecturas comunidad</h2>
                     </div>
-                    <h2 className="text-2xl font-black cc-text-primary">Estado de lecturas comunidad</h2>
+                    <span className="text-sm font-semibold cc-text-secondary">{coverage}% cobertura</span>
                 </div>
                 {isDemoUser ? (
-                    <div className="rounded-[3rem] border border-subtle bg-surface p-10 shadow-xl shadow-slate-200/20">
-                        <div className="mb-8 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-xl font-black cc-text-primary">Mapa demo de lecturas</h3>
-                                <p className="text-sm font-medium cc-text-secondary">Cobertura simulada para mostrar alertas y unidades pendientes sin depender de tablas opcionales.</p>
-                            </div>
-                            <span className="text-2xl font-black text-blue-600">75%</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            {demoWaterUnits.map((unit, index) => (
-                                <button
-                                    key={unit.id}
-                                    onClick={() => setSelectedUnit(unit)}
-                                    className={`aspect-square rounded-2xl border p-4 text-left transition-transform hover:-translate-y-1 ${index === 2 ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-100 bg-emerald-50 text-emerald-700"}`}
-                                >
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Torre {unit.tower}</p>
-                                    <p className="text-2xl font-black">{unit.number}</p>
-                                    <p className="mt-2 text-xs font-bold">{index === 2 ? "Alerta consumo" : "Lectura OK"}</p>
-                                </button>
-                            ))}
-                        </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="border-b border-subtle bg-canvas/50 text-slate-500">
+                                <tr>
+                                    <th className="px-6 py-4 font-semibold">Unidad</th>
+                                    <th className="px-6 py-4 font-semibold">Ubicación</th>
+                                    <th className="px-6 py-4 font-semibold">Estado</th>
+                                    <th className="px-6 py-4 text-right font-semibold">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-subtle">
+                                {demoWaterUnits.map((unit, index) => (
+                                    <tr key={unit.id} className="transition-colors hover:bg-elevated/50">
+                                        <td className="px-6 py-4 font-semibold cc-text-primary">Depto {unit.number}</td>
+                                        <td className="px-6 py-4 cc-text-secondary">Torre {unit.tower}, Piso {unit.floor}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${index === 2 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
+                                                {index === 2 ? "Alerta consumo" : "Lectura OK"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => setSelectedUnit(unit)}
+                                                className="rounded-lg border border-subtle px-3 py-2 text-xs font-semibold cc-text-primary transition-colors hover:bg-elevated"
+                                            >
+                                                Revisar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 ) : (
-                    <UnitStatusGrid onUnitSelect={setSelectedUnit} />
+                    <div className="p-5">
+                        <UnitStatusGrid onUnitSelect={setSelectedUnit} />
+                    </div>
                 )}
             </section>
 
-            <section className="space-y-8">
-                <div className="flex items-center gap-4 px-2">
-                    <div className="rounded-2xl bg-elevated p-3">
-                        <Settings className="h-6 w-6 cc-text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-black cc-text-primary">Ingreso de lecturas</h2>
+            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+                <div className="flex items-center gap-3 border-b border-subtle p-5">
+                    <Settings className="h-5 w-5 text-slate-500" />
+                    <h2 className="text-lg font-semibold cc-text-primary">Ingreso de lecturas</h2>
                 </div>
                 {isDemoUser ? (
-                    <div className="rounded-[3rem] border border-subtle bg-surface p-10 shadow-xl shadow-slate-200/20">
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {demoWaterUnits.map((unit, index) => (
-                                <div key={unit.id} className="flex items-center justify-between rounded-2xl bg-elevated p-5">
-                                    <div>
-                                        <p className="font-black cc-text-primary">Unidad {unit.number}</p>
-                                        <p className="text-xs font-bold cc-text-secondary">Lectura anterior {(118 + index * 14).toFixed(1)} m3</p>
-                                    </div>
-                                    <span className="rounded-xl bg-white px-4 py-2 text-sm font-black text-blue-600">Nueva {(132 + index * 17).toFixed(1)}</span>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="border-b border-subtle bg-canvas/50 text-slate-500">
+                                <tr>
+                                    <th className="px-6 py-4 font-semibold">Unidad</th>
+                                    <th className="px-6 py-4 font-semibold">Lectura anterior</th>
+                                    <th className="px-6 py-4 font-semibold">Nueva lectura</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-subtle">
+                                {demoWaterUnits.map((unit, index) => (
+                                    <tr key={unit.id} className="transition-colors hover:bg-elevated/50">
+                                        <td className="px-6 py-4 font-semibold cc-text-primary">Unidad {unit.number}</td>
+                                        <td className="px-6 py-4 cc-text-secondary">{(118 + index * 14).toFixed(1)} m3</td>
+                                        <td className="px-6 py-4 font-semibold cc-text-primary">{(132 + index * 17).toFixed(1)} m3</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 ) : (
-                    <AdminMeterEntry onUnitSelect={setSelectedUnit} />
+                    <div className="p-5">
+                        <AdminMeterEntry onUnitSelect={setSelectedUnit} />
+                    </div>
                 )}
             </section>
 
