@@ -1,6 +1,20 @@
 import { supabase } from './supabase';
 import { Unit, WaterReading, MarketplaceItem } from './types';
-import { sendBookingConfirmation } from './email';
+
+async function sendBookingConfirmation(payload: {
+    to: string;
+    residentName: string;
+    amenityName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+}) {
+    return fetch('/api/email/booking-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+}
 
 // ==========================================
 // Water Consumption API

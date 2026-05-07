@@ -1,6 +1,22 @@
 import { Resend } from 'resend';
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+
+function getResendClient() {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        throw new Error('RESEND_API_KEY no configurada');
+    }
+
+    resendClient ??= new Resend(apiKey);
+    return resendClient;
+}
+
+export const resend = {
+    emails: {
+        send: (...args: Parameters<Resend['emails']['send']>) => getResendClient().emails.send(...args),
+    },
+};
 
 export const FROM_EMAIL = 'ComunidadConnect <notificaciones@datawiseconsultoria.com>';
 export const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'pedromoreno1983@gmail.com';
