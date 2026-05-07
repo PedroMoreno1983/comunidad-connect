@@ -72,8 +72,8 @@ export default function ResidentInvitationsPage() {
             {/* Professional Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
-                    <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Gestión de Accesos</h2>
-                    <h1 className="text-4xl font-black cc-text-primary">Mis Invitados</h1>
+                    <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.08em]">Gestión de Accesos</h2>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Mis Invitados</h1>
                 </div>
             </div>
 
@@ -88,10 +88,10 @@ export default function ResidentInvitationsPage() {
                     {/* Active Cards */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-success-bg rounded-2xl">
+                            <div className="p-3 bg-success-bg rounded-lg">
                                 <ShieldCheck className="h-6 w-6 text-success-fg" />
                             </div>
-                            <h2 className="text-2xl font-black cc-text-primary">Pases Activos</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary">Pases Activos</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -101,19 +101,19 @@ export default function ResidentInvitationsPage() {
                                 <motion.div
                                     key={inv.id}
                                     whileHover={{ y: -5 }}
-                                    className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-4"
+                                    className="bg-surface p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none space-y-4"
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
                                             <QrCode className="h-6 w-6" />
                                         </div>
-                                        <div className="px-3 py-1 bg-success-bg text-success-fg rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                        <div className="px-3 py-1 bg-success-bg text-success-fg rounded-lg text-[10px] font-semibold uppercase tracking-wider">
                                             Activo
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-black cc-text-primary">{inv.guestName}</h3>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{inv.guestDni}</p>
+                                        <h3 className="text-lg font-semibold cc-text-primary">{inv.guestName}</h3>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em]">{inv.guestDni}</p>
                                     </div>
                                     <div className="pt-4 border-t border-subtle flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-xs text-slate-400 font-bold">
@@ -136,29 +136,29 @@ export default function ResidentInvitationsPage() {
                     {/* History List */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-elevated rounded-2xl">
+                            <div className="p-3 bg-elevated rounded-lg">
                                 <History className="h-6 w-6 cc-text-primary" />
                             </div>
-                            <h2 className="text-2xl font-black cc-text-primary">Bitácora de Visitas</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary">Bitácora de Visitas</h2>
                         </div>
 
-                        <div className="bg-surface rounded-[2.5rem] border border-subtle overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
+                        <div className="bg-surface rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-none">
                             <div className="divide-y divide-slate-50 dark:divide-slate-800">
                                 {isLoading && <div className="p-10 text-center text-slate-500">Cargando historial...</div>}
                                 {!isLoading && pastInvitations.map((inv) => (
                                     <div key={inv.id} className="p-8 flex items-center justify-between hover:bg-elevated/20 transition-colors">
                                         <div className="flex items-center gap-5">
-                                            <div className="h-12 w-12 rounded-2xl bg-elevated flex items-center justify-center text-slate-400 font-bold">
+                                            <div className="h-12 w-12 rounded-lg bg-elevated flex items-center justify-center text-slate-400 font-bold">
                                                 {inv.guestName.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="font-black cc-text-primary">{inv.guestName}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                <p className="font-semibold cc-text-primary">{inv.guestName}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em]">
                                                     Generado el {new Date(inv.validFrom).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">
                                             {inv.status === 'expired' ? 'Expirado' : inv.status === 'cancelled' ? 'Cancelado' : 'Usado'}
                                         </span>
                                     </div>

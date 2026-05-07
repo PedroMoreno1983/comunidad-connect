@@ -121,7 +121,7 @@ export default function ProfilePage() {
             // Save to profile
             await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
             setAvatarUrl(publicUrl);
-            toast({ title: "✅ Foto actualizada", description: "Tu foto de perfil fue guardada.", variant: "success" });
+            toast({ title: "Foto actualizada", description: "Tu foto de perfil fue guardada.", variant: "success" });
         } catch (error) {
             console.error(error);
             toast({ title: "Error", description: "No se pudo subir la foto.", variant: "destructive" });
@@ -176,7 +176,7 @@ export default function ProfilePage() {
                 }
             }
 
-            toast({ title: "✅ Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
+            toast({ title: "Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
         } catch (error) {
             console.error(error);
             toast({ title: "Error", description: "No se pudo guardar el perfil.", variant: "destructive" });
@@ -195,7 +195,7 @@ export default function ProfilePage() {
             if (error) throw error;
             setPasswordResetSent(true);
             setShowEmailConfirm(true);
-            toast({ title: "📧 Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
+            toast({ title: "Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
         } catch (error) {
             toast({ title: "Error", description: "No se pudo enviar el email.", variant: "destructive" });
         } finally {
@@ -221,11 +221,11 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto py-10 px-4 sm:px-6 space-y-8">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <div className={`p-3 bg-gradient-to-br ${gradient} rounded-2xl shadow-lg`}>
+                <div className={`p-3 bg-gradient-to-br ${gradient} rounded-lg shadow-sm`}>
                     <User className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-black cc-text-primary">Mi Perfil</h1>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Mi Perfil</h1>
                     <p className="text-sm font-medium text-slate-500">Gestiona tu información personal</p>
                 </div>
             </div>
@@ -234,7 +234,7 @@ export default function ProfilePage() {
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-surface rounded-3xl border border-subtle shadow-lg shadow-slate-200/40 dark:shadow-none overflow-hidden"
+                className="bg-surface rounded-lg border border-subtle shadow-sm shadow-slate-200/40 dark:shadow-none overflow-hidden"
             >
                 {/* Banner */}
                 <div className={`h-24 bg-gradient-to-r ${gradient} relative`}>
@@ -244,11 +244,11 @@ export default function ProfilePage() {
                 <div className="px-8 pb-8">
                     {/* Avatar */}
                     <div className="relative -mt-12 inline-block mb-4">
-                        <div className={`w-24 h-24 rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} border-4 border-white dark:border-slate-800 shadow-xl`}>
+                        <div className={`w-24 h-24 rounded-lg overflow-hidden bg-gradient-to-br ${gradient} border-4 border-white dark:border-slate-800 shadow-sm`}>
                             {avatarUrl ? (
                                 <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-black text-white">
+                                <div className="w-full h-full flex items-center justify-center text-3xl font-semibold text-white">
                                     {user?.name?.charAt(0) || '?'}
                                 </div>
                             )}
@@ -256,7 +256,7 @@ export default function ProfilePage() {
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploadingAvatar}
-                            className="absolute -bottom-2 -right-2 p-2 bg-brand-500 text-white rounded-xl shadow-lg hover:bg-brand-600 transition-colors disabled:opacity-60"
+                            className="absolute -bottom-2 -right-2 p-2 bg-brand-500 text-white rounded-xl shadow-sm hover:bg-brand-600 transition-colors disabled:opacity-60"
                         >
                             {isUploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                         </button>
@@ -283,14 +283,14 @@ export default function ProfilePage() {
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                            className="w-full px-4 py-3 rounded-lg bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                         />
                     </div>
 
                     {/* Email (read-only) */}
                     <div className="space-y-2 mb-6">
                         <label className="text-sm font-bold cc-text-secondary">Email</label>
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-canvas border border-subtle">
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-canvas border border-subtle">
                             <Mail className="h-4 w-4 text-slate-400" />
                             <span className="text-sm font-medium cc-text-secondary">{user?.email}</span>
                         </div>
@@ -305,7 +305,7 @@ export default function ProfilePage() {
                                 value={unitNumber}
                                 onChange={(e) => setUnitNumber(e.target.value)}
                                 placeholder="Ej: 402"
-                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                className="w-full px-4 py-3 rounded-lg bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                             />
                         </div>
                         <div className="space-y-2">
@@ -315,7 +315,7 @@ export default function ProfilePage() {
                                 value={unitTower}
                                 onChange={(e) => setUnitTower(e.target.value)}
                                 placeholder="Ej: A"
-                                className="w-full px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                className="w-full px-4 py-3 rounded-lg bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                             />
                         </div>
                     </div>
@@ -323,7 +323,7 @@ export default function ProfilePage() {
                     <button
                         onClick={handleSaveProfile}
                         disabled={isSaving || !fullName.trim()}
-                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r ${gradient} text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100`}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gradient-to-r ${gradient} text-white font-bold text-sm shadow-md  transition-transform disabled:opacity-60 disabled:scale-100`}
                     >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         Guardar cambios
@@ -336,14 +336,14 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-surface rounded-3xl border border-subtle p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+                className="bg-surface rounded-lg border border-subtle p-8 shadow-sm shadow-slate-200/40 dark:shadow-none"
             >
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2.5 bg-success-bg rounded-xl">
                         <MessageCircle className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
-                        <h2 className="font-black cc-text-primary">Notificaciones WhatsApp</h2>
+                        <h2 className="font-semibold cc-text-primary">Notificaciones WhatsApp</h2>
                         <p className="text-xs text-slate-400">Recibe avisos importantes en tu WhatsApp</p>
                     </div>
                 </div>
@@ -352,7 +352,7 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold cc-text-secondary">Número de WhatsApp</label>
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-3 rounded-2xl bg-canvas border border-subtle">
+                            <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-canvas border border-subtle">
                                 <Smartphone className="h-4 w-4 text-slate-400" />
                                 <span className="text-sm font-bold text-slate-400">+56</span>
                             </div>
@@ -367,14 +367,14 @@ export default function ProfilePage() {
                                     setPhoneNumber(val.substring(0, 9));
                                 }}
                                 placeholder="912345678"
-                                className="flex-1 px-4 py-3 rounded-2xl bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                className="flex-1 px-4 py-3 rounded-lg bg-canvas border border-subtle text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
                         </div>
                         <p className="text-xs text-slate-400">Ingresa los 9 dígitos de tu móvil (ej: 912345678)</p>
                     </div>
 
                     {/* Toggle */}
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-canvas border border-subtle">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-canvas border border-subtle">
                         <div>
                             <p className="text-sm font-bold cc-text-primary">Activar notificaciones</p>
                             <p className="text-xs text-slate-400">Recibirás avisos, pagos y mensajes por WhatsApp</p>
@@ -402,14 +402,14 @@ export default function ProfilePage() {
                                 whatsapp_enabled: whatsappEnabled
                             }).eq('id', user.id);
                             if (!error) {
-                                toast({ title: '✅ WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
+                                toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
                             } else {
                                 toast({ title: 'Error', description: 'No se pudo guardar el número.', variant: 'destructive' });
                             }
                             setIsSavingWa(false);
                         }}
                         disabled={isSavingWa || !phoneNumber}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-[#10B981] to-[#0D9488] text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform disabled:opacity-60 disabled:scale-100"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gradient-to-r from-[#10B981] to-[#0D9488] text-white font-bold text-sm shadow-md  transition-transform disabled:opacity-60 disabled:scale-100"
                     >
                         {isSavingWa ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                         Guardar WhatsApp
@@ -422,20 +422,20 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-surface rounded-3xl border border-subtle p-8 shadow-lg shadow-slate-200/40 dark:shadow-none"
+                className="bg-surface rounded-lg border border-subtle p-8 shadow-sm shadow-slate-200/40 dark:shadow-none"
             >
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2.5 bg-danger-bg rounded-xl">
                         <Lock className="h-5 w-5 text-red-500" />
                     </div>
                     <div>
-                        <h2 className="font-black cc-text-primary">Seguridad</h2>
+                        <h2 className="font-semibold cc-text-primary">Seguridad</h2>
                         <p className="text-xs text-slate-400">Gestiona tu contraseña</p>
                     </div>
                 </div>
 
                 {showEmailConfirm ? (
-                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-success-bg border border-emerald-200 dark:border-emerald-500/20">
+                    <div className="flex items-start gap-3 p-4 rounded-lg bg-success-bg border border-emerald-200 dark:border-emerald-500/20">
                         <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                         <div>
                             <p className="text-sm font-bold text-success-fg">Email enviado</p>

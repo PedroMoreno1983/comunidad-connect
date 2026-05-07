@@ -138,40 +138,40 @@ export default function VisitorsPage() {
             {/* Professional Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
-                    <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Módulo de Seguridad</h2>
-                    <h1 className="text-4xl font-black cc-text-primary">Control de Accesos</h1>
+                    <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.08em]">Módulo de Seguridad</h2>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Control de Accesos</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl cc-text-primary font-black rounded-2xl border border-white/50 dark:border-slate-700/50 hover:bg-white/80 dark:hover:bg-slate-800/60 transition-all shadow-xl shadow-slate-200/20 dark:shadow-black/20 active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-surface  cc-text-primary font-semibold rounded-lg border border-subtle hover:bg-surface dark:hover:bg-slate-800/60 transition-all shadow-sm shadow-slate-200/20 dark:shadow-black/20 ">
                                 <Plus className="h-5 w-5 text-blue-600" />
                                 Registro Manual
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl">
+                        <DialogContent className="sm:max-w-[480px] bg-surface  border-subtle rounded-lg p-10 shadow-sm">
                             <DialogHeader>
-                                <DialogTitle className="text-2xl font-black">Registro de Visita</DialogTitle>
+                                <DialogTitle className="text-2xl font-semibold">Registro de Visita</DialogTitle>
                                 <DialogDescription className="font-medium">
                                     Use esta opción si el invitado no posee un código QR.
                                 </DialogDescription>
                             </DialogHeader>
                             <form onSubmit={handleRegisterVisitor} className="space-y-6 pt-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
+                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Nombre Completo</label>
                                     <Input
                                         placeholder="Nombre del visitante"
-                                        className="h-14 rounded-2xl font-bold"
+                                        className="h-14 rounded-lg font-bold"
                                         required
                                         value={newVisitor.name}
                                         onChange={(e) => setNewVisitor({ ...newVisitor, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Unidad Destino</label>
+                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Unidad Destino</label>
                                     <select
-                                        className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                        className="w-full h-14 rounded-lg border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                         required
                                         value={newVisitor.unit}
                                         onChange={(e) => setNewVisitor({ ...newVisitor, unit: e.target.value })}
@@ -183,7 +183,7 @@ export default function VisitorsPage() {
                                     </select>
                                 </div>
                                 <DialogFooter className="pt-4">
-                                    <Button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-500/20 transition-all">
+                                    <Button type="submit" className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all">
                                         Registrar Ingreso
                                     </Button>
                                 </DialogFooter>
@@ -200,23 +200,23 @@ export default function VisitorsPage() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-elevated rounded-2xl">
+                        <div className="p-3 bg-elevated rounded-lg">
                             <ClipboardList className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-black cc-text-primary">Bitácora de Ingresos</h2>
+                        <h2 className="text-2xl font-semibold cc-text-primary">Bitácora de Ingresos</h2>
                     </div>
                 </div>
 
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-[3rem] border border-white/50 dark:border-slate-700/50 overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-surface  rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-subtle">
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Visitante</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Hora Entrada</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
-                                    <th className="px-10 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Acciones</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Visitante</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Destino</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Hora Entrada</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Tipo</th>
+                                    <th className="px-10 py-6 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -228,13 +228,13 @@ export default function VisitorsPage() {
                                                     {visitor.visitorName.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black cc-text-primary">{visitor.visitorName}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registrado hoy</p>
+                                                    <p className="font-semibold cc-text-primary">{visitor.visitorName}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em]">Registrado hoy</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-10 py-8">
-                                            <span className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-black">
+                                            <span className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-semibold">
                                                 Unidad {visitor.unitId}
                                             </span>
                                         </td>

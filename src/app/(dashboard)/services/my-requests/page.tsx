@@ -203,18 +203,18 @@ export default function MyRequestsPage() {
                 ].map(item => {
                     const Icon = item.icon;
                     return (
-                        <div key={item.label} className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                        <div key={item.label} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                             <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${item.tone}`}>
                                 <Icon className="h-5 w-5" />
                             </div>
-                            <p className="text-2xl font-black cc-text-primary">{item.value}</p>
+                            <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
                             <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">{item.label}</p>
                         </div>
                     );
                 })}
             </section>
 
-            <section className="rounded-2xl border border-subtle bg-surface p-4 shadow-sm">
+            <section className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
                 <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -231,9 +231,9 @@ export default function MyRequestsPage() {
                                 key={filter.key}
                                 type="button"
                                 onClick={() => setStatusFilter(filter.key)}
-                                className={`rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     statusFilter === filter.key
-                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
                                         : "bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
                                 }`}
                             >
@@ -245,7 +245,7 @@ export default function MyRequestsPage() {
             </section>
 
             {loading ? (
-                <div className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                     <SkeletonList count={3} />
                 </div>
             ) : filteredRequests.length > 0 ? (
@@ -262,7 +262,7 @@ export default function MyRequestsPage() {
                                 initial={{ opacity: 0, y: 16 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.03 }}
-                                className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm transition-all hover:border-blue-200 dark:hover:border-blue-900/50 md:p-6"
+                                className="rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-all hover:border-blue-200 dark:hover:border-blue-900/50 md:p-6"
                             >
                                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="flex gap-4">
@@ -271,10 +271,10 @@ export default function MyRequestsPage() {
                                         </div>
                                         <div className="min-w-0 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <h2 className="text-lg font-black cc-text-primary">
+                                                <h2 className="text-lg font-semibold cc-text-primary">
                                                     {provider?.name || "Técnico por confirmar"}
                                                 </h2>
-                                                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${status.bg} ${status.color} ${status.border}`}>
+                                                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.bg} ${status.color} ${status.border}`}>
                                                     {status.label}
                                                 </span>
                                                 <span className="rounded-full bg-elevated px-2.5 py-1 text-[11px] font-bold cc-text-secondary">
@@ -312,7 +312,7 @@ export default function MyRequestsPage() {
                                         )}
                                         <Link
                                             href={`/services/provider/${request.provider_id}`}
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-700"
+                                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-500/20 transition-colors hover:bg-blue-700"
                                         >
                                             Ver perfil
                                         </Link>
@@ -326,9 +326,9 @@ export default function MyRequestsPage() {
                 <motion.section
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="rounded-3xl border-2 border-dashed border-subtle bg-surface p-12 text-center"
+                    className="rounded-lg border-2 border-dashed border-subtle bg-surface p-12 text-center"
                 >
-                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-elevated/70">
+                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-lg bg-elevated/70">
                         <Wrench className="h-10 w-10 text-slate-400" />
                     </div>
                     <h2 className="mb-2 text-xl font-bold cc-text-primary">No hay solicitudes para mostrar</h2>
@@ -337,7 +337,7 @@ export default function MyRequestsPage() {
                     </p>
                     <Link
                         href="/services"
-                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-bold text-white shadow-sm shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-sm"
                     >
                         Explorar catálogo
                     </Link>

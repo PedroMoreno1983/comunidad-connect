@@ -110,7 +110,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                 key={option.key}
                                 type="button"
                                 onClick={() => setAvailability(option.key as typeof availability)}
-                                className={`rounded-md px-3 py-2 text-[11px] font-black transition-colors ${
+                                className={`rounded-md px-3 py-2 text-[11px] font-semibold transition-colors ${
                                     availability === option.key
                                         ? "bg-brand-500 text-white"
                                         : "cc-text-secondary hover:bg-surface"
@@ -131,7 +131,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         <button
                             type="button"
                             onClick={clearFilters}
-                            className="inline-flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                            className="inline-flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-xs font-semibold cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
                         >
                             <X className="h-3.5 w-3.5" />
                             Limpiar filtros

@@ -1,29 +1,29 @@
-import Link from 'next/link';
-import { Home, AlertCircle } from 'lucide-react';
+import Link from "next/link";
+import { AlertCircle, Home } from "lucide-react";
 
 export default function NotFound() {
-    return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F19] flex flex-col items-center justify-center p-6 text-center">
-            <div className="bg-surface p-8 rounded-3xl shadow-xl w-full max-w-md border border-subtle flex flex-col items-center">
-                <div className="w-20 h-20 bg-role-admin-bg rounded-2xl flex items-center justify-center mb-6">
-                    <AlertCircle className="w-10 h-10 text-brand-500" />
-                </div>
-
-                <h1 className="text-4xl font-extrabold cc-text-primary mb-2">404</h1>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Página no encontrada</h2>
-
-                <p className="cc-text-secondary mb-8 leading-relaxed">
-                    Lo sentimos, la página que buscas no existe o ha sido movida. Verifica que la URL sea correcta.
-                </p>
-
-                <Link
-                    href="/home"
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 transition-colors text-white font-semibold w-full justify-center shadow-lg shadow-indigo-500/30"
-                >
-                    <Home className="w-5 h-5" />
-                    Te llevamos al Inicio
-                </Link>
-            </div>
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-canvas p-6 text-center">
+      <div className="flex w-full max-w-md flex-col items-center rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+        <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600">
+          <AlertCircle className="h-5 w-5" />
         </div>
-    );
+
+        <h1 className="text-3xl font-semibold cc-text-primary">404</h1>
+        <h2 className="mt-2 text-lg font-semibold cc-text-primary">Página no encontrada</h2>
+
+        <p className="mt-3 leading-6 cc-text-secondary">
+          La página que buscas no existe o fue movida. Verifica la URL o vuelve al inicio.
+        </p>
+
+        <Link
+          href="/home"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+        >
+          <Home className="h-4 w-4" />
+          Ir al inicio
+        </Link>
+      </div>
+    </div>
+  );
 }

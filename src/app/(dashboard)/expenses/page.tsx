@@ -1,13 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
 import { ExpensesService } from "@/lib/api";
 import { DollarSign, Download, CheckCircle, Clock, AlertCircle, TrendingUp, CreditCard, Receipt, ArrowUpRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -166,15 +164,12 @@ export default function ExpensesPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Total Pending Card */}
-                <div className={`relative overflow-hidden rounded-2xl p-6 ${hasOverdue ? 'bg-gradient-to-br from-[#EF4444] to-[#DB2777]' : 'bg-gradient-to-br from-rose-500 to-pink-600'} text-white shadow-xl shadow-rose-500/25`}>
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <DollarSign className="h-24 w-24" />
-                    </div>
-                    <div className="relative">
-                        <p className="text-white/80 text-sm font-medium">Total Pendiente</p>
-                        <p className="text-4xl font-bold mt-2">${totalPending.toLocaleString('es-CL')}</p>
+                <div className={`rounded-lg border bg-surface p-6 shadow-sm ${hasOverdue ? 'border-danger-border' : 'border-subtle'}`}>
+                    <div>
+                        <p className="text-sm font-medium cc-text-secondary">Total Pendiente</p>
+                        <p className="mt-2 text-3xl font-bold cc-text-primary">${totalPending.toLocaleString('es-CL')}</p>
                         {hasOverdue && (
-                            <div className="mt-3 flex items-center gap-2 text-sm">
+                            <div className="mt-3 flex items-center gap-2 text-sm text-danger-fg">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>Tienes pagos vencidos</span>
                             </div>
@@ -183,7 +178,7 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Total Paid Card */}
-                <div className="bg-surface rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
+                <div className="bg-surface rounded-lg p-6 shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
                     <div className="flex items-center justify-between mb-4">
                         <div className="p-3 bg-success-bg rounded-xl">
                             <TrendingUp className="h-5 w-5 text-success-fg" />
@@ -197,7 +192,7 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Quick Pay Card */}
-                <div className="bg-surface rounded-2xl p-6 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
+                <div className="bg-surface rounded-lg p-6 shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
                     <div className="flex items-center justify-between mb-4">
                         <div className="p-3 bg-role-admin-bg rounded-xl">
                             <CreditCard className="h-5 w-5 text-role-admin-fg" />
@@ -213,7 +208,7 @@ export default function ExpensesPage() {
             </div>
 
             {/* Payment History Table */}
-            <div className="bg-surface rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
+            <div className="bg-surface rounded-lg shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
                 <div className="p-6 border-b border-subtle">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -280,7 +275,7 @@ export default function ExpensesPage() {
                                                         <button
                                                             onClick={() => handlePay(expense.id)}
                                                             disabled={isPaying === expense.id}
-                                                            className="inline-flex items-center justify-center min-w-[140px] gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-rose-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none"
+                                                            className="inline-flex items-center justify-center min-w-[140px] gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-xl shadow-sm shadow-rose-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none"
                                                         >
                                                             {isPaying === expense.id ? (
                                                                 <Loader2 className="h-4 w-4 animate-spin" />

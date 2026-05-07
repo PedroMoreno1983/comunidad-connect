@@ -165,7 +165,7 @@ export default function PackagesPage() {
             }
             setIsScanning(false);
             toast({
-                title: "¡Escaneo Exitoso!",
+                title: "¿Escaneo Exitoso!",
                 description: "Datos extraídos de la etiqueta correctamente.",
             });
         }, 1500);
@@ -210,22 +210,22 @@ export default function PackagesPage() {
             {/* Professional Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
-                    <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Operaciones de Conserjería</h2>
-                    <h1 className="text-4xl font-black cc-text-primary">Bitácora de Encomiendas</h1>
+                    <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.08em]">Operaciones de Conserjería</h2>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Bitácora de Encomiendas</h1>
                 </div>
 
                 <div className="flex items-center gap-4">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-800 transition-all shadow-sm ">
                                 <Plus className="h-5 w-5" />
                                 Nueva Recepción
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+                        <DialogContent className="sm:max-w-[480px] bg-surface  border-subtle rounded-lg p-0 overflow-hidden shadow-sm">
                             <div className="p-8 md:p-10 space-y-8">
                                 <DialogHeader>
-                                    <DialogTitle className="text-2xl font-black">Registrar Encomienda</DialogTitle>
+                                    <DialogTitle className="text-2xl font-semibold">Registrar Encomienda</DialogTitle>
                                     <DialogDescription className="font-medium">
                                         Use el escáner para agilizar el registro o ingrese manualmente.
                                     </DialogDescription>
@@ -235,27 +235,27 @@ export default function PackagesPage() {
                                 <button
                                     onClick={simulateScan}
                                     disabled={isScanning}
-                                    className={`w-full py-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 transition-all ${isScanning
+                                    className={`w-full py-8 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-4 transition-all ${isScanning
                                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-500/10'
                                         : 'border-subtle hover:border-blue-500/50 hover:bg-elevated/50'
                                         }`}
                                 >
-                                    <div className={`p-4 rounded-2xl bg-surface shadow-xl ${isScanning ? 'animate-pulse' : ''}`}>
+                                    <div className={`p-4 rounded-lg bg-surface shadow-sm ${isScanning ? 'animate-pulse' : ''}`}>
                                         <Scan className={`h-8 w-8 ${isScanning ? 'text-blue-500' : 'text-slate-400'}`} />
                                     </div>
                                     <div className="text-center">
-                                        <p className="font-black cc-text-primary">
+                                        <p className="font-semibold cc-text-primary">
                                             {isScanning ? 'Escaneando Etiqueta...' : 'Simular Escaneo OCR'}
                                         </p>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Detección automática de Depto</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em] mt-1">Detección automática de Depto</p>
                                     </div>
                                 </button>
 
                                 <form onSubmit={handleReceivePackage} className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Unidad Destino</label>
+                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Unidad Destino</label>
                                         <select
-                                            className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                            className="w-full h-14 rounded-lg border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                             required
                                             value={newPackage.unit}
                                             onChange={(e) => setNewPackage({ ...newPackage, unit: e.target.value })}
@@ -267,17 +267,17 @@ export default function PackagesPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción / Courier</label>
+                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Descripción / Courier</label>
                                         <Input
                                             placeholder="Ej: Mercado Libre, Amazon, Sobres..."
-                                            className="h-14 rounded-2xl text-lg font-bold"
+                                            className="h-14 rounded-lg text-lg font-bold"
                                             required
                                             value={newPackage.description}
                                             onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })}
                                         />
                                     </div>
                                     <DialogFooter className="pt-4">
-                                        <Button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02]">
+                                        <Button type="submit" className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all ">
                                             Registrar y Notificar
                                         </Button>
                                     </DialogFooter>
@@ -290,36 +290,36 @@ export default function PackagesPage() {
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-surface  p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-warning-bg rounded-2xl">
+                        <div className="p-3 bg-warning-bg rounded-lg">
                             <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black cc-text-primary">Por Entregar</h3>
+                        <h3 className="font-semibold cc-text-primary">Por Entregar</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary mb-1">{pendingPackages.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Paquetes en Bodega</p>
+                    <p className="text-3xl font-semibold cc-text-primary mb-1">{pendingPackages.length}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em]">Paquetes en Bodega</p>
                 </div>
 
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-surface  p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-success-bg rounded-2xl">
+                        <div className="p-3 bg-success-bg rounded-lg">
                             <CheckCircle2 className="h-6 w-6 text-success-fg" />
                         </div>
-                        <h3 className="font-black cc-text-primary">Entregados</h3>
+                        <h3 className="font-semibold cc-text-primary">Entregados</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary mb-1">{deliveredPackages.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoy Completados</p>
+                    <p className="text-3xl font-semibold cc-text-primary mb-1">{deliveredPackages.length}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em]">Hoy Completados</p>
                 </div>
 
-                <div className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
+                <div className="bg-slate-900/80 dark:bg-slate-950/80  border border-slate-800 p-8 rounded-lg shadow-sm shadow-blue-500/10 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                         <BellRing className="h-20 w-20 text-blue-500" />
                     </div>
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div className="mb-6">
-                            <h3 className="font-black text-white">Estado Alertas</h3>
-                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Notificaciones Activas</p>
+                            <h3 className="font-semibold text-white">Estado Alertas</h3>
+                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.08em]">Notificaciones Activas</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
@@ -333,10 +333,10 @@ export default function PackagesPage() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <Package2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h2 className="text-2xl font-black cc-text-primary">Encomiendas en Bodega</h2>
+                        <h2 className="text-2xl font-semibold cc-text-primary">Encomiendas en Bodega</h2>
                     </div>
                     <div className="relative hidden md:block w-72">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -358,22 +358,22 @@ export default function PackagesPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     transition={{ duration: 0.3, delay: idx * 0.05 }}
-                                    className="group bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40 hover:shadow-2xl hover:border-white/80 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                                    className="group bg-surface  rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40 hover:shadow-sm hover:border-white/80 dark:hover:border-slate-600  transition-all duration-300 overflow-hidden"
                                 >
                                     <div className="p-8 space-y-6">
                                         <div className="flex justify-between items-start">
-                                            <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                                            <div className="h-14 w-14 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                                                 <PackageIcon className="h-7 w-7" />
                                             </div>
-                                            <span className="px-3 py-1.5 bg-warning-bg text-warning-fg rounded-xl text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
+                                            <span className="px-3 py-1.5 bg-warning-bg text-warning-fg rounded-xl text-[10px] font-semibold uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
                                                 En Bodega
                                             </span>
                                         </div>
 
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidad</span>
-                                                <span className="text-xl font-black cc-text-primary">{pkg.recipientUnitId}</span>
+                                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Unidad</span>
+                                                <span className="text-xl font-semibold cc-text-primary">{pkg.recipientUnitId}</span>
                                             </div>
                                             <h3 className="text-lg font-bold cc-text-secondary line-clamp-1">{pkg.description}</h3>
                                         </div>
@@ -385,7 +385,7 @@ export default function PackagesPage() {
                                             </div>
                                             <button
                                                 onClick={() => handleMarkDelivered(pkg.id)}
-                                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm shadow-emerald-600/20 transition-all   flex items-center justify-center gap-2"
                                             >
                                                 <Check className="h-5 w-5" />
                                                 Entregar a Residente
@@ -397,11 +397,11 @@ export default function PackagesPage() {
                         </AnimatePresence>
                     </div>
                 ) : (
-                    <div className="text-center py-24 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-[3rem] border border-dashed border-subtle">
-                        <div className="w-20 h-20 mx-auto mb-6 bg-elevated rounded-3xl flex items-center justify-center">
+                    <div className="text-center py-24 bg-surface  rounded-lg border border-dashed border-subtle">
+                        <div className="w-20 h-20 mx-auto mb-6 bg-elevated rounded-lg flex items-center justify-center">
                             <CheckCircle2 className="h-10 w-10 text-slate-400" />
                         </div>
-                        <h3 className="text-2xl font-black cc-text-primary mb-2">Bodega Vacía</h3>
+                        <h3 className="text-2xl font-semibold cc-text-primary mb-2">Bodega Vacía</h3>
                         <p className="cc-text-secondary mb-8 max-w-xs mx-auto font-medium">
                             No hay encomiendas pendientes por retirar. El registro está al día.
                         </p>

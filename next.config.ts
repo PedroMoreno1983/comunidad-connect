@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', 'mammoth'],
   outputFileTracingRoot: __dirname,
   images: {
@@ -23,9 +23,6 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
-    turbopack: {
-      // Explicitly set the root to fix Vercel/Local lockfile conflicts overriding Tailwind scanner
-    }
   },
   typescript: {
     // !! WARN !!
@@ -36,5 +33,4 @@ const nextConfig = {
   },
 };
 
-const exportedNextConfig = nextConfig as any;
-export default exportedNextConfig;
+export default nextConfig;

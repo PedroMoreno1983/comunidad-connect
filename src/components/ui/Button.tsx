@@ -55,7 +55,7 @@ const variantStyles: Record<string, CSSProperties> = {
   primary: {
     backgroundColor: 'var(--cc-brand-500)',
     color: '#ffffff',
-    boxShadow: 'var(--cc-glow-brand)',
+    boxShadow: '0 1px 2px rgba(17, 24, 39, 0.08)',
   },
   secondary: {
     backgroundColor: 'var(--cc-bg-elevated)',

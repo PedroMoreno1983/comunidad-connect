@@ -39,12 +39,6 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; color: string; de
     { id: "mensajes",   label: "Mensajes",   icon: MessageSquare, color: "emerald", description: "Chat vecinal" },
 ];
 
-const TAB_COLORS: Record<Tab, { active: string; badge: string; icon: string }> = {
-    oficial:   { active: "from-[#7C3AED] to-[#5B21B6]",  badge: "bg-role-admin-bg text-role-admin-fg",  icon: "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6]"  },
-    comunidad: { active: "from-fuchsia-500 to-pink-600",   badge: "bg-fuchsia-100 dark:bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-300", icon: "bg-gradient-to-br from-fuchsia-500 to-pink-600"   },
-    mensajes:  { active: "from-[#10B981] to-[#0D9488]",   badge: "bg-success-bg text-success-fg", icon: "bg-gradient-to-br from-[#10B981] to-[#0D9488]"   },
-};
-
 // ─── OFICIAL TAB ────────────────────────────────────────────────────────────
 
 function OficialTab() {
@@ -629,15 +623,14 @@ function MensajesTab() {
 
 export default function ComunicacionesPage() {
     const [activeTab, setActiveTab] = useState<Tab>("oficial");
-    const activeColors = TAB_COLORS[activeTab];
 
     return (
         <div className="max-w-5xl space-y-8">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2.5 rounded-xl ${activeColors.icon} shadow-lg transition-all duration-500`}>
-                        {(() => { const Icon = TABS.find(t => t.id === activeTab)!.icon; return <Icon className="h-5 w-5 text-white" />; })()}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600">
+                        {(() => { const Icon = TABS.find(t => t.id === activeTab)!.icon; return <Icon className="h-5 w-5" />; })()}
                     </div>
                     <h1 className="text-3xl font-bold cc-text-primary">Comunicaciones</h1>
                 </div>
@@ -645,7 +638,7 @@ export default function ComunicacionesPage() {
             </div>
 
             {/* Tab Bar */}
-            <div className="flex gap-2 p-1.5 bg-elevated/80 rounded-2xl w-fit">
+            <div className="flex w-fit gap-1 rounded-lg border border-subtle bg-surface p-1 shadow-sm">
                 {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -654,10 +647,10 @@ export default function ComunicacionesPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={clsx(
-                                "relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300",
+                                "relative flex items-center gap-2.5 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors",
                                 isActive
-                                    ? `bg-gradient-to-r ${TAB_COLORS[tab.id].active} text-white shadow-md`
-                                    : "cc-text-secondary hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5"
+                                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                                    : "cc-text-secondary hover:bg-elevated hover:text-slate-700 dark:hover:text-slate-200"
                             )}
                         >
                             <Icon className="h-4 w-4" />

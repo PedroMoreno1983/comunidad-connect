@@ -1,79 +1,58 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default function Error({
-    error,
-    reset,
+  error,
+  reset,
 }: {
-    error: Error & { digest?: string };
-    reset: () => void;
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
-    useEffect(() => {
-        console.error("Application error:", error);
-    }, [error]);
+  useEffect(() => {
+    console.error("Application error:", error);
+  }, [error]);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-rose-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-rose-950/20 p-6">
-            <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="max-w-md w-full text-center"
-            >
-                {/* Icon */}
-                <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                    className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 shadow-xl shadow-rose-500/30 flex items-center justify-center mb-6"
-                >
-                    <AlertTriangle className="h-10 w-10 text-white" />
-                </motion.div>
-
-                {/* Text */}
-                <h1 className="text-3xl font-bold cc-text-primary mb-3">
-                    ¡Algo salió mal!
-                </h1>
-                <p className="cc-text-secondary mb-8 leading-relaxed">
-                    Ocurrió un error inesperado. Puedes intentar recargar la página o volver al inicio.
-                </p>
-
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                        onClick={reset}
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-semibold shadow-lg shadow-rose-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                        Reintentar
-                    </button>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-surface cc-text-secondary font-semibold border border-subtle hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all"
-                    >
-                        <Home className="h-4 w-4" />
-                        Ir al Inicio
-                    </Link>
-                </div>
-
-                {/* Error details (dev) */}
-                {process.env.NODE_ENV === "development" && error.message && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.5 }}
-                        className="mt-8 p-4 rounded-xl bg-elevated/50 border border-subtle text-left"
-                    >
-                        <p className="text-xs font-mono cc-text-secondary break-all">
-                            {error.message}
-                        </p>
-                    </motion.div>
-                )}
-            </motion.div>
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
+      <div className="w-full max-w-md rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-danger-border bg-danger-bg text-danger-fg">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold cc-text-primary">Algo salió mal</h1>
+            <p className="mt-2 text-sm leading-6 cc-text-secondary">
+              Ocurrió un error inesperado. Puedes reintentar o volver al inicio.
+            </p>
+          </div>
         </div>
-    );
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            onClick={reset}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </button>
+          <Link
+            href="/home"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary transition-colors hover:bg-elevated"
+          >
+            <Home className="h-4 w-4" />
+            Ir al inicio
+          </Link>
+        </div>
+
+        {process.env.NODE_ENV === "development" && error.message && (
+          <p className="mt-5 break-all rounded-md border border-subtle bg-elevated p-3 font-mono text-xs cc-text-secondary">
+            {error.message}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
