@@ -37,6 +37,7 @@ function getDeptNumber(item: MarketplaceItem) {
 function statusLabel(status: MarketplaceItem["status"]) {
     if (status === "reserved") return "Reservado";
     if (status === "sold") return "Vendido";
+    if (status === "hidden") return "Oculto";
     return "Disponible";
 }
 
@@ -45,7 +46,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
 
     const imgSrc = item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null);
     const deptNumber = getDeptNumber(item);
-    const isUnavailable = item.status === "reserved" || item.status === "sold";
+    const isUnavailable = item.status === "reserved" || item.status === "sold" || item.status === "hidden";
     const publishedAt = item.createdAt
         ? new Date(item.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "long" })
         : "Fecha no disponible";

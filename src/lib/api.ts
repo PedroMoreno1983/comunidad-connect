@@ -148,6 +148,7 @@ export const MarketplaceService = {
         const { data, error } = await supabase
             .from('marketplace_items')
             .select('*')
+            .neq('status', 'hidden')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -157,12 +158,39 @@ export const MarketplaceService = {
         return (data || []).map(mapMarketplaceItem);
     },
 
+    async getMyItems(userId: string): Promise<MarketplaceItem[]> {
+        const { data, error } = await supabase
+            .from('marketplace_items')
+            .select('*')
+            .eq('seller_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []).map(mapMarketplaceItem);
+    },
+
+    async getModerationItems(): Promise<MarketplaceItem[]> {
+        const { data, error } = await supabase
+            .from('marketplace_items')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []).map(mapMarketplaceItem);
+    },
+
     // Publicar un nuevo producto con fotos
     async createItem(item: Partial<MarketplaceItem>, imageFiles: File[]): Promise<MarketplaceItem> {
         const imageUrls: string[] = [];
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) throw new Error("Debes estar autenticado para publicar");
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('community_id')
+            .eq('id', user.id)
+            .single();
 
         // 1. Subir imágenes si existen
         for (const file of imageFiles) {
@@ -196,6 +224,7 @@ export const MarketplaceService = {
             allow_barter: Boolean(item.allowBarter),
             barter_details: item.barterDetails || '',
             payment_status: 'none',
+            community_id: (profile as { community_id?: string | null } | null)?.community_id,
             seller_id: user.id
         };
 

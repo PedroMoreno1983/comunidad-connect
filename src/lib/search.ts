@@ -23,7 +23,7 @@ export interface SearchResultItem {
   image_url: string | null;
   images?: string[];
   seller_id: string;
-  status: 'available' | 'reserved' | 'sold';
+  status: 'available' | 'reserved' | 'sold' | 'hidden';
   allow_sale?: boolean;
   allow_swap?: boolean;
   swap_details?: string;
