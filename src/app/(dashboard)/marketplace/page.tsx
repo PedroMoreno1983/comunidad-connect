@@ -610,15 +610,15 @@ export default function MarketplacePage() {
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="hidden lg:block w-72 h-72 bg-gradient-to-br from-blue-500/20 to-purple-500/30 rounded-3xl border border-white/10 backdrop-blur-2xl p-6"
+                        className="hidden w-64 rounded-lg border border-subtle bg-elevated p-5 lg:block"
                     >
-                        <div className="h-full flex flex-col justify-between">
-                            <Tag className="h-12 w-12 text-blue-400 opacity-50" />
+                        <div className="flex h-full flex-col gap-8">
+                            <Tag className="h-8 w-8 text-brand-500" />
                             <div className="space-y-2">
-                                <p className="text-white font-bold">Artículos activos</p>
-                                <p className="text-3xl font-black text-white">{items.length}</p>
-                                <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="w-2/3 h-full bg-blue-500" />
+                                <p className="text-sm font-bold cc-text-primary">Artículos activos</p>
+                                <p className="text-3xl font-bold cc-text-primary">{items.length}</p>
+                                <div className="h-1 w-full overflow-hidden rounded-full bg-surface">
+                                    <div className="h-full w-2/3 bg-brand-500" />
                                 </div>
                             </div>
                         </div>
@@ -627,23 +627,23 @@ export default function MarketplacePage() {
             </section>
 
             {/* Filters & Search Section */}
-            <div className="relative z-20 -mt-20 px-4 md:px-0">
+            <div className="space-y-4">
                 <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
-                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.available}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Disponibles</p>
+                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.available}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Disponibles</p>
                     </div>
-                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
-                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.reserved}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Reservados</p>
+                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.reserved}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Reservados</p>
                     </div>
-                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
-                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.exchange}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Aceptan trueque</p>
+                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.exchange}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Aceptan trueque</p>
                     </div>
-                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
-                        <p className="text-2xl font-black cc-text-primary">${marketplaceStats.avgPrice.toLocaleString('es-CL')}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Precio promedio</p>
+                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                        <p className="text-2xl font-semibold cc-text-primary">${marketplaceStats.avgPrice.toLocaleString('es-CL')}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Precio promedio</p>
                     </div>
                 </section>
                 <ProductFilters
