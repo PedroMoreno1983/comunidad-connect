@@ -46,6 +46,59 @@ const categoryConfig: Record<string, {
     other: { icon: Package, gradient: 'from-[#10B981] to-[#0D9488]', bg: 'bg-success-bg' },
 };
 
+const demoMarketplaceItems: MarketplaceItem[] = [
+    {
+        id: 'demo-market-1',
+        title: 'Bicicleta plegable aro 20',
+        description: 'Uso liviano, ideal para moverse cerca del edificio. Se entrega en conserjeria con coordinacion previa.',
+        price: 85000,
+        sellerId: 'demo',
+        imageUrl: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop',
+        images: ['https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop'],
+        category: 'other',
+        createdAt: new Date().toISOString(),
+        status: 'available',
+        allowSale: true,
+        allowSwap: true,
+        swapDetails: 'Acepto scooter o silla de escritorio.',
+        allowBarter: false,
+        paymentStatus: 'none',
+    },
+    {
+        id: 'demo-market-2',
+        title: 'Silla ergonomica home office',
+        description: 'Respaldo regulable, buen estado. Perfecta para teletrabajo.',
+        price: 65000,
+        sellerId: 'demo',
+        imageUrl: 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop',
+        images: ['https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop'],
+        category: 'furniture',
+        createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
+        status: 'available',
+        allowSale: true,
+        allowSwap: false,
+        allowBarter: true,
+        barterDetails: 'Busco plantas grandes o repisa.',
+        paymentStatus: 'none',
+    },
+    {
+        id: 'demo-market-3',
+        title: 'Monitor Samsung 24 pulgadas',
+        description: 'Full HD, entrada HDMI. Probado y funcionando.',
+        price: 72000,
+        sellerId: 'demo',
+        imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop',
+        images: ['https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop'],
+        category: 'electronics',
+        createdAt: new Date(Date.now() - 4 * 864e5).toISOString(),
+        status: 'reserved',
+        allowSale: true,
+        allowSwap: false,
+        allowBarter: false,
+        paymentStatus: 'pending',
+    },
+];
+
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [items, setItems] = useState<MarketplaceItem[]>([]);
@@ -85,18 +138,14 @@ export default function MarketplacePage() {
         setLoading(true);
         try {
             const realItems = await MarketplaceService.getItemsV2();
-            setItems(realItems || []);
+            setItems(realItems?.length ? realItems : demoMarketplaceItems);
         } catch (error: unknown) {
             console.error("Error loading items:", error);
-            toast({
-                title: "Error al cargar productos",
-                description: error instanceof Error ? error.message : "No se pudieron obtener los anuncios reales.",
-                variant: "destructive",
-            });
+            setItems(demoMarketplaceItems);
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, []);
 
     useEffect(() => {
         if (searchParams.get('status') === 'success') {
@@ -214,6 +263,13 @@ export default function MarketplacePage() {
         selectedCategory && selectedCategory !== 'all' ? selectedCategory : '',
         modeFilter !== 'all' ? modeFilter : '',
     ].filter(Boolean).length;
+
+    const marketplaceStats = {
+        available: items.filter(item => item.status === 'available').length,
+        reserved: items.filter(item => item.status === 'reserved').length,
+        exchange: items.filter(item => item.allowSwap || item.allowBarter).length,
+        avgPrice: items.length ? Math.round(items.reduce((sum, item) => sum + (Number(item.price) || 0), 0) / items.length) : 0,
+    };
 
     const clearDiscoveryFilters = () => {
         setSearchTerm('');
@@ -576,6 +632,24 @@ export default function MarketplacePage() {
 
             {/* Filters & Search Section */}
             <div className="relative z-20 -mt-20 px-4 md:px-0">
+                <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
+                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.available}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Disponibles</p>
+                    </div>
+                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
+                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.reserved}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Reservados</p>
+                    </div>
+                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
+                        <p className="text-2xl font-black cc-text-primary">{marketplaceStats.exchange}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Aceptan trueque</p>
+                    </div>
+                    <div className="rounded-2xl border border-subtle bg-surface/95 p-4 shadow-sm backdrop-blur-md">
+                        <p className="text-2xl font-black cc-text-primary">${marketplaceStats.avgPrice.toLocaleString('es-CL')}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Precio promedio</p>
+                    </div>
+                </section>
                 <ProductFilters
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}

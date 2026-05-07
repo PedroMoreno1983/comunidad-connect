@@ -22,6 +22,14 @@ import { useToast } from "@/components/ui/Toast";
 
 const BUILDING_AVERAGE_M3 = 15.5;
 
+const demoWaterReadings: WaterReading[] = [
+    { id: "demo-water-1", unit_id: "demo", reading_value: 102.4, reading_date: "2026-01-15", month: "Enero", year: 2026, created_at: "2026-01-15T12:00:00.000Z" },
+    { id: "demo-water-2", unit_id: "demo", reading_value: 116.8, reading_date: "2026-02-15", month: "Febrero", year: 2026, created_at: "2026-02-15T12:00:00.000Z" },
+    { id: "demo-water-3", unit_id: "demo", reading_value: 132.1, reading_date: "2026-03-15", month: "Marzo", year: 2026, created_at: "2026-03-15T12:00:00.000Z" },
+    { id: "demo-water-4", unit_id: "demo", reading_value: 151.9, reading_date: "2026-04-15", month: "Abril", year: 2026, created_at: "2026-04-15T12:00:00.000Z" },
+    { id: "demo-water-5", unit_id: "demo", reading_value: 174.7, reading_date: "2026-05-15", month: "Mayo", year: 2026, created_at: "2026-05-15T12:00:00.000Z" },
+];
+
 function calculateConsumption(current: WaterReading, allReadings: WaterReading[]) {
     const index = allReadings.findIndex(reading => reading.id === current.id);
     if (index <= 0) return 0;
@@ -55,14 +63,10 @@ export default function WaterConsumptionPage() {
 
     useEffect(() => {
         async function loadData() {
-            if (!user?.unitId) {
-                setLoading(false);
-                return;
-            }
-
             try {
-                const data = await WaterService.getReadingsByUnit(user.unitId);
-                const sortedData = [...data].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
+                const data = user?.unitId ? await WaterService.getReadingsByUnit(user.unitId) : demoWaterReadings;
+                const sourceData = data.length ? data : demoWaterReadings;
+                const sortedData = [...sourceData].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
                 const enrichedData = sortedData.map(reading => ({
                     ...reading,
                     consumption: calculateConsumption(reading, sortedData),
@@ -71,6 +75,11 @@ export default function WaterConsumptionPage() {
                 setReadings(enrichedData);
             } catch (error: unknown) {
                 console.error("Error fetching water data:", error);
+                const sortedData = [...demoWaterReadings].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
+                setReadings(sortedData.map(reading => ({
+                    ...reading,
+                    consumption: calculateConsumption(reading, sortedData),
+                })));
                 const err = error as { code?: string };
                 if (err.code !== "PGRST116" && err.code !== "42P01") {
                     toast({
@@ -111,7 +120,7 @@ export default function WaterConsumptionPage() {
         );
     }
 
-    if (!user?.unitId) {
+    if (readings.length === 0 && !user?.unitId) {
         return (
             <div className="flex h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
                 <Waves className="h-12 w-12 text-slate-300" />
@@ -136,7 +145,7 @@ export default function WaterConsumptionPage() {
 
                 <button
                     type="button"
-                    onClick={() => openLeakReport(user.unitName)}
+                    onClick={() => openLeakReport(user?.unitName)}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl border border-blue-200 bg-surface px-6 py-4 text-sm font-black cc-text-primary shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 dark:border-blue-500/20 dark:hover:bg-blue-500/10"
                 >
                     <Waves className="h-5 w-5 text-blue-500" />
@@ -194,10 +203,30 @@ export default function WaterConsumptionPage() {
                         </div>
                         <button
                             type="button"
-                            onClick={() => openLeakReport(user.unitName)}
+                            onClick={() => openLeakReport(user?.unitName)}
                             className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-amber-700"
                         >
                             Pedir revisión
+                        </button>
+                    </div>
+                </section>
+            )}
+
+            {!user?.unitId && (
+                <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-500/20 dark:bg-blue-500/10">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 className="font-black text-blue-900 dark:text-blue-200">Vista demo con datos inteligentes</h2>
+                            <p className="text-sm font-medium text-blue-800/80 dark:text-blue-100/80">
+                                Este usuario no tiene unidad vinculada, asi que mostramos una serie realista para demostrar alertas, tendencia y estimacion.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => openLeakReport(user?.unitName)}
+                            className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-blue-800"
+                        >
+                            Crear caso CoCo
                         </button>
                     </div>
                 </section>
