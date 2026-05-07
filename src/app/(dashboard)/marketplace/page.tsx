@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { MarketplaceService } from "@/lib/api";
 import {
-    Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck, AlertCircle
+    Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck
 } from "lucide-react";
 import { MarketplaceItem } from "@/lib/types";
 import { useSearchParams } from 'next/navigation';
@@ -29,7 +29,7 @@ import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal"
 import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import {
-    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight
+    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -51,6 +51,8 @@ export default function MarketplacePage() {
     const [items, setItems] = useState<MarketplaceItem[]>([]);
     const [searchResults, setSearchResults] = useState<MarketplaceItem[] | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [modeFilter, setModeFilter] = useState<'all' | 'sale' | 'swap' | 'barter'>('all');
+    const [sortMode, setSortMode] = useState<'recent' | 'price_asc' | 'price_desc'>('recent');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
@@ -79,18 +81,7 @@ export default function MarketplacePage() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
 
-    useEffect(() => {
-        if (searchParams.get('status') === 'success') {
-            toast({
-                title: "¡Compra Exitosa!",
-                description: "Tu pago se ha procesado. El vendedor será notificado.",
-                variant: "success",
-            });
-        }
-        loadItems();
-    }, [searchParams]);
-
-    const loadItems = async () => {
+    const loadItems = useCallback(async () => {
         setLoading(true);
         try {
             const realItems = await MarketplaceService.getItemsV2();
@@ -105,7 +96,18 @@ export default function MarketplacePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        if (searchParams.get('status') === 'success') {
+            toast({
+                title: "¡Compra exitosa!",
+                description: "Tu pago se ha procesado. El vendedor será notificado.",
+                variant: "success",
+            });
+        }
+        loadItems();
+    }, [loadItems, searchParams, toast]);
 
     // ── Búsqueda híbrida con debounce 400ms ─────────────────────────────────
     const runSearch = useCallback(async (query: string) => {
@@ -178,8 +180,31 @@ export default function MarketplacePage() {
     const baseItems = searchResults !== null ? searchResults : items;
     const filteredItems = baseItems.filter(item => {
         const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category === selectedCategory;
-        return matchesCategory;
+        const matchesMode =
+            modeFilter === 'all'
+            || (modeFilter === 'sale' && item.allowSale !== false)
+            || (modeFilter === 'swap' && item.allowSwap)
+            || (modeFilter === 'barter' && item.allowBarter);
+        return matchesCategory && matchesMode;
+    }).sort((a, b) => {
+        if (sortMode === 'price_asc') return (a.price || 0) - (b.price || 0);
+        if (sortMode === 'price_desc') return (b.price || 0) - (a.price || 0);
+        return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime();
     });
+
+    const activeFiltersCount = [
+        searchTerm.trim(),
+        selectedCategory && selectedCategory !== 'all' ? selectedCategory : '',
+        modeFilter !== 'all' ? modeFilter : '',
+    ].filter(Boolean).length;
+
+    const clearDiscoveryFilters = () => {
+        setSearchTerm('');
+        setSearchResults(null);
+        setSelectedCategory(null);
+        setModeFilter('all');
+        setSortMode('recent');
+    };
 
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -509,8 +534,8 @@ export default function MarketplacePage() {
                         <div className="h-full flex flex-col justify-between">
                             <Tag className="h-12 w-12 text-blue-400 opacity-50" />
                             <div className="space-y-2">
-                                <p className="text-white font-bold">Artículos Activos</p>
-                                <p className="text-3xl font-black text-white">124</p>
+                                <p className="text-white font-bold">Artículos activos</p>
+                                <p className="text-3xl font-black text-white">{items.length}</p>
                                 <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
                                     <div className="w-2/3 h-full bg-blue-500" />
                                 </div>
@@ -530,6 +555,57 @@ export default function MarketplacePage() {
                     categories={categories}
                     getCategoryConfig={getCategoryConfigForId}
                 />
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-subtle bg-surface/90 p-4 shadow-sm backdrop-blur-md lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest cc-text-secondary">
+                            <SlidersHorizontal className="h-4 w-4" />
+                            Modalidad
+                        </span>
+                        {[
+                            { key: 'all', label: 'Todas' },
+                            { key: 'sale', label: 'Venta' },
+                            { key: 'swap', label: 'Permuta' },
+                            { key: 'barter', label: 'Trueque' },
+                        ].map(option => (
+                            <button
+                                key={option.key}
+                                type="button"
+                                onClick={() => setModeFilter(option.key as typeof modeFilter)}
+                                className={`rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                                    modeFilter === option.key
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                        : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <select
+                            value={sortMode}
+                            onChange={event => setSortMode(event.target.value as typeof sortMode)}
+                            className="h-10 rounded-xl border border-subtle bg-elevated px-3 text-xs font-black cc-text-secondary outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                            <option value="recent">Más recientes</option>
+                            <option value="price_asc">Menor precio</option>
+                            <option value="price_desc">Mayor precio</option>
+                        </select>
+                        <span className="text-xs font-bold cc-text-secondary">
+                            {filteredItems.length} de {baseItems.length} publicación{baseItems.length !== 1 ? 'es' : ''}
+                        </span>
+                        {activeFiltersCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={clearDiscoveryFilters}
+                                className="rounded-xl bg-elevated px-3 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                </div>
                 {/* Indicadores de búsqueda */}
                 {isSearching && (
                     <div className="flex items-center gap-2 mt-3 px-1 text-sm text-slate-400">
@@ -606,6 +682,12 @@ export default function MarketplacePage() {
             </section>
 
             {/* Items Grid */}
+            {loading && (
+                <div className="flex items-center justify-center gap-3 rounded-3xl border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                    Cargando publicaciones...
+                </div>
+            )}
             <AnimatePresence mode="popLayout">
                 <motion.div
                     layout
@@ -669,7 +751,7 @@ export default function MarketplacePage() {
             />
 
             {/* Empty State Premium */}
-            {filteredItems.length === 0 && (
+            {!loading && filteredItems.length === 0 && (
                 <EmptyState
                     icon={<Search className="h-6 w-6" />}
                     title="No hay resultados"
