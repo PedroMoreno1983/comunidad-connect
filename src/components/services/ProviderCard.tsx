@@ -1,7 +1,7 @@
 "use client";
 
 import { ServiceProvider } from "@/lib/types";
-import { Star, Phone, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { Star, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { getProviderAvatar } from "@/lib/utils/avatar";
@@ -55,11 +55,11 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
             href={`/services/provider/${provider.id}`}
             className="block group h-full"
         >
-            <article className="h-full bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/20 dark:shadow-black/40 border border-white/50 dark:border-slate-700/50 hover:shadow-2xl hover:border-white/80 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
+            <article className="flex h-full flex-col overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm transition-colors hover:border-brand-200">
                 {/* Header con foto */}
-                <div className="relative h-32 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800">
+                <div className="relative h-20 bg-elevated">
                     {provider.verified && (
-                        <div className="absolute top-3 right-3 bg-blue-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-lg">
+                        <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600">
                             <CheckCircle className="h-3 w-3" />
                             Verificado
                         </div>
@@ -67,8 +67,8 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                 </div>
 
                 {/* Foto de perfil superpuesta */}
-                <div className="px-6 -mt-12 relative z-10">
-                    <div className="relative w-24 h-24 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl bg-elevated">
+                <div className="relative z-10 -mt-8 px-5">
+                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-subtle bg-elevated shadow-sm">
                         <Image
                             src={getProviderAvatar(provider.name, provider.photo)}
                             alt={provider.name}
@@ -80,10 +80,10 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                 </div>
 
                 {/* Contenido */}
-                <div className="p-6 pt-4 space-y-4 flex flex-col flex-1">
+                <div className="flex flex-1 flex-col space-y-4 p-5 pt-4">
                     {/* Nombre y rating */}
                     <div>
-                        <h3 className="font-bold text-lg cc-text-primary group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <h3 className="text-lg font-bold cc-text-primary transition-colors group-hover:text-brand-600">
                             {provider.name}
                         </h3>
                         {showCategory && (
@@ -127,8 +127,8 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                     </div>
 
                     {/* Botón de acción */}
-                    <div className="mt-4 pt-4 border-t border-subtle/50">
-                        <button className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.39)] group-hover:shadow-[0_6px_20px_rgba(59,130,246,0.23)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2">
+                    <div className="mt-4 border-t border-subtle/50 pt-4">
+                        <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
                             Ver Perfil
                             <svg className="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

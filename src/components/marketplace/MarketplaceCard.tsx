@@ -35,11 +35,10 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.4 }}
-            whileHover={{ y: -8, scale: 1.02 }}
             onClick={() => onClick(item)}
             className="group relative cursor-pointer"
         >
-            <div className="bg-surface border border-subtle rounded-3xl shadow-md overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-default">
+            <div className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm transition-colors group-hover:border-brand-200">
                 {/* Image Area */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-elevated">
                     {(item.imageUrl || (item.images && item.images.length > 0)) ? (
@@ -48,14 +47,14 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                             alt={item.title || "Image"}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            className="object-cover"
                             onError={() => {
                                 setImgSrc(`https://ui-avatars.com/api/?name=${encodeURIComponent(item.title)}&background=random&color=fff&size=512`);
                             }}
                         />
                     ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${categoryConfig.gradient} flex items-center justify-center`}>
-                            <Icon className="h-16 w-16 text-white/40" />
+                        <div className="flex h-full w-full items-center justify-center bg-elevated">
+                            <Icon className="h-14 w-14 cc-text-tertiary" />
                         </div>
                     )}
 
@@ -73,9 +72,9 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     </div>
 
                     {/* Like Button */}
-                    <div className="absolute top-4 right-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                        <button className="p-2.5 bg-white/30 dark:bg-slate-900/40 backdrop-blur-lg rounded-2xl border border-white/20 dark:border-slate-700/30 hover:bg-white/40 transition-colors">
-                            <Heart className="h-4 w-4 text-white hover:text-rose-400 transition-colors" />
+                    <div className="absolute right-4 top-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                        <button className="rounded-lg border border-white/40 bg-white/80 p-2.5 transition-colors hover:bg-white">
+                            <Heart className="h-4 w-4 text-slate-700 hover:text-rose-500 transition-colors" />
                         </button>
                     </div>
 
@@ -84,7 +83,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
 
                     {/* View Details Hint */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="px-4 py-2 bg-blue-600/90 backdrop-blur-md text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2">
+                        <div className="flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white shadow-sm">
                             <Search className="h-4 w-4" />
                             Ver detalles
                         </div>
@@ -119,9 +118,9 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-5">
                     <div className="flex justify-between items-start gap-2 mb-3">
-                        <h3 className="font-bold text-primary line-clamp-1 text-xl leading-tight group-hover:text-brand-500 transition-colors">
+                        <h3 className="line-clamp-1 text-lg font-bold leading-tight text-primary transition-colors group-hover:text-brand-500">
                             {item.title}
                         </h3>
                     </div>
@@ -135,15 +134,15 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                             <span className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">
                                 {item.allowSale !== false ? 'Precio' : 'Modalidad'}
                             </span>
-                            <p className="text-2xl font-black text-brand-500">
+                            <p className="text-xl font-bold text-brand-500">
                                 {item.allowSale !== false
                                     ? `$${item.price.toLocaleString('es-CL')}`
                                     : 'Intercambio'}
                             </p>
                         </div>
 
-                        <div className="h-12 w-12 bg-brand-bg rounded-2xl border border-subtle text-brand-fg flex items-center justify-center transition-all group-hover:bg-brand-500 group-hover:text-white group-hover:shadow-md cursor-pointer">
-                            <MessageCircle className="h-6 w-6" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-subtle bg-brand-bg text-brand-fg transition-colors group-hover:bg-brand-500 group-hover:text-white">
+                            <MessageCircle className="h-5 w-5" />
                         </div>
                     </div>
 
