@@ -29,9 +29,20 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
 
                 const readingsMap: Record<string, WaterReading> = {};
                 allResults.forEach((unitReadings: WaterReading[], idx: number) => {
-                    const currentReading = unitReadings.find(r => r.month === currentMonth && r.year === currentYear);
+                    const sortedReadings = [...unitReadings].sort(
+                        (a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime()
+                    );
+                    const currentIndex = sortedReadings.findIndex(r => r.month === currentMonth && r.year === currentYear);
+                    const currentReading = currentIndex >= 0 ? sortedReadings[currentIndex] : undefined;
+                    const previousReading = currentIndex > 0 ? sortedReadings[currentIndex - 1] : undefined;
+
                     if (currentReading) {
-                        readingsMap[fetchedUnits[idx].id] = currentReading;
+                        readingsMap[fetchedUnits[idx].id] = {
+                            ...currentReading,
+                            consumption: previousReading
+                                ? Math.max(0, currentReading.reading_value - previousReading.reading_value)
+                                : currentReading.consumption,
+                        };
                     }
                 });
                 setReadings(readingsMap);
@@ -78,8 +89,8 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                 {units.map((unit: Unit) => {
                     const reading = readings[unit.id];
                     const isRead = !!reading;
-                    // Simplificación: consumo > 25 es alerta (esto vendría de la API en el futuro)
-                    const isHigh = reading && reading.reading_value > 25;
+                    const currentConsumption = reading?.consumption;
+                    const isHigh = typeof currentConsumption === "number" && currentConsumption > 25;
 
                     return (
                         <motion.div
@@ -105,7 +116,11 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                             <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white rounded-xl py-3 px-4 shadow-2xl z-50 min-w-32">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Unidad {unit.number}</p>
                                 <p className="text-sm font-bold truncate">
-                                    {isRead ? `${reading.reading_value} m³ registrados` : 'Pendiente de lectura'}
+                                    {isRead
+                                        ? typeof currentConsumption === "number"
+                                            ? `${currentConsumption.toFixed(1)} m³ consumidos`
+                                            : `${reading.reading_value} m³ registrados`
+                                        : 'Pendiente de lectura'}
                                 </p>
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-900" />
                             </div>

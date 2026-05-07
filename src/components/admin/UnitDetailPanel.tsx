@@ -22,6 +22,7 @@ interface UnitDetailPanelProps {
 export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDetailPanelProps) {
     const [readingValue, setReadingValue] = useState<string>("");
     const [history, setHistory] = useState<WaterReading[]>([]);
+    const [previousReading, setPreviousReading] = useState<WaterReading | null>(null);
     const [resident, setResident] = useState<Profile | null>(null);
     const { toast } = useToast();
 
@@ -32,12 +33,24 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
     const loadUnitData = useCallback(async () => {
         if (!unit) return;
         try {
-            // Cargar historial real
             const unitReadings = await WaterService.getReadingsByUnit(unit.id);
-            setHistory(unitReadings.sort((a, b) => new Date(b.reading_date).getTime() - new Date(a.reading_date).getTime()));
+            const sortedReadings = [...unitReadings].sort(
+                (a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime()
+            );
+            const readingsWithConsumption = sortedReadings.map((reading, index) => {
+                const previous = index > 0 ? sortedReadings[index - 1] : null;
+                return {
+                    ...reading,
+                    consumption: previous
+                        ? Math.max(0, reading.reading_value - previous.reading_value)
+                        : reading.consumption ?? 0,
+                };
+            });
+            setHistory([...readingsWithConsumption].sort((a, b) => new Date(b.reading_date).getTime() - new Date(a.reading_date).getTime()));
 
-            // Buscar lectura del mes actual si existe
-            const current = unitReadings.find(r => r.month === currentMonth && r.year === currentYear);
+            const currentIndex = sortedReadings.findIndex(r => r.month === currentMonth && r.year === currentYear);
+            const current = currentIndex >= 0 ? sortedReadings[currentIndex] : null;
+            setPreviousReading(currentIndex > 0 ? sortedReadings[currentIndex - 1] : sortedReadings.at(-1) ?? null);
             if (current) {
                 setReadingValue(current.reading_value.toString());
             } else {
@@ -207,7 +220,9 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                             </Button>
                                         </div>
                                         <p className="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium text-center">
-                                            Lectura anterior: 1240.5 m³
+                                            {previousReading
+                                                ? `Lectura anterior: ${previousReading.reading_value.toFixed(1)} m³ (${previousReading.month} ${previousReading.year})`
+                                                : 'Sin lectura anterior registrada'}
                                         </p>
                                     </div>
                                 </div>
