@@ -18,8 +18,9 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/ui/Button";
 import { Booking, Amenity } from "@/lib/types";
-import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
 // from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
@@ -35,6 +36,45 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Monitor,
     Gamepad2,
 };
+
+type AmenityRow = Record<string, unknown>;
+type BookingRow = Record<string, unknown> & {
+    amenities?: AmenityRow | AmenityRow[] | null;
+};
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value ?? null;
+}
+
+function toAmenity(row: AmenityRow): Amenity {
+    return {
+        id: String(row.id || ""),
+        name: String(row.name || "Espacio común"),
+        description: String(row.description || "Disponible para residentes de la comunidad."),
+        maxCapacity: Number(row.max_capacity ?? row.maxCapacity ?? 0),
+        hourlyRate: Number(row.hourly_rate ?? row.hourlyRate ?? 0),
+        iconName: String(row.icon_name ?? row.iconName ?? "Calendar"),
+        gradient: String(row.gradient || "from-[#3B82F6] to-[#6D28D9]"),
+    };
+}
+
+function toBooking(row: BookingRow): Booking & { amenities?: AmenityRow | null } {
+    return {
+        id: String(row.id || ""),
+        amenityId: String(row.amenity_id ?? row.amenityId ?? ""),
+        userId: String(row.user_id ?? row.userId ?? ""),
+        date: String(row.date || ""),
+        startTime: String(row.start_time ?? row.startTime ?? ""),
+        endTime: String(row.end_time ?? row.endTime ?? ""),
+        status: (row.status === "pending" || row.status === "cancelled" ? row.status : "confirmed"),
+        amenities: firstRelation(row.amenities),
+    };
+}
+
+function formatTime(value?: string) {
+    return value ? value.slice(0, 5) : "--:--";
+}
 
 export default function AmenitiesPage() {
     const { user } = useAuth();
@@ -68,25 +108,8 @@ export default function AmenitiesPage() {
                 AmenitiesService.getAmenities(),
                 AmenitiesService.getAllBookings()
             ]);
-            setAmenities(((amenitiesData as any[]) || []).map(a => ({
-                id: a.id,
-                name: a.name,
-                description: a.description,
-                maxCapacity: a.max_capacity,
-                hourlyRate: a.hourly_rate,
-                iconName: a.icon_name,
-                gradient: a.gradient
-            })));
-            setBookings(((bookingsData as any[]) || []).map(b => ({
-                id: b.id,
-                amenityId: b.amenity_id,
-                userId: b.user_id,
-                date: b.date,
-                startTime: b.start_time,
-                endTime: b.end_time,
-                status: b.status,
-                amenities: b.amenities // Keep nested if it exists
-            })));
+            setAmenities(((amenitiesData as AmenityRow[]) || []).map(toAmenity));
+            setBookings(((bookingsData as BookingRow[]) || []).map(toBooking));
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Error desconocido";
             console.error("Error loading amenities data:", errorMessage);
@@ -138,7 +161,7 @@ export default function AmenitiesPage() {
         setBookingLoading(true);
         try {
             const endTime = `${parseInt(selectedTime) + 2}:00`;
-            const newBooking = await AmenitiesService.createBooking({
+            await AmenitiesService.createBooking({
                 amenity_id: selectedAmenity.id,
                 user_id: user.id,
                 date: selectedDate,
@@ -212,6 +235,12 @@ export default function AmenitiesPage() {
                             </div>
                         ))}
                     </div>
+                ) : amenities.length === 0 ? (
+                    <EmptyState
+                        icon={<Calendar className="h-6 w-6" />}
+                        title="No hay espacios configurados"
+                        description="Cuando administración active quinchos, salas o piscinas, aparecerán acá para reservar."
+                    />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {amenities.map((amenity, idx) => {
@@ -287,24 +316,26 @@ export default function AmenitiesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {userBookings.map((booking) => {
-                                const amenity = (booking as any).amenities;
+                                const amenity = firstRelation((booking as Booking & { amenities?: AmenityRow | AmenityRow[] | null }).amenities);
                                 if (!amenity) return null;
-                                const Icon = getIcon(amenity.icon_name);
+                                const Icon = getIcon(String(amenity.icon_name || amenity.iconName || "Calendar"));
+                                const amenityName = String(amenity.name || "Espacio común");
+                                const amenityGradient = String(amenity.gradient || "from-[#3B82F6] to-[#6D28D9]");
                                 return (
                                     <div key={booking.id} className={`flex items-center gap-4 p-4 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}>
-                                        <div className={`absolute inset-0 bg-gradient-to-r ${amenity.gradient} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
-                                        <div className={`p-2 rounded-lg bg-gradient-to-br ${amenity.gradient}`}>
+                                        <div className={`absolute inset-0 bg-gradient-to-r ${amenityGradient} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
+                                        <div className={`p-2 rounded-lg bg-gradient-to-br ${amenityGradient}`}>
                                             <Icon className="h-5 w-5 text-white" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold cc-text-primary truncate">{amenity.name}</p>
+                                            <p className="font-semibold cc-text-primary truncate">{amenityName}</p>
                                             <p className="text-sm cc-text-secondary">
                                                 {
                                                     // Prevenir desfase de zona horaria forzando el parseo local a mediodía
                                                     new Date(`${booking.date}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
                                                 }
                                             </p>
-                                            <p className="text-sm cc-text-secondary font-medium">{booking.startTime.substring(0, 5)} - {booking.endTime.substring(0, 5)}</p>
+                                            <p className="text-sm cc-text-secondary font-medium">{formatTime(booking.startTime)} - {formatTime(booking.endTime)}</p>
                                         </div>
                                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${booking.status === 'confirmed' ? 'bg-success-bg text-success-fg' : 'bg-warning-bg text-warning-fg'
                                             }`}>

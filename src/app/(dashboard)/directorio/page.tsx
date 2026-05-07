@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import {
     Users, Search, MessageSquare, MapPin,
-    Shield, Star, Loader2, Home, AlertTriangle
+    Shield, Star, Loader2, Home
 } from "lucide-react";
+import Image from "next/image";
 import clsx from "clsx";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
@@ -19,6 +19,7 @@ interface Neighbor {
     avatar_url?: string;
     role: 'admin' | 'resident' | 'concierge';
     unit_id?: string;
+    unitLabel?: string;
     email?: string;
 }
 
@@ -40,9 +41,33 @@ const ROLE_BADGE: Record<string, string> = {
     concierge: 'bg-warning-bg text-warning-fg'
 };
 
+function isUuid(value?: string | null) {
+    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+}
+
+function getProfileName(profile: Record<string, unknown>) {
+    const rawName = String(profile.name || profile.full_name || "").trim();
+    const email = String(profile.email || "").trim();
+    if (rawName && rawName !== email) return rawName;
+    if (email) return email.split("@")[0];
+    return "Vecino";
+}
+
+function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, unknown>) {
+    const profileDepartment = String(profile.department_number || "").trim();
+    if (profileDepartment) return profileDepartment;
+
+    const unitNumber = String(unit?.number || unit?.unit_number || unit?.department_number || "").trim();
+    const tower = String(unit?.tower || "").trim();
+    if (unitNumber && tower) return `${tower}-${unitNumber}`;
+    if (unitNumber) return unitNumber;
+
+    const rawUnitId = String(profile.unit_id || "").trim();
+    return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
+}
+
 export default function DirectoryPage() {
     const { user } = useAuth();
-    const { toast } = useToast();
     const router = useRouter();
 
     const [neighbors, setNeighbors] = useState<Neighbor[]>([]);
@@ -51,17 +76,13 @@ export default function DirectoryPage() {
     const [activeFilter, setActiveFilter] = useState<'all' | 'admin' | 'resident' | 'concierge'>('all');
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadNeighbors();
-    }, [user]);
-
-    const loadNeighbors = async () => {
+    const loadNeighbors = useCallback(async () => {
         if (!user) return;
         setIsLoading(true);
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, name, avatar_url, role, unit_id')
+                .select('*')
                 .neq('id', user?.id || '0')
                 .order('name');
 
@@ -69,14 +90,51 @@ export default function DirectoryPage() {
                 console.error("Supabase error in loadNeighbors:", error);
                 throw error;
             }
-            setNeighbors(Array.isArray(data) ? data : []);
+
+            const profiles = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+            const unitIds = Array.from(new Set(
+                profiles
+                    .map(profile => String(profile.unit_id || ""))
+                    .filter(unitId => isUuid(unitId))
+            ));
+
+            let unitById = new Map<string, Record<string, unknown>>();
+            if (unitIds.length > 0) {
+                const { data: unitsData, error: unitsError } = await supabase
+                    .from('units')
+                    .select('*')
+                    .in('id', unitIds);
+
+                if (!unitsError && Array.isArray(unitsData)) {
+                    unitById = new Map((unitsData as Array<Record<string, unknown>>).map(unit => [String(unit.id), unit]));
+                }
+            }
+
+            setNeighbors(profiles.map(profile => {
+                const unitId = String(profile.unit_id || "");
+                const unit = unitById.get(unitId);
+
+                return {
+                    id: String(profile.id),
+                    name: getProfileName(profile),
+                    avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : undefined,
+                    role: (profile.role === "admin" || profile.role === "concierge" ? profile.role : "resident") as Neighbor["role"],
+                    unit_id: unitId,
+                    unitLabel: getUnitLabel(profile, unit),
+                    email: typeof profile.email === "string" ? profile.email : undefined,
+                };
+            }));
         } catch (error) {
             console.error("Error loading neighbors:", error);
             setNeighbors([]);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        loadNeighbors();
+    }, [loadNeighbors]);
 
     const handleStartDM = (neighbor: Neighbor) => {
         // Navigate to chat with a query param to auto-open DM
@@ -88,7 +146,7 @@ export default function DirectoryPage() {
         const fullName = n.name || "";
         const searchTermLower = (searchTerm || "").toLowerCase();
         const matchSearch = fullName.toLowerCase().includes(searchTermLower) ||
-            (n.unit_id || '').toLowerCase().includes(searchTermLower);
+            (n.unitLabel || '').toLowerCase().includes(searchTermLower);
         const matchFilter = activeFilter === 'all' || n.role === activeFilter;
         return matchSearch && matchFilter;
     });
@@ -99,7 +157,7 @@ export default function DirectoryPage() {
 
     return (
         <ErrorBoundary name="Directorio de Vecinos">
-            <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 space-y-10">
+            <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-7">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="flex items-center gap-4">
@@ -126,7 +184,7 @@ export default function DirectoryPage() {
             </div>
 
             {/* Stats Strip */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
                     { label: 'Residentes', count: residentCount, icon: Home, gradient: 'from-[#10B981] to-[#14B8A6]', filter: 'resident' as const },
                     { label: 'Administración', count: adminCount, icon: Shield, gradient: 'from-[#7C3AED] to-[#5B21B6]', filter: 'admin' as const },
@@ -136,7 +194,7 @@ export default function DirectoryPage() {
                         key={s.filter}
                         onClick={() => setActiveFilter(activeFilter === s.filter ? 'all' : s.filter)}
                         className={clsx(
-                            "relative rounded-2xl p-4 sm:p-5 border transition-all overflow-hidden text-left",
+                            "relative rounded-2xl p-4 border transition-all overflow-hidden text-left",
                             activeFilter === s.filter
                                 ? "border-transparent shadow-lg ring-2 ring-offset-2 ring-indigo-400/60 dark:ring-offset-slate-900"
                                 : "bg-surface border-subtle hover:border-slate-200 dark:hover:border-slate-600 shadow-sm"
@@ -166,7 +224,7 @@ export default function DirectoryPage() {
                     <p className="text-sm text-slate-400">Intenta con otro nombre o depto.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <AnimatePresence>
                         {filtered.map((neighbor, idx) => {
                             const isExpanded = expandedId === neighbor.id;
@@ -179,39 +237,49 @@ export default function DirectoryPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.04 }}
                                     layout
-                                    className="bg-surface rounded-3xl border border-subtle shadow-md shadow-slate-200/40 dark:shadow-none overflow-hidden group cursor-pointer hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-none transition-all"
+                                    className="bg-surface rounded-2xl border border-subtle shadow-sm overflow-hidden group cursor-pointer hover:border-blue-200 hover:shadow-md dark:hover:border-blue-900/50 transition-all"
                                     onClick={() => setExpandedId(isExpanded ? null : neighbor.id)}
                                 >
                                     {/* Card Top Banner */}
-                                    <div className={`h-14 bg-gradient-to-br ${gradient} relative`}>
+                                    <div className={`h-3 bg-gradient-to-r ${gradient} relative`}>
                                         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                                     </div>
 
                                     {/* Avatar (overlapping banner) */}
-                                    <div className="px-5 pb-5">
-                                        <div className={`w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br ${gradient} border-4 border-white dark:border-slate-800 shadow-lg -mt-8 mb-3`}>
-                                            {neighbor.avatar_url ? (
-                                                <img src={neighbor.avatar_url} alt={neighbor.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-2xl font-black text-white">
-                                                    {neighbor.name?.charAt(0)}
+                                    <div className="p-5">
+                                        <div className="flex items-start gap-4">
+                                            <div className={`h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${gradient} shadow-md`}>
+                                                {neighbor.avatar_url ? (
+                                                    <Image src={neighbor.avatar_url} alt={neighbor.name} width={48} height={48} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-lg font-black text-white">
+                                                        {neighbor.name?.charAt(0)}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="truncate font-black cc-text-primary text-base leading-tight" title={neighbor.name || 'Vecino'}>
+                                                    {neighbor.name || 'Vecino'}
+                                                </h3>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-elevated text-slate-600'}`}>
+                                                        {ROLE_LABELS[neighbor.role] || 'Residente'}
+                                                    </span>
+                                                    {neighbor.unitLabel && (
+                                                        <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-elevated px-2.5 py-0.5 text-[11px] font-bold cc-text-secondary">
+                                                            <MapPin className="h-3 w-3 shrink-0" />
+                                                            <span className="truncate">Depto {neighbor.unitLabel}</span>
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            )}
+                                                {neighbor.email && neighbor.email !== neighbor.name && (
+                                                    <p className="mt-2 truncate text-xs font-medium cc-text-tertiary" title={neighbor.email}>
+                                                        {neighbor.email}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
-
-                                        {/* Name & Role */}
-                                        <h3 className="font-black cc-text-primary text-base leading-tight">{neighbor.name || 'Vecino'}</h3>
-                                        <span className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${ROLE_BADGE[neighbor.role] || 'bg-elevated text-slate-600'}`}>
-                                            {ROLE_LABELS[neighbor.role] || 'Residente'}
-                                        </span>
-
-                                        {/* Unit info */}
-                                        {neighbor.unit_id && (
-                                            <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                                                <MapPin className="h-3 w-3" />
-                                                Depto {neighbor.unit_id}
-                                            </p>
-                                        )}
 
                                         {/* Expanded actions */}
                                         <AnimatePresence>

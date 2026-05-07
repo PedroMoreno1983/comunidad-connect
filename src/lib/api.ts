@@ -284,14 +284,13 @@ export const AmenitiesService = {
         const { data, error } = await supabase
             .from('amenities')
             .select('*')
-            .eq('is_active', true)
             .order('name');
 
         if (error) {
             console.error("Error fetching amenities:", error);
             throw error;
         }
-        return data;
+        return (data || []).filter((amenity: Record<string, unknown>) => amenity.is_active !== false);
     },
 
     async getAllBookings() {
