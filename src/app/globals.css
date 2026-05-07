@@ -480,3 +480,53 @@ h1, h2 {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ============================================
+   VISUAL CALIBRATION
+   Mature SaaS direction: sharper, calmer, less toy-like.
+   ============================================ */
+:root {
+  --cc-product-radius-card: 10px;
+  --cc-product-radius-control: 8px;
+  --cc-product-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 22px rgba(17, 24, 39, 0.06);
+}
+
+h1,
+h2,
+.font-display {
+  letter-spacing: 0 !important;
+}
+
+.rounded-\[3rem\],
+.rounded-\[2\.5rem\],
+.rounded-\[2rem\],
+.rounded-3xl {
+  border-radius: var(--cc-product-radius-card) !important;
+}
+
+.rounded-\[1\.5rem\],
+.rounded-2xl {
+  border-radius: var(--cc-product-radius-control) !important;
+}
+
+.shadow-xl,
+.shadow-2xl {
+  box-shadow: var(--cc-product-shadow) !important;
+}
+
+.hover\:-translate-y-1:hover,
+.hover\:-translate-y-0\.5:hover,
+.hover\:scale-\[1\.02\]:hover,
+.hover\:scale-105:hover,
+.hover\:scale-110:hover {
+  transform: none !important;
+}
+
+.bg-gradient-to-r.from-pink-500,
+.bg-gradient-to-r.from-purple-500,
+.bg-gradient-to-r.from-indigo-600,
+.bg-gradient-to-br.from-violet-600,
+.bg-gradient-to-br.from-fuchsia-500 {
+  background-image: none !important;
+  background-color: var(--cc-brand-500) !important;
+}

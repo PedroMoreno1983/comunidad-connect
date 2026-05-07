@@ -13,7 +13,7 @@ import { ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 type ToneKey = 'brand' | 'warning' | 'success' | 'danger' | 'info';
 
 const iconStylesLight: Record<ToneKey, CSSProperties> = {
-  brand:   { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' },
+  brand:   { backgroundColor: 'rgba(244, 91, 61, 0.12)', color: '#D94328' },
   warning: { backgroundColor: 'rgba(245, 158, 11, 0.12)',  color: '#FBBF5C' },
   success: { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#34D399' },
   danger:  { backgroundColor: 'rgba(239, 68, 68, 0.12)',  color: '#F87171' },

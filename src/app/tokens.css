@@ -14,21 +14,21 @@
      ============================================================ */
 
   /* Primary brand (violet) — used for Admin role + default CTAs */
-  --cc-brand-50:   #F3F1FF;
-  --cc-brand-100:  #E4DEFF;
-  --cc-brand-200:  #CABFFE;
-  --cc-brand-300:  #A58FFC;
-  --cc-brand-400:  #8966F7;
-  --cc-brand-500:  #7C3AED;  /* DEFAULT */
-  --cc-brand-600:  #6D28D9;
-  --cc-brand-700:  #5B21B6;
-  --cc-brand-800:  #4C1D95;
-  --cc-brand-900:  #2E1065;
+  --cc-brand-50:   #FFF3EF;
+  --cc-brand-100:  #FFE2D8;
+  --cc-brand-200:  #FFC4B3;
+  --cc-brand-300:  #FF9A80;
+  --cc-brand-400:  #FF7657;
+  --cc-brand-500:  #F45B3D;  /* DEFAULT */
+  --cc-brand-600:  #D94328;
+  --cc-brand-700:  #B7341E;
+  --cc-brand-800:  #922D1F;
+  --cc-brand-900:  #4A1710;
 
   /* Role — Admin (aliases brand) */
-  --cc-role-admin-fg:    #A58FFC;
-  --cc-role-admin-bg:    rgba(124, 58, 237, 0.12);
-  --cc-role-admin-border: rgba(124, 58, 237, 0.28);
+  --cc-role-admin-fg:    #D94328;
+  --cc-role-admin-bg:    rgba(244, 91, 61, 0.12);
+  --cc-role-admin-border: rgba(244, 91, 61, 0.28);
 
   /* Role — Conserje (amber/copper) */
   --cc-role-conserje-fg:     #FBBF5C;
@@ -77,7 +77,7 @@
      ============================================================ */
 
   /* Font families */
-  --cc-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-display: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --cc-font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
   --cc-font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
@@ -133,28 +133,28 @@
 
   --cc-radius-sm:   0.375rem;   /*  6px — small pills, tags */
   --cc-radius-md:   0.5rem;     /*  8px — buttons, inputs */
-  --cc-radius-lg:   0.75rem;    /* 12px — cards (default) */
-  --cc-radius-xl:   1rem;       /* 16px — elevated cards */
-  --cc-radius-2xl:  1.5rem;     /* 24px — modals, hero */
+  --cc-radius-lg:   0.5rem;     /* 8px - cards (default) */
+  --cc-radius-xl:   0.75rem;    /* 12px - elevated cards */
+  --cc-radius-2xl:  1rem;       /* 16px - modals, hero */
   --cc-radius-full: 9999px;     /* avatars, pills */
 
   /* ============================================================
      7. SHADOWS & ELEVATION
      ============================================================ */
 
-  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.15);
-  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.20);
-  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.25);
-  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.30);
+  --cc-shadow-sm:  0 1px 2px rgba(17, 24, 39, 0.06);
+  --cc-shadow-md:  0 4px 12px rgba(17, 24, 39, 0.08);
+  --cc-shadow-lg:  0 8px 24px rgba(17, 24, 39, 0.10);
+  --cc-shadow-xl:  0 16px 36px rgba(17, 24, 39, 0.12);
 
   /* Glows — used for focus + hero CTAs */
-  --cc-glow-brand:     0 0 28px -4px rgba(124, 58, 237, 0.50);
+  --cc-glow-brand:     0 8px 24px -12px rgba(244, 91, 61, 0.45);
   --cc-glow-success:   0 0 20px -4px rgba(16, 185, 129, 0.40);
   --cc-glow-warning:   0 0 20px -4px rgba(245, 158, 11, 0.40);
   --cc-glow-danger:    0 0 20px -4px rgba(239, 68, 68, 0.40);
 
   /* Focus ring */
-  --cc-ring-default: 0 0 0 3px rgba(124, 58, 237, 0.35);
+  --cc-ring-default: 0 0 0 3px rgba(244, 91, 61, 0.25);
 
   /* ============================================================
      8. MOTION
@@ -189,17 +189,17 @@
 :root:not(.dark),
 .light {
   /* Backgrounds */
-  --cc-bg-canvas:        #F8F7FF;   /* very light violet-tinted white */
+  --cc-bg-canvas:        #F7F5F2;   /* warm neutral app background */
   --cc-bg-surface:       #FFFFFF;   /* pure white card */
-  --cc-bg-elevated:      #F3F1FF;   /* very light violet for hover/elevated */
-  --cc-bg-overlay:       #EAE7FF;   /* slightly deeper hover */
+  --cc-bg-elevated:      #F0ECE6;   /* warm neutral hover/elevated */
+  --cc-bg-overlay:       #E6DED6;   /* slightly deeper hover */
   --cc-bg-inverted:      #0A0A12;
 
   /* Borders */
   --cc-border-subtle:    rgba(0, 0, 0, 0.06);
   --cc-border-default:   rgba(0, 0, 0, 0.10);
   --cc-border-strong:    rgba(0, 0, 0, 0.18);
-  --cc-border-focus:     rgba(124, 58, 237, 0.60);
+  --cc-border-focus:     rgba(244, 91, 61, 0.55);
 
   /* Text */
   --cc-text-primary:     #0F0C1A;
@@ -207,7 +207,7 @@
   --cc-text-tertiary:    #8B8899;
   --cc-text-disabled:    #C5C3CF;
   --cc-text-inverted:    #FFFFFF;
-  --cc-text-link:        #7C3AED;
+  --cc-text-link:        #D94328;
 
   /* Glass */
   --cc-glass-bg:     rgba(255, 255, 255, 0.80);
@@ -219,17 +219,17 @@
    ============================================================ */
 .dark {
   /* Backgrounds */
-  --cc-bg-canvas:        #0A0A12;
+  --cc-bg-canvas:        #11100F;
   --cc-bg-surface:       #12121D;
-  --cc-bg-elevated:      #1A1A28;
-  --cc-bg-overlay:       #252538;
+  --cc-bg-elevated:      #24211E;
+  --cc-bg-overlay:       #302B27;
   --cc-bg-inverted:      #FFFFFF;
 
   /* Borders */
   --cc-border-subtle:    rgba(255, 255, 255, 0.06);
   --cc-border-default:   rgba(255, 255, 255, 0.10);
   --cc-border-strong:    rgba(255, 255, 255, 0.18);
-  --cc-border-focus:     rgba(124, 58, 237, 0.60);
+  --cc-border-focus:     rgba(244, 91, 61, 0.55);
 
   /* Text */
   --cc-text-primary:     #FFFFFF;
@@ -237,17 +237,17 @@
   --cc-text-tertiary:    #6E6E85;
   --cc-text-disabled:    #4A4A5E;
   --cc-text-inverted:    #0A0A12;
-  --cc-text-link:        #A58FFC;
+  --cc-text-link:        #FF9A80;
 
   /* Glass */
   --cc-glass-bg:     rgba(18, 18, 29, 0.85);
   --cc-glass-border: rgba(255, 255, 255, 0.08);
 
   /* Shadows (heavier in dark mode) */
-  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.35);
-  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.40);
-  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.50);
-  --cc-shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.55);
+  --cc-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.24);
+  --cc-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.28);
+  --cc-shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.34);
+  --cc-shadow-xl:  0 16px 36px rgba(0, 0, 0, 0.40);
 }
 
 /* Reduced motion preference */

@@ -178,20 +178,15 @@ export function Sidebar() {
 
     const getAvatarStyle = (): CSSProperties => {
         switch (user.role) {
-            case 'admin':    return { background: 'linear-gradient(135deg, var(--cc-brand-500), var(--cc-brand-700))' };
-            case 'resident': return { background: 'linear-gradient(135deg, var(--cc-role-residente-500), var(--cc-role-residente-600))' };
-            case 'concierge':return { background: 'linear-gradient(135deg, var(--cc-role-conserje-500), var(--cc-role-conserje-600))' };
-            default:         return { background: 'linear-gradient(135deg, var(--cc-brand-500), var(--cc-brand-700))' };
-        }
-    };
-
-    const getActiveStyle = (): CSSProperties => {
-        switch (user.role) {
             case 'admin':    return { backgroundColor: 'var(--cc-brand-500)' };
             case 'resident': return { backgroundColor: 'var(--cc-role-residente-500)' };
             case 'concierge':return { backgroundColor: 'var(--cc-role-conserje-500)' };
             default:         return { backgroundColor: 'var(--cc-brand-500)' };
         }
+    };
+
+    const getActiveStyle = (): CSSProperties => {
+        return { backgroundColor: 'var(--cc-brand-500)' };
     };
 
     const getRoleBadgeClass = () => {
@@ -278,15 +273,14 @@ export function Sidebar() {
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: (sIdx * 0.1) + (lIdx * 0.05), duration: 0.3 }}
-                                        whileHover={{ scale: 1.02, x: 4 }}
-                                        whileTap={{ scale: 0.98 }}
+                                        whileTap={{ scale: 0.99 }}
                                     >
                                         <Link
                                             href={link.href}
                                             onClick={() => setIsMobileOpen(false)}
                                             style={isActive ? getActiveStyle() : undefined}
                                             className={clsx(
-                                                "relative group overflow-hidden flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300",
+                                                "relative group overflow-hidden flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150",
                                                 isActive
                                                     ? "text-white shadow-md"
                                                     : "cc-text-secondary hover:bg-elevated hover:text-primary"
