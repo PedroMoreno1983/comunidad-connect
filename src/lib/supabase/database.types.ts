@@ -74,8 +74,15 @@ export interface Database {
                     price: number
                     category: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id: string
-                    status: 'available' | 'sold'
+                    status: 'available' | 'reserved' | 'sold'
                     image_url: string | null
+                    images: string[] | null
+                    allow_sale: boolean
+                    allow_swap: boolean
+                    swap_details: string | null
+                    allow_barter: boolean
+                    barter_details: string | null
+                    payment_status: 'none' | 'pending' | 'completed'
                     created_at: string
                 }
                 Insert: {
@@ -85,8 +92,15 @@ export interface Database {
                     price: number
                     category: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id: string
-                    status?: 'available' | 'sold'
+                    status?: 'available' | 'reserved' | 'sold'
                     image_url?: string | null
+                    images?: string[] | null
+                    allow_sale?: boolean
+                    allow_swap?: boolean
+                    swap_details?: string | null
+                    allow_barter?: boolean
+                    barter_details?: string | null
+                    payment_status?: 'none' | 'pending' | 'completed'
                     created_at?: string
                 }
                 Update: {
@@ -96,8 +110,15 @@ export interface Database {
                     price?: number
                     category?: 'electronics' | 'furniture' | 'clothing' | 'other'
                     seller_id?: string
-                    status?: 'available' | 'sold'
+                    status?: 'available' | 'reserved' | 'sold'
                     image_url?: string | null
+                    images?: string[] | null
+                    allow_sale?: boolean
+                    allow_swap?: boolean
+                    swap_details?: string | null
+                    allow_barter?: boolean
+                    barter_details?: string | null
+                    payment_status?: 'none' | 'pending' | 'completed'
                     created_at?: string
                 }
             }
