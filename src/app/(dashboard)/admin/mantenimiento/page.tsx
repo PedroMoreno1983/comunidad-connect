@@ -26,9 +26,11 @@ import { useToast } from "@/components/ui/Toast";
 type ServiceRow = {
     id: string;
     service_type?: string | null;
+    category?: string | null;
     description?: string | null;
     status?: string | null;
     scheduled_date?: string | null;
+    preferred_date?: string | null;
     created_at?: string | null;
 };
 
@@ -109,6 +111,14 @@ function healthOf(asset: AssetRow) {
     return asset.health_status || asset.healthStatus || "optimal";
 }
 
+function serviceTypeOf(item: ServiceRow) {
+    return item.service_type || item.category || "otro";
+}
+
+function serviceDateOf(item: ServiceRow) {
+    return item.scheduled_date || item.preferred_date || item.created_at;
+}
+
 export default function MantenimientoAdminPage() {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -130,7 +140,7 @@ export default function MantenimientoAdminPage() {
     async function loadData() {
         setLoading(true);
         const [serviceRes, caseRes, assetRes, logRes] = await Promise.allSettled([
-            supabase.from("service_requests").select("id, service_type, description, status, scheduled_date, created_at").order("created_at", { ascending: false }).limit(12),
+            supabase.from("service_requests").select("*").order("created_at", { ascending: false }).limit(12),
             supabase.from("coco_cases").select("id, title, category, urgency, status, unit_label, source_message, created_at").order("created_at", { ascending: false }).limit(12),
             supabase.from("building_assets").select("id, name, category, brand, model, location, health_status, next_maintenance").order("name", { ascending: true }),
             supabase.from("maintenance_logs").select("id, description, cost, date, performed_by").order("date", { ascending: false }).limit(8),
@@ -201,7 +211,7 @@ export default function MantenimientoAdminPage() {
     function exportCsv() {
         const rows = [
             ["ID", "Tipo", "Estado", "Fecha", "Descripcion"],
-            ...services.map(item => [item.id, item.service_type || "otro", statusLabel(item.status), dateLabel(item.created_at), `"${String(item.description || "").replace(/"/g, '""')}"`]),
+            ...services.map(item => [item.id, serviceTypeOf(item), statusLabel(item.status), dateLabel(serviceDateOf(item)), `"${String(item.description || "").replace(/"/g, '""')}"`]),
         ];
         const blob = new Blob([rows.map(row => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -295,9 +305,9 @@ export default function MantenimientoAdminPage() {
                                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                                     <div className="min-w-0 space-y-2">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <Badge>{item.service_type || "otro"}</Badge>
+                                            <Badge>{serviceTypeOf(item)}</Badge>
                                             <Badge tone={item.status === "completed" ? "green" : "blue"}>{statusLabel(item.status)}</Badge>
-                                            <span className="text-xs font-bold cc-text-tertiary">{dateLabel(item.scheduled_date || item.created_at)}</span>
+                                            <span className="text-xs font-bold cc-text-tertiary">{dateLabel(serviceDateOf(item))}</span>
                                         </div>
                                         <h3 className="font-black cc-text-primary">{item.description || "Solicitud tecnica"}</h3>
                                     </div>

@@ -37,7 +37,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
         try {
             const qrCodeValue = `INV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-            if (user) {
+            if (user && !user.email.toLowerCase().endsWith("@demo.com")) {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
 

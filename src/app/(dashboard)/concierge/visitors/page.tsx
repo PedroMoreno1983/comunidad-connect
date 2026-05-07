@@ -7,8 +7,7 @@ import { VisitorLog } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
-    Users, Plus, ClipboardList, Shield,
-    Search, Filter, Download, MoreHorizontal
+    Plus, ClipboardList, MoreHorizontal
 } from "lucide-react";
 import {
     Dialog,
@@ -22,7 +21,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { motion } from "framer-motion";
 
 // interface VisitorLog moved to @/lib/types.ts
 
@@ -31,19 +29,35 @@ interface Unit {
     number: string;
 }
 
+const demoVisitorLogs: VisitorLog[] = [
+    { id: "demo-v1", visitorName: "Camila Rojas", unitId: "1204", entryTime: new Date().toISOString(), isQr: true },
+    { id: "demo-v2", visitorName: "Luis Araya", unitId: "805", entryTime: new Date(Date.now() - 38 * 60000).toISOString(), isQr: false },
+    { id: "demo-v3", visitorName: "Courier Chilexpress", unitId: "1505", entryTime: new Date(Date.now() - 74 * 60000).toISOString(), isQr: false },
+];
+
+const demoUnits: Unit[] = [
+    { id: "demo-u1", number: "805" },
+    { id: "demo-u2", number: "1204" },
+    { id: "demo-u3", number: "1505" },
+];
+
 export default function VisitorsPage() {
     const { user } = useAuth();
     const [visitors, setVisitors] = useState<VisitorLog[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
     const { toast } = useToast();
 
     useEffect(() => {
         const loadData = async () => {
-            setIsLoading(true);
             try {
+                if (user?.email?.toLowerCase().endsWith("@demo.com")) {
+                    setVisitors(demoVisitorLogs);
+                    setUnits(demoUnits);
+                    return;
+                }
+
                 const logs = await VisitorService.getAll();
                 setVisitors(logs.map((v: any) => ({
                     id: v.id,
@@ -57,17 +71,34 @@ export default function VisitorsPage() {
                 setUnits(uns);
             } catch (error) {
                 console.error("Error loading visitors data:", error);
-            } finally {
-                setIsLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [user?.email]);
 
     const handleRegisterVisitor = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
+                const visitor = {
+                    id: `demo-v-${Date.now()}`,
+                    visitorName: newVisitor.name,
+                    unitId: newVisitor.unit,
+                    entryTime: new Date().toISOString(),
+                    isQr: false
+                };
+                setVisitors([visitor, ...visitors]);
+                setIsDialogOpen(false);
+                setNewVisitor({ name: "", unit: "" });
+                toast({
+                    title: "Registro demo listo",
+                    description: `Se agrego ${visitor.visitorName} a la bitacora local.`,
+                    variant: "success",
+                });
+                return;
+            }
+
             const data = await VisitorService.register({
                 visitor_name: newVisitor.name,
                 unit_id: newVisitor.unit,
@@ -189,7 +220,7 @@ export default function VisitorsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                {visitors.map((visitor, i) => (
+                                {visitors.map((visitor) => (
                                     <tr key={visitor.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">

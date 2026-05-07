@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import {
     Plus, BarChart3, Clock, Settings,
-    MoreHorizontal, Filter, Search,
-    MessageSquare, AlertCircle, CheckCircle2,
-    Calendar, Vote
+    MoreHorizontal, AlertCircle, Vote
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -24,6 +21,31 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 
+const demoPolls: Poll[] = [
+    {
+        id: "demo-admin-poll-1",
+        title: "Renovacion de ascensores Torre B",
+        description: "Consulta formal para aprobar presupuesto y calendario de obra.",
+        options: [{ id: "yes", text: "A favor", votes: 74 }, { id: "no", text: "En contra", votes: 18 }],
+        endDate: "2026-05-18",
+        totalVotes: 92,
+        status: "active",
+        category: "maintenance",
+        createdAt: "2026-05-01",
+    },
+    {
+        id: "demo-admin-poll-2",
+        title: "Actualizacion reglamento de mascotas",
+        description: "Ajustes de horarios y zonas de circulacion.",
+        options: [{ id: "yes", text: "A favor", votes: 58 }, { id: "no", text: "En contra", votes: 21 }],
+        endDate: "2026-05-12",
+        totalVotes: 79,
+        status: "active",
+        category: "rules",
+        createdAt: "2026-04-28",
+    },
+];
+
 export function PollManager() {
     const { user } = useAuth();
     const [polls, setPolls] = useState<Poll[]>([]);
@@ -36,6 +58,11 @@ export function PollManager() {
         const loadPolls = async () => {
             setIsLoading(true);
             try {
+                if (user?.email.toLowerCase().endsWith("@demo.com")) {
+                    setPolls(demoPolls);
+                    return;
+                }
+
                 const data = await PollService.getAll();
                 setPolls(data as Poll[]);
             } catch (err) {
@@ -52,6 +79,25 @@ export function PollManager() {
         if (!user) return;
 
         try {
+            if (user.email.toLowerCase().endsWith("@demo.com")) {
+                const createdPoll: Poll = {
+                    id: `demo-admin-poll-${Date.now()}`,
+                    title: newPoll.title,
+                    description: newPoll.description,
+                    category: newPoll.category as Poll["category"],
+                    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    totalVotes: 0,
+                    status: "active",
+                    options: [{ id: "yes", text: "A favor", votes: 0 }, { id: "no", text: "En contra", votes: 0 }],
+                    createdAt: new Date().toISOString(),
+                };
+                setPolls([createdPoll, ...polls]);
+                setIsDialogOpen(false);
+                setNewPoll({ title: "", description: "", category: "community" });
+                toast({ title: "Votacion demo publicada", description: "Se agrego al gestor local.", variant: "success" });
+                return;
+            }
+
             const pollData = {
                 title: newPoll.title,
                 description: newPoll.description,

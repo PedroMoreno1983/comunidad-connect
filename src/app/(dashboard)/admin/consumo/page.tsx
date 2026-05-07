@@ -17,6 +17,7 @@ import {
 import { Unit, WaterReading } from "@/lib/types";
 import { WaterService } from "@/lib/api";
 import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
+import { useAuth } from "@/lib/authContext";
 
 const fallbackWaterStats = {
     totalConsumption: 348.6,
@@ -25,6 +26,13 @@ const fallbackWaterStats = {
     totalUnits: 24,
     averageConsumption: 14.5,
 };
+
+const demoWaterUnits: Unit[] = [
+    { id: "demo-water-u1", number: "805", floor: 8, tower: "A" },
+    { id: "demo-water-u2", number: "1204", floor: 12, tower: "A" },
+    { id: "demo-water-u3", number: "1505", floor: 15, tower: "B" },
+    { id: "demo-water-u4", number: "1802", floor: 18, tower: "B" },
+];
 
 function calculateConsumption(readings: WaterReading[]) {
     const sorted = [...readings].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
@@ -36,6 +44,7 @@ function calculateConsumption(readings: WaterReading[]) {
 }
 
 export default function AdminConsumoPage() {
+    const { user } = useAuth();
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
     const [stats, setStats] = useState({
         totalConsumption: 0,
@@ -45,10 +54,16 @@ export default function AdminConsumoPage() {
         averageConsumption: 0,
     });
     const currentPeriod = getCurrentWaterPeriod();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         async function loadStats() {
             try {
+                if (isDemoUser) {
+                    setStats(fallbackWaterStats);
+                    return;
+                }
+
                 const units = await WaterService.getUnits();
                 const readingsByUnit = await Promise.all(units.map((unit: Unit) => WaterService.getReadingsByUnit(unit.id)));
                 const consumptions = readingsByUnit.map(calculateConsumption);
@@ -72,10 +87,12 @@ export default function AdminConsumoPage() {
         }
 
         loadStats();
-    }, [currentPeriod.month, currentPeriod.year]);
+    }, [currentPeriod.month, currentPeriod.year, isDemoUser]);
 
     const handleSaveReading = async (unitId: string, value: number) => {
         try {
+            if (isDemoUser) return;
+
             await WaterService.saveReading({
                 unit_id: unitId,
                 reading_value: value,
@@ -173,7 +190,32 @@ export default function AdminConsumoPage() {
                     </div>
                     <h2 className="text-2xl font-black cc-text-primary">Estado de lecturas comunidad</h2>
                 </div>
-                <UnitStatusGrid onUnitSelect={setSelectedUnit} />
+                {isDemoUser ? (
+                    <div className="rounded-[3rem] border border-subtle bg-surface p-10 shadow-xl shadow-slate-200/20">
+                        <div className="mb-8 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black cc-text-primary">Mapa demo de lecturas</h3>
+                                <p className="text-sm font-medium cc-text-secondary">Cobertura simulada para mostrar alertas y unidades pendientes sin depender de tablas opcionales.</p>
+                            </div>
+                            <span className="text-2xl font-black text-blue-600">75%</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            {demoWaterUnits.map((unit, index) => (
+                                <button
+                                    key={unit.id}
+                                    onClick={() => setSelectedUnit(unit)}
+                                    className={`aspect-square rounded-2xl border p-4 text-left transition-transform hover:-translate-y-1 ${index === 2 ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-100 bg-emerald-50 text-emerald-700"}`}
+                                >
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Torre {unit.tower}</p>
+                                    <p className="text-2xl font-black">{unit.number}</p>
+                                    <p className="mt-2 text-xs font-bold">{index === 2 ? "Alerta consumo" : "Lectura OK"}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <UnitStatusGrid onUnitSelect={setSelectedUnit} />
+                )}
             </section>
 
             <section className="space-y-8">
@@ -183,7 +225,23 @@ export default function AdminConsumoPage() {
                     </div>
                     <h2 className="text-2xl font-black cc-text-primary">Ingreso de lecturas</h2>
                 </div>
-                <AdminMeterEntry onUnitSelect={setSelectedUnit} />
+                {isDemoUser ? (
+                    <div className="rounded-[3rem] border border-subtle bg-surface p-10 shadow-xl shadow-slate-200/20">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {demoWaterUnits.map((unit, index) => (
+                                <div key={unit.id} className="flex items-center justify-between rounded-2xl bg-elevated p-5">
+                                    <div>
+                                        <p className="font-black cc-text-primary">Unidad {unit.number}</p>
+                                        <p className="text-xs font-bold cc-text-secondary">Lectura anterior {(118 + index * 14).toFixed(1)} m3</p>
+                                    </div>
+                                    <span className="rounded-xl bg-white px-4 py-2 text-sm font-black text-blue-600">Nueva {(132 + index * 17).toFixed(1)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <AdminMeterEntry onUnitSelect={setSelectedUnit} />
+                )}
             </section>
 
             <UnitDetailPanel

@@ -6,12 +6,39 @@ import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import {
-    Vote, BarChart3, Info, Calendar,
-    MessageSquare, ShieldCheck, Filter, Users
+    Vote, BarChart3,
+    ShieldCheck, Filter, Users
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { Poll } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
+
+const demoActivePolls: Poll[] = [
+    {
+        id: "demo-poll-1",
+        title: "Renovar luminarias del estacionamiento",
+        description: "Cambio a luminarias LED con sensor de movimiento para bajar consumo y mejorar seguridad.",
+        options: [{ id: "yes", text: "A favor", votes: 42 }, { id: "no", text: "En contra", votes: 8 }],
+        endDate: "2026-05-20",
+        totalVotes: 50,
+        status: "active",
+        category: "maintenance",
+        createdAt: "2026-05-01",
+    },
+];
+
+const demoClosedPolls: Poll[] = [
+    {
+        id: "demo-poll-2",
+        title: "Horario de piscina temporada verano",
+        description: "Resultado historico de consulta comunitaria.",
+        options: [{ id: "a", text: "10:00 a 20:00", votes: 66 }, { id: "b", text: "09:00 a 21:00", votes: 31 }],
+        endDate: "2026-03-30",
+        totalVotes: 97,
+        status: "closed",
+        category: "community",
+        createdAt: "2026-03-10",
+    },
+];
 
 export default function VotacionesPage() {
     const { user } = useAuth();
@@ -62,6 +89,12 @@ export default function VotacionesPage() {
     const loadPolls = async () => {
         setLoading(true);
         try {
+            if (user?.email.toLowerCase().endsWith("@demo.com")) {
+                setActivePolls(demoActivePolls);
+                setClosedPolls(demoClosedPolls);
+                return;
+            }
+
             const [active, closed] = await Promise.all([
                 PollsService.getActivePolls(),
                 PollsService.getClosedPolls()
@@ -92,6 +125,17 @@ export default function VotacionesPage() {
     const handleVote = async (pollId: string, optionId: string) => {
         if (!user) return;
         try {
+            if (user.email.toLowerCase().endsWith("@demo.com")) {
+                setActivePolls(prev => prev.map(poll => poll.id === pollId ? ({
+                    ...poll,
+                    totalVotes: poll.totalVotes + 1,
+                    options: poll.options.map(option => option.id === optionId ? { ...option, votes: option.votes + 1 } : option),
+                    ...({ hasVotedInit: true, votedOptionId: optionId } as any)
+                }) : poll));
+                toast({ title: "Voto demo registrado", description: "La preferencia quedo reflejada en esta sesion.", variant: "success" });
+                return;
+            }
+
             await PollsService.submitVote(pollId, optionId, user.id);
             await loadPolls();
         } catch (error: unknown) {

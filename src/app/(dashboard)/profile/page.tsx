@@ -58,14 +58,45 @@ export default function ProfilePage() {
         // Load unit info
         const { data: unitData } = await supabase
             .from('units')
-            .select('number, tower')
+            .select('*')
             .eq('owner_id', user.id)
             .maybeSingle();
 
         if (unitData) {
-            setUnitNumber(unitData.number || "");
-            setUnitTower(unitData.tower || "");
+            const unit = unitData as Record<string, string | null | undefined>;
+            setUnitNumber(unit.number || unit.unit_number || "");
+            setUnitTower(unit.tower || "");
         }
+    };
+
+    const updateUnitSafely = async (unitId: string, values: Record<string, unknown>) => {
+        const { error } = await supabase.from('units').update(values).eq('id', unitId);
+        if (!error) return;
+
+        if ('tower' in values) {
+            const fallbackValues = { ...values };
+            delete fallbackValues.tower;
+            const fallback = await supabase.from('units').update(fallbackValues).eq('id', unitId);
+            if (!fallback.error) return;
+            throw fallback.error;
+        }
+
+        throw error;
+    };
+
+    const insertUnitSafely = async (values: Record<string, unknown>) => {
+        const { error } = await supabase.from('units').insert(values);
+        if (!error) return;
+
+        if ('tower' in values) {
+            const fallbackValues = { ...values };
+            delete fallbackValues.tower;
+            const fallback = await supabase.from('units').insert(fallbackValues);
+            if (!fallback.error) return;
+            throw fallback.error;
+        }
+
+        throw error;
     };
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,10 +152,7 @@ export default function ProfilePage() {
                     .maybeSingle();
 
                 if (existingUnit) {
-                    await supabase
-                        .from('units')
-                        .update({ number: unitNumber.trim(), tower: unitTower.trim() })
-                        .eq('id', existingUnit.id);
+                    await updateUnitSafely(existingUnit.id, { number: unitNumber.trim(), tower: unitTower.trim() });
                 } else {
                     // Try to find if the unit number already exists but is unowned
                     const { data: foundUnit } = await supabase
@@ -135,20 +163,15 @@ export default function ProfilePage() {
                         .maybeSingle();
                     
                     if (foundUnit) {
-                        await supabase
-                            .from('units')
-                            .update({ owner_id: user.id, tower: unitTower.trim() })
-                            .eq('id', foundUnit.id);
+                        await updateUnitSafely(foundUnit.id, { owner_id: user.id, tower: unitTower.trim() });
                     } else {
                         // Create new unit (as fallback for demo/enrollment flow)
-                        await supabase
-                            .from('units')
-                            .insert({ 
-                                number: unitNumber.trim(), 
-                                tower: unitTower.trim(), 
-                                owner_id: user.id,
-                                floor: parseInt(unitNumber.substring(0, 1)) || 1 
-                            });
+                        await insertUnitSafely({
+                            number: unitNumber.trim(),
+                            tower: unitTower.trim(),
+                            owner_id: user.id,
+                            floor: parseInt(unitNumber.substring(0, 1)) || 1
+                        });
                     }
                 }
             }

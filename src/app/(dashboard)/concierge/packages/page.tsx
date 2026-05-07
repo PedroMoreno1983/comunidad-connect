@@ -7,8 +7,8 @@ import { useAuth } from "@/lib/authContext";
 import { PackageService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
-    Package as PackageIcon, Check, Clock, Plus, Truck,
-    CheckCircle2, Package2, Search, Camera, Scan,
+    Package as PackageIcon, Check, Clock, Plus,
+    CheckCircle2, Package2, Search, Scan,
     BellRing, History
 } from "lucide-react";
 import {
@@ -21,7 +21,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
-import { Package } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PackageItem {
@@ -38,11 +37,31 @@ interface Unit {
     number: string;
 }
 
+const demoPackages: PackageItem[] = [
+    { id: "demo-p1", recipientUnitId: "1204", description: "Caja Mercado Libre", receivedAt: new Date().toISOString(), status: "pending" },
+    { id: "demo-p2", recipientUnitId: "805", description: "Sobre Chilexpress", receivedAt: new Date(Date.now() - 54 * 60000).toISOString(), status: "pending" },
+    { id: "demo-p3", recipientUnitId: "1505", description: "Pedido farmacia", receivedAt: new Date(Date.now() - 3 * 36e5).toISOString(), status: "picked-up", pickedUpAt: new Date(Date.now() - 45 * 60000).toISOString() },
+];
+
+const demoUnits: Unit[] = [
+    { id: "demo-u1", number: "805" },
+    { id: "demo-u2", number: "1204" },
+    { id: "demo-u3", number: "1505" },
+];
+
+function receivedAgoLabel(value: string) {
+    const receivedAt = new Date(value).getTime();
+    if (Number.isNaN(receivedAt)) return "Recibido hoy";
+    const minutes = Math.max(1, Math.floor((Date.now() - receivedAt) / 60000));
+    if (minutes < 60) return `Recibido hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    return `Recibido hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
+}
+
 export default function PackagesPage() {
     const { user } = useAuth();
     const [packages, setPackages] = useState<PackageItem[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [newPackage, setNewPackage] = useState({ unit: "", description: "" });
@@ -53,8 +72,13 @@ export default function PackagesPage() {
 
     useEffect(() => {
         const loadData = async () => {
-            setIsLoading(true);
             try {
+                if (user?.email?.toLowerCase().endsWith("@demo.com")) {
+                    setPackages(demoPackages);
+                    setUnits(demoUnits);
+                    return;
+                }
+
                 const pkgs = await PackageService.getAll();
                 setPackages((pkgs as any[]).map((p) => ({
                     id: p.id,
@@ -69,17 +93,34 @@ export default function PackagesPage() {
                 setUnits(uns);
             } catch (error) {
                 console.error("Error loading packages data:", error);
-            } finally {
-                setIsLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [user?.email]);
 
     const handleReceivePackage = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
+                const pkg: PackageItem = {
+                    id: `demo-p-${Date.now()}`,
+                    recipientUnitId: newPackage.unit,
+                    description: newPackage.description,
+                    receivedAt: new Date().toISOString(),
+                    status: "pending",
+                };
+                setPackages([pkg, ...packages]);
+                setIsDialogOpen(false);
+                setNewPackage({ unit: "", description: "" });
+                toast({
+                    title: "Paquete demo registrado",
+                    description: `Se agrego a la bodega demo de la Unidad ${pkg.recipientUnitId}.`,
+                    variant: "success",
+                });
+                return;
+            }
+
             const data = await PackageService.register({
                 recipient_unit_id: newPackage.unit,
                 description: newPackage.description,
@@ -132,6 +173,19 @@ export default function PackagesPage() {
 
     const handleMarkDelivered = async (id: string) => {
         try {
+            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
+                setPackages(prev => prev.map(pkg =>
+                    pkg.id === id
+                        ? { ...pkg, status: 'picked-up', pickedUpAt: new Date().toISOString() }
+                        : pkg
+                ));
+                toast({
+                    title: "Entrega demo actualizada",
+                    description: "La bitacora local quedo al dia.",
+                });
+                return;
+            }
+
             await PackageService.markPickedUp(id);
             setPackages(prev => prev.map(pkg =>
                 pkg.id === id
@@ -142,7 +196,7 @@ export default function PackagesPage() {
                 title: "Paquete Entregado",
                 description: "Registro actualizado en la bitácora.",
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo actualizar el estado.",
@@ -327,7 +381,7 @@ export default function PackagesPage() {
                                         <div className="pt-6 border-t border-subtle space-y-4">
                                             <div className="flex items-center gap-3 text-xs text-slate-400 font-bold">
                                                 <History className="h-4 w-4" />
-                                                <span>Recibido hace {Math.floor(Math.random() * 5) + 1} horas</span>
+                                                <span>{receivedAgoLabel(pkg.receivedAt)}</span>
                                             </div>
                                             <button
                                                 onClick={() => handleMarkDelivered(pkg.id)}

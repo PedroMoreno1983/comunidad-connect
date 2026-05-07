@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { CreditCard, History, AlertCircle, CheckCircle2, Home } from "lucide-react";
+import { History, AlertCircle, CheckCircle2, Home } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { getApiUrl } from "@/lib/config";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
@@ -25,6 +25,12 @@ interface Expense {
         number: string;
     };
 }
+
+const demoExpenses: Expense[] = [
+    { id: "demo-exp-1", unit_id: "demo", month: "2026-05", amount: 126900, status: "pending", due_date: "2026-05-15", units: { number: "1204" } },
+    { id: "demo-exp-2", unit_id: "demo", month: "2026-04", amount: 119500, status: "paid", due_date: "2026-04-15", paid_at: "2026-04-12", units: { number: "1204" } },
+    { id: "demo-exp-3", unit_id: "demo", month: "2026-03", amount: 122300, status: "paid", due_date: "2026-03-15", paid_at: "2026-03-14", units: { number: "1204" } },
+];
 
 export default function FinancesPage() {
     const { user } = useAuth();
@@ -49,6 +55,11 @@ export default function FinancesPage() {
         if (!user) return;
         try {
             setLoading(true);
+            if (user.email.toLowerCase().endsWith("@demo.com")) {
+                setExpenses(demoExpenses);
+                return;
+            }
+
             const supabase = createClient();
 
             // 1. Obtener la unidad del perfil del usuario
@@ -72,7 +83,7 @@ export default function FinancesPage() {
             // 2. Traer Gastos Comunes desde tabla 'expenses'
             const { data, error } = await supabase
                 .from('expenses')
-                .select('*, units(number)')
+                .select('*')
                 .eq('unit_id', targetUnitId)
                 .order('month', { ascending: false });
 
@@ -94,6 +105,16 @@ export default function FinancesPage() {
     const handlePayHaulmer = async (expense: Expense) => {
         setProcessingId(expense.id);
         try {
+            if (user?.email.toLowerCase().endsWith("@demo.com")) {
+                toast({
+                    title: "Pago demo simulado",
+                    description: "En una cuenta real se abriria el flujo Haulmer.",
+                    variant: "success"
+                });
+                setProcessingId(null);
+                return;
+            }
+
             const monthLabel = safeFormatDate(expense.month, 'MMMM yyyy', true);
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
