@@ -16,19 +16,7 @@ import {
 } from "lucide-react";
 import { Unit, WaterReading } from "@/lib/types";
 import { WaterService } from "@/lib/api";
-
-const MONTHS = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
-function getCurrentPeriod() {
-    const now = new Date();
-    return {
-        month: MONTHS[now.getMonth()],
-        year: now.getFullYear(),
-    };
-}
+import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 
 function calculateConsumption(readings: WaterReading[]) {
     const sorted = [...readings].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
@@ -48,7 +36,7 @@ export default function AdminConsumoPage() {
         totalUnits: 0,
         averageConsumption: 0,
     });
-    const currentPeriod = getCurrentPeriod();
+    const currentPeriod = getCurrentWaterPeriod();
 
     useEffect(() => {
         async function loadStats() {

@@ -1,15 +1,16 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X, History as HistoryIcon, User, Phone, Mail,
-    Save, AlertTriangle, CheckCircle2
+    Save
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Unit, WaterReading, User as Profile } from "@/lib/types";
 import { WaterService } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
+import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 
 interface UnitDetailPanelProps {
     unit: Unit | null;
@@ -22,21 +23,14 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
     const [readingValue, setReadingValue] = useState<string>("");
     const [history, setHistory] = useState<WaterReading[]>([]);
     const [resident, setResident] = useState<Profile | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
 
-    const currentMonth = "Febrero"; // Assuming current month for new readings
-    const currentYear = 2026; // Assuming current year for new readings
+    const currentPeriod = getCurrentWaterPeriod();
+    const currentMonth = currentPeriod.month;
+    const currentYear = currentPeriod.year;
 
-    useEffect(() => {
-        if (unit && isOpen) {
-            loadUnitData();
-        }
-    }, [unit, isOpen]);
-
-    async function loadUnitData() {
+    const loadUnitData = useCallback(async () => {
         if (!unit) return;
-        setIsLoading(true);
         try {
             // Cargar historial real
             const unitReadings = await WaterService.getReadingsByUnit(unit.id);
@@ -84,10 +78,18 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                 description: "No se pudieron cargar los detalles de la unidad.",
                 variant: "destructive"
             });
-        } finally {
-            setIsLoading(false);
         }
-    }
+    }, [currentMonth, currentYear, toast, unit]);
+
+    useEffect(() => {
+        if (!unit || !isOpen) return;
+
+        const timeout = window.setTimeout(() => {
+            loadUnitData();
+        }, 0);
+
+        return () => window.clearTimeout(timeout);
+    }, [unit, isOpen, loadUnitData]);
 
     const handleSave = async () => {
         if (unit && readingValue) {
@@ -182,7 +184,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                             <div className="space-y-4">
                                 <h3 className="text-sm font-black cc-text-primary flex items-center gap-2">
                                     <Save className="h-4 w-4 text-emerald-500" />
-                                    Lectura Actual (Enero 2026)
+                                    Lectura actual ({currentMonth} {currentYear})
                                 </h3>
                                 <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-800">
                                     <div className="flex flex-col gap-4">
