@@ -3,67 +3,64 @@
 import { Calculator, HelpCircle } from "lucide-react";
 
 interface CostEstimatorProps {
-    consumption: number; // m3
+    consumption: number;
 }
 
 export function CostEstimator({ consumption }: CostEstimatorProps) {
-    // Tarifas Mock (CLP)
-    const FIXED_CHARGE = 1200; // Cargo fijo
-    const VARIABLE_RATE = 850; // valor por m3
-    const SEWER_RATE = 600; // alcantarillado por m3
+    const fixedCharge = 1200;
+    const variableRate = 850;
+    const sewerRate = 600;
 
-    const waterCost = consumption * VARIABLE_RATE;
-    const sewerCost = consumption * SEWER_RATE;
-    const totalEstimated = FIXED_CHARGE + waterCost + sewerCost;
+    const waterCost = consumption * variableRate;
+    const sewerCost = consumption * sewerRate;
+    const totalEstimated = fixedCharge + waterCost + sewerCost;
 
     return (
-        <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-6 relative overflow-hidden">
-
-            {/* Background Decor */}
-            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+        <section className="relative space-y-6 overflow-hidden rounded-[2.5rem] border border-subtle bg-surface p-8 shadow-xl shadow-slate-200/20 dark:shadow-none">
+            <div className="pointer-events-none absolute right-0 top-0 p-8 opacity-5">
                 <Calculator className="h-32 w-32 cc-text-primary" />
             </div>
 
-            <div className="flex items-center gap-4 relative z-10">
-                <div className="p-3 bg-success-bg rounded-2xl text-emerald-600">
+            <div className="relative z-10 flex items-center gap-4">
+                <div className="rounded-2xl bg-success-bg p-3 text-emerald-600">
                     <Calculator className="h-6 w-6" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black cc-text-primary">Estimación de Costo</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Basado en consumo actual</p>
+                    <h2 className="text-xl font-black cc-text-primary">Estimación de costo</h2>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Basado en consumo actual</p>
                 </div>
             </div>
 
-            <div className="space-y-4 relative z-10">
+            <div className="relative z-10 space-y-4">
                 <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-black cc-text-primary">
-                        ${totalEstimated.toLocaleString('es-CL')}
+                        ${Math.round(totalEstimated).toLocaleString("es-CL")}
                     </span>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">CLP Aprox.</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-400">CLP aprox.</span>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-subtle">
+                <div className="space-y-3 border-t border-subtle pt-4">
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Cargo Fijo</span>
-                        <span className="cc-text-primary font-bold">${FIXED_CHARGE.toLocaleString('es-CL')}</span>
+                        <span className="font-medium text-slate-500">Cargo fijo</span>
+                        <span className="font-bold cc-text-primary">${fixedCharge.toLocaleString("es-CL")}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Agua Potable ({consumption} m³)</span>
-                        <span className="cc-text-primary font-bold">${waterCost.toLocaleString('es-CL')}</span>
+                        <span className="font-medium text-slate-500">Agua potable ({consumption.toFixed(1)} m³)</span>
+                        <span className="font-bold cc-text-primary">${Math.round(waterCost).toLocaleString("es-CL")}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Alcantarillado</span>
-                        <span className="cc-text-primary font-bold">${sewerCost.toLocaleString('es-CL')}</span>
+                        <span className="font-medium text-slate-500">Alcantarillado</span>
+                        <span className="font-bold cc-text-primary">${Math.round(sewerCost).toLocaleString("es-CL")}</span>
                     </div>
                 </div>
 
-                <div className="p-4 bg-elevated/50 rounded-2xl flex gap-3">
-                    <HelpCircle className="h-5 w-5 text-slate-400 shrink-0" />
-                    <p className="text-xs text-slate-500 leading-relaxed">
+                <div className="flex gap-3 rounded-2xl bg-elevated/50 p-4">
+                    <HelpCircle className="h-5 w-5 shrink-0 text-slate-400" />
+                    <p className="text-xs leading-relaxed text-slate-500">
                         Este valor es referencial y puede variar según las tarifas vigentes de la empresa sanitaria y prorrateos de áreas comunes.
                     </p>
                 </div>
             </div>
-        </div>
+        </section>
     );
 }
