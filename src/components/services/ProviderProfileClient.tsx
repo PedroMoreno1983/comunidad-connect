@@ -29,6 +29,8 @@ interface ProviderProfileClientProps {
 export function ProviderProfileClient({ provider, reviews }: ProviderProfileClientProps) {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+    const [isRequestSaving, setIsRequestSaving] = useState(false);
+    const [isReviewSaving, setIsReviewSaving] = useState(false);
     const [requestForm, setRequestForm] = useState({ date: '', time: '', description: '' });
     const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
     const { toast } = useToast();
@@ -37,8 +39,10 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
     const handleRequestService = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRequestSaving) return;
 
         try {
+            setIsRequestSaving(true);
             const response = await fetch('/api/service-requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -71,19 +75,24 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             });
             setIsRequestDialogOpen(false);
             setRequestForm({ date: '', time: '', description: '' });
+            router.push('/services/my-requests');
         } catch (error: unknown) {
             toast({
                 title: "Error",
                 description: error instanceof Error ? error.message : "No se pudo enviar la solicitud",
                 variant: "default",
             });
+        } finally {
+            setIsRequestSaving(false);
         }
     };
 
     const handleSubmitReview = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isReviewSaving) return;
 
         try {
+            setIsReviewSaving(true);
             const response = await fetch('/api/reviews', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -125,6 +134,8 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 description: error instanceof Error ? error.message : "No se pudo publicar la reseña",
                 variant: "default",
             });
+        } finally {
+            setIsReviewSaving(false);
         }
     };
 
@@ -463,7 +474,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Enviar Solicitud</Button>
+                            <Button type="submit" disabled={isRequestSaving}>
+                                {isRequestSaving ? 'Enviando...' : 'Enviar Solicitud'}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -507,7 +520,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Publicar Reseña</Button>
+                            <Button type="submit" disabled={isReviewSaving}>
+                                {isReviewSaving ? 'Publicando...' : 'Publicar Reseña'}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
