@@ -99,6 +99,38 @@ export const providersService = {
         };
     },
 
+    async getByUser(userId: string): Promise<ServiceProvider[]> {
+        if (!userId) return [];
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+            .from('service_providers')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            reviewCount: p.review_count,
+            contactPhone: p.contact_phone,
+            email: p.email,
+            photo: p.photo,
+            bio: p.bio,
+            yearsExperience: p.years_experience,
+            specialties: p.specialties,
+            certifications: p.certifications,
+            hourlyRate: p.hourly_rate,
+            availability: p.availability,
+            responseTime: p.response_time,
+            completedJobs: p.completed_jobs,
+            verified: p.verified
+        }));
+    },
+
     async getFeatured(limit: number = 6): Promise<ServiceProvider[]> {
         const supabase = getSupabase();
         const { data, error } = await supabase
@@ -377,19 +409,30 @@ export const serviceRequestsService = {
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('service_requests')
-            .select(`
-                *,
-                profiles:user_id (
-                  name,
-                  email,
-                  phone
-                )
-            `)
+            .select('*')
             .eq('provider_id', providerId)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+
+        const requests = data || [];
+        const userIds = Array.from(new Set(requests.map((request: { user_id?: string }) => request.user_id).filter(Boolean)));
+
+        if (userIds.length === 0) {
+            return requests;
+        }
+
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', userIds);
+
+        const profileById = new Map((profiles || []).map((profile: { id: string; name?: string; email?: string }) => [profile.id, profile]));
+
+        return requests.map((request: { user_id?: string }) => ({
+            ...request,
+            profiles: request.user_id ? profileById.get(request.user_id) || null : null,
+        }));
     },
 
     async updateStatus(requestId: string, status: 'pending' | 'accepted' | 'completed' | 'cancelled') {

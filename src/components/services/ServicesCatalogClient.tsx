@@ -196,12 +196,20 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                     <p className="mx-auto mb-8 max-w-2xl text-lg text-blue-100">
                         Unete a nuestra red de profesionales verificados y conecta con clientes en tu comunidad
                     </p>
-                    <Link
-                        href="/services/register"
-                        className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 font-bold text-blue-600 shadow-xl shadow-blue-950/20 transition-colors hover:bg-blue-50"
-                    >
-                        Registrarse como Tecnico
-                    </Link>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        <Link
+                            href="/services/register"
+                            className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 font-bold text-blue-600 shadow-xl shadow-blue-950/20 transition-colors hover:bg-blue-50"
+                        >
+                            Registrarse como Tecnico
+                        </Link>
+                        <Link
+                            href="/services/provider-dashboard"
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-8 py-4 font-bold text-white shadow-xl shadow-blue-950/20 transition-colors hover:bg-white/20"
+                        >
+                            Panel Proveedor
+                        </Link>
+                    </div>
                 </div>
             </section>
         </div>

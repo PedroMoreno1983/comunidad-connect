@@ -34,7 +34,8 @@ import {
     GraduationCap,
     BookOpen,
     Upload,
-    Bot
+    Bot,
+    Briefcase
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -117,6 +118,7 @@ export function Sidebar() {
                 { href: '/marketplace/my-listings', label: 'Mis Publicaciones', icon: ShoppingBag, roles: ['resident', 'admin'] },
                 { href: '/services', label: 'Directorio Servicios', icon: Wrench, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/services/my-requests', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['resident', 'admin'], feature: 'maintenance' },
+                { href: '/services/provider-dashboard', label: 'Panel Proveedor', icon: Briefcase, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/resident/cases', label: 'Mis Casos CoCo', icon: Bot, roles: ['resident', 'admin'], feature: 'coco_ai' },
                 { href: '/resident/invitations', label: 'Mis Invitaciones', icon: QrCode, roles: ['resident', 'admin'] },
                 { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'], feature: 'voting' },
