@@ -15,7 +15,7 @@ export function ModuleHeader({ eyebrow, title, description, icon, meta, actions 
             <div className="min-w-0">
                 <div className="mb-3 flex items-center gap-3">
                     {icon && (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600">
                             {icon}
                         </div>
                     )}
@@ -54,7 +54,7 @@ export function ModuleStat({ label, value, icon, active, onClick }: ModuleStatPr
                 <p className="text-2xl font-semibold cc-text-primary">{value}</p>
                 <p className="mt-1 text-xs font-semibold cc-text-secondary">{label}</p>
             </div>
-            {icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">{icon}</div>}
+            {icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-subtle bg-elevated cc-text-secondary">{icon}</div>}
         </Comp>
     );
 }

@@ -20,7 +20,6 @@ import {
     ClipboardList,
     Calendar,
     DollarSign,
-    Sparkles,
     Menu,
     X,
     PieChart,
@@ -185,10 +184,6 @@ export function Sidebar() {
         }
     };
 
-    const getActiveStyle = (): CSSProperties => {
-        return { backgroundColor: 'var(--cc-brand-500)' };
-    };
-
     const getRoleBadgeClass = () => {
         switch (user.role) {
             case 'admin':    return 'bg-role-admin-bg text-role-admin-fg border border-role-admin-border';
@@ -203,14 +198,14 @@ export function Sidebar() {
     const sidebarContent = (
         <>
             {/* Header / Logo */}
-            <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b border-subtle">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-subtle px-4">
                 <div className="flex items-center">
-                    <div className="p-2.5 rounded-xl shadow-md" style={getAvatarStyle()}>
-                        <Building2 className="h-6 w-6 text-white" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={getAvatarStyle()}>
+                        <Building2 className="h-5 w-5 text-white" />
                     </div>
                     <div className="ml-3">
-                        <span className="text-lg font-bold cc-text-primary">Comunidad</span>
-                        <span className="text-lg font-bold text-brand-500">Connect</span>
+                        <span className="text-base font-bold cc-text-primary">Comunidad</span>
+                        <span className="text-base font-bold text-brand-500">Connect</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -220,10 +215,10 @@ export function Sidebar() {
             </div>
 
             {/* User Profile Card */}
-            <div className="p-4 shrink-0">
-                <div className="p-4 rounded-2xl bg-elevated border border-subtle shadow-sm">
+            <div className="shrink-0 p-3">
+                <div className="rounded-lg border border-subtle bg-surface p-3">
                     <div className="flex items-center">
-                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0" style={getAvatarStyle()}>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white" style={getAvatarStyle()}>
                             {user.name.charAt(0)}
                         </div>
                         <div className="ml-3 overflow-hidden flex-1">
@@ -232,8 +227,7 @@ export function Sidebar() {
                                     ? (user.name.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.name.split('@')[0].split('.')[0].slice(1))
                                     : user.name}
                             </p>
-                            <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRoleBadgeClass()}`}>
-                                <Sparkles className="h-3 w-3" />
+                            <span className={`mt-1 inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getRoleBadgeClass()}`}>
                                 {user.role === 'admin' ? 'Admin' : user.role === 'resident' ? 'Residente' : 'Conserjería'}
                             </span>
                         </div>
@@ -242,7 +236,7 @@ export function Sidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-3 py-2 pb-6 space-y-6 custom-scrollbar">
+            <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto px-3 py-2 pb-6">
                 {menuSections.map((section, sIdx) => {
                     const validLinks = section.links.filter(link => {
                         // 1. Check basic user role matching
@@ -259,7 +253,7 @@ export function Sidebar() {
 
                     return (
                         <div key={sIdx} className="space-y-1">
-                            <h3 className="px-4 text-[10px] font-black uppercase tracking-widest cc-text-tertiary mb-2">
+                            <h3 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">
                                 {section.title}
                             </h3>
                             {validLinks.map((link, lIdx) => {
@@ -278,17 +272,16 @@ export function Sidebar() {
                                         <Link
                                             href={link.href}
                                             onClick={() => setIsMobileOpen(false)}
-                                            style={isActive ? getActiveStyle() : undefined}
                                             className={clsx(
-                                                "relative group overflow-hidden flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150",
+                                                "group relative flex items-center rounded-md border px-3 py-2 text-sm transition-colors duration-150",
                                                 isActive
-                                                    ? "text-white shadow-md"
-                                                    : "cc-text-secondary hover:bg-elevated hover:text-primary"
+                                                    ? "border-brand-200 bg-brand-50 font-semibold text-brand-700"
+                                                    : "border-transparent cc-text-secondary hover:border-subtle hover:bg-elevated"
                                             )}
                                         >
                                             <Icon className={clsx(
-                                                "relative z-10 mr-3 h-5 w-5 transition-transform group-hover:scale-110",
-                                                isActive ? "text-white" : "cc-text-tertiary group-hover:text-brand-500"
+                                                "relative z-10 mr-3 h-4 w-4",
+                                                isActive ? "text-brand-600" : "cc-text-tertiary group-hover:text-brand-500"
                                             )} />
                                             <span className="flex-1">{link.label}</span>
                                         </Link>
@@ -301,12 +294,12 @@ export function Sidebar() {
             </nav>
 
             {/* Footer / Logout */}
-            <div className="p-4 border-t border-subtle space-y-2">
+            <div className="space-y-2 border-t border-subtle p-3">
                 <button
                     onClick={handleLogout}
-                    className="w-full group flex items-center px-4 py-3 text-sm font-medium rounded-xl cc-text-secondary hover:bg-danger-bg hover:text-danger-fg transition-all duration-200"
+                    className="group flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium cc-text-secondary transition-colors hover:bg-danger-bg hover:text-danger-fg"
                 >
-                    <LogOut className="mr-3 h-5 w-5 cc-text-tertiary group-hover:text-danger-fg transition-colors" />
+                    <LogOut className="mr-3 h-4 w-4 cc-text-tertiary transition-colors group-hover:text-danger-fg" />
                     Cerrar Sesión
                 </button>
                 <p className="mt-3 text-center text-xs cc-text-tertiary">
@@ -370,7 +363,7 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: -288 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="lg:hidden fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col bg-canvas border-r border-subtle shadow-xl"
+                        className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
                     >
                         {sidebarContent}
                     </motion.div>
@@ -378,7 +371,7 @@ export function Sidebar() {
             </AnimatePresence>
 
             {/* Desktop Sidebar */}
-            <div className="hidden lg:flex h-screen w-72 flex-col bg-canvas border-r border-subtle z-10 relative shadow-sm">
+            <div className="relative z-10 hidden h-screen w-72 flex-col border-r border-subtle bg-surface lg:flex">
                 {sidebarContent}
             </div>
         </>

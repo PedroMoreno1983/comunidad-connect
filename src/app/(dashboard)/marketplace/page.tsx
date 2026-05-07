@@ -345,18 +345,14 @@ export default function MarketplacePage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto pb-12 space-y-12">
-            {/* Hero Section Premium */}
-            <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 dark:bg-slate-950 p-8 md:p-12 shadow-2xl">
-                <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full" />
-                <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-64 h-64 bg-purple-500/20 blur-[100px] rounded-full" />
-
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="max-w-2xl text-center md:text-left space-y-4">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
+            <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                    <div className="max-w-2xl space-y-3">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-bold uppercase tracking-widest mb-2"
+                            className="inline-flex items-center gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-600"
                         >
                             <Sparkles className="h-3 w-3" />
                             Comercio Comunitario Seguro
@@ -364,15 +360,15 @@ export default function MarketplacePage() {
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="text-4xl md:text-5xl font-black text-white leading-tight"
+                            className="text-2xl font-bold leading-tight cc-text-primary md:text-3xl"
                         >
-                            Encuentra tesoros en tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">propia comunidad</span>
+                            Marketplace de la comunidad
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
-                            className="text-slate-400 text-lg md:text-xl font-medium max-w-lg"
+                            className="max-w-xl text-sm leading-6 cc-text-secondary"
                         >
                             Vende lo que ya no usas y compra artículos de confianza a tus vecinos de ComunidadConnect.
                         </motion.p>
@@ -381,13 +377,13 @@ export default function MarketplacePage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
-                            className="pt-4 flex flex-wrap justify-center md:justify-start gap-4"
+                            className="flex flex-wrap gap-3 md:justify-end"
                         >
                             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button variant="primary" size="lg" className="rounded-2xl shadow-xl font-black px-8 py-4">
+                                    <Button variant="primary" size="lg" className="rounded-lg px-5 py-3 text-sm font-semibold shadow-sm">
                                         <Plus className="h-5 w-5 mr-2" />
-                                        Publicar algo ahora
+                                        Publicar artículo
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
