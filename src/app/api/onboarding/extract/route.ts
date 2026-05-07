@@ -28,14 +28,14 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
     // Usamos un ID estable de Gemini; los alias "-latest" pueden saturarse o cambiar.
     const model = process.env.GEMINI_EXTRACT_MODEL || "gemini-2.5-flash-lite";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    
+
     // Configurar Gemini para responder en JSON estricto
     const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: "Extrae a todos los residentes de este archivo. Si el archivo incluye imágenes, escaneos o texto sucio, léelo cuidadosamente e ignora el ruido.\n\n" }];
-    
+
     if (text) {
         parts.push({ text: text });
     }
-    
+
     if (inlineData) {
         parts.push({ inlineData });
     }
@@ -97,14 +97,14 @@ export async function POST(request: Request) {
 
         // 1. EXTRAER TEXTO BRUTO DEL BINARIO (PDF, DOCX) O ENVIAR DIRECTO (PDF NATIVO VIA IA)
         if (fileName.endsWith('.pdf')) {
-            // EN PRODUCCIÓN/VERCEL: `pdf-parse` arroja ERROR: "t is not a function" al intentar 
+            // EN PRODUCCIÓN/VERCEL: `pdf-parse` arroja ERROR: "t is not a function" al intentar
             // usar polyfills en Server Components. Gemini FLASH tiene soporte NATIVO perfecto
             // para leer PDFs base64 directamente, incluso si están escaneados (OCR). ¡Usemoslo!
             const pdfBase64 = buffer.toString('base64');
             extractedInlineData = { mimeType: 'application/pdf', data: pdfBase64 };
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
             // Lazy load mammoth as well
-            const mammoth = require('mammoth');
+            const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
         } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
@@ -122,10 +122,10 @@ export async function POST(request: Request) {
         if (!apiKey) throw new Error("GEMINI_API_KEY no configurada en las variables de entorno");
 
         // Limitamos el texto a ~100,000 caracteres para no romper el contexto por accidente (solo para inputs de docx/txt)
-        const safeText = extractedText.trim() ? extractedText.substring(0, 100000) : ""; 
-        
+        const safeText = extractedText.trim() ? extractedText.substring(0, 100000) : "";
+
         const jsonString = await callGeminiExtractor(apiKey, safeText, extractedInlineData);
-        
+
         // 3. VALIDACIÓN FINAL: Parseamos el JSON para asegurarnos que la IA obedeció
         let parsedJson = [];
         try {
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ data: parsedJson });
-        
+
     } catch (error: unknown) {
         console.error('Extractor Error:', error);
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

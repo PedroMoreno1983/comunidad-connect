@@ -360,7 +360,10 @@ export default function LandingPage() {
   const [selectedInfo, setSelectedInfo] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   useEffect(() => {
     if (user && !authLoading) router.push('/home');
   }, [user, authLoading, router]);
@@ -751,7 +754,7 @@ export default function LandingPage() {
                 className="relative flex flex-col gap-5 p-7 rounded-[2rem] bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
                 {/* Quote mark */}
-                <div className="text-5xl leading-none font-black opacity-10 absolute top-4 right-6" style={{ color: t.color }}>"</div>
+                <div className="text-5xl leading-none font-black opacity-10 absolute top-4 right-6" style={{ color: t.color }}>&quot;</div>
 
                 {/* Stars */}
                 <div className="flex gap-1">

@@ -11,7 +11,10 @@ export function ThemeToggle() {
     const [mounted, setMounted] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     // Close menu on click outside
     useEffect(() => {
@@ -102,7 +105,10 @@ export function ThemeToggleCompact() {
     const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     const toggleTheme = () => {
         setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
