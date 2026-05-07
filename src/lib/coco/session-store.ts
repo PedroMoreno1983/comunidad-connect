@@ -21,6 +21,7 @@ export interface ConversationMessage {
 export interface SessionData {
     conversation: ConversationMessage[];
     user_context: {
+        user_id?: string;
         unit_id?: string;
         role?: string;
         community_id?: string;

@@ -325,6 +325,7 @@ export const TOOL_DEFINITIONS = [
 // ── Executor ─────────────────────────────────────────────────────────────────
 
 interface UserContext {
+    user_id?: string;
     unit_id?: string;
     role?: string;
     community_id?: string;
@@ -443,7 +444,7 @@ export async function executeTool(
             // ── RESERVAS ────────────────────────────────────────────────────
             case 'check_availability': {
                 const { data } = await supabase
-                    .from('amenity_bookings')
+                    .from('bookings')
                     .select('start_time, end_time, amenities(name)')
                     .eq('date', input.date)
                     .ilike('amenities.name', `%${input.space_name}%`)
@@ -463,16 +464,16 @@ export async function executeTool(
                     .ilike('name', `%${input.space_name}%`)
                     .maybeSingle();
                 if (!amenity) return { error: `No se encontró el espacio "${input.space_name}"` };
+                if (!userCtx.user_id) return { error: 'No se pudo identificar al residente para crear la reserva.' };
                 const { data, error } = await supabase
-                    .from('amenity_bookings')
+                    .from('bookings')
                     .insert({
-                        unit_id: input.unit_id,
+                        user_id: userCtx.user_id,
                         amenity_id: amenity.id,
                         date: input.date,
                         start_time: input.start_time,
                         end_time: input.end_time,
                         status: 'confirmed',
-                        source: 'COCO_IA',
                     })
                     .select('id')
                     .single();

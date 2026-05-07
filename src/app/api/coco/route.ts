@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
                 message,
                 session,
                 {
+                    user_id:     userId,
                     name:        userName,
                     role:        safeRole,
                     unit_id:     unitId    || session?.user_context?.unit_id,

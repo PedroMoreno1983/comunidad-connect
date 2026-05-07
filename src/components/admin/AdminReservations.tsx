@@ -1,21 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Calendar as CalendarIcon, Clock, Users, Check, X, Building, Info } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Users, Check, X, Building } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
-import { Button } from "@/components/ui/Button";
 
 interface Booking {
     id: string;
     date: string;
-    start_time: string;
-    end_time: string;
+    start_time?: string | null;
+    end_time?: string | null;
     status: 'pending' | 'confirmed' | 'cancelled';
-    created_at: string;
-    users?: { name: string; email: string };
-    amenities?: { name: string; icon_name: string; gradient: string };
+    created_at?: string | null;
+    profiles?: Relation<{ name?: string | null; email?: string | null }>;
+    amenities?: Relation<{ name?: string | null; icon_name?: string | null; gradient?: string | null }>;
+}
+
+type Relation<T> = T | T[] | null | undefined;
+
+function firstRelation<T>(value: Relation<T>): T | null {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value ?? null;
+}
+
+function formatTime(value?: string | null) {
+    return typeof value === 'string' && value.length > 0 ? value.slice(0, 5) : '--:--';
+}
+
+function formatDate(value?: string | null) {
+    if (!value) return 'Sin fecha';
+    const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-CL');
 }
 
 export function AdminReservations() {
@@ -27,16 +42,16 @@ export function AdminReservations() {
         setIsLoading(true);
         try {
             const { data, error } = await supabase
-                .from('amenity_bookings')
+                .from('bookings')
                 .select(`
                     id, date, start_time, end_time, status, created_at,
-                    users:user_id (name, email),
+                    profiles:user_id (name, email),
                     amenities:amenity_id (name, icon_name, gradient)
                 `)
                 .order('created_at', { ascending: false });
 
             if (data && !error) {
-                setBookings(data);
+                setBookings(data as unknown as Booking[]);
             }
         } catch (err) {
             console.error("Error fetching bookings:", err);
@@ -52,7 +67,7 @@ export function AdminReservations() {
     const handleUpdateStatus = async (id: string, newStatus: 'confirmed' | 'cancelled') => {
         try {
             const { error } = await supabase
-                .from('amenity_bookings')
+                .from('bookings')
                 .update({ status: newStatus })
                 .eq('id', id);
 
@@ -112,17 +127,21 @@ export function AdminReservations() {
                         </div>
                     )}
 
-                    {!isLoading && bookings.map((booking: Booking) => (
+                    {!isLoading && bookings.map((booking: Booking) => {
+                        const amenity = firstRelation(booking.amenities);
+                        const resident = firstRelation(booking.profiles);
+
+                        return (
                         <div key={booking.id} className="p-8 hover:bg-elevated/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
 
                             <div className="flex items-start gap-6">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${booking.amenities?.gradient || 'bg-slate-200'} text-white shadow-lg`}>
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${amenity?.gradient || 'bg-slate-200'} text-white shadow-lg`}>
                                     <CalendarIcon className="h-7 w-7" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3">
                                         <h4 className="text-xl font-black cc-text-primary">
-                                            {booking.amenities?.name || 'Espacio Desconocido'}
+                                            {amenity?.name || 'Espacio Desconocido'}
                                         </h4>
                                         {booking.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-wider rounded-md">Pendiente</span>}
                                         {booking.status === 'confirmed' && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider rounded-md">Aprobado</span>}
@@ -131,15 +150,15 @@ export function AdminReservations() {
                                     <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
                                         <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                                             <Users className="h-4 w-4" />
-                                            {booking.users?.name || 'Residente'}
+                                            {resident?.name || resident?.email || 'Residente'}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <CalendarIcon className="h-4 w-4" />
-                                            {new Date(booking.date).toLocaleDateString()}
+                                            {formatDate(booking.date)}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <Clock className="h-4 w-4" />
-                                            {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
+                                            {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                                         </div>
                                     </div>
                                 </div>
@@ -164,13 +183,13 @@ export function AdminReservations() {
                             ) : (
                                 <div className="text-right">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Solicitado el {new Date(booking.created_at).toLocaleDateString()}
+                                        Solicitado el {formatDate(booking.created_at)}
                                     </p>
                                 </div>
                             )}
 
                         </div>
-                    ))}
+                    )})}
                 </div>
             </div>
         </div>
