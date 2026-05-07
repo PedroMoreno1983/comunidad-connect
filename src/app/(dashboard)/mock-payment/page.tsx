@@ -3,16 +3,17 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, AlertCircle, ShieldCheck, CreditCard, Building2, Loader2, ArrowLeft } from "lucide-react";
-import { useState, Suspense, useEffect } from 'react';
+import { useId, useState, Suspense, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function MockPaymentContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const generatedRef = useId().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
 
-    const ref = searchParams.get('ref') || `CC-${Math.floor(Math.random() * 1000000)}`;
+    const ref = searchParams.get('ref') || `CC-${generatedRef}`;
     const amount = searchParams.get('amount') || '0';
     const callback = searchParams.get('callback') || '/home';
 
@@ -30,7 +31,7 @@ function MockPaymentContent() {
     const handleSimulatePayment = async (success: boolean) => {
         setStatus('processing');
         setLoading(true);
-        
+
         // Timeout para dar tiempo a la animación de carga "Procesando pago seguro..."
         await new Promise(r => setTimeout(r, 2000));
 
@@ -50,7 +51,7 @@ function MockPaymentContent() {
                         }
                     })
                 });
-                
+
                 setStatus('success');
             } else {
                 setStatus('error');
@@ -76,7 +77,7 @@ function MockPaymentContent() {
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
@@ -124,14 +125,14 @@ function MockPaymentContent() {
                 </div>
 
                 {/* Columna Derecha: Tarjeta UI / Haulmer Mock */}
-                <div 
+                <div
                     className="p-8 md:p-12 lg:pl-16 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col justify-center relative perspective-[1000px]"
                     onMouseMove={handleMouseMove}
                     onMouseLeave={() => setMousePos({ x: 0, y: 0 })}
                 >
                     <AnimatePresence mode="wait">
                         {status === 'idle' && (
-                            <motion.div 
+                            <motion.div
                                 key="idle"
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -147,7 +148,7 @@ function MockPaymentContent() {
                                 </div>
 
                                 {/* Tarjeta 3D interactiva */}
-                                <motion.div 
+                                <motion.div
                                     className="w-full h-48 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-2xl shadow-2xl p-6 text-white mb-10 relative overflow-hidden"
                                     animate={{ rotateX: mousePos.y, rotateY: mousePos.x }}
                                     transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.5 }}
@@ -184,7 +185,7 @@ function MockPaymentContent() {
                         )}
 
                         {status === 'processing' && (
-                            <motion.div 
+                            <motion.div
                                 key="processing"
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -201,7 +202,7 @@ function MockPaymentContent() {
                         )}
 
                         {status === 'success' && (
-                            <motion.div 
+                            <motion.div
                                 key="success"
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -217,7 +218,7 @@ function MockPaymentContent() {
                         )}
 
                         {status === 'error' && (
-                            <motion.div 
+                            <motion.div
                                 key="error"
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}

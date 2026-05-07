@@ -37,11 +37,11 @@ export async function POST(request: Request) {
 
             const pdfBase64 = buffer.toString('base64');
             const inlineData = { mimeType: 'application/pdf', data: pdfBase64 };
-            
+
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             const body = {
                 contents: [{
-                    role: "user", 
+                    role: "user",
                     parts: [
                         { text: "Extrae TODO el texto de este documento de entrenamiento exactamente como está escrito, sin omitir partes, sin resumir y sin agregar comentarios extras. Solo retorna el contenido puro en texto plano directo, sin usar bloques de código Markdown." },
                         { inlineData }
@@ -59,15 +59,15 @@ export async function POST(request: Request) {
             extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
             // Extraer texto de Word evadiendo crash
-            const mammoth = require('mammoth');
+            const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
         } else if (fileName.endsWith('.txt')) {
             // Leer TXT directamente
             extractedText = buffer.toString('utf-8');
         } else {
-            return NextResponse.json({ 
-                error: 'Formato de archivo no soportado. Por favor sube un PDF, Word (.docx) o TXT.' 
+            return NextResponse.json({
+                error: 'Formato de archivo no soportado. Por favor sube un PDF, Word (.docx) o TXT.'
             }, { status: 400 });
         }
 
@@ -85,8 +85,8 @@ export async function POST(request: Request) {
 
     } catch (error: unknown) {
         console.error('Error parsing document:', error);
-        return NextResponse.json({ 
-            error: 'Ocurrió un error al procesar el archivo. ' + (error instanceof Error ? error.message : '') 
+        return NextResponse.json({
+            error: 'Ocurrió un error al procesar el archivo. ' + (error instanceof Error ? error.message : '')
         }, { status: 500 });
     }
 }

@@ -1,7 +1,7 @@
 const API = process.env.COMUNIDAD_API_URL || "http://localhost:3000/api";
 
 export class ActionRouter {
-  
+
   /**
    * Ejecuta la acción técnica decidida por CoCo IA.
    */
@@ -11,13 +11,13 @@ export class ActionRouter {
 
     const headers = {
       "Content-Type": "application/json",
-      ...(token && { "Authorization": \`Bearer \${token}\` })
+      ...(token && { "Authorization": `Bearer ${token}` })
     };
 
     const call = (path, opts = {}) =>
-      fetch(\`\${API}\${path}\`, { headers, ...opts }).then((r) => r.json()).catch(e => ({ error: e.message }));
+      fetch(`${API}${path}`, { headers, ...opts }).then((r) => r.json()).catch(e => ({ error: e.message }));
 
-    console.log(\`[ActionRouter] Ejecutando acción: \${accion} (Urgencia: \${urgencia})\`);
+    console.log(`[ActionRouter] Ejecutando acción: ${accion} (Urgencia: ${urgencia})`);
 
     switch (accion) {
       case 'responder_directo':
@@ -66,7 +66,7 @@ export class ActionRouter {
         });
 
       case 'actualizar_ticket':
-        return call(\`/claims/\${parametros.ticket_relacionado}\`, {
+        return call(`/claims/${parametros.ticket_relacionado}`, {
           method: "PATCH",
           body: JSON.stringify({
             update_notes: parsedResponse.decision.razon_breve,
@@ -76,10 +76,10 @@ export class ActionRouter {
 
       case 'consultar_gasto_comun':
         const month = new Date().toISOString().slice(0, 7);
-        return call(\`/payments/\${userCtx.unit_id}?month=\${month}\`);
+        return call(`/payments/${userCtx.unit_id}?month=${month}`);
 
       default:
-        console.warn(\`Acción no implementada o desconocida: \${accion}\`);
+        console.warn(`Acción no implementada o desconocida: ${accion}`);
         return { status: 'unknown_action' };
     }
   }

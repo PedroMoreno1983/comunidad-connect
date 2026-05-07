@@ -3,7 +3,7 @@ export class CoCoParser {
    * Extrae el contenido entre dos etiquetas XML usando Regex.
    */
   static extractTag(text, tag) {
-    const regex = new RegExp(\`<\${tag}>([\\\\s\\\\S]*?)<\\\\/\${tag}>\`, 'i');
+    const regex = new RegExp(`<${tag}>([\s\S]*?)<\/${tag}>`, 'i');
     const match = text.match(regex);
     return match ? match[1].trim() : null;
   }
@@ -13,7 +13,7 @@ export class CoCoParser {
    */
   static parseLLMResponse(llmOutput, role) {
     const analisisRaw = this.extractTag(llmOutput, 'analisis') || '';
-    
+
     // Extraer bloque de decisión
     const decisionText = this.extractTag(llmOutput, 'decision');
     if (!decisionText) {
@@ -40,7 +40,7 @@ export class CoCoParser {
     // Extraer parámetros
     const parametrosText = this.extractTag(decisionText, 'parametros') || '';
     const parametros = {};
-    
+
     if (role === 'resident' || role === 'residente') {
       parametros.categoria = this.extractTag(parametrosText, 'categoria');
       parametros.ubicacion = this.extractTag(parametrosText, 'ubicacion');
@@ -59,7 +59,7 @@ export class CoCoParser {
 
     // Extraer respuesta final dependiendo del rol
     const respuestaTag = (role === 'resident' || role === 'residente') ? 'respuesta_residente' : 'respuesta_conserje';
-    const respuestaUsuario = this.extractTag(llmOutput, respuestaTag) || 
+    const respuestaUsuario = this.extractTag(llmOutput, respuestaTag) ||
                              "Lo siento, procesé tu solicitud pero ocurrió un error al formatear la respuesta.";
 
     return {
