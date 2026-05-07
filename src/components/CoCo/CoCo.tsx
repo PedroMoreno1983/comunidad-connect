@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip } from "lucide-react";
+import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import { useToast } from "@/components/ui/Toast";
@@ -50,7 +50,7 @@ export default function CoCo() {
     const [open, setOpen] = useState(false);
     const [msgs, setMsgs] = useState<Message[]>([{
         id: "w", role: "assistant",
-        text: "Hola. Soy **CoCo**, tu asistente de ComunidadConnect. ¿En qué te puedo ayudar?",
+        text: "Hola. Soy **CoCo**, tu asistente operativo de ComunidadConnect. ¿En qué te puedo ayudar?",
     }]);
     const [input, setInput] = useState("");
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -212,17 +212,17 @@ export default function CoCo() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 12 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="flex flex-col overflow-hidden rounded-3xl border border-subtle bg-surface"
-                        style={{ width: 360, height: 500, boxShadow: "0 20px 60px rgba(236,72,153,0.25)" }}
+                        className="flex flex-col overflow-hidden rounded-xl border border-subtle bg-surface"
+                        style={{ width: 360, height: 500, boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
                     >
                         {/* Header */}
-                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-pink-500 via-rose-400 to-purple-500 flex-shrink-0">
-                            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-xl flex-shrink-0">
-                                👩‍💻
+                        <div className="flex items-center gap-3 px-5 py-4 bg-slate-950 flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center flex-shrink-0">
+                                <Bot className="h-5 w-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-white text-sm">CoCo</p>
-                                <p className="text-white/70 text-[11px] font-medium">Asistente Visual y de Texto ✨</p>
+                                <p className="text-white/70 text-[11px] font-medium">Asistente operativo</p>
                             </div>
                             <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
                                 <ChevronDown className="h-5 w-5 text-white" />
@@ -234,25 +234,25 @@ export default function CoCo() {
                             {msgs.map(msg => (
                                 <div key={msg.id} className={`flex gap-2 w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                                     {msg.role === "assistant" && (
-                                        <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">👩‍💻</div>
+                                        <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 mt-1"><Bot className="h-4 w-4 text-white" /></div>
                                     )}
                                     <div className="flex flex-col gap-2 max-w-[80%] min-w-0">
                                         {msg.imageBase64 && (
-                                            <div className="rounded-2xl overflow-hidden border border-pink-200/50 shadow-sm">
+                                            <div className="rounded-lg overflow-hidden border border-subtle shadow-sm">
                                                 <img src={msg.imageBase64} alt="Upload" className="w-full h-auto object-cover max-h-48" />
                                             </div>
                                         )}
                                         {msg.text && (
                                             <div
-                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
-                                                    ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm"
-                                                    : "bg-surface cc-text-primary shadow-sm border border-subtle rounded-tl-sm"
+                                                className={`px-3.5 py-2.5 rounded-lg text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.role === "user"
+                                                    ? "bg-brand-500 text-white"
+                                                    : "bg-surface cc-text-primary shadow-sm border border-subtle"
                                                     }`}
                                                 dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
                                             />
                                         )}
                                         {msg.role === "assistant" && msg.case?.created && (
-                                            <div className="rounded-2xl rounded-tl-sm border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
                                                 Caso registrado: {msg.case.title || msg.case.id}
                                                 {msg.case.urgency && (
                                                     <span className="ml-2 rounded-full bg-white/70 px-2 py-0.5 uppercase tracking-wide dark:bg-black/20">
@@ -263,23 +263,23 @@ export default function CoCo() {
                                         )}
                                     </div>
                                     {msg.role === "user" && (
-                                        <div className="w-7 h-7 rounded-xl bg-elevated flex items-center justify-center text-xs font-black text-white flex-shrink-0 mt-1">U</div>
+                                        <div className="w-7 h-7 rounded-lg bg-elevated flex items-center justify-center text-xs font-black cc-text-secondary flex-shrink-0 mt-1">U</div>
                                     )}
                                 </div>
                             ))}
                             {msgs[msgs.length - 1]?.nav && (
                                 <button
                                     onClick={() => router.push(msgs[msgs.length - 1]!.nav!)}
-                                    className="ml-9 text-xs font-bold text-pink-600 bg-pink-50 dark:bg-pink-500/10 px-3 py-1.5 rounded-xl border border-pink-100 hover:bg-pink-100 transition-colors"
+                                    className="ml-9 text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-200 hover:bg-brand-100 transition-colors"
                                 >
                                     Ir a {NAV_MAP[msgs[msgs.length - 1]!.nav!] || msgs[msgs.length - 1]!.nav} →
                                 </button>
                             )}
                             {loading && (
                                 <div className="flex gap-2">
-                                    <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">👩‍💻</div>
-                                    <div className="bg-surface rounded-2xl rounded-tl-sm px-4 py-3 border border-subtle flex gap-1.5">
-                                        {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+                                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0"><Bot className="h-4 w-4 text-white" /></div>
+                                    <div className="bg-surface rounded-lg px-4 py-3 border border-subtle flex gap-1.5">
+                                        {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                                     </div>
                                 </div>
                             )}
@@ -291,7 +291,7 @@ export default function CoCo() {
                             <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-canvas border-t border-subtle flex-shrink-0">
                                 {QUICK.map(({ label, icon: Icon }) => (
                                     <button key={label} onClick={() => send(label, null)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface rounded-xl text-[11px] font-semibold cc-text-secondary border border-subtle hover:border-pink-300 hover:text-pink-600 transition-colors">
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface rounded-lg text-[11px] font-semibold cc-text-secondary border border-subtle hover:border-brand-300 hover:text-brand-600 transition-colors">
                                         <Icon className="h-3 w-3" />{label}
                                     </button>
                                 ))}
@@ -303,7 +303,7 @@ export default function CoCo() {
                             {/* Image Preview Area */}
                             {selectedImage && (
                                 <div className="px-3 pt-3 pb-1 flex relative">
-                                    <div className="relative inline-block border-2 border-pink-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="relative inline-block border-2 border-brand-200 rounded-lg overflow-hidden shadow-sm">
                                         <img src={selectedImage} alt="Preview" className="h-16 w-16 object-cover" />
                                         <button 
                                             onClick={removeImage}
@@ -329,7 +329,7 @@ export default function CoCo() {
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={loading}
-                                    className="p-2.5 text-slate-400 hover:text-pink-500 hover:bg-pink-50 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-40"
+                                    className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
                                 >
                                     <Paperclip className="h-5 w-5" />
                                 </button>
@@ -337,11 +337,11 @@ export default function CoCo() {
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
                                     placeholder={selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
-                                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-pink-400/30"
+                                    className="flex-1 px-3.5 py-2.5 rounded-lg bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-brand-400/30"
                                 />
                                 
                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || loading}
-                                    className="p-2.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl text-white disabled:opacity-40 hover:scale-105 transition-transform shadow-md flex-shrink-0">
+                                    className="p-2.5 bg-brand-500 rounded-lg text-white disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
                             </form>
@@ -355,25 +355,23 @@ export default function CoCo() {
                 onClick={() => setOpen(o => !o)}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.94 }}
-                className="relative flex items-center justify-center rounded-2xl text-2xl"
+                className="relative flex items-center justify-center rounded-lg text-2xl"
                 style={{
                     width: 56, height: 56,
-                    background: "linear-gradient(135deg, #ec4899, #f43f5e, #a855f7)",
-                    boxShadow: "0 8px 32px rgba(236,72,153,0.5)"
+                    background: "var(--cc-brand-500)",
+                    boxShadow: "0 10px 30px rgba(244,91,61,0.32)"
                 }}
             >
                 <AnimatePresence mode="wait">
                     {open
                         ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X className="h-6 w-6 text-white" /></motion.span>
-                        : <motion.span key="g" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="text-2xl">👩‍💻</motion.span>
+                        : <motion.span key="g" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><Bot className="h-6 w-6 text-white" /></motion.span>
                     }
                 </AnimatePresence>
 
-                {!open && <span className="absolute inset-0 rounded-2xl animate-ping opacity-30" style={{ background: "linear-gradient(135deg,#ec4899,#a855f7)" }} />}
-
                 {!open && (
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-surface rounded-xl shadow-lg text-xs font-black text-pink-600 whitespace-nowrap border border-pink-100 pointer-events-none">
-                        👋 ¡Hola! Soy CoCo
+                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-surface rounded-lg shadow-lg text-xs font-black text-brand-600 whitespace-nowrap border border-brand-100 pointer-events-none">
+                        CoCo asistente
                     </span>
                 )}
             </motion.button>

@@ -19,7 +19,7 @@ import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/componen
 import { WhatsNew } from "@/components/ui/WhatsNew";
 import { DebugStats } from "@/components/ui/DebugStats";
 
-const CATEGORY_COLORS = ['#7C3AED', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+const CATEGORY_COLORS = ['#F45B3D', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'];
 
 function requestCategory(row: Record<string, unknown>) {
     return String(row.service_type || row.category || row.request_type || row.type || 'Otro');
@@ -306,10 +306,10 @@ export default function HomePage() {
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] rounded-xl shadow-lg shadow-indigo-500/30">
+                            <div className="p-2 bg-brand-500 rounded-lg shadow-sm">
                                 <Building2 className="h-5 w-5 text-white" />
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20 rounded-full">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-warning-bg rounded-lg">
                                 <Sparkles className="h-3.5 w-3.5 text-warning-fg" />
                                 <span className="text-xs font-semibold text-warning-fg">
                                     {user.role === 'admin' ? 'Panel Admin' : user.role === 'concierge' ? 'Conserjería' : 'Mi Edificio'}
@@ -317,7 +317,7 @@ export default function HomePage() {
                             </div>
                         </div>
                         <h1 className="text-2xl lg:text-3xl font-bold cc-text-primary">
-                            {getGreeting()}, <span className="bg-gradient-to-r from-[#6D28D9] to-[#5B21B6] bg-clip-text text-transparent">
+                            {getGreeting()}, <span className="text-brand-600">
                                 {user.name.split(' ')[0]}
                             </span>
                         </h1>

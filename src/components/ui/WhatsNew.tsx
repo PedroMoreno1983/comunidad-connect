@@ -57,9 +57,9 @@ export function WhatsNew() {
                     exit={{ opacity: 0, x: 100 }}
                     className="fixed bottom-6 right-24 z-[100] w-80"
                 >
-                    <div className="bg-surface rounded-3xl shadow-2xl border border-indigo-100 dark:border-slate-700 overflow-hidden">
+                    <div className="bg-surface rounded-xl shadow-xl border border-subtle overflow-hidden">
                         {/* Header */}
-                        <div className="p-4 bg-gradient-to-r from-[#6D28D9] to-[#5B21B6] flex items-center justify-between">
+                        <div className="p-4 bg-slate-950 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-white animate-pulse" />
                                 <span className="font-bold text-white text-sm">¡Novedades en v2.0 Pro!</span>
@@ -78,7 +78,7 @@ export function WhatsNew() {
                                     onClick={close}
                                     className="flex items-start gap-3 group cursor-pointer"
                                 >
-                                    <div className={`p-2 rounded-xl flex-shrink-0 ${item.bg}`}>
+                                    <div className={`p-2 rounded-lg flex-shrink-0 ${item.bg}`}>
                                         <item.icon className={`h-4 w-4 ${item.color}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -97,7 +97,7 @@ export function WhatsNew() {
                         <div className="p-3 bg-canvas/50 border-t border-subtle">
                             <button
                                 onClick={close}
-                                className="w-full py-2 bg-surface border border-subtle rounded-xl text-xs font-bold cc-text-secondary hover:bg-slate-50 transition-colors"
+                                className="w-full py-2 bg-surface border border-subtle rounded-lg text-xs font-bold cc-text-secondary hover:bg-slate-50 transition-colors"
                             >
                                 Entendido
                             </button>
