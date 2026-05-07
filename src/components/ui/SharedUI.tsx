@@ -25,7 +25,7 @@ export function Skeleton({
 // Card Skeleton
 export function CardSkeleton({ lines = 3 }: { lines?: number }) {
     return (
-        <div className="p-6 rounded-2xl border border-subtle bg-surface space-y-4">
+        <div className="p-5 rounded-lg border border-subtle bg-surface space-y-4">
             <div className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-xl" />
                 <div className="space-y-2 flex-1">
@@ -100,11 +100,11 @@ export function EmptyState({
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16 px-8 text-center"
+            className="flex flex-col items-center justify-center rounded-lg border border-dashed border-subtle bg-surface py-14 px-8 text-center"
         >
             {Icon && (
-                <div className="w-20 h-20 rounded-3xl bg-elevated flex items-center justify-center mb-6">
-                    <Icon className="w-10 h-10 cc-text-tertiary" />
+                <div className="w-12 h-12 rounded-lg bg-elevated flex items-center justify-center mb-5">
+                    <Icon className="w-6 h-6 cc-text-tertiary" />
                 </div>
             )}
             <h3 className="text-xl font-bold cc-text-primary mb-2">{title}</h3>
@@ -112,8 +112,8 @@ export function EmptyState({
             {action && actionLabel && (
                 <button
                     onClick={action}
-                    className="px-6 py-3 text-white font-bold rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
-                    style={{ backgroundColor: 'var(--cc-brand-500)', boxShadow: 'var(--cc-glow-brand)' }}
+                    className="px-5 py-2.5 text-white font-semibold rounded-md transition-colors"
+                    style={{ backgroundColor: 'var(--cc-brand-500)' }}
                 >
                     {actionLabel}
                 </button>
@@ -157,7 +157,7 @@ export function StatusBadge({
     };
 
     return (
-        <span className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${config.bg} ${config.text} ${sizeClasses[size]}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-md font-semibold ${config.bg} ${config.text} ${sizeClasses[size]}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
             {config.label}
         </span>
@@ -171,7 +171,6 @@ export function PageHeader({
     title,
     description,
     icon: Icon,
-    gradient = "from-[#7C3AED] to-[#5B21B6]",
     action,
 }: {
     title: string;
@@ -188,12 +187,12 @@ export function PageHeader({
         >
             <div className="flex items-center gap-4">
                 {Icon && (
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
-                        <Icon className="w-7 h-7 text-white" />
+                    <div className="w-10 h-10 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
                     </div>
                 )}
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-black cc-text-primary">{title}</h1>
+                    <h1 className="text-2xl lg:text-3xl font-bold cc-text-primary">{title}</h1>
                     {description && (
                         <p className="cc-text-secondary font-medium mt-1">{description}</p>
                     )}
@@ -214,7 +213,6 @@ export function StatCard({
     icon: Icon,
     trend,
     trendValue,
-    gradient = "from-[#7C3AED] to-[#5B21B6]",
 }: {
     title: string;
     value: string | number;
@@ -228,16 +226,12 @@ export function StatCard({
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ y: -4 }}
-            className="group relative p-5 rounded-2xl bg-surface border border-subtle shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden"
+            className="group relative p-5 rounded-lg bg-surface border border-subtle shadow-sm transition-colors overflow-hidden"
         >
-            {/* Gradient accent */}
-            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-sm font-semibold cc-text-secondary uppercase tracking-wider">{title}</p>
-                    <p className="text-3xl font-black cc-text-primary mt-2">{value}</p>
+                    <p className="text-xs font-semibold cc-text-secondary uppercase tracking-[0.08em]">{title}</p>
+                    <p className="text-2xl font-semibold cc-text-primary mt-2">{value}</p>
                     {subtitle && (
                         <div className="flex items-center gap-2 mt-2">
                             {trend && (
@@ -250,8 +244,8 @@ export function StatCard({
                     )}
                 </div>
                 {Icon && (
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300`}>
-                        <Icon className="w-6 h-6 text-white" />
+                    <div className="w-10 h-10 rounded-lg border border-subtle bg-elevated flex items-center justify-center cc-text-secondary">
+                        <Icon className="w-5 h-5" />
                     </div>
                 )}
             </div>

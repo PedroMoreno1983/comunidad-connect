@@ -195,7 +195,7 @@ export function ProviderDashboardClient() {
             setRequests(current => current.map(row => row.id === request.id ? { ...row, status } : row));
             toast({
                 title: "Solicitud actualizada",
-                description: `Quedó como ${STATUS_LABELS[status].toLowerCase()}.`,
+                description: `Qued? como ${STATUS_LABELS[status].toLowerCase()}.`,
                 variant: "success",
             });
         } catch (error) {
@@ -213,7 +213,7 @@ export function ProviderDashboardClient() {
 
     if (loading && providers.length === 0) {
         return (
-            <div className="flex items-center justify-center gap-3 rounded-3xl border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
+            <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                 Cargando panel del proveedor...
             </div>
@@ -237,14 +237,14 @@ export function ProviderDashboardClient() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
-            <section className="rounded-3xl border border-subtle bg-surface p-6 shadow-sm">
+            <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
                             <Wrench className="h-3.5 w-3.5" />
                             Panel proveedor
                         </div>
-                        <h1 className="text-3xl font-black cc-text-primary">Solicitudes recibidas</h1>
+                        <h1 className="text-3xl font-semibold cc-text-primary">Solicitudes recibidas</h1>
                         <p className="mt-2 max-w-2xl text-sm font-medium cc-text-secondary">
                             Acepta trabajos, marca servicios completados y mantén informado al residente sin pasar por administración.
                         </p>
@@ -275,22 +275,22 @@ export function ProviderDashboardClient() {
 
                 {selectedProvider && (
                     <div className="mt-6 grid gap-3 md:grid-cols-4">
-                        <div className="rounded-2xl bg-elevated p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Perfil</p>
-                            <p className="mt-1 truncate text-lg font-black cc-text-primary">{selectedProvider.name}</p>
+                        <div className="rounded-lg bg-elevated p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary">Perfil</p>
+                            <p className="mt-1 truncate text-lg font-semibold cc-text-primary">{selectedProvider.name}</p>
                             <p className="text-xs font-semibold cc-text-secondary">{categoryLabel(selectedProvider.category)}</p>
                         </div>
-                        <div className="rounded-2xl bg-elevated p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Activas</p>
-                            <p className="mt-1 text-2xl font-black text-blue-600">{stats.active}</p>
+                        <div className="rounded-lg bg-elevated p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary">Activas</p>
+                            <p className="mt-1 text-2xl font-semibold text-blue-600">{stats.active}</p>
                         </div>
-                        <div className="rounded-2xl bg-elevated p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Completadas</p>
-                            <p className="mt-1 text-2xl font-black text-emerald-600">{stats.completed}</p>
+                        <div className="rounded-lg bg-elevated p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary">Completadas</p>
+                            <p className="mt-1 text-2xl font-semibold text-emerald-600">{stats.completed}</p>
                         </div>
-                        <div className="rounded-2xl bg-elevated p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">Verificación</p>
-                            <p className="mt-1 flex items-center gap-2 text-sm font-black cc-text-primary">
+                        <div className="rounded-lg bg-elevated p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-secondary">Verificación</p>
+                            <p className="mt-1 flex items-center gap-2 text-sm font-semibold cc-text-primary">
                                 <ShieldCheck className="h-4 w-4 text-blue-500" />
                                 {selectedProvider.verified ? "Verificado" : "Pendiente"}
                             </p>
@@ -299,7 +299,7 @@ export function ProviderDashboardClient() {
                 )}
             </section>
 
-            <section className="rounded-2xl border border-subtle bg-surface p-4 shadow-sm">
+            <section className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
                 <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -316,9 +316,9 @@ export function ProviderDashboardClient() {
                                 key={filter.key}
                                 type="button"
                                 onClick={() => setStatusFilter(filter.key)}
-                                className={`rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     statusFilter === filter.key
-                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
                                         : "bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
                                 }`}
                             >
@@ -330,7 +330,7 @@ export function ProviderDashboardClient() {
             </section>
 
             {loading ? (
-                <div className="flex items-center justify-center gap-3 rounded-3xl border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
+                <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                     Actualizando solicitudes...
                 </div>
@@ -347,7 +347,7 @@ export function ProviderDashboardClient() {
                         const residentName = request.profiles?.name || "Residente";
 
                         return (
-                            <article key={request.id} className="rounded-3xl border border-subtle bg-surface p-5 shadow-sm">
+                            <article key={request.id} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="min-w-0 space-y-3">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -358,7 +358,7 @@ export function ProviderDashboardClient() {
                                             </span>
                                         </div>
                                         <div>
-                                            <h2 className="flex items-center gap-2 text-xl font-black cc-text-primary">
+                                            <h2 className="flex items-center gap-2 text-xl font-semibold cc-text-primary">
                                                 <User className="h-5 w-5 text-blue-500" />
                                                 {residentName}
                                             </h2>
@@ -369,7 +369,7 @@ export function ProviderDashboardClient() {
                                                 </a>
                                             )}
                                         </div>
-                                        <p className="max-w-3xl rounded-2xl bg-elevated p-4 text-sm leading-6 cc-text-secondary">
+                                        <p className="max-w-3xl rounded-lg bg-elevated p-4 text-sm leading-6 cc-text-secondary">
                                             {request.description}
                                         </p>
                                         <p className="inline-flex items-center gap-1.5 text-xs font-semibold cc-text-secondary">

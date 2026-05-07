@@ -103,7 +103,7 @@ export default function ProviderRegisterPage() {
             }
 
             toast({
-                title: "¡Registro Exitoso!",
+                title: "¿Registro Exitoso!",
                 description: "Tu perfil de técnico ha sido creado correctamente.",
                 variant: "success",
             });
@@ -134,7 +134,7 @@ export default function ProviderRegisterPage() {
 
             {/* Header */}
             <div className="text-center space-y-3">
-                <h1 className="text-4xl font-bold cc-text-primary">
+                <h1 className="text-3xl font-bold cc-text-primary">
                     Regístrate como <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">Técnico Profesional</span>
                 </h1>
                 <p className="text-lg cc-text-secondary max-w-2xl mx-auto">
@@ -147,7 +147,7 @@ export default function ProviderRegisterPage() {
                 {[1, 2, 3].map((s) => (
                     <div key={s} className="flex items-center gap-2">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${s === step
-                            ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg'
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-sm'
                             : s < step
                                 ? 'bg-emerald-500 text-white'
                                 : 'bg-elevated text-slate-400'
@@ -162,7 +162,7 @@ export default function ProviderRegisterPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
+            <form onSubmit={handleSubmit} className="bg-surface rounded-lg shadow-sm border border-subtle p-8">
                 {/* Step 1: Basic Info */}
                 {step === 1 && (
                     <div className="space-y-6">
@@ -298,7 +298,7 @@ export default function ProviderRegisterPage() {
                             <textarea
                                 required
                                 className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                placeholder="Cuenta sobre tu experiencia, especialidades y qué te hace único..."
+                                placeholder="Cuenta sobre tu experiencia, especialidades y qu? te hace ?nico..."
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                             />

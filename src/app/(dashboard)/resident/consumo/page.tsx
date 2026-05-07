@@ -134,10 +134,10 @@ export default function WaterConsumptionPage() {
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 md:px-8">
             <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 dark:text-blue-400">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-400">
                         Eficiencia hídrica
                     </p>
-                    <h1 className="text-4xl font-black cc-text-primary">Consumo de agua</h1>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Consumo de agua</h1>
                     <p className="max-w-2xl cc-text-secondary">
                         Controla lecturas, gasto estimado y señales tempranas de sobreconsumo.
                     </p>
@@ -146,7 +146,7 @@ export default function WaterConsumptionPage() {
                 <button
                     type="button"
                     onClick={() => openLeakReport(user?.unitName)}
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl border border-blue-200 bg-surface px-6 py-4 text-sm font-black cc-text-primary shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 dark:border-blue-500/20 dark:hover:bg-blue-500/10"
+                    className="inline-flex items-center justify-center gap-3 rounded-lg border border-blue-200 bg-surface px-6 py-4 text-sm font-semibold cc-text-primary shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 dark:border-blue-500/20 dark:hover:bg-blue-500/10"
                 >
                     <Waves className="h-5 w-5 text-blue-500" />
                     Reportar fuga con CoCo
@@ -154,48 +154,48 @@ export default function WaterConsumptionPage() {
             </header>
 
             <section className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10">
                         <Waves className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-black cc-text-primary">{currentConsumption.toFixed(1)} m³</p>
+                    <p className="text-2xl font-semibold cc-text-primary">{currentConsumption.toFixed(1)} m?</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Consumo actual</p>
                 </div>
 
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${consumptionDelta <= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" : "bg-amber-50 text-amber-600 dark:bg-amber-500/10"}`}>
                         {consumptionDelta <= 0 ? <TrendingDown className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
                     </div>
-                    <p className="text-2xl font-black cc-text-primary">{formatPercent(trendPercent)}</p>
+                    <p className="text-2xl font-semibold cc-text-primary">{formatPercent(trendPercent)}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">
                         {consumptionDelta <= 0 ? "Menos que mes anterior" : "Más que mes anterior"}
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${isElevated ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"}`}>
                         {isElevated ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
                     </div>
-                    <p className="text-2xl font-black cc-text-primary">{isElevated ? "Alto" : "Normal"}</p>
+                    <p className="text-2xl font-semibold cc-text-primary">{isElevated ? "Alto" : "Normal"}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Contra promedio edificio</p>
                 </div>
 
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         <Calculator className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-black cc-text-primary">{readings.length}</p>
+                    <p className="text-2xl font-semibold cc-text-primary">{readings.length}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Lecturas registradas</p>
                 </div>
             </section>
 
             {possibleLeak && (
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/20 dark:bg-amber-500/10">
+                <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/20 dark:bg-amber-500/10">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex gap-4">
                             <AlertTriangle className="mt-1 h-6 w-6 shrink-0 text-amber-600" />
                             <div>
-                                <h2 className="font-black text-amber-900 dark:text-amber-200">Posible sobreconsumo detectado</h2>
+                                <h2 className="font-semibold text-amber-900 dark:text-amber-200">Posible sobreconsumo detectado</h2>
                                 <p className="text-sm text-amber-800/80 dark:text-amber-100/80">
                                     El consumo subió más de 35% respecto al mes anterior. Conviene revisar llaves, estanques y filtraciones visibles.
                                 </p>
@@ -204,7 +204,7 @@ export default function WaterConsumptionPage() {
                         <button
                             type="button"
                             onClick={() => openLeakReport(user?.unitName)}
-                            className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-amber-700"
+                            className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
                         >
                             Pedir revisión
                         </button>
@@ -213,10 +213,10 @@ export default function WaterConsumptionPage() {
             )}
 
             {!user?.unitId && (
-                <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-500/20 dark:bg-blue-500/10">
+                <section className="rounded-lg border border-blue-100 bg-blue-50 p-5 dark:border-blue-500/20 dark:bg-blue-500/10">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <h2 className="font-black text-blue-900 dark:text-blue-200">Vista demo con datos inteligentes</h2>
+                            <h2 className="font-semibold text-blue-900 dark:text-blue-200">Vista demo con datos inteligentes</h2>
                             <p className="text-sm font-medium text-blue-800/80 dark:text-blue-100/80">
                                 Este usuario no tiene unidad vinculada, asi que mostramos una serie realista para demostrar alertas, tendencia y estimacion.
                             </p>
@@ -224,7 +224,7 @@ export default function WaterConsumptionPage() {
                         <button
                             type="button"
                             onClick={() => openLeakReport(user?.unitName)}
-                            className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-blue-800"
+                            className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800"
                         >
                             Crear caso CoCo
                         </button>
@@ -245,29 +245,29 @@ export default function WaterConsumptionPage() {
                     <CostEstimator consumption={currentConsumption} />
 
                     {lastReading && (
-                        <section className="space-y-6 rounded-[2.5rem] border border-subtle bg-surface p-8 shadow-xl shadow-slate-200/20 dark:shadow-none">
+                        <section className="space-y-6 rounded-lg border border-subtle bg-surface p-8 shadow-sm shadow-slate-200/20 dark:shadow-none">
                             <div className="flex items-center gap-4">
-                                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10">
+                                <div className="rounded-lg bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10">
                                     <Calculator className="h-6 w-6" />
                                 </div>
-                                <h2 className="text-xl font-black cc-text-primary">Lectura del mes</h2>
+                                <h2 className="text-xl font-semibold cc-text-primary">Lectura del mes</h2>
                             </div>
 
                             <div className="flex items-end justify-between border-b border-subtle pb-4">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Actual</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Actual</p>
                                     <p className="text-sm font-bold cc-text-secondary">{lastReading.reading_value.toFixed(1)}</p>
                                 </div>
                                 <ArrowRight className="mb-1 h-4 w-4 text-slate-300" />
                                 <div className="space-y-1 text-right">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Anterior</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Anterior</p>
                                     <p className="text-sm font-bold cc-text-secondary">{previousReading?.reading_value.toFixed(1) || "0.0"}</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between rounded-2xl bg-elevated/50 px-4 py-4">
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Consumo neto</span>
-                                <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{currentConsumption.toFixed(1)} m³</span>
+                            <div className="flex items-center justify-between rounded-lg bg-elevated/50 px-4 py-4">
+                                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Consumo neto</span>
+                                <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{currentConsumption.toFixed(1)} m?</span>
                             </div>
                         </section>
                     )}
@@ -275,22 +275,22 @@ export default function WaterConsumptionPage() {
                     <section className="space-y-6 px-2">
                         <div className="flex items-center gap-4">
                             <History className="h-5 w-5 text-slate-400" />
-                            <h2 className="text-xs font-black uppercase tracking-widest cc-text-primary">Historial reciente</h2>
+                            <h2 className="text-xs font-semibold uppercase tracking-[0.08em] cc-text-primary">Historial reciente</h2>
                         </div>
 
                         <div className="space-y-3">
                             {recentReadings.map(reading => (
-                                <div key={reading.id} className="flex items-center justify-between rounded-2xl border border-subtle bg-surface p-4 transition-all hover:border-blue-100 dark:hover:border-blue-900/50">
+                                <div key={reading.id} className="flex items-center justify-between rounded-lg border border-subtle bg-surface p-4 transition-all hover:border-blue-100 dark:hover:border-blue-900/50">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated text-xs font-bold text-slate-400">
                                             {shortMonth(reading.month)}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black cc-text-primary">{reading.month} {reading.year}</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Lectura {reading.reading_value}</p>
+                                            <p className="text-sm font-semibold cc-text-primary">{reading.month} {reading.year}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">Lectura {reading.reading_value}</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm font-black text-blue-600 dark:text-blue-400">{reading.consumption} m³</p>
+                                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{reading.consumption} m?</p>
                                 </div>
                             ))}
                             {readings.length === 0 && (

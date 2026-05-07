@@ -537,8 +537,18 @@ h2,
 }
 
 .cc-dashboard .bg-white\/60,
-.cc-dashboard .bg-white\/40 {
-  background-color: var(--cc-surface) !important;
+.cc-dashboard .bg-white\/40,
+.cc-dashboard .bg-white\/50,
+.cc-dashboard .bg-white\/70,
+.cc-dashboard .bg-white\/80,
+.cc-dashboard .bg-white\/90,
+.cc-dashboard .bg-white\/95,
+.cc-dashboard .bg-slate-50\/50,
+.cc-dashboard .bg-slate-50\/80,
+.cc-dashboard .bg-slate-900\/50,
+.cc-dashboard .bg-slate-900\/80,
+.cc-dashboard .bg-slate-950\/80 {
+  background-color: var(--cc-bg-surface) !important;
 }
 
 .cc-dashboard .border-white\/50,
@@ -565,6 +575,11 @@ h2,
   font-weight: 700 !important;
 }
 
+.cc-dashboard .text-transparent.bg-clip-text {
+  background-image: none !important;
+  color: var(--cc-text-primary) !important;
+}
+
 .cc-dashboard .text-5xl,
 .cc-dashboard .text-4xl {
   font-size: 1.875rem !important;
@@ -579,12 +594,20 @@ h2,
 .cc-dashboard .bg-gradient-to-r.from-blue-600,
 .cc-dashboard .bg-gradient-to-r.from-rose-500,
 .cc-dashboard .bg-gradient-to-r.from-indigo-500,
+.cc-dashboard .bg-gradient-to-r.from-indigo-600,
+.cc-dashboard .bg-gradient-to-r.from-fuchsia-500,
+.cc-dashboard .bg-gradient-to-r.from-purple-500,
+.cc-dashboard .bg-gradient-to-r.from-emerald-500,
+.cc-dashboard .bg-gradient-to-r.from-\[\#10B981\],
 .cc-dashboard .bg-gradient-to-br.from-blue-500,
 .cc-dashboard .bg-gradient-to-br.from-slate-900,
 .cc-dashboard .bg-gradient-to-br.from-rose-500,
 .cc-dashboard .bg-gradient-to-br.from-fuchsia-500,
 .cc-dashboard .bg-gradient-to-br.from-emerald-400,
-.cc-dashboard .bg-gradient-to-br.from-indigo-400 {
+.cc-dashboard .bg-gradient-to-br.from-emerald-500,
+.cc-dashboard .bg-gradient-to-br.from-indigo-400,
+.cc-dashboard .bg-gradient-to-br.from-\[\#7C3AED\],
+.cc-dashboard .bg-gradient-to-br.from-\[\#10B981\] {
   background-image: none !important;
   background-color: var(--cc-brand-500) !important;
 }
@@ -592,4 +615,16 @@ h2,
 .cc-dashboard .backdrop-blur-md,
 .cc-dashboard .backdrop-blur-lg {
   backdrop-filter: none !important;
+}
+
+.cc-dashboard .hover\:shadow-xl:hover,
+.cc-dashboard .hover\:shadow-2xl:hover,
+.cc-dashboard .group:hover .group-hover\:shadow-lg {
+  box-shadow: var(--cc-product-shadow) !important;
+}
+
+.cc-dashboard input,
+.cc-dashboard textarea,
+.cc-dashboard select {
+  border-radius: var(--cc-product-radius-control) !important;
 }
