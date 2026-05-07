@@ -52,16 +52,23 @@ export const WaterService = {
             .select(`
                 *,
                 profiles:owner_id (name, email)
-            `)
-            .order('tower', { ascending: true })
-            .order('number', { ascending: true });
+            `);
 
         if (error) {
             console.error('Error loading units:', error);
             // Return empty array instead of throwing so the page shows empty state
             return [] as (Unit & { profiles: { name: string; email: string; } | null })[];
         }
-        return (data || []) as (Unit & { profiles: { name: string; email: string; } | null })[];
+        return ((data || []) as (Unit & { profiles: { name: string; email: string; } | null })[])
+            .sort((a, b) => {
+                const rowA = a as unknown as Record<string, unknown>;
+                const rowB = b as unknown as Record<string, unknown>;
+                const towerA = String(rowA.tower || "");
+                const towerB = String(rowB.tower || "");
+                const numberA = String(rowA.number || rowA.unit_number || "");
+                const numberB = String(rowB.number || rowB.unit_number || "");
+                return towerA.localeCompare(towerB, "es") || numberA.localeCompare(numberB, "es", { numeric: true });
+            });
     },
 
     // Crear nueva unidad

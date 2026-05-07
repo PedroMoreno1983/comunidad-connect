@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
 import { InvitationService } from "@/lib/services/supabaseServices";
 import {
-    QrCode, UserCheck, Clock, Share2,
-    ChevronRight, ShieldCheck, History, Info
+    QrCode, Clock, Share2,
+    ShieldCheck, History
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,6 +21,11 @@ interface Invitation {
     qrCode: string;
 }
 
+const demoInvitations: Invitation[] = [
+    { id: "demo-inv-1", residentId: "demo", guestName: "Ana Garcia", guestDni: "12.345.678-9", status: "active", validFrom: new Date().toISOString(), validTo: new Date(Date.now() + 8 * 36e5).toISOString(), qrCode: "INV-DEMO-ANA" },
+    { id: "demo-inv-2", residentId: "demo", guestName: "Martin Soto", guestDni: "18.222.111-5", status: "used", validFrom: new Date(Date.now() - 2 * 864e5).toISOString(), validTo: new Date(Date.now() - 864e5).toISOString(), qrCode: "INV-DEMO-MAR" },
+];
+
 export default function ResidentInvitationsPage() {
     const { user } = useAuth();
     const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -31,6 +36,11 @@ export default function ResidentInvitationsPage() {
             if (!user) return;
             try {
                 setIsLoading(true);
+                if (user.email.toLowerCase().endsWith("@demo.com")) {
+                    setInvitations(demoInvitations);
+                    return;
+                }
+
                 const data = await InvitationService.getByResident(user.id);
                 if (data) {
                     setInvitations((data as any[]).map((inv) => ({

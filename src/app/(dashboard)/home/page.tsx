@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
     Users, ShoppingBag, Wrench, ClipboardList, TrendingUp, Bell,
     Calendar, DollarSign, ArrowUpRight, Building2, Clock, Sparkles,
-    ChevronRight, BarChart3, PieChart as PieChartIcon
+    BarChart3, PieChart as PieChartIcon
 } from "lucide-react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
@@ -20,6 +20,10 @@ import { WhatsNew } from "@/components/ui/WhatsNew";
 import { DebugStats } from "@/components/ui/DebugStats";
 
 const CATEGORY_COLORS = ['#7C3AED', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+
+function requestCategory(row: Record<string, unknown>) {
+    return String(row.service_type || row.category || row.request_type || row.type || 'Otro');
+}
 
 export default function HomePage() {
     const { user } = useAuth();
@@ -80,7 +84,7 @@ export default function HomePage() {
                     const [mpRes, expRes, bookRes] = await Promise.all([
                         supabase.from('marketplace_items').select('*', { count: 'exact', head: true }),
                         supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                        supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString())
+                        supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString().split('T')[0])
                     ]);
 
                     setStatsData(prev => ({
@@ -111,15 +115,11 @@ export default function HomePage() {
                         return { month: new Date(Number(y), Number(mo) - 1).toLocaleDateString('es-CL', { month: 'short' }), monto };
                     }));
 
-                    // Expense category breakdown (by status as proxy)
-                    const catMap: Record<string, number> = { 'Pagadas': 0, 'Pendientes': 0, 'Vencidas': 0 };
-                    const catColors: Record<string, string> = { 'Pagadas': '#10b981', 'Pendientes': '#f59e0b', 'Vencidas': '#ef4444' };
-                    (expTrend.data ?? []).forEach((e: { amount: number }) => {});
-                    // Use service_requests categories instead
-                    const reqCatRes = await supabase.from('service_requests').select('category');
+                    // Use the broad row shape because older deployments have different request schemas.
+                    const reqCatRes = await supabase.from('service_requests').select('*');
                     const catCount: Record<string, number> = {};
-                    (reqCatRes.data ?? []).forEach((r: { category: string }) => {
-                        const cat = r.category || 'Otro';
+                    (reqCatRes.data ?? []).forEach((r: Record<string, unknown>) => {
+                        const cat = requestCategory(r);
                         catCount[cat] = (catCount[cat] ?? 0) + 1;
                     });
                     setExpenseCategoryData(Object.entries(catCount).map(([name, value], i) => ({
@@ -141,6 +141,15 @@ export default function HomePage() {
                         pendingExpenses: expProp.count || 0
                     }));
                 } else if (user.role === 'concierge') {
+                    if (user.email.toLowerCase().endsWith('@demo.com')) {
+                        setStatsData(prev => ({
+                            ...prev, ...commonStats,
+                            visitorsToday: 8,
+                            pendingPackages: 3
+                        }));
+                        return;
+                    }
+
                     const today = new Date().toISOString().split('T')[0];
                     const [visTodayRes, packRes] = await Promise.all([
                         supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('entry_time', today),

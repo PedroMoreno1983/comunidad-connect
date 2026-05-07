@@ -162,12 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: unit, error } = await supabase
                 .from('units')
-                .select('id, number, tower')
+                .select('*')
                 .eq('owner_id', userId)
                 .maybeSingle();
 
             if (unit && !error) {
-                setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unit.number ? `Depto ${unit.number}` : undefined }) : null);
+                const unitNumber = unit.number || unit.unit_number || unit.department_number;
+                setUser(prev => prev ? ({ ...prev, unitId: unit.id, unitName: unitNumber ? `Depto ${unitNumber}` : undefined }) : null);
             }
         } catch (err) {
             console.error("Could not fetch unit for user:", err);
