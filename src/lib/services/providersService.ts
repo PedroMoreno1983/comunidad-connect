@@ -224,22 +224,42 @@ export const reviewsService = {
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('reviews')
-            .select('*')
+            .select(`
+                *,
+                profiles:user_id (
+                  name,
+                  avatar_url
+                )
+            `)
             .eq('provider_id', providerId)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        return (data || []).map((review: { id: string; provider_id: string; user_id: string; rating: number; comment: string; service_type: string; created_at: string }) => ({
-            id: review.id,
-            providerId: review.provider_id,
-            userId: review.user_id,
-            userName: 'Usuario Anónimo',
-            rating: review.rating,
-            comment: review.comment,
-            serviceType: review.service_type,
-            createdAt: review.created_at,
-        }));
+        return (data || []).map((review: {
+            id: string;
+            provider_id: string;
+            user_id: string;
+            rating: number;
+            comment: string;
+            service_type: string;
+            created_at: string;
+            profiles?: { name?: string | null; avatar_url?: string | null } | { name?: string | null; avatar_url?: string | null }[] | null;
+        }) => {
+            const profile = Array.isArray(review.profiles) ? review.profiles[0] : review.profiles;
+
+            return {
+                id: review.id,
+                providerId: review.provider_id,
+                userId: review.user_id,
+                userName: profile?.name || 'Residente',
+                userAvatar: profile?.avatar_url || undefined,
+                rating: review.rating,
+                comment: review.comment,
+                serviceType: review.service_type,
+                createdAt: review.created_at,
+            };
+        });
     },
 
     async create(review: { providerId: string; userId: string; rating: number; comment: string; serviceType: string }): Promise<Review | null> {
@@ -296,7 +316,7 @@ export const reviewsService = {
                 .from('service_providers')
                 .update({
                     rating: Math.round(avgRating * 10) / 10,
-                    reviewCount: reviews.length,
+                    review_count: reviews.length,
                 })
                 .eq('id', providerId);
         } catch (error) {
