@@ -86,7 +86,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <div className="px-4 py-2 bg-blue-600/90 backdrop-blur-md text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2">
                             <Search className="h-4 w-4" />
-                            Ver Detalles
+                            Ver detalles
                         </div>
                     </div>
 
@@ -133,7 +133,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     <div className="flex items-center justify-between pt-5 border-t border-subtle/50">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">
-                                {item.allowSale !== false ? 'Inversión' : 'Modalidad'}
+                                {item.allowSale !== false ? 'Precio' : 'Modalidad'}
                             </span>
                             <p className="text-2xl font-black text-brand-500">
                                 {item.allowSale !== false
