@@ -1,519 +1,439 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AssetInventory } from "@/components/admin/AssetInventory";
-import { MaintenanceDashboard } from "@/components/admin/MaintenanceDashboard";
+import { useEffect, useMemo, useState } from "react";
 import {
-    Wrench, ClipboardList, Activity,
-    Plus, Download, Filter, Search,
-    BarChart3, ShieldCheck, HeartPulse, DollarSign, X, Loader2
+    Activity,
+    AlertTriangle,
+    ArrowRight,
+    Bot,
+    CalendarDays,
+    CheckCircle2,
+    Download,
+    Droplets,
+    Gauge,
+    Loader2,
+    Plus,
+    RadioTower,
+    ShieldCheck,
+    Wrench,
+    X,
+    Zap,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
+import { useToast } from "@/components/ui/Toast";
 
-interface MaintenanceKPIs {
-    healthPct: number;
-    completedThisMonth: number;
-    totalThisMonth: number;
-    operatingCost: number;
+type ServiceRow = {
+    id: string;
+    service_type?: string | null;
+    description?: string | null;
+    status?: string | null;
+    scheduled_date?: string | null;
+    created_at?: string | null;
+};
+
+type CaseRow = {
+    id: string;
+    title?: string | null;
+    category?: string | null;
+    urgency?: string | null;
+    status?: string | null;
+    unit_label?: string | null;
+    source_message?: string | null;
+    created_at?: string | null;
+};
+
+type AssetRow = {
+    id: string;
+    name?: string | null;
+    category?: string | null;
+    brand?: string | null;
+    model?: string | null;
+    location?: string | null;
+    health_status?: string | null;
+    healthStatus?: string | null;
+    next_maintenance?: string | null;
+    nextMaintenance?: string | null;
+};
+
+type LogRow = {
+    id: string;
+    description?: string | null;
+    cost?: number | null;
+    date?: string | null;
+    performed_by?: string | null;
+};
+
+const fallbackServices: ServiceRow[] = [
+    { id: "demo-s1", service_type: "plomeria", description: "Revision preventiva sala de bombas torre A", status: "pending", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
+    { id: "demo-s2", service_type: "ascensor", description: "Mantencion mensual ascensor B y prueba de rescate", status: "completed", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
+    { id: "demo-s3", service_type: "seguridad", description: "Ajuste de camaras en estacionamiento subterraneo", status: "in-progress", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
+];
+
+const fallbackCases: CaseRow[] = [
+    { id: "demo-c1", title: "Filtracion reportada en 1204", category: "plomeria", urgency: "alta", status: "open", unit_label: "1204", source_message: "Agua cayendo desde el cielo del bano", created_at: new Date().toISOString() },
+    { id: "demo-c2", title: "Ruidos recurrentes fuera de horario", category: "ruido", urgency: "media", status: "in_progress", unit_label: "1505", source_message: "Cuarto reporte del mes", created_at: new Date(Date.now() - 5 * 36e5).toISOString() },
+];
+
+const fallbackAssets: AssetRow[] = [
+    { id: "demo-a1", name: "Bomba presurizadora A", category: "pump", brand: "Grundfos", model: "CME 10", location: "Sala bombas -1", health_status: "warning", next_maintenance: new Date(Date.now() + 2 * 864e5).toISOString() },
+    { id: "demo-a2", name: "Ascensor torre B", category: "elevator", brand: "Otis", model: "Gen2", location: "Torre B", health_status: "optimal", next_maintenance: new Date(Date.now() + 9 * 864e5).toISOString() },
+    { id: "demo-a3", name: "Tablero emergencia", category: "electrical", brand: "Schneider", model: "Prisma", location: "Sala electrica", health_status: "critical", next_maintenance: new Date(Date.now() + 864e5).toISOString() },
+];
+
+const fallbackLogs: LogRow[] = [
+    { id: "demo-l1", description: "Cambio de sello y prueba de presion", cost: 180000, date: new Date().toISOString(), performed_by: "Mantencion interna" },
+    { id: "demo-l2", description: "Limpieza de sensores y ajuste de puertas", cost: 95000, date: new Date(Date.now() - 4 * 864e5).toISOString(), performed_by: "Proveedor ascensores" },
+];
+
+const categories = ["plomeria", "electrico", "ascensor", "seguridad", "limpieza", "otro"] as const;
+
+function dateLabel(value?: string | null) {
+    if (!value) return "Sin fecha";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
 }
 
-const CATEGORIES = ['plomería', 'eléctrico', 'cerrajería', 'limpieza', 'pintura', 'jardinería', 'ascensor', 'otro'] as const;
-const PRIORITIES = ['urgente', 'alta', 'media', 'baja'] as const;
+function money(value: number) {
+    return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
+
+function statusLabel(status?: string | null) {
+    if (status === "completed" || status === "resolved" || status === "closed") return "Resuelto";
+    if (status === "in-progress" || status === "in_progress" || status === "accepted") return "En curso";
+    if (status === "cancelled") return "Cancelado";
+    return "Pendiente";
+}
+
+function healthOf(asset: AssetRow) {
+    return asset.health_status || asset.healthStatus || "optimal";
+}
 
 export default function MantenimientoAdminPage() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'iot'>('overview');
-    const [kpis, setKpis] = useState<MaintenanceKPIs | null>(null);
-    const { toast } = useToast();
     const { user } = useAuth();
-
-    // Nueva Tarea modal
-    const [showNewTask, setShowNewTask] = useState(false);
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<"operacion" | "activos" | "sensores">("operacion");
+    const [services, setServices] = useState<ServiceRow[]>([]);
+    const [cases, setCases] = useState<CaseRow[]>([]);
+    const [assets, setAssets] = useState<AssetRow[]>([]);
+    const [logs, setLogs] = useState<LogRow[]>([]);
+    const [showTask, setShowTask] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
-        title: '',
-        description: '',
-        category: 'otro' as typeof CATEGORIES[number],
-        priority: 'media' as typeof PRIORITIES[number],
-        scheduled_date: '',
-        estimated_cost: '',
+        title: "",
+        description: "",
+        service_type: "plomeria",
+        scheduled_date: "",
     });
 
-    const handleExport = async () => {
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const { data, error } = await supabase
-            .from('service_requests')
-            .select('id, category, description, status, estimated_cost, created_at')
-            .gte('created_at', monthStart)
-            .order('created_at', { ascending: false });
-
-        if (error || !data?.length) {
-            toast({ title: 'Sin datos', description: 'No hay solicitudes este mes para exportar.', variant: 'destructive' });
-            return;
-        }
-
-        const headers = ['ID', 'Categoría', 'Descripción', 'Estado', 'Costo Est.', 'Fecha'];
-        const rows = data.map((r: Record<string, string | number | null>) => [
-            r.id, r.category, `"${String(r.description ?? '').replace(/"/g, '""')}"`,
-            r.status, r.estimated_cost ?? 0,
-            new Date(r.created_at as string).toLocaleDateString('es-CL')
+    async function loadData() {
+        setLoading(true);
+        const [serviceRes, caseRes, assetRes, logRes] = await Promise.allSettled([
+            supabase.from("service_requests").select("id, service_type, description, status, scheduled_date, created_at").order("created_at", { ascending: false }).limit(12),
+            supabase.from("coco_cases").select("id, title, category, urgency, status, unit_label, source_message, created_at").order("created_at", { ascending: false }).limit(12),
+            supabase.from("building_assets").select("id, name, category, brand, model, location, health_status, next_maintenance").order("name", { ascending: true }),
+            supabase.from("maintenance_logs").select("id, description, cost, date, performed_by").order("date", { ascending: false }).limit(8),
         ]);
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mantenimiento_${now.toISOString().slice(0,7)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast({ title: 'Reporte exportado', variant: 'success' });
-    };
 
-    const handleSaveTask = async () => {
-        if (!form.title.trim() || !form.description.trim()) {
-            toast({ title: 'Campos requeridos', description: 'Título y descripción son obligatorios.', variant: 'destructive' });
-            return;
-        }
-        setSaving(true);
-        const { error } = await supabase.from('service_requests').insert({
-            category: form.category,
-            description: `[${form.title}] ${form.description}`,
-            status: 'pending',
-            priority: form.priority,
-            scheduled_date: form.scheduled_date || null,
-            estimated_cost: form.estimated_cost ? Number(form.estimated_cost) : null,
-            requester_id: user?.id,
-        });
-        setSaving(false);
-        if (error) {
-            toast({ title: 'Error al guardar', description: error.message, variant: 'destructive' });
-        } else {
-            toast({ title: 'Tarea creada', variant: 'success' });
-            setShowNewTask(false);
-            setForm({ title: '', description: '', category: 'otro', priority: 'media', scheduled_date: '', estimated_cost: '' });
-            // Refresca KPIs
-            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-            const [allRes, monthRes] = await Promise.all([
-                supabase.from('service_requests').select('status, estimated_cost'),
-                supabase.from('service_requests').select('status, estimated_cost').gte('created_at', monthStart),
-            ]);
-            if (!allRes.error && !monthRes.error) {
-                const all = allRes.data ?? [];
-                const month = monthRes.data ?? [];
-                const completed = all.filter((r: { status: string }) => r.status === 'completed').length;
-                setKpis({
-                    healthPct: all.length > 0 ? Math.round((completed / all.length) * 100) : 100,
-                    completedThisMonth: month.filter((r: { status: string }) => r.status === 'completed').length,
-                    totalThisMonth: month.length,
-                    operatingCost: month.reduce((s: number, r: { estimated_cost?: number }) => s + (Number(r.estimated_cost) || 0), 0),
-                });
-            }
-        }
-    };
+        const serviceData = serviceRes.status === "fulfilled" && !serviceRes.value.error ? serviceRes.value.data ?? [] : [];
+        const caseData = caseRes.status === "fulfilled" && !caseRes.value.error ? caseRes.value.data ?? [] : [];
+        const assetData = assetRes.status === "fulfilled" && !assetRes.value.error ? assetRes.value.data ?? [] : [];
+        const logData = logRes.status === "fulfilled" && !logRes.value.error ? logRes.value.data ?? [] : [];
+
+        setServices(serviceData.length ? serviceData : fallbackServices);
+        setCases(caseData.length ? caseData : fallbackCases);
+        setAssets(assetData.length ? assetData : fallbackAssets);
+        setLogs(logData.length ? logData : fallbackLogs);
+        setLoading(false);
+    }
 
     useEffect(() => {
-        const fetchKPIs = async () => {
-            const now = new Date();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-            const [allRes, monthRes] = await Promise.all([
-                supabase.from('service_requests').select('status, estimated_cost'),
-                supabase.from('service_requests').select('status, estimated_cost').gte('created_at', monthStart),
-            ]);
-
-            if (allRes.error || monthRes.error) return;
-
-            const all = allRes.data ?? [];
-            const month = monthRes.data ?? [];
-
-            const completed = all.filter((r: { status: string }) => r.status === 'completed').length;
-            const healthPct = all.length > 0 ? Math.round((completed / all.length) * 100) : 100;
-
-            const completedMonth = month.filter((r: { status: string }) => r.status === 'completed').length;
-
-            const operatingCost = month.reduce((sum: number, r: { estimated_cost?: number }) => {
-                return sum + (Number(r.estimated_cost) || 0);
-            }, 0);
-
-            setKpis({ healthPct, completedThisMonth: completedMonth, totalThisMonth: month.length, operatingCost });
-        };
-
-        fetchKPIs();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadData();
     }, []);
 
+    const metrics = useMemo(() => {
+        const activeCases = cases.filter(item => !["resolved", "closed", "cancelled"].includes(item.status || ""));
+        const criticalCases = activeCases.filter(item => item.urgency === "alta" || item.urgency === "emergencia");
+        const completed = services.filter(item => item.status === "completed").length;
+        const healthScore = assets.length
+            ? Math.round((assets.filter(item => healthOf(item) === "optimal").length / assets.length) * 100)
+            : 100;
+        const cost = logs.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
+        return { activeCases: activeCases.length, criticalCases: criticalCases.length, completed, total: services.length, healthScore, cost };
+    }, [assets, cases, logs, services]);
+
+    async function saveTask() {
+        if (!form.title.trim() || !form.description.trim()) {
+            toast({ title: "Faltan datos", description: "Completa titulo y descripcion.", variant: "destructive" });
+            return;
+        }
+
+        setSaving(true);
+        const { error } = await supabase.from("service_requests").insert({
+            requester_id: user?.id,
+            unit_id: user?.unitId || "administracion",
+            service_type: form.service_type,
+            description: `[${form.title}] ${form.description}`,
+            status: "pending",
+            scheduled_date: form.scheduled_date || null,
+            scheduled_time: null,
+        });
+        setSaving(false);
+
+        if (error) {
+            toast({ title: "No se pudo crear", description: error.message, variant: "destructive" });
+            return;
+        }
+
+        toast({ title: "Tarea creada", description: "Quedo en la cola operativa.", variant: "success" });
+        setShowTask(false);
+        setForm({ title: "", description: "", service_type: "plomeria", scheduled_date: "" });
+        loadData();
+    }
+
+    async function closeService(id: string) {
+        setServices(prev => prev.map(item => item.id === id ? { ...item, status: "completed" } : item));
+        await supabase.from("service_requests").update({ status: "completed" }).eq("id", id);
+    }
+
+    function exportCsv() {
+        const rows = [
+            ["ID", "Tipo", "Estado", "Fecha", "Descripcion"],
+            ...services.map(item => [item.id, item.service_type || "otro", statusLabel(item.status), dateLabel(item.created_at), `"${String(item.description || "").replace(/"/g, '""')}"`]),
+        ];
+        const blob = new Blob([rows.map(row => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `mantenimiento_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     return (
-        <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                <div className="space-y-2">
-                    <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Operaciones Técnicas</h2>
-                    <h1 className="text-4xl font-black cc-text-primary">Mantenimiento Preventivo</h1>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <button onClick={handleExport} className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-xl active:scale-95">
-                        <Download className="h-5 w-5 text-blue-600" />
-                        Exportar Reporte
-                    </button>
-                    <button onClick={() => setShowNewTask(true)} className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
-                        <Plus className="h-5 w-5" />
-                        Nueva Tarea
-                    </button>
-                </div>
-            </div>
-
-            {/* Administrative Management KPIs (Differentiated View) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden group">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-success-bg rounded-2xl text-emerald-600">
-                            <HeartPulse className="h-6 w-6" />
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
+            <header className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+                <section className="overflow-hidden rounded-2xl border border-subtle bg-slate-950 text-white shadow-xl">
+                    <div className="grid gap-6 p-6 md:grid-cols-[1fr_auto] md:p-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                                    <ShieldCheck className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">Centro operativo</p>
+                                    <h1 className="text-3xl font-black tracking-tight md:text-4xl">Mantenimiento</h1>
+                                </div>
+                            </div>
+                            <p className="max-w-2xl text-sm font-medium leading-6 text-slate-300">
+                                Control de casos CoCo, solicitudes tecnicas, activos criticos y sensores. Datos reales cuando existen, fallback demo cuando la base aun esta incompleta.
+                            </p>
                         </div>
-                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Salud Global Infraestructura</h3>
-                    </div>
-                    <div className="flex items-end gap-3">
-                        <p className="text-4xl font-black cc-text-primary">{kpis ? `${kpis.healthPct}%` : '—'}</p>
-                        <span className={`text-xs font-bold mb-1.5 uppercase tracking-widest ${(kpis?.healthPct ?? 0) >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {(kpis?.healthPct ?? 0) >= 80 ? 'Óptimo' : 'Atención'}
-                        </span>
-                    </div>
-                    <div className="mt-4 h-1.5 w-full bg-elevated rounded-full overflow-hidden">
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: kpis ? `${kpis.healthPct}%` : '0%' }}
-                            className={`h-full ${(kpis?.healthPct ?? 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                        />
-                    </div>
-                </div>
-
-                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600">
-                            <BarChart3 className="h-6 w-6" />
+                        <div className="grid min-w-[220px] grid-cols-2 gap-3">
+                            <button onClick={() => setShowTask(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition-transform active:scale-95">
+                                <Plus className="h-4 w-4" />
+                                Nueva tarea
+                            </button>
+                            <button onClick={exportCsv} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-white/10">
+                                <Download className="h-4 w-4" />
+                                Exportar
+                            </button>
                         </div>
-                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Mantenimientos al Día</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary">
-                        {kpis ? `${kpis.completedThisMonth}/${kpis.totalThisMonth}` : '—'}
-                    </p>
-                    <p className="text-[10px] font-bold cc-text-tertiary uppercase tracking-widest mt-2">
-                        {kpis && kpis.totalThisMonth > 0
-                            ? `${Math.round((kpis.completedThisMonth / kpis.totalThisMonth) * 100)}% cumplimiento mensual`
-                            : 'Sin solicitudes este mes'}
-                    </p>
-                </div>
+                </section>
 
-                <div className="bg-surface p-8 rounded-[2.5rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-role-admin-bg rounded-2xl text-brand-600">
-                            <DollarSign className="h-6 w-6" />
-                        </div>
-                        <h3 className="font-black cc-text-primary uppercase text-[10px] tracking-widest leading-tight">Gasto Operativo Mes</h3>
-                    </div>
-                    <p className="text-4xl font-black cc-text-primary">
-                        {kpis ? (kpis.operatingCost > 0 ? `$${(kpis.operatingCost / 1000).toFixed(0)}k` : '$0') : '—'}
-                    </p>
-                    <p className="text-[10px] font-bold cc-text-tertiary uppercase tracking-widest mt-2">Basado en solicitudes del mes</p>
-                </div>
-
-                <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group border border-white/10">
-                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                        <ShieldCheck className="h-20 w-20 text-white" />
-                    </div>
-                    <div className="relative z-10 space-y-4">
+                <section className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
                         <div>
-                            <h3 className="font-black text-white text-sm">Seguros & Certificaciones</h3>
-                            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Al día</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Pulso del edificio</p>
+                            <p className="mt-2 text-3xl font-black cc-text-primary">{metrics.healthScore}%</p>
+                            <p className="text-xs font-bold cc-text-secondary">Salud global de activos</p>
                         </div>
-                        <div className="pt-2">
-                            <button className="text-[10px] font-black text-white uppercase tracking-widest border-b border-white/20 hover:border-white transition-all pb-1">Ver certificados</button>
+                        <Gauge className="h-9 w-9 text-emerald-500" />
+                    </div>
+                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-elevated">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${metrics.healthScore}%` }} />
+                    </div>
+                </section>
+            </header>
+
+            <section className="grid gap-4 md:grid-cols-4">
+                <Metric icon={<Bot className="h-5 w-5" />} label="Casos CoCo activos" value={metrics.activeCases} tone="emerald" detail={`${metrics.criticalCases} alta prioridad`} />
+                <Metric icon={<Wrench className="h-5 w-5" />} label="Solicitudes cerradas" value={`${metrics.completed}/${metrics.total}`} tone="blue" detail="Ciclo mensual" />
+                <Metric icon={<AlertTriangle className="h-5 w-5" />} label="Activos criticos" value={assets.filter(item => healthOf(item) === "critical").length} tone="amber" detail="Requieren seguimiento" />
+                <Metric icon={<Activity className="h-5 w-5" />} label="Costo mantencion" value={money(metrics.cost)} tone="slate" detail="Ultimos registros" />
+            </section>
+
+            <nav className="flex gap-2 overflow-x-auto border-b border-subtle">
+                {[
+                    ["operacion", "Operacion"],
+                    ["activos", "Activos"],
+                    ["sensores", "Sensores"],
+                ].map(([key, label]) => (
+                    <button
+                        key={key}
+                        onClick={() => setActiveTab(key as typeof activeTab)}
+                        className={`border-b-2 px-4 py-3 text-sm font-black transition-colors ${activeTab === key ? "border-emerald-500 text-emerald-600" : "border-transparent cc-text-secondary hover:text-slate-900"}`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </nav>
+
+            {loading ? (
+                <div className="flex h-80 items-center justify-center rounded-2xl border border-subtle bg-surface">
+                    <Loader2 className="h-7 w-7 animate-spin text-emerald-500" />
+                </div>
+            ) : activeTab === "operacion" ? (
+                <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+                    <section className="space-y-4">
+                        <SectionTitle icon={<CalendarDays className="h-5 w-5" />} title="Cola operativa" />
+                        {services.map(item => (
+                            <article key={item.id} className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="min-w-0 space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge>{item.service_type || "otro"}</Badge>
+                                            <Badge tone={item.status === "completed" ? "green" : "blue"}>{statusLabel(item.status)}</Badge>
+                                            <span className="text-xs font-bold cc-text-tertiary">{dateLabel(item.scheduled_date || item.created_at)}</span>
+                                        </div>
+                                        <h3 className="font-black cc-text-primary">{item.description || "Solicitud tecnica"}</h3>
+                                    </div>
+                                    <button onClick={() => closeService(item.id)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-black text-white disabled:opacity-40" disabled={item.status === "completed"}>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </section>
+
+                    <aside className="space-y-4">
+                        <SectionTitle icon={<Bot className="h-5 w-5" />} title="Casos detectados por CoCo" />
+                        {cases.map(item => (
+                            <article key={item.id} className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <Badge tone={item.urgency === "alta" || item.urgency === "emergencia" ? "red" : "blue"}>{item.urgency || "media"}</Badge>
+                                    <span className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">{item.unit_label || "Comunidad"}</span>
+                                </div>
+                                <h3 className="font-black cc-text-primary">{item.title || "Caso operativo"}</h3>
+                                <p className="mt-2 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message || item.category || "Sin detalle adicional."}</p>
+                            </article>
+                        ))}
+                    </aside>
+                </div>
+            ) : activeTab === "activos" ? (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {assets.map(asset => {
+                        const health = healthOf(asset);
+                        return (
+                            <article key={asset.id} className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                                <div className="mb-6 flex items-start justify-between gap-4">
+                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${health === "critical" ? "bg-rose-50 text-rose-600" : health === "warning" ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
+                                        {asset.category === "pump" ? <Droplets className="h-5 w-5" /> : asset.category === "electrical" ? <Zap className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
+                                    </div>
+                                    <Badge tone={health === "critical" ? "red" : health === "warning" ? "amber" : "green"}>{health}</Badge>
+                                </div>
+                                <h3 className="text-lg font-black cc-text-primary">{asset.name || "Activo tecnico"}</h3>
+                                <p className="mt-1 text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
+                                <p className="mt-4 text-xs font-bold uppercase tracking-widest cc-text-tertiary">{asset.location || "Sin ubicacion"}</p>
+                                <div className="mt-5 flex items-center justify-between rounded-xl bg-elevated px-4 py-3">
+                                    <span className="text-xs font-black cc-text-secondary">Proxima revision</span>
+                                    <span className="text-xs font-black cc-text-primary">{dateLabel(asset.next_maintenance || asset.nextMaintenance)}</span>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        ["SN-AGUA-402", "Sensor de agua", "Depto 402", "98%", <Droplets key="d" className="h-5 w-5" />],
+                        ["ASC-B-MOTOR", "Telemetria ascensor", "Torre B", "Online", <RadioTower key="r" className="h-5 w-5" />],
+                        ["TAB-EMERG-01", "Tablero emergencia", "Sala electrica", "Revision", <Zap key="z" className="h-5 w-5" />],
+                    ].map(([id, title, location, status, icon]) => (
+                        <article key={String(id)} className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                            <div className="mb-5 flex items-center justify-between">
+                                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">{icon}</span>
+                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
+                            </div>
+                            <h3 className="font-black cc-text-primary">{title}</h3>
+                            <p className="mt-1 text-sm font-bold cc-text-secondary">{id}</p>
+                            <div className="mt-5 flex items-center justify-between text-xs font-black">
+                                <span className="cc-text-tertiary">{location}</span>
+                                <span className="text-emerald-600">{status}</span>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
+
+            {showTask && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShowTask(false)}>
+                    <div className="w-full max-w-lg rounded-2xl border border-subtle bg-surface p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+                        <div className="mb-6 flex items-center justify-between">
+                            <h2 className="text-xl font-black cc-text-primary">Nueva tarea</h2>
+                            <button onClick={() => setShowTask(false)} className="rounded-xl p-2 hover:bg-elevated"><X className="h-5 w-5" /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <input value={form.title} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" placeholder="Titulo" />
+                            <textarea value={form.description} onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))} className="h-28 w-full resize-none rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" placeholder="Descripcion del trabajo" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <select value={form.service_type} onChange={event => setForm(prev => ({ ...prev, service_type: event.target.value }))} className="rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none">
+                                    {categories.map(category => <option key={category} value={category}>{category}</option>)}
+                                </select>
+                                <input type="date" value={form.scheduled_date} onChange={event => setForm(prev => ({ ...prev, scheduled_date: event.target.value }))} className="rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" />
+                            </div>
+                            <button onClick={saveTask} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                Crear tarea
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+        </div>
+    );
+}
 
-            {/* Tabs System */}
-            <div className="flex items-center gap-8 border-b border-subtle px-4">
-                <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`pb-6 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'overview' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                >
-                    Vista General
-                    {activeTab === 'overview' && (
-                        <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('assets')}
-                    className={`pb-6 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'assets' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                >
-                    Inventario de Activos
-                    {activeTab === 'assets' && (
-                        <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('iot')}
-                    className={`pb-6 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'iot' ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'
-                        }`}
-                >
-                    Sensores IoT
-                    {activeTab === 'iot' && (
-                        <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-brand-600 rounded-full" />
-                    )}
-                </button>
-            </div>
+function Metric({ icon, label, value, detail, tone }: { icon: React.ReactNode; label: string; value: React.ReactNode; detail: string; tone: "emerald" | "blue" | "amber" | "slate" }) {
+    const colors = {
+        emerald: "bg-emerald-50 text-emerald-600",
+        blue: "bg-blue-50 text-blue-600",
+        amber: "bg-amber-50 text-amber-600",
+        slate: "bg-slate-100 text-slate-700",
+    };
 
-            {/* Content Rendering */}
-            <div className="min-h-[600px]">
-                <ErrorBoundary name="Maintenance Tab Error">
-                <AnimatePresence mode="wait">
-                    {activeTab === 'overview' ? (
-                        <motion.div
-                            key="overview"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                        >
-                            <MaintenanceDashboard />
-                        </motion.div>
-                    ) : activeTab === 'assets' ? (
-                        <motion.div
-                            key="assets"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                        >
-                            <div className="space-y-8">
-                                <div className="flex items-center justify-between px-2">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-elevated rounded-2xl">
-                                            <Activity className="h-6 w-6 cc-text-primary" />
-                                        </div>
-                                        <h2 className="text-2xl font-black cc-text-primary">Equipamiento Crítico</h2>
-                                    </div>
-                                    <div className="flex items-center gap-4 h-12">
-                                        <div className="relative">
-                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <input
-                                                className="h-full pl-12 pr-6 bg-surface border border-subtle rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                placeholder="Buscar activo..."
-                                            />
-                                        </div>
-                                        <button className="h-full px-6 bg-elevated rounded-2xl text-slate-500 hover:bg-slate-200 transition-colors">
-                                            <Filter className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                                <AssetInventory />
-                            </div>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="iot"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                        >
-                            <div className="space-y-8">
-                                <div className="flex items-center justify-between px-2">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-role-admin-bg rounded-2xl">
-                                            <Activity className="h-6 w-6 text-role-admin-fg" />
-                                        </div>
-                                        <h2 className="text-2xl font-black cc-text-primary">Hub IoT & Nodos Activos</h2>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {/* Shelly Mock */}
-                                    <div className="p-6 rounded-3xl border border-subtle bg-surface shadow-sm relative overflow-hidden">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sensor de Agua</span>
-                                                </div>
-                                                <h3 className="font-bold cc-text-primary">SN-AGUA-402</h3>
-                                            </div>
-                                            <span className="px-3 py-1 bg-elevated rounded-full text-xs font-bold cc-text-secondary">
-                                                Depto 402
-                                            </span>
-                                        </div>
-                                        <p className="text-sm cc-text-secondary mb-6 font-medium">Batería: 98% • Señal: Excelente</p>
-                                        <button
-                                            onClick={async () => {
-                                                try {
-                                                    const res = await fetch('/api/iot/test-trigger', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            sensor_id: 'SN-AGUA-402',
-                                                            type: 'FILTRACION_CRITICA',
-                                                            unit_id: '402',
-                                                            community_id: '1',
-                                                            severity: 'URGENTE',
-                                                            location_detail: 'Cocina - Lavaplatos'
-                                                        })
-                                                    });
-                                                    if (res.ok) {
-                                                        toast({ title: 'Evento enviado', description: 'CoCo activado. Revisa el panel de mantención.' });
-                                                    } else {
-                                                        toast({ title: 'Error', description: 'No se pudo enviar el evento de prueba.', variant: 'destructive' });
-                                                    }
-                                                } catch(e) { console.error(e); }
-                                            }}
-                                            className="w-full py-3 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 rounded-xl font-bold transition-all text-sm flex justify-center items-center gap-2"
-                                        >
-                                            <HeartPulse className="h-4 w-4" />
-                                            Test: Simular Filtración
-                                        </button>
-                                    </div>
-                                    
-                                    {/* Smart Lock Mock */}
-                                    <div className="p-6 rounded-3xl border border-subtle bg-surface shadow-sm relative overflow-hidden">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cerradura Inteligente</span>
-                                                </div>
-                                                <h3 className="font-bold cc-text-primary">LK-MAIN-402</h3>
-                                            </div>
-                                            <span className="px-3 py-1 bg-elevated rounded-full text-xs font-bold cc-text-secondary">
-                                                Depto 402
-                                            </span>
-                                        </div>
-                                        <p className="text-sm cc-text-secondary font-medium">Estado: Cerrado (Seguro)</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-                </ErrorBoundary>
-            </div>
+    return (
+        <article className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+            <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${colors[tone]}`}>{icon}</div>
+            <p className="text-2xl font-black cc-text-primary">{value}</p>
+            <p className="text-xs font-black uppercase tracking-wide cc-text-secondary">{label}</p>
+            <p className="mt-2 text-xs font-bold cc-text-tertiary">{detail}</p>
+        </article>
+    );
+}
 
-            {/* Modal: Nueva Tarea */}
-            <AnimatePresence>
-                {showNewTask && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                        onClick={() => setShowNewTask(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.92, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.92, opacity: 0, y: 20 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                            className="bg-surface rounded-3xl shadow-2xl border border-subtle w-full max-w-lg"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between p-6 border-b border-subtle">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
-                                        <Wrench className="h-5 w-5 text-blue-600" />
-                                    </div>
-                                    <h2 className="text-xl font-black cc-text-primary">Nueva Tarea de Mantenimiento</h2>
-                                </div>
-                                <button onClick={() => setShowNewTask(false)} className="p-2 hover:bg-elevated rounded-xl transition-colors">
-                                    <X className="h-5 w-5 cc-text-secondary" />
-                                </button>
-                            </div>
+function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "slate" | "blue" | "green" | "red" | "amber" }) {
+    const colors = {
+        slate: "bg-slate-100 text-slate-600",
+        blue: "bg-blue-50 text-blue-600",
+        green: "bg-emerald-50 text-emerald-600",
+        red: "bg-rose-50 text-rose-600",
+        amber: "bg-amber-50 text-amber-600",
+    };
 
-                            <div className="p-6 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Título *</label>
-                                    <input
-                                        value={form.title}
-                                        onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                                        placeholder="Ej: Revisar bomba de agua"
-                                        className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                    />
-                                </div>
+    return <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${colors[tone]}`}>{children}</span>;
+}
 
-                                <div>
-                                    <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Descripción *</label>
-                                    <textarea
-                                        value={form.description}
-                                        onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                        placeholder="Detalla el trabajo a realizar..."
-                                        rows={3}
-                                        className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Categoría</label>
-                                        <select
-                                            value={form.category}
-                                            onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof CATEGORIES[number] }))}
-                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                        >
-                                            {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Prioridad</label>
-                                        <select
-                                            value={form.priority}
-                                            onChange={e => setForm(f => ({ ...f, priority: e.target.value as typeof PRIORITIES[number] }))}
-                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                        >
-                                            {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Fecha Programada</label>
-                                        <input
-                                            type="date"
-                                            value={form.scheduled_date}
-                                            onChange={e => setForm(f => ({ ...f, scheduled_date: e.target.value }))}
-                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-black cc-text-secondary uppercase tracking-widest mb-1.5">Costo Estimado ($)</label>
-                                        <input
-                                            type="number"
-                                            value={form.estimated_cost}
-                                            onChange={e => setForm(f => ({ ...f, estimated_cost: e.target.value }))}
-                                            placeholder="0"
-                                            min="0"
-                                            className="w-full px-4 py-3 rounded-xl border border-subtle bg-elevated text-sm font-medium cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 p-6 pt-0">
-                                <button onClick={() => setShowNewTask(false)} className="flex-1 py-3 rounded-xl border border-subtle cc-text-secondary font-bold text-sm hover:bg-elevated transition-colors">
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleSaveTask}
-                                    disabled={saving}
-                                    className="flex-1 py-3 rounded-xl bg-slate-900 dark:bg-blue-600 text-white font-black text-sm hover:bg-slate-800 dark:hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</> : <><ClipboardList className="h-4 w-4" /> Crear Tarea</>}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated cc-text-primary">{icon}</span>
+            <h2 className="text-xl font-black cc-text-primary">{title}</h2>
+            <ArrowRight className="h-4 w-4 text-slate-300" />
         </div>
     );
 }
