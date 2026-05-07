@@ -27,6 +27,7 @@ export async function askCoCo(
     message: string,
     session: SessionData | null,
     userCtx: {
+        user_id?: string;
         unit_id?: string;
         role?: string;
         community_id?: string;

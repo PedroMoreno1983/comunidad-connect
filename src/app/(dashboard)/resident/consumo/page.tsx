@@ -35,6 +35,10 @@ function formatPercent(value: number) {
     return `${Math.abs(value).toFixed(0)}%`;
 }
 
+function shortMonth(value?: string | null) {
+    return typeof value === "string" && value.trim() ? value.slice(0, 3) : "---";
+}
+
 function openLeakReport(unitName?: string) {
     window.dispatchEvent(new CustomEvent("coco:compose", {
         detail: {
@@ -84,7 +88,7 @@ export default function WaterConsumptionPage() {
     }, [user, toast]);
 
     const metrics = useMemo<ConsumptionMetric[]>(() => readings.map(reading => ({
-        month: reading.month.substring(0, 3),
+        month: shortMonth(reading.month),
         personal: reading.consumption || 0,
         average: BUILDING_AVERAGE_M3,
     })), [readings]);
@@ -250,7 +254,7 @@ export default function WaterConsumptionPage() {
                                 <div key={reading.id} className="flex items-center justify-between rounded-2xl border border-subtle bg-surface p-4 transition-all hover:border-blue-100 dark:hover:border-blue-900/50">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated text-xs font-bold text-slate-400">
-                                            {reading.month.substring(0, 3)}
+                                            {shortMonth(reading.month)}
                                         </div>
                                         <div>
                                             <p className="text-sm font-black cc-text-primary">{reading.month} {reading.year}</p>

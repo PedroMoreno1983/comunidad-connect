@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
             await saveSession(sessionKey, {
                 conversation: [],
                 user_context: {
+                    user_id:      resident.id,
                     unit_id:      resident.unit_id,
                     role:         resident.role || 'resident',
                     community_id: (resident.units as any)?.[0]?.community_id || (resident.units as any)?.community_id,

@@ -12,11 +12,10 @@ export const AmenityService = {
         const { data, error } = await supabase
             .from('amenities')
             .select('*')
-            .eq('is_active', true)
             .order('name');
 
         if (error) throw error;
-        return data as Amenity[];
+        return ((data ?? []) as Array<Amenity & { is_active?: boolean }>).filter(amenity => amenity.is_active !== false);
     },
 
     async getBookings(amenityId?: string, date?: string) {

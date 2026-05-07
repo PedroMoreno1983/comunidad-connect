@@ -54,7 +54,7 @@ export default function DashboardLayout({
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                         >
-                            <ErrorBoundary name="Content">
+                            <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
                                 {children}
                             </ErrorBoundary>
                         </motion.div>
