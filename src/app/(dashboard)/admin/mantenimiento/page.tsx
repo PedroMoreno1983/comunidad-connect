@@ -14,7 +14,6 @@ import {
     Loader2,
     Plus,
     RadioTower,
-    ShieldCheck,
     Wrench,
     X,
     Zap,
@@ -223,57 +222,50 @@ export default function MantenimientoAdminPage() {
     }
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
-            <header className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
-                <section className="overflow-hidden rounded-2xl border border-subtle bg-slate-950 text-white shadow-xl">
-                    <div className="grid gap-6 p-6 md:grid-cols-[1fr_auto] md:p-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-                                    <ShieldCheck className="h-5 w-5" />
-                                </span>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">Centro operativo</p>
-                                    <h1 className="text-3xl font-black tracking-tight md:text-4xl">Mantenimiento</h1>
-                                </div>
-                            </div>
-                            <p className="max-w-2xl text-sm font-medium leading-6 text-slate-300">
-                                Control de casos CoCo, solicitudes tecnicas, activos criticos y sensores. Datos reales cuando existen, fallback demo cuando la base aun esta incompleta.
-                            </p>
-                        </div>
-                        <div className="grid min-w-[220px] grid-cols-2 gap-3">
-                            <button onClick={() => setShowTask(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition-transform active:scale-95">
-                                <Plus className="h-4 w-4" />
-                                Nueva tarea
-                            </button>
-                            <button onClick={exportCsv} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-white/10">
-                                <Download className="h-4 w-4" />
-                                Exportar
-                            </button>
-                        </div>
-                    </div>
-                </section>
+        <div className="mx-auto max-w-6xl space-y-6 p-6">
+            <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                    <h1 className="text-3xl font-bold cc-text-primary">Mantenimiento</h1>
+                    <p className="cc-text-secondary">Control de casos CoCo, solicitudes técnicas, activos críticos y sensores.</p>
+                </div>
 
-                <section className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Pulso del edificio</p>
-                            <p className="mt-2 text-3xl font-black cc-text-primary">{metrics.healthScore}%</p>
-                            <p className="text-xs font-bold cc-text-secondary">Salud global de activos</p>
-                        </div>
-                        <Gauge className="h-9 w-9 text-emerald-500" />
-                    </div>
-                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-elevated">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${metrics.healthScore}%` }} />
-                    </div>
-                </section>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button onClick={() => setShowTask(true)} className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                        <Plus className="h-4 w-4" />
+                        Nueva tarea
+                    </button>
+                    <button onClick={exportCsv} className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated">
+                        <Download className="h-4 w-4 cc-text-secondary" />
+                        Exportar
+                    </button>
+                </div>
             </header>
 
-            <section className="grid gap-4 md:grid-cols-4">
+            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-subtle p-5 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                        <Gauge className="h-5 w-5 text-slate-500" />
+                        <div>
+                            <h2 className="text-lg font-semibold cc-text-primary">Pulso del edificio</h2>
+                            <p className="text-sm cc-text-secondary">Salud global de activos y cola operativa.</p>
+                        </div>
+                    </div>
+                    <div className="min-w-[220px]">
+                        <div className="mb-1 flex items-center justify-between text-xs font-semibold cc-text-secondary">
+                            <span>Salud de activos</span>
+                            <span>{metrics.healthScore}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-elevated">
+                            <div className="h-full bg-brand-500" style={{ width: `${metrics.healthScore}%` }} />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-subtle md:grid-cols-4 md:divide-x md:divide-y-0">
                 <Metric icon={<Bot className="h-5 w-5" />} label="Casos CoCo activos" value={metrics.activeCases} tone="emerald" detail={`${metrics.criticalCases} alta prioridad`} />
                 <Metric icon={<Wrench className="h-5 w-5" />} label="Solicitudes cerradas" value={`${metrics.completed}/${metrics.total}`} tone="blue" detail="Ciclo mensual" />
                 <Metric icon={<AlertTriangle className="h-5 w-5" />} label="Activos criticos" value={assets.filter(item => healthOf(item) === "critical").length} tone="amber" detail="Requieren seguimiento" />
                 <Metric icon={<Activity className="h-5 w-5" />} label="Costo mantencion" value={money(metrics.cost)} tone="slate" detail="Ultimos registros" />
+                </div>
             </section>
 
             <nav className="flex gap-2 overflow-x-auto border-b border-subtle">
@@ -417,11 +409,11 @@ function Metric({ icon, label, value, detail, tone }: { icon: React.ReactNode; l
     };
 
     return (
-        <article className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
-            <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${colors[tone]}`}>{icon}</div>
-            <p className="text-2xl font-black cc-text-primary">{value}</p>
-            <p className="text-xs font-black uppercase tracking-wide cc-text-secondary">{label}</p>
-            <p className="mt-2 text-xs font-bold cc-text-tertiary">{detail}</p>
+        <article className="p-5">
+            <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-lg ${colors[tone]}`}>{icon}</div>
+            <p className="text-2xl font-semibold cc-text-primary">{value}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">{label}</p>
+            <p className="mt-2 text-xs font-semibold cc-text-tertiary">{detail}</p>
         </article>
     );
 }
@@ -435,14 +427,14 @@ function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?:
         amber: "bg-amber-50 text-amber-600",
     };
 
-    return <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${colors[tone]}`}>{children}</span>;
+    return <span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${colors[tone]}`}>{children}</span>;
 }
 
 function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
     return (
         <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated cc-text-primary">{icon}</span>
-            <h2 className="text-xl font-black cc-text-primary">{title}</h2>
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-elevated cc-text-primary">{icon}</span>
+            <h2 className="text-lg font-semibold cc-text-primary">{title}</h2>
             <ArrowRight className="h-4 w-4 text-slate-300" />
         </div>
     );

@@ -97,17 +97,17 @@ export function CondoFeesTable() {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full bg-surface rounded-[2rem] border border-subtle shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden"
+            className="w-full overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm"
         >
-            <div className="p-8 border-b border-subtle flex justify-between items-center">
+            <div className="flex items-center justify-between border-b border-subtle p-5">
                 <div>
-                    <h3 className="text-xl font-black cc-text-primary">Registro de Cobros</h3>
-                    <p className="text-sm font-medium text-slate-500 mt-1">Historial y estado de los Gastos Comunes</p>
+                    <h3 className="text-lg font-semibold cc-text-primary">Registro de cobros</h3>
+                    <p className="mt-1 text-sm cc-text-secondary">Historial y estado de los gastos comunes</p>
                 </div>
                 <button
                     onClick={handleSendEmails}
                     disabled={sending || fees.length === 0}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors shadow-lg shadow-indigo-500/20"
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600 disabled:opacity-50"
                 >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                     {sending ? 'Enviando...' : 'Enviar a Residentes'}
@@ -134,7 +134,7 @@ export function CondoFeesTable() {
                                             {fee.units?.tower ? fee.units.tower[0] : ''}
                                         </div>
                                         <div>
-                                            <p className="font-bold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
+                                            <p className="font-semibold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
                                             <p className="text-xs text-slate-500 font-medium">Auto {fee.units?.number}</p>
                                         </div>
                                     </div>
@@ -148,7 +148,7 @@ export function CondoFeesTable() {
                                     </p>
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className="font-black cc-text-primary">{formatCurrency(fee.amount)}</span>
+                                    <span className="font-semibold cc-text-primary">{formatCurrency(fee.amount)}</span>
                                 </td>
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' && (
