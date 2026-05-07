@@ -43,12 +43,30 @@ type CoCoCaseEvent = {
     created_at: string;
 };
 
+type ServiceRequestQueueItem = {
+    id: string;
+    provider_id: string | null;
+    user_id: string;
+    preferred_date: string | null;
+    preferred_time: string | null;
+    description: string;
+    status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+    created_at: string;
+    service_providers?: {
+        name: string;
+        category: string;
+        contact_phone?: string | null;
+    } | null;
+};
+
 export function MaintenanceDashboard() {
     const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
     const [assets, setAssets] = useState<BuildingAsset[]>([]);
     const [logs, setLogs] = useState<MaintenanceLog[]>([]);
     const [cocoCases, setCocoCases] = useState<CoCoCase[]>([]);
+    const [serviceRequests, setServiceRequests] = useState<ServiceRequestQueueItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [serviceUpdatingId, setServiceUpdatingId] = useState<string | null>(null);
     const [caseUpdatingId, setCaseUpdatingId] = useState<string | null>(null);
     const [selectedCase, setSelectedCase] = useState<CoCoCase | null>(null);
     const [isCaseDetailOpen, setIsCaseDetailOpen] = useState(false);
@@ -66,13 +84,32 @@ export function MaintenanceDashboard() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [tasksRes, assetsRes, logsRes, cocoCasesRes] = await Promise.all([
+                const [tasksRes, assetsRes, logsRes, cocoCasesRes, serviceRequestsRes] = await Promise.all([
                     supabase.from('maintenance_tasks').select('*'),
                     supabase.from('building_assets').select('*'),
                     supabase.from('maintenance_logs').select('*').order('date', { ascending: false }).limit(5),
                     supabase
                         .from('coco_cases')
                         .select('id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at')
+                        .order('created_at', { ascending: false })
+                        .limit(8),
+                    supabase
+                        .from('service_requests')
+                        .select(`
+                            id,
+                            provider_id,
+                            user_id,
+                            preferred_date,
+                            preferred_time,
+                            description,
+                            status,
+                            created_at,
+                            service_providers (
+                                name,
+                                category,
+                                contact_phone
+                            )
+                        `)
                         .order('created_at', { ascending: false })
                         .limit(8)
                 ]);
@@ -119,6 +156,10 @@ export function MaintenanceDashboard() {
                 if (cocoCasesRes.data) {
                     setCocoCases(cocoCasesRes.data as CoCoCase[]);
                 }
+
+                if (serviceRequestsRes.data) {
+                    setServiceRequests(serviceRequestsRes.data as unknown as ServiceRequestQueueItem[]);
+                }
             } catch (err) {
                 console.error("Error fetching maintenance data:", err);
             } finally {
@@ -143,6 +184,40 @@ export function MaintenanceDashboard() {
             });
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const handleUpdateServiceStatus = async (
+        requestId: string,
+        status: ServiceRequestQueueItem['status']
+    ) => {
+        setServiceUpdatingId(requestId);
+        try {
+            const response = await fetch(getApiUrl(`/api/service-requests/${requestId}/status`), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.error || 'No se pudo actualizar la solicitud');
+            }
+
+            setServiceRequests(prev => prev.map(item => item.id === requestId ? { ...item, ...data.request } : item));
+            toast({
+                title: 'Solicitud actualizada',
+                description: 'El residente fue notificado del cambio de estado.',
+                variant: 'success',
+            });
+        } catch (error) {
+            toast({
+                title: 'No se pudo actualizar',
+                description: error instanceof Error ? error.message : 'Intentalo nuevamente.',
+                variant: 'destructive',
+            });
+        } finally {
+            setServiceUpdatingId(null);
         }
     };
 
@@ -239,6 +314,8 @@ export function MaintenanceDashboard() {
     const overdueCount = tasks.filter((t: MaintenanceTask) => t.status === 'overdue').length;
     const pendingCount = tasks.filter((t: MaintenanceTask) => t.status === 'pending').length;
     const criticalAssets = assets.filter((a: BuildingAsset) => a.healthStatus === 'critical').length;
+    const activeServiceRequests = serviceRequests.filter(item => item.status === 'pending' || item.status === 'accepted');
+    const pendingServiceRequests = serviceRequests.filter(item => item.status === 'pending').length;
     const openCocoCases = cocoCases.filter(item => item.status === 'open' || item.status === 'in_progress').length;
     const emergencyCocoCases = cocoCases.filter(item => item.urgency === 'emergencia' || item.urgency === 'alta').length;
     const visibleCocoCases = cocoCases.filter(item => {
@@ -348,6 +425,116 @@ export function MaintenanceDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Service Request Queue */}
+            <section className="space-y-6">
+                <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                            <Wrench className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Servicios</p>
+                            <h2 className="text-2xl font-black cc-text-primary">Solicitudes de proveedores</h2>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="rounded-2xl bg-elevated px-4 py-2 text-xs font-black cc-text-secondary">
+                            {activeServiceRequests.length} activas
+                        </span>
+                        <span className="rounded-2xl bg-amber-50 px-4 py-2 text-xs font-black text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
+                            {pendingServiceRequests} pendientes
+                        </span>
+                    </div>
+                </div>
+
+                <div className="overflow-hidden rounded-[2rem] border border-subtle bg-surface shadow-xl shadow-slate-200/20 dark:shadow-black/30">
+                    {serviceRequests.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+                            <Wrench className="h-10 w-10 text-slate-300" />
+                            <p className="text-sm font-bold cc-text-secondary">Todavía no hay solicitudes de servicios.</p>
+                            <p className="max-w-md text-xs cc-text-tertiary">
+                                Cuando un residente contacte a un técnico desde el directorio, aparecerá aquí para seguimiento operativo.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-subtle">
+                            {serviceRequests.map(item => {
+                                const provider = item.service_providers;
+                                const isDone = item.status === 'completed' || item.status === 'cancelled';
+                                const statusClass =
+                                    item.status === 'completed'
+                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                        : item.status === 'cancelled'
+                                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                                            : item.status === 'accepted'
+                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                                                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+
+                                return (
+                                    <article key={item.id} className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
+                                        <div className="space-y-3">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass}`}>
+                                                    {item.status === 'accepted' ? 'Aceptada' : item.status === 'completed' ? 'Completada' : item.status === 'cancelled' ? 'Cancelada' : 'Pendiente'}
+                                                </span>
+                                                {provider?.category && (
+                                                    <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-tertiary">
+                                                        {provider.category}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black cc-text-primary">
+                                                    {provider?.name || 'Proveedor por confirmar'}
+                                                </h3>
+                                                <p className="mt-1 line-clamp-2 text-sm font-medium cc-text-secondary">
+                                                    {item.description}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-3 text-xs font-bold cc-text-tertiary">
+                                                <span>Preferencia: {item.preferred_date || 'sin fecha'} {item.preferred_time || ''}</span>
+                                                <span>Creada: {new Date(item.created_at).toLocaleDateString('es-CL')}</span>
+                                                {provider?.contact_phone && <span>Tel: {provider.contact_phone}</span>}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 md:justify-end">
+                                            {item.status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleUpdateServiceStatus(item.id, 'accepted')}
+                                                    disabled={serviceUpdatingId === item.id}
+                                                    className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                                                >
+                                                    Aceptar
+                                                </button>
+                                            )}
+                                            {!isDone && (
+                                                <button
+                                                    onClick={() => handleUpdateServiceStatus(item.id, 'completed')}
+                                                    disabled={serviceUpdatingId === item.id}
+                                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                                                >
+                                                    Completar
+                                                </button>
+                                            )}
+                                            {!isDone && (
+                                                <button
+                                                    onClick={() => handleUpdateServiceStatus(item.id, 'cancelled')}
+                                                    disabled={serviceUpdatingId === item.id}
+                                                    className="rounded-xl bg-elevated px-4 py-2 text-xs font-black cc-text-secondary transition-colors hover:bg-slate-200 disabled:opacity-50 dark:hover:bg-slate-800"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
 
             {/* CoCo Operational Queue */}
             <section className="space-y-6">
