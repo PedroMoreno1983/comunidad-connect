@@ -62,6 +62,16 @@ export default function CoCo() {
     const pathname = usePathname();
 
     useEffect(() => { setMounted(true); }, []);
+    useEffect(() => {
+        const handleCompose = (event: Event) => {
+            const detail = (event as CustomEvent<{ message?: string }>).detail;
+            setOpen(true);
+            if (detail?.message) setInput(detail.message);
+        };
+
+        window.addEventListener("coco:compose", handleCompose);
+        return () => window.removeEventListener("coco:compose", handleCompose);
+    }, []);
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
     if (!mounted || !user) return null;
