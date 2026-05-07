@@ -129,9 +129,15 @@ export default function MarketplacePage() {
                     price: r.price as number,
                     category: r.category as string,
                     imageUrl: r.image_url as string | undefined,
-                    images: r.image_url ? [r.image_url as string] : [],
+                    images: Array.isArray(r.images) ? r.images as string[] : r.image_url ? [r.image_url as string] : [],
                     sellerId: r.seller_id as string,
-                    status: r.status as 'available' | 'sold',
+                    status: r.status as 'available' | 'reserved' | 'sold',
+                    allowSale: r.allow_sale as boolean | undefined,
+                    allowSwap: r.allow_swap as boolean | undefined,
+                    swapDetails: r.swap_details as string | undefined,
+                    allowBarter: r.allow_barter as boolean | undefined,
+                    barterDetails: r.barter_details as string | undefined,
+                    paymentStatus: r.payment_status as 'none' | 'pending' | 'completed' | undefined,
                     createdAt: r.created_at as string,
                 }))
             );
@@ -160,7 +166,18 @@ export default function MarketplacePage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
+            const remainingSlots = Math.max(0, 4 - imageFiles.length);
+            const files = Array.from(e.target.files).slice(0, remainingSlots);
+
+            if (files.length === 0) {
+                toast({
+                    title: "Límite de fotos",
+                    description: "Puedes subir hasta 4 fotos por publicación.",
+                    variant: "default",
+                });
+                return;
+            }
+
             setImageFiles(prev => [...prev, ...files]);
 
             const urls = files.map(file => URL.createObjectURL(file));
@@ -215,6 +232,15 @@ export default function MarketplacePage() {
                 toast({
                     title: "Error",
                     description: "Debes seleccionar al menos una modalidad de publicación.",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            if (newItem.allowSale && Number(newItem.price) <= 0) {
+                toast({
+                    title: "Precio requerido",
+                    description: "Ingresa un precio mayor a cero para publicar con modalidad de venta.",
                     variant: "destructive",
                 });
                 return;

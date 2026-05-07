@@ -106,6 +106,42 @@ export const WaterService = {
 // Marketplace API
 // ==========================================
 
+type MarketplaceRow = Record<string, unknown>;
+
+function mapMarketplaceItem(row: MarketplaceRow): MarketplaceItem {
+    const imageUrl = (row.image_url as string | null | undefined) ?? (row.imageUrl as string | undefined);
+    const images = Array.isArray(row.images)
+        ? (row.images as string[])
+        : imageUrl
+            ? [imageUrl]
+            : [];
+
+    return {
+        id: row.id as string,
+        title: row.title as string,
+        description: row.description as string,
+        price: Number(row.price) || 0,
+        category: row.category as MarketplaceItem['category'],
+        sellerId: (row.seller_id as string | undefined) ?? (row.sellerId as string),
+        imageUrl,
+        images,
+        status: ((row.status as MarketplaceItem['status'] | undefined) || 'available'),
+        allowSale: (row.allow_sale as boolean | undefined) ?? (row.allowSale as boolean | undefined) ?? true,
+        allowSwap: (row.allow_swap as boolean | undefined) ?? (row.allowSwap as boolean | undefined) ?? false,
+        swapDetails: (row.swap_details as string | undefined) ?? (row.swapDetails as string | undefined) ?? '',
+        allowBarter: (row.allow_barter as boolean | undefined) ?? (row.allowBarter as boolean | undefined) ?? false,
+        barterDetails: (row.barter_details as string | undefined) ?? (row.barterDetails as string | undefined) ?? '',
+        paymentStatus: (row.payment_status as MarketplaceItem['paymentStatus'] | undefined) ?? (row.paymentStatus as MarketplaceItem['paymentStatus'] | undefined) ?? 'none',
+        createdAt: (row.created_at as string | undefined) ?? (row.createdAt as string) ?? new Date().toISOString(),
+    };
+}
+
+function isMissingMarketplaceColumnError(error: { message?: string; code?: string } | null): boolean {
+    if (!error) return false;
+    const message = error.message?.toLowerCase() ?? '';
+    return error.code === 'PGRST204' || error.code === '42703' || message.includes('allow_sale') || message.includes('images');
+}
+
 export const MarketplaceService = {
     // Obtener todos los productos activos
     async getItemsV2(): Promise<MarketplaceItem[]> {
@@ -118,7 +154,7 @@ export const MarketplaceService = {
             console.error("Supabase error in getItemsV2:", error.message);
             throw error;
         }
-        return (data || []) as MarketplaceItem[];
+        return (data || []).map(mapMarketplaceItem);
     },
 
     // Publicar un nuevo producto con fotos
@@ -147,32 +183,58 @@ export const MarketplaceService = {
             imageUrls.push(publicUrl);
         }
 
+        const payload = {
+            title: item.title,
+            description: item.description,
+            price: Number(item.price) || 0,
+            category: item.category,
+            image_url: imageUrls.length > 0 ? imageUrls[0] : null,
+            images: imageUrls,
+            allow_sale: item.allowSale !== false,
+            allow_swap: Boolean(item.allowSwap),
+            swap_details: item.swapDetails || '',
+            allow_barter: Boolean(item.allowBarter),
+            barter_details: item.barterDetails || '',
+            payment_status: 'none',
+            seller_id: user.id
+        };
+
         // 2. Insertar item en la DB
-        const { data, error } = await supabase
+        let result = await supabase
             .from('marketplace_items')
-            .insert({
-                title: item.title,
-                description: item.description,
-                price: Number(item.price),
-                category: item.category,
-                image_url: imageUrls.length > 0 ? imageUrls[0] : null,
-                seller_id: user.id
-            })
+            .insert(payload)
             .select()
             .single();
+
+        if (isMissingMarketplaceColumnError(result.error)) {
+            result = await supabase
+                .from('marketplace_items')
+                .insert({
+                    title: payload.title,
+                    description: payload.description,
+                    price: payload.price,
+                    category: payload.category,
+                    image_url: payload.image_url,
+                    seller_id: payload.seller_id
+                })
+                .select()
+                .single();
+        }
+
+        const { data, error } = result;
 
         if (error) {
             console.error("Supabase error in createItem:", error.message, error.details);
             throw error;
         }
-        return data as MarketplaceItem;
+        return mapMarketplaceItem(data);
     },
 
     // Marcar como vendido o inactivar
-    async updateStatus(itemId: string, isActive: boolean) {
+    async updateStatus(itemId: string, status: 'available' | 'reserved' | 'sold') {
         const { error } = await supabase
             .from('marketplace_items')
-            .update({ is_active: isActive })
+            .update({ status })
             .eq('id', itemId);
 
         if (error) throw error;

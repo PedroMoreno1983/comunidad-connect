@@ -21,8 +21,15 @@ export interface SearchResultItem {
   price: number;
   category: string;
   image_url: string | null;
+  images?: string[];
   seller_id: string;
-  status: 'available' | 'sold';
+  status: 'available' | 'reserved' | 'sold';
+  allow_sale?: boolean;
+  allow_swap?: boolean;
+  swap_details?: string;
+  allow_barter?: boolean;
+  barter_details?: string;
+  payment_status?: 'none' | 'pending' | 'completed';
   created_at: string;
   /** Score final fusionado RRF (0–1) */
   score: number;

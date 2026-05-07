@@ -48,8 +48,11 @@ export async function POST(req: Request) {
                 if (error) throw error;
             } else if (type === 'MARKET') {
                 const { error } = await supabaseAdmin
-                    .from('marketplace')
-                    .update({ status: 'sold' })
+                    .from('marketplace_items')
+                    .update({
+                        status: 'sold',
+                        payment_status: 'completed',
+                    })
                     .eq('id', recordId);
 
                 if (error) throw error;
