@@ -8,16 +8,19 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
+type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
+
 export default function ProviderRegisterPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [step, setStep] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         // Basic Info
         name: '',
         email: '',
         phone: '',
-        category: 'plumbing' as const,
+        category: 'plumbing' as ProviderCategory,
 
         // Professional Info
         yearsExperience: '',
@@ -70,22 +73,23 @@ export default function ProviderRegisterPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
 
-        // Simple client-side mock submission for now
-        // In production, this would make an API call to create the provider
         const providerData = {
             name: formData.name,
             category: formData.category,
             contactPhone: formData.phone,
             email: formData.email,
             bio: formData.bio,
-            yearsExperience: parseInt(formData.yearsExperience),
+            yearsExperience: parseInt(formData.yearsExperience, 10) || 0,
             specialties: formData.specialties,
             certifications: formData.certifications,
             hourlyRate: parseFloat(formData.hourlyRate) || 0,
+            responseTime: formData.responseTime,
         };
 
         try {
+            setIsSubmitting(true);
             const response = await fetch('/api/providers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -104,7 +108,6 @@ export default function ProviderRegisterPage() {
                 variant: "success",
             });
 
-            // Redirect to the provider profile
             router.push(`/services/provider/${data.id}`);
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo completar el registro. Intenta nuevamente.";
@@ -113,16 +116,9 @@ export default function ProviderRegisterPage() {
                 description: errorMessage,
                 variant: "destructive",
             });
+        } finally {
+            setIsSubmitting(false);
         }
-    };
-
-    const getCategoryLabel = (cat: string) => {
-        const labels = {
-            plumbing: 'Gasfitería',
-            electrical: 'Electricidad',
-            locksmith: 'Cerrajería'
-        };
-        return labels[cat as keyof typeof labels] || cat;
     };
 
     return (
@@ -221,7 +217,7 @@ export default function ProviderRegisterPage() {
                             <select
                                 required
                                 value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value as ProviderCategory })}
                                 className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                             >
                                 <option value="plumbing">Gasfitería</option>
@@ -443,9 +439,9 @@ export default function ProviderRegisterPage() {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={formData.specialties.length === 0}
+                                disabled={formData.specialties.length === 0 || isSubmitting}
                             >
-                                Enviar Solicitud
+                                {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
                             </Button>
                         </div>
                     </div>
