@@ -19,7 +19,6 @@ export default function ProfilePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [isSendingReset, setIsSendingReset] = useState(false);
-    const [passwordResetSent, setPasswordResetSent] = useState(false);
     const [showEmailConfirm, setShowEmailConfirm] = useState(false);
 
     // WhatsApp
@@ -30,7 +29,6 @@ export default function ProfilePage() {
     // Unit / Dept
     const [unitNumber, setUnitNumber] = useState("");
     const [unitTower, setUnitTower] = useState("");
-    const [isSavingUnit, setIsSavingUnit] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,10 +191,9 @@ export default function ProfilePage() {
                 redirectTo: `${window.location.origin}/reset-password`
             });
             if (error) throw error;
-            setPasswordResetSent(true);
             setShowEmailConfirm(true);
             toast({ title: "Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "No se pudo enviar el email.", variant: "destructive" });
         } finally {
             setIsSendingReset(false);

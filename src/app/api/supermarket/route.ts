@@ -14,7 +14,7 @@ interface CartItemUI {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { message, previousItems = [] } = body;
+        const { message } = body;
 
         // Process message with the supermarket agent
         // The agent currently has a processMessage method that looks for products in the text
@@ -22,8 +22,6 @@ export async function POST(req: NextRequest) {
 
         // We use the agent to get suggested items, but since its interface might be limited
         // let's do a direct keyword search here too to ensure robustness for the frontend 
-        const normalizedText = message.toLowerCase();
-        
         // Find products from the catalog that match keywords in the message
         let newItems: CartItemUI[] = [];
         

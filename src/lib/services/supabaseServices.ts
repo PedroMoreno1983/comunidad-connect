@@ -1,7 +1,6 @@
 import { supabase } from '../supabase';
 import { 
-    Amenity, Booking, Announcement, Poll, ExpenseRecord, 
-    QRInvitation, VisitorLog, Package, ServiceRequest, SocialPost, SocialComment, ChatMessage, Unit, Conversation
+    Amenity, ChatMessage, Conversation
 } from '../types';
 
 // ==========================================
@@ -356,7 +355,7 @@ export const CondoFeeService = {
         return data || [];
     },
 
-    async markAsPaid(expenseId: string, paymentMethod: string = 'manual') {
+    async markAsPaid(expenseId: string) {
         const { error } = await supabase
             .from('expenses')
             .update({

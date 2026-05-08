@@ -59,7 +59,7 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                 {/* Header con foto */}
                 <div className="relative h-20 bg-elevated">
                     {provider.verified && (
-                        <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600">
+                        <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-md bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600">
                             <CheckCircle className="h-3 w-3" />
                             Verificado
                         </div>
@@ -121,7 +121,7 @@ export function ProviderCard({ provider, showCategory = false }: ProviderCardPro
                     </div>
 
                     {/* Disponibilidad */}
-                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full w-max ${availability.bg} ${availability.text}`}>
+                    <div className={`inline-flex w-max items-center gap-2 rounded-md px-3 py-1.5 ${availability.bg} ${availability.text}`}>
                         <span className={`h-2 w-2 rounded-full ${availability.dot} animate-pulse`}></span>
                         <span className="text-xs font-medium">{availability.label}</span>
                     </div>

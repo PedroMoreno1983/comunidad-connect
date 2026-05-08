@@ -1,6 +1,6 @@
 "use client";
 
-import { ChefHat, ShoppingCart, Users, ArrowRight, ExternalLink } from "lucide-react";
+import { ChefHat, ShoppingCart, Users, ArrowRight } from "lucide-react";
 import { RecipeSuggestion } from "@/lib/agentBrain";
 
 interface RecipeBubbleProps {

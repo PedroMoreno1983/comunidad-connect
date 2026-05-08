@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 /**
  * Recibe eventos de sensores (Shelly, Tuya, etc.) e invoca a CoCo IA

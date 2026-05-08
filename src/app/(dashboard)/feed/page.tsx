@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Calendar, Plus, Megaphone, ArrowRight, Loader2 } from "lucide-react";
+import { Bell, Info, AlertTriangle, Calendar, Plus, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
 import { Announcement } from "@/lib/types";

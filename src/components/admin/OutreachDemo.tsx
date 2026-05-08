@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, User, Building, Send, ChevronRight, Sparkles, Lock } from "lucide-react";
+import { Mail, User, Building, Send, Sparkles, Lock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";

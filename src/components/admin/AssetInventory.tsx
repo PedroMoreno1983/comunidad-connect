@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-    Activity, Shield, Settings, AlertTriangle,
-    CheckCircle2, Clock, MapPin, Wrench,
-    ChevronRight, MoreHorizontal, FlaskConical,
+    Activity, Settings,
+    Clock, MapPin,
+    ChevronRight,
     Zap, Droplets, ArrowUpRight, FileText,
     History, DollarSign, User
 } from "lucide-react";

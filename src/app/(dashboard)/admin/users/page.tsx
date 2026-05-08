@@ -62,6 +62,7 @@ export default function UsersPage() {
                     `)
                     .order('name');
 
+                if (error) throw error;
                 if (data) setUsers(data);
             } catch (err) {
                 console.error("Error fetching data:", err);

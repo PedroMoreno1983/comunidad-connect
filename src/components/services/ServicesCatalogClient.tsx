@@ -55,6 +55,11 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
     const featuredProviders = providers
         .filter(provider => provider.rating >= 4.5 || provider.verified)
         .slice(0, 6);
+    const verifiedCount = providers.filter(provider => provider.verified).length;
+    const availableCount = providers.filter(provider => provider.availability === "available").length;
+    const averageRating = providers.length
+        ? (providers.reduce((sum, provider) => sum + provider.rating, 0) / providers.length).toFixed(1)
+        : "0.0";
 
     const hasFilters = Boolean(query || category !== "all" || availability !== "all");
 
@@ -75,6 +80,21 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                     Conecta con profesionales verificados de confianza en tu comunidad
                 </p>
             </div>
+
+            <section className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                    <p className="text-2xl font-semibold cc-text-primary">{availableCount}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Disponibles hoy</p>
+                </div>
+                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                    <p className="text-2xl font-semibold cc-text-primary">{verifiedCount}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Verificados</p>
+                </div>
+                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                    <p className="text-2xl font-semibold cc-text-primary">{averageRating}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Calificacion promedio</p>
+                </div>
+            </section>
 
             <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">

@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    CheckCircle2, Clock, Users, ChevronRight,
-    BarChart3, Calendar, Info, Vote as VoteIcon
+    CheckCircle2, Clock, Vote as VoteIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Poll, PollOption } from "@/lib/types";
+import { Poll } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 
 interface PollCardProps {
@@ -18,7 +17,7 @@ interface PollCardProps {
     initialSelectedOption?: string | null;
 }
 
-export function PollCard({ poll, onVote, isAdmin, initialHasVoted = false, initialSelectedOption = null }: PollCardProps) {
+export function PollCard({ poll, onVote, initialHasVoted = false, initialSelectedOption = null }: PollCardProps) {
     const [selectedOption, setSelectedOption] = useState<string | null>(initialSelectedOption);
     const [hasVoted, setHasVoted] = useState(initialHasVoted);
     const { toast } = useToast();

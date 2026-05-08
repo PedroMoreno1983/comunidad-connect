@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check active session safely
         const checkSessionSafe = async () => {
             setLoading(true);
-            const controller = new AbortController();
             const timeoutId = setTimeout(() => {
                 setLoading(false);
             }, 8000);
@@ -78,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                 localStorage.removeItem(key);
                             }
                         }
-                    } catch (e) {
+                    } catch {
                         // ignore clear errors
                     }
                 }
@@ -207,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { error: new Error("Sistema configurado en modo DEMO. El registro real no está disponible.") };
             }
 
-            const { data, error } = await supabase.auth.signUp({
+            const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {

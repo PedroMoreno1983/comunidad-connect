@@ -133,7 +133,7 @@ export async function POST(request: Request) {
             if (!Array.isArray(parsedJson)) {
                 parsedJson = [parsedJson]; // Forzar Array si devolvió objeto
             }
-        } catch (parseError) {
+        } catch {
             console.error("Gemini no devolvió un JSON válido:", jsonString);
             throw new Error("La Inteligencia Artificial no pudo estructurar los datos correctamente. Intenta subir un archivo más limpio.");
         }

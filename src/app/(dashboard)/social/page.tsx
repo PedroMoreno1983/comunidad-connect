@@ -107,7 +107,7 @@ export default function SocialFeedPage() {
                 description: "Tu publicación ya está visible en el muro.",
                 variant: "success"
             });
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Hubo un problema al publicar.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
@@ -124,7 +124,7 @@ export default function SocialFeedPage() {
                 return p;
             }));
             await SocialService.likePost(postId);
-        } catch (error) {
+        } catch {
             // Revert on error
             setPosts(prev => prev.map((p) => {
                 if (p.id === postId) {
@@ -179,7 +179,7 @@ export default function SocialFeedPage() {
             setPosts(prev => prev.map((p) => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewCommentContent("");
 
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "No se pudo enviar el comentario", variant: "destructive" });
         }
     };

@@ -3,14 +3,13 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, AlertCircle, ShieldCheck, CreditCard, Building2, Loader2, ArrowLeft } from "lucide-react";
-import { useId, useState, Suspense, useEffect } from 'react';
+import { useId, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function MockPaymentContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const generatedRef = useId().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
 
     const ref = searchParams.get('ref') || `CC-${generatedRef}`;
@@ -30,7 +29,6 @@ function MockPaymentContent() {
 
     const handleSimulatePayment = async (success: boolean) => {
         setStatus('processing');
-        setLoading(true);
 
         // Timeout para dar tiempo a la animación de carga "Procesando pago seguro..."
         await new Promise(r => setTimeout(r, 2000));

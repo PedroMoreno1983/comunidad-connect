@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-    Mic, Send, Paperclip, MoreVertical, Phone, Video,
-    Smile, Plus, Check, CheckCheck, ChevronLeft, ShoppingCart
+    Mic, Send, MoreVertical, Phone, Video,
+    Smile, Plus, CheckCheck, ChevronLeft, ShoppingCart
 } from "lucide-react";
 import { AudioMessage } from "./AudioMessage";
 import { OrderPreviewBubble } from "./OrderPreviewBubble";
 import { RecipeBubble } from "./RecipeBubble";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { agent } from "@/lib/agentBrain"; // Importar el cerebro del agente
 import { getApiUrl } from "@/lib/config";
 import { useAuth } from "@/lib/authContext";

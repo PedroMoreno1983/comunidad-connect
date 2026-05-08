@@ -137,7 +137,7 @@ export default function ChatPage() {
                 });
             }
             setNewMessage("");
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "No se pudo enviar el mensaje", variant: "destructive" });
         } finally {
             setIsSending(false);

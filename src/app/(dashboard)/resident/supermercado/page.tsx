@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-    ShoppingBag, 
     Sparkles, 
     ListChecks, 
     ShoppingCart, 
@@ -14,7 +13,6 @@ import {
     Loader2, 
     ChefHat,
     UtensilsCrossed,
-    CalendarDays,
     ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -113,32 +111,30 @@ export default function SupermarketPage() {
 
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-10 px-4 sm:px-0">
-            {/* Hero Section Premium - Optimized */}
-            <section className="relative overflow-hidden rounded-[2.5rem] bg-brand-600 p-8 md:p-12 text-white shadow-xl">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+            <section className="relative overflow-hidden rounded-lg border border-subtle bg-slate-950 p-6 text-white shadow-sm md:p-8">
                 
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                     <div className="space-y-4">
                         <motion.div 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest"
+                            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
                         >
                             <Sparkles className="h-3 w-3" />
                             Nuevo: Smart Shopping
                         </motion.div>
-                        <h1 className="text-3xl md:text-5xl font-black leading-tight">
+                        <h1 className="text-3xl font-semibold leading-tight md:text-4xl">
                             Tus compras, <br /><span className="text-indigo-200">más inteligentes.</span>
                         </h1>
                     </div>
                     
                     {/* AI Input */}
-                    <div className="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/10">
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-5">
                         <div className="space-y-3">
                             <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">Pregúntale a CoCo</label>
                             <div className="relative">
                                 <textarea 
-                                    className="w-full bg-white/10 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all min-h-[80px] text-base"
+                                    className="min-h-[80px] w-full rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white placeholder:text-white/30 transition-all focus:outline-none focus:ring-1 focus:ring-white/20"
                                     placeholder="Ej: Necesito ingredientes para una cena keto..."
                                     value={aiInput}
                                     onChange={(e) => setAiInput(e.target.value)}
@@ -159,13 +155,13 @@ export default function SupermarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* List Management */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-surface rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-subtle">
+                    <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-2xl font-black cc-text-primary flex items-center gap-3">
+                            <h2 className="flex items-center gap-3 text-xl font-semibold cc-text-primary">
                                 <ListChecks className="text-brand-600" />
                                 Lista de Compras
                             </h2>
-                            <span className="px-4 py-1.5 bg-elevated rounded-full text-xs font-bold text-slate-500">
+                            <span className="rounded-md bg-elevated px-3 py-1.5 text-xs font-semibold text-slate-500">
                                 {list.length} artículos
                             </span>
                         </div>
@@ -173,11 +169,11 @@ export default function SupermarketPage() {
                         <form onSubmit={addItem} className="flex gap-3 mb-8">
                             <Input 
                                 placeholder="Añade un producto..."
-                                className="h-14 rounded-2xl bg-elevated/50 border-transparent focus:bg-white dark:focus:bg-slate-800 transition-all text-lg"
+                                className="h-12 rounded-lg border-subtle bg-elevated/50 text-sm transition-all focus:bg-white dark:focus:bg-slate-800"
                                 value={newItem}
                                 onChange={(e) => setNewItem(e.target.value)}
                             />
-                            <Button type="submit" className="h-14 w-14 rounded-2xl bg-brand-600 hover:bg-brand-700 p-0 shadow-lg shadow-indigo-600/20">
+                            <Button type="submit" className="h-12 w-12 rounded-lg bg-brand-600 p-0 hover:bg-brand-700">
                                 <Plus className="h-6 w-6 text-white" />
                             </Button>
                         </form>
@@ -190,7 +186,7 @@ export default function SupermarketPage() {
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
-                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                        className={`flex items-center justify-between rounded-lg border p-4 transition-all ${
                                             item.checked 
                                             ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 opacity-60' 
                                             : 'bg-surface border-subtle hover:border-indigo-200 dark:hover:border-indigo-900/40'
@@ -217,7 +213,7 @@ export default function SupermarketPage() {
                                                             </span>
                                                         )}
                                                         {item.store && (
-                                                            <span className="text-[10px] px-2 py-0.5 bg-elevated text-slate-500 rounded-full font-bold uppercase tracking-wider">
+                                                            <span className="rounded-md bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                                                 {item.store}
                                                             </span>
                                                         )}
@@ -244,7 +240,7 @@ export default function SupermarketPage() {
 
                 {/* AI Planner Sidebar */}
                 <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white shadow-2xl">
+                    <div className="rounded-lg bg-slate-950 p-6 text-white shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
                             <ChefHat className="text-brand-400" />
                             <h3 className="text-xl font-black">Planes de CoCo</h3>
@@ -256,7 +252,7 @@ export default function SupermarketPage() {
                                     <button 
                                         key={idx}
                                         onClick={() => applyAiPlan(plan)}
-                                        className="w-full p-5 bg-white/5 border border-white/10 rounded-3xl hover:bg-white/10 transition-all text-left group"
+                                        className="group w-full rounded-lg border border-white/10 bg-white/5 p-4 text-left transition-colors hover:bg-white/10"
                                     >
                                         <div className="flex items-center justify-between mb-2">
                                             <PlanIcon className="h-6 w-6 text-brand-400" />
@@ -271,9 +267,9 @@ export default function SupermarketPage() {
                     </div>
 
                     {/* Checkout Card - Target: Lider/Jumbo Chile */}
-                    <div className="bg-surface rounded-[2.5rem] p-8 border border-subtle shadow-xl">
+                    <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-8">
-                            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                                 <ShoppingCart className="h-6 w-6 text-emerald-600" />
                             </div>
                             <Button 
@@ -286,12 +282,12 @@ export default function SupermarketPage() {
                             </Button>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-3 p-3 rounded-2xl bg-elevated/50">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200" />
+                            <div className="flex items-center gap-3 rounded-lg bg-elevated/50 p-3">
+                                <div className="h-8 w-8 rounded-md border border-blue-200 bg-blue-100" />
                                 <span className="text-sm font-bold cc-text-secondary">Jumbo Delivery</span>
                             </div>
-                            <div className="flex items-center gap-3 p-3 rounded-2xl border border-subtle opacity-40">
-                                <div className="w-8 h-8 rounded-full bg-orange-100 border border-orange-200" />
+                            <div className="flex items-center gap-3 rounded-lg border border-subtle p-3 opacity-40">
+                                <div className="h-8 w-8 rounded-md border border-orange-200 bg-orange-100" />
                                 <span className="text-sm font-bold cc-text-secondary">Líder App</span>
                             </div>
                         </div>
