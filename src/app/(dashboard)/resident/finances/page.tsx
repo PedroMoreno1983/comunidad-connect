@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -39,19 +39,11 @@ export default function FinancesPage() {
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (searchParams.get('status') === 'success') {
-            toast({
-                title: "Pago recibido",
-                description: "Tu pago se esta procesando. El estado se actualizara en unos momentos.",
-                variant: "success"
-            });
+    const loadFinances = useCallback(async () => {
+        if (!user) {
+            setLoading(false);
+            return;
         }
-        loadFinances();
-    }, [user, searchParams]);
-
-    const loadFinances = async () => {
-        if (!user) return;
         try {
             setLoading(true);
             if (user.email.toLowerCase().endsWith("@demo.com")) {
@@ -95,7 +87,18 @@ export default function FinancesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast, user]);
+
+    useEffect(() => {
+        if (searchParams.get('status') === 'success') {
+            toast({
+                title: "Pago recibido",
+                description: "Tu pago se esta procesando. El estado se actualizara en unos momentos.",
+                variant: "success"
+            });
+        }
+        loadFinances();
+    }, [loadFinances, searchParams, toast]);
 
     const handlePayHaulmer = async (expense: Expense) => {
         setProcessingId(expense.id);

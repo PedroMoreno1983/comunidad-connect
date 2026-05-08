@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -48,11 +48,7 @@ export default function UnitsPage() {
     const [selectedResident, setSelectedResident] = useState<string>("");
     const [assigning, setAssigning] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const unitsData = await WaterService.getUnits();
@@ -75,7 +71,11 @@ export default function UnitsPage() {
         }
 
         setLoading(false);
-    }
+    }, [toast]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     async function handleCreateUnit(e: React.FormEvent) {
         e.preventDefault();

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Profile avatars are user-uploaded Supabase assets and local previews. */
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/authContext";
@@ -37,6 +38,8 @@ export default function ProfilePage() {
             setFullName(user.name || "");
             loadProfile();
         }
+        // Profile hydration is intentionally keyed by authenticated user id.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id]);
 
     const loadProfile = async () => {

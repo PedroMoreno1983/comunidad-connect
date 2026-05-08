@@ -72,7 +72,7 @@ export function PollManager() {
             }
         };
         loadPolls();
-    }, []);
+    }, [user?.email]);
 
     const handleCreatePoll = async (e: React.FormEvent) => {
         e.preventDefault();

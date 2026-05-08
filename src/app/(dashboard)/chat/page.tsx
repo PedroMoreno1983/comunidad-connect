@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
@@ -47,12 +48,16 @@ export default function ChatPage() {
             loadNeighbors();
         }
         return () => { subscriptionRef.current?.unsubscribe(); };
+        // Chat subscriptions are intentionally rebound only when the mode changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
 
     // Load DMs when activePeer changes
     useEffect(() => {
         if (!activePeer || !user) return;
         loadDirectMessages(activePeer.peerId);
+        // Direct messages are intentionally loaded when the selected peer changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activePeer]);
 
     const loadGlobalMessages = async () => {

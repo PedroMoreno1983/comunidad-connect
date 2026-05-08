@@ -109,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         return () => subscription.unsubscribe();
+        // Auth bootstrap is intentionally registered once; Supabase listener handles subsequent state changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Fetch real profile from public.profiles table (Source of Truth)

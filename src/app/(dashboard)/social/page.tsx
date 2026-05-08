@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Social feed media can be Supabase URLs, user avatars, blob previews or inline uploads. */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";

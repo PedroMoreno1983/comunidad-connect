@@ -277,6 +277,8 @@ export function Sidebar() {
                                         <Link
                                             href={link.href}
                                             onClick={() => setIsMobileOpen(false)}
+                                            data-sidebar-link={link.href}
+                                            data-active={isActive ? "true" : "false"}
                                             className={clsx(
                                                 "group relative flex items-center rounded-md border px-3 py-2 text-sm transition-colors duration-150",
                                                 isActive
