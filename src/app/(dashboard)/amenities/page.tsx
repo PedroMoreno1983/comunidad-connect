@@ -259,6 +259,26 @@ export default function AmenitiesPage() {
                 <ModuleStat label="Horarios diarios" value={timeSlots.length} icon={<Clock className="h-4 w-4" />} />
             </div>
 
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { title: "Elige espacio", description: "Compara capacidad, costo y proxima disponibilidad antes de reservar.", icon: <Calendar className="h-4 w-4" /> },
+                        { title: "Confirma horario", description: "Selecciona una fecha futura y el sistema bloquea horarios ya tomados.", icon: <Clock className="h-4 w-4" /> },
+                        { title: "Llega con registro", description: "Tu reserva queda disponible para residente, administracion y conserjeria.", icon: <Users className="h-4 w-4" /> },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
             {/* Amenities Grid */}
             <ErrorBoundary name="Espacios Comunes">
                 {loading ? (
