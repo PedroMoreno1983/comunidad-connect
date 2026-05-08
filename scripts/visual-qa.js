@@ -5,7 +5,14 @@ const path = require("path");
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
 const outDir = process.env.QA_OUT_DIR || path.join(process.cwd(), ".tmp", "visual-qa");
 
-const routes = [
+const publicRoutes = [
+  "/",
+  "/login",
+  "/signup",
+  "/admin-onboarding",
+];
+
+const appRoutes = [
   "/home",
   "/comunicaciones",
   "/chat",
@@ -118,10 +125,26 @@ async function runViewport(browser, viewportName, viewport) {
   });
   page.on("pageerror", (error) => consoleErrors.push(error.message.slice(0, 240)));
 
+  const results = [];
+  for (const route of publicRoutes) {
+    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 30000 }).catch(async () => {
+      await page.waitForTimeout(2000);
+    });
+    await page.waitForTimeout(500);
+
+    const screenshot = path.join(outDir, safeName(route, viewportName));
+    await page.screenshot({ path: screenshot, fullPage: false });
+
+    results.push({
+      route,
+      screenshot,
+      metrics: await collectMetrics(page),
+    });
+  }
+
   await loginAsAdmin(page);
 
-  const results = [];
-  for (const route of routes) {
+  for (const route of appRoutes) {
     await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 30000 }).catch(async () => {
       await page.waitForTimeout(2000);
     });

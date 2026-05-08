@@ -76,7 +76,7 @@ export function WhatsNew() {
                                     key={idx}
                                     href={item.link}
                                     onClick={close}
-                                    className="flex items-start gap-3 group cursor-pointer"
+                                    className="group flex cursor-pointer items-start gap-3 overflow-hidden"
                                 >
                                     <div className={`p-2 rounded-lg flex-shrink-0 ${item.bg}`}>
                                         <item.icon className={`h-4 w-4 ${item.color}`} />
@@ -89,7 +89,7 @@ export function WhatsNew() {
                                             {item.desc}
                                         </p>
                                     </div>
-                                    <ChevronRight className="h-3 w-3 text-slate-300 group-hover:translate-x-1 transition-all mt-1" />
+                                    <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-slate-300 transition-colors group-hover:text-brand-500" />
                                 </Link>
                             ))}
                         </div>

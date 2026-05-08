@@ -115,7 +115,7 @@ function AppMockup() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-[#1A1512] dark:text-[#f5f0ec] leading-tight">{card.label}</p>
-                <p className="text-xs text-[#7a706a] mt-0.5 leading-relaxed truncate">{card.sub}</p>
+                <p className="text-xs text-[#7a706a] mt-0.5 leading-relaxed break-words">{card.sub}</p>
               </div>
               <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${card.tagColor}`}>{card.tag}</span>
             </motion.div>
