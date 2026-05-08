@@ -55,14 +55,14 @@ export function WhatsNew() {
                     initial={{ opacity: 0, x: 100 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 100 }}
-                    className="fixed bottom-6 right-24 z-[100] w-80"
+                    className="fixed bottom-24 left-4 right-4 z-[100] sm:bottom-6 sm:left-auto sm:right-24 sm:w-80"
                 >
-                    <div className="bg-surface rounded-xl shadow-xl border border-subtle overflow-hidden">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle overflow-hidden">
                         {/* Header */}
                         <div className="p-4 bg-slate-950 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-white animate-pulse" />
-                                <span className="font-bold text-white text-sm">¡Novedades en v2.0 Pro!</span>
+                                <Sparkles className="h-5 w-5 text-white" />
+                                <span className="text-sm font-semibold text-white">Novedades v2.0 Pro</span>
                             </div>
                             <button onClick={close} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
                                 <X className="h-4 w-4 text-white" />
@@ -81,11 +81,11 @@ export function WhatsNew() {
                                     <div className={`p-2 rounded-lg flex-shrink-0 ${item.bg}`}>
                                         <item.icon className={`h-4 w-4 ${item.color}`} />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-black cc-text-primary group-hover:text-brand-600 transition-colors">
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="break-words text-xs font-semibold cc-text-primary transition-colors group-hover:text-brand-600">
                                             {item.title}
                                         </h4>
-                                        <p className="text-[10px] cc-text-secondary leading-relaxed">
+                                        <p className="break-words text-[10px] leading-relaxed cc-text-secondary">
                                             {item.desc}
                                         </p>
                                     </div>

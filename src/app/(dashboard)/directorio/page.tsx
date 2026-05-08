@@ -246,7 +246,7 @@ export default function DirectoryPage() {
                                             </div>
 
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="truncate font-semibold cc-text-primary text-base leading-tight" title={neighbor.name || 'Vecino'}>
+                                                <h3 className="break-all font-semibold cc-text-primary text-base leading-tight" title={neighbor.name || 'Vecino'}>
                                                     {neighbor.name || 'Vecino'}
                                                 </h3>
                                                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -261,7 +261,7 @@ export default function DirectoryPage() {
                                                     )}
                                                 </div>
                                                 {neighbor.email && neighbor.email !== neighbor.name && (
-                                                    <p className="mt-2 truncate text-xs font-medium cc-text-tertiary" title={neighbor.email}>
+                                                    <p className="mt-2 break-all text-xs font-medium cc-text-tertiary" title={neighbor.email}>
                                                         {neighbor.email}
                                                     </p>
                                                 )}

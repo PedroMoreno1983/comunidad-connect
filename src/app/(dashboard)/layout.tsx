@@ -16,18 +16,18 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const { isDemoUser, demoMessage } = useDemoRestrictions();
 
     useEffect(() => {
-        if (!user) {
+        if (!loading && !user) {
             router.push('/');
         }
-    }, [user, router]);
+    }, [loading, user, router]);
 
-    if (!user) return null;
+    if (loading || !user) return null;
 
     return (
         <div className="cc-dashboard flex h-screen bg-transparent overflow-hidden relative">
@@ -38,14 +38,14 @@ export default function DashboardLayout({
             <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
                 {/* Demo Banner */}
                 {isDemoUser && (
-                    <div className="sticky top-0 z-50 flex items-center justify-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+                    <div className="sticky top-0 z-50 flex min-h-12 items-center justify-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-2 pl-20 text-xs font-semibold text-white lg:min-h-0 lg:pl-4">
                         <AlertCircle className="h-4 w-4 flex-shrink-0 text-brand-300" />
                         <span className="text-center">{demoMessage}</span>
                     </div>
                 )}
                 
                 {/* Main content with page transition */}
-                <div className="relative flex-1 p-4 pb-28 lg:p-6 lg:pb-28">
+                <div className="relative flex-1 p-4 pb-28 lg:p-6 lg:pb-28 lg:pr-28">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}
