@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import { useToast } from "@/components/ui/Toast";
 import confetti from "canvas-confetti";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
     id: string;
@@ -43,6 +45,27 @@ const QUICK = [
     { label: "¿Cómo envío un mensaje?", icon: Hash },
     { label: "Muéstrame el tour", icon: Sparkles },
 ];
+
+function CoCoMarkdown({ text }: { text: string }) {
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+                p: ({ children }) => <p className="text-sm leading-relaxed">{children}</p>,
+                strong: ({ children }) => <strong className="font-black text-current">{children}</strong>,
+                ul: ({ children }) => <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4 text-sm leading-relaxed">{children}</ol>,
+                a: ({ children, href }) => (
+                    <a href={href} target="_blank" rel="noreferrer" className="font-bold underline decoration-current/30 underline-offset-4">
+                        {children}
+                    </a>
+                ),
+            }}
+        >
+            {text}
+        </ReactMarkdown>
+    );
+}
 
 export default function CoCo() {
     const { user, logout } = useAuth();
@@ -199,8 +222,6 @@ export default function CoCo() {
         } finally { setLoading(false); }
     };
 
-    const fmt = (t: string) => t.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
-
     return (
         <div
             className="fixed right-4 top-16 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 sm:top-auto"
@@ -248,8 +269,9 @@ export default function CoCo() {
                                                     ? "bg-brand-500 text-white"
                                                     : "bg-surface cc-text-primary shadow-sm border border-subtle"
                                                     }`}
-                                                dangerouslySetInnerHTML={{ __html: fmt(msg.text) }}
-                                            />
+                                            >
+                                                <CoCoMarkdown text={msg.text} />
+                                            </div>
                                         )}
                                         {msg.role === "assistant" && msg.case?.created && (
                                             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
