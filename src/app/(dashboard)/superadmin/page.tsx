@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabase";
@@ -42,19 +42,7 @@ export default function SuperAdminDashboard() {
     // (In production, use a secure backend check or a specific superadmin role)
     const isSuperAdmin = user?.email === 'pedromoreno1983@gmail.com' || user?.email?.includes('comunidadconnect');
 
-    useEffect(() => {
-        if (!authLoading && !isSuperAdmin) {
-            toast({ title: "Acceso Denegado", description: "No tienes permisos de Super Administrador", variant: "destructive" });
-            router.push('/home');
-            return;
-        }
-
-        if (isSuperAdmin) {
-            fetchData();
-        }
-    }, [authLoading, isSuperAdmin]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [commRes, tiersRes] = await Promise.all([
@@ -73,7 +61,19 @@ export default function SuperAdminDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        if (!authLoading && !isSuperAdmin) {
+            toast({ title: "Acceso Denegado", description: "No tienes permisos de Super Administrador", variant: "destructive" });
+            router.push('/home');
+            return;
+        }
+
+        if (isSuperAdmin) {
+            fetchData();
+        }
+    }, [authLoading, fetchData, isSuperAdmin, router, toast]);
 
     const handleTierChange = async (communityId: string, newTierId: string) => {
         try {

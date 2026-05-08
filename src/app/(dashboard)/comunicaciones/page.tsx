@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- This module renders user avatars, post previews, blob previews and Supabase-hosted community media. */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
@@ -442,9 +443,15 @@ function MensajesTab() {
         if (mode === "global") loadGlobalMessages();
         else { loadConversations(); loadNeighbors(); }
         return () => { subscriptionRef.current?.unsubscribe(); };
+        // Conversation subscriptions are intentionally rebound only when the mode changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
 
-    useEffect(() => { if (activePeer && user) loadDirectMessages(activePeer.peerId); }, [activePeer]);
+    useEffect(() => {
+        if (activePeer && user) loadDirectMessages(activePeer.peerId);
+        // Direct messages are intentionally loaded when the selected peer changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activePeer]);
 
     const loadGlobalMessages = async () => {
         setIsLoading(true); setMessages([]); subscriptionRef.current?.unsubscribe();

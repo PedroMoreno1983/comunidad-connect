@@ -51,6 +51,8 @@ export default function VotacionesPage() {
         if (user) {
             loadPolls();
         }
+        // Polls are refreshed when the authenticated user identity changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const mapSupabasePoll = (pollData: any, userVotesArray: { poll_id: string; option_id: string }[]): Poll => {
