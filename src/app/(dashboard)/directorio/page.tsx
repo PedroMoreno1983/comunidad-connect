@@ -209,7 +209,7 @@ export default function DirectoryPage() {
             ) : filtered.length === 0 ? (
                 <div className="text-center py-20 space-y-3">
                     <Users className="h-14 w-14 text-slate-200 dark:text-slate-700 mx-auto" />
-                    <h3 className="text-lg font-black text-slate-400">No se encontraron vecinos</h3>
+                    <h3 className="text-lg font-semibold text-slate-400">No se encontraron vecinos</h3>
                     <p className="text-sm text-slate-400">Intenta con otro nombre o depto.</p>
                 </div>
             ) : (
@@ -239,14 +239,14 @@ export default function DirectoryPage() {
                                                 {neighbor.avatar_url ? (
                                                     <Image src={neighbor.avatar_url} alt={neighbor.name} width={48} height={48} className="h-full w-full object-cover" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-lg font-black text-white">
+                                                    <div className="w-full h-full flex items-center justify-center text-lg font-semibold text-white">
                                                         {neighbor.name?.charAt(0)}
                                                     </div>
                                                 )}
                                             </div>
 
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="truncate font-black cc-text-primary text-base leading-tight" title={neighbor.name || 'Vecino'}>
+                                                <h3 className="truncate font-semibold cc-text-primary text-base leading-tight" title={neighbor.name || 'Vecino'}>
                                                     {neighbor.name || 'Vecino'}
                                                 </h3>
                                                 <div className="mt-2 flex flex-wrap items-center gap-2">

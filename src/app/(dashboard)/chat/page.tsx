@@ -152,12 +152,12 @@ export default function ChatPage() {
     const chatSubtitle = mode === 'global' ? 'Toda la comunidad' : (activePeer ? '1‑a‑1 privado' : 'Selecciona un vecino');
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex shadow-xl shadow-slate-200/50 dark:shadow-none border border-subtle rounded-[2.5rem] bg-surface overflow-hidden">
+        <div className="h-[calc(100vh-8rem)] flex shadow-sm shadow-slate-200/50 dark:shadow-none border border-subtle rounded-lg bg-surface overflow-hidden">
 
             {/* ===== LEFT SIDEBAR ===== */}
             <div className="hidden lg:flex flex-col w-80 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="p-6 pb-3">
-                    <h2 className="text-xl font-black cc-text-primary flex items-center gap-2">
+                    <h2 className="text-xl font-semibold cc-text-primary flex items-center gap-2">
                         <MessageCircle className="h-6 w-6 text-brand-500" />
                         Mensajes
                     </h2>
@@ -225,7 +225,7 @@ export default function ChatPage() {
                                                 {conv.peerProfile?.avatar_url ? (
                                                     <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-slate-500">
+                                                    <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-slate-500">
                                                         {conv.peerProfile?.name?.charAt(0) || '?'}
                                                     </div>
                                                 )}
@@ -259,7 +259,7 @@ export default function ChatPage() {
                                             {neighbor.avatar_url ? (
                                                 <img src={neighbor.avatar_url} alt="av" className="w-full h-full object-cover" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-white">
+                                                <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-white">
                                                     {neighbor.name?.charAt(0) || '?'}
                                                 </div>
                                             )}
@@ -288,7 +288,7 @@ export default function ChatPage() {
                             {mode === 'global' ? <Hash className="h-5 w-5 text-white" /> : <MessageCircle className="h-5 w-5 text-white" />}
                         </div>
                         <div>
-                            <h3 className="font-black text-lg cc-text-primary">{chatTitle}</h3>
+                            <h3 className="font-semibold text-lg cc-text-primary">{chatTitle}</h3>
                             <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
                                 <Users className="h-3 w-3" /> {chatSubtitle}
                             </p>
@@ -299,10 +299,10 @@ export default function ChatPage() {
                 {/* Empty state for DM mode without a selected peer */}
                 {mode === 'direct' && !activePeer ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-                        <div className="p-6 bg-role-admin-bg rounded-3xl mb-2">
+                        <div className="p-6 bg-role-admin-bg rounded-lg mb-2">
                             <MessageCircle className="h-14 w-14 text-brand-400" />
                         </div>
-                        <h3 className="text-xl font-black cc-text-primary">Mensajes Directos</h3>
+                        <h3 className="text-xl font-semibold cc-text-primary">Mensajes Directos</h3>
                         <p className="text-sm font-medium text-slate-400 max-w-xs">
                             Selecciona un vecino del panel izquierdo para iniciar una conversación privada.
                         </p>
@@ -343,13 +343,13 @@ export default function ChatPage() {
                                                             {showAvatar ? (
                                                                 msg.profiles?.avatar_url
                                                                     ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
-                                                                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{msg.profiles?.name?.charAt(0) || '?'}</div>
+                                                                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{msg.profiles?.name?.charAt(0) || '?'}</div>
                                                             ) : null}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
                                                         {!isMe && showAvatar && (
-                                                            <span className="text-[11px] font-black text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>
+                                                            <span className="text-[11px] font-semibold text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>
                                                         )}
                                                         <div className={clsx(
                                                             "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",

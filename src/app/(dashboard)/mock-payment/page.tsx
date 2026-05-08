@@ -79,7 +79,7 @@ function MockPaymentContent() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/80 dark:border-slate-800 rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden"
+                className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/80 dark:border-slate-800 rounded-lg shadow-sm relative z-10 overflow-hidden"
             >
                 {/* Columna Izquierda: Detalle del Pago */}
                 <div className="p-8 md:p-12 lg:pr-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-subtle">
@@ -92,11 +92,11 @@ function MockPaymentContent() {
                             <div className="p-3 bg-role-admin-bg rounded-2xl">
                                 <Building2 className="w-6 h-6 text-role-admin-fg" />
                             </div>
-                            <h2 className="text-xl font-black cc-text-primary">ComunidadConnect</h2>
+                            <h2 className="text-xl font-semibold cc-text-primary">ComunidadConnect</h2>
                         </div>
 
                         <p className="text-sm font-bold cc-text-secondary uppercase tracking-widest mb-2">Total a Pagar</p>
-                        <div className="text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 tracking-tighter mb-8">
+                        <div className="text-5xl lg:text-6xl font-semibold text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 tracking-tighter mb-8">
                             ${Number(amount).toLocaleString('es-CL')}
                         </div>
 
@@ -141,20 +141,20 @@ function MockPaymentContent() {
                                     <div className="inline-flex items-center justify-center p-3 bg-[#1b4382]/10 rounded-2xl mb-4">
                                         <ShieldCheck className="w-8 h-8 text-[#1b4382] dark:text-blue-400" />
                                     </div>
-                                    <h3 className="text-2xl font-black cc-text-primary">Haulmer Sandbox</h3>
+                                    <h3 className="text-2xl font-semibold cc-text-primary">Haulmer Sandbox</h3>
                                     <p className="text-sm text-slate-500 font-medium mt-1">Simula una transacción segura</p>
                                 </div>
 
                                 {/* Tarjeta 3D interactiva */}
                                 <motion.div
-                                    className="w-full h-48 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-2xl shadow-2xl p-6 text-white mb-10 relative overflow-hidden"
+                                    className="w-full h-48 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-2xl shadow-sm p-6 text-white mb-10 relative overflow-hidden"
                                     animate={{ rotateX: mousePos.y, rotateY: mousePos.x }}
                                     transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.5 }}
                                 >
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl translate-x-10 -translate-y-10" />
                                     <div className="flex justify-between items-center mb-10 relative z-10">
                                         <CreditCard className="w-8 h-8 opacity-80" />
-                                        <div className="text-xs font-black uppercase tracking-widest opacity-60">Mock Card</div>
+                                        <div className="text-xs font-semibold uppercase tracking-widest opacity-60">Mock Card</div>
                                     </div>
                                     <div className="text-xl font-mono tracking-[0.2em] opacity-90 mb-2 relative z-10">
                                         •••• •••• •••• 4242
@@ -194,7 +194,7 @@ function MockPaymentContent() {
                                     <div className="absolute inset-0 bg-[#1b4382]/20 blur-xl rounded-full animate-pulse" />
                                     <Loader2 className="w-16 h-16 text-[#1b4382] dark:text-blue-400 animate-spin relative z-10" />
                                 </div>
-                                <h3 className="text-xl font-black cc-text-primary mt-8 mb-2">Procesando Pago Seguro...</h3>
+                                <h3 className="text-xl font-semibold cc-text-primary mt-8 mb-2">Procesando Pago Seguro...</h3>
                                 <p className="text-slate-500 font-medium">Conectando con Haulmer via API</p>
                             </motion.div>
                         )}
@@ -207,10 +207,10 @@ function MockPaymentContent() {
                                 transition={{ type: "spring", stiffness: 150, damping: 15 }}
                                 className="flex flex-col items-center justify-center h-full min-h-[400px] text-emerald-500"
                             >
-                                <div className="w-24 h-24 bg-success-bg rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/20">
+                                <div className="w-24 h-24 bg-success-bg rounded-full flex items-center justify-center mb-6 shadow-sm shadow-emerald-500/20">
                                     <CheckCircle2 className="w-12 h-12" />
                                 </div>
-                                <h3 className="text-3xl font-black cc-text-primary mb-2">¡Pago Aprobado!</h3>
+                                <h3 className="text-3xl font-semibold cc-text-primary mb-2">¡Pago Aprobado!</h3>
                                 <p className="text-slate-500 font-bold">Redirigiendo de vuelta a la comunidad...</p>
                             </motion.div>
                         )}
@@ -223,10 +223,10 @@ function MockPaymentContent() {
                                 transition={{ type: "spring", stiffness: 150, damping: 15 }}
                                 className="flex flex-col items-center justify-center h-full min-h-[400px] text-rose-500"
                             >
-                                <div className="w-24 h-24 bg-rose-100 dark:bg-rose-500/20 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-rose-500/20">
+                                <div className="w-24 h-24 bg-rose-100 dark:bg-rose-500/20 rounded-full flex items-center justify-center mb-6 shadow-sm shadow-rose-500/20">
                                     <AlertCircle className="w-12 h-12" />
                                 </div>
-                                <h3 className="text-3xl font-black cc-text-primary mb-2">Pago Rechazado</h3>
+                                <h3 className="text-3xl font-semibold cc-text-primary mb-2">Pago Rechazado</h3>
                                 <p className="text-slate-500 font-bold">La tarjeta fue declinada en el ambiente local</p>
                             </motion.div>
                         )}

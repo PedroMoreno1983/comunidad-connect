@@ -98,14 +98,14 @@ export function AdminReservations() {
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-2xl font-black cc-text-primary flex items-center gap-3">
+                    <h3 className="text-2xl font-semibold cc-text-primary flex items-center gap-3">
                         <CalendarIcon className="h-6 w-6 text-rose-500" />
                         Aprobación de Reservas
                     </h3>
                     <p className="text-sm font-medium text-slate-500 mt-1">Gestión de quinchos, salones y espacios comúnes.</p>
                 </div>
                 {pendingCount > 0 && (
-                    <div className="px-4 py-2 bg-warning-bg text-warning-fg rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border border-amber-100 dark:border-amber-500/20 shadow-xl shadow-amber-500/10">
+                    <div className="px-4 py-2 bg-warning-bg text-warning-fg rounded-2xl text-xs font-semibold uppercase tracking-widest flex items-center gap-2 border border-amber-100 dark:border-amber-500/20 shadow-sm shadow-amber-500/10">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -115,12 +115,12 @@ export function AdminReservations() {
                 )}
             </div>
 
-            <div className="bg-surface rounded-[3rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden">
+            <div className="bg-surface rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none overflow-hidden">
                 <div className="divide-y divide-slate-50 dark:divide-slate-800">
                     {isLoading && <div className="p-10 text-center text-slate-500 font-bold">Cargando solicitudes...</div>}
                     {!isLoading && bookings.length === 0 && (
                         <div className="p-16 text-center space-y-4 flex flex-col items-center justify-center">
-                            <div className="w-20 h-20 bg-elevated rounded-[2rem] flex items-center justify-center text-slate-300">
+                            <div className="w-20 h-20 bg-elevated rounded-lg flex items-center justify-center text-slate-300">
                                 <Building className="h-10 w-10" />
                             </div>
                             <p className="text-slate-500 font-bold italic max-w-[200px]">No hay reservas solicitadas por el momento.</p>
@@ -140,12 +140,12 @@ export function AdminReservations() {
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3">
-                                        <h4 className="text-xl font-black cc-text-primary">
+                                        <h4 className="text-xl font-semibold cc-text-primary">
                                             {amenity?.name || 'Espacio Desconocido'}
                                         </h4>
-                                        {booking.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-wider rounded-md">Pendiente</span>}
-                                        {booking.status === 'confirmed' && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider rounded-md">Aprobado</span>}
-                                        {booking.status === 'cancelled' && <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-black uppercase tracking-wider rounded-md">Rechazado</span>}
+                                        {booking.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-semibold uppercase tracking-wider rounded-md">Pendiente</span>}
+                                        {booking.status === 'confirmed' && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-semibold uppercase tracking-wider rounded-md">Aprobado</span>}
+                                        {booking.status === 'cancelled' && <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-semibold uppercase tracking-wider rounded-md">Rechazado</span>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
                                         <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
@@ -168,7 +168,7 @@ export function AdminReservations() {
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => handleUpdateStatus(booking.id, 'confirmed')}
-                                        className="h-12 px-6 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500 rounded-2xl font-black text-sm flex items-center gap-2 transition-all active:scale-95"
+                                        className="h-12 px-6 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500 rounded-2xl font-semibold text-sm flex items-center gap-2 transition-all active:scale-95"
                                     >
                                         <Check className="h-5 w-5" /> Aprobar
                                     </button>
@@ -182,7 +182,7 @@ export function AdminReservations() {
                                 </div>
                             ) : (
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                                         Solicitado el {formatDate(booking.created_at)}
                                     </p>
                                 </div>

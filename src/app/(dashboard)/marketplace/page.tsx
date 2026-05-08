@@ -386,7 +386,7 @@ export default function MarketplacePage() {
                                         Publicar artículo
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="overflow-hidden rounded-lg border-subtle bg-surface p-0 shadow-xl sm:max-w-[550px]">
+                                <DialogContent className="overflow-hidden rounded-lg border-subtle bg-surface p-0 shadow-sm sm:max-w-[550px]">
                                     <div className="max-h-[85vh] space-y-7 overflow-y-auto p-6 md:p-8">
                                         <DialogHeader className="space-y-3">
                                             <DialogTitle className="text-2xl font-semibold cc-text-primary">Publicar producto</DialogTitle>
@@ -398,7 +398,7 @@ export default function MarketplacePage() {
                                         <form onSubmit={handleAddItem} className="space-y-7">
                                             {/* Fotos */}
                                             <div className="space-y-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Fotos del Producto</label>
+                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Fotos del Producto</label>
                                                 <div className="grid grid-cols-4 gap-4">
                                                     {previewUrls.map((url, i) => (
                                                         <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-subtle bg-elevated">
@@ -428,7 +428,7 @@ export default function MarketplacePage() {
                                             {/* Básicos */}
                                             <div className="space-y-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Título del Anuncio</label>
+                                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Título del Anuncio</label>
                                                     <Input
                                                         placeholder="Ej: Bicicleta de Montaña Trek"
                                                         className="h-12 rounded-lg border-subtle bg-surface text-sm font-semibold focus:ring-brand-500/20"
@@ -440,7 +440,7 @@ export default function MarketplacePage() {
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
+                                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
                                                         <select
                                                             className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                                             value={newItem.category}
@@ -453,7 +453,7 @@ export default function MarketplacePage() {
                                                         </select>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Estado General</label>
+                                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Estado General</label>
                                                         <select className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                                             <option>Nuevo</option>
                                                             <option>Como Nuevo</option>
@@ -466,7 +466,7 @@ export default function MarketplacePage() {
 
                                             {/* Modalidades */}
                                             <div className="space-y-6">
-                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Opciones Comerciales</h4>
+                                                <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Opciones Comerciales</h4>
 
                                                 <div className="space-y-4">
                                                     {/* Opción Venta */}
@@ -477,7 +477,7 @@ export default function MarketplacePage() {
                                                                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Tag className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black cc-text-primary">Venta Directa</span>
+                                                                <span className="font-semibold cc-text-primary">Venta Directa</span>
                                                             </div>
                                                             <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-subtle'}`}>
                                                                 {newItem.allowSale && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -505,7 +505,7 @@ export default function MarketplacePage() {
                                                                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Repeat className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black cc-text-primary">Permuta</span>
+                                                                <span className="font-semibold cc-text-primary">Permuta</span>
                                                             </div>
                                                             <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 border-purple-600' : 'border-subtle'}`}>
                                                                 {newItem.allowSwap && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -532,7 +532,7 @@ export default function MarketplacePage() {
                                                                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 text-white' : 'bg-elevated text-slate-400'}`}>
                                                                     <Sparkles className="h-5 w-5" />
                                                                 </div>
-                                                                <span className="font-black cc-text-primary">Trueque Abierto</span>
+                                                                <span className="font-semibold cc-text-primary">Trueque Abierto</span>
                                                             </div>
                                                             <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 border-emerald-600' : 'border-subtle'}`}>
                                                                 {newItem.allowBarter && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -553,7 +553,7 @@ export default function MarketplacePage() {
                                             </div>
 
                                             <div className="space-y-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción del Artículo</label>
+                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción del Artículo</label>
                                                 <textarea
                                                     className="min-h-[120px] w-full rounded-lg border border-subtle bg-surface px-4 py-4 text-sm font-medium cc-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                                     placeholder="Cuenta más detalles sobre el artículo..."
@@ -656,7 +656,7 @@ export default function MarketplacePage() {
                 />
                 <div className="mt-4 flex flex-col gap-3 rounded-lg border border-subtle bg-surface p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest cc-text-secondary">
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest cc-text-secondary">
                             <SlidersHorizontal className="h-4 w-4" />
                             Modalidad
                         </span>
@@ -670,7 +670,7 @@ export default function MarketplacePage() {
                                 key={option.key}
                                 type="button"
                                 onClick={() => setModeFilter(option.key as typeof modeFilter)}
-                                className={`rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     modeFilter === option.key
                                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                                         : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -685,7 +685,7 @@ export default function MarketplacePage() {
                         <select
                             value={sortMode}
                             onChange={event => setSortMode(event.target.value as typeof sortMode)}
-                            className="h-10 rounded-xl border border-subtle bg-elevated px-3 text-xs font-black cc-text-secondary outline-none focus:ring-2 focus:ring-blue-500/20"
+                            className="h-10 rounded-xl border border-subtle bg-elevated px-3 text-xs font-semibold cc-text-secondary outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                             <option value="recent">Más recientes</option>
                             <option value="price_asc">Menor precio</option>
@@ -698,7 +698,7 @@ export default function MarketplacePage() {
                             <button
                                 type="button"
                                 onClick={clearDiscoveryFilters}
-                                className="rounded-xl bg-elevated px-3 py-2 text-xs font-black cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                                className="rounded-xl bg-elevated px-3 py-2 text-xs font-semibold cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
                             >
                                 Limpiar filtros
                             </button>
@@ -730,7 +730,7 @@ export default function MarketplacePage() {
                     <div className="h-8 w-8 rounded-xl bg-role-admin-bg flex items-center justify-center">
                         <Truck className="h-4 w-4 text-role-admin-fg" />
                     </div>
-                    <h2 className="text-base font-black uppercase tracking-widest cc-text-secondary">Servicios de Entrega</h2>
+                    <h2 className="text-base font-semibold uppercase tracking-widest cc-text-secondary">Servicios de Entrega</h2>
                 </div>
                 <Link href="/resident/supermercado" className="group block">
                     <motion.div
@@ -744,10 +744,10 @@ export default function MarketplacePage() {
                                     <ShoppingCart className="h-8 w-8 text-white" />
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/20 rounded-full text-[10px] font-semibold uppercase tracking-widest text-indigo-200 mb-1">
                                         <Sparkles className="h-3 w-3" /> Smart Shopping con CoCo IA
                                     </div>
-                                    <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">Supermercado a Domicilio</h3>
+                                    <h3 className="text-2xl md:text-3xl font-semibold text-white leading-tight">Supermercado a Domicilio</h3>
                                     <p className="text-indigo-200/80 text-sm font-medium max-w-md">
                                         Crea tu lista con ayuda de IA y recíbela en casa. Integraciones con Jumbo Delivery y Líder App.
                                     </p>
@@ -870,7 +870,7 @@ export default function MarketplacePage() {
                         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
                             <Info className="h-6 w-6 text-blue-600" />
                         </div>
-                        <DialogTitle className="text-2xl font-black">Reglamento del Marketplace</DialogTitle>
+                        <DialogTitle className="text-2xl font-semibold">Reglamento del Marketplace</DialogTitle>
                         <DialogDescription className="text-slate-500 font-medium">
                             Para mantener un ambiente seguro y confiable entre vecinos, sigue estas normas:
                         </DialogDescription>

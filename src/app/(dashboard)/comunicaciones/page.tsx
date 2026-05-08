@@ -115,7 +115,7 @@ function OficialTab() {
                 {user?.role === "admin" && (
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300">
                                 <Plus className="h-4 w-4" /> Publicar Aviso
                             </button>
                         </DialogTrigger>
@@ -167,7 +167,7 @@ function OficialTab() {
                         const styles = getPriorityStyles(ann.priority);
                         const Icon = getIcon(ann.priority);
                         return (
-                            <article key={ann.id} className={`group relative overflow-hidden rounded-2xl bg-surface border-l-4 ${styles.border} shadow-lg ${styles.glow} hover:shadow-xl transition-all duration-300 animate-slide-up opacity-0`}
+                            <article key={ann.id} className={`group relative overflow-hidden rounded-2xl bg-surface border-l-4 ${styles.border} shadow-lg ${styles.glow} hover:shadow-sm transition-all duration-300 animate-slide-up opacity-0`}
                                 style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: "forwards" }}>
                                 <div className="p-6">
                                     <div className="flex items-start justify-between gap-4">
@@ -292,11 +292,11 @@ function ComunidadTab() {
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             {/* Create Post */}
-            <div className="bg-surface rounded-[2.5rem] p-6 sm:p-8 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none">
+            <div className="bg-surface rounded-lg p-6 sm:p-8 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none">
                 <form onSubmit={handleCreatePost}>
                     <div className="flex gap-4 sm:gap-6">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-fuchsia-500 to-pink-500 flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
-                            {user?.photo ? <img src={user.photo} alt={user.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white font-black text-lg">{user?.name.charAt(0)}</div>}
+                            {user?.photo ? <img src={user.photo} alt={user.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white font-semibold text-lg">{user?.name.charAt(0)}</div>}
                         </div>
                         <div className="flex-1 space-y-4">
                             <textarea value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)}
@@ -328,8 +328,8 @@ function ComunidadTab() {
 
             {/* Feed */}
             {isLoading ? (<><SkeletonCard /><SkeletonCard /><SkeletonCard /></>) : posts.length === 0 ? (
-                <div className="bg-canvas/50 rounded-[3rem] border border-dashed border-subtle p-16 text-center space-y-4">
-                    <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" /><h3 className="text-xl font-black text-slate-500">Nada por aquí aún</h3>
+                <div className="bg-canvas/50 rounded-lg border border-dashed border-subtle p-16 text-center space-y-4">
+                    <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" /><h3 className="text-xl font-semibold text-slate-500">Nada por aquí aún</h3>
                     <p className="text-sm font-medium text-slate-400">Sé el primero en saludar a tus vecinos.</p>
                 </div>
             ) : (
@@ -337,15 +337,15 @@ function ComunidadTab() {
                     <AnimatePresence>
                         {posts.map((post) => (
                             <motion.div key={post.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                className="bg-surface flex flex-col rounded-[2.5rem] border border-subtle shadow-lg overflow-hidden">
+                                className="bg-surface flex flex-col rounded-lg border border-subtle shadow-lg overflow-hidden">
                                 <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
-                                            {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-slate-400">{post.profiles?.name?.charAt(0) || "?"}</div>}
+                                            {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-semibold text-slate-400">{post.profiles?.name?.charAt(0) || "?"}</div>}
                                         </div>
                                         <div>
                                             <h3 className="font-bold cc-text-primary flex items-center gap-2">{post.profiles?.name || "Residente"}
-                                                {post.profiles?.unit_id && <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">Depto {post.profiles.unit_id}</span>}
+                                                {post.profiles?.unit_id && <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">Depto {post.profiles.unit_id}</span>}
                                             </h3>
                                             <p className="text-xs font-semibold text-slate-400 mt-0.5">{new Date(post.created_at).toLocaleDateString()} a las {new Date(post.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
                                         </div>
@@ -379,11 +379,11 @@ function ComunidadTab() {
                                                         {(comments[post.id] || []).map((comment) => (
                                                             <div key={comment.id} className="flex gap-4">
                                                                 <div className="w-8 h-8 rounded-full overflow-hidden bg-elevated flex-shrink-0">
-                                                                    {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{comment.profiles?.name?.charAt(0) || "?"}</div>}
+                                                                    {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{comment.profiles?.name?.charAt(0) || "?"}</div>}
                                                                 </div>
                                                                 <div className="flex-1">
                                                                     <div className="bg-surface px-4 py-3 rounded-2xl rounded-tl-none border border-subtle inline-block">
-                                                                        <p className="text-xs font-black cc-text-primary mb-0.5">{comment.profiles?.name}</p>
+                                                                        <p className="text-xs font-semibold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
                                                                         <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
                                                                     </div>
                                                                     <p className="text-[10px] font-bold text-slate-400 mt-1 ml-2">{new Date(comment.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
@@ -395,7 +395,7 @@ function ComunidadTab() {
                                                 )}
                                                 <div className="flex gap-3 pt-2">
                                                     <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 flex-shrink-0 hidden sm:block">
-                                                        {user?.photo ? <img src={user.photo} alt="U" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white bg-slate-400">{user?.name.charAt(0)}</div>}
+                                                        {user?.photo ? <img src={user.photo} alt="U" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-white bg-slate-400">{user?.name.charAt(0)}</div>}
                                                     </div>
                                                     <form className="flex-1 relative" onSubmit={(e) => handleCreateComment(e, post.id)}>
                                                         <input type="text" placeholder="Escribe un comentario..."
@@ -495,7 +495,7 @@ function MensajesTab() {
     const filtered = neighbors.filter(n => (n.name || "").toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
-        <div className="h-[calc(100vh-20rem)] flex shadow-xl shadow-slate-200/50 dark:shadow-none border border-subtle rounded-[2.5rem] bg-surface overflow-hidden">
+        <div className="h-[calc(100vh-20rem)] flex shadow-sm shadow-slate-200/50 dark:shadow-none border border-subtle rounded-lg bg-surface overflow-hidden">
             {/* Left Sidebar */}
             <div className="hidden lg:flex flex-col w-72 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="px-4 py-4">
@@ -524,7 +524,7 @@ function MensajesTab() {
                                         <button key={conv.peerId} onClick={() => setActivePeer(conv)}
                                             className={clsx("w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1", activePeer?.peerId === conv.peerId ? "bg-success-bg text-emerald-600" : "hover:bg-elevated cc-text-secondary")}>
                                             <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-300 flex-shrink-0">
-                                                {conv.peerProfile?.avatar_url ? <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-slate-500">{conv.peerProfile?.name?.charAt(0) || "?"}</div>}
+                                                {conv.peerProfile?.avatar_url ? <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-slate-500">{conv.peerProfile?.name?.charAt(0) || "?"}</div>}
                                             </div>
                                             <div className="text-left min-w-0"><p className="font-bold text-sm truncate">{conv.peerProfile?.name}</p><p className="text-[11px] text-slate-400 truncate">{conv.lastMessage}</p></div>
                                         </button>
@@ -536,7 +536,7 @@ function MensajesTab() {
                                 <button key={n.id} onClick={() => openDirectChat(n)}
                                     className={clsx("w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1", activePeer?.peerId === n.id ? "bg-success-bg" : "hover:bg-elevated")}>
                                     <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex-shrink-0">
-                                        {n.avatar_url ? <img src={n.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-white">{n.name?.charAt(0) || "?"}</div>}
+                                        {n.avatar_url ? <img src={n.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-white">{n.name?.charAt(0) || "?"}</div>}
                                     </div>
                                     <p className="font-bold text-sm cc-text-secondary truncate">{n.name}</p>
                                 </button>
@@ -555,7 +555,7 @@ function MensajesTab() {
                             <MessageSquare className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                            <h3 className="font-black cc-text-primary">{mode === "global" ? "Chat Global" : (activePeer?.peerProfile.name || "Mensajes Directos")}</h3>
+                            <h3 className="font-semibold cc-text-primary">{mode === "global" ? "Chat Global" : (activePeer?.peerProfile.name || "Mensajes Directos")}</h3>
                             <p className="text-xs font-medium text-slate-500">{mode === "global" ? "Toda la comunidad" : (activePeer ? "1‑a‑1 privado" : "Selecciona un vecino")}</p>
                         </div>
                     </div>
@@ -563,8 +563,8 @@ function MensajesTab() {
 
                 {mode === "direct" && !activePeer ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-                        <div className="p-6 bg-success-bg rounded-3xl mb-2"><MessageCircle className="h-14 w-14 text-emerald-400" /></div>
-                        <h3 className="text-xl font-black cc-text-primary">Mensajes Directos</h3>
+                        <div className="p-6 bg-success-bg rounded-lg mb-2"><MessageCircle className="h-14 w-14 text-emerald-400" /></div>
+                        <h3 className="text-xl font-semibold cc-text-primary">Mensajes Directos</h3>
                         <p className="text-sm font-medium text-slate-400 max-w-xs">Selecciona un vecino del panel izquierdo para iniciar una conversación privada.</p>
                     </div>
                 ) : (
@@ -583,11 +583,11 @@ function MensajesTab() {
                                                 <div className={clsx("flex items-end gap-2 max-w-[85%] lg:max-w-[70%]", isMe && "flex-row-reverse")}>
                                                     {!isMe && (
                                                         <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-elevated mb-1">
-                                                            {showAvatar ? (msg.profiles?.avatar_url ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">{msg.profiles?.name?.charAt(0) || "?"}</div>) : null}
+                                                            {showAvatar ? (msg.profiles?.avatar_url ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{msg.profiles?.name?.charAt(0) || "?"}</div>) : null}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
-                                                        {!isMe && showAvatar && <span className="text-[11px] font-black text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>}
+                                                        {!isMe && showAvatar && <span className="text-[11px] font-semibold text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>}
                                                         <div className={clsx("px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
                                                             isMe ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] text-white rounded-2xl rounded-tr-sm" : "bg-elevated cc-text-primary rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
                                                             {msg.content}

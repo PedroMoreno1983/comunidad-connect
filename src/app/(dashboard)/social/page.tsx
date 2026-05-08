@@ -192,20 +192,20 @@ export default function SocialFeedPage() {
                     <Hash className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-black cc-text-primary">Muro Social</h1>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Muro Social</h1>
                     <p className="text-sm font-medium text-slate-500 mt-1">Comparte novedades, datos y fotos con tus vecinos.</p>
                 </div>
             </div>
 
             {/* Create Post Field */}
-            <div className="bg-surface rounded-[2.5rem] p-6 sm:p-8 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-2xl">
+            <div className="bg-surface rounded-lg p-6 sm:p-8 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-sm">
                 <form onSubmit={handleCreatePost}>
                     <div className="flex gap-4 sm:gap-6">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[#7C3AED] to-[#7C3AED] flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
                             {user?.photo ? (
                                 <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white font-black text-lg">
+                                <div className="w-full h-full flex items-center justify-center text-white font-semibold text-lg">
                                     {user?.name.charAt(0)}
                                 </div>
                             )}
@@ -275,9 +275,9 @@ export default function SocialFeedPage() {
                 )}
 
                 {!isLoading && posts.length === 0 && (
-                    <div className="bg-canvas/50 rounded-[3rem] border border-dashed border-subtle p-16 text-center space-y-4">
+                    <div className="bg-canvas/50 rounded-lg border border-dashed border-subtle p-16 text-center space-y-4">
                         <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" />
-                        <h3 className="text-xl font-black text-slate-500">Nada por aquí aún</h3>
+                        <h3 className="text-xl font-semibold text-slate-500">Nada por aquí aún</h3>
                         <p className="text-sm font-medium text-slate-400">Sé el primero en saludar a tus vecinos.</p>
                     </div>
                 )}
@@ -288,7 +288,7 @@ export default function SocialFeedPage() {
                             key={post.id}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-surface flex flex-col rounded-[2.5rem] border border-subtle shadow-lg shadow-slate-200/20 dark:shadow-none overflow-hidden"
+                            className="bg-surface flex flex-col rounded-lg border border-subtle shadow-lg shadow-slate-200/20 dark:shadow-none overflow-hidden"
                         >
                             {/* Post Header */}
                             <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
@@ -297,7 +297,7 @@ export default function SocialFeedPage() {
                                         {post.profiles?.avatar_url ? (
                                             <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center font-black text-slate-400">
+                                            <div className="w-full h-full flex items-center justify-center font-semibold text-slate-400">
                                                 {post.profiles?.name?.charAt(0) || '?'}
                                             </div>
                                         )}
@@ -306,7 +306,7 @@ export default function SocialFeedPage() {
                                         <h3 className="font-bold cc-text-primary flex items-center gap-2">
                                             {post.profiles?.name || 'Residente'}
                                             {post.profiles?.unit_id && (
-                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">
+                                                <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">
                                                     Depto {post.profiles.unit_id}
                                                 </span>
                                             )}
@@ -386,14 +386,14 @@ export default function SocialFeedPage() {
                                                                 {comment.profiles?.avatar_url ? (
                                                                     <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
                                                                 ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">
+                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">
                                                                         {comment.profiles?.name?.charAt(0) || '?'}
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div className="flex-1">
                                                                 <div className="bg-surface px-4 py-3 rounded-2xl rounded-tl-none border border-subtle inline-block">
-                                                                    <p className="text-xs font-black cc-text-primary mb-0.5">{comment.profiles?.name}</p>
+                                                                    <p className="text-xs font-semibold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
                                                                     <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-400 mt-1 ml-2">
@@ -414,7 +414,7 @@ export default function SocialFeedPage() {
                                                     {user?.photo ? (
                                                         <img src={user.photo} alt="U" className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white bg-slate-400">
+                                                        <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-white bg-slate-400">
                                                             {user?.name.charAt(0)}
                                                         </div>
                                                     )}

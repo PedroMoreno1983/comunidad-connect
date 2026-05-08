@@ -145,7 +145,7 @@ export default function SuperAdminDashboard() {
             <OutreachDemo />
 
             {/* Communities List */}
-            <div className="bg-surface rounded-2xl shadow-xl overflow-hidden border border-subtle">
+            <div className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-subtle">
                 <div className="p-6 border-b border-subtle flex flex-col md:flex-row justify-between gap-4">
                     <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-brand-500" />

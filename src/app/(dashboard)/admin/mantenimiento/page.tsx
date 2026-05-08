@@ -374,7 +374,7 @@ export default function MantenimientoAdminPage() {
 
             {showTask && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowTask(false)}>
-                    <div className="w-full max-w-lg rounded-lg border border-subtle bg-surface p-6 shadow-xl" onClick={event => event.stopPropagation()}>
+                    <div className="w-full max-w-lg rounded-lg border border-subtle bg-surface p-6 shadow-sm" onClick={event => event.stopPropagation()}>
                         <div className="mb-6 flex items-center justify-between">
                             <h2 className="text-xl font-semibold cc-text-primary">Nueva tarea</h2>
                             <button onClick={() => setShowTask(false)} className="rounded-lg p-2 hover:bg-elevated"><X className="h-5 w-5" /></button>

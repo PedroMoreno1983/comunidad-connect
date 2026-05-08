@@ -154,7 +154,7 @@ export function WhatsAppChat() {
     };
 
     return (
-        <div className="flex flex-col h-[700px] w-full max-w-md mx-auto bg-[#efeae2] dark:bg-[#0b141a] rounded-[2rem] overflow-hidden shadow-2xl relative border-4 border-slate-900">
+        <div className="flex flex-col h-[700px] w-full max-w-md mx-auto bg-[#efeae2] dark:bg-[#0b141a] rounded-lg overflow-hidden shadow-sm relative border-4 border-slate-900">
             {/* Header */}
             <div className="bg-[#008069] dark:bg-[#202c33] p-3 flex items-center justify-between text-white z-10">
                 <div className="flex items-center gap-3">

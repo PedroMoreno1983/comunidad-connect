@@ -155,17 +155,17 @@ export default function ResidentCasesPage() {
         <div className="mx-auto max-w-6xl space-y-8">
             <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-600">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-600">
                         Seguimiento CoCo
                     </p>
-                    <h1 className="text-3xl font-black cc-text-primary md:text-4xl">Mis Casos CoCo</h1>
+                    <h1 className="text-3xl font-semibold cc-text-primary md:text-4xl">Mis Casos CoCo</h1>
                     <p className="max-w-2xl text-sm font-medium cc-text-secondary">
                         Revisa los reportes que CoCo registro desde tus conversaciones y el avance de Administracion o Conserjeria.
                     </p>
                 </div>
                 <Link
                     href="/services"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-subtle bg-surface px-5 py-3 text-sm font-black cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-subtle bg-surface px-5 py-3 text-sm font-semibold cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
                 >
                     <Wrench className="h-4 w-4" />
                     Solicitar servicio
@@ -174,20 +174,20 @@ export default function ResidentCasesPage() {
 
             <section className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-widest cc-text-tertiary">Abiertos</p>
-                    <p className="mt-2 text-3xl font-black cc-text-primary">{summary.open}</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Abiertos</p>
+                    <p className="mt-2 text-3xl font-semibold cc-text-primary">{summary.open}</p>
                 </div>
                 <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-widest cc-text-tertiary">Alta prioridad</p>
-                    <p className="mt-2 text-3xl font-black text-orange-600">{summary.hot}</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Alta prioridad</p>
+                    <p className="mt-2 text-3xl font-semibold text-orange-600">{summary.hot}</p>
                 </div>
                 <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-widest cc-text-tertiary">Resueltos</p>
-                    <p className="mt-2 text-3xl font-black text-emerald-600">{summary.resolved}</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Resueltos</p>
+                    <p className="mt-2 text-3xl font-semibold text-emerald-600">{summary.resolved}</p>
                 </div>
             </section>
 
-            <section className="overflow-hidden rounded-[2rem] border border-subtle bg-surface shadow-xl shadow-slate-200/20 dark:shadow-black/30">
+            <section className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm shadow-slate-200/20 dark:shadow-black/30">
                 {loading ? (
                     <div className="space-y-4 p-6">
                         {[0, 1, 2].map(item => (
@@ -200,7 +200,7 @@ export default function ResidentCasesPage() {
                             <Bot className="h-10 w-10" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black cc-text-primary">Aun no tienes casos CoCo</h2>
+                            <h2 className="text-xl font-semibold cc-text-primary">Aun no tienes casos CoCo</h2>
                             <p className="mt-2 max-w-md text-sm cc-text-secondary">
                                 Cuando le reportes a CoCo una filtracion, ruido, seguridad o mantencion, quedara aqui para seguimiento.
                             </p>
@@ -218,21 +218,21 @@ export default function ResidentCasesPage() {
                                 <article key={item.id} className="grid gap-5 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
                                     <div className="min-w-0 space-y-3">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${status.className}`}>
+                                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${status.className}`}>
                                                 <StatusIcon className="h-3.5 w-3.5" />
                                                 {status.label}
                                             </span>
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${urgencyClass[item.urgency]}`}>
+                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${urgencyClass[item.urgency]}`}>
                                                 {isHot && <ShieldAlert className="h-3.5 w-3.5" />}
                                                 {item.urgency}
                                             </span>
-                                            <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                            <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
                                                 {item.category}
                                             </span>
                                         </div>
 
                                         <div>
-                                            <h2 className="truncate text-lg font-black cc-text-primary">{item.title}</h2>
+                                            <h2 className="truncate text-lg font-semibold cc-text-primary">{item.title}</h2>
                                             <p className="mt-1 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message}</p>
                                         </div>
 
@@ -246,7 +246,7 @@ export default function ResidentCasesPage() {
                                         <div className="flex items-start gap-3">
                                             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
                                             <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
                                                     Ultimo movimiento
                                                 </p>
                                                 <p className="mt-1 line-clamp-4 text-xs font-medium cc-text-secondary">

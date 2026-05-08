@@ -16,7 +16,7 @@ export function CostEstimator({ consumption }: CostEstimatorProps) {
     const totalEstimated = fixedCharge + waterCost + sewerCost;
 
     return (
-        <section className="relative space-y-6 overflow-hidden rounded-[2.5rem] border border-subtle bg-surface p-8 shadow-xl shadow-slate-200/20 dark:shadow-none">
+        <section className="relative space-y-6 overflow-hidden rounded-lg border border-subtle bg-surface p-8 shadow-sm shadow-slate-200/20 dark:shadow-none">
             <div className="pointer-events-none absolute right-0 top-0 p-8 opacity-5">
                 <Calculator className="h-32 w-32 cc-text-primary" />
             </div>
@@ -26,14 +26,14 @@ export function CostEstimator({ consumption }: CostEstimatorProps) {
                     <Calculator className="h-6 w-6" />
                 </div>
                 <div>
-                    <h2 className="text-xl font-black cc-text-primary">Estimación de costo</h2>
+                    <h2 className="text-xl font-semibold cc-text-primary">Estimación de costo</h2>
                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Basado en consumo actual</p>
                 </div>
             </div>
 
             <div className="relative z-10 space-y-4">
                 <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black cc-text-primary">
+                    <span className="text-4xl font-semibold cc-text-primary">
                         ${Math.round(totalEstimated).toLocaleString("es-CL")}
                     </span>
                     <span className="text-xs font-bold uppercase tracking-widest text-slate-400">CLP aprox.</span>

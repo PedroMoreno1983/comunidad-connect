@@ -78,7 +78,7 @@ export default function OutreachDemo() {
                     </div>
                 </div>
 
-                <form onSubmit={handleSend} className="w-full md:w-96 bg-surface p-6 rounded-xl shadow-xl border border-subtle space-y-4">
+                <form onSubmit={handleSend} className="w-full md:w-96 bg-surface p-6 rounded-xl shadow-sm border border-subtle space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
                             <User className="h-4 w-4 text-brand-500" />

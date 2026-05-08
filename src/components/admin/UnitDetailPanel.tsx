@@ -145,12 +145,12 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-2xl z-50 border-l border-white/20 dark:border-slate-800 flex flex-col"
+                        className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-sm z-50 border-l border-white/20 dark:border-slate-800 flex flex-col"
                     >
                         {/* Header */}
                         <div className="p-6 border-b border-subtle flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                             <div>
-                                <h2 className="text-2xl font-black cc-text-primary">Unidad {unit.number}</h2>
+                                <h2 className="text-2xl font-semibold cc-text-primary">Unidad {unit.number}</h2>
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Torre {unit.tower} • Piso {unit.floor}</p>
                             </div>
                             <button
@@ -166,7 +166,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
 
                             {/* Resident Info */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-black cc-text-primary flex items-center gap-2">
+                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
                                     <User className="h-4 w-4 text-blue-500" />
                                     Residente Principal
                                 </h3>
@@ -195,11 +195,11 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
 
                             {/* Current Reading Action */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-black cc-text-primary flex items-center gap-2">
+                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
                                     <Save className="h-4 w-4 text-emerald-500" />
                                     Lectura actual ({currentMonth} {currentYear})
                                 </h3>
-                                <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-800">
+                                <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800">
                                     <div className="flex flex-col gap-4">
                                         <label className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">
                                             Ingresar m³
@@ -209,7 +209,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                                 type="number"
                                                 value={readingValue}
                                                 onChange={(e) => setReadingValue(e.target.value)}
-                                                className="h-14 text-2xl font-black text-center bg-surface border-blue-200 dark:border-blue-800 focus:ring-blue-500"
+                                                className="h-14 text-2xl font-semibold text-center bg-surface border-blue-200 dark:border-blue-800 focus:ring-blue-500"
                                                 placeholder="0.0"
                                             />
                                             <Button
@@ -230,7 +230,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
 
                             {/* History */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-black cc-text-primary flex items-center gap-2">
+                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
                                     <HistoryIcon className="h-4 w-4 text-brand-500" />
                                     Historial de Consumo
                                 </h3>
@@ -243,7 +243,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                                     <p className="text-xs text-slate-400">Lectura: {record.reading_value}</p>
                                                 </div>
                                                 <div className={`text-right ${(record.consumption || 0) > 20 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                    <p className="font-black text-lg">{(record.consumption || 0).toFixed(1)} m³</p>
+                                                    <p className="font-semibold text-lg">{(record.consumption || 0).toFixed(1)} m³</p>
                                                     <p className="text-[10px] font-bold uppercase">{(record.consumption || 0) > 20 ? 'Alto' : 'Normal'}</p>
                                                 </div>
                                             </div>

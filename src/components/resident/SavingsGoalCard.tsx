@@ -23,7 +23,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
     const isOnTrack = currentConsumption <= targetConsumption;
 
     return (
-        <section className="relative overflow-hidden rounded-[2.5rem] bg-canvas p-8 text-white">
+        <section className="relative overflow-hidden rounded-lg bg-canvas p-8 text-white">
             <div className="absolute right-0 top-0 p-8 opacity-10">
                 <Target className="h-40 w-40 text-blue-500" />
             </div>
@@ -34,7 +34,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                         <Target className="h-6 w-6" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-white">Meta de ahorro</h2>
+                        <h2 className="text-xl font-semibold text-white">Meta de ahorro</h2>
                         <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Desafío mensual</p>
                     </div>
                 </div>
@@ -52,7 +52,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                                     onClick={() => setGoalPercentage(percent)}
                                     className="rounded-xl border border-slate-700 px-4 py-3 text-center transition-all hover:border-blue-500 hover:bg-blue-600"
                                 >
-                                    <span className="block text-2xl font-black text-white transition-transform">{percent}%</span>
+                                    <span className="block text-2xl font-semibold text-white transition-transform">{percent}%</span>
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Menos</span>
                                 </button>
                             ))}
@@ -67,7 +67,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Meta de consumo</p>
-                                <p className="flex items-center gap-2 text-2xl font-black text-white">
+                                <p className="flex items-center gap-2 text-2xl font-semibold text-white">
                                     {targetConsumption.toFixed(1)} m³
                                     <span className="rounded-lg bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400">
                                         -{goalPercentage}%

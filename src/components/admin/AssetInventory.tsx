@@ -106,7 +106,7 @@ export function AssetInventory() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     whileHover={{ y: -5 }}
-                    className="bg-surface rounded-[3rem] border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none overflow-hidden group"
+                    className="bg-surface rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none overflow-hidden group"
                 >
                     <div className="p-8 space-y-8">
                         {/* Header */}
@@ -119,7 +119,7 @@ export function AssetInventory() {
                             </div>
                             <div className="flex items-center gap-2 px-4 py-2 bg-elevated rounded-full border border-subtle">
                                 <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(asset.healthStatus)}`} />
-                                <span className="text-[10px] font-black uppercase tracking-widest cc-text-secondary">
+                                <span className="text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
                                     {asset.healthStatus === 'optimal' ? 'Operativo' :
                                         asset.healthStatus === 'warning' ? 'Atención' : 'Crítico'}
                                 </span>
@@ -128,7 +128,7 @@ export function AssetInventory() {
 
                         {/* Title & Stats */}
                         <div className="space-y-2">
-                            <h3 className="text-xl font-black cc-text-primary leading-tight group-hover:text-blue-600 transition-colors">
+                            <h3 className="text-xl font-semibold cc-text-primary leading-tight group-hover:text-blue-600 transition-colors">
                                 {asset.name}
                             </h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -140,11 +140,11 @@ export function AssetInventory() {
                         {/* Specs Table */}
                         <div className="grid grid-cols-2 gap-4 py-6 border-y border-subtle">
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Marca / Modelo</p>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Marca / Modelo</p>
                                 <p className="text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Instalación</p>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Instalación</p>
                                 <p className="text-sm font-bold cc-text-secondary">{new Date(asset.installationDate).getFullYear()}</p>
                             </div>
                         </div>
@@ -174,7 +174,7 @@ export function AssetInventory() {
                     {/* Footer Action */}
                     <button
                         onClick={() => handleOpenLog(asset)}
-                        className="w-full py-6 bg-elevated/50 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-elevated transition-all flex items-center justify-center gap-2 border-t border-subtle"
+                        className="w-full py-6 bg-elevated/50 text-xs font-semibold uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-elevated transition-all flex items-center justify-center gap-2 border-t border-subtle"
                     >
                         Ver Bitácora Técnica
                         <ChevronRight className="h-4 w-4" />
@@ -184,7 +184,7 @@ export function AssetInventory() {
 
             {/* Technical Log Dialog */}
             <Dialog open={isLogOpen} onOpenChange={setIsLogOpen}>
-                <DialogContent className="sm:max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-0 shadow-2xl overflow-hidden">
+                <DialogContent className="sm:max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-lg p-0 shadow-sm overflow-hidden">
                     <div className="bg-canvas p-10 text-white relative">
                         <div className="absolute top-0 right-0 p-8 opacity-10">
                             <History className="h-24 w-24 text-blue-400" />
@@ -194,9 +194,9 @@ export function AssetInventory() {
                                 <div className="p-2 bg-blue-500/20 rounded-lg">
                                     <FileText className="h-5 w-5 text-blue-400" />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Bitácora Técnica</span>
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400">Bitácora Técnica</span>
                             </div>
-                            <DialogTitle className="text-3xl font-black">{selectedAsset?.name}</DialogTitle>
+                            <DialogTitle className="text-3xl font-semibold">{selectedAsset?.name}</DialogTitle>
                             <DialogDescription className="text-slate-400 font-medium">
                                 Historial completo de intervenciones y mantenimiento preventivo.
                             </DialogDescription>
@@ -215,10 +215,10 @@ export function AssetInventory() {
 
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                                                     {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}
                                                 </span>
-                                                <span className="px-3 py-1 bg-success-bg text-success-fg rounded-lg text-[10px] font-black tracking-wider uppercase">
+                                                <span className="px-3 py-1 bg-success-bg text-success-fg rounded-lg text-[10px] font-semibold tracking-wider uppercase">
                                                     Realizado
                                                 </span>
                                             </div>
@@ -228,11 +228,11 @@ export function AssetInventory() {
                                                     {log.description}
                                                 </p>
                                                 <div className="flex flex-wrap gap-4 pt-2">
-                                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                                                         <User className="h-3 w-3" />
                                                         {log.performedBy}
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                                                    <div className="flex items-center gap-2 text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                                                         <DollarSign className="h-3 w-3" />
                                                         ${(log.cost || 0).toLocaleString('es-CL')}
                                                     </div>

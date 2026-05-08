@@ -131,37 +131,37 @@ export function PollManager() {
         <div className="space-y-12">
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <Vote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="font-black cc-text-primary">Consultas Activas</h3>
+                        <h3 className="font-semibold cc-text-primary">Consultas Activas</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary mb-1">
+                    <p className="text-4xl font-semibold cc-text-primary mb-1">
                         {polls.filter(p => p.status === 'active').length}
                     </p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-emerald-500">Participación 68%</p>
                 </div>
 
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-warning-bg rounded-2xl">
                             <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-black cc-text-primary">Cierran Pronto</h3>
+                        <h3 className="font-semibold cc-text-primary">Cierran Pronto</h3>
                     </div>
-                    <p className="text-4xl font-black cc-text-primary mb-1">2</p>
+                    <p className="text-4xl font-semibold cc-text-primary mb-1">2</p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">En las próximas 48 horas</p>
                 </div>
 
-                <div className="bg-canvas/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden group">
+                <div className="bg-canvas/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-lg shadow-sm shadow-blue-500/10 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                         <BarChart3 className="h-20 w-20 text-blue-500" />
                     </div>
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div className="mb-6">
-                            <h3 className="font-black text-white">Quórum Alcanzado</h3>
+                            <h3 className="font-semibold text-white">Quórum Alcanzado</h3>
                             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Promedio Trimestral</p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -179,26 +179,26 @@ export function PollManager() {
                         <div className="p-3 bg-elevated rounded-2xl">
                             <Settings className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-black cc-text-primary">Gestor de Consultas</h2>
+                        <h2 className="text-2xl font-semibold cc-text-primary">Gestor de Consultas</h2>
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-canvas text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-canvas text-white font-semibold rounded-2xl hover:bg-slate-800 transition-all shadow-sm active:scale-95">
                                 <Plus className="h-5 w-5" />
                                 Nueva Votación
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl">
+                        <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-lg p-10 shadow-sm">
                             <DialogHeader>
-                                <DialogTitle className="text-2xl font-black">Crear Consulta Formal</DialogTitle>
+                                <DialogTitle className="text-2xl font-semibold">Crear Consulta Formal</DialogTitle>
                                 <DialogDescription className="font-medium">
                                     Defina la propuesta para ser votada por la comunidad.
                                 </DialogDescription>
                             </DialogHeader>
                             <form onSubmit={handleCreatePoll} className="space-y-6 pt-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Título de la Propuesta</label>
+                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Título de la Propuesta</label>
                                     <Input
                                         placeholder="Ej: Renovación de Ascensores 2026"
                                         className="h-14 rounded-2xl font-bold"
@@ -208,7 +208,7 @@ export function PollManager() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
+                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
                                     <select
                                         className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                         value={newPoll.category}
@@ -220,7 +220,7 @@ export function PollManager() {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción / Contexto</label>
+                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción / Contexto</label>
                                     <textarea
                                         className="w-full h-32 rounded-2xl border border-subtle bg-surface cc-text-primary p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                                         placeholder="Detalle los beneficios y costos de la propuesta..."
@@ -236,7 +236,7 @@ export function PollManager() {
                                     </p>
                                 </div>
                                 <DialogFooter className="pt-4">
-                                    <Button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-500/20 transition-all">
+                                    <Button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all">
                                         Publicar Votación
                                     </Button>
                                 </DialogFooter>
@@ -246,16 +246,16 @@ export function PollManager() {
                 </div>
 
                 {/* Table Section */}
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-[3rem] border border-white/50 dark:border-slate-700/50 overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-lg border border-white/50 dark:border-slate-700/50 overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-subtle">
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Votación</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Participación</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Vence en</th>
-                                    <th className="px-10 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Acciones</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Votación</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Participación</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Estado</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vence en</th>
+                                    <th className="px-10 py-6 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -274,16 +274,16 @@ export function PollManager() {
                                                     <Vote className="h-5 w-5" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-black cc-text-primary leading-none mb-1">{poll.title}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: {poll.id}</p>
+                                                    <p className="font-semibold cc-text-primary leading-none mb-1">{poll.title}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">ID: {poll.id}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-10 py-8">
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-end">
-                                                    <span className="text-sm font-black cc-text-primary">{poll.totalVotes}</span>
-                                                    <span className="text-[10px] font-black text-slate-400">Objetivo: 80</span>
+                                                    <span className="text-sm font-semibold cc-text-primary">{poll.totalVotes}</span>
+                                                    <span className="text-[10px] font-semibold text-slate-400">Objetivo: 80</span>
                                                 </div>
                                                 <div className="h-1.5 w-32 bg-elevated rounded-full overflow-hidden">
                                                     <div
@@ -294,7 +294,7 @@ export function PollManager() {
                                             </div>
                                         </td>
                                         <td className="px-10 py-8">
-                                            <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${poll.status === 'active'
+                                            <span className={`px-3 py-1.5 rounded-xl text-[10px] font-semibold uppercase tracking-wider ${poll.status === 'active'
                                                 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
                                                 : 'bg-slate-50 text-slate-400'
                                                 }`}>
