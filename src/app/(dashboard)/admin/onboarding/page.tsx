@@ -1,21 +1,33 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/lib/authContext';
-import { useRouter } from 'next/navigation';
-import {
-    UploadCloud, Sparkles, FileText, CheckCircle2,
-    AlertCircle, Save, Trash2
-} from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Save, Trash2, UploadCloud, UsersRound } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+import { useToast } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
 
 interface ExtractedUser {
-    id: string; // ID temporal
+    id: string;
     name: string;
     unit_id: string;
     email: string;
     phone: string;
+}
+
+function friendlyError(message?: string) {
+    const text = (message || "").toLowerCase();
+    if (text.includes("timeout") || text.includes("504") || text.includes("large") || text.includes("grande")) {
+        return "El archivo tardó demasiado en procesarse. Prueba con un PDF más liviano o divide la nómina en partes.";
+    }
+    if (text.includes("json") || text.includes("gemini") || text.includes("api")) {
+        return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla CSV/TXT.";
+    }
+    if (text.includes("supabase") || text.includes("database")) {
+        return "No pudimos guardar la información en este momento. Revisa tu conexión e intenta nuevamente.";
+    }
+    return "No pudimos completar la operación. Revisa el archivo e intenta nuevamente.";
 }
 
 export default function AdminOnboardingPage() {
@@ -31,83 +43,75 @@ export default function AdminOnboardingPage() {
     const [confirmingSync, setConfirmingSync] = useState(false);
 
     useEffect(() => {
-        if (user && user.role !== 'admin') {
-            router.push('/home');
-        }
+        if (user && user.role !== "admin") router.push("/home");
     }, [router, user]);
 
     const processFile = async (uploadedFile: File) => {
         setIsExtracting(true);
         setExtractedData(null);
         setSyncSuccess(false);
+        setConfirmingSync(false);
 
         const formData = new FormData();
-        formData.append('file', uploadedFile);
+        formData.append("file", uploadedFile);
 
         try {
-            const res = await fetch('/api/onboarding/extract', {
-                method: 'POST',
+            const res = await fetch("/api/onboarding/extract", {
+                method: "POST",
                 body: formData,
             });
 
-            // Si Vercel devuelve un Timeout 504 (HTML) en lugar de JSON, esto explotaba
             const textResponse = await res.text();
-            let result: { data?: Partial<ExtractedUser>[], error?: string } | null = null;
+            let result: { data?: Partial<ExtractedUser>[]; error?: string } | null = null;
             try {
                 result = JSON.parse(textResponse);
             } catch {
-                throw new Error(`Servidor devolvió un error grave no-JSON (posible Timeout 504 o Archivo muy grande). Respuesta cruda: ${textResponse.substring(0, 50)}...`);
+                throw new Error("non-json-response");
             }
 
             if (res.ok && result?.data) {
-                // Asignarle un ID temporal a cada fila para list keys
-                const mappedData = result.data.map((row, i: number) => ({
-                    id: `temp-${i}`,
-                    name: row.name || '',
-                    unit_id: row.unit_id || '',
-                    email: row.email || '',
-                    phone: row.phone || ''
+                const mappedData = result.data.map((row, index) => ({
+                    id: `temp-${index}`,
+                    name: row.name || "",
+                    unit_id: row.unit_id || "",
+                    email: row.email || "",
+                    phone: row.phone || "",
                 }));
-                setExtractedData(mappedData as ExtractedUser[]);
-            } else {
-                toast({ title: "Error de extracción", description: (result && result.error) || 'Hubo un error al procesar el archivo con IA.', variant: "destructive" });
+                setExtractedData(mappedData);
+                toast({
+                    title: "Archivo procesado",
+                    description: `Detectamos ${mappedData.length} registros para revisión.`,
+                    variant: "success",
+                });
+                return;
             }
+
+            throw new Error(result?.error || "extract-failed");
         } catch (err: unknown) {
-            console.error(err);
-            const errorMessage = err instanceof Error ? err.message : 'Falla desconocida';
-            toast({ title: "Error de conexión", description: `Timeout o error de red: ${errorMessage}`, variant: "destructive" });
+            console.error("[AdminOnboarding] extract failed:", err);
+            toast({
+                title: "No se pudo procesar el archivo",
+                description: friendlyError(err instanceof Error ? err.message : undefined),
+                variant: "destructive",
+            });
         } finally {
             setIsExtracting(false);
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const uploadedFile = e.target.files?.[0];
-        if (uploadedFile) {
-            await processFile(uploadedFile);
-        }
-        e.target.value = '';
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const uploadedFile = event.target.files?.[0];
+        if (uploadedFile) await processFile(uploadedFile);
+        event.target.value = "";
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
-    const handleDrop = async (e: React.DragEvent) => {
-        e.preventDefault();
+    const handleDrop = async (event: React.DragEvent) => {
+        event.preventDefault();
         setIsDragging(false);
         if (isExtracting) return;
 
-        const droppedFile = e.dataTransfer.files?.[0];
-        if (droppedFile) {
-            await processFile(droppedFile);
-        }
+        const droppedFile = event.dataTransfer.files?.[0];
+        if (droppedFile) await processFile(droppedFile);
     };
 
     const handleFieldChange = (id: string, field: keyof ExtractedUser, value: string) => {
@@ -120,10 +124,8 @@ export default function AdminOnboardingPage() {
         setExtractedData(prev => prev ? prev.filter(row => row.id !== id) : null);
     };
 
-    if (user && user.role !== 'admin') return null;
-
     const handleSyncToDatabase = async () => {
-        if (!extractedData || extractedData.length === 0) return;
+        if (!extractedData?.length) return;
 
         if (!confirmingSync) {
             setConfirmingSync(true);
@@ -133,203 +135,186 @@ export default function AdminOnboardingPage() {
         setConfirmingSync(false);
         setIsSyncing(true);
         try {
-            const res = await fetch('/api/onboarding/upsert', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ residents: extractedData })
+            const res = await fetch("/api/onboarding/upsert", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ residents: extractedData }),
             });
 
             if (res.ok) {
                 setSyncSuccess(true);
                 setExtractedData(null);
-            } else {
-                const err = await res.json();
-                toast({ title: "Error al sincronizar", description: err.error || 'Error fatal al sincronizar con Supabase.', variant: "destructive" });
+                toast({ title: "Residentes sincronizados", description: "La nómina quedó disponible para operación.", variant: "success" });
+                return;
             }
+
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || "upsert-failed");
         } catch (error: unknown) {
-            console.error(error);
-            const errorMessage = error instanceof Error ? error.message : "La conexión con Supabase falló.";
-            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+            console.error("[AdminOnboarding] sync failed:", error);
+            toast({
+                title: "No se pudo sincronizar",
+                description: friendlyError(error instanceof Error ? error.message : undefined),
+                variant: "destructive",
+            });
         } finally {
             setIsSyncing(false);
         }
     };
 
+    if (user && user.role !== "admin") return null;
+
+    const validRows = extractedData?.filter(row => row.name.trim() && row.unit_id.trim()).length || 0;
+
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12">
-            <div>
-                <h1 className="text-3xl font-semibold cc-text-primary flex items-center gap-3">
-                    <Sparkles className="h-8 w-8 text-brand-600" />
-                    Asistente Mágico de Migración con IA
-                </h1>
-                <p className="mt-2 text-slate-500 max-w-3xl">
-                    Olvídate de tipear usuarios a mano. Sube tu viejo PDF impreso, Excel desordenado o lista de residentes
-                    escraneada. Nuestro cerebro de Inteligencia Artificial (Gemini) leerá inteligentemente el desastre,
-                    extraerá los nombres, y poblará la base de datos automáticamente por ti.
-                </p>
-            </div>
+        <div className="mx-auto max-w-7xl space-y-8 pb-12">
+            <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Carga masiva</p>
+                    <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold cc-text-primary">
+                        <UsersRound className="h-8 w-8 text-brand-600" />
+                        Onboarding de residentes
+                    </h1>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 cc-text-secondary">
+                        Importa nóminas antiguas, revisa la extracción y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
+                    </p>
+                </div>
+                <div className="rounded-lg border border-subtle bg-surface px-4 py-3 text-sm shadow-sm">
+                    <p className="font-semibold cc-text-primary">Flujo recomendado</p>
+                    <p className="mt-1 cc-text-secondary">Subir archivo → revisar filas → sincronizar</p>
+                </div>
+            </header>
 
-            {/* ZONA DE CARGA */}
             {!extractedData && !syncSuccess && (
-                <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
+                <section
+                    onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={(event) => { event.preventDefault(); setIsDragging(false); }}
                     onDrop={handleDrop}
-                    className={`bg-surface rounded-lg p-12 text-center shadow-sm border relative overflow-hidden group transition-all duration-300 ${
-                        isDragging
-                            ? 'border-brand-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20'
-                            : 'border-indigo-100 dark:border-indigo-500/20'
-                    }`}
+                    className={`rounded-lg border bg-surface p-8 text-center shadow-sm transition-colors lg:p-12 ${isDragging ? "border-brand-500 bg-brand-50" : "border-subtle"}`}
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50 z-0"></div>
-
-                    <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
-                        <div className={`p-6 rounded-full bg-surface shadow-sm transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
-                            {isExtracting ? (
-                                <Sparkles className="w-16 h-16 text-brand-600 animate-spin-slow" />
-                            ) : (
-                                <UploadCloud className="w-16 h-16 text-brand-500" />
-                            )}
+                    <div className="mx-auto flex max-w-2xl flex-col items-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-subtle bg-canvas text-brand-600">
+                            {isExtracting ? <FileSpreadsheet className="h-8 w-8 animate-pulse" /> : <UploadCloud className="h-8 w-8" />}
                         </div>
-
-                        <h3 className="text-2xl font-bold tracking-tight cc-text-primary">
-                            {isExtracting ? 'La IA está leyendo y estructurando tu archivo...' : 'Arrastra tu archivo PDF o Word aquí'}
-                        </h3>
-
-                        <p className="text-slate-500 font-medium max-w-md mx-auto">
+                        <h2 className="mt-6 text-2xl font-semibold cc-text-primary">
+                            {isExtracting ? "Procesando archivo" : "Sube una nómina de residentes"}
+                        </h2>
+                        <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
-                                ? 'Esto puede tomar hasta 20 segundos dependiendo del tamaño gigantesco del archivo. No cierres la ventana.'
-                                : 'Soporta nóminas de residentes antiguas, listas de Excel copiadas en texto, o escaneos de OCR.'}
+                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mantén esta ventana abierta."
+                                : "Acepta PDF, Word, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y teléfono."}
                         </p>
 
                         {!isExtracting && (
-                            <div className="mt-6 relative">
-                                <label className="cursor-pointer px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-sm transition duration-200 inline-flex items-center gap-2 group/btn">
-                                    <UploadCloud className="w-5 h-5 group-hover/btn:-translate-y-1 transition" />
-                                    Subir Archivo Manualmente
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.docx,.doc,.txt,.csv"
-                                        onChange={handleFileUpload}
-                                        disabled={isExtracting}
-                                        className="hidden"
-                                    />
-                                </label>
-                            </div>
+                            <label className="mt-8 inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                                <UploadCloud className="h-4 w-4" />
+                                Seleccionar archivo
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,.doc,.txt,.csv"
+                                    onChange={handleFileUpload}
+                                    disabled={isExtracting}
+                                    className="hidden"
+                                />
+                            </label>
                         )}
                     </div>
-                </div>
+                </section>
             )}
 
-            {/* PANTALLA DE ÉXITO */}
             {syncSuccess && (
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
+                <motion.section
+                    initial={{ scale: 0.98, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-500 rounded-lg p-12 text-center shadow-sm flex flex-col items-center"
+                    className="rounded-lg border border-success-border bg-success-bg p-8 text-center shadow-sm"
                 >
-                    <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-sm mb-6">
-                        <CheckCircle2 className="h-12 w-12" />
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                        <CheckCircle2 className="h-8 w-8" />
                     </div>
-                    <h2 className="text-3xl font-semibold text-success-fg mb-2">¡Sincronización Mágica Completada!</h2>
-                    <p className="text-emerald-600 dark:text-emerald-500 font-medium mb-8">Todos los residentes han sido inyectados y creados exitosamente en Supabase de forma estructurada.</p>
-                    <button
-                        onClick={() => setSyncSuccess(false)}
-                        className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-sm hover:bg-emerald-700 transition"
-                    >
-                        Inyectar Otro Archivo
-                    </button>
-                </motion.div>
+                    <h2 className="mt-5 text-2xl font-semibold text-success-fg">Nómina sincronizada</h2>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-800">
+                        Los residentes quedaron preparados para invitación, asignación de unidades y operación diaria.
+                    </p>
+                    <Button type="button" className="mt-6" onClick={() => setSyncSuccess(false)}>
+                        Cargar otro archivo
+                    </Button>
+                </motion.section>
             )}
 
-            {/* DATA GRID INTERACTIVO - REVISIÓN HUMANA */}
             <AnimatePresence>
                 {extractedData && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-surface rounded-lg shadow-sm overflow-hidden border border-subtle"
+                        exit={{ opacity: 0 }}
+                        className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm"
                     >
-                        <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex flex-col gap-4 border-b border-subtle bg-slate-950 p-5 text-white lg:flex-row lg:items-center lg:justify-between">
                             <div>
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <FileText className="h-6 w-6 text-brand-400" />
-                                    Tabla de Triaje para Revisión Humana
+                                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                                    <FileSpreadsheet className="h-5 w-5 text-brand-300" />
+                                    Revisión antes de sincronizar
                                 </h2>
-                                <p className="text-sm text-slate-400 mt-1">
-                                    La Inteligencia Artificial encontró <strong>{extractedData.length} personas</strong>. Por seguridad corporativa, debes revisar que la IA no haya cometido errores leyendo manchas del PDF. Edita los campos si notas algo raro.
+                                <p className="mt-1 text-sm text-slate-300">
+                                    {validRows} de {extractedData.length} filas tienen nombre y unidad. Corrige o elimina registros dudosos antes de guardar.
                                 </p>
                             </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setExtractedData(null)}
-                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition"
-                                >
-                                    Cancelar y Subir Otro
-                                </button>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <Button type="button" variant="secondary" onClick={() => setExtractedData(null)}>
+                                    Cancelar
+                                </Button>
                                 <button
                                     onClick={handleSyncToDatabase}
-                                    disabled={isSyncing}
-                                    className={`px-6 py-2 text-white rounded-lg font-bold shadow-sm flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${confirmingSync ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                    disabled={isSyncing || validRows === 0}
+                                    className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${confirmingSync ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                                 >
-                                    {isSyncing
-                                        ? <span className="animate-pulse">Guardando en Supabase...</span>
-                                        : confirmingSync
-                                            ? <><AlertCircle className="h-5 w-5" /> ¿Confirmar? Haz clic de nuevo</>
-                                            : <><Save className="h-5 w-5" /> Inyectar a Base de Datos</>
-                                    }
+                                    {isSyncing ? (
+                                        "Sincronizando..."
+                                    ) : confirmingSync ? (
+                                        <>
+                                            <AlertCircle className="h-4 w-4" />
+                                            Confirmar sincronización
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-4 w-4" />
+                                            Sincronizar nómina
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto w-full">
-                            <table className="w-full text-left text-sm cc-text-secondary">
-                                <thead className="bg-canvas/50 text-slate-900 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider border-b border-subtle">
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[880px] text-left text-sm">
+                                <thead className="border-b border-subtle bg-canvas text-xs font-semibold uppercase tracking-[0.08em] cc-text-secondary">
                                     <tr>
-                                        <th className="px-6 py-4 w-1/4">Nombre del Residente</th>
-                                        <th className="px-6 py-4 w-1/6">Depto / Unidad</th>
-                                        <th className="px-6 py-4 w-1/4">Correo Generado/Propio</th>
-                                        <th className="px-6 py-4 w-1/6">Teléfono</th>
-                                        <th className="px-6 py-4 text-center">Acción</th>
+                                        <th className="px-5 py-4">Nombre</th>
+                                        <th className="px-5 py-4">Unidad</th>
+                                        <th className="px-5 py-4">Correo</th>
+                                        <th className="px-5 py-4">Teléfono</th>
+                                        <th className="px-5 py-4 text-right">Acción</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 md:max-h-[60vh] overflow-y-auto w-full block">
-                                    {/* Un truco común para que las tablas rolen con 100+ items es display: block en tbody, pero aquí prescindiremos para mantener el flex perfecto width. */}
+                                <tbody className="divide-y divide-subtle">
                                     {extractedData.map((row) => (
-                                        <tr key={row.id} className="hover:bg-indigo-50/50 dark:hover:bg-slate-700/30 transition group">
-                                            <td className="px-4 py-2">
-                                                <input
-                                                    value={row.name}
-                                                    onChange={e => handleFieldChange(row.id, 'name', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1 cc-text-primary font-medium"
-                                                />
+                                        <tr key={row.id} className="transition-colors hover:bg-elevated/60">
+                                            <td className="px-4 py-3">
+                                                <EditableCell value={row.name} onChange={value => handleFieldChange(row.id, "name", value)} placeholder="Nombre residente" required />
                                             </td>
-                                            <td className="px-4 py-2">
-                                                <input
-                                                    value={row.unit_id}
-                                                    onChange={e => handleFieldChange(row.id, 'unit_id', e.target.value)}
-                                                    className="w-full bg-slate-100 dark:bg-slate-900 border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-3 py-1 font-mono text-xs"
-                                                />
+                                            <td className="px-4 py-3">
+                                                <EditableCell value={row.unit_id} onChange={value => handleFieldChange(row.id, "unit_id", value)} placeholder="1204" required mono />
                                             </td>
-                                            <td className="px-4 py-2">
-                                                <input
-                                                    value={row.email}
-                                                    onChange={e => handleFieldChange(row.id, 'email', e.target.value)}
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1 cc-text-secondary"
-                                                />
+                                            <td className="px-4 py-3">
+                                                <EditableCell value={row.email} onChange={value => handleFieldChange(row.id, "email", value)} placeholder="correo@dominio.cl" />
                                             </td>
-                                            <td className="px-4 py-2">
-                                                <input
-                                                    value={row.phone || ''}
-                                                    onChange={e => handleFieldChange(row.id, 'phone', e.target.value)}
-                                                    placeholder="N/A"
-                                                    className="w-full bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1"
-                                                />
+                                            <td className="px-4 py-3">
+                                                <EditableCell value={row.phone} onChange={value => handleFieldChange(row.id, "phone", value)} placeholder="+56 9..." />
                                             </td>
-                                            <td className="px-4 py-2 text-center">
+                                            <td className="px-5 py-3 text-right">
                                                 <button
                                                     onClick={() => handleDeleteRow(row.id)}
-                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                                                    className="inline-flex rounded-md p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
                                                     title="Ignorar esta fila"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -340,9 +325,32 @@ export default function AdminOnboardingPage() {
                                 </tbody>
                             </table>
                         </div>
-                    </motion.div>
+                    </motion.section>
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+function EditableCell({
+    value,
+    onChange,
+    placeholder,
+    required = false,
+    mono = false,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    required?: boolean;
+    mono?: boolean;
+}) {
+    return (
+        <input
+            value={value}
+            onChange={event => onChange(event.target.value)}
+            placeholder={placeholder}
+            className={`w-full rounded-md border bg-canvas px-3 py-2 text-sm outline-none transition-colors focus:border-brand-500 ${required && !value.trim() ? "border-amber-300" : "border-subtle"} ${mono ? "font-mono" : "font-sans"}`}
+        />
     );
 }

@@ -39,9 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
-      const showDetails =
-        process.env.NODE_ENV !== "production" ||
-        (typeof window !== "undefined" && window.location.hostname.includes("vercel.app"));
+      const showDetails = process.env.NODE_ENV !== "production";
       const errorMessage = this.state.error?.message;
 
       return (
