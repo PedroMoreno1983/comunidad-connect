@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { History, AlertCircle, CheckCircle2, Home } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, History, Home } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { getApiUrl } from "@/lib/config";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
@@ -43,8 +42,8 @@ export default function FinancesPage() {
     useEffect(() => {
         if (searchParams.get('status') === 'success') {
             toast({
-                title: "¡Pago Recibido!",
-                description: "Tu pago se está procesando. El estado se actualizará en unos momentos.",
+                title: "Pago recibido",
+                description: "Tu pago se esta procesando. El estado se actualizara en unos momentos.",
                 variant: "success"
             });
         }
@@ -61,8 +60,6 @@ export default function FinancesPage() {
             }
 
             const supabase = createClient();
-
-            // 1. Obtener la unidad del perfil del usuario
             let targetUnitId = user.unitId;
 
             if (!targetUnitId) {
@@ -75,12 +72,10 @@ export default function FinancesPage() {
             }
 
             if (!targetUnitId) {
-                // User has no unit assigned yet – show empty state instead of error
                 setExpenses([]);
                 return;
             }
 
-            // 2. Traer Gastos Comunes desde tabla 'expenses'
             const { data, error } = await supabase
                 .from('expenses')
                 .select('*')
@@ -152,121 +147,147 @@ export default function FinancesPage() {
     const totalDebt = pendingExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
-            <div className="flex justify-between items-end">
+        <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
+            <header className="flex flex-col justify-between gap-4 border-b border-subtle pb-6 md:flex-row md:items-end">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 border-l-4 border-brand-500 pl-4 py-1">Finanzas y Pagos</h1>
-                    <p className="text-slate-500 mt-2 ml-5">
-                        Gestiona tus pagos de Gastos Comunes a través de Haulmer 💸
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Finanzas personales</p>
+                    <h1 className="text-3xl font-semibold cc-text-primary">Gastos comunes</h1>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
+                        Revisa deuda vigente, vencimientos e historial de pagos asociados a tu unidad.
                     </p>
                 </div>
-            </div>
+                <div className="rounded-lg border border-subtle bg-surface px-4 py-3 text-sm font-semibold cc-text-primary shadow-sm">
+                    Depto {expenses[0]?.units?.number ?? user?.unitName ?? "sin asignar"}
+                </div>
+            </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-2 border-0 shadow-lg shadow-slate-200/50">
-                    <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-rose-500" />
-                                <CardTitle className="text-lg">Deuda Actual</CardTitle>
-                            </div>
-                            <span className="text-2xl font-black text-rose-600">
-                                {formatCurrency(totalDebt)}
-                            </span>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {loading ? (
-                            <div className="p-8 text-center text-slate-400">Cargando...</div>
-                        ) : pendingExpenses.length === 0 ? (
-                            <div className="p-16 text-center flex flex-col items-center justify-center">
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="w-20 h-20 bg-success-bg rounded-full flex items-center justify-center mb-6"
-                                >
-                                    <CheckCircle2 className="w-10 h-10 text-success-fg" />
-                                </motion.div>
-                                <h3 className="text-2xl font-black cc-text-primary mb-2">¡Todo al día!</h3>
-                                <p className="cc-text-secondary max-w-[280px] font-medium leading-relaxed">
-                                    No tienes pagos pendientes en este momento. Sigue disfrutando de tu comunidad.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-slate-100">
-                                {pendingExpenses.map((expense) => (
-                                    <div key={expense.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
-                                        <div className="flex gap-4 items-center w-full sm:w-auto">
-                                            <div className="h-12 w-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
-                                                <Home className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold text-slate-900 capitalize">
-                                                    {safeFormatDate(expense.month, 'MMMM yyyy', true)}
-                                                </h4>
-                                                <p className="text-sm text-slate-500">
-                                                    Vence: {safeFormatDate(expense.due_date, 'dd MMM yyyy')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
-                                            <span className="text-lg font-bold text-slate-700">
-                                                {formatCurrency(expense.amount)}
-                                            </span>
-                                            <Button
-                                                onClick={() => handlePayHaulmer(expense)}
-                                                className="bg-[#1b4382] hover:bg-[#1b4382]/90 text-white min-w-[140px]"
-                                                disabled={processingId === expense.id}
-                                            >
-                                                {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+            <section className="grid gap-3 md:grid-cols-3">
+                <Metric icon={<AlertCircle className="h-5 w-5" />} label="Total pendiente" value={formatCurrency(totalDebt)} tone="rose" />
+                <Metric icon={<Clock className="h-5 w-5" />} label="Cobros abiertos" value={pendingExpenses.length} tone="amber" />
+                <Metric icon={<CheckCircle2 className="h-5 w-5" />} label="Pagos registrados" value={paidExpenses.length} tone="emerald" />
+            </section>
 
-                <Card className="border-0 shadow-lg shadow-slate-200/50 self-start">
-                    <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-                        <div className="flex items-center gap-2">
-                            <History className="w-5 h-5 text-brand-500" />
-                            <CardTitle className="text-lg">Historial de Pagos</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {paidExpenses.length === 0 ? (
-                            <div className="p-6 text-center text-slate-400 text-sm">
-                                No hay pagos registrados.
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
+                <section className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+                    <div className="flex items-center justify-between border-b border-subtle p-5">
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-slate-500" />
+                            <div>
+                                <h2 className="text-lg font-semibold cc-text-primary">Cobros pendientes</h2>
+                                <p className="text-sm cc-text-secondary">Ordenados por periodo y vencimiento</p>
                             </div>
-                        ) : (
-                            <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                                {paidExpenses.map((expense) => (
-                                    <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        </div>
+                        <Badge variant={totalDebt > 0 ? "destructive" : "secondary"}>
+                            {totalDebt > 0 ? "Pendiente" : "Al dia"}
+                        </Badge>
+                    </div>
+
+                    {loading ? (
+                        <div className="p-10 text-center text-sm font-semibold cc-text-secondary">Cargando finanzas...</div>
+                    ) : pendingExpenses.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg bg-success-bg"
+                            >
+                                <CheckCircle2 className="h-7 w-7 text-success-fg" />
+                            </motion.div>
+                            <h3 className="text-xl font-semibold cc-text-primary">Todo al dia</h3>
+                            <p className="mt-2 max-w-sm text-sm leading-6 cc-text-secondary">
+                                No tienes pagos pendientes en este momento.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-subtle">
+                            {pendingExpenses.map((expense) => (
+                                <div key={expense.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-elevated/50 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                                            <Home className="h-5 w-5" />
+                                        </div>
                                         <div>
-                                            <p className="text-sm font-medium text-slate-700 capitalize">
+                                            <p className="font-semibold capitalize cc-text-primary">
                                                 {safeFormatDate(expense.month, 'MMMM yyyy', true)}
                                             </p>
-                                            <p className="text-xs text-slate-400">
+                                            <p className="text-sm cc-text-secondary">
+                                                Vence {safeFormatDate(expense.due_date, 'dd MMM yyyy')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 sm:justify-end">
+                                        <span className="text-lg font-semibold cc-text-primary">
+                                            {formatCurrency(expense.amount)}
+                                        </span>
+                                        <Button
+                                            onClick={() => handlePayHaulmer(expense)}
+                                            className="min-w-[150px] rounded-lg bg-slate-950 text-white hover:bg-slate-800"
+                                            disabled={processingId === expense.id}
+                                        >
+                                            {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <aside className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+                    <div className="flex items-center gap-3 border-b border-subtle p-5">
+                        <History className="h-5 w-5 text-slate-500" />
+                        <div>
+                            <h2 className="text-lg font-semibold cc-text-primary">Historial</h2>
+                            <p className="text-sm cc-text-secondary">Pagos confirmados</p>
+                        </div>
+                    </div>
+                    {paidExpenses.length === 0 ? (
+                        <div className="p-8 text-center text-sm cc-text-secondary">No hay pagos registrados.</div>
+                    ) : (
+                        <div className="max-h-[460px] divide-y divide-subtle overflow-y-auto">
+                            {paidExpenses.map((expense) => (
+                                <div key={expense.id} className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-elevated/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                            <CreditCard className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold capitalize cc-text-primary">
+                                                {safeFormatDate(expense.month, 'MMMM yyyy', true)}
+                                            </p>
+                                            <p className="text-xs cc-text-tertiary">
                                                 {expense.paid_at ? safeFormatDate(expense.paid_at, 'dd MMM yyyy') : 'Pagado'}
                                             </p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-bold text-slate-900">
-                                                {formatCurrency(expense.amount)}
-                                            </p>
-                                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 mt-1 border-emerald-200/50">
-                                                Completado
-                                            </Badge>
-                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                    <div className="text-right">
+                                        <p className="text-sm font-semibold cc-text-primary">{formatCurrency(expense.amount)}</p>
+                                        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-success-fg">Completado</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </aside>
             </div>
+        </div>
+    );
+}
+
+function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone: "rose" | "amber" | "emerald" }) {
+    const colors = {
+        rose: "bg-rose-50 text-rose-600",
+        amber: "bg-amber-50 text-amber-600",
+        emerald: "bg-emerald-50 text-emerald-600",
+    };
+
+    return (
+        <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${colors[tone]}`}>
+                {icon}
+            </div>
+            <p className="text-2xl font-semibold cc-text-primary">{value}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{label}</p>
         </div>
     );
 }

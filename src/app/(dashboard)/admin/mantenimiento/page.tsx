@@ -277,7 +277,7 @@ export default function MantenimientoAdminPage() {
                     <button
                         key={key}
                         onClick={() => setActiveTab(key as typeof activeTab)}
-                        className={`border-b-2 px-4 py-3 text-sm font-black transition-colors ${activeTab === key ? "border-emerald-500 text-emerald-600" : "border-transparent cc-text-secondary hover:text-slate-900"}`}
+                        className={`border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === key ? "border-emerald-500 text-emerald-600" : "border-transparent cc-text-secondary hover:text-slate-900"}`}
                     >
                         {label}
                     </button>
@@ -285,7 +285,7 @@ export default function MantenimientoAdminPage() {
             </nav>
 
             {loading ? (
-                <div className="flex h-80 items-center justify-center rounded-2xl border border-subtle bg-surface">
+                <div className="flex h-80 items-center justify-center rounded-lg border border-subtle bg-surface">
                     <Loader2 className="h-7 w-7 animate-spin text-emerald-500" />
                 </div>
             ) : activeTab === "operacion" ? (
@@ -293,7 +293,7 @@ export default function MantenimientoAdminPage() {
                     <section className="space-y-4">
                         <SectionTitle icon={<CalendarDays className="h-5 w-5" />} title="Cola operativa" />
                         {services.map(item => (
-                            <article key={item.id} className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                            <article key={item.id} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                                     <div className="min-w-0 space-y-2">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -301,9 +301,9 @@ export default function MantenimientoAdminPage() {
                                             <Badge tone={item.status === "completed" ? "green" : "blue"}>{statusLabel(item.status)}</Badge>
                                             <span className="text-xs font-bold cc-text-tertiary">{dateLabel(serviceDateOf(item))}</span>
                                         </div>
-                                        <h3 className="font-black cc-text-primary">{item.description || "Solicitud tecnica"}</h3>
+                                        <h3 className="font-semibold cc-text-primary">{item.description || "Solicitud tecnica"}</h3>
                                     </div>
-                                    <button onClick={() => closeService(item.id)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-black text-white disabled:opacity-40" disabled={item.status === "completed"}>
+                                    <button onClick={() => closeService(item.id)} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white disabled:opacity-40" disabled={item.status === "completed"}>
                                         <CheckCircle2 className="h-4 w-4" />
                                         Cerrar
                                     </button>
@@ -315,12 +315,12 @@ export default function MantenimientoAdminPage() {
                     <aside className="space-y-4">
                         <SectionTitle icon={<Bot className="h-5 w-5" />} title="Casos detectados por CoCo" />
                         {cases.map(item => (
-                            <article key={item.id} className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                            <article key={item.id} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                                 <div className="mb-3 flex items-center justify-between gap-3">
                                     <Badge tone={item.urgency === "alta" || item.urgency === "emergencia" ? "red" : "blue"}>{item.urgency || "media"}</Badge>
-                                    <span className="text-[10px] font-black uppercase tracking-widest cc-text-tertiary">{item.unit_label || "Comunidad"}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest cc-text-tertiary">{item.unit_label || "Comunidad"}</span>
                                 </div>
-                                <h3 className="font-black cc-text-primary">{item.title || "Caso operativo"}</h3>
+                                <h3 className="font-semibold cc-text-primary">{item.title || "Caso operativo"}</h3>
                                 <p className="mt-2 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message || item.category || "Sin detalle adicional."}</p>
                             </article>
                         ))}
@@ -331,19 +331,19 @@ export default function MantenimientoAdminPage() {
                     {assets.map(asset => {
                         const health = healthOf(asset);
                         return (
-                            <article key={asset.id} className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                            <article key={asset.id} className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                                 <div className="mb-6 flex items-start justify-between gap-4">
-                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${health === "critical" ? "bg-rose-50 text-rose-600" : health === "warning" ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
+                                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${health === "critical" ? "bg-rose-50 text-rose-600" : health === "warning" ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
                                         {asset.category === "pump" ? <Droplets className="h-5 w-5" /> : asset.category === "electrical" ? <Zap className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
                                     </div>
                                     <Badge tone={health === "critical" ? "red" : health === "warning" ? "amber" : "green"}>{health}</Badge>
                                 </div>
-                                <h3 className="text-lg font-black cc-text-primary">{asset.name || "Activo tecnico"}</h3>
+                                <h3 className="text-lg font-semibold cc-text-primary">{asset.name || "Activo tecnico"}</h3>
                                 <p className="mt-1 text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
                                 <p className="mt-4 text-xs font-bold uppercase tracking-widest cc-text-tertiary">{asset.location || "Sin ubicacion"}</p>
-                                <div className="mt-5 flex items-center justify-between rounded-xl bg-elevated px-4 py-3">
-                                    <span className="text-xs font-black cc-text-secondary">Proxima revision</span>
-                                    <span className="text-xs font-black cc-text-primary">{dateLabel(asset.next_maintenance || asset.nextMaintenance)}</span>
+                                <div className="mt-5 flex items-center justify-between rounded-lg bg-elevated px-4 py-3">
+                                    <span className="text-xs font-bold cc-text-secondary">Proxima revision</span>
+                                    <span className="text-xs font-bold cc-text-primary">{dateLabel(asset.next_maintenance || asset.nextMaintenance)}</span>
                                 </div>
                             </article>
                         );
@@ -356,14 +356,14 @@ export default function MantenimientoAdminPage() {
                         ["ASC-B-MOTOR", "Telemetria ascensor", "Torre B", "Online", <RadioTower key="r" className="h-5 w-5" />],
                         ["TAB-EMERG-01", "Tablero emergencia", "Sala electrica", "Revision", <Zap key="z" className="h-5 w-5" />],
                     ].map(([id, title, location, status, icon]) => (
-                        <article key={String(id)} className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                        <article key={String(id)} className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                             <div className="mb-5 flex items-center justify-between">
-                                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">{icon}</span>
+                                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">{icon}</span>
                                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
                             </div>
-                            <h3 className="font-black cc-text-primary">{title}</h3>
+                            <h3 className="font-semibold cc-text-primary">{title}</h3>
                             <p className="mt-1 text-sm font-bold cc-text-secondary">{id}</p>
-                            <div className="mt-5 flex items-center justify-between text-xs font-black">
+                            <div className="mt-5 flex items-center justify-between text-xs font-bold">
                                 <span className="cc-text-tertiary">{location}</span>
                                 <span className="text-emerald-600">{status}</span>
                             </div>
@@ -373,22 +373,22 @@ export default function MantenimientoAdminPage() {
             )}
 
             {showTask && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShowTask(false)}>
-                    <div className="w-full max-w-lg rounded-2xl border border-subtle bg-surface p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowTask(false)}>
+                    <div className="w-full max-w-lg rounded-lg border border-subtle bg-surface p-6 shadow-xl" onClick={event => event.stopPropagation()}>
                         <div className="mb-6 flex items-center justify-between">
-                            <h2 className="text-xl font-black cc-text-primary">Nueva tarea</h2>
-                            <button onClick={() => setShowTask(false)} className="rounded-xl p-2 hover:bg-elevated"><X className="h-5 w-5" /></button>
+                            <h2 className="text-xl font-semibold cc-text-primary">Nueva tarea</h2>
+                            <button onClick={() => setShowTask(false)} className="rounded-lg p-2 hover:bg-elevated"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="space-y-4">
-                            <input value={form.title} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" placeholder="Titulo" />
-                            <textarea value={form.description} onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))} className="h-28 w-full resize-none rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" placeholder="Descripcion del trabajo" />
+                            <input value={form.title} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Titulo" />
+                            <textarea value={form.description} onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))} className="h-28 w-full resize-none rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Descripcion del trabajo" />
                             <div className="grid grid-cols-2 gap-3">
-                                <select value={form.service_type} onChange={event => setForm(prev => ({ ...prev, service_type: event.target.value }))} className="rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none">
+                                <select value={form.service_type} onChange={event => setForm(prev => ({ ...prev, service_type: event.target.value }))} className="rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none">
                                     {categories.map(category => <option key={category} value={category}>{category}</option>)}
                                 </select>
-                                <input type="date" value={form.scheduled_date} onChange={event => setForm(prev => ({ ...prev, scheduled_date: event.target.value }))} className="rounded-xl border border-subtle bg-elevated px-4 py-3 text-sm font-bold outline-none" />
+                                <input type="date" value={form.scheduled_date} onChange={event => setForm(prev => ({ ...prev, scheduled_date: event.target.value }))} className="rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" />
                             </div>
-                            <button onClick={saveTask} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
+                            <button onClick={saveTask} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-semibold text-white disabled:opacity-50">
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                                 Crear tarea
                             </button>

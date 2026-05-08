@@ -247,10 +247,13 @@ export default function AmenitiesPage() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {amenities.map((amenity) => {
                             const Icon = getIcon(amenity.iconName);
+                            const amenityBookings = bookings.filter(booking => booking.amenityId === amenity.id);
+                            const upcomingBookings = amenityBookings.filter(booking => new Date(`${booking.date}T${booking.startTime || "00:00"}`) >= new Date());
+                            const nextBooking = [...upcomingBookings].sort((a, b) => new Date(`${a.date}T${a.startTime || "00:00"}`).getTime() - new Date(`${b.date}T${b.startTime || "00:00"}`).getTime())[0];
                             return (
                                 <article
                                     key={amenity.id}
-                                    className="group flex min-h-[280px] flex-col rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-colors hover:border-brand-200"
+                                    className="group flex min-h-[300px] flex-col rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-colors hover:border-brand-200"
                                 >
                                     <div className="mb-5 flex items-start justify-between gap-4">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -258,12 +261,12 @@ export default function AmenitiesPage() {
                                         </div>
 
                                         {amenity.hourlyRate > 0 && (
-                                            <div className="rounded-full bg-elevated px-2.5 py-1 text-xs font-semibold cc-text-secondary">
+                                            <div className="rounded-md bg-elevated px-2.5 py-1 text-xs font-semibold cc-text-secondary">
                                                 ${amenity.hourlyRate.toLocaleString()}/hr
                                             </div>
                                         )}
                                         {amenity.hourlyRate === 0 && (
-                                            <div className="flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg">
+                                            <div className="flex items-center gap-1 rounded-md bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg">
                                                 <Sparkles className="h-3 w-3" />
                                                 Gratis
                                             </div>
@@ -274,11 +277,20 @@ export default function AmenitiesPage() {
                                         <h3 className="mb-2 text-lg font-bold cc-text-primary">{amenity.name}</h3>
                                         <p className="mb-4 line-clamp-3 text-sm leading-6 cc-text-secondary">{amenity.description}</p>
 
-                                        <div className="mb-5 flex items-center gap-4 text-sm cc-text-secondary">
-                                            <div className="flex items-center gap-1.5">
+                                        <div className="mb-2 grid grid-cols-2 gap-2 text-sm cc-text-secondary">
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-elevated px-3 py-2">
                                                 <Users className="h-4 w-4 text-slate-400" />
                                                 <span>Máx. {amenity.maxCapacity}</span>
                                             </div>
+                                        </div>
+
+                                        <div className="mb-5 rounded-lg border border-subtle bg-elevated/50 px-3 py-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">Proxima reserva</p>
+                                            <p className="mt-1 text-sm font-semibold cc-text-primary">
+                                                {nextBooking
+                                                    ? `${new Date(`${nextBooking.date}T12:00:00`).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })} - ${formatTime(nextBooking.startTime)}`
+                                                    : "Sin reservas futuras"}
+                                            </p>
                                         </div>
 
                                         <button
