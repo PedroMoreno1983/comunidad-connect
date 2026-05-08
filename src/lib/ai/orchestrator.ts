@@ -51,19 +51,34 @@ function extractGeminiError(text: string) {
     }
 }
 
-function buildFallbackTurn(history: ChatMessage[], userMessage: string): ChatMessage[] {
+export async function buildTrainingFallbackTurn(history: ChatMessage[], userMessage: string): Promise<ChatMessage[]> {
     const needsBlackboard = history.length <= 2;
     const shortAnswer = userMessage.trim().length <= 4
-        ? "Si. Una charla no arregla la convivencia por si sola, pero sirve para dejar criterios claros, practicar casos reales y ordenar que hacer cuando alguien no respeta las reglas. La disciplina mejora cuando la comunidad entiende el protocolo y lo aplica de forma pareja."
-        : "Estoy con alta demanda en el motor de IA, pero sigo contigo: tomemos tu punto como caso de clase. La clave es separar opinion, reglamento y accion concreta: que paso, que norma aplica, quien debe actuar y en que plazo.";
+        ? "Si. Una charla no arregla la convivencia por si sola, pero sirve para dejar **criterios claros**, practicar casos reales y ordenar que hacer cuando alguien no respeta las reglas. La disciplina mejora cuando la comunidad entiende el protocolo y lo aplica de forma pareja."
+        : "Estoy con una intermitencia del motor principal, pero sigo contigo: tomemos tu punto como caso de clase. La clave es separar **hecho**, **reglamento** y **accion concreta**: que paso, que norma aplica, quien debe actuar y en que plazo.";
+
+    let blackboard: string | undefined;
+
+    if (needsBlackboard) {
+        const imageUrl = await ImageService.generateTutorImage(
+            buildBlackboardImagePrompt(userMessage || "condominium community rules and coexistence")
+        );
+        blackboard = [
+            imageUrl ? `![Escena de aprendizaje CoCo](${imageUrl})` : "",
+            "# Criterio CoCo",
+            "",
+            "- **Escuchar el caso** sin convertirlo en pelea.",
+            "- **Identificar la regla aplicable** antes de decidir.",
+            "- **Definir responsable y plazo** para que no quede en el aire.",
+            "- **Dejar registro** para seguimiento y transparencia."
+        ].filter(Boolean).join("\n");
+    }
 
     return [{
         id: `tutor-fallback-${Date.now()}`,
         role: 'tutor',
         text: shortAnswer,
-        blackboard: needsBlackboard
-            ? "## Criterio CoCo\n\n- Escuchar el caso sin pelear.\n- Identificar la regla aplicable.\n- Definir una accion concreta y responsable.\n- Dejar registro para seguimiento."
-            : undefined
+        blackboard
     }];
 }
 
@@ -433,6 +448,6 @@ export async function runMultiAgentTurn(
             fallbackUsed: 'auto_tutor_turn',
             error: err,
         });
-        return buildFallbackTurn(history, userMessage);
+        return buildTrainingFallbackTurn(history, userMessage);
     }
 }

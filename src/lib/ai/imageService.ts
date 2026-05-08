@@ -1,28 +1,35 @@
 import OpenAI from 'openai';
 import { recordAiEvent } from './telemetry';
 
+const FALLBACK_IMAGE_URL =
+  "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1200&auto=format&fit=crop";
+
+function clampPrompt(prompt: string) {
+  return prompt
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1800);
+}
 
 export class ImageService {
   /**
-   * Genera una imagen usando DALL-E 3 a partir de un prompt descriptivo.
-   * Devuelve la URL efímera (dura ~2 horas).
-   * 
-   * @param prompt Descripción detallada de la imagen a generar
-   * @returns URL de la imagen generada, o null si falla
+   * Generates a training image with OpenAI Images.
+   * Returns either a remote URL or a base64 data URL, depending on the model.
    */
   static async generateTutorImage(prompt: string): Promise<string | null> {
+    const safePrompt = clampPrompt(prompt);
+
     if (!process.env.OPENAI_API_KEY) {
-      console.warn("⚠️ OPENAI_API_KEY no está configurada. Saltando generación de imagen.");
+      console.warn("[ImageService] OPENAI_API_KEY missing. Using curated fallback image.");
       recordAiEvent({
         provider: 'openai',
         feature: 'training.blackboard_image',
         status: 'skipped',
         fallbackUsed: 'unsplash',
-        promptChars: prompt.length,
+        promptChars: safePrompt.length,
         error: 'OPENAI_API_KEY missing',
       });
-      // Fallback a una imagen genérica si no hay API Key
-      return "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1000";
+      return FALLBACK_IMAGE_URL;
     }
 
     const model = process.env.OPENAI_IMAGE_MODEL || "dall-e-3";
@@ -33,51 +40,53 @@ export class ImageService {
         apiKey: process.env.OPENAI_API_KEY,
       });
 
-      console.log(`[ImageService] Generando imagen con ${model}: "${prompt.substring(0, 50)}..."`);
+      console.log(`[ImageService] Generating image with ${model}: "${safePrompt.substring(0, 80)}..."`);
       const response = await openai.images.generate({
         model,
-        prompt: prompt,
+        prompt: safePrompt,
         n: 1,
         size: "1024x1024",
-        quality: "standard", // "standard" es más rápido y barato que "hd"
-      });
+        quality: "standard",
+      } as any);
 
-      if (response.data && response.data[0] && response.data[0].url) {
+      const image = response.data?.[0];
+      const imageUrl = image?.url || (image?.b64_json ? `data:image/png;base64,${image.b64_json}` : null);
+
+      if (imageUrl) {
         recordAiEvent({
           provider: 'openai',
           feature: 'training.blackboard_image',
           status: 'success',
           model,
           latencyMs: Date.now() - startedAt,
-          promptChars: prompt.length,
+          promptChars: safePrompt.length,
         });
-        return response.data[0].url;
+        return imageUrl;
       }
+
       recordAiEvent({
         provider: 'openai',
         feature: 'training.blackboard_image',
         status: 'error',
         model,
         latencyMs: Date.now() - startedAt,
-        promptChars: prompt.length,
-        error: 'OpenAI returned no image URL',
+        promptChars: safePrompt.length,
+        error: 'OpenAI returned no image data',
       });
-      return null;
+      return FALLBACK_IMAGE_URL;
     } catch (error) {
-      console.error(`[ImageService] Error generando imagen con ${model}:`, error);
+      console.error(`[ImageService] Image generation failed with ${model}:`, error);
       recordAiEvent({
         provider: 'openai',
         feature: 'training.blackboard_image',
         status: 'fallback',
         model,
         latencyMs: Date.now() - startedAt,
-        promptChars: prompt.length,
+        promptChars: safePrompt.length,
         fallbackUsed: 'pollinations',
         error,
       });
-      // Fallback a pollinations si DALL-E falla
-      const safePrompt = encodeURIComponent(prompt.substring(0, 100));
-      return `https://image.pollinations.ai/prompt/${safePrompt}`;
+      return `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt.substring(0, 160))}`;
     }
   }
 }

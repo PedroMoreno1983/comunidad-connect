@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runMultiAgentTurn } from "@/lib/ai/orchestrator";
+import { buildTrainingFallbackTurn, runMultiAgentTurn } from "@/lib/ai/orchestrator";
 
-// Rate limiter implementation similar to CoCo
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 50;
 const RATE_LIMIT_WINDOW = 60_000;
@@ -19,8 +18,8 @@ function checkRateLimit(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-    const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
-    
+    const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim();
+
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
         ?? req.headers.get("x-real-ip")
         ?? "unknown";
@@ -32,16 +31,6 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    if (!GEMINI_API_KEY || !GEMINI_API_KEY.startsWith("AIza")) {
-        return NextResponse.json({
-            responses: [{
-                id: `sys-err-${Date.now()}`,
-                role: 'system',
-                text: 'Error interno: La GEMINI_API_KEY no está configurada correctamente en el entorno.'
-            }]
-        }, { status: 200 });
-    }
-
     try {
         const body = await req.json();
         const { message, history, courseContent, userId, communityId } = body;
@@ -50,11 +39,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
 
-        // Call the orchestrator, passing the injected courseContent if available
-        const responses = await runMultiAgentTurn(GEMINI_API_KEY, history || [], message, courseContent, userId, communityId);
+        if (!geminiApiKey || !geminiApiKey.startsWith("AIza")) {
+            const responses = await buildTrainingFallbackTurn(history || [], message);
+            return NextResponse.json({ responses }, { status: 200 });
+        }
+
+        const responses = await runMultiAgentTurn(
+            geminiApiKey,
+            history || [],
+            message,
+            courseContent,
+            userId,
+            communityId
+        );
 
         return NextResponse.json({ responses }, { status: 200 });
-
     } catch (error: unknown) {
         console.error("Training MultiAgent API Error:", error);
         return NextResponse.json({
