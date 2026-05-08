@@ -304,7 +304,7 @@ const COMMUNITY_COURSES: CommunityCourse[] = [
 function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-            <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-2xl shadow-sm flex flex-col overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-subtle">
                     <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-brand-500" />
@@ -330,11 +330,11 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
                         <div className="p-4 bg-brand-100 dark:bg-indigo-900/50 rounded-2xl mb-4">
                             <Sparkles className="h-12 w-12 text-brand-500" />
                         </div>
-                        <h2 className="text-xl font-black dark:text-white mb-2">Visor de SCORM</h2>
+                        <h2 className="text-xl font-semibold dark:text-white mb-2">Visor de SCORM</h2>
                         <p className="text-slate-500 text-sm max-w-sm mb-6">
                             En el entorno de producción, aquí se reproducirá directamente el paquete SCORM generado a través de CoTraining.ai u otros LMS institucionales.
                         </p>
-                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 border border-subtle px-3 py-1 rounded-full">
+                        <span className="text-[10px] uppercase font-semibold tracking-widest text-slate-400 border border-subtle px-3 py-1 rounded-full">
                             Simulación de Integración Activa
                         </span>
                     </div>
@@ -483,13 +483,13 @@ export default function TrainingPage() {
         <div className="max-w-3xl space-y-8">
             {/* Header */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900">
+                <div className="relative overflow-hidden rounded-lg p-8 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900">
                     {/* Decorative blobs */}
                     <div className={`absolute -top-6 -right-6 w-32 h-32 rounded-full bg-gradient-to-br ${roleGradient} opacity-20 blur-2xl`} />
                     <div className="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 opacity-10 blur-2xl" />
 
                     <div className="relative flex items-start gap-5">
-                        <div className={`p-4 rounded-2xl bg-gradient-to-br ${roleGradient} shadow-2xl flex-shrink-0`}>
+                        <div className={`p-4 rounded-2xl bg-gradient-to-br ${roleGradient} shadow-sm flex-shrink-0`}>
                             <GraduationCap className="h-8 w-8 text-white" />
                         </div>
                         <div>
@@ -550,12 +550,12 @@ export default function TrainingPage() {
                         </div>
                     </div>
 
-                    <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                    <div className="bg-slate-900 rounded-lg p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-sm">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]" />
                         
                         <div className="flex-1 relative z-10">
-                            <h3 className="text-2xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
+                            <h3 className="text-2xl font-semibold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
                                 Powered by CoTraining.ai
                             </h3>
                             <p className="text-slate-300 text-sm leading-relaxed mb-6">
@@ -565,13 +565,13 @@ export default function TrainingPage() {
                                 href="https://www.cotraining.ai/es" 
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto"
+                                className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-sm hover:scale-105 transition-all w-full sm:w-auto"
                             >
                                 Vincular Cuenta de CoTraining
                                 <ExternalLink className="h-4 w-4" />
                             </a>
                         </div>
-                        <div className="hidden md:flex w-48 h-48 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
+                        <div className="hidden md:flex w-48 h-48 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
                             <Upload className="h-10 w-10 text-orange-400 mb-3" />
                             <p className="text-xs font-bold text-slate-300">Arrastra tu PDF exportado en SCORM aquí para cargarlo temporalmente</p>
                         </div>

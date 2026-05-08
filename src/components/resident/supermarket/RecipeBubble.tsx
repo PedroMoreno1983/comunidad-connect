@@ -30,7 +30,7 @@ export function RecipeBubble({ suggestion, onAddMissingToCart }: RecipeBubblePro
 
             {/* Recipe Info */}
             <div className="p-4 border-b border-subtle space-y-2">
-                <h4 className="font-black cc-text-primary text-lg">{recipe.name}</h4>
+                <h4 className="font-semibold cc-text-primary text-lg">{recipe.name}</h4>
                 <p className="text-xs cc-text-secondary">{recipe.description}</p>
             </div>
 

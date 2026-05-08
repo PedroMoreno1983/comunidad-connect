@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -96,7 +96,7 @@ export default function AdminTrainingPage() {
         const MAX_SIZE_MB = 4;
         const oversized = files.filter(f => f.size > MAX_SIZE_MB * 1024 * 1024);
         if (oversized.length > 0) {
-            toast({ title: "Archivo demasiado grande", description: `${oversized.map(f => f.name).join(', ')} supera el lÃ­mite de ${MAX_SIZE_MB}MB. Comprime el PDF o divÃ­delo.`, variant: "destructive" });
+            toast({ title: "Archivo demasiado grande", description: `${oversized.map(f => f.name).join(', ')} supera el límite de ${MAX_SIZE_MB}MB. Comprime el PDF o divídelo.`, variant: "destructive" });
             e.target.value = '';
             return;
         }
@@ -127,7 +127,7 @@ export default function AdminTrainingPage() {
             if (combinedText) {
                 setRawText(prev => prev ? prev + '\n\n' + combinedText : combinedText);
                 if (!newTitle) {
-                    setNewTitle(files.length > 1 ? `Curso MÃºltiples Archivos` : `Curso sobre: ${lastFileName}`);
+                    setNewTitle(files.length > 1 ? `Curso Múltiples Archivos` : `Curso sobre: ${lastFileName}`);
                 }
             }
         } catch (err) {
@@ -142,7 +142,7 @@ export default function AdminTrainingPage() {
 
     const generateSlidesFromText = async () => {
         if (!rawText.trim()) {
-            toast({ title: "Falta contenido", description: "Sube un archivo o escribe un temario para que la IA diseÃ±e el curso.", variant: "destructive" });
+            toast({ title: "Falta contenido", description: "Sube un archivo o escribe un temario para que la IA diseñe el curso.", variant: "destructive" });
             return;
         }
         setIsGenerating(true);
@@ -159,7 +159,7 @@ export default function AdminTrainingPage() {
                     setSlides(data.slides);
                     setActiveSlideIndex(0);
                 } else {
-                    toast({ title: "Sin resultado", description: "La IA generÃ³ un formato vacÃ­o. Agrega mÃ¡s texto e intenta de nuevo.", variant: "destructive" });
+                    toast({ title: "Sin resultado", description: "La IA generó un formato vacío. Agrega más texto e intenta de nuevo.", variant: "destructive" });
                 }
             } else {
                 const errorData = await res.json();
@@ -167,7 +167,7 @@ export default function AdminTrainingPage() {
             }
         } catch (error) {
             console.error(error);
-            toast({ title: "Error de conexiÃ³n", description: "No se pudo contactar al servidor de IA.", variant: "destructive" });
+            toast({ title: "Error de conexión", description: "No se pudo contactar al servidor de IA.", variant: "destructive" });
         } finally {
             setIsGenerating(false);
         }
@@ -210,7 +210,7 @@ export default function AdminTrainingPage() {
             }
         } catch (err) {
             console.error(err);
-            toast({ title: "Error de conexiÃ³n", description: "No se pudo guardar el curso.", variant: "destructive" });
+            toast({ title: "Error de conexión", description: "No se pudo guardar el curso.", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -243,7 +243,7 @@ export default function AdminTrainingPage() {
         setActiveSlideIndex(0);
     };
 
-    if (loading) return <div className="p-8 text-center text-slate-500">Cargando mÃ³dulos...</div>;
+    if (loading) return <div className="p-8 text-center text-slate-500">Cargando módulos...</div>;
 
     const activeSlide = slides[activeSlideIndex];
 
@@ -257,7 +257,7 @@ export default function AdminTrainingPage() {
                             Generador de Cursos Educativos IA
                         </h1>
                         <p className="mt-2 text-slate-500 max-w-2xl">
-                            Transforma simples archivos PDF o de Word en increÃ­bles presentaciones inmersivas estilo &quot;Clase Magistral&quot;. CoCo narrarÃ¡ cada diapositiva.
+                            Transforma simples archivos PDF o de Word en increíbles presentaciones inmersivas estilo &quot;Clase Magistral&quot;. CoCo narrará cada diapositiva.
                         </p>
                     </div>
                     <button
@@ -271,32 +271,32 @@ export default function AdminTrainingPage() {
             )}
 
             {!isCreating && (
-                <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                <div className="bg-slate-900 rounded-lg p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-sm">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]" />
 
                     <div className="flex-1 relative z-10">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">IntegraciÃ³n Oficial</span>
+                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Integración Oficial</span>
                         </div>
-                        <h3 className="text-2xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
+                        <h3 className="text-2xl font-semibold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
                             Extiende tus posibilidades con CoTraining.ai
                         </h3>
                         <p className="text-slate-300 text-sm leading-relaxed mb-6">
-                            Nuestra IA integrada es genial para cursos rÃ¡pidos, pero si necesitas exportaciones SCORM completas, personalizaciÃ³n avanzada o 140 idiomas, conecta tu cuenta de la plataforma lÃ­der en IA E-Learning.
+                            Nuestra IA integrada es genial para cursos rápidos, pero si necesitas exportaciones SCORM completas, personalización avanzada o 140 idiomas, conecta tu cuenta de la plataforma líder en IA E-Learning.
                         </p>
                         <a
                             href="https://www.cotraining.ai/es"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto"
+                            className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-sm hover:scale-105 transition-all w-full sm:w-auto"
                         >
                             Ir a CoTraining.ai
                         </a>
                     </div>
-                    <div className="hidden md:flex w-48 h-48 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
+                    <div className="hidden md:flex w-48 h-48 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
                         <UploadCloud className="h-10 w-10 text-orange-400 mb-3" />
-                        <p className="text-xs font-bold text-slate-300">Vincula aquÃ­ tus paquetes SCORM de CoTraining en el futuro</p>
+                        <p className="text-xs font-bold text-slate-300">Vincula aquí tus paquetes SCORM de CoTraining en el futuro</p>
                     </div>
                 </div>
             )}
@@ -307,7 +307,7 @@ export default function AdminTrainingPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0 }}
-                        className="bg-surface rounded-3xl shadow-xl border border-subtle overflow-hidden"
+                        className="bg-surface rounded-lg shadow-sm border border-subtle overflow-hidden"
                     >
                         <div className="p-6 border-b border-subtle mx-auto">
                             <h2 className="text-2xl font-bold flex items-center gap-3 justify-center cc-text-primary">
@@ -333,7 +333,7 @@ export default function AdminTrainingPage() {
                                         {isUploading ? 'Extrayendo textos...' : 'Sube tus PDFs, Documentos o Reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
-                                        La IA leerÃ¡ automÃ¡ticamente todo el material legal o formativo y construirÃ¡ un guion estructurado para la comunidad.
+                                        La IA leerá automáticamente todo el material legal o formativo y construirá un guion estructurado para la comunidad.
                                     </p>
                                 </div>
                             </div>
@@ -348,7 +348,7 @@ export default function AdminTrainingPage() {
                                     onChange={e => setRawText(e.target.value)}
                                     disabled={isGenerating}
                                     className="w-full px-5 py-4 rounded-xl border border-default bg-surface resize-y"
-                                    placeholder="Ej: MÃ³dulo 1. CÃ³mo reciclar en el condominio..."
+                                    placeholder="Ej: Módulo 1. Cómo reciclar en el condominio..."
                                 />
                             </div>
 
@@ -359,7 +359,7 @@ export default function AdminTrainingPage() {
                                     disabled={isGenerating || isUploading || !rawText.trim()}
                                     className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2"
                                 >
-                                    {isGenerating ? 'ðŸŒŸ DiseÃ±ando PresentaciÃ³n IA...' : 'Crear PelÃ­cula Diapositivas'}
+                                    {isGenerating ? '🌟 Diseñando Presentación IA...' : 'Crear Película Diapositivas'}
                                 </button>
                             </div>
                         </div>
@@ -371,7 +371,7 @@ export default function AdminTrainingPage() {
                      <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-[#fcfdff] dark:bg-slate-900 rounded-3xl shadow-2xl border border-subtle overflow-hidden flex flex-col min-h-[85vh]"
+                        className="bg-[#fcfdff] dark:bg-slate-900 rounded-lg shadow-sm border border-subtle overflow-hidden flex flex-col min-h-[85vh]"
                      >
                         {/* Editor Header Bar */}
                         <div className="h-16 px-6 border-b border-subtle flex items-center justify-between bg-surface">
@@ -383,7 +383,7 @@ export default function AdminTrainingPage() {
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
                                     className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-brand-500 rounded px-2 w-full cc-text-primary"
-                                    placeholder="TÃ­tulo de la PresentaciÃ³n..."
+                                    placeholder="Título de la Presentación..."
                                 />
                             </div>
                             <div className="flex gap-4">
@@ -391,9 +391,9 @@ export default function AdminTrainingPage() {
                                     value={newAudience} onChange={e => setNewAudience(e.target.value)}
                                     className="px-3 py-1.5 rounded-lg border border-subtle text-sm bg-canvas"
                                 >
-                                    <option value="all">PÃºblico: Todos</option>
-                                    <option value="resident">PÃºblico: Residentes</option>
-                                    <option value="concierge">PÃºblico: Conserjes</option>
+                                    <option value="all">Público: Todos</option>
+                                    <option value="resident">Público: Residentes</option>
+                                    <option value="concierge">Público: Conserjes</option>
                                 </select>
                                 <button
                                     onClick={handleCreate} disabled={isSaving}
@@ -438,12 +438,12 @@ export default function AdminTrainingPage() {
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
                                         transition={{ duration: 0.3 }}
-                                        className={`w-full max-w-4xl aspect-[16/9] rounded-[2rem] shadow-2xl overflow-hidden relative ${
+                                        className={`w-full max-w-4xl aspect-[16/9] rounded-lg shadow-sm overflow-hidden relative ${
                                             visualThemes[activeSlide.visual_theme] || visualThemes['default']
                                         } flex items-center p-12`}
                                     >
-                                        <div className="w-full bg-white/10 dark:bg-black/20 backdrop-blur-2xl border border-white/20 p-10 rounded-3xl shadow-xl">
-                                            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-8">
+                                        <div className="w-full bg-white/10 dark:bg-black/20 backdrop-blur-2xl border border-white/20 p-10 rounded-lg shadow-sm">
+                                            <h1 className="text-4xl md:text-5xl font-semibold text-white tracking-tight mb-8">
                                                 {activeSlide.title}
                                             </h1>
 
@@ -470,7 +470,7 @@ export default function AdminTrainingPage() {
                                 </div>
                                 <div className="p-5 flex-1 flex flex-col gap-4">
                                     <p className="text-xs text-slate-500">
-                                        Este es el guion que la profesora CoCo explicarÃ¡ de forma verbal y escrita en el Aula Virtual durante esta diapositiva especÃ­fica. SiÃ©ntete libre de ajustarlo.
+                                        Este es el guion que la profesora CoCo explicará de forma verbal y escrita en el Aula Virtual durante esta diapositiva específica. Siéntete libre de ajustarlo.
                                     </p>
                                     <textarea
                                         className="w-full flex-1 resize-none p-4 rounded-xl border-none bg-amber-50/50 dark:bg-amber-900/10 focus:ring-2 ring-emerald-500/50 outline-none text-sm cc-text-secondary leading-relaxed shadow-inner"
@@ -489,7 +489,7 @@ export default function AdminTrainingPage() {
                     {courses.length === 0 ? (
                         <div className="col-span-full py-12 text-center border-2 border-dashed border-default rounded-2xl">
                             <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                            <h3 className="text-lg font-medium cc-text-primary">AÃºn no hay cursos creados</h3>
+                            <h3 className="text-lg font-medium cc-text-primary">Aún no hay cursos creados</h3>
                         </div>
                     ) : (
                         courses.map(course => (

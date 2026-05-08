@@ -87,19 +87,19 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="bg-surface rounded-[2.5rem] p-10 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-8"
+                        className="bg-surface rounded-lg p-10 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none space-y-8"
                     >
                         <div className="text-center space-y-2">
                             <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                                 <UserPlus className="h-8 w-8" />
                             </div>
-                            <h2 className="text-2xl font-black cc-text-primary">Nueva Invitación</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary">Nueva Invitación</h2>
                             <p className="text-sm font-medium text-slate-400">Genere un acceso digital para su visita</p>
                         </div>
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre del Invitado</label>
+                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Nombre del Invitado</label>
                                 <Input
                                     placeholder="Ej: Ana García"
                                     className="h-14 rounded-2xl font-bold"
@@ -108,7 +108,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">DNI / RUT</label>
+                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">DNI / RUT</label>
                                 <Input
                                     placeholder="Ej: 12.345.678-9"
                                     className="h-14 rounded-2xl font-bold"
@@ -127,7 +127,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                             <Button
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
-                                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-500/20 transition-all active:scale-95"
+                                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all active:scale-95"
                             >
                                 {isGenerating ? (
                                     <span className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 1.1 }}
-                        className="bg-canvas rounded-[3rem] p-10 shadow-2xl relative overflow-hidden text-center space-y-8"
+                        className="bg-canvas rounded-lg p-10 shadow-sm relative overflow-hidden text-center space-y-8"
                     >
                         {/* Decorative Background */}
                         <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12">
@@ -158,12 +158,12 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
 
                         <div className="relative z-10 space-y-6">
                             <div className="space-y-1">
-                                <h3 className="text-xl font-black text-white">¡Pase Listo!</h3>
+                                <h3 className="text-xl font-semibold text-white">¡Pase Listo!</h3>
                                 <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">{user?.unitName ?? user?.unitId ?? 'Mi Unidad'} • Válido 24hrs</p>
                             </div>
 
                             {/* QR Simulation Component */}
-                            <div className="mx-auto w-64 h-64 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(59,130,246,0.5)] relative group">
+                            <div className="mx-auto w-64 h-64 bg-white p-6 rounded-lg shadow-[0_0_50px_rgba(59,130,246,0.5)] relative group">
                                 <div className="w-full h-full border-4 border-slate-900 rounded-2xl p-2 grid grid-cols-4 grid-rows-4 gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                                     {/* Abstract QR Pattern */}
                                     {qrPattern.map((isFilled, i) => (
@@ -175,7 +175,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                     ))}
                                 </div>
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="bg-blue-600 p-3 rounded-xl shadow-xl">
+                                    <div className="bg-blue-600 p-3 rounded-xl shadow-sm">
                                         <Smartphone className="h-6 w-6 text-white" />
                                     </div>
                                 </div>
@@ -183,8 +183,8 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
 
                             <div className="space-y-4">
                                 <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Invitado</p>
-                                    <p className="text-lg font-black text-white">{guestName}</p>
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Invitado</p>
+                                    <p className="text-lg font-semibold text-white">{guestName}</p>
                                 </div>
 
                                 <div className="flex gap-4">
@@ -195,7 +195,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                         <Copy className="h-4 w-4" />
                                         Copiar
                                     </button>
-                                    <button className="flex-1 h-14 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                                    <button className="flex-1 h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all active:scale-95">
                                         <Share2 className="h-4 w-4" />
                                         Compartir
                                     </button>

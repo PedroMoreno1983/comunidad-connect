@@ -103,13 +103,13 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
         <div className="space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 {/* Scanner Interface */}
-                <div className="bg-surface rounded-[3rem] p-10 border border-subtle shadow-xl shadow-slate-200/20 dark:shadow-none space-y-8">
+                <div className="bg-surface rounded-lg p-10 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none space-y-8">
                     <div className="space-y-2">
-                        <h2 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Seguridad & Accesos</h2>
-                        <h1 className="text-3xl font-black cc-text-primary">Escáner Digital</h1>
+                        <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Seguridad & Accesos</h2>
+                        <h1 className="text-3xl font-semibold cc-text-primary">Escáner Digital</h1>
                     </div>
 
-                    <div className="relative aspect-square md:aspect-video rounded-[2.5rem] bg-slate-900 overflow-hidden flex flex-col items-center justify-center group">
+                    <div className="relative aspect-square md:aspect-video rounded-lg bg-slate-900 overflow-hidden flex flex-col items-center justify-center group">
                         {/* Scanning Animation */}
                         <AnimatePresence>
                             {isScanning && (
@@ -126,10 +126,10 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                         {/* Status UI */}
                         {!isScanning && !scanResult && !scanError && (
                             <div className="text-center space-y-4">
-                                <div className="mx-auto w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-400">
+                                <div className="mx-auto w-20 h-20 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
                                     <Scan className="h-10 w-10 group-hover:scale-110 transition-transform" />
                                 </div>
-                                <p className="text-slate-500 font-black uppercase text-xs tracking-widest">Esperando Código</p>
+                                <p className="text-slate-500 font-semibold uppercase text-xs tracking-widest">Esperando Código</p>
                             </div>
                         )}
 
@@ -139,10 +139,10 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 animate={{ scale: 1, opacity: 1 }}
                                 className="text-center space-y-4"
                             >
-                                <div className="mx-auto w-24 h-24 bg-emerald-500/20 rounded-[2rem] flex items-center justify-center text-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.3)]">
+                                <div className="mx-auto w-24 h-24 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.3)]">
                                     <ShieldCheck className="h-12 w-12" />
                                 </div>
-                                <p className="text-emerald-500 font-black uppercase text-sm tracking-[0.2em]">Acceso Permitido</p>
+                                <p className="text-emerald-500 font-semibold uppercase text-sm tracking-[0.2em]">Acceso Permitido</p>
                             </motion.div>
                         )}
 
@@ -152,10 +152,10 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 animate={{ scale: 1, opacity: 1 }}
                                 className="text-center space-y-4"
                             >
-                                <div className="mx-auto w-24 h-24 bg-rose-500/20 rounded-[2rem] flex items-center justify-center text-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.3)]">
+                                <div className="mx-auto w-24 h-24 bg-rose-500/20 rounded-lg flex items-center justify-center text-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.3)]">
                                     <ShieldAlert className="h-12 w-12" />
                                 </div>
-                                <p className="text-rose-500 font-black uppercase text-sm tracking-[0.2em]">Invitación Inválida</p>
+                                <p className="text-rose-500 font-semibold uppercase text-sm tracking-[0.2em]">Invitación Inválida</p>
                             </motion.div>
                         )}
 
@@ -163,7 +163,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                             <Button
                                 onClick={simulateScan}
                                 disabled={isScanning}
-                                className="w-full h-16 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black text-lg transition-all active:scale-95 shadow-2xl"
+                                className="w-full h-16 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg transition-all active:scale-95 shadow-sm"
                             >
                                 {isScanning ? "Procesando..." : "Simular Escaneo"}
                             </Button>
@@ -180,25 +180,25 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                className="bg-emerald-600 rounded-[3rem] p-10 text-white shadow-2xl space-y-8 relative overflow-hidden"
+                                className="bg-emerald-600 rounded-lg p-10 text-white shadow-sm space-y-8 relative overflow-hidden"
                             >
                                 <div className="relative z-10 space-y-6">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Datos del Invitado</p>
-                                            <h3 className="text-3xl font-black">{scanResult.guestName}</h3>
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] opacity-60">Datos del Invitado</p>
+                                            <h3 className="text-3xl font-semibold">{scanResult.guestName}</h3>
                                         </div>
                                         <UserCheck className="h-10 w-10 opacity-40" />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">DNI / RUT</p>
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest opacity-60">DNI / RUT</p>
                                             <p className="font-bold">{scanResult.guestDni}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Unidad Destino</p>
-                                            <p className="text-2xl font-black">Depto {scanResult.unitId}</p>
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest opacity-60">Unidad Destino</p>
+                                            <p className="text-2xl font-semibold">Depto {scanResult.unitId}</p>
                                         </div>
                                     </div>
 
@@ -207,7 +207,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                             <Clock className="h-4 w-4 opacity-60" />
                                             <span className="text-xs font-bold">Válido hasta Hoy 23:59</span>
                                         </div>
-                                        <div className="px-4 py-2 bg-white/20 rounded-xl text-xs font-black uppercase tracking-widest">
+                                        <div className="px-4 py-2 bg-white/20 rounded-xl text-xs font-semibold uppercase tracking-widest">
                                             Autorizado
                                         </div>
                                     </div>
@@ -219,16 +219,16 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                className="bg-rose-600 rounded-[3rem] p-10 text-white shadow-2xl space-y-6"
+                                className="bg-rose-600 rounded-lg p-10 text-white shadow-sm space-y-6"
                             >
                                 <div className="flex items-center gap-4">
                                     <XCircle className="h-10 w-10" />
-                                    <h3 className="text-2xl font-black">Validación Fallida</h3>
+                                    <h3 className="text-2xl font-semibold">Validación Fallida</h3>
                                 </div>
                                 <p className="font-medium opacity-80 leading-relaxed">
                                     El código QR presentado no corresponde a una invitación activa o está fuera de su rango de vigencia. Por favor, solicite una nueva invitación al residente.
                                 </p>
-                                <Button className="w-full bg-white/20 hover:bg-white/30 text-white rounded-2xl h-14 font-black">
+                                <Button className="w-full bg-white/20 hover:bg-white/30 text-white rounded-2xl h-14 font-semibold">
                                     Intentar de nuevo
                                 </Button>
                             </motion.div>
@@ -237,13 +237,13 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 key="idle"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="bg-elevated/50 rounded-[3rem] p-16 flex flex-col items-center justify-center text-center space-y-6 border border-dashed border-default h-full"
+                                className="bg-elevated/50 rounded-lg p-16 flex flex-col items-center justify-center text-center space-y-6 border border-dashed border-default h-full"
                             >
-                                <div className="w-20 h-20 bg-surface rounded-3xl shadow-xl flex items-center justify-center text-slate-300">
+                                <div className="w-20 h-20 bg-surface rounded-lg shadow-sm flex items-center justify-center text-slate-300">
                                     <Search className="h-10 w-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h3 className="text-xl font-black cc-text-primary">Listo para Escanear</h3>
+                                    <h3 className="text-xl font-semibold cc-text-primary">Listo para Escanear</h3>
                                     <p className="text-sm font-medium text-slate-400 max-w-[240px]">Escanee el código QR del invitado para autorizar su ingreso</p>
                                 </div>
                             </motion.div>
@@ -253,13 +253,13 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
             </div>
 
             {/* Recent Logs (Simulated) */}
-            <div className="bg-surface rounded-[3rem] border border-subtle overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
+            <div className="bg-surface rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-none">
                 <div className="p-10 border-b border-subtle flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                             <History className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="text-xl font-black cc-text-primary">Historial de Accesos QR</h3>
+                        <h3 className="text-xl font-semibold cc-text-primary">Historial de Accesos QR</h3>
                     </div>
                 </div>
                 <div className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -277,13 +277,13 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                     {log.status === 'success' ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
                                 </div>
                                 <div>
-                                    <p className="font-black cc-text-primary">{log.name}</p>
+                                    <p className="font-semibold cc-text-primary">{log.name}</p>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Unidad {log.unit}</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm font-black cc-text-primary">{log.time}</p>
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${log.status === 'success' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                <p className="text-sm font-semibold cc-text-primary">{log.time}</p>
+                                <span className={`text-[10px] font-semibold uppercase tracking-widest ${log.status === 'success' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     {log.status === 'success' ? 'Verificado' : 'Denegado'}
                                 </span>
                             </div>

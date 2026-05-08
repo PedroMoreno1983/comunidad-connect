@@ -93,7 +93,7 @@ export default function ResidentTrainingPage() {
         <ErrorBoundary name="Resident Training Module List">
             <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
                 <div className="flex flex-col mb-8">
-                    <h1 className="text-3xl font-black tracking-tight cc-text-primary border-l-4 border-brand-500 pl-4 py-1 flex items-center gap-3">
+                    <h1 className="text-3xl font-semibold tracking-tight cc-text-primary border-l-4 border-brand-500 pl-4 py-1 flex items-center gap-3">
                         <GraduationCap className="w-8 h-8 text-brand-500" />
                         Centro de Formación Interactivo
                     </h1>
@@ -120,7 +120,7 @@ export default function ResidentTrainingPage() {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-xl hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
+                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-sm hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
                                 >
                                     {user?.role === 'admin' && (
                                         <button 

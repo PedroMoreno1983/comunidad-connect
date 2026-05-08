@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,7 +56,7 @@ export default function AdminOnboardingPage() {
             try {
                 result = JSON.parse(textResponse);
             } catch {
-                throw new Error(`Servidor devolviÃ³ un error grave no-JSON (posible Timeout 504 o Archivo muy grande). Respuesta cruda: ${textResponse.substring(0, 50)}...`);
+                throw new Error(`Servidor devolvió un error grave no-JSON (posible Timeout 504 o Archivo muy grande). Respuesta cruda: ${textResponse.substring(0, 50)}...`);
             }
 
             if (res.ok && result?.data) {
@@ -70,12 +70,12 @@ export default function AdminOnboardingPage() {
                 }));
                 setExtractedData(mappedData as ExtractedUser[]);
             } else {
-                toast({ title: "Error de extracciÃ³n", description: (result && result.error) || 'Hubo un error al procesar el archivo con IA.', variant: "destructive" });
+                toast({ title: "Error de extracción", description: (result && result.error) || 'Hubo un error al procesar el archivo con IA.', variant: "destructive" });
             }
         } catch (err: unknown) {
             console.error(err);
             const errorMessage = err instanceof Error ? err.message : 'Falla desconocida';
-            toast({ title: "Error de conexiÃ³n", description: `Timeout o error de red: ${errorMessage}`, variant: "destructive" });
+            toast({ title: "Error de conexión", description: `Timeout o error de red: ${errorMessage}`, variant: "destructive" });
         } finally {
             setIsExtracting(false);
         }
@@ -148,7 +148,7 @@ export default function AdminOnboardingPage() {
             }
         } catch (error: unknown) {
             console.error(error);
-            const errorMessage = error instanceof Error ? error.message : "La conexiÃ³n con Supabase fallÃ³.";
+            const errorMessage = error instanceof Error ? error.message : "La conexión con Supabase falló.";
             toast({ title: "Error", description: errorMessage, variant: "destructive" });
         } finally {
             setIsSyncing(false);
@@ -158,14 +158,14 @@ export default function AdminOnboardingPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-12">
             <div>
-                <h1 className="text-3xl font-black cc-text-primary flex items-center gap-3">
+                <h1 className="text-3xl font-semibold cc-text-primary flex items-center gap-3">
                     <Sparkles className="h-8 w-8 text-brand-600" />
-                    Asistente MÃ¡gico de MigraciÃ³n con IA
+                    Asistente Mágico de Migración con IA
                 </h1>
                 <p className="mt-2 text-slate-500 max-w-3xl">
-                    OlvÃ­date de tipear usuarios a mano. Sube tu viejo PDF impreso, Excel desordenado o lista de residentes
-                    escraneada. Nuestro cerebro de Inteligencia Artificial (Gemini) leerÃ¡ inteligentemente el desastre,
-                    extraerÃ¡ los nombres, y poblarÃ¡ la base de datos automÃ¡ticamente por ti.
+                    Olvídate de tipear usuarios a mano. Sube tu viejo PDF impreso, Excel desordenado o lista de residentes
+                    escraneada. Nuestro cerebro de Inteligencia Artificial (Gemini) leerá inteligentemente el desastre,
+                    extraerá los nombres, y poblará la base de datos automáticamente por ti.
                 </p>
             </div>
 
@@ -175,7 +175,7 @@ export default function AdminOnboardingPage() {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`bg-surface rounded-3xl p-12 text-center shadow-xl border relative overflow-hidden group transition-all duration-300 ${
+                    className={`bg-surface rounded-lg p-12 text-center shadow-sm border relative overflow-hidden group transition-all duration-300 ${
                         isDragging
                             ? 'border-brand-500 scale-[1.02] bg-indigo-50/50 dark:bg-indigo-900/20'
                             : 'border-indigo-100 dark:border-indigo-500/20'
@@ -184,7 +184,7 @@ export default function AdminOnboardingPage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50 z-0"></div>
 
                     <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
-                        <div className={`p-6 rounded-full bg-surface shadow-2xl transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
+                        <div className={`p-6 rounded-full bg-surface shadow-sm transition-transform duration-500 ${isExtracting ? 'animate-pulse scale-110' : 'group-hover:scale-110'}`}>
                             {isExtracting ? (
                                 <Sparkles className="w-16 h-16 text-brand-600 animate-spin-slow" />
                             ) : (
@@ -193,13 +193,13 @@ export default function AdminOnboardingPage() {
                         </div>
 
                         <h3 className="text-2xl font-bold tracking-tight cc-text-primary">
-                            {isExtracting ? 'La IA estÃ¡ leyendo y estructurando tu archivo...' : 'Arrastra tu archivo PDF o Word aquÃ­'}
+                            {isExtracting ? 'La IA está leyendo y estructurando tu archivo...' : 'Arrastra tu archivo PDF o Word aquí'}
                         </h3>
 
                         <p className="text-slate-500 font-medium max-w-md mx-auto">
                             {isExtracting
-                                ? 'Esto puede tomar hasta 20 segundos dependiendo del tamaÃ±o gigantesco del archivo. No cierres la ventana.'
-                                : 'Soporta nÃ³minas de residentes antiguas, listas de Excel copiadas en texto, o escaneos de OCR.'}
+                                ? 'Esto puede tomar hasta 20 segundos dependiendo del tamaño gigantesco del archivo. No cierres la ventana.'
+                                : 'Soporta nóminas de residentes antiguas, listas de Excel copiadas en texto, o escaneos de OCR.'}
                         </p>
 
                         {!isExtracting && (
@@ -221,17 +221,17 @@ export default function AdminOnboardingPage() {
                 </div>
             )}
 
-            {/* PANTALLA DE Ã‰XITO */}
+            {/* PANTALLA DE ÉXITO */}
             {syncSuccess && (
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-500 rounded-3xl p-12 text-center shadow-xl flex flex-col items-center"
+                    className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-500 rounded-lg p-12 text-center shadow-sm flex flex-col items-center"
                 >
                     <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg mb-6">
                         <CheckCircle2 className="h-12 w-12" />
                     </div>
-                    <h2 className="text-3xl font-black text-success-fg mb-2">Â¡SincronizaciÃ³n MÃ¡gica Completada!</h2>
+                    <h2 className="text-3xl font-semibold text-success-fg mb-2">¡Sincronización Mágica Completada!</h2>
                     <p className="text-emerald-600 dark:text-emerald-500 font-medium mb-8">Todos los residentes han sido inyectados y creados exitosamente en Supabase de forma estructurada.</p>
                     <button
                         onClick={() => setSyncSuccess(false)}
@@ -242,22 +242,22 @@ export default function AdminOnboardingPage() {
                 </motion.div>
             )}
 
-            {/* DATA GRID INTERACTIVO - REVISIÃ“N HUMANA */}
+            {/* DATA GRID INTERACTIVO - REVISIÓN HUMANA */}
             <AnimatePresence>
                 {extractedData && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-surface rounded-2xl shadow-xl overflow-hidden border border-subtle"
+                        className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-subtle"
                     >
                         <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div>
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <FileText className="h-6 w-6 text-brand-400" />
-                                    Tabla de Triaje para RevisiÃ³n Humana
+                                    Tabla de Triaje para Revisión Humana
                                 </h2>
                                 <p className="text-sm text-slate-400 mt-1">
-                                    La Inteligencia Artificial encontrÃ³ <strong>{extractedData.length} personas</strong>. Por seguridad corporativa, debes revisar que la IA no haya cometido errores leyendo manchas del PDF. Edita los campos si notas algo raro.
+                                    La Inteligencia Artificial encontró <strong>{extractedData.length} personas</strong>. Por seguridad corporativa, debes revisar que la IA no haya cometido errores leyendo manchas del PDF. Edita los campos si notas algo raro.
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -275,7 +275,7 @@ export default function AdminOnboardingPage() {
                                     {isSyncing
                                         ? <span className="animate-pulse">Guardando en Supabase...</span>
                                         : confirmingSync
-                                            ? <><AlertCircle className="h-5 w-5" /> Â¿Confirmar? Haz clic de nuevo</>
+                                            ? <><AlertCircle className="h-5 w-5" /> ¿Confirmar? Haz clic de nuevo</>
                                             : <><Save className="h-5 w-5" /> Inyectar a Base de Datos</>
                                     }
                                 </button>
@@ -289,12 +289,12 @@ export default function AdminOnboardingPage() {
                                         <th className="px-6 py-4 w-1/4">Nombre del Residente</th>
                                         <th className="px-6 py-4 w-1/6">Depto / Unidad</th>
                                         <th className="px-6 py-4 w-1/4">Correo Generado/Propio</th>
-                                        <th className="px-6 py-4 w-1/6">TelÃ©fono</th>
-                                        <th className="px-6 py-4 text-center">AcciÃ³n</th>
+                                        <th className="px-6 py-4 w-1/6">Teléfono</th>
+                                        <th className="px-6 py-4 text-center">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700 md:max-h-[60vh] overflow-y-auto w-full block">
-                                    {/* Un truco comÃºn para que las tablas rolen con 100+ items es display: block en tbody, pero aquÃ­ prescindiremos para mantener el flex perfecto width. */}
+                                    {/* Un truco común para que las tablas rolen con 100+ items es display: block en tbody, pero aquí prescindiremos para mantener el flex perfecto width. */}
                                     {extractedData.map((row) => (
                                         <tr key={row.id} className="hover:bg-indigo-50/50 dark:hover:bg-slate-700/30 transition group">
                                             <td className="px-4 py-2">

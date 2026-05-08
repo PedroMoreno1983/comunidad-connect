@@ -139,7 +139,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                             <button
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
-                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${filterStatus === status
+                                className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all border ${filterStatus === status
                                     ? 'bg-canvas text-white border-slate-900 dark:bg-white dark:text-canvas'
                                     : 'bg-white text-slate-500 border-default hover:border-default bg-surface cc-text-tertiary'
                                     }`}
@@ -154,14 +154,14 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-black rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-sm">
+                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-semibold rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-sm">
                         <Download className="h-5 w-5" />
                         Formato Excel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={Object.keys(readings).length === 0 || isSaving}
-                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
+                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
                     >
                         {isSaving ? <Calculator className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                         Procesar Lecturas
@@ -170,16 +170,16 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
             </div>
 
             {/* Entry Table */}
-            <div className="bg-surface rounded-[3rem] border border-subtle overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
+            <div className="bg-surface rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-none">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-subtle">
-                                <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidad</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Anterior (m³)</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Nueva Lectura</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Consumo</th>
-                                <th className="px-10 py-8 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>
+                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Unidad</th>
+                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-right">Anterior (m³)</th>
+                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Nueva Lectura</th>
+                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-right">Consumo</th>
+                                <th className="px-10 py-8 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Estado</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -198,12 +198,12 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                     >
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-black text-xs">
+                                                <div className="h-12 w-12 rounded-2xl bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-semibold text-xs">
                                                     {unit.number}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black cc-text-primary leading-none mb-1">Unidad {unit.number}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Torre {unit.tower}</p>
+                                                    <p className="font-semibold cc-text-primary leading-none mb-1">Unidad {unit.number}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Torre {unit.tower}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -219,7 +219,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                                 onChange={(e) => setReadings({ ...readings, [unit.id]: parseFloat(e.target.value) })}
                                             />
                                         </td>
-                                        <td className={`px-10 py-8 text-right font-black text-lg ${consumption > 25 ? 'text-red-500' :
+                                        <td className={`px-10 py-8 text-right font-semibold text-lg ${consumption > 25 ? 'text-red-500' :
                                             consumption > 0 ? 'text-blue-600 dark:text-blue-400' :
                                                 'text-slate-300'
                                             }`}>
@@ -227,13 +227,13 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                         </td>
                                         <td className="px-10 py-8 text-right">
                                             {consumption > 0 || (lastReading?.month === currentMonth) ? (
-                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${consumption > 25 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-semibold uppercase tracking-wider ${consumption > 25 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
                                                     }`}>
                                                     {consumption > 25 ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
                                                     {consumption > 25 ? "Alto Consumo" : "Normal"}
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Pendiente</span>
+                                                <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-widest">Pendiente</span>
                                             )}
                                         </td>
                                     </tr>

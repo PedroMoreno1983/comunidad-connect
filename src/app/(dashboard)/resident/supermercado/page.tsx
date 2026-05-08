@@ -131,7 +131,7 @@ export default function SupermarketPage() {
                     {/* AI Input */}
                     <div className="rounded-lg border border-white/10 bg-white/5 p-5">
                         <div className="space-y-3">
-                            <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">Pregúntale a CoCo</label>
+                            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-widest">Pregúntale a CoCo</label>
                             <div className="relative">
                                 <textarea 
                                     className="min-h-[80px] w-full rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white placeholder:text-white/30 transition-all focus:outline-none focus:ring-1 focus:ring-white/20"
@@ -243,7 +243,7 @@ export default function SupermarketPage() {
                     <div className="rounded-lg bg-slate-950 p-6 text-white shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
                             <ChefHat className="text-brand-400" />
-                            <h3 className="text-xl font-black">Planes de CoCo</h3>
+                            <h3 className="text-xl font-semibold">Planes de CoCo</h3>
                         </div>
                         <div className="space-y-4">
                             {AI_SUGGESTIONS.map((plan, idx) => {
@@ -291,7 +291,7 @@ export default function SupermarketPage() {
                                 <span className="text-sm font-bold cc-text-secondary">Líder App</span>
                             </div>
                         </div>
-                        <p className="mt-6 text-[10px] uppercase font-black tracking-widest text-slate-400 text-center">Próximamente Integración API Directa</p>
+                        <p className="mt-6 text-[10px] uppercase font-semibold tracking-widest text-slate-400 text-center">Próximamente Integración API Directa</p>
                     </div>
                 </div>
             </div>

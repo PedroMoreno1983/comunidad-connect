@@ -67,7 +67,7 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
                             </p>
                         )}
                     </div>
-                    <p className="text-2xl font-black cc-text-primary">
+                    <p className="text-2xl font-semibold cc-text-primary">
                         ${total.toLocaleString('es-CL')}
                     </p>
                 </div>
