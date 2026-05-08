@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from 'next-themes';
 import {
-  Building2, User, ShieldCheck, KeyRound,
+  Building2, User,
   Sun, Moon, CheckCircle2, HelpCircle,
   BellRing, CreditCard, CalendarCheck, ArrowRight,
   MessageSquare, Package, MapPin, TrendingUp, Star,

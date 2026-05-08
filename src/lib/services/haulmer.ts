@@ -1,5 +1,3 @@
-import { supabase } from '../supabase';
-
 interface PaymentPayload {
     amount: number;
     description: string;

@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/authContext';
 import {
-    GraduationCap, Plus, Trash2, Edit3,
-    BookOpen, Users, Save, X, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft, ChevronRight, Lock
+    GraduationCap, Plus, Trash2,
+    Users, Save, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft, Lock
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';

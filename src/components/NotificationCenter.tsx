@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useNotifications, Notification } from '@/lib/notificationContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Bell, Check, X, Info, CheckCircle, AlertTriangle, AlertCircle,
-    ExternalLink, Trash2, CheckCheck
+    Bell, X, Info, CheckCircle, AlertTriangle, AlertCircle,
+    Trash2, CheckCheck
 } from 'lucide-react';
 import Link from 'next/link';
 

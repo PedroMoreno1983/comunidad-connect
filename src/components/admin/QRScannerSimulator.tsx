@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Scan, ShieldCheck, ShieldAlert, CheckCircle2,
-    XCircle, Clock, Search, History, Trash2,
+    Scan, ShieldCheck, ShieldAlert,
+    XCircle, Clock, Search, History,
     Check, X, UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";

@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useRouter } from 'next/navigation';
 import {
     UploadCloud, Sparkles, FileText, CheckCircle2,
-    AlertCircle, Users, Save, Trash2, Edit3
+    AlertCircle, Save, Trash2
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -23,7 +23,6 @@ export default function AdminOnboardingPage() {
     const router = useRouter();
     const { toast } = useToast();
 
-    const [file, setFile] = useState<File | null>(null);
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractedData, setExtractedData] = useState<ExtractedUser[] | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -38,7 +37,6 @@ export default function AdminOnboardingPage() {
     }, [router, user]);
 
     const processFile = async (uploadedFile: File) => {
-        setFile(uploadedFile);
         setIsExtracting(true);
         setExtractedData(null);
         setSyncSuccess(false);
@@ -73,13 +71,11 @@ export default function AdminOnboardingPage() {
                 setExtractedData(mappedData as ExtractedUser[]);
             } else {
                 toast({ title: "Error de extracciÃ³n", description: (result && result.error) || 'Hubo un error al procesar el archivo con IA.', variant: "destructive" });
-                setFile(null);
             }
         } catch (err: unknown) {
             console.error(err);
             const errorMessage = err instanceof Error ? err.message : 'Falla desconocida';
             toast({ title: "Error de conexiÃ³n", description: `Timeout o error de red: ${errorMessage}`, variant: "destructive" });
-            setFile(null);
         } finally {
             setIsExtracting(false);
         }
@@ -146,7 +142,6 @@ export default function AdminOnboardingPage() {
             if (res.ok) {
                 setSyncSuccess(true);
                 setExtractedData(null);
-                setFile(null);
             } else {
                 const err = await res.json();
                 toast({ title: "Error al sincronizar", description: err.error || 'Error fatal al sincronizar con Supabase.', variant: "destructive" });
@@ -267,7 +262,7 @@ export default function AdminOnboardingPage() {
                             </div>
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => {setExtractedData(null); setFile(null)}}
+                                    onClick={() => setExtractedData(null)}
                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition"
                                 >
                                     Cancelar y Subir Otro

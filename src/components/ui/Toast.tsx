@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
-import { X, CheckCircle, AlertCircle } from "lucide-react";
+import { X } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

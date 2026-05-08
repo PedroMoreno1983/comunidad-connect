@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
-import { Building2, Shield, Settings, Check, X, Search, Edit2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Building2, Shield, Check, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import OutreachDemo from "@/components/admin/OutreachDemo";
 
@@ -175,7 +174,6 @@ export default function SuperAdminDashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-sm">
                             {filteredCommunities.map((community) => {
-                                const currentTier = tiers.find(t => t.id === community.tier_id);
                                 return (
                                     <tr key={community.id} className="hover:bg-elevated/50 transition-colors">
                                         <td className="p-4 font-semibold cc-text-primary">

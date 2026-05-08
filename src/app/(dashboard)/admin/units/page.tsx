@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { WaterService } from "@/lib/api";
@@ -12,10 +12,7 @@ import {
     Plus,
     Search,
     UserPlus,
-    UserX,
-    Loader2,
-    Home,
-    MoreHorizontal
+    Loader2
 } from "lucide-react";
 import {
     Dialog,
@@ -26,7 +23,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/Dialog"; // Assuming you have a Dialog component based on Radix UI or similar
-import { useAuth } from "@/lib/authContext";
 
 interface Profile {
     id: string;
@@ -94,7 +90,7 @@ export default function UnitsPage() {
             setIsCreateOpen(false);
             setNewUnit({ tower: '', number: '', floor: '' });
             loadData();
-        } catch (error) {
+        } catch {
             toast({ title: "Error al crear", variant: "destructive" });
         } finally {
             setCreating(false);
@@ -111,7 +107,7 @@ export default function UnitsPage() {
             toast({ title: "Residente asignado", variant: "success" });
             setIsAssignOpen(false);
             loadData();
-        } catch (error) {
+        } catch {
             toast({ title: "Error al asignar", variant: "destructive" });
         } finally {
             setAssigning(false);

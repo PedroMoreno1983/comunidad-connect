@@ -60,12 +60,12 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
 
                     {/* Glass Overlay for Category */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
-                        <Badge variant="neutral" className="shadow-lg backdrop-blur-md opacity-90">
+                        <Badge variant="neutral" className="shadow-sm opacity-95">
                             <Icon className="h-3.5 w-3.5 mr-1" />
                             {categoryLabel}
                         </Badge>
                         {item.status === 'reserved' && (
-                            <Badge variant="warning" className="shadow-lg p-1.5 opacity-90 backdrop-blur-md">
+                            <Badge variant="warning" className="p-1.5 shadow-sm opacity-95">
                                 RESERVADO
                             </Badge>
                         )}
@@ -92,25 +92,25 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                     {/* Transaction Badges */}
                     <div className="absolute bottom-4 right-4 flex flex-col gap-2 items-end">
                         {item.allowSale !== false && (
-                            <Badge variant="info" className="shadow-lg backdrop-blur-sm opacity-95">
+                            <Badge variant="info" className="shadow-sm opacity-95">
                                 <Tag className="h-3 w-3 mr-1" />
                                 VENTA
                             </Badge>
                         )}
                         {item.allowSwap && (
-                            <Badge variant="conserje" className="shadow-lg backdrop-blur-sm opacity-95">
+                            <Badge variant="conserje" className="shadow-sm opacity-95">
                                 <Repeat className="h-3 w-3 mr-1" />
                                 PERMUTA
                             </Badge>
                         )}
                         {item.allowBarter && (
-                            <Badge variant="success" className="shadow-lg backdrop-blur-sm opacity-95">
+                            <Badge variant="success" className="shadow-sm opacity-95">
                                 <Sparkles className="h-3 w-3 mr-1" />
                                 TRUEQUE
                             </Badge>
                         )}
                         {/* Verified Resident Trust Badge */}
-                        <Badge variant="admin" className="shadow-lg backdrop-blur-sm opacity-95">
+                        <Badge variant="admin" className="shadow-sm opacity-95">
                             <ShieldCheck className="h-3 w-3 mr-1" />
                             VERIFICADO
                         </Badge>

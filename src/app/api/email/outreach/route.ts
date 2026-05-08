@@ -11,10 +11,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Faltan datos obligatorios (nombre o email)' }, { status: 400 });
         }
 
-        const subject = `Propuesta de Software para la gestión de condominios 🏢`;
+        const condoLabel = condoName?.trim() || 'tu comunidad';
+        const subject = `Propuesta de Software para la gestión de ${condoLabel} 🏢`;
 
         const html = emailWrapper(`
             <h1 style="color: #1a1a1a;">Hola Estimado Administrador, 👋</h1>
+            <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+                Preparamos esta propuesta pensando en <strong>${condoLabel}</strong>.
+            </p>
             <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">
                 Te escribo para presentarte <strong>ComunidadConnect</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
             </p>

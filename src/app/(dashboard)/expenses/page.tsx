@@ -78,7 +78,7 @@ export default function ExpensesPage() {
                 description: "La transacción ha sido procesada en la nube.",
                 variant: "success",
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo procesar el pago.",

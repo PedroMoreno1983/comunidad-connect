@@ -107,6 +107,7 @@ export async function POST(request: Request) {
                         full_name: res.name.trim(),
                         role: 'resident',
                         community_id: communityId,
+                        unit_id: finalUnitId,
                     });
                 
                 if (profileError) {
