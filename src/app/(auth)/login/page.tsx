@@ -7,7 +7,13 @@ import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Lock, Mail, ShieldCheck, UserRoundCheck, Users } from "lucide-react";
+
+const DEMO_ACCOUNTS = [
+    { label: "Administrador", email: "admin@demo.com", role: "admin", icon: Building2 },
+    { label: "Conserje", email: "conserje@demo.com", role: "concierge", icon: ShieldCheck },
+    { label: "Residente", email: "residente@demo.com", role: "resident", icon: Users },
+];
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -26,212 +32,155 @@ export default function LoginPage() {
 
         if (error) {
             toast({
-                title: "Error al iniciar sesión",
+                title: "Error al iniciar sesion",
                 description: error.message || "Verifica tus credenciales",
                 variant: "destructive",
             });
             setLoading(false);
-        } else {
-            toast({
-                title: "¡Bienvenido!",
-                description: "Has iniciado sesión correctamente",
-                variant: "success",
-            });
-            router.push("/");
+            return;
         }
+
+        toast({
+            title: "Bienvenido",
+            description: "Has iniciado sesion correctamente",
+            variant: "success",
+        });
+        router.push("/");
     };
 
     const handleDemoLogin = async (demoEmail: string, demoPass: string, role: string) => {
         setLoading(true);
-        // Intentar Iniciar Sesión primero
         const { error } = await signIn(demoEmail, demoPass);
-        
+
         if (error) {
-            // Si el usuario no existe (credenciales inválidas), lo creamos automáticamente
-            if (error.message.includes('Invalid') || error.message.includes('No user') || error.message.includes('credenciales')) {
-                
+            if (error.message.includes("Invalid") || error.message.includes("No user") || error.message.includes("credenciales")) {
                 const { error: signUpError } = await signUp(demoEmail, demoPass, {
-                    name: role === 'admin' ? 'Admin Demo' : 'Residente Demo',
-                    role: role,
-                    community_id: '00000000-0000-0000-0000-000000000000' // The default demo community
+                    name: role === "admin" ? "Admin Demo" : role === "concierge" ? "Conserje Demo" : "Residente Demo",
+                    role,
+                    community_id: "00000000-0000-0000-0000-000000000000",
                 });
 
                 if (signUpError) {
-                    toast({ title: "Error", description: "No pudimos crear el usuario demo. " + signUpError.message, variant: "destructive" });
+                    toast({ title: "Error", description: `No pudimos crear el usuario demo. ${signUpError.message}`, variant: "destructive" });
                     setLoading(false);
                     return;
                 }
 
-                // If created successfully, try to sign in again immediately
                 await signIn(demoEmail, demoPass);
-                toast({ title: "Cuenta Demo Creada", description: "Entrando...", variant: "success" });
+                toast({ title: "Cuenta demo creada", description: "Entrando a ComunidadConnect", variant: "success" });
                 router.push("/");
                 return;
-            } else {
-                toast({ title: "Error", description: error.message, variant: "destructive" });
-                setLoading(false);
-                return;
             }
+
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+            setLoading(false);
+            return;
         }
 
-        toast({ title: "¡Entrando a la Demo!", description: "Has iniciado sesión", variant: "success" });
+        toast({ title: "Entrando a la demo", description: "Has iniciado sesion", variant: "success" });
         router.push("/");
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Logo/Header */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white text-2xl font-bold mb-4 shadow-lg">
-                        CC
-                    </div>
-                    <h1 className="text-3xl font-bold cc-text-primary mb-2">
-                        Iniciar Sesión
-                    </h1>
-                    <p className="cc-text-secondary">
-                        Accede a tu cuenta de ComunidadConnect
-                    </p>
-                </div>
+        <main className="min-h-screen bg-canvas px-4 py-8">
+            <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1fr_440px]">
+                <section className="hidden space-y-8 lg:block">
+                    <Link href="/" className="inline-flex items-center gap-3">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
+                            <Building2 className="h-5 w-5" />
+                        </span>
+                        <span className="text-xl font-semibold cc-text-primary">Comunidad<span className="text-brand-500">Connect</span></span>
+                    </Link>
 
-                {/* Login Form */}
-                <div className="bg-surface rounded-2xl shadow-xl border border-subtle p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Email Field */}
+                    <div className="max-w-xl space-y-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Operacion comunitaria</p>
+                        <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Administra tu comunidad con control real.</h1>
+                        <p className="text-lg leading-8 cc-text-secondary">
+                            Entra al panel para revisar pagos, reservas, conserjeria, mantenimiento, casos CoCo y reportes sin cambiar de sistema.
+                        </p>
+                    </div>
+
+                    <div className="grid max-w-2xl grid-cols-3 gap-3">
+                        {["Demo protegida", "Roles separados", "Datos auditables"].map((item) => (
+                            <div key={item} className="rounded-lg border border-subtle bg-surface p-4">
+                                <UserRoundCheck className="mb-3 h-5 w-5 text-brand-500" />
+                                <p className="text-sm font-semibold cc-text-primary">{item}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm sm:p-8">
+                    <div className="mb-8 flex items-center justify-between gap-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-semibold cc-text-secondary mb-2">
-                                Email
-                            </label>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Acceso</p>
+                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Iniciar sesion</h2>
+                            <p className="mt-2 text-sm cc-text-secondary">Usa tus credenciales o entra a una demo segura.</p>
+                        </div>
+                        <Link href="/" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al inicio">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Link>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label htmlFor="email" className="mb-2 block text-sm font-semibold cc-text-primary">Email</label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="tu@email.com"
-                                    required
-                                    className="pl-10"
-                                />
+                                <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="pl-10" />
                             </div>
                         </div>
 
-                        {/* Password Field */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-semibold cc-text-secondary mb-2">
-                                Contraseña
-                            </label>
+                            <label htmlFor="password" className="mb-2 block text-sm font-semibold cc-text-primary">Contrasena</label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                <Input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    required
-                                    className="pl-10 pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
+                                <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tu contrasena" required className="pl-10 pr-10" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}>
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Submit Button */}
-                        <Button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-                        >
-                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                        <Button type="submit" disabled={loading} className="w-full" trailingIcon={<ArrowRight className="h-4 w-4" />}>
+                            {loading ? "Entrando..." : "Entrar"}
                         </Button>
                     </form>
 
-                    {/* Divider */}
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-subtle"></div>
+                    <div className="my-6 h-px bg-[var(--cc-border-subtle)]" />
+
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <h3 className="text-sm font-semibold cc-text-primary">Acceso demo</h3>
+                            <span className="rounded-md bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-700">Sin envios reales</span>
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-surface cc-text-secondary">
-                                ¿No tienes cuenta?
-                            </span>
-                        </div>
+                        {DEMO_ACCOUNTS.map(({ label, email: demoEmail, role, icon: Icon }) => (
+                            <button
+                                key={demoEmail}
+                                type="button"
+                                onClick={() => handleDemoLogin(demoEmail, "demo123", role)}
+                                disabled={loading}
+                                className="flex w-full items-center justify-between rounded-lg border border-subtle bg-canvas px-4 py-3 text-left transition-colors hover:border-brand-300 hover:bg-brand-50 disabled:opacity-50"
+                            >
+                                <span className="flex items-center gap-3">
+                                    <Icon className="h-4 w-4 text-brand-500" />
+                                    <span className="text-sm font-semibold cc-text-primary">{label}</span>
+                                </span>
+                                <ArrowRight className="h-4 w-4 cc-text-tertiary" />
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Sign Up Link */}
-                    <Link
-                        href="/signup"
-                        className="block w-full text-center py-3 px-4 rounded-xl border-2 border-subtle cc-text-secondary font-semibold hover:bg-elevated transition-colors"
-                    >
-                        Crear Cuenta
-                    </Link>
-                </div>
-
-                {/* Demo Access */}
-                <div className="mt-8 bg-brand-50 dark:bg-indigo-900/20 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/50 text-center">
-                    <h3 className="text-sm font-bold text-indigo-900 dark:text-brand-300 mb-4">
-                        ¿Quieres probar la plataforma?
-                    </h3>
-                    <div className="flex flex-col gap-3">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleDemoLogin("admin@demo.com", "demo123", "admin")}
-                            disabled={loading}
-                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
-                        >
-                            🏢 Ver Demo Administrador
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleDemoLogin("conserje@demo.com", "demo123", "concierge")}
-                            disabled={loading}
-                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
-                        >
-                            🔐 Ver Demo Conserje
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleDemoLogin("residente@demo.com", "demo123", "resident")}
-                            disabled={loading}
-                            className="w-full border-indigo-200 text-brand-700 hover:bg-brand-100 dark:border-indigo-700 dark:text-brand-300 dark:hover:bg-indigo-800/50 flex justify-center items-center gap-2"
-                        >
-                            🏠 Ver Demo Residente
-                        </Button>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                        <Link href="/signup" className="rounded-lg border border-subtle px-4 py-3 text-center text-sm font-semibold cc-text-primary transition-colors hover:bg-elevated">
+                            Crear cuenta
+                        </Link>
+                        <Link href="/admin-onboarding" className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-center text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100">
+                            Registrar edificio
+                        </Link>
                     </div>
-                    <p className="text-xs text-brand-500 mt-4">
-                        Acceso completo a todos los módulos — sin datos reales
-                    </p>
-                </div>
-
-                {/* Admin Registration CTA */}
-                <div className="mt-4 text-center">
-                    <Link
-                        href="/admin-onboarding"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-role-admin-fg hover:text-indigo-800 dark:hover:text-brand-300 transition-colors"
-                    >
-                        🏢 ¿Eres administrador? Registra tu edificio aquí →
-                    </Link>
-                </div>
-
-                {/* Back to Home */}
-                <div className="text-center mt-6">
-                    <Link
-                        href="/"
-                        className="text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                        ← Volver al inicio
-                    </Link>
-                </div>
+                </section>
             </div>
-        </div>
+        </main>
     );
 }
