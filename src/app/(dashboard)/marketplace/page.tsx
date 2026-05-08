@@ -672,7 +672,7 @@ export default function MarketplacePage() {
                                 onClick={() => setModeFilter(option.key as typeof modeFilter)}
                                 className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     modeFilter === option.key
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                                         : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800'
                                 }`}
                             >
@@ -850,12 +850,12 @@ export default function MarketplacePage() {
                 <EmptyState
                     icon={<Search className="h-6 w-6" />}
                     title="No hay resultados"
-                    description="No pudimos encontrar tesoros que coincidan con tu búsqueda. Intenta con otros términos o explora nuevas categorías."
+                    description="No encontramos publicaciones que coincidan con tu busqueda. Ajusta los filtros o revisa las categorias disponibles."
                     action={
                         <Button
                             variant="primary"
                             onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
-                            className="shadow-lg shadow-blue-500/20 px-8 py-3"
+                            className="shadow-sm shadow-blue-500/20 px-8 py-3"
                         >
                             Ver todo el Catálogo
                         </Button>

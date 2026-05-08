@@ -89,7 +89,7 @@ function MockPaymentContent() {
                         </button>
 
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-3 bg-role-admin-bg rounded-2xl">
+                            <div className="p-3 bg-role-admin-bg rounded-lg">
                                 <Building2 className="w-6 h-6 text-role-admin-fg" />
                             </div>
                             <h2 className="text-xl font-semibold cc-text-primary">ComunidadConnect</h2>
@@ -138,7 +138,7 @@ function MockPaymentContent() {
                                 className="w-full max-w-sm mx-auto"
                             >
                                 <div className="text-center mb-8">
-                                    <div className="inline-flex items-center justify-center p-3 bg-[#1b4382]/10 rounded-2xl mb-4">
+                                    <div className="inline-flex items-center justify-center p-3 bg-[#1b4382]/10 rounded-lg mb-4">
                                         <ShieldCheck className="w-8 h-8 text-[#1b4382] dark:text-blue-400" />
                                     </div>
                                     <h3 className="text-2xl font-semibold cc-text-primary">Haulmer Sandbox</h3>
@@ -147,7 +147,7 @@ function MockPaymentContent() {
 
                                 {/* Tarjeta 3D interactiva */}
                                 <motion.div
-                                    className="w-full h-48 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-2xl shadow-sm p-6 text-white mb-10 relative overflow-hidden"
+                                    className="w-full h-48 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-lg shadow-sm p-6 text-white mb-10 relative overflow-hidden"
                                     animate={{ rotateX: mousePos.y, rotateY: mousePos.x }}
                                     transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.5 }}
                                 >
@@ -167,7 +167,7 @@ function MockPaymentContent() {
 
                                 <div className="space-y-4 relative z-20">
                                     <Button
-                                        className="w-full h-14 bg-[#1b4382] hover:bg-[#133060] font-bold text-white shadow-lg shadow-[#1b4382]/20 rounded-xl text-lg transition-transform active:scale-[0.98]"
+                                        className="w-full h-14 bg-[#1b4382] hover:bg-[#133060] font-bold text-white shadow-sm shadow-[#1b4382]/20 rounded-xl text-lg transition-transform active:scale-[0.98]"
                                         onClick={() => handleSimulatePayment(true)}
                                     >
                                         Pagar Exitosamente

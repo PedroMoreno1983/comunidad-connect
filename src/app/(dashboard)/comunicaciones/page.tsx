@@ -115,7 +115,7 @@ function OficialTab() {
                 {user?.role === "admin" && (
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300">
+                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-sm shadow-indigo-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300">
                                 <Plus className="h-4 w-4" /> Publicar Aviso
                             </button>
                         </DialogTrigger>
@@ -167,7 +167,7 @@ function OficialTab() {
                         const styles = getPriorityStyles(ann.priority);
                         const Icon = getIcon(ann.priority);
                         return (
-                            <article key={ann.id} className={`group relative overflow-hidden rounded-2xl bg-surface border-l-4 ${styles.border} shadow-lg ${styles.glow} hover:shadow-sm transition-all duration-300 animate-slide-up opacity-0`}
+                            <article key={ann.id} className={`group relative overflow-hidden rounded-lg bg-surface border-l-4 ${styles.border} shadow-sm ${styles.glow} hover:shadow-sm transition-all duration-300 animate-slide-up opacity-0`}
                                 style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: "forwards" }}>
                                 <div className="p-6">
                                     <div className="flex items-start justify-between gap-4">
@@ -311,12 +311,12 @@ function ComunidadTab() {
                                     <button type="button" className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-full transition-colors hidden sm:block"><Smile className="h-5 w-5" /></button>
                                     <button type="button" className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors hidden sm:block"><MapPin className="h-5 w-5" /></button>
                                 </div>
-                                <Button type="submit" disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-lg hover:scale-105 transition-transform">
+                                <Button type="submit" disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-sm hover:scale-105 transition-transform">
                                     {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Publicar"}
                                 </Button>
                             </div>
                             {newPostImagePreview && (
-                                <div className="relative mt-3 rounded-2xl overflow-hidden border border-subtle">
+                                <div className="relative mt-3 rounded-lg overflow-hidden border border-subtle">
                                     <img src={newPostImagePreview} alt="preview" className="w-full max-h-64 object-cover" />
                                     <button type="button" onClick={() => { setNewPostImageFile(null); setNewPostImagePreview(null); }} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"><XIcon className="h-4 w-4" /></button>
                                 </div>
@@ -337,7 +337,7 @@ function ComunidadTab() {
                     <AnimatePresence>
                         {posts.map((post) => (
                             <motion.div key={post.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                                className="bg-surface flex flex-col rounded-lg border border-subtle shadow-lg overflow-hidden">
+                                className="bg-surface flex flex-col rounded-lg border border-subtle shadow-sm overflow-hidden">
                                 <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
@@ -354,7 +354,7 @@ function ComunidadTab() {
                                 </div>
                                 <div className="px-6 sm:px-8 py-2">
                                     <p className="cc-text-primary text-base leading-relaxed whitespace-pre-line">{post.content}</p>
-                                    {post.image_url && <div className="mt-4 rounded-2xl overflow-hidden border border-subtle"><img src={post.image_url} alt="post" className="w-full h-auto object-cover max-h-[500px]" /></div>}
+                                    {post.image_url && <div className="mt-4 rounded-lg overflow-hidden border border-subtle"><img src={post.image_url} alt="post" className="w-full h-auto object-cover max-h-[500px]" /></div>}
                                 </div>
                                 <div className="px-6 sm:px-8 py-4 mt-2 border-t border-subtle/50 flex items-center gap-6">
                                     <button onClick={() => handleLike(post.id)} className={clsx("flex items-center gap-2 group transition-colors", post.has_liked ? "text-rose-500" : "text-slate-400 hover:text-rose-500")}>
@@ -382,7 +382,7 @@ function ComunidadTab() {
                                                                     {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{comment.profiles?.name?.charAt(0) || "?"}</div>}
                                                                 </div>
                                                                 <div className="flex-1">
-                                                                    <div className="bg-surface px-4 py-3 rounded-2xl rounded-tl-none border border-subtle inline-block">
+                                                                    <div className="bg-surface px-4 py-3 rounded-lg rounded-tl-none border border-subtle inline-block">
                                                                         <p className="text-xs font-semibold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
                                                                         <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
                                                                     </div>
@@ -499,14 +499,14 @@ function MensajesTab() {
             {/* Left Sidebar */}
             <div className="hidden lg:flex flex-col w-72 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="px-4 py-4">
-                    <div className="grid grid-cols-2 bg-elevated rounded-2xl p-1 gap-1">
+                    <div className="grid grid-cols-2 bg-elevated rounded-lg p-1 gap-1">
                         <button onClick={() => { setMode("global"); setActivePeer(null); }} className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === "global" ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>🌐 Global</button>
                         <button onClick={() => setMode("direct")} className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === "direct" ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>💬 Directos</button>
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {mode === "global" ? (
-                        <button className="w-full flex items-center gap-3 p-3 rounded-2xl bg-success-bg text-success-fg">
+                        <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-success-bg text-success-fg">
                             <div className="p-2 bg-success-bg rounded-xl"><Users className="h-4 w-4" /></div>
                             <div className="text-left"><p className="font-bold text-sm">Canal General</p><p className="text-[11px] font-medium text-emerald-400">Todos los vecinos</p></div>
                         </button>
@@ -522,7 +522,7 @@ function MensajesTab() {
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Recientes</p>
                                     {conversations.map(conv => (
                                         <button key={conv.peerId} onClick={() => setActivePeer(conv)}
-                                            className={clsx("w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1", activePeer?.peerId === conv.peerId ? "bg-success-bg text-emerald-600" : "hover:bg-elevated cc-text-secondary")}>
+                                            className={clsx("w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1", activePeer?.peerId === conv.peerId ? "bg-success-bg text-emerald-600" : "hover:bg-elevated cc-text-secondary")}>
                                             <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-300 flex-shrink-0">
                                                 {conv.peerProfile?.avatar_url ? <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-slate-500">{conv.peerProfile?.name?.charAt(0) || "?"}</div>}
                                             </div>
@@ -534,7 +534,7 @@ function MensajesTab() {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Vecinos</p>
                             {filtered.length === 0 ? <p className="text-xs text-center text-slate-400 py-4">Sin resultados</p> : filtered.map(n => (
                                 <button key={n.id} onClick={() => openDirectChat(n)}
-                                    className={clsx("w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1", activePeer?.peerId === n.id ? "bg-success-bg" : "hover:bg-elevated")}>
+                                    className={clsx("w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1", activePeer?.peerId === n.id ? "bg-success-bg" : "hover:bg-elevated")}>
                                     <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex-shrink-0">
                                         {n.avatar_url ? <img src={n.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-white">{n.name?.charAt(0) || "?"}</div>}
                                     </div>
@@ -551,7 +551,7 @@ function MensajesTab() {
                 <div className="h-16 flex items-center justify-between px-6 border-b border-subtle bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
                     <div className="flex items-center gap-3">
                         {mode === "direct" && activePeer && <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-elevated"><ArrowLeft className="h-5 w-5 text-slate-400" /></button>}
-                        <div className={clsx("p-2 rounded-xl", mode === "global" ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30" : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/30", "shadow-lg")}>
+                        <div className={clsx("p-2 rounded-xl", mode === "global" ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30" : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/30", "shadow-sm")}>
                             <MessageSquare className="h-4 w-4 text-white" />
                         </div>
                         <div>
@@ -589,7 +589,7 @@ function MensajesTab() {
                                                     <div className="flex flex-col">
                                                         {!isMe && showAvatar && <span className="text-[11px] font-semibold text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>}
                                                         <div className={clsx("px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
-                                                            isMe ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] text-white rounded-2xl rounded-tr-sm" : "bg-elevated cc-text-primary rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
+                                                            isMe ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] text-white rounded-lg rounded-tr-sm" : "bg-elevated cc-text-primary rounded-lg rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
                                                             {msg.content}
                                                         </div>
                                                     </div>

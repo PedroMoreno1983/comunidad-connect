@@ -46,7 +46,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
     return (
         <>
             {/* Filters & Sort */}
-            <div className="bg-surface rounded-xl p-4 shadow-lg border border-subtle">
+            <div className="bg-surface rounded-xl p-4 shadow-sm border border-subtle">
                 <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
                     <div className="flex items-center gap-2">
                         <SlidersHorizontal className="h-5 w-5 text-slate-400" />
@@ -95,7 +95,7 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-16 bg-surface rounded-2xl shadow-lg border border-subtle">
+                <div className="text-center py-16 bg-surface rounded-lg shadow-sm border border-subtle">
                     <div className="w-16 h-16 mx-auto mb-4 bg-elevated rounded-full flex items-center justify-center">
                         <Icon className="h-8 w-8 cc-text-tertiary" />
                     </div>

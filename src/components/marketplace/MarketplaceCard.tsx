@@ -131,7 +131,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
 
                     <div className="flex items-center justify-between pt-5 border-t border-subtle/50">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">
+                            <span className="text-[10px] font-semibold text-tertiary uppercase tracking-widest mb-1">
                                 {item.allowSale !== false ? 'Precio' : 'Modalidad'}
                             </span>
                             <p className="text-xl font-bold text-brand-500">
@@ -146,7 +146,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                         </div>
                     </div>
 
-                    <div className="mt-5 flex items-center gap-4 text-[10px] font-black cc-text-tertiary uppercase tracking-tight">
+                    <div className="mt-5 flex items-center gap-4 text-[10px] font-semibold cc-text-tertiary uppercase tracking-tight">
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5" />
                             {new Date(item.created_at ?? item.createdAt).toLocaleDateString('es-CL')}

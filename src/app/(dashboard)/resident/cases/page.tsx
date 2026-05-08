@@ -165,7 +165,7 @@ export default function ResidentCasesPage() {
                 </div>
                 <Link
                     href="/services"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-subtle bg-surface px-5 py-3 text-sm font-semibold cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-subtle bg-surface px-5 py-3 text-sm font-semibold cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
                 >
                     <Wrench className="h-4 w-4" />
                     Solicitar servicio
@@ -173,15 +173,15 @@ export default function ResidentCasesPage() {
             </header>
 
             <section className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Abiertos</p>
                     <p className="mt-2 text-3xl font-semibold cc-text-primary">{summary.open}</p>
                 </div>
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Alta prioridad</p>
                     <p className="mt-2 text-3xl font-semibold text-orange-600">{summary.hot}</p>
                 </div>
-                <div className="rounded-2xl border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Resueltos</p>
                     <p className="mt-2 text-3xl font-semibold text-emerald-600">{summary.resolved}</p>
                 </div>
@@ -191,12 +191,12 @@ export default function ResidentCasesPage() {
                 {loading ? (
                     <div className="space-y-4 p-6">
                         {[0, 1, 2].map(item => (
-                            <div key={item} className="h-28 animate-pulse rounded-2xl bg-elevated" />
+                            <div key={item} className="h-28 animate-pulse rounded-lg bg-elevated" />
                         ))}
                     </div>
                 ) : cases.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-                        <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-600 dark:bg-emerald-500/10">
+                        <div className="rounded-lg bg-emerald-50 p-4 text-emerald-600 dark:bg-emerald-500/10">
                             <Bot className="h-10 w-10" />
                         </div>
                         <div>
@@ -242,7 +242,7 @@ export default function ResidentCasesPage() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl bg-elevated p-4 lg:w-72">
+                                    <div className="rounded-lg bg-elevated p-4 lg:w-72">
                                         <div className="flex items-start gap-3">
                                             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
                                             <div>

@@ -79,10 +79,10 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="overflow-hidden rounded-[2rem] border-none p-0 shadow-2xl sm:max-w-md">
+            <DialogContent className="overflow-hidden rounded-lg border-none p-0 shadow-sm sm:max-w-md">
                 <div className="flex h-[600px] flex-col bg-canvas">
                     <div className="flex items-center gap-4 border-b border-subtle bg-surface p-6">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] text-white">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] text-white">
                             <Home className="h-6 w-6" />
                         </div>
                         <div className="flex-1">
@@ -105,7 +105,7 @@ export function ChatModal({ item, isOpen, onClose, currentUser }: ChatModalProps
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
                                 >
-                                    <div className={`max-w-[80%] rounded-2xl p-4 text-sm font-medium shadow-sm ${
+                                    <div className={`max-w-[80%] rounded-lg p-4 text-sm font-medium shadow-sm ${
                                         message.sender === "me"
                                             ? "rounded-tr-none bg-blue-600 text-white"
                                             : message.sender === "system"

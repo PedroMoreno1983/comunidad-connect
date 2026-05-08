@@ -262,7 +262,7 @@ export default function AdminTrainingPage() {
                     </div>
                     <button
                         onClick={() => setIsCreating(true)}
-                        className="w-full md:w-auto justify-center px-5 py-3 bg-brand-600 text-white rounded-xl font-medium shadow-lg hover:bg-brand-700 flex items-center gap-2 transition mt-4 md:mt-0"
+                        className="w-full md:w-auto justify-center px-5 py-3 bg-brand-600 text-white rounded-xl font-medium shadow-sm hover:bg-brand-700 flex items-center gap-2 transition mt-4 md:mt-0"
                     >
                         <Plus className="h-5 w-5" />
                         Nuevo Curso Interactivo
@@ -277,7 +277,7 @@ export default function AdminTrainingPage() {
 
                     <div className="flex-1 relative z-10">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Integración Oficial</span>
+                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-semibold">Integración Oficial</span>
                         </div>
                         <h3 className="text-2xl font-semibold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
                             Extiende tus posibilidades con CoTraining.ai
@@ -317,7 +317,7 @@ export default function AdminTrainingPage() {
                         </div>
 
                         <div className="p-8 max-w-4xl mx-auto space-y-8">
-                            <div className="relative p-10 border-2 border-dashed border-default rounded-2xl bg-canvas/50 hover:bg-elevated transition text-center overflow-hidden">
+                            <div className="relative p-10 border-2 border-dashed border-default rounded-lg bg-canvas/50 hover:bg-elevated transition text-center overflow-hidden">
                                 <input
                                     type="file" multiple accept=".pdf,.docx,.doc,.txt"
                                     onChange={handleFileUpload} disabled={isUploading || isGenerating}
@@ -357,7 +357,7 @@ export default function AdminTrainingPage() {
                                 <button
                                     onClick={generateSlidesFromText}
                                     disabled={isGenerating || isUploading || !rawText.trim()}
-                                    className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2"
+                                    className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-sm shadow-indigo-200 dark:shadow-none flex items-center gap-2"
                                 >
                                     {isGenerating ? '🌟 Diseñando Presentación IA...' : 'Crear Película Diapositivas'}
                                 </button>
@@ -487,13 +487,13 @@ export default function AdminTrainingPage() {
             {!isCreating && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {courses.length === 0 ? (
-                        <div className="col-span-full py-12 text-center border-2 border-dashed border-default rounded-2xl">
+                        <div className="col-span-full py-12 text-center border-2 border-dashed border-default rounded-lg">
                             <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
                             <h3 className="text-lg font-medium cc-text-primary">Aún no hay cursos creados</h3>
                         </div>
                     ) : (
                         courses.map(course => (
-                            <div key={course.id} className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-lg transition group">
+                            <div key={course.id} className="bg-surface rounded-lg p-6 shadow-sm border border-subtle hover:shadow-sm transition group">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="p-3 bg-role-admin-bg text-brand-600 rounded-xl">
                                         <Play className="h-6 w-6" />

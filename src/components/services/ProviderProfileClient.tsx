@@ -169,7 +169,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     return (
         <>
             {/* Header Card */}
-            <div className="bg-surface rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
+            <div className="bg-surface rounded-lg shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
                 {/* Cover */}
                 <div className="h-32 bg-gradient-to-br from-blue-500 to-cyan-600"></div>
 
@@ -178,7 +178,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     {/* Avatar */}
                     <div className="flex flex-col md:flex-row gap-6 -mt-16 relative z-10">
                         {/* Foto de perfil */}
-                        <div className="relative w-40 h-40 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-2xl bg-elevated">
+                        <div className="relative w-40 h-40 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-sm bg-elevated">
                             <Image
                                 src={getProviderAvatar(provider.name, provider.photo)}
                                 alt={provider.name}
@@ -255,7 +255,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* About */}
-                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                         <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                             <Briefcase className="h-5 w-5 text-blue-600" />
                             Sobre Mí
@@ -266,7 +266,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </div>
 
                     {/* Specialties */}
-                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                         <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                             <Award className="h-5 w-5 text-blue-600" />
                             Especialidades
@@ -285,7 +285,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
                     {/* Certifications */}
                     {provider.certifications.length > 0 && (
-                        <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                        <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                             <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
                                 <CheckCircle className="h-5 w-5 text-blue-600" />
                                 Certificaciones
@@ -302,7 +302,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     )}
 
                     {/* Reviews */}
-                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5 text-blue-600" />
@@ -369,7 +369,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Contact Info */}
-                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                         <h3 className="font-bold cc-text-primary mb-4">Información de Contacto</h3>
                         <div className="space-y-3">
                             <div className="flex items-center gap-3 cc-text-secondary">
@@ -394,7 +394,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </div>
 
                     {/* Stats */}
-                    <div className="bg-surface rounded-2xl shadow-lg border border-subtle p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
                         <h3 className="font-bold cc-text-primary mb-4">Estadísticas</h3>
                         <div className="space-y-4">
                             <div>
@@ -422,7 +422,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
                     {/* Verification Badge */}
                     {provider.verified && (
-                        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-lg p-6 text-white">
+                        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg shadow-sm p-6 text-white">
                             <div className="flex items-center gap-3 mb-2">
                                 <BadgeCheck className="h-6 w-6" />
                                 <h3 className="font-bold">Técnico Verificado</h3>

@@ -46,7 +46,7 @@ export default function OutreachDemo() {
     };
 
     return (
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl p-6 md:p-8 shadow-sm">
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-lg p-6 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1 space-y-4">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-100 dark:bg-brand-900/30 text-role-admin-fg rounded-full text-xs font-bold uppercase tracking-wider">

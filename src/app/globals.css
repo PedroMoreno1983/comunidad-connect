@@ -575,6 +575,10 @@ h2,
   font-weight: 700 !important;
 }
 
+.cc-dashboard .font-extrabold {
+  font-weight: 600 !important;
+}
+
 .cc-dashboard .text-transparent.bg-clip-text {
   background-image: none !important;
   color: var(--cc-text-primary) !important;
@@ -627,4 +631,27 @@ h2,
 .cc-dashboard textarea,
 .cc-dashboard select {
   border-radius: var(--cc-product-radius-control) !important;
+}
+
+.cc-dashboard article,
+.cc-dashboard section,
+.cc-dashboard table,
+.cc-dashboard .card-premium {
+  letter-spacing: 0;
+}
+
+.cc-dashboard [class*="shadow-blue-"],
+.cc-dashboard [class*="shadow-indigo-"],
+.cc-dashboard [class*="shadow-purple-"],
+.cc-dashboard [class*="shadow-fuchsia-"],
+.cc-dashboard [class*="shadow-pink-"],
+.cc-dashboard [class*="shadow-rose-"],
+.cc-dashboard [class*="shadow-emerald-"],
+.cc-dashboard [class*="shadow-orange-"],
+.cc-dashboard [class*="shadow-amber-"] {
+  box-shadow: var(--cc-product-shadow) !important;
+}
+
+.cc-dashboard [class*="tracking-["] {
+  letter-spacing: 0.08em !important;
 }

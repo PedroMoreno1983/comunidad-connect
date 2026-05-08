@@ -74,7 +74,7 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
 
                 <button
                     onClick={onPay}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
                     Pagar Ahora <ArrowRight className="h-4 w-4" />
                 </button>

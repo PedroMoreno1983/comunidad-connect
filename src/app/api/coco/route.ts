@@ -86,6 +86,55 @@ Usuario dice: ${message}`;
     throw new Error(`All Gemini configs failed: ${failures.join(' | ')}`);
 }
 
+function buildLocalCoCoFallback(
+    message: string,
+    context: {
+        name: string;
+        role: string;
+        currentPage: string;
+    }
+) {
+    const text = message.toLowerCase();
+    const page = context.currentPage || '';
+
+    if (text.includes('agua') || text.includes('consumo') || page.includes('consumo')) {
+        return {
+            reply: 'Puedo ayudarte con control hidrico: revisa consumo mensual, unidades sin lectura y alertas de fuga. Si quieres actuar ahora, entra al modulo de Control Hidrico y prioriza las unidades con sobreconsumo.',
+            navigate: context.role === 'admin' ? '/admin/consumo' : '/resident/consumo',
+            action: 'OPEN_WATER_MODULE',
+        };
+    }
+
+    if (text.includes('reserva') || text.includes('quincho') || text.includes('sala') || page.includes('amenities')) {
+        return {
+            reply: 'Para reservas, lo mas rapido es elegir el espacio, fecha y horario disponible. Si hay conflicto, conviene proponer un segundo horario para no dejar la solicitud abierta.',
+            navigate: '/amenities',
+            action: 'OPEN_AMENITIES',
+        };
+    }
+
+    if (text.includes('mantencion') || text.includes('mantenimiento') || text.includes('reparacion') || page.includes('mantenimiento')) {
+        return {
+            reply: 'Para mantenimiento, registra el caso con ubicacion, urgencia, evidencia y responsable. Si hay riesgo a personas o bienes, tratalo como alta prioridad y escalar a administracion.',
+            navigate: context.role === 'admin' ? '/admin/mantenimiento' : '/resident/cases',
+            action: 'OPEN_MAINTENANCE',
+        };
+    }
+
+    if (text.includes('gasto') || text.includes('pago') || text.includes('finanza') || page.includes('finances')) {
+        return {
+            reply: 'En finanzas puedo ayudarte a revisar deuda, vencimientos, comprobantes y pagos pendientes. Parte por el periodo activo y luego baja al detalle de unidad.',
+            navigate: context.role === 'admin' ? '/admin/finanzas' : '/resident/finances',
+            action: 'OPEN_FINANCES',
+        };
+    }
+
+    return {
+        reply: `Estoy en modo operativo local, ${context.name || 'vecino/a'}. Puedo orientarte por modulo, crear criterios de priorizacion y llevarte a la seccion correcta mientras el motor IA principal no esta disponible.`,
+        action: 'LOCAL_FALLBACK',
+    };
+}
+
 export async function POST(req: NextRequest) {
     // ── 1. Rate Limit ────────────────────────────────────────────────────────
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -132,11 +181,13 @@ export async function POST(req: NextRequest) {
         };
 
         if (!process.env.ANTHROPIC_API_KEY) {
-            const fallback = await askGeminiFallback(message, {
-                name: userName,
-                role: safeRole,
-                currentPage,
-            });
+            const fallbackContext = { name: userName, role: safeRole, currentPage };
+            const fallback = process.env.GEMINI_API_KEY
+                ? await askGeminiFallback(message, fallbackContext).catch(error => {
+                    console.warn('[CoCo Gemini Fallback Error]', error);
+                    return buildLocalCoCoFallback(message, fallbackContext);
+                })
+                : buildLocalCoCoFallback(message, fallbackContext);
             const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
             return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
@@ -165,11 +216,13 @@ export async function POST(req: NextRequest) {
             );
         } catch (agentError) {
             console.error('[CoCo Anthropic Error]', agentError);
-            const fallback = await askGeminiFallback(message, {
-                name: userName,
-                role: safeRole,
-                currentPage,
-            });
+            const fallbackContext = { name: userName, role: safeRole, currentPage };
+            const fallback = process.env.GEMINI_API_KEY
+                ? await askGeminiFallback(message, fallbackContext).catch(error => {
+                    console.warn('[CoCo Gemini Fallback Error]', error);
+                    return buildLocalCoCoFallback(message, fallbackContext);
+                })
+                : buildLocalCoCoFallback(message, fallbackContext);
             const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
             return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });

@@ -39,7 +39,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
             }`}>
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
                     <div className="flex items-center gap-6">
-                        <div className={`rounded-2xl p-5 text-white ${isEfficient ? "bg-emerald-500" : "bg-amber-500"}`}>
+                        <div className={`rounded-lg p-5 text-white ${isEfficient ? "bg-emerald-500" : "bg-amber-500"}`}>
                             {isEfficient ? <TrendingDown className="h-8 w-8" /> : <AlertTriangle className="h-8 w-8" />}
                         </div>
                         <div className="space-y-1">
@@ -53,7 +53,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             </p>
                         </div>
                     </div>
-                    <div className="rounded-2xl border border-subtle bg-surface px-6 py-4 shadow-sm">
+                    <div className="rounded-lg border border-subtle bg-surface px-6 py-4 shadow-sm">
                         <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Tu consumo actual</p>
                         <p className="text-2xl font-semibold cc-text-primary">{currentMonth.personal} m³</p>
                     </div>
@@ -63,7 +63,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
             <section className="space-y-10 rounded-lg border border-subtle bg-surface p-8 shadow-sm shadow-slate-200/20 dark:shadow-none md:p-12">
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
                     <div className="flex items-center gap-4">
-                        <div className="rounded-2xl bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                        <div className="rounded-lg bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                             <Droplets className="h-6 w-6" />
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Tendencia histórica</h2>
@@ -103,7 +103,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                                     if (!active || !payload?.length) return null;
 
                                     return (
-                                        <div className="space-y-4 rounded-2xl border border-white/10 bg-canvas p-6 text-white shadow-sm">
+                                        <div className="space-y-4 rounded-lg border border-white/10 bg-canvas p-6 text-white shadow-sm">
                                             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{payload[0].payload.month}</p>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-8">
@@ -129,7 +129,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="flex items-start gap-4 rounded-2xl border border-subtle bg-elevated/50 p-6">
+                <div className="flex items-start gap-4 rounded-lg border border-subtle bg-elevated/50 p-6">
                     <Info className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
                     <p className="text-xs font-medium leading-relaxed text-slate-500">
                         Los consumos se calculan en base a la lectura del remarcador individual. El promedio sirve como referencia para detectar desviaciones o posibles fugas.

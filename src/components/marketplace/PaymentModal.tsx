@@ -62,7 +62,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md p-8 overflow-hidden rounded-[3rem] border-none shadow-2xl bg-surface">
+            <DialogContent className="sm:max-w-md p-8 overflow-hidden rounded-lg border-none shadow-sm bg-surface">
                 <AnimatePresence mode="wait">
                     {step === 'checkout' && (
                         <motion.div
@@ -73,29 +73,29 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                             className="space-y-6"
                         >
                             <DialogHeader>
-                                <DialogTitle className="text-2xl font-black">Finalizar Compra</DialogTitle>
+                                <DialogTitle className="text-2xl font-semibold">Finalizar Compra</DialogTitle>
                                 <DialogDescription className="font-semibold">
                                     Estás a un paso de obtener tu nuevo artículo.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <div className="p-6 bg-canvas rounded-[2rem] border border-subtle space-y-4">
+                            <div className="p-6 bg-canvas rounded-lg border border-subtle space-y-4">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Producto</span>
                                     <span className="font-bold cc-text-primary truncate max-w-[150px]">{item.title}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Precio</span>
-                                    <span className="text-xl font-black text-blue-600 dark:text-blue-400">${item.price.toLocaleString('es-CL')}</span>
+                                    <span className="text-xl font-semibold text-blue-600 dark:text-blue-400">${item.price.toLocaleString('es-CL')}</span>
                                 </div>
                                 <div className="pt-4 border-t border-subtle flex justify-between items-center">
-                                    <span className="text-sm font-black cc-text-primary uppercase tracking-widest">Total</span>
-                                    <span className="text-2xl font-black cc-text-primary">${item.price.toLocaleString('es-CL')}</span>
+                                    <span className="text-sm font-semibold cc-text-primary uppercase tracking-widest">Total</span>
+                                    <span className="text-2xl font-semibold cc-text-primary">${item.price.toLocaleString('es-CL')}</span>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <div className="p-4 rounded-2xl border-2 border-blue-600 bg-blue-50 dark:bg-blue-500/10 flex items-center gap-4">
+                                <div className="p-4 rounded-lg border-2 border-blue-600 bg-blue-50 dark:bg-blue-500/10 flex items-center gap-4">
                                     <CreditCard className="h-6 w-6 text-blue-600" />
                                     <div className="flex-1">
                                         <p className="text-sm font-bold cc-text-primary">Tarjeta de Crédito / Débito</p>
@@ -112,7 +112,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
 
                             <Button
                                 onClick={handlePayment}
-                                className="w-full h-16 rounded-2xl bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white font-black text-xl shadow-xl shadow-blue-500/10 transition-all active:scale-95"
+                                className="w-full h-16 rounded-lg bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white font-semibold text-xl shadow-sm shadow-blue-500/10 transition-all active:scale-95"
                             >
                                 Confirmar Pago
                             </Button>
@@ -131,7 +131,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                                 <ShieldCheck className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-blue-600" />
                             </div>
                             <div className="text-center">
-                                <DialogTitle className="text-xl font-black cc-text-primary">Procesando Pago Seguro</DialogTitle>
+                                <DialogTitle className="text-xl font-semibold cc-text-primary">Procesando Pago Seguro</DialogTitle>
                                 <p className="text-sm text-slate-500 font-medium">Por favor, no cierres esta ventana...</p>
                             </div>
                         </motion.div>
@@ -148,7 +148,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                                 <CheckCircle2 className="h-12 w-12 text-emerald-500" />
                             </div>
                             <div className="space-y-2">
-                                <DialogTitle className="text-3xl font-black cc-text-primary">¡Pago Exitoso!</DialogTitle>
+                                <DialogTitle className="text-3xl font-semibold cc-text-primary">¡Pago Exitoso!</DialogTitle>
                                 <p className="text-slate-500 font-medium max-w-[250px] mx-auto">
                                     Has comprado **{item.title}**. El vendedor ha sido notificado y el artículo ha sido reservado para ti.
                                 </p>
@@ -158,7 +158,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                                     onSuccess();
                                     onClose();
                                 }}
-                                className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black"
+                                className="w-full h-14 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
                             >
                                 Volver al Marketplace
                             </Button>

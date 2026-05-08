@@ -72,7 +72,7 @@ const variantStyles: Record<string, CSSProperties> = {
     color: 'var(--cc-text-primary)',
   },
   danger: {
-    backgroundColor: 'var(--cc-danger-bg)',
+    backgroundColor: 'var(--cc-bg-elevated)',
     color: 'var(--cc-danger-fg)',
     borderColor: 'var(--cc-danger-border)',
   },

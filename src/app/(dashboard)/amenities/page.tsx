@@ -38,6 +38,36 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Gamepad2,
 };
 
+const demoAmenities: Amenity[] = [
+    {
+        id: "demo-amenity-quincho",
+        name: "Quincho panoramico",
+        description: "Terraza equipada para reuniones familiares, con parrilla, mesones y aforo controlado por administracion.",
+        maxCapacity: 18,
+        hourlyRate: 12000,
+        iconName: "Flame",
+        gradient: "from-orange-500 to-red-600",
+    },
+    {
+        id: "demo-amenity-sala",
+        name: "Sala multiuso",
+        description: "Espacio cerrado para reuniones, clases, cumpleaños infantiles o actividades del comite.",
+        maxCapacity: 24,
+        hourlyRate: 0,
+        iconName: "PartyPopper",
+        gradient: "from-[#3B82F6] to-[#6D28D9]",
+    },
+    {
+        id: "demo-amenity-gym",
+        name: "Gimnasio",
+        description: "Equipamiento funcional para residentes, con control de horarios peak y mantencion programada.",
+        maxCapacity: 10,
+        hourlyRate: 0,
+        iconName: "Dumbbell",
+        gradient: "from-emerald-400 to-teal-600",
+    },
+];
+
 type AmenityRow = Record<string, unknown>;
 type BookingRow = Record<string, unknown> & {
     amenities?: AmenityRow | AmenityRow[] | null;
@@ -109,12 +139,14 @@ export default function AmenitiesPage() {
                 AmenitiesService.getAmenities(),
                 AmenitiesService.getAllBookings()
             ]);
-            setAmenities(((amenitiesData as AmenityRow[]) || []).map(toAmenity));
-            setBookings(((bookingsData as BookingRow[]) || []).map(toBooking));
+            const normalizedAmenities = ((amenitiesData as AmenityRow[]) || []).map(toAmenity);
+            const normalizedBookings = ((bookingsData as BookingRow[]) || []).map(toBooking);
+            setAmenities(normalizedAmenities.length ? normalizedAmenities : demoAmenities);
+            setBookings(normalizedBookings);
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Error desconocido";
             console.error("Error loading amenities data:", errorMessage);
-            setAmenities([]);
+            setAmenities(demoAmenities);
             setBookings([]);
         } finally {
             setLoading(false);

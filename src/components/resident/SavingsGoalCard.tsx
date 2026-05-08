@@ -30,7 +30,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
 
             <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-4">
-                    <div className="rounded-2xl bg-blue-500/20 p-3 text-blue-400">
+                    <div className="rounded-lg bg-blue-500/20 p-3 text-blue-400">
                         <Target className="h-6 w-6" />
                     </div>
                     <div>
@@ -109,7 +109,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                         </div>
 
                         {isOnTrack && (
-                            <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
                                 <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
                                 <p className="text-xs font-bold text-emerald-400">
                                     Estás en camino a cumplir tu meta. Sigue así.

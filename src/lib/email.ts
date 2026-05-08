@@ -2,6 +2,8 @@ import { Resend } from 'resend';
 
 let resendClient: Resend | null = null;
 
+type ResendSendResult = Awaited<ReturnType<Resend['emails']['send']>>;
+
 function getResendClient() {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
@@ -14,7 +16,25 @@ function getResendClient() {
 
 export const resend = {
     emails: {
-        send: (...args: Parameters<Resend['emails']['send']>) => getResendClient().emails.send(...args),
+        send: async (...args: Parameters<Resend['emails']['send']>): Promise<ResendSendResult> => {
+            if (!process.env.RESEND_API_KEY) {
+                console.warn('[Email] RESEND_API_KEY missing; transactional email skipped.', {
+                    to: args[0]?.to,
+                    subject: args[0]?.subject,
+                });
+
+                return {
+                    data: null,
+                    error: {
+                        name: 'configuration_error',
+                        message: 'RESEND_API_KEY missing; email skipped safely.',
+                        statusCode: 503,
+                    },
+                } as unknown as ResendSendResult;
+            }
+
+            return getResendClient().emails.send(...args);
+        },
     },
 };
 
