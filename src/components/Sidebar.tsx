@@ -195,7 +195,20 @@ export function Sidebar() {
         }
     };
 
+    const canShowLink = (link: { roles: string[]; feature?: string }) => {
+        if (!link.roles.includes(user.role)) return false;
 
+        if (link.feature && user.features) {
+            if (user.features[link.feature] === false) return false;
+        }
+
+        return true;
+    };
+
+    const visibleLinks = menuSections.flatMap(section => section.links.filter(canShowLink));
+    const activeHref = visibleLinks
+        .filter(link => pathname === link.href || (link.href !== '/home' && pathname.startsWith(`${link.href}/`)))
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
     const sidebarContent = (
         <>
@@ -240,16 +253,7 @@ export function Sidebar() {
             {/* Navigation */}
             <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto px-3 py-2 pb-6">
                 {menuSections.map((section, sIdx) => {
-                    const validLinks = section.links.filter(link => {
-                        // 1. Check basic user role matching
-                        if (!link.roles.includes(user.role)) return false;
-                        
-                        // 2. Check Plan Features using feature flag if defined
-                        if (link.feature && user.features) {
-                            if (user.features[link.feature] === false) return false;
-                        }
-                        return true;
-                    });
+                    const validLinks = section.links.filter(canShowLink);
                     
                     if (validLinks.length === 0) return null;
 
@@ -260,8 +264,7 @@ export function Sidebar() {
                             </h3>
                             {validLinks.map((link, lIdx) => {
                                 const Icon = link.icon;
-                                // Simple active check
-                                const isActive = pathname === link.href || (link.href !== '/home' && pathname.startsWith(link.href + '/'));
+                                const isActive = link.href === activeHref;
 
                                 return (
                                     <motion.div
