@@ -288,6 +288,26 @@ export default function PackagesPage() {
                 </div>
             </div>
 
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { title: "Recibir", description: "Registrar courier, unidad destino y hora exacta de ingreso a bodega.", icon: <Scan className="h-4 w-4" /> },
+                        { title: "Notificar", description: "Avisar al residente y mantener trazabilidad mientras el paquete espera retiro.", icon: <BellRing className="h-4 w-4" /> },
+                        { title: "Entregar", description: "Cerrar la encomienda solo cuando el residente retire y quede registro.", icon: <CheckCircle2 className="h-4 w-4" /> },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-surface  p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40">

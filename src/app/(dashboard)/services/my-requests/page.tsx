@@ -39,6 +39,37 @@ interface ServiceRequestRow {
     } | null;
 }
 
+const demoRequests: ServiceRequestRow[] = [
+    {
+        id: "demo-service-request-1",
+        provider_id: "demo-provider-1",
+        preferred_date: new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10),
+        preferred_time: "10:00",
+        description: "Revision de posible fuga bajo lavaplatos y cambio de flexible.",
+        status: "accepted",
+        created_at: new Date(Date.now() - 3 * 36e5).toISOString(),
+        service_providers: {
+            name: "Gasfiter Certificado Torres",
+            category: "plumbing",
+            contact_phone: "+569 5555 1212",
+        },
+    },
+    {
+        id: "demo-service-request-2",
+        provider_id: "demo-provider-2",
+        preferred_date: new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10),
+        preferred_time: "16:00",
+        description: "Instalacion de enchufe nuevo para escritorio.",
+        status: "pending",
+        created_at: new Date(Date.now() - 26 * 36e5).toISOString(),
+        service_providers: {
+            name: "Electricidad Segura SpA",
+            category: "electrical",
+            contact_phone: "+569 5555 3434",
+        },
+    },
+];
+
 const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todas" },
     { key: "active", label: "Activas" },
@@ -128,6 +159,10 @@ export default function MyRequestsPage() {
         const fetchRequests = async () => {
             try {
                 setLoading(true);
+                if (user.email.toLowerCase().endsWith("@demo.com")) {
+                    setRequests(demoRequests);
+                    return;
+                }
                 const data = await serviceRequestsService.getByUser(user.id);
                 setRequests(data as ServiceRequestRow[]);
             } catch (error) {
