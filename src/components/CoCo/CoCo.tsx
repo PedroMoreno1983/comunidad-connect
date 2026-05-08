@@ -202,8 +202,7 @@ export default function CoCo() {
 
     return (
         <div
-            className="flex flex-col items-end gap-3"
-            style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 2147483647 }}
+            className="fixed right-4 top-16 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 sm:top-auto"
         >
             <AnimatePresence>
                 {open && (
@@ -212,8 +211,8 @@ export default function CoCo() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 12 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        className="flex flex-col overflow-hidden rounded-xl border border-subtle bg-surface"
-                        style={{ width: 360, height: 500, boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
+                        className="flex flex-col overflow-hidden rounded-lg border border-subtle bg-surface"
+                        style={{ width: "min(360px, calc(100vw - 32px))", height: "min(500px, calc(100vh - 96px))", boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 px-5 py-4 bg-slate-950 flex-shrink-0">
@@ -221,7 +220,7 @@ export default function CoCo() {
                                 <Bot className="h-5 w-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-black text-white text-sm">CoCo</p>
+                                <p className="text-sm font-semibold text-white">CoCo</p>
                                 <p className="text-white/70 text-[11px] font-medium">Asistente operativo</p>
                             </div>
                             <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
@@ -369,11 +368,6 @@ export default function CoCo() {
                     }
                 </AnimatePresence>
 
-                {!open && (
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-surface rounded-lg shadow-lg text-xs font-black text-brand-600 whitespace-nowrap border border-brand-100 pointer-events-none">
-                        CoCo asistente
-                    </span>
-                )}
             </motion.button>
         </div>
     );

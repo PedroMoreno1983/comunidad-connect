@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/authContext';
 import { clsx } from 'clsx';
 import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import {
@@ -77,6 +78,7 @@ export function Sidebar() {
     const { user, logout } = useAuth();
     const router = useRouter();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const { isDemoUser } = useDemoRestrictions();
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -314,7 +316,10 @@ export function Sidebar() {
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-surface shadow-md border border-subtle cc-text-primary"
+                className={clsx(
+                    "lg:hidden fixed left-4 z-50 p-3 rounded-lg bg-surface shadow-sm border border-subtle cc-text-primary",
+                    isDemoUser ? "top-16" : "top-4"
+                )}
             >
                 <AnimatePresence mode="wait">
                     {isMobileOpen ? (

@@ -361,7 +361,7 @@ export default function AmenitiesPage() {
                                             <Icon className="h-5 w-5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold cc-text-primary truncate">{amenityName}</p>
+                                            <p className="break-words font-semibold leading-snug cc-text-primary">{amenityName}</p>
                                             <p className="text-sm cc-text-secondary">
                                                 {
                                                     // Prevenir desfase de zona horaria forzando el parseo local a mediodía
