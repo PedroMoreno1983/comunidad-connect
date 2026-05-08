@@ -7,6 +7,7 @@ import { UnitDetailPanel } from "@/components/admin/UnitDetailPanel";
 import {
     Activity,
     AlertCircle,
+    CheckCircle2,
     Filter,
     Printer,
     Settings,
@@ -32,6 +33,14 @@ const demoWaterUnits: Unit[] = [
     { id: "demo-water-u3", number: "1505", floor: 15, tower: "B" },
     { id: "demo-water-u4", number: "1802", floor: 18, tower: "B" },
 ];
+
+function openWaterReportPrompt(periodLabel: string) {
+    window.dispatchEvent(new CustomEvent("coco:compose", {
+        detail: {
+            message: `Necesito preparar un reporte de control hidrico para ${periodLabel}: cobertura de lecturas, alertas de fuga y unidades pendientes.`,
+        },
+    }));
+}
 
 function calculateConsumption(readings: WaterReading[]) {
     const sorted = [...readings].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
@@ -106,6 +115,9 @@ export default function AdminConsumoPage() {
     };
 
     const coverage = stats.totalUnits > 0 ? Math.round((stats.readUnits / stats.totalUnits) * 100) : 0;
+    const pendingUnits = Math.max(0, stats.totalUnits - stats.readUnits);
+    const periodLabel = `${currentPeriod.month} ${currentPeriod.year}`;
+    const healthLabel = stats.alertCount > 0 ? "Requiere revision" : pendingUnits > 0 ? "En captura" : "Periodo al dia";
 
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -116,11 +128,19 @@ export default function AdminConsumoPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    <button className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated">
+                    <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated"
+                    >
                         <Printer className="h-4 w-4 cc-text-secondary" />
                         Imprimir planillas
                     </button>
-                    <button className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                    <button
+                        type="button"
+                        onClick={() => openWaterReportPrompt(periodLabel)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
+                    >
                         <Filter className="h-4 w-4" />
                         Ver reportes
                     </button>
@@ -176,6 +196,52 @@ export default function AdminConsumoPage() {
                         </div>
                         <p className="text-3xl font-semibold cc-text-primary">{stats.readUnits} / {stats.totalUnits}</p>
                         <p className="mt-2 text-xs font-semibold cc-text-secondary">Unidades del periodo</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
+                    <div className="mb-5 flex items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-lg font-semibold cc-text-primary">Operacion del periodo</h2>
+                            <p className="mt-1 text-sm cc-text-secondary">Prioridades para cerrar lecturas y anticipar reclamos por consumo.</p>
+                        </div>
+                        <span className={`rounded-md px-3 py-1 text-xs font-semibold ${stats.alertCount > 0 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
+                            {healthLabel}
+                        </span>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                        {[
+                            { label: "Lecturas pendientes", value: pendingUnits, detail: "Unidades por capturar", icon: <Activity className="h-4 w-4" /> },
+                            { label: "Alertas activas", value: stats.alertCount, detail: "Sobreconsumo a revisar", icon: <AlertCircle className="h-4 w-4" /> },
+                            { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparacion", icon: <Waves className="h-4 w-4" /> },
+                        ].map(item => (
+                            <div key={item.label} className="rounded-lg border border-subtle bg-elevated/40 p-4">
+                                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                    {item.icon}
+                                </div>
+                                <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
+                                <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
+                                <p className="mt-2 text-xs cc-text-secondary">{item.detail}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold cc-text-primary">Checklist de cierre</h2>
+                    <div className="mt-4 space-y-3">
+                        {[
+                            { label: "Capturar lecturas faltantes", done: pendingUnits === 0 },
+                            { label: "Revisar unidades con sobreconsumo", done: stats.alertCount === 0 },
+                            { label: "Preparar reporte para administracion", done: coverage >= 90 },
+                        ].map(item => (
+                            <div key={item.label} className="flex items-center gap-3 text-sm">
+                                <CheckCircle2 className={`h-5 w-5 ${item.done ? "text-success-fg" : "cc-text-tertiary"}`} />
+                                <span className={item.done ? "cc-text-primary" : "cc-text-secondary"}>{item.label}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>
