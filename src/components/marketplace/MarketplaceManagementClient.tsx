@@ -212,6 +212,38 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 ))}
             </div>
 
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        {
+                            title: isAdminMode ? "Publicaciones visibles" : "Vitrina activa",
+                            description: isAdminMode ? "Mantiene disponibles los articulos correctos y baja los que incumplen reglas." : "Tus articulos disponibles aparecen en la vitrina general de la comunidad.",
+                            icon: <ShoppingBag className="h-4 w-4" />,
+                        },
+                        {
+                            title: "Estados claros",
+                            description: "Disponible, reservado, vendido u oculto evita conversaciones perdidas y publicaciones desactualizadas.",
+                            icon: <ShieldCheck className="h-4 w-4" />,
+                        },
+                        {
+                            title: isAdminMode ? "Moderacion rapida" : "Retiro simple",
+                            description: isAdminMode ? "Oculta articulos problematicos sin borrar historial operativo." : "Marca vendido u oculta cuando ya no quieras recibir contactos.",
+                            icon: isAdminMode ? <EyeOff className="h-4 w-4" /> : <PackageSearch className="h-4 w-4" />,
+                        },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
             {loading ? (
                 <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
@@ -220,12 +252,17 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
             ) : filteredItems.length === 0 ? (
                 <EmptyState
                     icon={<PackageSearch className="h-6 w-6" />}
-                    title="No hay publicaciones en esta vista"
+                    title={filter === "all" ? "Aun no hay publicaciones" : `Sin articulos ${filter === "available" ? "disponibles" : STATUS_LABELS[filter as MarketplaceStatus].toLowerCase()}`}
                     description={isAdminMode ? "Cuando la comunidad publique artículos, aparecerán acá." : "Publica tu primer artículo desde el marketplace."}
                     action={
-                        <Link href="/marketplace">
-                            <Button>Publicar o explorar</Button>
-                        </Link>
+                        <div className="flex flex-wrap justify-center gap-3">
+                            {filter !== "all" && (
+                                <Button variant="outline" onClick={() => setFilter("all")}>Ver todo</Button>
+                            )}
+                            <Link href="/marketplace">
+                                <Button>Publicar o explorar</Button>
+                            </Link>
+                        </div>
                     }
                 />
             ) : (
