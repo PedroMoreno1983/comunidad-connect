@@ -142,7 +142,7 @@ export default function SupermarketPage() {
                                 <button 
                                     onClick={processAiInput}
                                     disabled={loading}
-                                    className="absolute bottom-3 right-3 p-2 bg-white text-brand-600 rounded-lg shadow-lg disabled:opacity-50"
+                                    className="absolute bottom-3 right-3 p-2 bg-white text-brand-600 rounded-lg shadow-sm disabled:opacity-50"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>

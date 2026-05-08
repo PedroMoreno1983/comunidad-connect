@@ -378,7 +378,7 @@ export function MaintenanceDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-danger-bg rounded-2xl">
+                        <div className="p-3 bg-danger-bg rounded-lg">
                             <AlertCircle className="h-6 w-6 text-danger-fg" />
                         </div>
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Tareas Vencidas</h3>
@@ -392,7 +392,7 @@ export function MaintenanceDashboard() {
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Pendientes</h3>
@@ -403,7 +403,7 @@ export function MaintenanceDashboard() {
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-warning-bg rounded-2xl">
+                        <div className="p-3 bg-warning-bg rounded-lg">
                             <Activity className="h-6 w-6 text-warning-fg" />
                         </div>
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Activos Críticos</h3>
@@ -430,7 +430,7 @@ export function MaintenanceDashboard() {
             <section className="space-y-6">
                 <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <Wrench className="h-6 w-6 text-blue-600 dark:text-blue-300" />
                         </div>
                         <div>
@@ -439,10 +439,10 @@ export function MaintenanceDashboard() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <span className="rounded-2xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
+                        <span className="rounded-lg bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
                             {activeServiceRequests.length} activas
                         </span>
-                        <span className="rounded-2xl bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
+                        <span className="rounded-lg bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
                             {pendingServiceRequests} pendientes
                         </span>
                     </div>
@@ -540,7 +540,7 @@ export function MaintenanceDashboard() {
             <section className="space-y-6">
                 <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
                             <Bot className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
                         </div>
                         <div>
@@ -549,7 +549,7 @@ export function MaintenanceDashboard() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex rounded-2xl border border-subtle bg-surface p-1">
+                        <div className="flex rounded-lg border border-subtle bg-surface p-1">
                             {[
                                 { key: 'active', label: 'Activos' },
                                 { key: 'resolved', label: 'Resueltos' },
@@ -570,7 +570,7 @@ export function MaintenanceDashboard() {
                         </div>
                         <button
                             onClick={() => setCaseUrgencyFilter(prev => prev === 'hot' ? 'all' : 'hot')}
-                            className={`rounded-2xl px-4 py-2 text-xs font-semibold transition-colors ${
+                            className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
                                 caseUrgencyFilter === 'hot'
                                     ? 'bg-red-600 text-white'
                                     : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
@@ -578,10 +578,10 @@ export function MaintenanceDashboard() {
                         >
                             Solo urgentes
                         </button>
-                        <span className="rounded-2xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
+                        <span className="rounded-lg bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
                             {openCocoCases} abiertos
                         </span>
-                        <span className="rounded-2xl bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-300">
+                        <span className="rounded-lg bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-300">
                             {emergencyCocoCases} alta prioridad
                         </span>
                     </div>
@@ -592,7 +592,7 @@ export function MaintenanceDashboard() {
                         {cocoInsights.map(insight => (
                             <div
                                 key={insight.title}
-                                className={`rounded-2xl border p-4 ${
+                                className={`rounded-lg border p-4 ${
                                     insight.tone === 'red'
                                         ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200'
                                         : insight.tone === 'amber'
@@ -705,7 +705,7 @@ export function MaintenanceDashboard() {
                 <div className="lg:col-span-2 space-y-8">
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-elevated rounded-2xl">
+                            <div className="p-3 bg-elevated rounded-lg">
                                 <CalendarDays className="h-6 w-6 cc-text-primary" />
                             </div>
                             <h2 className="text-2xl font-semibold cc-text-primary">Tareas de Mantenimiento</h2>
@@ -718,7 +718,7 @@ export function MaintenanceDashboard() {
                             return (
                                 <div key={task.id} className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 hover:border-white/80 dark:hover:border-slate-600 hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">
                                     <div className="flex items-center gap-6">
-                                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center ${task.status === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                                        <div className={`h-16 w-16 rounded-lg flex items-center justify-center ${task.status === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                                             }`}>
                                             <Wrench className="h-7 w-7" />
                                         </div>
@@ -742,7 +742,7 @@ export function MaintenanceDashboard() {
                                                 setSelectedTask(task);
                                                 setIsDetailOpen(true);
                                             }}
-                                            className="p-4 bg-elevated rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"
+                                            className="p-4 bg-elevated rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all"
                                         >
                                             <ArrowRight className="h-5 w-5" />
                                         </button>
@@ -756,7 +756,7 @@ export function MaintenanceDashboard() {
                 {/* Technical History Snippet */}
                 <div className="space-y-8">
                     <div className="flex items-center gap-4 px-2">
-                        <div className="p-3 bg-elevated rounded-2xl">
+                        <div className="p-3 bg-elevated rounded-lg">
                             <History className="h-6 w-6 cc-text-primary" />
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Historial Reciente</h2>
@@ -815,7 +815,7 @@ export function MaintenanceDashboard() {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex gap-3 border border-blue-100 dark:border-blue-500/20">
+                            <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex gap-3 border border-blue-100 dark:border-blue-500/20">
                                 <Info className="h-5 w-5 text-blue-600 shrink-0" />
                                 <p className="text-[11px] font-medium text-blue-700 leading-relaxed">
                                     Al completar esta tarea, se generará automáticamente un registro en la bitácora técnica del activo correspondiente.
@@ -826,14 +826,14 @@ export function MaintenanceDashboard() {
                                 <Button
                                     onClick={() => setIsDetailOpen(false)}
                                     variant="outline"
-                                    className="flex-1 h-16 rounded-2xl font-semibold"
+                                    className="flex-1 h-16 rounded-lg font-semibold"
                                 >
                                     Cerrar
                                 </Button>
                                 {selectedTask.status !== 'completed' && (
                                     <Button
                                         onClick={() => handleCompleteTask(selectedTask.id)}
-                                        className="flex-[2] h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all"
+                                        className="flex-[2] h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all"
                                     >
                                         <Check className="mr-2 h-5 w-5" />
                                         Marcar como Completada
@@ -867,11 +867,11 @@ export function MaintenanceDashboard() {
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
-                                <div className="rounded-2xl bg-elevated p-4">
+                                <div className="rounded-lg bg-elevated p-4">
                                     <p className="text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">Decision CoCo</p>
                                     <p className="mt-2 text-sm font-bold cc-text-secondary">{selectedCase.reason || 'Sin razon registrada.'}</p>
                                 </div>
-                                <div className="rounded-2xl bg-elevated p-4">
+                                <div className="rounded-lg bg-elevated p-4">
                                     <p className="text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">Respuesta al residente</p>
                                     <p className="mt-2 line-clamp-4 text-sm font-bold cc-text-secondary">{selectedCase.assistant_reply || 'Sin respuesta registrada.'}</p>
                                 </div>
@@ -881,16 +881,16 @@ export function MaintenanceDashboard() {
                                 <h4 className="text-sm font-semibold uppercase tracking-widest cc-text-primary">Bitacora</h4>
                                 {caseEventsLoading ? (
                                     <div className="space-y-3">
-                                        {[0, 1, 2].map(item => <div key={item} className="h-16 animate-pulse rounded-2xl bg-elevated" />)}
+                                        {[0, 1, 2].map(item => <div key={item} className="h-16 animate-pulse rounded-lg bg-elevated" />)}
                                     </div>
                                 ) : caseEvents.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-subtle p-6 text-center text-sm font-bold cc-text-secondary">
+                                    <div className="rounded-lg border border-dashed border-subtle p-6 text-center text-sm font-bold cc-text-secondary">
                                         Sin movimientos registrados todavia.
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
                                         {caseEvents.map(event => (
-                                            <div key={event.id} className="rounded-2xl border border-subtle bg-surface p-4">
+                                            <div key={event.id} className="rounded-lg border border-subtle bg-surface p-4">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600">
                                                         {event.event_type === 'status_changed' ? 'Cambio de estado' : event.event_type}
@@ -911,7 +911,7 @@ export function MaintenanceDashboard() {
                                 )}
                             </div>
 
-                            <div className="rounded-2xl border border-subtle bg-elevated/40 p-4">
+                            <div className="rounded-lg border border-subtle bg-elevated/40 p-4">
                                 <label className="block text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
                                     Agregar comentario visible
                                 </label>

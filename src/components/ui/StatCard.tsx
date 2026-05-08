@@ -87,7 +87,7 @@ export function StatCard({
         style={{
           fontSize: '32px',
           fontWeight: 600,
-          letterSpacing: '-0.02em',
+          letterSpacing: '0',
           lineHeight: 1,
           marginBottom: '6px',
         }}
@@ -142,8 +142,8 @@ export function StatCard({
     </>
   );
 
-  const baseClasses = `block group relative overflow-hidden rounded-lg p-5 border bg-white dark:bg-[#12121D] border-subtle transition-all duration-200 ease-out ${
-    isInteractive ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md' : ''
+  const baseClasses = `block group relative overflow-hidden rounded-lg p-5 border bg-white dark:bg-[#12121D] border-subtle shadow-sm transition-colors duration-200 ease-out ${
+    isInteractive ? 'cursor-pointer hover:border-default' : ''
   } ${className}`;
 
   if (href) {

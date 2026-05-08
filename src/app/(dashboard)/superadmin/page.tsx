@@ -115,7 +115,7 @@ export default function SuperAdminDashboard() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-surface p-6 rounded-2xl shadow-sm border border-subtle">
+                <div className="bg-surface p-6 rounded-lg shadow-sm border border-subtle">
                     <div className="flex items-center gap-4">
                         <div className="p-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600">
                             <Building2 className="h-6 w-6" />
@@ -126,7 +126,7 @@ export default function SuperAdminDashboard() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-surface p-6 rounded-2xl shadow-sm border border-subtle">
+                <div className="bg-surface p-6 rounded-lg shadow-sm border border-subtle">
                     <div className="flex items-center gap-4">
                         <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
                             <Check className="h-6 w-6" />
@@ -145,7 +145,7 @@ export default function SuperAdminDashboard() {
             <OutreachDemo />
 
             {/* Communities List */}
-            <div className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-subtle">
+            <div className="bg-surface rounded-lg shadow-sm overflow-hidden border border-subtle">
                 <div className="p-6 border-b border-subtle flex flex-col md:flex-row justify-between gap-4">
                     <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-brand-500" />
@@ -225,7 +225,7 @@ export default function SuperAdminDashboard() {
                 </div>
             </div>
             
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-lg p-6">
                 <h3 className="text-lg font-bold text-blue-900 dark:text-blue-300 mb-2">Instrucciones para Nuevos Condominios</h3>
                 <p className="text-sm text-blue-800 dark:text-blue-400 leading-relaxed">
                     Para registrar un nuevo administrador y su condominio, envíales este link:

@@ -170,7 +170,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                     <User className="h-4 w-4 text-blue-500" />
                                     Residente Principal
                                 </h3>
-                                <div className="p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm">
+                                <div className="p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
                                             {resident?.name.charAt(0) || "U"}
@@ -214,7 +214,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                             />
                                             <Button
                                                 onClick={handleSave}
-                                                className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/20"
+                                                className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-500/20"
                                             >
                                                 Guardar
                                             </Button>
@@ -237,7 +237,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                 <div className="space-y-3">
                                     {history.length > 0 ? (
                                         history.map((record) => (
-                                            <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl shadow-sm">
+                                            <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-lg shadow-sm">
                                                 <div>
                                                     <p className="font-bold cc-text-secondary">{record.month} {record.year}</p>
                                                     <p className="text-xs text-slate-400">Lectura: {record.reading_value}</p>

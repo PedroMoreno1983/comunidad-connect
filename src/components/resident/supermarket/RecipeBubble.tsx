@@ -61,7 +61,7 @@ export function RecipeBubble({ suggestion, onAddMissingToCart }: RecipeBubblePro
                 {supermarketMissing.length > 0 && (
                     <button
                         onClick={() => onAddMissingToCart(supermarketMissing.map(i => i.supermarketProduct))}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-xs"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-xs"
                     >
                         <ShoppingCart className="h-4 w-4" />
                         Comprar Faltantes (${totalSupermarketCost.toLocaleString('es-CL')})

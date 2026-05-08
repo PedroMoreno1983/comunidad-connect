@@ -105,7 +105,7 @@ export function AdminReservations() {
                     <p className="text-sm font-medium text-slate-500 mt-1">Gestión de quinchos, salones y espacios comúnes.</p>
                 </div>
                 {pendingCount > 0 && (
-                    <div className="px-4 py-2 bg-warning-bg text-warning-fg rounded-2xl text-xs font-semibold uppercase tracking-widest flex items-center gap-2 border border-amber-100 dark:border-amber-500/20 shadow-sm shadow-amber-500/10">
+                    <div className="px-4 py-2 bg-warning-bg text-warning-fg rounded-lg text-xs font-semibold uppercase tracking-widest flex items-center gap-2 border border-amber-100 dark:border-amber-500/20 shadow-sm shadow-amber-500/10">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -135,7 +135,7 @@ export function AdminReservations() {
                         <div key={booking.id} className="p-8 hover:bg-elevated/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
 
                             <div className="flex items-start gap-6">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${amenity?.gradient || 'bg-slate-200'} text-white shadow-lg`}>
+                                <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${amenity?.gradient || 'bg-slate-200'} text-white shadow-sm`}>
                                     <CalendarIcon className="h-7 w-7" />
                                 </div>
                                 <div className="space-y-1">
@@ -168,13 +168,13 @@ export function AdminReservations() {
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => handleUpdateStatus(booking.id, 'confirmed')}
-                                        className="h-12 px-6 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500 rounded-2xl font-semibold text-sm flex items-center gap-2 transition-all active:scale-95"
+                                        className="h-12 px-6 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500 rounded-lg font-semibold text-sm flex items-center gap-2 transition-all active:scale-95"
                                     >
                                         <Check className="h-5 w-5" /> Aprobar
                                     </button>
                                     <button
                                         onClick={() => handleUpdateStatus(booking.id, 'cancelled')}
-                                        className="h-12 w-12 bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500 rounded-2xl flex items-center justify-center transition-all active:scale-95"
+                                        className="h-12 w-12 bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500 rounded-lg flex items-center justify-center transition-all active:scale-95"
                                         title="Rechazar"
                                     >
                                         <X className="h-5 w-5" />

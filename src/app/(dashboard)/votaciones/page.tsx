@@ -171,7 +171,7 @@ export default function VotacionesPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 px-6 py-4 bg-surface rounded-2xl border border-subtle shadow-sm">
+                    <div className="flex items-center gap-3 px-6 py-4 bg-surface rounded-lg border border-subtle shadow-sm">
                         <Users className="h-5 w-5 text-blue-500" />
                         <span className="text-sm font-semibold cc-text-primary">Participando</span>
                     </div>
@@ -197,7 +197,7 @@ export default function VotacionesPage() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <Vote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Consultas Activas</h2>
@@ -233,7 +233,7 @@ export default function VotacionesPage() {
             {closedPolls.length > 0 && (
                 <div className="space-y-8">
                     <div className="flex items-center gap-4 px-2">
-                        <div className="p-3 bg-elevated rounded-2xl text-slate-500">
+                        <div className="p-3 bg-elevated rounded-lg text-slate-500">
                             <BarChart3 className="h-6 w-6" />
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Resultados Históricos</h2>

@@ -165,7 +165,7 @@ export default function ChatPage() {
 
                 {/* Tab Switcher */}
                 <div className="px-4 pb-3">
-                    <div className="grid grid-cols-2 bg-elevated rounded-2xl p-1 gap-1">
+                    <div className="grid grid-cols-2 bg-elevated rounded-lg p-1 gap-1">
                         <button
                             onClick={() => { setMode('global'); setActivePeer(null); }}
                             className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'global' ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
@@ -183,7 +183,7 @@ export default function ChatPage() {
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {mode === 'global' ? (
-                        <button className="w-full flex items-center gap-3 p-3 rounded-2xl bg-role-admin-bg text-role-admin-fg">
+                        <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-role-admin-bg text-role-admin-fg">
                             <div className="p-2 bg-role-admin-bg rounded-xl">
                                 <Hash className="h-4 w-4" />
                             </div>
@@ -215,7 +215,7 @@ export default function ChatPage() {
                                             key={conv.peerId}
                                             onClick={() => setActivePeer(conv)}
                                             className={clsx(
-                                                "w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1",
+                                                "w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1",
                                                 activePeer?.peerId === conv.peerId
                                                     ? "bg-role-admin-bg text-brand-600"
                                                     : "hover:bg-elevated cc-text-secondary"
@@ -249,7 +249,7 @@ export default function ChatPage() {
                                         key={neighbor.id}
                                         onClick={() => openDirectChat(neighbor)}
                                         className={clsx(
-                                            "w-full flex items-center gap-3 p-3 rounded-2xl transition-all mb-1",
+                                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1",
                                             activePeer?.peerId === neighbor.id
                                                 ? "bg-role-admin-bg"
                                                 : "hover:bg-elevated"
@@ -284,7 +284,7 @@ export default function ChatPage() {
                                 <ArrowLeft className="h-5 w-5 text-slate-400" />
                             </button>
                         )}
-                        <div className={clsx("p-2.5 rounded-xl shadow-lg", mode === 'global' ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] shadow-indigo-500/30" : "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30")}>
+                        <div className={clsx("p-2.5 rounded-xl shadow-sm", mode === 'global' ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] shadow-indigo-500/30" : "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30")}>
                             {mode === 'global' ? <Hash className="h-5 w-5 text-white" /> : <MessageCircle className="h-5 w-5 text-white" />}
                         </div>
                         <div>
@@ -354,8 +354,8 @@ export default function ChatPage() {
                                                         <div className={clsx(
                                                             "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
                                                             isMe
-                                                                ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white rounded-2xl rounded-tr-sm"
-                                                                : "bg-elevated cc-text-primary rounded-2xl rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
+                                                                ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white rounded-lg rounded-tr-sm"
+                                                                : "bg-elevated cc-text-primary rounded-lg rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
                                                         )}>
                                                             {msg.content}
                                                         </div>

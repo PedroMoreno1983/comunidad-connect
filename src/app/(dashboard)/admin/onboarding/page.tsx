@@ -204,7 +204,7 @@ export default function AdminOnboardingPage() {
 
                         {!isExtracting && (
                             <div className="mt-6 relative">
-                                <label className="cursor-pointer px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg transition duration-200 inline-flex items-center gap-2 group/btn">
+                                <label className="cursor-pointer px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-sm transition duration-200 inline-flex items-center gap-2 group/btn">
                                     <UploadCloud className="w-5 h-5 group-hover/btn:-translate-y-1 transition" />
                                     Subir Archivo Manualmente
                                     <input
@@ -228,14 +228,14 @@ export default function AdminOnboardingPage() {
                     animate={{ scale: 1, opacity: 1 }}
                     className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-500 rounded-lg p-12 text-center shadow-sm flex flex-col items-center"
                 >
-                    <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg mb-6">
+                    <div className="h-24 w-24 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-sm mb-6">
                         <CheckCircle2 className="h-12 w-12" />
                     </div>
                     <h2 className="text-3xl font-semibold text-success-fg mb-2">¡Sincronización Mágica Completada!</h2>
                     <p className="text-emerald-600 dark:text-emerald-500 font-medium mb-8">Todos los residentes han sido inyectados y creados exitosamente en Supabase de forma estructurada.</p>
                     <button
                         onClick={() => setSyncSuccess(false)}
-                        className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 transition"
+                        className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-sm hover:bg-emerald-700 transition"
                     >
                         Inyectar Otro Archivo
                     </button>
@@ -248,7 +248,7 @@ export default function AdminOnboardingPage() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-subtle"
+                        className="bg-surface rounded-lg shadow-sm overflow-hidden border border-subtle"
                     >
                         <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div>
@@ -270,7 +270,7 @@ export default function AdminOnboardingPage() {
                                 <button
                                     onClick={handleSyncToDatabase}
                                     disabled={isSyncing}
-                                    className={`px-6 py-2 text-white rounded-lg font-bold shadow-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${confirmingSync ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                    className={`px-6 py-2 text-white rounded-lg font-bold shadow-sm flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${confirmingSync ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                                 >
                                     {isSyncing
                                         ? <span className="animate-pulse">Guardando en Supabase...</span>

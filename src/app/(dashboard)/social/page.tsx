@@ -188,7 +188,7 @@ export default function SocialFeedPage() {
         <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 space-y-10">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-br from-fuchsia-500 to-pink-600 rounded-2xl shadow-lg shadow-fuchsia-500/30">
+                <div className="p-3 bg-gradient-to-br from-fuchsia-500 to-pink-600 rounded-lg shadow-sm shadow-fuchsia-500/30">
                     <Hash className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -240,7 +240,7 @@ export default function SocialFeedPage() {
                                 <Button
                                     type="submit"
                                     disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting}
-                                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-lg hover:scale-105 transition-transform"
+                                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-sm hover:scale-105 transition-transform"
                                 >
                                     {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Publicar'}
                                 </Button>
@@ -248,7 +248,7 @@ export default function SocialFeedPage() {
 
                             {/* Image Preview */}
                             {newPostImagePreview && (
-                                <div className="relative mt-3 rounded-2xl overflow-hidden border border-subtle">
+                                <div className="relative mt-3 rounded-lg overflow-hidden border border-subtle">
                                     <img src={newPostImagePreview} alt="preview" className="w-full max-h-64 object-cover" />
                                     <button
                                         type="button"
@@ -288,7 +288,7 @@ export default function SocialFeedPage() {
                             key={post.id}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-surface flex flex-col rounded-lg border border-subtle shadow-lg shadow-slate-200/20 dark:shadow-none overflow-hidden"
+                            className="bg-surface flex flex-col rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none overflow-hidden"
                         >
                             {/* Post Header */}
                             <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
@@ -327,7 +327,7 @@ export default function SocialFeedPage() {
                                     {post.content}
                                 </p>
                                 {post.image_url && (
-                                    <div className="mt-4 rounded-2xl overflow-hidden border border-subtle">
+                                    <div className="mt-4 rounded-lg overflow-hidden border border-subtle">
                                         <img src={post.image_url} alt="post image" className="w-full h-auto object-cover max-h-[500px]" />
                                     </div>
                                 )}
@@ -392,7 +392,7 @@ export default function SocialFeedPage() {
                                                                 )}
                                                             </div>
                                                             <div className="flex-1">
-                                                                <div className="bg-surface px-4 py-3 rounded-2xl rounded-tl-none border border-subtle inline-block">
+                                                                <div className="bg-surface px-4 py-3 rounded-lg rounded-tl-none border border-subtle inline-block">
                                                                     <p className="text-xs font-semibold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
                                                                     <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
                                                                 </div>

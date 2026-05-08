@@ -133,7 +133,7 @@ export function PollManager() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <Vote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h3 className="font-semibold cc-text-primary">Consultas Activas</h3>
@@ -146,7 +146,7 @@ export function PollManager() {
 
                 <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-warning-bg rounded-2xl">
+                        <div className="p-3 bg-warning-bg rounded-lg">
                             <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
                         <h3 className="font-semibold cc-text-primary">Cierran Pronto</h3>
@@ -176,7 +176,7 @@ export function PollManager() {
             <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-elevated rounded-2xl">
+                        <div className="p-3 bg-elevated rounded-lg">
                             <Settings className="h-6 w-6 cc-text-primary" />
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Gestor de Consultas</h2>
@@ -184,7 +184,7 @@ export function PollManager() {
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-canvas text-white font-semibold rounded-2xl hover:bg-slate-800 transition-all shadow-sm active:scale-95">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-canvas text-white font-semibold rounded-lg hover:bg-slate-800 transition-all shadow-sm active:scale-95">
                                 <Plus className="h-5 w-5" />
                                 Nueva Votación
                             </button>
@@ -201,7 +201,7 @@ export function PollManager() {
                                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Título de la Propuesta</label>
                                     <Input
                                         placeholder="Ej: Renovación de Ascensores 2026"
-                                        className="h-14 rounded-2xl font-bold"
+                                        className="h-14 rounded-lg font-bold"
                                         required
                                         value={newPoll.title}
                                         onChange={(e) => setNewPoll({ ...newPoll, title: e.target.value })}
@@ -210,7 +210,7 @@ export function PollManager() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
                                     <select
-                                        className="w-full h-14 rounded-2xl border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                        className="w-full h-14 rounded-lg border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
                                         value={newPoll.category}
                                         onChange={(e) => setNewPoll({ ...newPoll, category: e.target.value })}
                                     >
@@ -222,21 +222,21 @@ export function PollManager() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción / Contexto</label>
                                     <textarea
-                                        className="w-full h-32 rounded-2xl border border-subtle bg-surface cc-text-primary p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                                        className="w-full h-32 rounded-lg border border-subtle bg-surface cc-text-primary p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                                         placeholder="Detalle los beneficios y costos de la propuesta..."
                                         required
                                         value={newPoll.description}
                                         onChange={(e) => setNewPoll({ ...newPoll, description: e.target.value })}
                                     />
                                 </div>
-                                <div className="p-4 bg-warning-bg rounded-2xl flex gap-3 border border-amber-100 dark:border-amber-500/20">
+                                <div className="p-4 bg-warning-bg rounded-lg flex gap-3 border border-amber-100 dark:border-amber-500/20">
                                     <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
                                     <p className="text-[11px] font-medium text-amber-700 leading-relaxed">
                                         Las consultas publicadas como **Mantenimiento** o **Reglamento** requieren un quórum legal mínimo del **60%** según la ley vigente.
                                     </p>
                                 </div>
                                 <DialogFooter className="pt-4">
-                                    <Button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all">
+                                    <Button type="submit" className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all">
                                         Publicar Votación
                                     </Button>
                                 </DialogFooter>

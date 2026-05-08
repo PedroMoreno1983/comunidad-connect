@@ -304,7 +304,7 @@ const COMMUNITY_COURSES: CommunityCourse[] = [
 function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-            <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-2xl shadow-sm flex flex-col overflow-hidden">
+            <div className="bg-surface w-full max-w-4xl h-[80vh] rounded-lg shadow-sm flex flex-col overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-subtle">
                     <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-brand-500" />
@@ -327,7 +327,7 @@ function CourseModal({ course, onClose }: { course: CommunityCourse, onClose: ()
                     </div>
                     {/* Player Area */}
                     <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-slate-900/50">
-                        <div className="p-4 bg-brand-100 dark:bg-indigo-900/50 rounded-2xl mb-4">
+                        <div className="p-4 bg-brand-100 dark:bg-indigo-900/50 rounded-lg mb-4">
                             <Sparkles className="h-12 w-12 text-brand-500" />
                         </div>
                         <h2 className="text-xl font-semibold dark:text-white mb-2">Visor de SCORM</h2>
@@ -369,7 +369,7 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.06 }}
-            className={`rounded-2xl border transition-all duration-300 overflow-hidden ${done
+            className={`rounded-lg border transition-all duration-300 overflow-hidden ${done
                 ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
                 : "border-subtle bg-surface"
                 }`}
@@ -489,7 +489,7 @@ export default function TrainingPage() {
                     <div className="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 opacity-10 blur-2xl" />
 
                     <div className="relative flex items-start gap-5">
-                        <div className={`p-4 rounded-2xl bg-gradient-to-br ${roleGradient} shadow-sm flex-shrink-0`}>
+                        <div className={`p-4 rounded-lg bg-gradient-to-br ${roleGradient} shadow-sm flex-shrink-0`}>
                             <GraduationCap className="h-8 w-8 text-white" />
                         </div>
                         <div>
@@ -542,7 +542,7 @@ export default function TrainingPage() {
                         <div>
                             <h2 className="text-lg font-bold cc-text-primary flex items-center gap-2">
                                 Generador de Cursos
-                                <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-extrabold">Nuevo</span>
+                                <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-semibold">Nuevo</span>
                             </h2>
                             <p className="text-xs cc-text-secondary mt-0.5">
                                 Convierte los documentos de tu comunidad en cursos e-learning.
@@ -602,7 +602,7 @@ export default function TrainingPage() {
                         <button
                             key={course.id}
                             onClick={() => setSelectedCourse(course)}
-                            className="text-left group bg-surface p-5 rounded-2xl border border-subtle hover:border-emerald-400 dark:hover:border-emerald-500 transition-all flex flex-col h-full"
+                            className="text-left group bg-surface p-5 rounded-lg border border-subtle hover:border-emerald-400 dark:hover:border-emerald-500 transition-all flex flex-col h-full"
                         >
                             <div className="flex items-center gap-3 mb-3">
                                 <div className={`p-2 rounded-xl ${course.bg}`}>
@@ -653,7 +653,7 @@ export default function TrainingPage() {
                                 href={course.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group p-5 rounded-2xl border border-subtle bg-surface hover:border-brand-300 dark:hover:border-brand-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
+                                className="group p-5 rounded-lg border border-subtle bg-surface hover:border-brand-300 dark:hover:border-brand-500 transition-all shadow-sm hover:shadow-md flex flex-col h-full"
                             >
                                 <div className="flex items-start justify-between mb-4">
                                     <div className={`p-2.5 rounded-xl ${course.bg}`}>

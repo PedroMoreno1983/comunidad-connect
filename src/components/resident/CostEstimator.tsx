@@ -22,7 +22,7 @@ export function CostEstimator({ consumption }: CostEstimatorProps) {
             </div>
 
             <div className="relative z-10 flex items-center gap-4">
-                <div className="rounded-2xl bg-success-bg p-3 text-emerald-600">
+                <div className="rounded-lg bg-success-bg p-3 text-emerald-600">
                     <Calculator className="h-6 w-6" />
                 </div>
                 <div>
@@ -54,7 +54,7 @@ export function CostEstimator({ consumption }: CostEstimatorProps) {
                     </div>
                 </div>
 
-                <div className="flex gap-3 rounded-2xl bg-elevated/50 p-4">
+                <div className="flex gap-3 rounded-lg bg-elevated/50 p-4">
                     <HelpCircle className="h-5 w-5 shrink-0 text-slate-400" />
                     <p className="text-xs leading-relaxed text-slate-500">
                         Este valor es referencial y puede variar según las tarifas vigentes de la empresa sanitaria y prorrateos de áreas comunes.

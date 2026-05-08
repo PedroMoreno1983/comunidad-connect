@@ -379,7 +379,7 @@ export default function HomePage() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124,58,237,0.12)', color: '#A58FFC' }}>
@@ -400,7 +400,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Category Breakdown */}
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
                                 <PieChartIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
@@ -434,7 +434,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8 relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
@@ -466,7 +466,7 @@ export default function HomePage() {
                         transition={{ delay: 0.3 }}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md overflow-hidden">
+                        <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md overflow-hidden">
                             <div className="p-5 lg:p-6 flex items-center justify-between border-b border-subtle">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' }}>
@@ -532,7 +532,7 @@ export default function HomePage() {
                     transition={{ delay: 0.4 }}
                     className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
                 >
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-2xl shadow-md p-6 lg:p-8">
+                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' }}>
                                 <TrendingUp className="h-5 w-5" />

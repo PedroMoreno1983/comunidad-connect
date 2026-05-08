@@ -126,7 +126,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                         <div className="relative h-full">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                             <Input
-                                className="h-full pl-12 pr-6 w-80 rounded-2xl bg-surface border-subtle font-bold"
+                                className="h-full pl-12 pr-6 w-80 rounded-lg bg-surface border-subtle font-bold"
                                 placeholder="Buscar unidad (Piso, depto)..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -154,14 +154,14 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-semibold rounded-2xl border border-subtle hover:bg-slate-50 transition-all shadow-sm">
+                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-semibold rounded-lg border border-subtle hover:bg-slate-50 transition-all shadow-sm">
                         <Download className="h-5 w-5" />
                         Formato Excel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={Object.keys(readings).length === 0 || isSaving}
-                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
+                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
                     >
                         {isSaving ? <Calculator className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                         Procesar Lecturas
@@ -198,7 +198,7 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                                     >
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-semibold text-xs">
+                                                <div className="h-12 w-12 rounded-lg bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-semibold text-xs">
                                                     {unit.number}
                                                 </div>
                                                 <div>

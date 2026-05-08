@@ -251,7 +251,7 @@ export default function FeedPage() {
                             return (
                                 <article
                                     key={ann.id}
-                                    className="group relative overflow-hidden rounded-2xl bg-surface border border-subtle shadow-md hover:shadow-lg hover:border-default transition-all duration-300 animate-slide-up opacity-0"
+                                    className="group relative overflow-hidden rounded-lg bg-surface border border-subtle shadow-md hover:shadow-sm hover:border-default transition-all duration-300 animate-slide-up opacity-0"
                                     style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
                                 >
                                     <div className="p-6">

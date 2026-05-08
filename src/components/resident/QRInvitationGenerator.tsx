@@ -90,7 +90,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                         className="bg-surface rounded-lg p-10 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none space-y-8"
                     >
                         <div className="text-center space-y-2">
-                            <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                            <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
                                 <UserPlus className="h-8 w-8" />
                             </div>
                             <h2 className="text-2xl font-semibold cc-text-primary">Nueva Invitación</h2>
@@ -102,7 +102,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Nombre del Invitado</label>
                                 <Input
                                     placeholder="Ej: Ana García"
-                                    className="h-14 rounded-2xl font-bold"
+                                    className="h-14 rounded-lg font-bold"
                                     value={guestName}
                                     onChange={(e) => setGuestName(e.target.value)}
                                 />
@@ -111,13 +111,13 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">DNI / RUT</label>
                                 <Input
                                     placeholder="Ej: 12.345.678-9"
-                                    className="h-14 rounded-2xl font-bold"
+                                    className="h-14 rounded-lg font-bold"
                                     value={guestDni}
                                     onChange={(e) => setGuestDni(e.target.value)}
                                 />
                             </div>
 
-                            <div className="p-4 bg-elevated/50 rounded-2xl flex gap-3">
+                            <div className="p-4 bg-elevated/50 rounded-lg flex gap-3">
                                 <Info className="h-5 w-5 text-blue-500 shrink-0" />
                                 <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
                                     Esta invitación es válida por **24 horas** a partir de ahora. El invitado deberá presentar su documento de identidad original.
@@ -127,7 +127,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                             <Button
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
-                                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all active:scale-95"
+                                className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all active:scale-95"
                             >
                                 {isGenerating ? (
                                     <span className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
 
                             {/* QR Simulation Component */}
                             <div className="mx-auto w-64 h-64 bg-white p-6 rounded-lg shadow-[0_0_50px_rgba(59,130,246,0.5)] relative group">
-                                <div className="w-full h-full border-4 border-slate-900 rounded-2xl p-2 grid grid-cols-4 grid-rows-4 gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <div className="w-full h-full border-4 border-slate-900 rounded-lg p-2 grid grid-cols-4 grid-rows-4 gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                                     {/* Abstract QR Pattern */}
                                     {qrPattern.map((isFilled, i) => (
                                         <div
@@ -182,7 +182,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                             </div>
 
                             <div className="space-y-4">
-                                <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
+                                <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
                                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Invitado</p>
                                     <p className="text-lg font-semibold text-white">{guestName}</p>
                                 </div>
@@ -190,12 +190,12 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => voi
                                 <div className="flex gap-4">
                                     <button
                                         onClick={copyToClipboard}
-                                        className="flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors"
+                                        className="flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
                                     >
                                         <Copy className="h-4 w-4" />
                                         Copiar
                                     </button>
-                                    <button className="flex-1 h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all active:scale-95">
+                                    <button className="flex-1 h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all active:scale-95">
                                         <Share2 className="h-4 w-4" />
                                         Compartir
                                     </button>

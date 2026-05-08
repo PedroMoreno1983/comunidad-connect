@@ -107,7 +107,7 @@ export default function ResidentTrainingPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-5">
                         {courses.length === 0 ? (
-                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-default/50 rounded-2xl">
+                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-default/50 rounded-lg">
                                 <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
                                 <h3 className="text-lg font-medium cc-text-primary">Sin cursos específicos</h3>
                                 <p className="cc-text-secondary">Pide a tu administración que agregue módulos oficiales.</p>
@@ -120,7 +120,7 @@ export default function ResidentTrainingPage() {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-surface rounded-2xl p-6 shadow-sm border border-subtle hover:shadow-sm hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
+                                    className="bg-surface rounded-lg p-6 shadow-sm border border-subtle hover:shadow-sm hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
                                 >
                                     {user?.role === 'admin' && (
                                         <button 
@@ -151,7 +151,7 @@ export default function ResidentTrainingPage() {
                                 setSelectedCourseContent(""); 
                                 setSelectedCourseTitle("Modo Libre (Pregúntale a la Tutora CoCo)");
                             }}
-                            className="bg-elevated/50 rounded-2xl p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-brand-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
+                            className="bg-elevated/50 rounded-lg p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-brand-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
                         >
                             <div className="w-12 h-12 rounded-xl bg-elevated flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                 <GraduationCap className="h-6 w-6 cc-text-secondary" />

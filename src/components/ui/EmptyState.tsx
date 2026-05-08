@@ -69,7 +69,7 @@ export function EmptyState({
           fontFamily: 'var(--cc-font-display)',
           fontSize: '20px',
           fontWeight: 600,
-          letterSpacing: '-0.02em',
+          letterSpacing: '0',
           marginBottom: '8px',
           color: 'var(--cc-text-primary)',
         }}

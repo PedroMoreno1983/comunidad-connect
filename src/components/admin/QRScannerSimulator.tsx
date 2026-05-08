@@ -163,7 +163,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                             <Button
                                 onClick={simulateScan}
                                 disabled={isScanning}
-                                className="w-full h-16 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg transition-all active:scale-95 shadow-sm"
+                                className="w-full h-16 rounded-lg bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg transition-all active:scale-95 shadow-sm"
                             >
                                 {isScanning ? "Procesando..." : "Simular Escaneo"}
                             </Button>
@@ -228,7 +228,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                                 <p className="font-medium opacity-80 leading-relaxed">
                                     El código QR presentado no corresponde a una invitación activa o está fuera de su rango de vigencia. Por favor, solicite una nueva invitación al residente.
                                 </p>
-                                <Button className="w-full bg-white/20 hover:bg-white/30 text-white rounded-2xl h-14 font-semibold">
+                                <Button className="w-full bg-white/20 hover:bg-white/30 text-white rounded-lg h-14 font-semibold">
                                     Intentar de nuevo
                                 </Button>
                             </motion.div>
@@ -256,7 +256,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
             <div className="bg-surface rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-none">
                 <div className="p-10 border-b border-subtle flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                             <History className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h3 className="text-xl font-semibold cc-text-primary">Historial de Accesos QR</h3>
@@ -270,7 +270,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                     ].map((log, i) => (
                         <div key={i} className="p-8 flex items-center justify-between hover:bg-elevated/20 transition-colors">
                             <div className="flex items-center gap-5">
-                                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${log.status === 'success'
+                                <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${log.status === 'success'
                                     ? 'bg-success-bg text-emerald-600'
                                     : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600'
                                     }`}>

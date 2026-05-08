@@ -111,7 +111,7 @@ export function AssetInventory() {
                     <div className="p-8 space-y-8">
                         {/* Header */}
                         <div className="flex justify-between items-start">
-                            <div className={`p-4 rounded-2xl ${asset.healthStatus === 'optimal' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' :
+                            <div className={`p-4 rounded-lg ${asset.healthStatus === 'optimal' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' :
                                 asset.healthStatus === 'warning' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' :
                                     'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400'
                                 }`}>
@@ -223,7 +223,7 @@ export function AssetInventory() {
                                                 </span>
                                             </div>
 
-                                            <div className="bg-elevated/50 p-6 rounded-2xl space-y-3">
+                                            <div className="bg-elevated/50 p-6 rounded-lg space-y-3">
                                                 <p className="text-sm font-bold cc-text-primary leading-relaxed">
                                                     {log.description}
                                                 </p>
@@ -244,7 +244,7 @@ export function AssetInventory() {
                             </div>
                         ) : (
                             <div className="text-center py-10 space-y-4">
-                                <div className="mx-auto w-16 h-16 bg-elevated rounded-2xl flex items-center justify-center text-slate-300">
+                                <div className="mx-auto w-16 h-16 bg-elevated rounded-lg flex items-center justify-center text-slate-300">
                                     <Activity className="h-8 w-8" />
                                 </div>
                                 <p className="text-slate-500 font-bold italic">No hay registros previos para este activo.</p>
