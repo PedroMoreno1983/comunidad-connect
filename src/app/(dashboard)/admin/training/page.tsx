@@ -36,6 +36,20 @@ const visualThemes: Record<string, string> = {
     'default': 'bg-gradient-to-br from-[#334155] to-[#0F172A]'
 };
 
+function friendlyTrainingError(message?: string) {
+    const text = (message || "").toLowerCase();
+    if (text.includes("timeout") || text.includes("504") || text.includes("grande") || text.includes("large")) {
+        return "El archivo tardó demasiado en procesarse. Prueba con menos páginas o divide el contenido.";
+    }
+    if (text.includes("gemini") || text.includes("api") || text.includes("json") || text.includes("model")) {
+        return "El motor IA no pudo generar una presentación estable con este contenido. Revisa el texto base e intenta nuevamente.";
+    }
+    if (text.includes("rls") || text.includes("supabase") || text.includes("database")) {
+        return "No pudimos guardar el curso por una restricción de datos. Revisa permisos del proyecto e intenta nuevamente.";
+    }
+    return "No pudimos completar la operación. Intenta nuevamente en unos segundos.";
+}
+
 export default function AdminTrainingPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -120,7 +134,7 @@ export default function AdminTrainingPage() {
                     combinedText += (combinedText ? '\n\n' : '') + data.text;
                     lastFileName = file.name;
                 } else {
-                    toast({ title: `Error: ${file.name}`, description: data.error || 'Error desconocido al procesar el archivo.', variant: "destructive" });
+                    toast({ title: `No se pudo leer ${file.name}`, description: friendlyTrainingError(data.error), variant: "destructive" });
                 }
             }
 
@@ -132,8 +146,7 @@ export default function AdminTrainingPage() {
             }
         } catch (err) {
             console.error(err);
-            const msg = err instanceof Error ? err.message : 'Error desconocido';
-            toast({ title: "Error extrayendo texto", description: msg, variant: "destructive" });
+            toast({ title: "No se pudo extraer texto", description: friendlyTrainingError(err instanceof Error ? err.message : undefined), variant: "destructive" });
         } finally {
             setIsUploading(false);
             e.target.value = '';
@@ -159,15 +172,15 @@ export default function AdminTrainingPage() {
                     setSlides(data.slides);
                     setActiveSlideIndex(0);
                 } else {
-                    toast({ title: "Sin resultado", description: "La IA generó un formato vacío. Agrega más texto e intenta de nuevo.", variant: "destructive" });
+                    toast({ title: "Sin resultado útil", description: "Agrega más contexto o divide el temario para generar diapositivas más claras.", variant: "destructive" });
                 }
             } else {
                 const errorData = await res.json();
-                toast({ title: "Error generando diapositivas", description: errorData.error, variant: "destructive" });
+                toast({ title: "No se pudo generar la presentación", description: friendlyTrainingError(errorData.error), variant: "destructive" });
             }
         } catch (error) {
             console.error(error);
-            toast({ title: "Error de conexión", description: "No se pudo contactar al servidor de IA.", variant: "destructive" });
+            toast({ title: "No se pudo generar la presentación", description: friendlyTrainingError(error instanceof Error ? error.message : undefined), variant: "destructive" });
         } finally {
             setIsGenerating(false);
         }
@@ -206,11 +219,11 @@ export default function AdminTrainingPage() {
                 fetchCourses();
             } else {
                 const errData = await res.json();
-                toast({ title: "Error al guardar", description: errData.error || 'Error desconocido', variant: "destructive" });
+                toast({ title: "No se pudo guardar el curso", description: friendlyTrainingError(errData.error), variant: "destructive" });
             }
         } catch (err) {
             console.error(err);
-            toast({ title: "Error de conexión", description: "No se pudo guardar el curso.", variant: "destructive" });
+            toast({ title: "No se pudo guardar el curso", description: friendlyTrainingError(err instanceof Error ? err.message : undefined), variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -254,10 +267,10 @@ export default function AdminTrainingPage() {
                     <div>
                         <h1 className="text-3xl font-bold cc-text-primary flex items-center gap-3">
                             <GraduationCap className="h-8 w-8 text-brand-600" />
-                            Generador de Cursos Educativos IA
+                            Generador de cursos IA
                         </h1>
                         <p className="mt-2 text-slate-500 max-w-2xl">
-                            Transforma simples archivos PDF o de Word en increíbles presentaciones inmersivas estilo &quot;Clase Magistral&quot;. CoCo narrará cada diapositiva.
+                            Convierte reglamentos, protocolos y comunicados en clases guiadas para residentes y conserjería.
                         </p>
                     </div>
                     <button
@@ -279,11 +292,11 @@ export default function AdminTrainingPage() {
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-semibold">Integración Oficial</span>
                         </div>
-                        <h3 className="text-2xl font-semibold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-400">
-                            Extiende tus posibilidades con CoTraining.ai
+                        <h3 className="text-2xl font-semibold mb-3 text-white">
+                            Material externo y cursos avanzados
                         </h3>
                         <p className="text-slate-300 text-sm leading-relaxed mb-6">
-                            Nuestra IA integrada es genial para cursos rápidos, pero si necesitas exportaciones SCORM completas, personalización avanzada o 140 idiomas, conecta tu cuenta de la plataforma líder en IA E-Learning.
+                            Usa este módulo para capacitaciones internas rápidas. Para paquetes SCORM, traducciones o programas corporativos, puedes complementar con plataformas especializadas.
                         </p>
                         <a
                             href="https://www.cotraining.ai/es"
@@ -296,7 +309,7 @@ export default function AdminTrainingPage() {
                     </div>
                     <div className="hidden md:flex w-48 h-48 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md relative z-10 items-center justify-center flex-col text-center p-4">
                         <UploadCloud className="h-10 w-10 text-orange-400 mb-3" />
-                        <p className="text-xs font-bold text-slate-300">Vincula aquí tus paquetes SCORM de CoTraining en el futuro</p>
+                        <p className="text-xs font-bold text-slate-300">Espacio preparado para paquetes SCORM e integraciones externas</p>
                     </div>
                 </div>
             )}
@@ -312,7 +325,7 @@ export default function AdminTrainingPage() {
                         <div className="p-6 border-b border-subtle mx-auto">
                             <h2 className="text-2xl font-bold flex items-center gap-3 justify-center cc-text-primary">
                                 <Wand2 className="h-7 w-7 text-brand-500" />
-                                Paso 1: Alimentar a la IA
+                                Paso 1: Preparar contenido base
                             </h2>
                         </div>
 
@@ -330,10 +343,10 @@ export default function AdminTrainingPage() {
                                         <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
                                     <h3 className="text-lg font-bold cc-text-secondary">
-                                        {isUploading ? 'Extrayendo textos...' : 'Sube tus PDFs, Documentos o Reglamentos'}
+                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDFs, documentos o reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
-                                        La IA leerá automáticamente todo el material legal o formativo y construirá un guion estructurado para la comunidad.
+                                        La IA leerá el material y propondrá un guion estructurado para explicar el contenido a la comunidad.
                                     </p>
                                 </div>
                             </div>
@@ -359,7 +372,7 @@ export default function AdminTrainingPage() {
                                     disabled={isGenerating || isUploading || !rawText.trim()}
                                     className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-sm shadow-indigo-200 dark:shadow-none flex items-center gap-2"
                                 >
-                                    {isGenerating ? '🌟 Diseñando Presentación IA...' : 'Crear Película Diapositivas'}
+                                    {isGenerating ? 'Diseñando presentación...' : 'Generar presentación'}
                                 </button>
                             </div>
                         </div>
@@ -383,7 +396,7 @@ export default function AdminTrainingPage() {
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
                                     className="font-bold text-lg bg-transparent border-none outline-none focus:ring-2 ring-brand-500 rounded px-2 w-full cc-text-primary"
-                                    placeholder="Título de la Presentación..."
+                                    placeholder="Título de la presentación..."
                                 />
                             </div>
                             <div className="flex gap-4">
@@ -399,7 +412,7 @@ export default function AdminTrainingPage() {
                                     onClick={handleCreate} disabled={isSaving}
                                     className="px-6 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg disabled:opacity-50 flex items-center gap-2 shadow"
                                 >
-                                    {isSaving ? 'Guardando...' : <><Save className="h-4 w-4" /> Publicar Oficialmente</>}
+                                    {isSaving ? 'Guardando...' : <><Save className="h-4 w-4" /> Publicar curso</>}
                                 </button>
                             </div>
                         </div>
@@ -470,7 +483,7 @@ export default function AdminTrainingPage() {
                                 </div>
                                 <div className="p-5 flex-1 flex flex-col gap-4">
                                     <p className="text-xs text-slate-500">
-                                        Este es el guion que la profesora CoCo explicará de forma verbal y escrita en el Aula Virtual durante esta diapositiva específica. Siéntete libre de ajustarlo.
+                                        Este guion será usado por CoCo en el Aula Virtual durante esta diapositiva. Ajusta tono, ejemplos y nivel de detalle antes de publicar.
                                     </p>
                                     <textarea
                                         className="w-full flex-1 resize-none p-4 rounded-xl border-none bg-amber-50/50 dark:bg-amber-900/10 focus:ring-2 ring-emerald-500/50 outline-none text-sm cc-text-secondary leading-relaxed shadow-inner"
@@ -490,6 +503,7 @@ export default function AdminTrainingPage() {
                         <div className="col-span-full py-12 text-center border-2 border-dashed border-default rounded-lg">
                             <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
                             <h3 className="text-lg font-medium cc-text-primary">Aún no hay cursos creados</h3>
+                            <p className="mx-auto mt-2 max-w-md text-sm cc-text-secondary">Crea una primera capacitación desde un reglamento, protocolo o circular para que el Aula CoCo tenga contenido disponible.</p>
                         </div>
                     ) : (
                         courses.map(course => (
