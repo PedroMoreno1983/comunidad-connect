@@ -74,8 +74,47 @@ export default function ResidentInvitationsPage() {
                 <div className="space-y-2">
                     <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.08em]">Gestión de Accesos</h2>
                     <h1 className="text-3xl font-semibold cc-text-primary">Mis Invitados</h1>
+                    <p className="max-w-2xl text-sm cc-text-secondary">
+                        Genera pases QR, comparte accesos temporales y revisa el historial de visitas asociadas a tu unidad.
+                    </p>
                 </div>
             </div>
+
+            <section className="grid gap-4 md:grid-cols-3">
+                {[
+                    { label: "Pases activos", value: activeInvitations.length, icon: <ShieldCheck className="h-5 w-5" /> },
+                    { label: "Historial", value: pastInvitations.length, icon: <History className="h-5 w-5" /> },
+                    { label: "Flujo seguro", value: "QR", icon: <QrCode className="h-5 w-5" /> },
+                ].map(item => (
+                    <div key={item.label} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                            {item.icon}
+                        </div>
+                        <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{item.label}</p>
+                    </div>
+                ))}
+            </section>
+
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { title: "Generar", description: "Crea un pase temporal con nombre, documento y vigencia.", icon: <QrCode className="h-4 w-4" /> },
+                        { title: "Compartir", description: "Envia el codigo al invitado para ingreso controlado por conserjeria.", icon: <Share2 className="h-4 w-4" /> },
+                        { title: "Auditar", description: "El uso queda en bitacora para revisar entradas pasadas.", icon: <History className="h-4 w-4" /> },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                 {/* Left Side: Generator */}

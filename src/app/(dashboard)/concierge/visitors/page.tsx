@@ -7,7 +7,7 @@ import { VisitorLog } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
-    Plus, ClipboardList, MoreHorizontal
+    Plus, ClipboardList, MoreHorizontal, QrCode, ShieldCheck, UserCheck
 } from "lucide-react";
 import {
     Dialog,
@@ -48,6 +48,8 @@ export default function VisitorsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
     const { toast } = useToast();
+    const qrEntries = visitors.filter(visitor => visitor.isQr).length;
+    const manualEntries = visitors.length - qrEntries;
 
     useEffect(() => {
         const loadData = async () => {
@@ -192,6 +194,42 @@ export default function VisitorsPage() {
                     </Dialog>
                 </div>
             </div>
+
+            <section className="grid gap-4 md:grid-cols-3">
+                {[
+                    { label: "Ingresos hoy", value: visitors.length, icon: <UserCheck className="h-5 w-5" /> },
+                    { label: "Con QR", value: qrEntries, icon: <QrCode className="h-5 w-5" /> },
+                    { label: "Manual", value: manualEntries, icon: <ClipboardList className="h-5 w-5" /> },
+                ].map(item => (
+                    <div key={item.label} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                            {item.icon}
+                        </div>
+                        <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{item.label}</p>
+                    </div>
+                ))}
+            </section>
+
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { title: "Verificar", description: "Validar QR o registrar manualmente cuando el visitante no trae codigo.", icon: <ShieldCheck className="h-4 w-4" /> },
+                        { title: "Autorizar", description: "Confirmar unidad destino y registrar hora de entrada para auditoria.", icon: <UserCheck className="h-4 w-4" /> },
+                        { title: "Consultar", description: "La bitacora queda disponible para administracion y cambios de turno.", icon: <ClipboardList className="h-4 w-4" /> },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             {/* Main Scanner Section */}
             <QRScannerSimulator onScanSuccess={(newLog: VisitorLog) => setVisitors([newLog, ...visitors])} />

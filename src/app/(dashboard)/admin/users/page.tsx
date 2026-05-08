@@ -15,6 +15,13 @@ interface AdminProfile {
     units?: { number: string }[] | { number: string } | null;
 }
 
+const demoUsers: AdminProfile[] = [
+    { id: "demo-admin", name: "Admin Demo", email: "admin@demo.com", role: "admin", units: null },
+    { id: "demo-resident-1", name: "Andrea Dupre", email: "andrea@example.com", role: "resident", units: { number: "1204" } },
+    { id: "demo-resident-2", name: "Carlos Rivas", email: "carlos@example.com", role: "resident", units: { number: "805" } },
+    { id: "demo-concierge", name: "Conserje Demo", email: "conserjeria@example.com", role: "concierge", units: null },
+];
+
 export default function UsersPage() {
     const [users, setUsers] = useState<AdminProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +73,10 @@ export default function UsersPage() {
                 if (data) setUsers(data);
             } catch (err) {
                 console.error("Error fetching data:", err);
+                setCommunityName("Comunidad Demo");
+                setResidentCode("RES-DEMO");
+                setConciergeCode("CON-DEMO");
+                setUsers(demoUsers);
             } finally {
                 setIsLoading(false);
             }
@@ -79,6 +90,9 @@ export default function UsersPage() {
             setTimeout(() => setCopiedCode(null), 2000);
         });
     };
+    const residentCount = users.filter(item => item.role === "resident").length;
+    const adminCount = users.filter(item => item.role === "admin").length;
+    const conciergeCount = users.filter(item => item.role === "concierge").length;
 
     return (
         <div className="space-y-6">
@@ -92,6 +106,43 @@ export default function UsersPage() {
                     Nuevo Usuario
                 </Button>
             </div>
+
+            <section className="grid gap-4 md:grid-cols-4">
+                {[
+                    { label: "Usuarios", value: users.length, icon: <Users className="h-5 w-5" /> },
+                    { label: "Residentes", value: residentCount, icon: <User className="h-5 w-5" /> },
+                    { label: "Administracion", value: adminCount, icon: <Shield className="h-5 w-5" /> },
+                    { label: "Conserjeria", value: conciergeCount, icon: <HardHat className="h-5 w-5" /> },
+                ].map(item => (
+                    <div key={item.label} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                            {item.icon}
+                        </div>
+                        <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{item.label}</p>
+                    </div>
+                ))}
+            </section>
+
+            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { title: "Invitar", description: "Comparte codigos por rol para que cada usuario entre al flujo correcto.", icon: <Key className="h-4 w-4" /> },
+                        { title: "Asignar", description: "Vincula residentes con unidades para gastos, agua, reservas y casos.", icon: <User className="h-4 w-4" /> },
+                        { title: "Auditar", description: "Mantiene separados permisos de administracion, residentes y conserjeria.", icon: <Shield className="h-4 w-4" /> },
+                    ].map(item => (
+                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             {/* Invitation Codes Card */}
             {(residentCode || conciergeCode) && (
