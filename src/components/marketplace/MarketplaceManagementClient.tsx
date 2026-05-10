@@ -61,9 +61,10 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 : await MarketplaceService.getMyItems(user.id);
             setItems(rows);
         } catch (error) {
+            console.error("[MarketplaceManagement] load failed:", error);
             toast({
                 title: "No se pudieron cargar las publicaciones",
-                description: error instanceof Error ? error.message : "Intenta nuevamente en unos segundos.",
+                description: "Intenta nuevamente en unos segundos.",
                 variant: "destructive",
             });
         } finally {
@@ -109,9 +110,10 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 variant: "success",
             });
         } catch (error) {
+            console.error("[MarketplaceManagement] status update failed:", error);
             toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "No se pudo actualizar la publicación.",
+                title: "No se pudo actualizar la publicacion",
+                description: "El cambio no fue aplicado. Intenta nuevamente en unos segundos.",
                 variant: "destructive",
             });
         } finally {
@@ -120,7 +122,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     };
 
     const deleteItem = async (item: MarketplaceItem) => {
-        if (!window.confirm(`¿Eliminar "${item.title}" del marketplace?`)) return;
+        if (!window.confirm(`Eliminar "${item.title}" del marketplace?`)) return;
 
         setSavingId(item.id);
         try {
@@ -140,9 +142,10 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 variant: "success",
             });
         } catch (error) {
+            console.error("[MarketplaceManagement] delete failed:", error);
             toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "No se pudo eliminar la publicación.",
+                title: "No se pudo eliminar la publicacion",
+                description: "Intenta nuevamente en unos segundos.",
                 variant: "destructive",
             });
         } finally {

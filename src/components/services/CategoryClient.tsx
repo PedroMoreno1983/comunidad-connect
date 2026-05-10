@@ -1,65 +1,57 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import { ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
-import { SlidersHorizontal, Wrench, Zap, Key } from "lucide-react";
+import { Briefcase, Eraser, Key, SlidersHorizontal, Wrench, Zap } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
 interface CategoryClientProps {
     providers: ServiceProvider[];
     categoryName: string;
 }
 
+function categoryIconNode(categoryName: string) {
+    if (categoryName === "Gasfiteria") return <Wrench className="h-6 w-6" />;
+    if (categoryName === "Electricidad") return <Zap className="h-6 w-6" />;
+    if (categoryName === "Cerrajeria") return <Key className="h-6 w-6" />;
+    if (categoryName === "Limpieza") return <Eraser className="h-6 w-6" />;
+    return <Briefcase className="h-6 w-6" />;
+}
+
 export function CategoryClient({ providers, categoryName }: CategoryClientProps) {
-    const [sortBy, setSortBy] = useState<'rating' | 'price' | 'experience'>('rating');
+    const [sortBy, setSortBy] = useState<"rating" | "price" | "experience">("rating");
     const [filterAvailable, setFilterAvailable] = useState(false);
+    const emptyIcon = categoryIconNode(categoryName);
 
-    // Determine icon based on category name
-    const Icon = categoryName === 'Gasfitería' ? Wrench : categoryName === 'Electricidad' ? Zap : Key;
-
-    // Filter and sort providers
     const filteredProviders = useMemo(() => {
-        let filtered = [...providers];
+        const filtered = filterAvailable
+            ? providers.filter(provider => provider.availability === "available")
+            : [...providers];
 
-        // Apply availability filter
-        if (filterAvailable) {
-            filtered = filtered.filter(p => p.availability === 'available');
-        }
-
-        // Sort
-        filtered.sort((a, b) => {
-            switch (sortBy) {
-                case 'rating':
-                    return b.rating - a.rating;
-                case 'price':
-                    return (a.hourlyRate || 0) - (b.hourlyRate || 0);
-                case 'experience':
-                    return b.yearsExperience - a.yearsExperience;
-                default:
-                    return 0;
-            }
+        return filtered.sort((a, b) => {
+            if (sortBy === "rating") return b.rating - a.rating;
+            if (sortBy === "price") return (a.hourlyRate || 0) - (b.hourlyRate || 0);
+            return b.yearsExperience - a.yearsExperience;
         });
-
-        return filtered;
-    }, [providers, sortBy, filterAvailable]);
+    }, [filterAvailable, providers, sortBy]);
 
     return (
         <>
-            {/* Filters & Sort */}
-            <div className="bg-surface rounded-xl p-4 shadow-sm border border-subtle">
-                <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+            <section className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-2">
                         <SlidersHorizontal className="h-5 w-5 text-slate-400" />
-                        <span className="font-semibold cc-text-primary">Filtros</span>
+                        <span className="font-semibold cc-text-primary">Orden y disponibilidad</span>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
-                        {/* Availability filter */}
-                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-elevated cursor-pointer hover:bg-elevated transition-colors">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-elevated px-4 py-2 transition-colors hover:bg-surface">
                             <input
                                 type="checkbox"
                                 checked={filterAvailable}
-                                onChange={(e) => setFilterAvailable(e.target.checked)}
+                                onChange={event => setFilterAvailable(event.target.checked)}
                                 className="rounded border-default text-blue-600 focus:ring-blue-500"
                             />
                             <span className="text-sm font-medium cc-text-secondary">
@@ -67,45 +59,36 @@ export function CategoryClient({ providers, categoryName }: CategoryClientProps)
                             </span>
                         </label>
 
-                        {/* Sort dropdown */}
                         <select
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as 'rating' | 'price' | 'experience')}
-                            className="px-4 py-2 rounded-lg border border-subtle bg-surface cc-text-primary text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            onChange={event => setSortBy(event.target.value as "rating" | "price" | "experience")}
+                            className="rounded-lg border border-subtle bg-elevated px-4 py-2 text-sm font-medium cc-text-primary focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                             <option value="rating">Mejor calificados</option>
                             <option value="price">Menor precio</option>
-                            <option value="experience">Más experiencia</option>
+                            <option value="experience">Mas experiencia</option>
                         </select>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            {/* Provider Grid */}
             {filteredProviders.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProviders.map((provider, idx) => (
-                        <div
-                            key={provider.id}
-                            className="animate-slide-up opacity-0"
-                            style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'forwards' }}
-                        >
-                            <ProviderCard provider={provider} />
-                        </div>
+                <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredProviders.map(provider => (
+                        <ProviderCard key={provider.id} provider={provider} />
                     ))}
-                </div>
+                </section>
             ) : (
-                <div className="text-center py-16 bg-surface rounded-lg shadow-sm border border-subtle">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-elevated rounded-full flex items-center justify-center">
-                        <Icon className="h-8 w-8 cc-text-tertiary" />
-                    </div>
-                    <h3 className="text-lg font-semibold cc-text-primary mb-2">
-                        No hay técnicos disponibles
-                    </h3>
-                    <p className="cc-text-secondary">
-                        Intenta ajustar los filtros de búsqueda
-                    </p>
-                </div>
+                <EmptyState
+                    icon={emptyIcon}
+                    title="No hay tecnicos en esta vista"
+                    description="Ajusta la disponibilidad o vuelve al directorio general para revisar otros rubros de la comunidad."
+                    action={
+                        <Button variant="outline" onClick={() => setFilterAvailable(false)}>
+                            Ver todos los proveedores
+                        </Button>
+                    }
+                />
             )}
         </>
     );

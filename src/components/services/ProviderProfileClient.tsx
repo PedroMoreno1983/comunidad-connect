@@ -77,10 +77,11 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             setRequestForm({ date: '', time: '', description: '' });
             router.push('/services/my-requests');
         } catch (error: unknown) {
+            console.error("[ProviderProfile] request service failed:", error);
             toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "No se pudo enviar la solicitud",
-                variant: "default",
+                title: "No pudimos enviar la solicitud",
+                description: "Revisa los datos e intenta nuevamente. Si el problema continua, contacta a administracion.",
+                variant: "destructive",
             });
         } finally {
             setIsRequestSaving(false);
@@ -129,10 +130,11 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             // Refresh the page to show new review
             router.refresh();
         } catch (error: unknown) {
+            console.error("[ProviderProfile] submit review failed:", error);
             toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "No se pudo publicar la reseña",
-                variant: "default",
+                title: "No pudimos publicar la resena",
+                description: "Intenta nuevamente en unos segundos.",
+                variant: "destructive",
             });
         } finally {
             setIsReviewSaving(false);

@@ -122,7 +122,7 @@ export default function ProviderRegisterPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
             {/* Back Button */}
             <Link
                 href="/services"

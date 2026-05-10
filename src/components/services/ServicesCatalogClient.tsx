@@ -17,6 +17,8 @@ import {
 import { ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { ServiceCategoryCard } from "@/components/services/ServiceCategoryCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -224,10 +226,12 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                             ))}
                         </div>
                     ) : (
-                        <div className="rounded-lg border border-dashed border-subtle bg-surface p-12 text-center">
-                            <h3 className="text-xl font-bold cc-text-primary">No encontramos tecnicos con esos filtros</h3>
-                            <p className="mt-2 text-sm cc-text-secondary">Prueba con otra categoria o una busqueda mas amplia.</p>
-                        </div>
+                        <EmptyState
+                            icon={<Search className="h-6 w-6" />}
+                            title="No encontramos tecnicos con esos filtros"
+                            description="Prueba con otro rubro, amplia la busqueda o vuelve a ver toda la red disponible."
+                            action={<Button variant="outline" onClick={clearFilters}>Limpiar filtros</Button>}
+                        />
                     )}
                 </section>
             ) : (
