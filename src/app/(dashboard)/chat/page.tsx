@@ -1,58 +1,65 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element -- Chat renders user avatars stored in Supabase. */
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, Hash, Loader2, MessageCircle, Search, Send, Users } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
+import { supabase } from "@/lib/supabase";
 import { ChatService } from "@/lib/services/supabaseServices";
 import { ChatMessage, Conversation } from "@/lib/types";
-import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
-import { Send, Hash, MessageCircle, Users, Loader2, ArrowLeft, Search } from "lucide-react";
-import clsx from "clsx";
-import { supabase } from "@/lib/supabase";
+import { EmptyState } from "@/components/ui/EmptyState";
 
-type ChatMode = 'global' | 'direct';
+type ChatMode = "global" | "direct";
+type Neighbor = { id: string; name: string; avatar_url?: string };
 
-// interface Conversation moved to @/lib/types.ts
+function initials(name?: string) {
+    return (name || "?").trim().charAt(0).toUpperCase();
+}
+
+function timeLabel(value: string) {
+    return new Date(value).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function ChatPage() {
     const { user } = useAuth();
     const { toast } = useToast();
 
-    const [mode, setMode] = useState<ChatMode>('global');
+    const [mode, setMode] = useState<ChatMode>("global");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
-
-    // Direct Messages
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activePeer, setActivePeer] = useState<Conversation | null>(null);
-    const [neighbors, setNeighbors] = useState<{ id: string; name: string; avatar_url?: string }[]>([]);
+    const [neighbors, setNeighbors] = useState<Neighbor[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-    // Auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Load on mode change
     useEffect(() => {
-        if (mode === 'global') {
+        if (mode === "global") {
             loadGlobalMessages();
         } else {
             loadConversations();
             loadNeighbors();
+            setIsLoading(false);
         }
-        return () => { subscriptionRef.current?.unsubscribe(); };
-        // Chat subscriptions are intentionally rebound only when the mode changes.
+
+        return () => {
+            subscriptionRef.current?.unsubscribe();
+        };
+        // Subscriptions are intentionally rebound only when the mode changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
 
-    // Load DMs when activePeer changes
     useEffect(() => {
         if (!activePeer || !user) return;
         loadDirectMessages(activePeer.peerId);
@@ -64,6 +71,7 @@ export default function ChatPage() {
         setIsLoading(true);
         setMessages([]);
         subscriptionRef.current?.unsubscribe();
+
         try {
             const data = await ChatService.getGlobalMessages();
             setMessages(data as unknown as ChatMessage[]);
@@ -71,8 +79,9 @@ export default function ChatPage() {
                 setMessages(prev => [...prev, newMsg]);
             });
         } catch (error) {
-            console.error("Error loading global messages:", error);
+            console.error("[Chat] global load failed:", error);
             setMessages([]);
+            toast({ title: "No se pudo cargar el chat", description: "Revisa la conexión e intenta nuevamente.", variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
@@ -84,18 +93,25 @@ export default function ChatPage() {
             const data = await ChatService.getConversations(user.id);
             setConversations(data);
         } catch (error) {
-            console.error("Error loading conversations:", error);
+            console.error("[Chat] conversations load failed:", error);
+            setConversations([]);
         }
     };
 
     const loadNeighbors = async () => {
         if (!user) return;
-        const { data } = await supabase
-            .from('profiles')
-            .select('id, name, avatar_url')
-            .neq('id', user.id)
-            .order('name');
-        if (data) setNeighbors(data);
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("id, name, avatar_url")
+            .neq("id", user.id)
+            .order("name");
+
+        if (error) {
+            console.error("[Chat] neighbors load failed:", error);
+            setNeighbors([]);
+            return;
+        }
+        setNeighbors(data || []);
     };
 
     const loadDirectMessages = async (peerId: string) => {
@@ -103,6 +119,7 @@ export default function ChatPage() {
         setIsLoading(true);
         setMessages([]);
         subscriptionRef.current?.unsubscribe();
+
         try {
             const data = await ChatService.getDirectMessages(user.id, peerId);
             setMessages(data as unknown as ChatMessage[]);
@@ -110,297 +127,343 @@ export default function ChatPage() {
                 setMessages(prev => [...prev, newMsg]);
             });
         } catch (error) {
-            console.error("Error loading direct messages:", error);
+            console.error("[Chat] direct load failed:", error);
             setMessages([]);
+            toast({ title: "No se pudo cargar la conversación", description: "Intenta nuevamente en unos segundos.", variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const openDirectChat = (neighbor: { id: string; name: string; avatar_url?: string }) => {
-        const conv: Conversation = {
+    const openDirectChat = (neighbor: Neighbor) => {
+        setActivePeer({
             peerId: neighbor.id,
             peerProfile: { name: neighbor.name, avatar_url: neighbor.avatar_url },
-            lastMessage: '',
-            lastAt: ''
-        };
-        setActivePeer(conv);
+            lastMessage: "",
+            lastAt: "",
+        });
     };
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSendMessage = async (event: React.FormEvent) => {
+        event.preventDefault();
         if (!user || !newMessage.trim()) return;
+
         setIsSending(true);
+        const content = newMessage.trim();
+
         try {
-            if (mode === 'global') {
-                await ChatService.sendMessage({ sender_id: user.id, content: newMessage.trim() });
+            if (mode === "global") {
+                await ChatService.sendMessage({ sender_id: user.id, content });
             } else if (activePeer) {
-                await ChatService.sendMessage({
-                    sender_id: user.id,
-                    receiver_id: activePeer.peerId,
-                    content: newMessage.trim()
-                });
+                await ChatService.sendMessage({ sender_id: user.id, receiver_id: activePeer.peerId, content });
             }
             setNewMessage("");
-        } catch {
-            toast({ title: "Error", description: "No se pudo enviar el mensaje", variant: "destructive" });
+        } catch (error) {
+            console.error("[Chat] send failed:", error);
+            toast({ title: "No se pudo enviar", description: "El mensaje no salió. Intenta nuevamente.", variant: "destructive" });
         } finally {
             setIsSending(false);
         }
     };
 
-    const filteredNeighbors = neighbors.filter(n =>
-        (n.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredNeighbors = useMemo(
+        () => neighbors.filter(neighbor => (neighbor.name || "").toLowerCase().includes(searchTerm.toLowerCase())),
+        [neighbors, searchTerm]
     );
 
-    const chatTitle = mode === 'global' ? 'Chat Global' : (activePeer?.peerProfile.name || 'Mensajes Directos');
-    const chatSubtitle = mode === 'global' ? 'Toda la comunidad' : (activePeer ? '1‑a‑1 privado' : 'Selecciona un vecino');
+    const title = mode === "global" ? "Canal general" : activePeer?.peerProfile.name || "Mensajes directos";
+    const subtitle = mode === "global" ? "Conversación visible para toda la comunidad" : activePeer ? "Conversación privada" : "Selecciona un vecino para comenzar";
+    const canWrite = mode === "global" || Boolean(activePeer);
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex shadow-sm shadow-slate-200/50 dark:shadow-none border border-subtle rounded-lg bg-surface overflow-hidden">
-
-            {/* ===== LEFT SIDEBAR ===== */}
-            <div className="hidden lg:flex flex-col w-80 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="p-6 pb-3">
-                    <h2 className="text-xl font-semibold cc-text-primary flex items-center gap-2">
-                        <MessageCircle className="h-6 w-6 text-brand-500" />
-                        Mensajes
-                    </h2>
-                </div>
-
-                {/* Tab Switcher */}
-                <div className="px-4 pb-3">
-                    <div className="grid grid-cols-2 bg-elevated rounded-lg p-1 gap-1">
-                        <button
-                            onClick={() => { setMode('global'); setActivePeer(null); }}
-                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'global' ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
-                        >
-                            🌐 Global
-                        </button>
-                        <button
-                            onClick={() => setMode('direct')}
-                            className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === 'direct' ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
-                        >
-                            💬 Directos
-                        </button>
+        <div className="flex h-[calc(100vh-8rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+            <header className="border-b border-subtle bg-surface px-4 py-4 sm:px-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Comunidad</p>
+                        <h1 className="mt-1 text-2xl font-semibold cc-text-primary">Mensajería</h1>
+                    </div>
+                    <div className="grid w-full grid-cols-2 gap-1 rounded-lg border border-subtle bg-canvas p-1 lg:w-auto">
+                        <ModeButton active={mode === "global"} onClick={() => { setMode("global"); setActivePeer(null); }} icon={<Hash className="h-4 w-4" />} label="General" />
+                        <ModeButton active={mode === "direct"} onClick={() => setMode("direct")} icon={<MessageCircle className="h-4 w-4" />} label="Directos" />
                     </div>
                 </div>
+            </header>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {mode === 'global' ? (
-                        <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-role-admin-bg text-role-admin-fg">
-                            <div className="p-2 bg-role-admin-bg rounded-xl">
-                                <Hash className="h-4 w-4" />
+            <div className="grid min-h-0 flex-1 lg:grid-cols-[320px_1fr]">
+                <aside className={clsx(
+                    "min-h-0 border-b border-subtle bg-canvas/60 lg:border-b-0 lg:border-r",
+                    mode === "global" ? "hidden lg:block" : "block"
+                )}>
+                    <div className="flex h-full flex-col">
+                        {mode === "global" ? (
+                            <div className="p-4">
+                                <div className="rounded-lg border border-brand-200 bg-brand-50 p-4">
+                                    <Hash className="h-5 w-5 text-brand-600" />
+                                    <p className="mt-3 text-sm font-semibold cc-text-primary">Canal general</p>
+                                    <p className="mt-1 text-xs leading-5 cc-text-secondary">Usa este canal para coordinación comunitaria y mensajes visibles para todos.</p>
+                                </div>
                             </div>
-                            <div className="text-left">
-                                <p className="font-bold text-sm">Canal General</p>
-                                <p className="text-[11px] font-medium text-brand-400">Todos los vecinos</p>
+                        ) : (
+                            <>
+                                <div className="border-b border-subtle p-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar vecino"
+                                            value={searchTerm}
+                                            onChange={event => setSearchTerm(event.target.value)}
+                                            className="w-full rounded-md border border-subtle bg-surface py-2.5 pl-9 pr-3 text-sm outline-none transition-colors focus:border-brand-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                                    {conversations.length > 0 && (
+                                        <ContactSection title="Recientes">
+                                            {conversations.map(conversation => (
+                                                <ContactButton
+                                                    key={conversation.peerId}
+                                                    active={activePeer?.peerId === conversation.peerId}
+                                                    name={conversation.peerProfile?.name}
+                                                    avatarUrl={conversation.peerProfile?.avatar_url}
+                                                    subtitle={conversation.lastMessage || "Sin mensajes recientes"}
+                                                    onClick={() => setActivePeer(conversation)}
+                                                />
+                                            ))}
+                                        </ContactSection>
+                                    )}
+
+                                    <ContactSection title="Vecinos">
+                                        {filteredNeighbors.length === 0 ? (
+                                            <div className="rounded-lg border border-subtle bg-surface p-4 text-center text-sm cc-text-secondary">
+                                                No encontramos vecinos con ese nombre.
+                                            </div>
+                                        ) : (
+                                            filteredNeighbors.map(neighbor => (
+                                                <ContactButton
+                                                    key={neighbor.id}
+                                                    active={activePeer?.peerId === neighbor.id}
+                                                    name={neighbor.name}
+                                                    avatarUrl={neighbor.avatar_url}
+                                                    onClick={() => openDirectChat(neighbor)}
+                                                />
+                                            ))
+                                        )}
+                                    </ContactSection>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </aside>
+
+                <section className="flex min-h-0 flex-col">
+                    <div className="flex h-20 items-center justify-between border-b border-subtle bg-surface px-4 py-4 sm:px-6">
+                        <div className="flex min-w-0 items-center gap-3">
+                            {mode === "direct" && activePeer && (
+                                <button onClick={() => setActivePeer(null)} className="rounded-md p-2 cc-text-secondary transition-colors hover:bg-elevated lg:hidden" aria-label="Volver a vecinos">
+                                    <ArrowLeft className="h-5 w-5" />
+                                </button>
+                            )}
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
+                                {mode === "global" ? <Hash className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
                             </div>
-                        </button>
+                            <div className="min-w-0">
+                                <h2 className="truncate text-base font-semibold cc-text-primary">{title}</h2>
+                                <p className="truncate text-xs cc-text-secondary">{subtitle}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {mode === "direct" && !activePeer ? (
+                        <div className="flex flex-1 items-center justify-center p-6">
+                            <EmptyState
+                                icon={<MessageCircle className="h-6 w-6" />}
+                                title="Elige una conversación"
+                                description="Busca un vecino o selecciona una conversación reciente para enviar un mensaje privado."
+                                tone="brand"
+                                dashed={false}
+                            />
+                        </div>
                     ) : (
                         <>
-                            {/* Search Neighbors */}
-                            <div className="relative mb-3">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar vecino..."
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                                />
+                            <div className="min-h-0 flex-1 overflow-y-auto bg-canvas/30 p-4 sm:p-6">
+                                {isLoading ? (
+                                    <div className="flex h-full items-center justify-center">
+                                        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+                                    </div>
+                                ) : (
+                                    <AnimatePresence initial={false}>
+                                        {messages.length === 0 ? (
+                                            <div className="flex h-full items-center justify-center">
+                                                <EmptyState
+                                                    icon={<Users className="h-6 w-6" />}
+                                                    title={mode === "global" ? "Aún no hay conversación" : "Sin mensajes todavía"}
+                                                    description={mode === "global" ? "Escribe el primer mensaje para abrir la conversación comunitaria." : "Envía un saludo o coordina algo concreto con este vecino."}
+                                                    tone="neutral"
+                                                    dashed={false}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-5">
+                                                {messages.map((message, index) => (
+                                                    <MessageBubble
+                                                        key={message.id}
+                                                        message={message}
+                                                        previous={messages[index - 1]}
+                                                        next={messages[index + 1]}
+                                                        isMe={message.sender_id === user?.id}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                )}
+                                <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Recent Conversations */}
-                            {conversations.length > 0 && (
-                                <div className="mb-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Recientes</p>
-                                    {conversations.map(conv => (
-                                        <button
-                                            key={conv.peerId}
-                                            onClick={() => setActivePeer(conv)}
-                                            className={clsx(
-                                                "w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1",
-                                                activePeer?.peerId === conv.peerId
-                                                    ? "bg-role-admin-bg text-brand-600"
-                                                    : "hover:bg-elevated cc-text-secondary"
-                                            )}
-                                        >
-                                            <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-300 flex-shrink-0">
-                                                {conv.peerProfile?.avatar_url ? (
-                                                    <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-slate-500">
-                                                        {conv.peerProfile?.name?.charAt(0) || '?'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="text-left min-w-0">
-                                                <p className="font-bold text-sm truncate">{conv.peerProfile?.name}</p>
-                                                <p className="text-[11px] text-slate-400 truncate">{conv.lastMessage}</p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* All Neighbors (filtered) */}
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Vecinos</p>
-                            {filteredNeighbors.length === 0 ? (
-                                <p className="text-xs text-center text-slate-400 py-4">Sin resultados</p>
-                            ) : (
-                                filteredNeighbors.map(neighbor => (
+                            <form onSubmit={handleSendMessage} className="border-t border-subtle bg-surface p-4">
+                                <div className="mx-auto flex max-w-4xl items-center gap-3">
+                                    <input
+                                        type="text"
+                                        value={newMessage}
+                                        onChange={event => setNewMessage(event.target.value)}
+                                        placeholder={mode === "global" ? "Escribe al canal general..." : `Escribe a ${activePeer?.peerProfile.name}...`}
+                                        disabled={!canWrite}
+                                        className="min-w-0 flex-1 rounded-md border border-subtle bg-canvas px-4 py-3 text-sm font-medium outline-none transition-colors focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
                                     <button
-                                        key={neighbor.id}
-                                        onClick={() => openDirectChat(neighbor)}
-                                        className={clsx(
-                                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1",
-                                            activePeer?.peerId === neighbor.id
-                                                ? "bg-role-admin-bg"
-                                                : "hover:bg-elevated"
-                                        )}
+                                        type="submit"
+                                        disabled={!newMessage.trim() || isSending || !canWrite}
+                                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                        aria-label="Enviar mensaje"
                                     >
-                                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-indigo-400 to-purple-500 flex-shrink-0">
-                                            {neighbor.avatar_url ? (
-                                                <img src={neighbor.avatar_url} alt="av" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-white">
-                                                    {neighbor.name?.charAt(0) || '?'}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="font-bold text-sm cc-text-secondary truncate">{neighbor.name}</p>
+                                        {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                     </button>
-                                ))
-                            )}
+                                </div>
+                            </form>
                         </>
                     )}
-                </div>
-            </div>
-
-            {/* ===== CHAT AREA ===== */}
-            <div className="flex-1 flex flex-col bg-surface relative">
-
-                {/* Chat Header */}
-                <div className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-subtle bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
-                    <div className="flex items-center gap-4">
-                        {mode === 'direct' && activePeer && (
-                            <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-elevated">
-                                <ArrowLeft className="h-5 w-5 text-slate-400" />
-                            </button>
-                        )}
-                        <div className={clsx("p-2.5 rounded-xl shadow-sm", mode === 'global' ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] shadow-indigo-500/30" : "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30")}>
-                            {mode === 'global' ? <Hash className="h-5 w-5 text-white" /> : <MessageCircle className="h-5 w-5 text-white" />}
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-lg cc-text-primary">{chatTitle}</h3>
-                            <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                                <Users className="h-3 w-3" /> {chatSubtitle}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Empty state for DM mode without a selected peer */}
-                {mode === 'direct' && !activePeer ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-                        <div className="p-6 bg-role-admin-bg rounded-lg mb-2">
-                            <MessageCircle className="h-14 w-14 text-brand-400" />
-                        </div>
-                        <h3 className="text-xl font-semibold cc-text-primary">Mensajes Directos</h3>
-                        <p className="text-sm font-medium text-slate-400 max-w-xs">
-                            Selecciona un vecino del panel izquierdo para iniciar una conversación privada.
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Messages Stream */}
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center h-full">
-                                    <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
-                                </div>
-                            ) : (
-                                <AnimatePresence initial={false}>
-                                    {messages.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center h-full py-16 text-center gap-3">
-                                            <MessageCircle className="h-12 w-12 text-slate-200 dark:text-slate-700" />
-                                            <p className="text-sm font-bold text-slate-400">Sin mensajes aún. ¡Saluda primero!</p>
-                                        </div>
-                                    )}
-                                    {messages.map((msg, idx) => {
-                                        const isMe = msg.sender_id === user?.id;
-                                        const prev = messages[idx - 1];
-                                        const showAvatar = !isMe && (!prev || prev.sender_id !== msg.sender_id);
-                                        const showTimestamp = idx === messages.length - 1 ||
-                                            new Date(messages[idx + 1].created_at).getTime() - new Date(msg.created_at).getTime() > 5 * 60 * 1000;
-
-                                        return (
-                                            <motion.div
-                                                key={msg.id}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className={clsx("flex flex-col", isMe ? "items-end" : "items-start")}
-                                            >
-                                                <div className={clsx("flex items-end gap-2 max-w-[85%] lg:max-w-[70%]", isMe && "flex-row-reverse")}>
-                                                    {!isMe && (
-                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-elevated mb-1">
-                                                            {showAvatar ? (
-                                                                msg.profiles?.avatar_url
-                                                                    ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
-                                                                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{msg.profiles?.name?.charAt(0) || '?'}</div>
-                                                            ) : null}
-                                                        </div>
-                                                    )}
-                                                    <div className="flex flex-col">
-                                                        {!isMe && showAvatar && (
-                                                            <span className="text-[11px] font-semibold text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>
-                                                        )}
-                                                        <div className={clsx(
-                                                            "px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
-                                                            isMe
-                                                                ? "bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white rounded-lg rounded-tr-sm"
-                                                                : "bg-elevated cc-text-primary rounded-lg rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50"
-                                                        )}>
-                                                            {msg.content}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {showTimestamp && (
-                                                    <span className="text-[10px] font-bold text-slate-400 mt-1.5 mx-10">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                )}
-                                            </motion.div>
-                                        );
-                                    })}
-                                </AnimatePresence>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* Chat Input */}
-                        <div className="p-4 sm:p-6 bg-surface border-t border-subtle">
-                            <form onSubmit={handleSendMessage} className="relative flex items-center max-w-4xl mx-auto">
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder={mode === 'global' ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
-                                    className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-brand-500/50 transition-all shadow-inner"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim() || isSending}
-                                    className="absolute right-2 p-2.5 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md"
-                                >
-                                    {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                </button>
-                            </form>
-                        </div>
-                    </>
-                )}
+                </section>
             </div>
         </div>
+    );
+}
+
+function ModeButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={clsx(
+                "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors",
+                active ? "bg-slate-950 text-white" : "cc-text-secondary hover:bg-surface hover:text-slate-900"
+            )}
+        >
+            {icon}
+            {label}
+        </button>
+    );
+}
+
+function ContactSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="mb-5">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{title}</p>
+            <div className="space-y-1">{children}</div>
+        </div>
+    );
+}
+
+function ContactButton({
+    active,
+    name,
+    avatarUrl,
+    subtitle,
+    onClick,
+}: {
+    active: boolean;
+    name?: string;
+    avatarUrl?: string;
+    subtitle?: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={clsx(
+                "flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
+                active ? "border-brand-300 bg-brand-50" : "border-transparent hover:border-subtle hover:bg-surface"
+            )}
+        >
+            <Avatar name={name} avatarUrl={avatarUrl} />
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold cc-text-primary">{name || "Vecino"}</span>
+                {subtitle && <span className="block truncate text-xs cc-text-secondary">{subtitle}</span>}
+            </span>
+        </button>
+    );
+}
+
+function Avatar({ name, avatarUrl }: { name?: string; avatarUrl?: string }) {
+    return (
+        <span className="flex h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-elevated">
+            {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+                <span className="flex h-full w-full items-center justify-center text-xs font-semibold cc-text-secondary">{initials(name)}</span>
+            )}
+        </span>
+    );
+}
+
+function MessageBubble({
+    message,
+    previous,
+    next,
+    isMe,
+}: {
+    message: ChatMessage;
+    previous?: ChatMessage;
+    next?: ChatMessage;
+    isMe: boolean;
+}) {
+    const showAvatar = !isMe && previous?.sender_id !== message.sender_id;
+    const showTimestamp =
+        !next ||
+        new Date(next.created_at).getTime() - new Date(message.created_at).getTime() > 5 * 60 * 1000;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={clsx("flex flex-col", isMe ? "items-end" : "items-start")}
+        >
+            <div className={clsx("flex max-w-[88%] items-end gap-2 lg:max-w-[70%]", isMe && "flex-row-reverse")}>
+                {!isMe && (
+                    <span className="mb-1 h-9 w-9 shrink-0">
+                        {showAvatar ? <Avatar name={message.profiles?.name} avatarUrl={message.profiles?.avatar_url} /> : null}
+                    </span>
+                )}
+                <div className="min-w-0">
+                    {!isMe && showAvatar && (
+                        <p className="mb-1 ml-1 text-[11px] font-semibold cc-text-tertiary">{message.profiles?.name || "Vecino"}</p>
+                    )}
+                    <div
+                        className={clsx(
+                            "break-words rounded-lg px-4 py-3 text-sm font-medium leading-relaxed shadow-sm",
+                            isMe ? "bg-slate-950 text-white" : "border border-subtle bg-surface cc-text-primary"
+                        )}
+                    >
+                        {message.content}
+                    </div>
+                </div>
+            </div>
+            {showTimestamp && (
+                <span className="mx-10 mt-1.5 text-[10px] font-semibold cc-text-tertiary">{timeLabel(message.created_at)}</span>
+            )}
+        </motion.div>
     );
 }
