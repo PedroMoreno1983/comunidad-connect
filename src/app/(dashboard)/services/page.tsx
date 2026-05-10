@@ -8,35 +8,35 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
         name: 'Gasfiteria',
         iconName: 'wrench',
         gradient: 'from-blue-500 to-cyan-600',
-        description: 'Expertos en instalaciones y reparaciones de agua'
+        description: 'Fugas, griferia, flexibles y mantencion preventiva'
     },
     {
         id: 'electrical',
         name: 'Electricidad',
         iconName: 'zap',
         gradient: 'from-yellow-500 to-orange-600',
-        description: 'Electricistas certificados para tu hogar'
+        description: 'Tableros, enchufes, luminarias y certificaciones'
     },
     {
         id: 'locksmith',
         name: 'Cerrajeria',
         iconName: 'key',
         gradient: 'from-purple-500 to-pink-600',
-        description: 'Servicios de cerrajeria 24/7'
+        description: 'Aperturas, cambios de chapa y control de accesos'
     },
     {
         id: 'cleaning',
         name: 'Limpieza',
         iconName: 'cleaning',
         gradient: 'from-[#10B981] to-[#0D9488]',
-        description: 'Servicios de limpieza profesional'
+        description: 'Aseo profundo, post mudanza y espacios comunes'
     },
     {
         id: 'general',
         name: 'Multiservicios',
         iconName: 'toolbox',
         gradient: 'from-orange-500 to-red-600',
-        description: 'Reparaciones generales y mantencion'
+        description: 'Reparaciones menores y mantencion del hogar'
     }
 ];
 
