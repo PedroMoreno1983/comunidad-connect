@@ -44,7 +44,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
     const Icon = iconMap[notification.type];
 
     const content = (
-        <div className={`relative p-4 rounded-xl border transition-all ${notification.read
+        <div className={`relative rounded-lg border p-4 transition-colors ${notification.read
                 ? 'bg-elevated/50 border-subtle/50'
                 : 'bg-surface border-subtle shadow-sm'
             }`}>
@@ -52,7 +52,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
                 <div className="absolute top-4 right-4 w-2 h-2 bg-brand-500 rounded-full" />
             )}
             <div className="flex gap-3">
-                <div className={`p-2 rounded-lg flex-shrink-0 ${colorMap[notification.type]}`}>
+                <div className={`flex-shrink-0 rounded-lg p-2 ${colorMap[notification.type]}`}>
                     <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -61,7 +61,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
                             {notification.title}
                         </p>
                     </div>
-                    <p className="text-sm cc-text-secondary mt-0.5 line-clamp-2">
+                    <p className="mt-0.5 line-clamp-2 text-sm cc-text-secondary">
                         {notification.message}
                     </p>
                     <div className="flex items-center gap-3 mt-2">
@@ -80,7 +80,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
                 </div>
                 <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-                    className="p-1.5 rounded-lg hover:bg-elevated text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-elevated hover:text-slate-600 dark:hover:text-slate-300"
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -129,7 +129,7 @@ export function NotificationCenter() {
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2.5 rounded-xl bg-elevated hover:bg-elevated transition-colors"
+                className="relative rounded-lg bg-elevated p-2.5 transition-colors hover:bg-surface"
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (
@@ -151,7 +151,7 @@ export function NotificationCenter() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute right-0 mt-2 w-96 max-h-[70vh] bg-surface rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden z-50"
+                        className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(384px,calc(100vw-32px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50"
                     >
                         {/* Header */}
                         <div className="p-4 border-b border-subtle flex items-center justify-between">
@@ -186,11 +186,14 @@ export function NotificationCenter() {
                         {/* Notifications List */}
                         <div className="overflow-y-auto max-h-[50vh] p-3 space-y-2">
                             {notifications.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <div className="w-12 h-12 mx-auto mb-3 bg-elevated rounded-full flex items-center justify-center">
+                                <div className="py-8 text-center">
+                                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-elevated">
                                         <Bell className="h-6 w-6 text-slate-400" />
                                     </div>
-                                    <p className="text-sm cc-text-secondary">No hay notificaciones</p>
+                                    <p className="text-sm font-semibold cc-text-primary">Todo al día</p>
+                                    <p className="mx-auto mt-1 max-w-[220px] text-xs leading-5 cc-text-secondary">
+                                        Aquí aparecerán avisos, reservas, pagos y novedades relevantes.
+                                    </p>
                                 </div>
                             ) : (
                                 notifications.map((notification) => (
