@@ -40,7 +40,6 @@ export class ImageService {
         apiKey: process.env.OPENAI_API_KEY,
       });
 
-      console.log(`[ImageService] Generating image with ${model}: "${safePrompt.substring(0, 80)}..."`);
       const response = await openai.images.generate({
         model,
         prompt: safePrompt,
@@ -75,7 +74,7 @@ export class ImageService {
       });
       return FALLBACK_IMAGE_URL;
     } catch (error) {
-      console.error(`[ImageService] Image generation failed with ${model}:`, error);
+      console.warn(`[ImageService] Image generation failed with ${model}; using fallback image.`, error);
       recordAiEvent({
         provider: 'openai',
         feature: 'training.blackboard_image',

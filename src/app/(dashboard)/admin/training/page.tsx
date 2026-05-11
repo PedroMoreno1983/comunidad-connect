@@ -28,12 +28,12 @@ interface Course {
 }
 
 const visualThemes: Record<string, string> = {
-    'purple-gradient': 'bg-gradient-to-br from-violet-600 to-indigo-800',
-    'blue-glass': 'bg-gradient-to-tr from-blue-500 to-cyan-500',
-    'tech-abstract': 'bg-gradient-to-br from-slate-800 to-indigo-900',
-    'sunset-orange': 'bg-gradient-to-tr from-amber-500 to-rose-600',
-    'nature-green': 'bg-gradient-to-br from-emerald-500 to-teal-700',
-    'default': 'bg-gradient-to-br from-[#334155] to-[#0F172A]'
+    'purple-gradient': 'bg-slate-950',
+    'blue-glass': 'bg-slate-950',
+    'tech-abstract': 'bg-slate-950',
+    'sunset-orange': 'bg-brand-500',
+    'nature-green': 'bg-slate-900',
+    'default': 'bg-slate-950'
 };
 
 function friendlyTrainingError(message?: string) {
@@ -95,7 +95,7 @@ export default function AdminTrainingPage() {
                 setCourses([]);
             }
         } catch (error) {
-            console.error("Fetch try/catch error:", error);
+            console.warn("Training modules load failed:", error);
             setCourses([]);
         } finally {
             setLoading(false);
@@ -145,7 +145,7 @@ export default function AdminTrainingPage() {
                 }
             }
         } catch (err) {
-            console.error(err);
+            console.warn("Training text extraction failed:", err);
             toast({ title: "No se pudo extraer texto", description: friendlyTrainingError(err instanceof Error ? err.message : undefined), variant: "destructive" });
         } finally {
             setIsUploading(false);
@@ -179,7 +179,7 @@ export default function AdminTrainingPage() {
                 toast({ title: "No se pudo generar la presentación", description: friendlyTrainingError(errorData.error), variant: "destructive" });
             }
         } catch (error) {
-            console.error(error);
+            console.warn("Training slide generation failed:", error);
             toast({ title: "No se pudo generar la presentación", description: friendlyTrainingError(error instanceof Error ? error.message : undefined), variant: "destructive" });
         } finally {
             setIsGenerating(false);
@@ -222,7 +222,7 @@ export default function AdminTrainingPage() {
                 toast({ title: "No se pudo guardar el curso", description: friendlyTrainingError(errData.error), variant: "destructive" });
             }
         } catch (err) {
-            console.error(err);
+            console.warn("Training course save failed:", err);
             toast({ title: "No se pudo guardar el curso", description: friendlyTrainingError(err instanceof Error ? err.message : undefined), variant: "destructive" });
         } finally {
             setIsSaving(false);
@@ -243,7 +243,7 @@ export default function AdminTrainingPage() {
             await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
             setCourses(c => c.filter(course => course.id !== id));
         } catch (err) {
-            console.error(err);
+            console.warn("Training course delete failed:", err);
         }
     };
 
@@ -261,21 +261,21 @@ export default function AdminTrainingPage() {
     const activeSlide = slides[activeSlideIndex];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12">
+        <div className="mx-auto max-w-7xl space-y-8 p-6 pb-12">
             {!isCreating && (
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
                     <div>
-                        <h1 className="text-3xl font-bold cc-text-primary flex items-center gap-3">
+                        <h1 className="flex items-center gap-3 text-3xl font-semibold cc-text-primary">
                             <GraduationCap className="h-8 w-8 text-brand-600" />
                             Generador de cursos IA
                         </h1>
-                        <p className="mt-2 text-slate-500 max-w-2xl">
+                        <p className="mt-2 max-w-2xl text-slate-500">
                             Convierte reglamentos, protocolos y comunicados en clases guiadas para residentes y conserjería.
                         </p>
                     </div>
                     <button
                         onClick={() => setIsCreating(true)}
-                        className="w-full md:w-auto justify-center px-5 py-3 bg-brand-600 text-white rounded-xl font-medium shadow-sm hover:bg-brand-700 flex items-center gap-2 transition mt-4 md:mt-0"
+                        className="mt-4 flex w-full justify-center gap-2 rounded-lg bg-brand-500 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-600 md:mt-0 md:w-auto"
                     >
                         <Plus className="h-5 w-5" />
                         Nuevo Curso Interactivo
@@ -284,25 +284,24 @@ export default function AdminTrainingPage() {
             )}
 
             {!isCreating && (
-                <div className="bg-slate-900 rounded-lg p-8 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-sm">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]" />
+                <div className="flex flex-col items-center gap-8 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-8 text-white shadow-sm md:flex-row">
+                    
 
-                    <div className="flex-1 relative z-10">
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-[10px] px-2 py-0.5 bg-orange-500 text-white rounded-full uppercase tracking-wider font-semibold">Integración Oficial</span>
+                    <div className="relative z-10 flex-1">
+                        <div className="mb-3 flex items-center gap-2">
+                            <span className="rounded-md bg-brand-500 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">Integracion oficial</span>
                         </div>
                         <h3 className="text-2xl font-semibold mb-3 text-white">
                             Material externo y cursos avanzados
                         </h3>
-                        <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                        <p className="mb-6 text-sm leading-relaxed text-slate-300">
                             Usa este módulo para capacitaciones internas rápidas. Para paquetes SCORM, traducciones o programas corporativos, puedes complementar con plataformas especializadas.
                         </p>
                         <a
                             href="https://www.cotraining.ai/es"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-4 md:py-3 rounded-full font-bold text-sm hover:shadow-sm hover:scale-105 transition-all w-full sm:w-auto"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-6 py-4 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 sm:w-auto md:py-3"
                         >
                             Ir a CoTraining.ai
                         </a>
@@ -338,7 +337,7 @@ export default function AdminTrainingPage() {
                                 />
                                 <div className="flex flex-col items-center justify-center gap-3 pointer-events-none relative z-0">
                                     {isUploading ? (
-                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                                        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-brand-500"></div>
                                     ) : (
                                         <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
@@ -360,17 +359,17 @@ export default function AdminTrainingPage() {
                                     value={rawText}
                                     onChange={e => setRawText(e.target.value)}
                                     disabled={isGenerating}
-                                    className="w-full px-5 py-4 rounded-xl border border-default bg-surface resize-y"
+                                    className="w-full resize-y rounded-lg border border-default bg-surface px-5 py-4"
                                     placeholder="Ej: Módulo 1. Cómo reciclar en el condominio..."
                                 />
                             </div>
 
                             <div className="flex justify-between items-center pt-6 border-t border-subtle">
-                                <button onClick={cancelCreation} disabled={isUploading || isGenerating} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                                <button onClick={cancelCreation} disabled={isUploading || isGenerating} className="rounded-lg px-5 py-2.5 text-slate-600 hover:bg-slate-100">Cancelar</button>
                                 <button
                                     onClick={generateSlidesFromText}
                                     disabled={isGenerating || isUploading || !rawText.trim()}
-                                    className="px-8 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 shadow-sm shadow-indigo-200 dark:shadow-none flex items-center gap-2"
+                                    className="flex items-center gap-2 rounded-lg bg-brand-500 px-8 py-3 font-semibold text-white shadow-sm hover:bg-brand-600 disabled:opacity-50"
                                 >
                                     {isGenerating ? 'Diseñando presentación...' : 'Generar presentación'}
                                 </button>
@@ -426,7 +425,7 @@ export default function AdminTrainingPage() {
                                     <div
                                         key={slide.id || idx}
                                         onClick={() => setActiveSlideIndex(idx)}
-                                        className={`group relative rounded-xl aspect-video border-[3px] p-2 cursor-pointer transition-all overflow-hidden flex flex-col justify-center ${
+                                        className={`group relative flex aspect-video cursor-pointer flex-col justify-center overflow-hidden rounded-lg border-[3px] p-2 transition-colors ${
                                             activeSlideIndex === idx
                                                 ? 'border-brand-500 shadow-md ring-4 ring-brand-500/20'
                                                 : 'border-transparent bg-surface hover:border-slate-300'
@@ -463,7 +462,7 @@ export default function AdminTrainingPage() {
                                             <ul className="space-y-5 text-lg md:text-xl font-medium text-white/90">
                                                 {activeSlide.bullets.map((b, i) => (
                                                     <li key={i} className="flex items-start gap-3">
-                                                        <div className="mt-1.5 w-2.5 h-2.5 bg-white rounded-full shrink-0" />
+                                                        <div className="mt-2 h-2 w-2 shrink-0 rounded-sm bg-brand-400" />
                                                         <span>{b}</span>
                                                     </li>
                                                 ))}
@@ -477,7 +476,7 @@ export default function AdminTrainingPage() {
                             <div className="w-80 border-l border-subtle bg-surface flex flex-col">
                                 <div className="p-5 border-b border-subtle flex items-center justify-between">
                                     <h3 className="font-bold flex items-center gap-2 cc-text-primary">
-                                        <FileText className="h-4 w-4 text-emerald-500" />
+                                        <FileText className="h-4 w-4 text-brand-500" />
                                         Notas de Orador (IA)
                                     </h3>
                                 </div>
@@ -486,7 +485,7 @@ export default function AdminTrainingPage() {
                                         Este guion será usado por CoCo en el Aula Virtual durante esta diapositiva. Ajusta tono, ejemplos y nivel de detalle antes de publicar.
                                     </p>
                                     <textarea
-                                        className="w-full flex-1 resize-none p-4 rounded-xl border-none bg-amber-50/50 dark:bg-amber-900/10 focus:ring-2 ring-emerald-500/50 outline-none text-sm cc-text-secondary leading-relaxed shadow-inner"
+                                        className="w-full flex-1 resize-none rounded-lg border border-subtle bg-elevated p-4 text-sm leading-relaxed cc-text-secondary outline-none ring-brand-500/30 focus:ring-2"
                                         value={activeSlide.notes}
                                         onChange={(e) => handleNotesChange(e.target.value)}
                                     />
@@ -509,7 +508,7 @@ export default function AdminTrainingPage() {
                         courses.map(course => (
                             <div key={course.id} className="bg-surface rounded-lg p-6 shadow-sm border border-subtle hover:shadow-sm transition group">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-role-admin-bg text-brand-600 rounded-xl">
+                                    <div className="rounded-lg bg-role-admin-bg p-3 text-brand-600">
                                         <Play className="h-6 w-6" />
                                     </div>
                                     <button

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
-import { BookOpen, AlertCircle, ArrowLeft, GraduationCap, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, BookOpen, GraduationCap, Play, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
 
 interface Course {
     id: string;
@@ -19,46 +20,56 @@ export default function ResidentTrainingPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const { user } = useAuth();
     const { toast } = useToast();
-    const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const handleDeleteCourse = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
+    const stats = useMemo(() => {
+        const withLessons = courses.filter(course => course.training_lessons?.[0]?.content).length;
+        return {
+            total: courses.length,
+            withLessons,
+            guided: courses.length + 1,
+        };
+    }, [courses]);
+
+    const handleDeleteCourse = async (id: string, event: React.MouseEvent) => {
+        event.stopPropagation();
         if (deletingId !== id) {
             setDeletingId(id);
             return;
         }
+
         setDeletingId(null);
         try {
-            const res = await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/training/modules?id=${id}`, { method: "DELETE" });
             if (res.ok) {
-                setCourses(prev => prev.filter(c => c.id !== id));
+                setCourses(prev => prev.filter(course => course.id !== id));
                 toast({ title: "Curso eliminado", variant: "success" });
             } else {
                 const data = await res.json();
-                toast({ title: "No se pudo eliminar", description: data.error || 'Permisos insuficientes (RLS)', variant: "destructive" });
+                toast({ title: "No se pudo eliminar", description: data.error || "Permisos insuficientes", variant: "destructive" });
             }
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.warn("Training course delete failed:", error);
             toast({ title: "Error de red", description: "No se pudo eliminar el curso.", variant: "destructive" });
         }
     };
 
     useEffect(() => {
-        fetch('/api/training/modules')
+        fetch("/api/training/modules")
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
                     setCourses(data);
                 } else {
-                    console.error("API Error fetching courses:", data);
+                    console.warn("Training modules API returned a non-array response.", data);
                     setCourses([]);
                 }
                 setLoading(false);
             })
-            .catch(err => {
-                console.error(err);
+            .catch(error => {
+                console.warn("Training modules load failed:", error);
                 setLoading(false);
             });
     }, []);
@@ -66,24 +77,34 @@ export default function ResidentTrainingPage() {
     if (selectedCourseContent !== null) {
         return (
             <ErrorBoundary name="Resident Training Module">
-                <div className="p-8 max-w-[1600px] mx-auto space-y-4 animate-in fade-in zoom-in-95 duration-500">
-                    <button 
-                        onClick={() => { setSelectedCourseContent(null); setSelectedCourseTitle(null); }}
-                        className="mb-2 flex items-center text-sm font-medium text-slate-500 hover:text-brand-600 transition"
+                <div className="mx-auto max-w-[1600px] space-y-5 p-6">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSelectedCourseContent(null);
+                            setSelectedCourseTitle(null);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2 text-sm font-semibold cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-1" />
-                        Volver al Catálogo de Cursos
+                        <ArrowLeft className="h-4 w-4" />
+                        Volver al catalogo
                     </button>
-                    <div className="flex items-center gap-2 mb-4">
-                        <BookOpen className="h-6 w-6 text-brand-500" />
-                        <h2 className="text-2xl font-bold cc-text-primary border-b-2 border-indigo-100 dark:border-indigo-900 pb-1 inline-block">
-                            {selectedCourseTitle}
-                        </h2>
+
+                    <div className="flex flex-col justify-between gap-4 border-b border-subtle pb-5 lg:flex-row lg:items-end">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Aula virtual IA</p>
+                            <h1 className="mt-2 text-3xl font-semibold tracking-tight cc-text-primary">{selectedCourseTitle}</h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
+                                CoCo usa la pizarra, imagenes generadas y alumnos virtuales para convertir el contenido en decisiones practicas.
+                            </p>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">
+                            <ShieldCheck className="h-4 w-4" />
+                            Clase guiada
+                        </div>
                     </div>
-                    
-                    <div className="w-full h-full">
-                        <MultiAgentClassroom courseContent={selectedCourseContent} />
-                    </div>
+
+                    <MultiAgentClassroom courseContent={selectedCourseContent} />
                 </div>
             </ErrorBoundary>
         );
@@ -91,79 +112,120 @@ export default function ResidentTrainingPage() {
 
     return (
         <ErrorBoundary name="Resident Training Module List">
-            <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
-                <div className="flex flex-col mb-8">
-                    <h1 className="text-3xl font-semibold tracking-tight cc-text-primary border-l-4 border-brand-500 pl-4 py-1 flex items-center gap-3">
-                        <GraduationCap className="w-8 h-8 text-brand-500" />
-                        Centro de Formación Interactivo
-                    </h1>
-                    <p className="cc-text-secondary mt-3 ml-5 max-w-2xl text-sm font-medium">
-                        Selecciona un módulo oficial creado por la administración. La Tutora CoCo IA y tus compañeros virtuales te enseñarán de forma interactiva.
-                    </p>
-                </div>
+            <div className="mx-auto max-w-7xl space-y-8 p-6">
+                <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+                    <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Formacion comunitaria</p>
+                            <h1 className="mt-3 text-4xl font-semibold tracking-tight cc-text-primary">Aula virtual CoCo</h1>
+                            <p className="mt-3 max-w-2xl text-sm leading-6 cc-text-secondary">
+                                Capacitaciones oficiales para convivencia, reglamento, seguridad y operacion diaria del edificio.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => {
+                                setSelectedCourseContent("");
+                                setSelectedCourseTitle("Modo libre con Tutora CoCo");
+                            }}
+                            trailingIcon={<Play className="h-4 w-4" />}
+                        >
+                            Abrir modo libre
+                        </Button>
+                    </div>
+
+                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                        <Stat label="Cursos publicados" value={stats.total} icon={<BookOpen className="h-4 w-4" />} />
+                        <Stat label="Con guion IA" value={stats.withLessons} icon={<GraduationCap className="h-4 w-4" />} />
+                        <Stat label="Experiencias disponibles" value={stats.guided} icon={<ShieldCheck className="h-4 w-4" />} />
+                    </div>
+                </section>
 
                 {loading ? (
-                    <div className="py-12 text-center cc-text-secondary">Cargando cursos disponibles...</div>
+                    <div className="rounded-lg border border-subtle bg-surface p-10 text-center text-sm cc-text-secondary shadow-sm">
+                        Cargando cursos disponibles...
+                    </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-5">
+                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {courses.length === 0 ? (
-                            <div className="col-span-1 md:col-span-2 py-12 text-center border-2 border-dashed border-default/50 rounded-lg">
-                                <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                                <h3 className="text-lg font-medium cc-text-primary">Sin cursos específicos</h3>
-                                <p className="cc-text-secondary">Pide a tu administración que agregue módulos oficiales.</p>
+                            <div className="rounded-lg border border-dashed border-subtle bg-surface p-10 text-center shadow-sm md:col-span-2 xl:col-span-3">
+                                <AlertCircle className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+                                <h2 className="text-lg font-semibold cc-text-primary">No hay cursos publicados</h2>
+                                <p className="mx-auto mt-2 max-w-md text-sm cc-text-secondary">
+                                    Cuando Administracion publique un reglamento, circular o protocolo, aparecera aqui como clase guiada.
+                                </p>
                             </div>
                         ) : (
                             courses.map(course => (
-                                <div 
+                                <article
                                     key={course.id}
                                     onClick={() => {
                                         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
                                         setSelectedCourseTitle(course.title);
                                     }}
-                                    className="bg-surface rounded-lg p-6 shadow-sm border border-subtle hover:shadow-sm hover:border-brand-300 dark:hover:border-brand-500 transition cursor-pointer group relative overflow-hidden"
+                                    className="group relative cursor-pointer overflow-hidden rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-colors hover:border-brand-300"
                                 >
-                                    {user?.role === 'admin' && (
-                                        <button 
-                                            onClick={(e) => handleDeleteCourse(course.id, e)}
-                                            className="absolute top-4 right-4 p-2.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-500 transition-colors opacity-0 group-hover:opacity-100 z-10"
-                                            title="Eliminar Curso"
+                                    {user?.role === "admin" && (
+                                        <button
+                                            type="button"
+                                            onClick={event => handleDeleteCourse(course.id, event)}
+                                            className="absolute right-4 top-4 z-10 rounded-lg border border-red-100 bg-red-50 p-2 text-red-500 opacity-0 transition-opacity hover:bg-red-100 group-hover:opacity-100"
+                                            title={deletingId === course.id ? "Confirmar eliminacion" : "Eliminar curso"}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="h-4 w-4" />
                                         </button>
                                     )}
-                                    <div className="w-12 h-12 rounded-xl bg-role-admin-bg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                        <BookOpen className="h-6 w-6 text-role-admin-fg" />
+
+                                    <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                                        <BookOpen className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold cc-text-primary mb-2 break-all line-clamp-2 pr-8">{course.title}</h3>
-                                    <p className="text-sm cc-text-secondary line-clamp-3 mb-4 break-words">
+                                    <h2 className="line-clamp-2 pr-8 text-xl font-semibold cc-text-primary">{course.title}</h2>
+                                    <p className="mt-3 line-clamp-3 text-sm leading-6 cc-text-secondary">
                                         {course.description || "Inicia este curso interactivo con la Tutora CoCo."}
                                     </p>
-                                    <div className="text-role-admin-fg text-sm font-semibold flex items-center">
-                                        Iniciar Clase &rarr;
+                                    <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
+                                        Iniciar clase
+                                        <Play className="h-4 w-4" />
                                     </div>
-                                </div>
+                                </article>
                             ))
                         )}
-                        
-                        {/* Modo Inteligencia General (SIEMPRE VISIBLE) */}
-                        <div 
+
+                        <article
                             onClick={() => {
-                                setSelectedCourseContent(""); 
-                                setSelectedCourseTitle("Modo Libre (Pregúntale a la Tutora CoCo)");
+                                setSelectedCourseContent("");
+                                setSelectedCourseTitle("Modo libre con Tutora CoCo");
                             }}
-                            className="bg-elevated/50 rounded-lg p-6 border-2 border-dashed border-default hover:border-indigo-400 dark:hover:border-brand-500 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-center items-center text-center group"
+                            className="flex cursor-pointer flex-col justify-between rounded-lg border border-dashed border-subtle bg-canvas p-5 transition-colors hover:border-brand-300 hover:bg-surface"
                         >
-                            <div className="w-12 h-12 rounded-xl bg-elevated flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <GraduationCap className="h-6 w-6 cc-text-secondary" />
+                            <div>
+                                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900 text-white">
+                                    <GraduationCap className="h-5 w-5" />
+                                </div>
+                                <h2 className="text-xl font-semibold cc-text-primary">Modo libre</h2>
+                                <p className="mt-3 text-sm leading-6 cc-text-secondary">
+                                    Pregunta por convivencia, reglamento, seguridad o administracion sin depender de un manual cargado.
+                                </p>
                             </div>
-                            <h3 className="text-lg font-bold cc-text-secondary">Modo Abierto</h3>
-                            <p className="text-xs cc-text-secondary mt-1">
-                                La Tutora usará su inteligencia general sin guiarse estrictamente por un manual interno.
-                            </p>
-                        </div>
-                    </div>
+                            <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
+                                Abrir tutora
+                                <Play className="h-4 w-4" />
+                            </div>
+                        </article>
+                    </section>
                 )}
             </div>
         </ErrorBoundary>
+    );
+}
+
+function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+    return (
+        <div className="rounded-lg border border-subtle bg-canvas p-4">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-surface cc-text-secondary">
+                {icon}
+            </div>
+            <p className="text-2xl font-semibold cc-text-primary">{value}</p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">{label}</p>
+        </div>
     );
 }
