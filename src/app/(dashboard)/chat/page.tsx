@@ -11,6 +11,14 @@ import { ChatService } from "@/lib/services/supabaseServices";
 import { ChatMessage, Conversation } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
+import {
+    createDemoChatMessage,
+    demoChatNeighbors,
+    getDemoConversations,
+    getDemoDirectMessages,
+    getDemoGlobalMessages,
+    saveDemoChatMessage,
+} from "@/lib/services/demoChatStorage";
 
 type ChatMode = "global" | "direct";
 type Neighbor = { id: string; name: string; avatar_url?: string };
@@ -21,95 +29,6 @@ function initials(name?: string) {
 
 function timeLabel(value: string) {
     return new Date(value).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
-}
-
-const demoNeighbors: Neighbor[] = [
-    { id: "demo-resident-marta", name: "Marta Rojas" },
-    { id: "demo-resident-diego", name: "Diego Salinas" },
-    { id: "demo-concierge-turno", name: "Conserje Turno" },
-];
-
-function minutesAgo(minutes: number) {
-    return new Date(Date.now() - minutes * 60 * 1000).toISOString();
-}
-
-function getDemoGlobalMessages(userName?: string): ChatMessage[] {
-    let storedMessages: ChatMessage[] = [];
-    if (typeof window !== "undefined") {
-        try {
-            storedMessages = JSON.parse(window.localStorage.getItem("cc_demo_global_chat_messages" ) || "[]") as ChatMessage[];
-        } catch {
-            storedMessages = [];
-        }
-    }
-
-    return [
-        {
-            id: "demo-global-1",
-            sender_id: "demo-resident-marta",
-            content: "Hola comunidad, recuerden que hoy hay mantencion preventiva del ascensor B desde las 16:00.",
-            created_at: minutesAgo(52),
-            profiles: { name: "Marta Rojas" },
-        },
-        {
-            id: "demo-global-2",
-            sender_id: "demo-concierge-turno",
-            content: "Confirmado. Dejamos el aviso visible en hall y ascensores.",
-            created_at: minutesAgo(48),
-            profiles: { name: "Conserje Turno" },
-        },
-        {
-            id: "demo-global-3",
-            sender_id: "demo-admin",
-            content: `Gracias ${userName || "Admin"}. Cualquier novedad quedara registrada en comunicaciones.`,
-            created_at: minutesAgo(34),
-            profiles: { name: "Admin Demo" },
-        },
-        ...storedMessages.reverse(),
-    ];
-}
-
-function getDemoConversations(): Conversation[] {
-    return [
-        {
-            peerId: "demo-resident-marta",
-            peerProfile: { name: "Marta Rojas" },
-            lastMessage: "Te envie el comprobante de reserva del quincho.",
-            lastAt: minutesAgo(18),
-        },
-        {
-            peerId: "demo-concierge-turno",
-            peerProfile: { name: "Conserje Turno" },
-            lastMessage: "El proveedor ya ingreso por recepcion.",
-            lastAt: minutesAgo(7),
-        },
-    ];
-}
-
-function getDemoDirectMessages(userId: string, userName: string | undefined, peerId: string): ChatMessage[] {
-    const peer = demoNeighbors.find(neighbor => neighbor.id === peerId);
-    const peerName = peer?.name || "Vecino";
-
-    return [
-        {
-            id: `demo-direct-${peerId}-1`,
-            sender_id: peerId,
-            receiver_id: userId,
-            content: peerId === "demo-concierge-turno"
-                ? "Hola, dejo registrado que el proveedor de electricidad ya llego y esta esperando autorizacion."
-                : "Hola, puedes ayudarme a revisar el estado de mi solicitud cuando tengas un minuto?",
-            created_at: minutesAgo(16),
-            profiles: { name: peerName },
-        },
-        {
-            id: `demo-direct-${peerId}-2`,
-            sender_id: userId,
-            receiver_id: peerId,
-            content: "Si, lo reviso ahora y te confirmo por este mismo chat.",
-            created_at: minutesAgo(11),
-            profiles: { name: userName || "Admin Demo" },
-        },
-    ];
 }
 
 export default function ChatPage() {
@@ -202,7 +121,7 @@ export default function ChatPage() {
     const loadNeighbors = async () => {
         if (!user) return;
         if (isDemoUser) {
-            setNeighbors(demoNeighbors);
+            setNeighbors(demoChatNeighbors);
             return;
         }
 
@@ -227,7 +146,7 @@ export default function ChatPage() {
         subscriptionRef.current?.unsubscribe();
 
         if (isDemoUser) {
-            setMessages(getDemoDirectMessages(user.id, user.name, peerId));
+            setMessages(getDemoDirectMessages(user, peerId));
             setIsLoading(false);
             return;
         }
@@ -265,15 +184,10 @@ export default function ChatPage() {
 
         try {
             if (isDemoUser) {
-                const optimisticMessage: ChatMessage = {
-                    id: `demo-message-${Date.now()}`,
-                    sender_id: user.id,
-                    receiver_id: mode === "direct" ? activePeer?.peerId : undefined,
-                    content,
-                    created_at: new Date().toISOString(),
-                    profiles: { name: user.name },
-                };
+                const optimisticMessage = createDemoChatMessage(user, content, mode === "direct" ? activePeer?.peerId : undefined);
+                saveDemoChatMessage(optimisticMessage);
                 setMessages(prev => [...prev, optimisticMessage]);
+                if (mode === "direct") setConversations(getDemoConversations());
                 setNewMessage("");
                 return;
             }

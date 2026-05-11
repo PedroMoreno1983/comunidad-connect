@@ -25,6 +25,14 @@ import {
 } from "@/lib/services/demoSocialStorage";
 import { createDemoAnnouncement, getDemoAnnouncements, mergeDemoAnnouncements, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
 import {
+    createDemoChatMessage,
+    demoChatNeighbors,
+    getDemoConversations,
+    getDemoDirectMessages,
+    getDemoGlobalMessages,
+    saveDemoChatMessage,
+} from "@/lib/services/demoChatStorage";
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -494,6 +502,7 @@ function ComunidadTab() {
 function MensajesTab() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [mode, setMode] = useState<ChatMode>("global");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState("");
@@ -524,6 +533,12 @@ function MensajesTab() {
 
     const loadGlobalMessages = async () => {
         setIsLoading(true); setMessages([]); subscriptionRef.current?.unsubscribe();
+        if (isDemoUser) {
+            setMessages(getDemoGlobalMessages(user?.name));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const data = await ChatService.getGlobalMessages();
             setMessages(data as unknown as ChatMessage[]);
@@ -533,11 +548,21 @@ function MensajesTab() {
 
     const loadConversations = async () => {
         if (!user) return;
+        if (isDemoUser) {
+            setConversations(getDemoConversations());
+            return;
+        }
+
         try { const data = await ChatService.getConversations(user.id); setConversations(data); } catch { console.warn("Error loading conversations"); }
     };
 
     const loadNeighbors = async () => {
         if (!user) return;
+        if (isDemoUser) {
+            setNeighbors(demoChatNeighbors);
+            return;
+        }
+
         const { data } = await supabase.from("profiles").select("id, name, avatar_url").neq("id", user.id).order("name");
         if (data) setNeighbors(data);
     };
@@ -545,6 +570,12 @@ function MensajesTab() {
     const loadDirectMessages = async (peerId: string) => {
         if (!user) return;
         setIsLoading(true); setMessages([]); subscriptionRef.current?.unsubscribe();
+        if (isDemoUser) {
+            setMessages(getDemoDirectMessages(user, peerId));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const data = await ChatService.getDirectMessages(user.id, peerId);
             setMessages(data as unknown as ChatMessage[]);
@@ -560,9 +591,19 @@ function MensajesTab() {
         e.preventDefault();
         if (!user || !newMessage.trim()) return;
         setIsSending(true);
+        const content = newMessage.trim();
         try {
-            if (mode === "global") await ChatService.sendMessage({ sender_id: user.id, content: newMessage.trim() });
-            else if (activePeer) await ChatService.sendMessage({ sender_id: user.id, receiver_id: activePeer.peerId, content: newMessage.trim() });
+            if (isDemoUser) {
+                const optimisticMessage = createDemoChatMessage(user, content, mode === "direct" ? activePeer?.peerId : undefined);
+                saveDemoChatMessage(optimisticMessage);
+                setMessages(prev => [...prev, optimisticMessage]);
+                if (mode === "direct") setConversations(getDemoConversations());
+                setNewMessage("");
+                return;
+            }
+
+            if (mode === "global") await ChatService.sendMessage({ sender_id: user.id, content });
+            else if (activePeer) await ChatService.sendMessage({ sender_id: user.id, receiver_id: activePeer.peerId, content });
             setNewMessage("");
         } catch { toast({ title: "Error", description: "No se pudo enviar el mensaje", variant: "destructive" }); }
         finally { setIsSending(false); }
