@@ -23,6 +23,7 @@ import {
     saveDemoSocialComment,
     saveDemoSocialPosts,
 } from "@/lib/services/demoSocialStorage";
+import { createDemoAnnouncement, getDemoAnnouncements, mergeDemoAnnouncements, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
 import {
     Dialog,
     DialogContent,
@@ -54,6 +55,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; description: stri
 function OficialTab() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -64,22 +66,27 @@ function OficialTab() {
             try {
                 setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
-                setAnnouncements(data.map((ann: any): Announcement => ({
+                const mapped = data.map((ann: any): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
                     author: ann.author_name || "Administracion",
                     priority: ann.priority,
                     createdAt: ann.created_at,
-                })));
+                }));
+                setAnnouncements(isDemoUser ? mergeDemoAnnouncements(mapped) : mapped);
             } catch {
-                toast({ title: "Error de conexion", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
+                if (isDemoUser) {
+                    setAnnouncements(getDemoAnnouncements());
+                } else {
+                    toast({ title: "Error de conexion", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
+                }
             } finally {
                 setIsLoading(false);
             }
         };
         fetch();
-    }, [toast]);
+    }, [isDemoUser, toast]);
 
     const getIcon = (priority: string) => ({ alert: AlertTriangle, event: Calendar } as Record<string, React.ElementType>)[priority] || Info;
     const getPriorityStyles = (priority: string) => ({
@@ -102,6 +109,17 @@ function OficialTab() {
             return;
         }
         try {
+            if (isDemoUser) {
+                const demoAnnouncement = createDemoAnnouncement(user, newPost as { title: string; content: string; priority: "info" | "alert" | "event" });
+                const nextAnnouncements = [demoAnnouncement, ...announcements];
+                setAnnouncements(nextAnnouncements);
+                saveDemoAnnouncements(nextAnnouncements);
+                setIsDialogOpen(false);
+                setNewPost({ title: "", content: "", priority: "info" });
+                toast({ title: "Aviso demo publicado", description: "Quedo visible en Comunicaciones y Muro de Avisos.", variant: "success" });
+                return;
+            }
+
             const data = await AnnouncementsService.createAnnouncement({
                 title: newPost.title, content: newPost.content,
                 priority: newPost.priority as "info" | "alert" | "event",
