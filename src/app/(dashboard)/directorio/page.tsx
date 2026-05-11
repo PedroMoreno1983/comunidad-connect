@@ -66,6 +66,39 @@ function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, un
     return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
 }
 
+const demoNeighbors: Neighbor[] = [
+    {
+        id: "demo-resident-marta",
+        name: "Marta Rojas",
+        role: "resident",
+        unit_id: "demo-unit-805",
+        unitLabel: "805",
+        email: "marta.rojas@demo.com",
+    },
+    {
+        id: "demo-resident-diego",
+        name: "Diego Salinas",
+        role: "resident",
+        unit_id: "demo-unit-1204",
+        unitLabel: "1204",
+        email: "diego.salinas@demo.com",
+    },
+    {
+        id: "demo-concierge-turno",
+        name: "Conserje Turno",
+        role: "concierge",
+        unitLabel: "Acceso principal",
+        email: "conserjeria@demo.com",
+    },
+    {
+        id: "demo-admin-community",
+        name: "Administracion Comunidad",
+        role: "admin",
+        unitLabel: "Oficina admin",
+        email: "admin@demo.com",
+    },
+];
+
 export default function DirectoryPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -75,10 +108,17 @@ export default function DirectoryPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeFilter, setActiveFilter] = useState<'all' | 'admin' | 'resident' | 'concierge'>('all');
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const loadNeighbors = useCallback(async () => {
         if (!user) return;
         setIsLoading(true);
+        if (isDemoUser) {
+            setNeighbors(demoNeighbors.filter(neighbor => neighbor.id !== user.id));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -130,7 +170,7 @@ export default function DirectoryPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [user]);
+    }, [isDemoUser, user]);
 
     useEffect(() => {
         loadNeighbors();

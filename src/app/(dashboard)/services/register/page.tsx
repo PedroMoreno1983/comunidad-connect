@@ -298,7 +298,7 @@ export default function ProviderRegisterPage() {
                             <textarea
                                 required
                                 className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                placeholder="Cuenta sobre tu experiencia, especialidades y qu? te hace ?nico..."
+                                placeholder="Cuenta sobre tu experiencia, especialidades y que te hace confiable para la comunidad..."
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                             />

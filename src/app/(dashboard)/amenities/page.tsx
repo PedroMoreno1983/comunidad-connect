@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { AmenitiesService } from "@/lib/api";
 import {
     Calendar, Clock, Users, Check, ChevronLeft, ChevronRight, Sparkles,
@@ -68,6 +68,35 @@ const demoAmenities: Amenity[] = [
     },
 ];
 
+function getDemoBookings(userId: string): Booking[] {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    return [
+        {
+            id: "demo-booking-quincho",
+            amenityId: "demo-amenity-quincho",
+            userId,
+            date: tomorrow.toISOString().slice(0, 10),
+            startTime: "19:00",
+            endTime: "21:00",
+            status: "confirmed",
+        },
+        {
+            id: "demo-booking-sala",
+            amenityId: "demo-amenity-sala",
+            userId: "demo-resident-marta",
+            date: nextWeek.toISOString().slice(0, 10),
+            startTime: "17:00",
+            endTime: "19:00",
+            status: "confirmed",
+        },
+    ];
+}
+
 type AmenityRow = Record<string, unknown>;
 type BookingRow = Record<string, unknown> & {
     amenities?: AmenityRow | AmenityRow[] | null;
@@ -120,20 +149,22 @@ export default function AmenitiesPage() {
     const { toast } = useToast();
 
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const timeSlots = [
         '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
         '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
     ];
 
-    useEffect(() => {
-        if (user) {
-            loadData();
-        }
-    }, [user]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
+        if (user && isDemoUser) {
+            setAmenities(demoAmenities);
+            setBookings(getDemoBookings(user.id));
+            setLoading(false);
+            return;
+        }
+
         try {
             const [amenitiesData, bookingsData] = await Promise.all([
                 AmenitiesService.getAmenities(),
@@ -151,7 +182,13 @@ export default function AmenitiesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isDemoUser, user]);
+
+    useEffect(() => {
+        if (user) {
+            loadData();
+        }
+    }, [loadData, user]);
 
     const handleOpenBooking = (amenity: Amenity) => {
         setSelectedAmenity(amenity);
@@ -194,6 +231,28 @@ export default function AmenitiesPage() {
         setBookingLoading(true);
         try {
             const endTime = `${parseInt(selectedTime) + 2}:00`;
+            if (isDemoUser) {
+                setBookings(current => [
+                    ...current,
+                    {
+                        id: `demo-booking-${Date.now()}`,
+                        amenityId: selectedAmenity.id,
+                        userId: user.id,
+                        date: selectedDate,
+                        startTime: selectedTime,
+                        endTime,
+                        status: "confirmed",
+                    },
+                ]);
+                setIsDialogOpen(false);
+                toast({
+                    title: "Reserva confirmada",
+                    description: `${selectedAmenity.name} reservado para el ${selectedDate} a las ${selectedTime}.`,
+                    variant: "success",
+                });
+                return;
+            }
+
             await AmenitiesService.createBooking({
                 amenity_id: selectedAmenity.id,
                 user_id: user.id,

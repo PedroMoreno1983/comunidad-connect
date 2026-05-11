@@ -184,6 +184,17 @@ async function runViewport(browser, viewportName, viewport) {
 
   const summary = [];
   for (const run of report.runs) {
+    if (run.consoleErrors.length > 0) {
+      summary.push({
+        viewport: run.viewportName,
+        route: "*",
+        horizontalOverflow: 0,
+        visibleErrorText: `Console errors: ${run.consoleErrors.join(" | ")}`,
+        activeSidebarLinks: [],
+        textOverflow: [],
+      });
+    }
+
     for (const item of run.results) {
       const metrics = item.metrics;
       const duplicateSidebarActive = metrics.activeSidebarLinks.length > 1;

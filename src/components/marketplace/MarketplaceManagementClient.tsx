@@ -37,6 +37,58 @@ function getPrimaryImage(item: MarketplaceItem) {
     return item.imageUrl || item.images?.[0] || null;
 }
 
+function getDemoManagementItems(userId: string): MarketplaceItem[] {
+    const now = new Date().toISOString();
+
+    return [
+        {
+            id: "demo-marketplace-management-bike",
+            title: "Bicicleta urbana aro 26",
+            description: "Usada pocas veces, ideal para trayectos cortos por el barrio. Incluye candado y luz trasera.",
+            price: 85000,
+            sellerId: userId,
+            imageUrl: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=720&q=80",
+            category: "other",
+            createdAt: now,
+            status: "available",
+            allowSale: true,
+            allowSwap: true,
+            allowBarter: false,
+            paymentStatus: "none",
+        },
+        {
+            id: "demo-marketplace-management-desk",
+            title: "Escritorio compacto",
+            description: "Mesa firme para home office, 100 x 50 cm. Se retira en conserjeria previa coordinacion.",
+            price: 42000,
+            sellerId: userId,
+            imageUrl: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=720&q=80",
+            category: "furniture",
+            createdAt: now,
+            status: "reserved",
+            allowSale: true,
+            allowSwap: false,
+            allowBarter: true,
+            paymentStatus: "pending",
+        },
+        {
+            id: "demo-marketplace-management-lamp",
+            title: "Lampara de velador",
+            description: "Funcionando perfecto. Se oculta en demo para mostrar flujo de moderacion.",
+            price: 12000,
+            sellerId: userId,
+            imageUrl: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=720&q=80",
+            category: "furniture",
+            createdAt: now,
+            status: "hidden",
+            allowSale: true,
+            allowSwap: false,
+            allowBarter: false,
+            paymentStatus: "none",
+        },
+    ];
+}
+
 interface MarketplaceManagementClientProps {
     mode: Mode;
 }
@@ -50,11 +102,18 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const [filter, setFilter] = useState<MarketplaceStatus | "all">("all");
 
     const isAdminMode = mode === "admin";
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const loadItems = useCallback(async () => {
         if (!user) return;
 
         setLoading(true);
+        if (isDemoUser) {
+            setItems(getDemoManagementItems(user.id));
+            setLoading(false);
+            return;
+        }
+
         try {
             const rows = isAdminMode
                 ? await MarketplaceService.getModerationItems()
@@ -70,7 +129,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
         } finally {
             setLoading(false);
         }
-    }, [isAdminMode, toast, user]);
+    }, [isAdminMode, isDemoUser, toast, user]);
 
     useEffect(() => {
         loadItems();
@@ -92,6 +151,16 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const updateStatus = async (item: MarketplaceItem, status: MarketplaceStatus) => {
         setSavingId(item.id);
         try {
+            if (isDemoUser || item.id.startsWith("demo-")) {
+                setItems(current => current.map(row => row.id === item.id ? { ...row, status } : row));
+                toast({
+                    title: "Publicación actualizada",
+                    description: `${item.title} quedó como ${STATUS_LABELS[status].toLowerCase()}.`,
+                    variant: "success",
+                });
+                return;
+            }
+
             const response = await fetch(`/api/marketplace-items/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -126,6 +195,16 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
 
         setSavingId(item.id);
         try {
+            if (isDemoUser || item.id.startsWith("demo-")) {
+                setItems(current => current.filter(row => row.id !== item.id));
+                toast({
+                    title: "Publicación eliminada",
+                    description: "Ya no aparecerá en el marketplace.",
+                    variant: "success",
+                });
+                return;
+            }
+
             const response = await fetch(`/api/marketplace-items/${item.id}`, {
                 method: "DELETE",
             });

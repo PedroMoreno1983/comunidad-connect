@@ -14,6 +14,7 @@ import {
 export default function ProfilePage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const [fullName, setFullName] = useState(user?.name || "");
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
@@ -44,6 +45,15 @@ export default function ProfilePage() {
 
     const loadProfile = async () => {
         if (!user) return;
+        if (isDemoUser) {
+            setAvatarUrl(user.avatarUrl);
+            setPhoneNumber("912345678");
+            setWhatsappEnabled(true);
+            setUnitNumber(user.unitName?.replace(/[^0-9]/g, "") || (user.role === "resident" ? "1204" : ""));
+            setUnitTower(user.role === "resident" ? "A" : "");
+            return;
+        }
+
         const { data } = await supabase
             .from('profiles')
             .select('name, avatar_url, phone_number, whatsapp_enabled')
@@ -106,6 +116,12 @@ export default function ProfilePage() {
 
         setIsUploadingAvatar(true);
         try {
+            if (isDemoUser) {
+                setAvatarUrl(URL.createObjectURL(file));
+                toast({ title: "Foto actualizada", description: "Vista previa guardada para esta demo.", variant: "success" });
+                return;
+            }
+
             const ext = file.name.split('.').pop();
             const path = `avatars/${user.id}.${ext}`;
 
@@ -135,6 +151,11 @@ export default function ProfilePage() {
         if (!user || !fullName.trim()) return;
         setIsSaving(true);
         try {
+            if (isDemoUser) {
+                toast({ title: "Perfil actualizado", description: "Tus cambios quedaron guardados en esta sesion demo.", variant: "success" });
+                return;
+            }
+
             // Update profile
             const { error: profileError } = await supabase
                 .from('profiles')
@@ -190,6 +211,12 @@ export default function ProfilePage() {
         if (!user?.email) return;
         setIsSendingReset(true);
         try {
+            if (isDemoUser) {
+                setShowEmailConfirm(true);
+                toast({ title: "Email simulado", description: "En demo no enviamos correos reales.", variant: "success" });
+                return;
+            }
+
             const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
                 redirectTo: `${window.location.origin}/reset-password`
             });
@@ -256,7 +283,8 @@ export default function ProfilePage() {
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploadingAvatar}
-                            className="absolute -bottom-2 -right-2 p-2 bg-brand-500 text-white rounded-xl shadow-sm hover:bg-brand-600 transition-colors disabled:opacity-60"
+                            className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm transition-colors hover:bg-brand-600 disabled:opacity-60"
+                            aria-label="Cambiar foto de perfil"
                         >
                             {isUploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                         </button>
@@ -381,11 +409,11 @@ export default function ProfilePage() {
                         </div>
                         <button
                             onClick={() => setWhatsappEnabled(v => !v)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${whatsappEnabled ? 'bg-emerald-500' : 'bg-elevated'
+                            className={`relative h-6 w-12 rounded-full transition-colors ${whatsappEnabled ? 'bg-emerald-500' : 'bg-elevated'
                                 }`}
+                            aria-label="Activar notificaciones WhatsApp"
                         >
-                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${whatsappEnabled ? 'translate-x-6' : 'translate-x-0'
-                                }`} />
+                            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${whatsappEnabled ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                     </div>
 
@@ -396,6 +424,11 @@ export default function ProfilePage() {
                                 return;
                             }
                             setIsSavingWa(true);
+                            if (isDemoUser) {
+                                toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibiras notificaciones demo en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
+                                setIsSavingWa(false);
+                                return;
+                            }
                             const fullPhone = `+56${phoneNumber}`;
                             const { error } = await supabase.from('profiles').update({
                                 phone_number: fullPhone,

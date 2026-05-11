@@ -129,14 +129,15 @@ export function NotificationCenter() {
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative rounded-lg bg-elevated p-2.5 transition-colors hover:bg-surface"
+                className="relative inline-flex h-11 w-11 items-center justify-center overflow-visible rounded-lg bg-elevated transition-colors hover:bg-surface"
+                aria-label="Abrir notificaciones"
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (
                     <motion.span
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                        className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white"
                     >
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </motion.span>

@@ -20,7 +20,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { signIn, signUp } = useAuth();
+    const { signIn, loginDemo } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -48,35 +48,9 @@ export default function LoginPage() {
         router.push("/");
     };
 
-    const handleDemoLogin = async (demoEmail: string, demoPass: string, role: string) => {
+    const handleDemoLogin = async (_demoEmail: string, _demoPass: string, role: string) => {
         setLoading(true);
-        const { error } = await signIn(demoEmail, demoPass);
-
-        if (error) {
-            if (error.message.includes("Invalid") || error.message.includes("No user") || error.message.includes("credenciales")) {
-                const { error: signUpError } = await signUp(demoEmail, demoPass, {
-                    name: role === "admin" ? "Admin Demo" : role === "concierge" ? "Conserje Demo" : "Residente Demo",
-                    role,
-                    community_id: "00000000-0000-0000-0000-000000000000",
-                });
-
-                if (signUpError) {
-                    toast({ title: "Error", description: `No pudimos crear el usuario demo. ${signUpError.message}`, variant: "destructive" });
-                    setLoading(false);
-                    return;
-                }
-
-                await signIn(demoEmail, demoPass);
-                toast({ title: "Cuenta demo creada", description: "Entrando a ComunidadConnect", variant: "success" });
-                router.push("/");
-                return;
-            }
-
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-            setLoading(false);
-            return;
-        }
-
+        loginDemo(role as "admin" | "resident" | "concierge");
         toast({ title: "Entrando a la demo", description: "Has iniciado sesion", variant: "success" });
         router.push("/");
     };
