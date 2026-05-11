@@ -70,6 +70,17 @@ const demoRequests: ServiceRequestRow[] = [
     },
 ];
 
+const demoServiceRequestsStorageKey = "cc_demo_service_requests";
+
+function getDemoCreatedRequests() {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoServiceRequestsStorageKey) || "[]") as ServiceRequestRow[];
+    } catch {
+        return [];
+    }
+}
+
 const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todas" },
     { key: "active", label: "Activas" },
@@ -160,7 +171,7 @@ export default function MyRequestsPage() {
             try {
                 setLoading(true);
                 if (user.email.toLowerCase().endsWith("@demo.com")) {
-                    setRequests(demoRequests);
+                    setRequests([...getDemoCreatedRequests(), ...demoRequests]);
                     return;
                 }
                 const data = await serviceRequestsService.getByUser(user.id);

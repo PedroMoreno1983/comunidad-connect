@@ -99,6 +99,33 @@ const demoNeighbors: Neighbor[] = [
     },
 ];
 
+const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
+
+function getDemoOnboardedNeighbors(): Neighbor[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const rows = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as Array<{
+            id?: string;
+            name?: string;
+            unit_id?: string;
+            email?: string;
+        }>;
+
+        return rows
+            .filter(row => String(row.name || "").trim() && String(row.unit_id || "").trim())
+            .map((row, index) => ({
+                id: row.id || `demo-onboarded-neighbor-${index}`,
+                name: String(row.name || "Vecino").trim(),
+                role: "resident" as const,
+                unit_id: `demo-onboarded-unit-${String(row.unit_id || "").trim()}`,
+                unitLabel: String(row.unit_id || "").trim(),
+                email: String(row.email || "").trim() || undefined,
+            }));
+    } catch {
+        return [];
+    }
+}
+
 export default function DirectoryPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -114,7 +141,13 @@ export default function DirectoryPage() {
         if (!user) return;
         setIsLoading(true);
         if (isDemoUser) {
-            setNeighbors(demoNeighbors.filter(neighbor => neighbor.id !== user.id));
+            const importedNeighbors = getDemoOnboardedNeighbors();
+            const byKey = new Map<string, Neighbor>();
+            [...importedNeighbors, ...demoNeighbors].forEach(neighbor => {
+                const key = neighbor.email || `${neighbor.role}-${neighbor.unitLabel || neighbor.id}`;
+                if (!byKey.has(key)) byKey.set(key, neighbor);
+            });
+            setNeighbors(Array.from(byKey.values()).filter(neighbor => neighbor.id !== user.id));
             setIsLoading(false);
             return;
         }

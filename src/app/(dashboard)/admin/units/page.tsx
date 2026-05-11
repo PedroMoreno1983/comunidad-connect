@@ -37,6 +37,67 @@ const demoUnits: UnitRow[] = [
     { id: "demo-unit-1802", number: "1802", floor: 18, tower: "B", profiles: null },
 ];
 
+const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
+
+type DemoOnboardedResident = {
+    id?: string;
+    name?: string;
+    unit_id?: string;
+    email?: string;
+};
+
+function floorFromUnit(unitNumber: string) {
+    const number = parseInt(unitNumber, 10);
+    if (!Number.isFinite(number)) return 1;
+    return unitNumber.length >= 3 ? Math.max(1, Math.floor(number / 100)) : 1;
+}
+
+function getDemoOnboardedResidents(): DemoOnboardedResident[] {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as DemoOnboardedResident[];
+    } catch {
+        return [];
+    }
+}
+
+function getDemoOnboardedProfiles(): Profile[] {
+    return getDemoOnboardedResidents()
+        .filter(row => String(row.name || "").trim())
+        .map((row, index) => ({
+            id: row.id || `demo-onboarded-profile-${index}`,
+            name: String(row.name || "").trim(),
+            email: String(row.email || "").trim() || `${String(row.unit_id || index).trim()}@demo.local`,
+            role: "resident",
+        }));
+}
+
+function mergeDemoOnboardedUnits() {
+    const byNumber = new Map<string, UnitRow>();
+    demoUnits.forEach(unit => byNumber.set(unit.number, unit));
+
+    getDemoOnboardedResidents()
+        .filter(row => String(row.unit_id || "").trim())
+        .forEach((row, index) => {
+            const number = String(row.unit_id || "").trim();
+            const existing = byNumber.get(number);
+            const profile = String(row.name || "").trim()
+                ? { name: String(row.name || "").trim(), email: String(row.email || "").trim() }
+                : existing?.profiles || null;
+
+            byNumber.set(number, {
+                id: existing?.id || `demo-onboarded-unit-${index}-${number}`,
+                number,
+                tower: existing?.tower || "A",
+                floor: existing?.floor || floorFromUnit(number),
+                ownerId: row.id || existing?.ownerId,
+                profiles: profile,
+            });
+        });
+
+    return Array.from(byNumber.values()).sort((a, b) => a.tower.localeCompare(b.tower) || a.number.localeCompare(b.number, "es", { numeric: true }));
+}
+
 function getResidentName(unit: UnitRow) {
     return unit.profiles?.name || unit.profiles?.email || "";
 }
@@ -64,8 +125,8 @@ export default function UnitsPage() {
         setLoading(true);
         try {
             if (isDemoUser) {
-                setUnits(demoUnits);
-                setProfiles(demoProfiles);
+                setUnits(mergeDemoOnboardedUnits());
+                setProfiles([...getDemoOnboardedProfiles(), ...demoProfiles]);
                 return;
             }
 

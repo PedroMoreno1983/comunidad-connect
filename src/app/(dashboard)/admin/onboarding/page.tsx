@@ -41,6 +41,8 @@ const demoExtractedUsers: ExtractedUser[] = [
     { id: "demo-row-4", name: "", unit_id: "1802", email: "pendiente@example.com", phone: "+56 9 5555 1802" },
 ];
 
+const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
+
 const fieldAliases = {
     name: ["nombre", "name", "residente", "resident", "full_name", "fullname", "nombrecompleto", "propietario", "arrendatario"],
     unit_id: ["unidad", "unit", "depto", "departamento", "nrodepartamento", "numerodepartamento", "unitnumber", "unitid", "numero", "casa"],
@@ -65,6 +67,31 @@ function pickField(row: Record<string, unknown>, aliases: string[]) {
     return match?.value === undefined || match.value === null ? "" : String(match.value).trim();
 }
 
+function mapRowsFromObjectSheet(rows: Record<string, unknown>[]) {
+    return rows
+        .map((row, index) => ({
+            id: `file-${index}`,
+            name: pickField(row, fieldAliases.name),
+            unit_id: pickField(row, fieldAliases.unit_id),
+            email: pickField(row, fieldAliases.email),
+            phone: pickField(row, fieldAliases.phone),
+        }))
+        .filter(row => row.name || row.unit_id || row.email || row.phone);
+}
+
+function mapRowsFromMatrix(rows: unknown[][]) {
+    return rows
+        .filter(row => row.some(cell => String(cell ?? "").trim()))
+        .map((row, index) => ({
+            id: `file-row-${index}`,
+            name: String(row[0] ?? "").trim(),
+            unit_id: String(row[1] ?? "").trim(),
+            email: String(row[2] ?? "").trim(),
+            phone: String(row[3] ?? "").trim(),
+        }))
+        .filter(row => row.name || row.unit_id || row.email || row.phone);
+}
+
 async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
     const extension = file.name.split(".").pop()?.toLowerCase();
     if (!extension || !["xlsx", "xls", "csv", "txt"].includes(extension)) return [];
@@ -76,16 +103,30 @@ async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) return [];
 
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], { defval: "" });
-    return rows
-        .map((row, index) => ({
-            id: `file-${index}`,
-            name: pickField(row, fieldAliases.name),
-            unit_id: pickField(row, fieldAliases.unit_id),
-            email: pickField(row, fieldAliases.email),
-            phone: pickField(row, fieldAliases.phone),
-        }))
-        .filter(row => row.name || row.unit_id || row.email || row.phone);
+    const sheet = workbook.Sheets[firstSheetName];
+    const objectRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+    const mappedObjectRows = mapRowsFromObjectSheet(objectRows);
+    if (mappedObjectRows.length > 0) return mappedObjectRows;
+
+    const matrixRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+    return mapRowsFromMatrix(matrixRows);
+}
+
+function saveDemoOnboardedResidents(rows: ExtractedUser[], fileName: string) {
+    if (typeof window === "undefined") return;
+    const storedRows = rows.map((row, index) => ({
+        ...row,
+        id: `demo-onboarding-${Date.now()}-${index}`,
+        sourceFile: fileName,
+        syncedAt: new Date().toISOString(),
+    }));
+
+    try {
+        const existing = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as ExtractedUser[];
+        window.localStorage.setItem(demoOnboardingStorageKey, JSON.stringify([...storedRows, ...existing].slice(0, 100)));
+    } catch {
+        window.localStorage.setItem(demoOnboardingStorageKey, JSON.stringify(storedRows));
+    }
 }
 
 function friendlyError(message?: string) {
@@ -266,6 +307,7 @@ export default function AdminOnboardingPage() {
         try {
             if (isDemoUser) {
                 await new Promise(resolve => setTimeout(resolve, 700));
+                saveDemoOnboardedResidents(rowsToSync, lastFileName || "nomina-demo.csv");
                 setSyncedPreview(rowsToSync);
                 setSyncResult({
                     mode: "demo",
@@ -276,7 +318,7 @@ export default function AdminOnboardingPage() {
                 });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Carga demo simulada", description: "No se guardo en la base real; queda visible solo como resumen de prueba.", variant: "success" });
+                toast({ title: "Nomina demo aplicada", description: "Quedo visible en Directorio y Unidades dentro de esta demo.", variant: "success" });
                 return;
             }
 
@@ -405,7 +447,8 @@ export default function AdminOnboardingPage() {
                                     Seleccionar archivo
                                     <input
                                         type="file"
-                                        accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv"
+                                        accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                                        aria-label="Seleccionar nomina en PDF, Word, Excel, TXT o CSV"
                                         onChange={handleFileUpload}
                                         disabled={isExtracting}
                                         className="hidden"
@@ -434,7 +477,7 @@ export default function AdminOnboardingPage() {
                     </h2>
                     <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${syncResult?.mode === "demo" ? "text-amber-900" : "text-emerald-800"}`}>
                         {syncResult?.mode === "demo"
-                            ? "Esta cuenta protege la demostracion: no guarda residentes reales ni modifica Directorio o Unidades. El archivo quedo procesado como flujo de prueba para revisar el resultado."
+                            ? "Esta cuenta protege la demostracion: no escribe en la base real. El lote quedo guardado localmente y visible en Directorio y Unidades para validar el flujo completo."
                             : "Los residentes quedaron guardados y preparados para invitacion, asignacion de unidades y operacion diaria."}
                     </p>
 
@@ -445,7 +488,7 @@ export default function AdminOnboardingPage() {
                             { label: "Con errores", value: `${syncResult?.errors ?? 0}` },
                             {
                                 label: "Destino",
-                                value: syncResult?.mode === "demo" ? "Simulacion local" : "Directorio y Unidades",
+                                value: syncResult?.mode === "demo" ? "Directorio y Unidades demo" : "Directorio y Unidades",
                             },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-white/60 bg-white/75 p-4 shadow-sm">
@@ -494,16 +537,12 @@ export default function AdminOnboardingPage() {
                         <Button type="button" variant="outline" onClick={restoreSyncedRows} disabled={!syncedPreview.length}>
                             Volver a revisar filas
                         </Button>
-                        {syncResult?.mode === "real" && (
-                            <>
-                                <Button type="button" variant="outline" onClick={() => router.push("/directorio")}>
-                                    Ver Directorio
-                                </Button>
-                                <Button type="button" variant="outline" onClick={() => router.push("/admin/units")}>
-                                    Ver Unidades
-                                </Button>
-                            </>
-                        )}
+                        <Button type="button" variant="outline" onClick={() => router.push("/directorio")}>
+                            Ver Directorio
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => router.push("/admin/units")}>
+                            Ver Unidades
+                        </Button>
                         <Button type="button" onClick={resetImport}>
                             Cargar otro archivo
                         </Button>
