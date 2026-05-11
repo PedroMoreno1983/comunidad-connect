@@ -29,6 +29,11 @@ import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal"
 import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import {
+    applyDemoMarketplaceStatusOverrides,
+    getDemoPublishedMarketplaceItems,
+    prependDemoPublishedMarketplaceItem,
+} from "@/lib/services/demoMarketplaceStorage";
+import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -99,8 +104,6 @@ const demoMarketplaceItems: MarketplaceItem[] = [
     },
 ];
 
-const demoMarketplaceStorageKey = "cc_demo_marketplace_items";
-
 async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -108,21 +111,6 @@ async function fileToDataUrl(file: File): Promise<string> {
         reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
         reader.readAsDataURL(file);
     });
-}
-
-function getDemoPublishedItems() {
-    if (typeof window === "undefined") return [];
-    try {
-        return JSON.parse(window.localStorage.getItem(demoMarketplaceStorageKey) || "[]") as MarketplaceItem[];
-    } catch {
-        return [];
-    }
-}
-
-function saveDemoPublishedItem(item: MarketplaceItem) {
-    if (typeof window === "undefined") return;
-    const existing = getDemoPublishedItems();
-    window.localStorage.setItem(demoMarketplaceStorageKey, JSON.stringify([item, ...existing].slice(0, 30)));
 }
 
 export default function MarketplacePage() {
@@ -164,7 +152,7 @@ export default function MarketplacePage() {
         setLoading(true);
         try {
             if (user?.email.toLowerCase().endsWith("@demo.com")) {
-                setItems([...getDemoPublishedItems(), ...demoMarketplaceItems]);
+                setItems(applyDemoMarketplaceStatusOverrides([...getDemoPublishedMarketplaceItems(), ...demoMarketplaceItems]));
                 return;
             }
             const realItems = await MarketplaceService.getItemsV2();
@@ -273,7 +261,7 @@ export default function MarketplacePage() {
     ];
 
     // Usa resultados de búsqueda híbrida si hay query; si no, la lista completa
-    const baseItems = searchResults !== null ? searchResults : items;
+    const baseItems = (searchResults !== null ? searchResults : items).filter(item => item.status !== "hidden");
     const filteredItems = baseItems.filter(item => {
         const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category === selectedCategory;
         const matchesMode =
@@ -353,7 +341,7 @@ export default function MarketplacePage() {
                     barterDetails: newItem.barterDetails,
                     paymentStatus: "none",
                 };
-                saveDemoPublishedItem(createdItem);
+                prependDemoPublishedMarketplaceItem(createdItem);
                 setItems(current => [createdItem, ...current]);
             } else {
                 await MarketplaceService.createItem({
