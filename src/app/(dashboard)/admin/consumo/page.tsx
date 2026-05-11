@@ -27,12 +27,56 @@ const fallbackWaterStats = {
     averageConsumption: 14.5,
 };
 
+const demoWaterReadingsStorageKey = "cc_demo_admin_water_readings";
+
 const demoWaterUnits: Unit[] = [
     { id: "demo-water-u1", number: "805", floor: 8, tower: "A" },
     { id: "demo-water-u2", number: "1204", floor: 12, tower: "A" },
     { id: "demo-water-u3", number: "1505", floor: 15, tower: "B" },
     { id: "demo-water-u4", number: "1802", floor: 18, tower: "B" },
 ];
+
+const demoPreviousReadings: Record<string, number> = {
+    "demo-water-u1": 118,
+    "demo-water-u2": 132,
+    "demo-water-u3": 149,
+    "demo-water-u4": 164,
+};
+
+const demoInitialReadings: Record<string, number> = {
+    "demo-water-u1": 132,
+    "demo-water-u2": 148,
+    "demo-water-u3": 181,
+};
+
+function readDemoWaterReadings(): Record<string, number> {
+    if (typeof window === "undefined") return demoInitialReadings;
+    try {
+        const stored = JSON.parse(window.localStorage.getItem(demoWaterReadingsStorageKey) || "{}") as Record<string, number>;
+        return Object.keys(stored).length > 0 ? stored : demoInitialReadings;
+    } catch {
+        return demoInitialReadings;
+    }
+}
+
+function saveDemoWaterReadings(readings: Record<string, number>) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(demoWaterReadingsStorageKey, JSON.stringify(readings));
+}
+
+function getDemoWaterStats(readings: Record<string, number>) {
+    const consumptions = demoWaterUnits
+        .filter(unit => readings[unit.id] !== undefined)
+        .map(unit => Math.max(0, readings[unit.id] - (demoPreviousReadings[unit.id] || 0)));
+    const totalConsumption = consumptions.reduce((sum, value) => sum + value, 0);
+    return {
+        totalConsumption,
+        alertCount: consumptions.filter(value => value > 25).length,
+        readUnits: consumptions.length,
+        totalUnits: demoWaterUnits.length,
+        averageConsumption: consumptions.length > 0 ? totalConsumption / consumptions.length : 0,
+    };
+}
 
 function openWaterReportPrompt(periodLabel: string) {
     window.dispatchEvent(new CustomEvent("coco:compose", {
@@ -54,6 +98,8 @@ function calculateConsumption(readings: WaterReading[]) {
 export default function AdminConsumoPage() {
     const { user } = useAuth();
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+    const [demoReadings, setDemoReadings] = useState<Record<string, number>>({});
+    const [demoDraftReadings, setDemoDraftReadings] = useState<Record<string, string>>({});
     const [stats, setStats] = useState({
         totalConsumption: 0,
         alertCount: 0,
@@ -68,7 +114,10 @@ export default function AdminConsumoPage() {
         async function loadStats() {
             try {
                 if (isDemoUser) {
-                    setStats(fallbackWaterStats);
+                    const readings = readDemoWaterReadings();
+                    setDemoReadings(readings);
+                    setDemoDraftReadings(Object.fromEntries(Object.entries(readings).map(([unitId, value]) => [unitId, String(value)])));
+                    setStats(getDemoWaterStats(readings));
                     return;
                 }
 
@@ -99,7 +148,14 @@ export default function AdminConsumoPage() {
 
     const handleSaveReading = async (unitId: string, value: number) => {
         try {
-            if (isDemoUser) return;
+            if (isDemoUser) {
+                const nextReadings = { ...demoReadings, [unitId]: value };
+                setDemoReadings(nextReadings);
+                setDemoDraftReadings(prev => ({ ...prev, [unitId]: String(value) }));
+                setStats(getDemoWaterStats(nextReadings));
+                saveDemoWaterReadings(nextReadings);
+                return;
+            }
 
             await WaterService.saveReading({
                 unit_id: unitId,
@@ -112,6 +168,17 @@ export default function AdminConsumoPage() {
             console.error("Error saving reading from panel:", error);
             throw error;
         }
+    };
+
+    const handleProcessDemoReadings = () => {
+        const nextReadings = Object.fromEntries(
+            Object.entries(demoDraftReadings)
+                .map(([unitId, value]) => [unitId, Number(value)] as const)
+                .filter(([, value]) => Number.isFinite(value) && value > 0)
+        );
+        setDemoReadings(nextReadings);
+        setStats(getDemoWaterStats(nextReadings));
+        saveDemoWaterReadings(nextReadings);
     };
 
     const coverage = stats.totalUnits > 0 ? Math.round((stats.readUnits / stats.totalUnits) * 100) : 0;
@@ -204,7 +271,7 @@ export default function AdminConsumoPage() {
                 <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
                     <div className="mb-5 flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Operacion del periodo</h2>
+                            <h2 className="text-lg font-semibold cc-text-primary">Operación del periodo</h2>
                             <p className="mt-1 text-sm cc-text-secondary">Prioridades para cerrar lecturas y anticipar reclamos por consumo.</p>
                         </div>
                         <span className={`rounded-md px-3 py-1 text-xs font-semibold ${stats.alertCount > 0 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
@@ -215,7 +282,7 @@ export default function AdminConsumoPage() {
                         {[
                             { label: "Lecturas pendientes", value: pendingUnits, detail: "Unidades por capturar", icon: <Activity className="h-4 w-4" /> },
                             { label: "Alertas activas", value: stats.alertCount, detail: "Sobreconsumo a revisar", icon: <AlertCircle className="h-4 w-4" /> },
-                            { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparacion", icon: <Waves className="h-4 w-4" /> },
+                            { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparación", icon: <Waves className="h-4 w-4" /> },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-subtle bg-elevated/40 p-4">
                                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-surface cc-text-secondary">
@@ -235,7 +302,7 @@ export default function AdminConsumoPage() {
                         {[
                             { label: "Capturar lecturas faltantes", done: pendingUnits === 0 },
                             { label: "Revisar unidades con sobreconsumo", done: stats.alertCount === 0 },
-                            { label: "Preparar reporte para administracion", done: coverage >= 90 },
+                            { label: "Preparar reporte para administración", done: coverage >= 90 },
                         ].map(item => (
                             <div key={item.label} className="flex items-center gap-3 text-sm">
                                 <CheckCircle2 className={`h-5 w-5 ${item.done ? "text-success-fg" : "cc-text-tertiary"}`} />
@@ -256,6 +323,18 @@ export default function AdminConsumoPage() {
                 </div>
                 {isDemoUser ? (
                     <div className="overflow-x-auto">
+                        <div className="flex items-center justify-between gap-4 border-b border-subtle px-6 py-4">
+                            <p className="text-sm font-semibold cc-text-secondary">
+                                Edita lecturas demo y procesa para actualizar consumo, cobertura y alertas.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleProcessDemoReadings}
+                                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+                            >
+                                Procesar lecturas demo
+                            </button>
+                        </div>
                         <table className="w-full text-left text-sm">
                             <thead className="border-b border-subtle bg-canvas/50 text-slate-500">
                                 <tr>
@@ -266,13 +345,19 @@ export default function AdminConsumoPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-subtle">
-                                {demoWaterUnits.map((unit, index) => (
+                                {demoWaterUnits.map((unit) => {
+                                    const reading = demoReadings[unit.id];
+                                    const consumption = reading !== undefined ? Math.max(0, reading - (demoPreviousReadings[unit.id] || 0)) : 0;
+                                    const hasReading = reading !== undefined;
+                                    const isAlert = consumption > 25;
+
+                                    return (
                                     <tr key={unit.id} className="transition-colors hover:bg-elevated/50">
                                         <td className="px-6 py-4 font-semibold cc-text-primary">Depto {unit.number}</td>
                                         <td className="px-6 py-4 cc-text-secondary">Torre {unit.tower}, Piso {unit.floor}</td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${index === 2 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
-                                                {index === 2 ? "Alerta consumo" : "Lectura OK"}
+                                            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${!hasReading ? "bg-elevated cc-text-secondary" : isAlert ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
+                                                {!hasReading ? "Pendiente" : isAlert ? "Alerta consumo" : "Lectura OK"}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -284,7 +369,8 @@ export default function AdminConsumoPage() {
                                             </button>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -311,11 +397,19 @@ export default function AdminConsumoPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-subtle">
-                                {demoWaterUnits.map((unit, index) => (
+                                {demoWaterUnits.map((unit) => (
                                     <tr key={unit.id} className="transition-colors hover:bg-elevated/50">
                                         <td className="px-6 py-4 font-semibold cc-text-primary">Unidad {unit.number}</td>
-                                        <td className="px-6 py-4 cc-text-secondary">{(118 + index * 14).toFixed(1)} m3</td>
-                                        <td className="px-6 py-4 font-semibold cc-text-primary">{(132 + index * 17).toFixed(1)} m3</td>
+                                        <td className="px-6 py-4 cc-text-secondary">{(demoPreviousReadings[unit.id] || 0).toFixed(1)} m3</td>
+                                        <td className="px-6 py-4">
+                                            <input
+                                                type="number"
+                                                value={demoDraftReadings[unit.id] || ""}
+                                                onChange={event => setDemoDraftReadings(prev => ({ ...prev, [unit.id]: event.target.value }))}
+                                                className="h-10 w-32 rounded-lg border border-subtle bg-elevated px-3 text-sm font-semibold outline-none focus:border-brand-500"
+                                                placeholder="0.0"
+                                            />
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
