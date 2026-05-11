@@ -7,7 +7,7 @@ import { VisitorLog } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { WaterService } from "@/lib/api";
 import {
-    Plus, ClipboardList, MoreHorizontal, QrCode, ShieldCheck, UserCheck
+    Plus, ClipboardList, MoreHorizontal, QrCode, Search, ShieldCheck, UserCheck
 } from "lucide-react";
 import {
     Dialog,
@@ -47,9 +47,13 @@ export default function VisitorsPage() {
     const [units, setUnits] = useState<Unit[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
+    const [query, setQuery] = useState("");
     const { toast } = useToast();
     const qrEntries = visitors.filter(visitor => visitor.isQr).length;
     const manualEntries = visitors.length - qrEntries;
+    const filteredVisitors = visitors.filter(visitor =>
+        `${visitor.visitorName} ${visitor.unitId} ${visitor.isQr ? "qr" : "manual"}`.toLowerCase().includes(query.trim().toLowerCase())
+    );
 
     useEffect(() => {
         const loadData = async () => {
@@ -243,6 +247,15 @@ export default function VisitorsPage() {
                         </div>
                         <h2 className="text-2xl font-semibold cc-text-primary">Bitácora de Ingresos</h2>
                     </div>
+                    <div className="relative hidden md:block w-80">
+                        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            placeholder="Buscar visitante, unidad o tipo"
+                            value={query}
+                            onChange={event => setQuery(event.target.value)}
+                            className="h-12 w-full rounded-xl bg-elevated pl-12 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                    </div>
                 </div>
 
                 <div className="bg-surface  rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-black/40">
@@ -258,7 +271,7 @@ export default function VisitorsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                {visitors.map((visitor) => (
+                                {filteredVisitors.map((visitor) => (
                                     <tr key={visitor.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
@@ -292,6 +305,15 @@ export default function VisitorsPage() {
                                         </td>
                                     </tr>
                                 ))}
+                                {filteredVisitors.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-10 py-16 text-center">
+                                            <Search className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+                                            <p className="font-semibold cc-text-primary">Sin registros para esta busqueda</p>
+                                            <p className="mt-1 text-sm cc-text-secondary">Prueba con otro nombre, unidad o tipo de ingreso.</p>
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

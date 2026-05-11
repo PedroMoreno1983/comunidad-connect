@@ -65,10 +65,14 @@ export default function PackagesPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [newPackage, setNewPackage] = useState({ unit: "", description: "" });
+    const [query, setQuery] = useState("");
     const { toast } = useToast();
 
     const pendingPackages = packages.filter(p => p.status === 'pending');
     const deliveredPackages = packages.filter(p => p.status === 'picked-up');
+    const filteredPendingPackages = pendingPackages.filter(pkg =>
+        `${pkg.recipientUnitId} ${pkg.description} ${pkg.id}`.toLowerCase().includes(query.trim().toLowerCase())
+    );
 
     useEffect(() => {
         const loadData = async () => {
@@ -362,15 +366,17 @@ export default function PackagesPage() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             placeholder="Buscar por Depto o ID..."
+                            value={query}
+                            onChange={event => setQuery(event.target.value)}
                             className="w-full h-12 pl-12 pr-4 bg-elevated border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                     </div>
                 </div>
 
-                {pendingPackages.length > 0 ? (
+                {pendingPackages.length > 0 && filteredPendingPackages.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         <AnimatePresence mode="popLayout">
-                            {pendingPackages.map((pkg, idx) => (
+                            {filteredPendingPackages.map((pkg, idx) => (
                                 <motion.div
                                     key={pkg.id}
                                     layout
@@ -415,6 +421,16 @@ export default function PackagesPage() {
                                 </motion.div>
                             ))}
                         </AnimatePresence>
+                    </div>
+                ) : pendingPackages.length > 0 ? (
+                    <div className="text-center py-20 bg-surface rounded-lg border border-dashed border-subtle">
+                        <div className="w-16 h-16 mx-auto mb-5 bg-elevated rounded-lg flex items-center justify-center">
+                            <Search className="h-8 w-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-xl font-semibold cc-text-primary mb-2">Sin resultados</h3>
+                        <p className="cc-text-secondary max-w-sm mx-auto font-medium">
+                            No hay encomiendas pendientes que coincidan con esa busqueda.
+                        </p>
                     </div>
                 ) : (
                     <div className="text-center py-24 bg-surface  rounded-lg border border-dashed border-subtle">
