@@ -8,12 +8,16 @@ import { ArrowLeft, Upload, CheckCircle2, Image as ImageIcon, X } from "lucide-r
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/authContext";
+import { ServiceProvider } from "@/lib/types";
+import { saveDemoCreatedProvider } from "@/lib/services/demoProvidersStorage";
 
 type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
 
 export default function ProviderRegisterPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { user } = useAuth();
     const photoInputRef = useRef<HTMLInputElement>(null);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,6 +127,39 @@ export default function ProviderRegisterPage() {
 
         try {
             setIsSubmitting(true);
+            const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
+
+            if (isDemoUser) {
+                const demoProvider: ServiceProvider = {
+                    id: `demo-provider-created-${Date.now()}`,
+                    name: providerData.name.trim(),
+                    category: providerData.category,
+                    rating: 0,
+                    reviewCount: 0,
+                    contactPhone: providerData.contactPhone.trim(),
+                    email: providerData.email.trim(),
+                    photo: providerData.photo,
+                    bio: providerData.bio.trim(),
+                    yearsExperience: providerData.yearsExperience,
+                    specialties: providerData.specialties,
+                    certifications: providerData.certifications,
+                    hourlyRate: providerData.hourlyRate,
+                    availability: "available",
+                    responseTime: providerData.responseTime,
+                    completedJobs: 0,
+                    verified: false,
+                };
+
+                saveDemoCreatedProvider(demoProvider);
+                toast({
+                    title: "Proveedor demo registrado",
+                    description: "El perfil quedo visible en Directorio de Servicios y Panel Proveedor.",
+                    variant: "success",
+                });
+                router.push(`/services/provider/${demoProvider.id}`);
+                return;
+            }
+
             const response = await fetch('/api/providers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

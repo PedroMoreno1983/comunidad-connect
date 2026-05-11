@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
     ArrowRight,
@@ -19,6 +19,7 @@ import { ProviderCard } from "@/components/services/ProviderCard";
 import { ServiceCategoryCard } from "@/components/services/ServiceCategoryCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { mergeDemoCreatedProviders } from "@/lib/services/demoProvidersStorage";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -39,14 +40,24 @@ function normalize(value: string) {
 }
 
 export function ServicesCatalogClient({ categories, providers }: ServicesCatalogClientProps) {
+    const [catalogProviders, setCatalogProviders] = useState(providers);
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState<ServiceProvider["category"] | "all">("all");
     const [availability, setAvailability] = useState<"all" | "available" | "verified">("all");
 
+    useEffect(() => {
+        setCatalogProviders(mergeDemoCreatedProviders(providers));
+    }, [providers]);
+
+    const categoriesWithCounts = useMemo(() => categories.map(item => ({
+        ...item,
+        count: catalogProviders.filter(provider => provider.category === item.id).length,
+    })), [catalogProviders, categories]);
+
     const filteredProviders = useMemo(() => {
         const normalizedQuery = normalize(query.trim());
 
-        return providers.filter(provider => {
+        return catalogProviders.filter(provider => {
             const matchesCategory = category === "all" || provider.category === category;
             const matchesAvailability =
                 availability === "all"
@@ -63,17 +74,17 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
 
             return matchesCategory && matchesAvailability && (!normalizedQuery || searchable.includes(normalizedQuery));
         });
-    }, [availability, category, providers, query]);
+    }, [availability, catalogProviders, category, query]);
 
-    const featuredProviders = providers
+    const featuredProviders = catalogProviders
         .filter(provider => provider.rating >= 4.5 || provider.verified)
         .slice(0, 6);
-    const verifiedCount = providers.filter(provider => provider.verified).length;
-    const availableCount = providers.filter(provider => provider.availability === "available").length;
-    const averageRating = providers.length
-        ? (providers.reduce((sum, provider) => sum + provider.rating, 0) / providers.length).toFixed(1)
+    const verifiedCount = catalogProviders.filter(provider => provider.verified).length;
+    const availableCount = catalogProviders.filter(provider => provider.availability === "available").length;
+    const averageRating = catalogProviders.length
+        ? (catalogProviders.reduce((sum, provider) => sum + provider.rating, 0) / catalogProviders.length).toFixed(1)
         : "0.0";
-    const totalSpecialties = new Set(providers.flatMap(provider => provider.specialties || [])).size;
+    const totalSpecialties = new Set(catalogProviders.flatMap(provider => provider.specialties || [])).size;
     const hasFilters = Boolean(query || category !== "all" || availability !== "all");
 
     const clearFilters = () => {
@@ -171,7 +182,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         className="h-12 rounded-lg border border-subtle bg-elevated px-4 text-sm font-bold cc-text-secondary outline-none focus:ring-2 focus:ring-brand-500/20"
                     >
                         <option value="all">Todas las categorias</option>
-                        {categories.map(item => (
+                        {categoriesWithCounts.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                         ))}
                     </select>
@@ -239,7 +250,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                     <section>
                         <h2 className="mb-6 text-2xl font-bold cc-text-primary">Categorias de servicio</h2>
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                            {categories.map(item => (
+                            {categoriesWithCounts.map(item => (
                                 <ServiceCategoryCard key={item.id} category={item} />
                             ))}
                         </div>

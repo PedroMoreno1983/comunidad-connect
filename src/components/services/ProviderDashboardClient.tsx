@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { ServiceProvider } from "@/lib/types";
 import { providersService, serviceRequestsService } from "@/lib/services/providersService";
+import { mergeDemoCreatedProviders } from "@/lib/services/demoProvidersStorage";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -166,8 +167,9 @@ export function ProviderDashboardClient() {
         setLoading(true);
         try {
             if (user.email.toLowerCase().endsWith("@demo.com")) {
-                setProviders(demoProviders);
-                setSelectedProviderId("demo-provider-dashboard");
+                const mergedProviders = mergeDemoCreatedProviders(demoProviders);
+                setProviders(mergedProviders);
+                setSelectedProviderId(current => current || mergedProviders[0]?.id || "demo-provider-dashboard");
                 return;
             }
             const providerRows = await providersService.getByUser(user.id);
