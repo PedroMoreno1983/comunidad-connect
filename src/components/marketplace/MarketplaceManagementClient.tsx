@@ -12,6 +12,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/Dialog";
+import {
     applyDemoMarketplaceStatusOverrides,
     getDemoPublishedMarketplaceItems,
     saveDemoMarketplaceStatusOverride,
@@ -109,6 +117,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const [loading, setLoading] = useState(true);
     const [savingId, setSavingId] = useState<string | null>(null);
     const [filter, setFilter] = useState<MarketplaceStatus | "all">("all");
+    const [pendingDeleteItem, setPendingDeleteItem] = useState<MarketplaceItem | null>(null);
 
     const isAdminMode = mode === "admin";
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
@@ -205,8 +214,6 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     };
 
     const deleteItem = async (item: MarketplaceItem) => {
-        if (!window.confirm(`Eliminar "${item.title}" del marketplace?`)) return;
-
         setSavingId(item.id);
         try {
             if (isDemoUser || item.id.startsWith("demo-")) {
@@ -262,6 +269,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     }
 
     return (
+        <>
         <div className="mx-auto max-w-6xl space-y-6 p-6">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
@@ -428,7 +436,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                                     Ocultar
                                                 </Button>
                                             )}
-                                            <Button variant="outline" size="sm" disabled={isSaving} onClick={() => deleteItem(item)}>
+                                            <Button variant="outline" size="sm" disabled={isSaving} onClick={() => setPendingDeleteItem(item)}>
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                                 Eliminar
                                             </Button>
@@ -448,5 +456,34 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 </div>
             )}
         </div>
+        <Dialog open={!!pendingDeleteItem} onOpenChange={(open) => !open && setPendingDeleteItem(null)}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Retirar publicacion</DialogTitle>
+                    <DialogDescription>
+                        Esta accion quitara <span className="font-semibold">{pendingDeleteItem?.title}</span> del marketplace publico. En demo queda oculta para conservar trazabilidad.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setPendingDeleteItem(null)} disabled={!!savingId}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        variant="danger"
+                        disabled={!pendingDeleteItem || savingId === pendingDeleteItem.id}
+                        onClick={async () => {
+                            if (!pendingDeleteItem) return;
+                            const itemToDelete = pendingDeleteItem;
+                            setPendingDeleteItem(null);
+                            await deleteItem(itemToDelete);
+                        }}
+                    >
+                        {pendingDeleteItem && savingId === pendingDeleteItem.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Retirar
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
