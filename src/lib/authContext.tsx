@@ -22,6 +22,7 @@ interface AuthContextType {
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string, userData: Record<string, unknown>) => Promise<{ error: Error | null }>;
     loginDemo: (role: User["role"]) => void;
+    updateDemoUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -297,6 +298,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     };
 
+    const updateDemoUser = (updates: Partial<User>) => {
+        setUser(current => {
+            if (!current || !current.email.toLowerCase().endsWith('@demo.com')) return current;
+            const next = { ...current, ...updates };
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
+            }
+            return next;
+        });
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -307,6 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             signIn,
             signUp,
             loginDemo,
+            updateDemoUser,
         }}>
             {children}
         </AuthContext.Provider>
