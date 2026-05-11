@@ -1,6 +1,6 @@
 "use client";
 
-import { QRInvitationGenerator } from "@/components/resident/QRInvitationGenerator";
+import { GeneratedInvitation, QRInvitationGenerator } from "@/components/resident/QRInvitationGenerator";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
 import { InvitationService } from "@/lib/services/supabaseServices";
@@ -66,6 +66,9 @@ export default function ResidentInvitationsPage() {
 
     const activeInvitations = invitations.filter(i => i.status === 'active');
     const pastInvitations = invitations.filter(i => i.status !== 'active');
+    const handleGenerated = (invitation: GeneratedInvitation) => {
+        setInvitations(current => [invitation, ...current]);
+    };
 
     return (
         <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
@@ -119,7 +122,7 @@ export default function ResidentInvitationsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                 {/* Left Side: Generator */}
                 <div className="lg:col-span-2">
-                    <QRInvitationGenerator />
+                    <QRInvitationGenerator onGenerated={handleGenerated} />
                 </div>
 
                 {/* Right Side: Active Invitations & History */}
