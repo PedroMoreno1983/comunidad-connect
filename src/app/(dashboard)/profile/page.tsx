@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 export default function ProfilePage() {
-    const { user } = useAuth();
+    const { user, updateDemoUser } = useAuth();
     const { toast } = useToast();
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
@@ -46,7 +46,7 @@ export default function ProfilePage() {
     const loadProfile = async () => {
         if (!user) return;
         if (isDemoUser) {
-            setAvatarUrl(user.avatarUrl);
+            setAvatarUrl(user.photo || user.avatarUrl);
             setPhoneNumber("912345678");
             setWhatsappEnabled(true);
             setUnitNumber(user.unitName?.replace(/[^0-9]/g, "") || (user.role === "resident" ? "1204" : ""));
@@ -117,7 +117,14 @@ export default function ProfilePage() {
         setIsUploadingAvatar(true);
         try {
             if (isDemoUser) {
-                setAvatarUrl(URL.createObjectURL(file));
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result || ""));
+                    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
+                    reader.readAsDataURL(file);
+                });
+                setAvatarUrl(dataUrl);
+                updateDemoUser({ photo: dataUrl, avatarUrl: dataUrl });
                 toast({ title: "Foto actualizada", description: "Vista previa guardada para esta demo.", variant: "success" });
                 return;
             }
@@ -152,6 +159,11 @@ export default function ProfilePage() {
         setIsSaving(true);
         try {
             if (isDemoUser) {
+                const normalizedUnit = unitNumber.trim();
+                updateDemoUser({
+                    name: fullName.trim(),
+                    unitName: normalizedUnit ? `Depto ${normalizedUnit}` : user.unitName,
+                });
                 toast({ title: "Perfil actualizado", description: "Tus cambios quedaron guardados en esta sesion demo.", variant: "success" });
                 return;
             }
