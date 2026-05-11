@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
                 category,
                 contact_phone: contactPhone,
                 email: email || null,
-                photo: cleanText(body.photo, 500) || null,
+                photo: cleanText(body.photo, 2_000_000) || null,
                 bio: cleanText(body.bio, 1200),
                 years_experience: Math.round(cleanNumber(body.yearsExperience)),
                 specialties: cleanStringList(body.specialties),
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
             verified: provider.verified,
         }, { status: 201 });
     } catch (error: unknown) {
-        console.error('Error in POST /api/providers:', error);
+        console.warn('Error in POST /api/providers:', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Error interno del servidor al crear proveedor' },
             { status: 500 }

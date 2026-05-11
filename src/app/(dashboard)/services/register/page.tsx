@@ -1,9 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Provider registration previews a local data URL before upload. */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ArrowLeft, Upload, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | '
 export default function ProviderRegisterPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const photoInputRef = useRef<HTMLInputElement>(null);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
@@ -34,8 +36,38 @@ export default function ProviderRegisterPage() {
 
         // Certifications
         certifications: [] as string[],
-        newCertification: ''
+        newCertification: '',
+
+        // Profile photo
+        photo: '',
+        photoName: ''
     });
+
+    const handlePhotoFile = (file?: File) => {
+        if (!file) return;
+
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            toast({ title: "Formato no soportado", description: "Sube una imagen JPG, PNG o WebP.", variant: "destructive" });
+            return;
+        }
+
+        const maxSizeMb = 1.5;
+        if (file.size > maxSizeMb * 1024 * 1024) {
+            toast({ title: "Imagen demasiado pesada", description: `La foto debe pesar menos de ${maxSizeMb}MB para guardarse correctamente.`, variant: "destructive" });
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            setFormData(prev => ({ ...prev, photo: result, photoName: file.name }));
+        };
+        reader.onerror = () => {
+            toast({ title: "No se pudo leer la imagen", description: "Intenta con otro archivo.", variant: "destructive" });
+        };
+        reader.readAsDataURL(file);
+    };
 
     const handleAddSpecialty = () => {
         if (formData.newSpecialty.trim()) {
@@ -86,6 +118,7 @@ export default function ProviderRegisterPage() {
             certifications: formData.certifications,
             hourlyRate: parseFloat(formData.hourlyRate) || 0,
             responseTime: formData.responseTime,
+            photo: formData.photo,
         };
 
         try {
@@ -413,19 +446,73 @@ export default function ProviderRegisterPage() {
                             )}
                         </div>
 
-                        {/* Photo Upload Placeholder */}
+                        {/* Photo Upload */}
                         <div className="space-y-3">
                             <label className="text-sm font-medium cc-text-secondary">
                                 Foto de Perfil
                             </label>
-                            <div className="border-2 border-dashed border-default rounded-xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer">
-                                <Upload className="h-12 w-12 mx-auto mb-3 text-slate-400" />
-                                <p className="text-sm cc-text-secondary">
-                                    Haz clic para subir una foto o arrastra aquí
-                                </p>
-                                <p className="text-xs cc-text-tertiary mt-1">
-                                    JPG, PNG hasta 5MB
-                                </p>
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => photoInputRef.current?.click()}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        photoInputRef.current?.click();
+                                    }
+                                }}
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={(event) => {
+                                    event.preventDefault();
+                                    handlePhotoFile(event.dataTransfer.files?.[0]);
+                                }}
+                                className="relative cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-default bg-canvas p-6 text-center transition-colors hover:border-brand-400 hover:bg-surface"
+                            >
+                                <input
+                                    ref={photoInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(event) => handlePhotoFile(event.target.files?.[0])}
+                                />
+
+                                {formData.photo ? (
+                                    <div className="mx-auto flex max-w-xl items-center gap-4 rounded-lg border border-subtle bg-surface p-4 text-left">
+                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-elevated">
+                                            <img src={formData.photo} alt="Foto de perfil seleccionada" className="h-full w-full object-cover" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700">
+                                                <ImageIcon className="h-3.5 w-3.5" />
+                                                Foto cargada
+                                            </div>
+                                            <p className="truncate text-sm font-semibold cc-text-primary">{formData.photoName}</p>
+                                            <p className="mt-1 text-xs cc-text-secondary">Haz clic o arrastra otra imagen para reemplazarla.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setFormData(prev => ({ ...prev, photo: '', photoName: '' }));
+                                                if (photoInputRef.current) photoInputRef.current.value = '';
+                                            }}
+                                            className="rounded-lg border border-subtle p-2 cc-text-secondary transition-colors hover:bg-elevated"
+                                            aria-label="Quitar foto"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                                        <p className="text-sm cc-text-secondary">
+                                            Haz clic para subir una foto o arrastra aqui
+                                        </p>
+                                        <p className="mt-1 text-xs cc-text-tertiary">
+                                            JPG, PNG o WebP hasta 1.5MB
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         </div>
 
