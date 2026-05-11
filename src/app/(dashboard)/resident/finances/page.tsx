@@ -11,6 +11,7 @@ import { getApiUrl } from "@/lib/config";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { getDemoResidentFees, markDemoCondoFeePaid } from "@/lib/services/demoFinanceStorage";
 
 interface Expense {
     id: string;
@@ -24,12 +25,6 @@ interface Expense {
         number: string;
     };
 }
-
-const demoExpenses: Expense[] = [
-    { id: "demo-exp-1", unit_id: "demo", month: "2026-05", amount: 126900, status: "pending", due_date: "2026-05-15", units: { number: "1204" } },
-    { id: "demo-exp-2", unit_id: "demo", month: "2026-04", amount: 119500, status: "paid", due_date: "2026-04-15", paid_at: "2026-04-12", units: { number: "1204" } },
-    { id: "demo-exp-3", unit_id: "demo", month: "2026-03", amount: 122300, status: "paid", due_date: "2026-03-15", paid_at: "2026-03-14", units: { number: "1204" } },
-];
 
 export default function FinancesPage() {
     const { user } = useAuth();
@@ -47,7 +42,16 @@ export default function FinancesPage() {
         try {
             setLoading(true);
             if (user.email.toLowerCase().endsWith("@demo.com")) {
-                setExpenses(demoExpenses);
+                setExpenses(getDemoResidentFees().map(fee => ({
+                    id: fee.id,
+                    unit_id: fee.unit_id,
+                    month: fee.month,
+                    amount: fee.amount,
+                    status: fee.status,
+                    due_date: fee.due_date,
+                    paid_at: fee.paid_at,
+                    units: { number: fee.units.number },
+                })));
                 return;
             }
 
@@ -104,9 +108,20 @@ export default function FinancesPage() {
         setProcessingId(expense.id);
         try {
             if (user?.email.toLowerCase().endsWith("@demo.com")) {
+                markDemoCondoFeePaid(expense.id, "haulmer");
+                setExpenses(getDemoResidentFees().map(fee => ({
+                    id: fee.id,
+                    unit_id: fee.unit_id,
+                    month: fee.month,
+                    amount: fee.amount,
+                    status: fee.status,
+                    due_date: fee.due_date,
+                    paid_at: fee.paid_at,
+                    units: { number: fee.units.number },
+                })));
                 toast({
-                    title: "Pago demo simulado",
-                    description: "En una cuenta real se abriria el flujo Haulmer.",
+                    title: "Pago demo registrado",
+                    description: "El cobro pasó a historial y Administración lo verá como pagado.",
                     variant: "success"
                 });
                 setProcessingId(null);

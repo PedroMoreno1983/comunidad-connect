@@ -8,6 +8,7 @@ import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2, Search } f
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
+import { getDemoCondoFees, saveDemoCondoFees } from "@/lib/services/demoFinanceStorage";
 
 interface CondoFee {
     id: string;
@@ -24,13 +25,6 @@ interface CondoFee {
     };
 }
 
-const demoFees: CondoFee[] = [
-    { id: "demo-fee-1204", unit_id: "demo-unit-1204", amount: 126900, month: "2026-05", status: "pending", due_date: "2026-05-15", units: { number: "1204", tower: "A" } },
-    { id: "demo-fee-805", unit_id: "demo-unit-805", amount: 119500, month: "2026-05", status: "paid", due_date: "2026-05-15", paid_at: "2026-05-08T14:20:00.000Z", payment_method: "haulmer", units: { number: "805", tower: "A" } },
-    { id: "demo-fee-1505", unit_id: "demo-unit-1505", amount: 141200, month: "2026-05", status: "overdue", due_date: "2026-05-05", units: { number: "1505", tower: "B" } },
-    { id: "demo-fee-1802", unit_id: "demo-unit-1802", amount: 132800, month: "2026-05", status: "paid", due_date: "2026-05-15", paid_at: "2026-05-06T10:04:00.000Z", payment_method: "transfer", units: { number: "1802", tower: "B" } },
-];
-
 export function CondoFeesTable() {
     const [fees, setFees] = useState<CondoFee[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,7 +39,7 @@ export function CondoFeesTable() {
         try {
             setLoading(true);
             if (isDemoUser) {
-                setFees(demoFees);
+                setFees(getDemoCondoFees());
                 return;
             }
 
@@ -66,10 +60,11 @@ export function CondoFeesTable() {
         if (isDemoUser) {
             setSending(true);
             setTimeout(() => {
+                saveDemoCondoFees(fees);
                 setSending(false);
                 toast({
-                    title: "Envio demo preparado",
-                    description: "Se simulo la notificacion de cobros pendientes.",
+                    title: "Envío demo preparado",
+                    description: "Se simuló la notificación de cobros pendientes.",
                     variant: "success",
                 });
             }, 500);
@@ -102,7 +97,7 @@ export function CondoFeesTable() {
             const data = await res.json();
             if (res.ok) {
                 toast({
-                    title: "✉️ Emails enviados",
+                    title: "Emails enviados",
                     description: `${data.sent} residentes notificados correctamente.`,
                     variant: "success",
                 });
@@ -200,7 +195,7 @@ export function CondoFeesTable() {
                                         </div>
                                         <div>
                                             <p className="font-semibold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
-                                            <p className="text-xs text-slate-500 font-medium">Auto {fee.units?.number}</p>
+                                            <p className="text-xs text-slate-500 font-medium">Depto {fee.units?.number}</p>
                                         </div>
                                     </div>
                                 </td>
