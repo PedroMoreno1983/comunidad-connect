@@ -34,10 +34,10 @@ import clsx from "clsx";
 type Tab = "oficial" | "comunidad" | "mensajes";
 type ChatMode = "global" | "direct";
 
-const TABS: { id: Tab; label: string; icon: React.ElementType; color: string; description: string }[] = [
-    { id: "oficial",    label: "Oficial",    icon: Megaphone,    color: "indigo",  description: "Comunicados de administración" },
-    { id: "comunidad",  label: "Comunidad",  icon: Hash,         color: "fuchsia", description: "Muro social de vecinos" },
-    { id: "mensajes",   label: "Mensajes",   icon: MessageSquare, color: "emerald", description: "Chat vecinal" },
+const TABS: { id: Tab; label: string; icon: React.ElementType; description: string }[] = [
+    { id: "oficial", label: "Oficial", icon: Megaphone, description: "Comunicados de administracion" },
+    { id: "comunidad", label: "Comunidad", icon: Hash, description: "Muro social de vecinos" },
+    { id: "mensajes", label: "Mensajes", icon: MessageSquare, description: "Chat vecinal" },
 ];
 
 // ─── OFICIAL TAB ────────────────────────────────────────────────────────────
@@ -59,12 +59,12 @@ function OficialTab() {
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
-                    author: ann.author_name || "Administración",
+                    author: ann.author_name || "Administracion",
                     priority: ann.priority,
                     createdAt: ann.created_at,
                 })));
             } catch {
-                toast({ title: "Error de Conexión", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
+                toast({ title: "Error de conexion", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
             } finally {
                 setIsLoading(false);
             }
@@ -75,9 +75,9 @@ function OficialTab() {
     const getIcon = (priority: string) => ({ alert: AlertTriangle, event: Calendar } as Record<string, React.ElementType>)[priority] || Info;
     const getPriorityStyles = (priority: string) => ({
         alert: { badge: "bg-danger-bg text-danger-fg ring-red-600/20", icon: "bg-danger-bg text-danger-fg", border: "border-l-red-500", glow: "shadow-red-500/5" },
-        event: { badge: "bg-brand-100 dark:bg-purple-500/20 text-brand-700 dark:text-brand-400 ring-purple-600/20", icon: "bg-brand-100 dark:bg-purple-500/20 text-brand-600 dark:text-brand-400", border: "border-l-purple-500", glow: "shadow-purple-500/5" },
+        event: { badge: "bg-brand-50 text-brand-700 ring-brand-600/20", icon: "bg-brand-50 text-brand-600", border: "border-l-brand-500", glow: "shadow-brand-500/5" },
     } as Record<string, any>)[priority] || { badge: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 ring-blue-600/20", icon: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400", border: "border-l-blue-500", glow: "shadow-blue-500/5" };
-    const getPriorityLabel = (p: string) => ({ alert: "Urgente", event: "Evento" } as Record<string, string>)[p] || "Información";
+    const getPriorityLabel = (p: string) => ({ alert: "Urgente", event: "Evento" } as Record<string, string>)[p] || "Informacion";
     const getRelativeTime = (d: string) => {
         const diff = Math.floor((Date.now() - new Date(d).getTime()) / 3600000);
         if (diff < 1) return "Hace un momento";
@@ -96,12 +96,12 @@ function OficialTab() {
             const data = await AnnouncementsService.createAnnouncement({
                 title: newPost.title, content: newPost.content,
                 priority: newPost.priority as "info" | "alert" | "event",
-                author_id: user.id, author_name: user.name || "Administración",
+                author_id: user.id, author_name: user.name || "Administracion",
             });
-            setAnnouncements([{ id: data.id, title: data.title, content: data.content, author: data.author_name || "Administración", priority: data.priority, createdAt: data.created_at }, ...announcements]);
+            setAnnouncements([{ id: data.id, title: data.title, content: data.content, author: data.author_name || "Administracion", priority: data.priority, createdAt: data.created_at }, ...announcements]);
             setIsDialogOpen(false);
             setNewPost({ title: "", content: "", priority: "info" });
-            toast({ title: "Aviso Publicado", description: "La notificación ha sido enviada a todos los residentes.", variant: "success" });
+            toast({ title: "Aviso publicado", description: "La notificacion ha sido enviada a todos los residentes.", variant: "success" });
         } catch {
             toast({ title: "Error", description: "Hubo un problema al publicar el aviso.", variant: "destructive" });
         }
@@ -111,12 +111,12 @@ function OficialTab() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="text-sm font-medium cc-text-secondary">
-                    Comunicados y avisos oficiales de la administración
+                    Comunicados y avisos oficiales de la administracion
                 </p>
                 {user?.role === "admin" && (
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] text-white font-semibold rounded-xl shadow-sm shadow-indigo-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300">
+                            <button className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
                                 <Plus className="h-4 w-4" /> Publicar Aviso
                             </button>
                         </DialogTrigger>
@@ -127,8 +127,8 @@ function OficialTab() {
                             </DialogHeader>
                             <form onSubmit={handleSubmit} className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium cc-text-secondary">Título</label>
-                                    <Input required value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} placeholder="Ej: Mantención de Ascensores" />
+                                    <label className="text-sm font-medium cc-text-secondary">Titulo</label>
+                                    <Input required value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} placeholder="Ej: Mantencion de ascensores" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium cc-text-secondary">Prioridad</label>
@@ -138,7 +138,7 @@ function OficialTab() {
                                             const Icon = getIcon(p);
                                             return (
                                                 <button key={p} type="button" onClick={() => setNewPost({ ...newPost, priority: p })}
-                                                    className={`p-3 rounded-xl border-2 transition-all ${newPost.priority === p ? "border-brand-500 bg-role-admin-bg" : "border-subtle hover:border-slate-300"}`}>
+                                                    className={`rounded-lg border p-3 transition-colors ${newPost.priority === p ? "border-brand-500 bg-brand-50" : "border-subtle hover:border-brand-300"}`}>
                                                     <div className={`mx-auto w-8 h-8 rounded-lg ${styles.icon} flex items-center justify-center mb-2`}><Icon className="h-4 w-4" /></div>
                                                     <p className="text-xs font-medium cc-text-secondary text-center">{getPriorityLabel(p)}</p>
                                                 </button>
@@ -178,16 +178,16 @@ function OficialTab() {
                                                 <h2 className="text-lg font-bold cc-text-primary group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{ann.title}</h2>
                                                 <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
                                                     <span className="font-medium">{ann.author}</span>
-                                                    <span>•</span>
+                                                    <span>-</span>
                                                     <span>{getRelativeTime(ann.createdAt)}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className={`flex-shrink-0 px-3 py-1 text-xs font-semibold rounded-full ring-1 ring-inset ${styles.badge}`}>{getPriorityLabel(ann.priority)}</span>
+                                        <span className={`flex-shrink-0 rounded-md px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles.badge}`}>{getPriorityLabel(ann.priority)}</span>
                                     </div>
                                     <p className="mt-4 cc-text-secondary leading-relaxed whitespace-pre-wrap pl-16">{ann.content}</p>
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-500/20 opacity-0 transition-opacity group-hover:opacity-100" />
                             </article>
                         );
                     })
@@ -249,14 +249,14 @@ function ComunidadTab() {
                     const { data: { publicUrl } } = supabase.storage.from("social-images").getPublicUrl(path);
                     imageUrl = publicUrl;
                 }
-            } catch { console.error("Image upload failed"); }
+            } catch { console.warn("Image upload failed"); }
             finally { setIsUploadingImage(false); }
         }
         try {
             const newPost = await SocialService.createPost({ author_id: user.id, content: newPostContent.trim(), image_url: imageUrl });
             setPosts([newPost as SocialPost, ...posts]);
             setNewPostContent(""); setNewPostImageFile(null); setNewPostImagePreview(null);
-            toast({ title: "Publicado", description: "Tu publicación ya está visible en el muro.", variant: "success" });
+            toast({ title: "Publicado", description: "Tu publicacion ya esta visible en el muro.", variant: "success" });
         } catch {
             toast({ title: "Error", description: "Hubo un problema al publicar.", variant: "destructive" });
         } finally { setIsSubmitting(false); }
@@ -274,7 +274,7 @@ function ComunidadTab() {
         if (!comments[postId]) {
             setLoadingCommentsPostId(postId);
             try { const data = await SocialService.getComments(postId); setComments(prev => ({ ...prev, [postId]: data })); }
-            catch { console.error("Error loading comments"); }
+            catch { console.warn("Error loading comments"); }
             finally { setLoadingCommentsPostId(null); }
         }
     };
@@ -291,35 +291,35 @@ function ComunidadTab() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8">
+        <div className="mx-auto max-w-4xl space-y-6">
             {/* Create Post */}
-            <div className="bg-surface rounded-lg p-6 sm:p-8 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none">
+            <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm sm:p-6">
                 <form onSubmit={handleCreatePost}>
-                    <div className="flex gap-4 sm:gap-6">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-fuchsia-500 to-pink-500 flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
+                    <div className="flex gap-4 sm:gap-5">
+                        <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-brand-500 text-white">
                             {user?.photo ? <img src={user.photo} alt={user.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white font-semibold text-lg">{user?.name.charAt(0)}</div>}
                         </div>
                         <div className="flex-1 space-y-4">
                             <textarea value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)}
-                                placeholder="¿Qué está pasando en el edificio?"
-                                className="w-full min-h-[100px] resize-none bg-transparent text-lg font-medium cc-text-primary placeholder:text-slate-400 focus:outline-none" />
+                                placeholder="Comparte una novedad util para la comunidad"
+                                className="min-h-[100px] w-full resize-none bg-transparent text-base font-medium cc-text-primary placeholder:text-slate-400 focus:outline-none" />
                             <div className="flex items-center justify-between pt-4 border-t border-subtle">
                                 <div className="flex gap-2">
-                                    <button type="button" onClick={() => imageInputRef.current?.click()} className="p-2 text-slate-400 hover:text-fuchsia-500 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-500/10 rounded-full transition-colors">
+                                    <button type="button" onClick={() => imageInputRef.current?.click()} className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-brand-50 hover:text-brand-600">
                                         {isUploadingImage ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
                                     </button>
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                                    <button type="button" className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-full transition-colors hidden sm:block"><Smile className="h-5 w-5" /></button>
-                                    <button type="button" className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors hidden sm:block"><MapPin className="h-5 w-5" /></button>
+                                    <button type="button" className="hidden rounded-lg p-2 text-slate-400 transition-colors hover:bg-elevated sm:block"><Smile className="h-5 w-5" /></button>
+                                    <button type="button" className="hidden rounded-lg p-2 text-slate-400 transition-colors hover:bg-elevated sm:block"><MapPin className="h-5 w-5" /></button>
                                 </div>
-                                <Button type="submit" disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-sm hover:scale-105 transition-transform">
+                                <Button type="submit" disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting} className="rounded-lg px-5 font-semibold">
                                     {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Publicar"}
                                 </Button>
                             </div>
                             {newPostImagePreview && (
                                 <div className="relative mt-3 rounded-lg overflow-hidden border border-subtle">
                                     <img src={newPostImagePreview} alt="preview" className="w-full max-h-64 object-cover" />
-                                    <button type="button" onClick={() => { setNewPostImageFile(null); setNewPostImagePreview(null); }} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"><XIcon className="h-4 w-4" /></button>
+                                    <button type="button" onClick={() => { setNewPostImageFile(null); setNewPostImagePreview(null); }} className="absolute right-2 top-2 rounded-md bg-black/50 p-1.5 text-white transition-colors hover:bg-black/70"><XIcon className="h-4 w-4" /></button>
                                 </div>
                             )}
                         </div>
@@ -330,8 +330,8 @@ function ComunidadTab() {
             {/* Feed */}
             {isLoading ? (<><SkeletonCard /><SkeletonCard /><SkeletonCard /></>) : posts.length === 0 ? (
                 <div className="bg-canvas/50 rounded-lg border border-dashed border-subtle p-16 text-center space-y-4">
-                    <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" /><h3 className="text-xl font-semibold text-slate-500">Nada por aquí aún</h3>
-                    <p className="text-sm font-medium text-slate-400">Sé el primero en saludar a tus vecinos.</p>
+                    <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" /><h3 className="text-xl font-semibold text-slate-500">Nada por aqui aun</h3>
+                    <p className="text-sm font-medium text-slate-400">Se el primero en saludar a tus vecinos.</p>
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -341,17 +341,17 @@ function ComunidadTab() {
                                 className="bg-surface flex flex-col rounded-lg border border-subtle shadow-sm overflow-hidden">
                                 <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
+                                        <div className="h-12 w-12 overflow-hidden rounded-lg bg-elevated">
                                             {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-semibold text-slate-400">{post.profiles?.name?.charAt(0) || "?"}</div>}
                                         </div>
                                         <div>
                                             <h3 className="font-bold cc-text-primary flex items-center gap-2">{post.profiles?.name || "Residente"}
-                                                {post.profiles?.unit_id && <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">Depto {post.profiles.unit_id}</span>}
+                                                {post.profiles?.unit_id && <span className="rounded-md bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Depto {post.profiles.unit_id}</span>}
                                             </h3>
                                             <p className="text-xs font-semibold text-slate-400 mt-0.5">{new Date(post.created_at).toLocaleDateString()} a las {new Date(post.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
                                         </div>
                                     </div>
-                                    <button className="p-2 text-slate-400 hover:bg-elevated rounded-full transition-colors"><MoreHorizontal className="h-5 w-5" /></button>
+                                    <button className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-elevated"><MoreHorizontal className="h-5 w-5" /></button>
                                 </div>
                                 <div className="px-6 sm:px-8 py-2">
                                     <p className="cc-text-primary text-base leading-relaxed whitespace-pre-line">{post.content}</p>
@@ -359,15 +359,15 @@ function ComunidadTab() {
                                 </div>
                                 <div className="px-6 sm:px-8 py-4 mt-2 border-t border-subtle/50 flex items-center gap-6">
                                     <button onClick={() => handleLike(post.id)} className={clsx("flex items-center gap-2 group transition-colors", post.has_liked ? "text-rose-500" : "text-slate-400 hover:text-rose-500")}>
-                                        <div className={clsx("p-2 rounded-full transition-all", post.has_liked ? "bg-rose-50 dark:bg-rose-500/10" : "group-hover:bg-rose-50 dark:group-hover:bg-rose-500/10")}><Heart className={clsx("h-5 w-5", post.has_liked && "fill-current")} /></div>
+                                        <div className={clsx("rounded-lg p-2 transition-colors", post.has_liked ? "bg-rose-50 dark:bg-rose-500/10" : "group-hover:bg-rose-50 dark:group-hover:bg-rose-500/10")}><Heart className={clsx("h-5 w-5", post.has_liked && "fill-current")} /></div>
                                         <span className="font-bold">{post.likes_count > 0 ? post.likes_count : "Me gusta"}</span>
                                     </button>
                                     <button onClick={() => toggleComments(post.id)} className="flex items-center gap-2 text-slate-400 hover:text-blue-500 group transition-colors">
-                                        <div className="p-2 rounded-full transition-all group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10"><MessageCircle className="h-5 w-5" /></div>
+                                        <div className="rounded-lg p-2 transition-colors group-hover:bg-brand-50"><MessageCircle className="h-5 w-5" /></div>
                                         <span className="font-bold">{post.comments_count ? post.comments_count : "Comentar"}</span>
                                     </button>
-                                    <button className="flex items-center gap-2 text-slate-400 hover:text-emerald-500 group transition-colors ml-auto">
-                                        <div className="p-2 rounded-full transition-all group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10"><Share2 className="h-5 w-5" /></div>
+                                    <button className="group ml-auto flex items-center gap-2 text-slate-400 transition-colors hover:text-brand-600">
+                                        <div className="rounded-lg p-2 transition-colors group-hover:bg-brand-50"><Share2 className="h-5 w-5" /></div>
                                     </button>
                                 </div>
                                 <AnimatePresence>
@@ -379,7 +379,7 @@ function ComunidadTab() {
                                                     <div className="space-y-5">
                                                         {(comments[post.id] || []).map((comment) => (
                                                             <div key={comment.id} className="flex gap-4">
-                                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-elevated flex-shrink-0">
+                                                                <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg bg-elevated">
                                                                     {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{comment.profiles?.name?.charAt(0) || "?"}</div>}
                                                                 </div>
                                                                 <div className="flex-1">
@@ -395,14 +395,14 @@ function ComunidadTab() {
                                                     </div>
                                                 )}
                                                 <div className="flex gap-3 pt-2">
-                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 flex-shrink-0 hidden sm:block">
+                                                    <div className="hidden h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg bg-slate-300 sm:block">
                                                         {user?.photo ? <img src={user.photo} alt="U" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-white bg-slate-400">{user?.name.charAt(0)}</div>}
                                                     </div>
                                                     <form className="flex-1 relative" onSubmit={(e) => handleCreateComment(e, post.id)}>
                                                         <input type="text" placeholder="Escribe un comentario..."
-                                                            className="w-full h-10 pl-4 pr-12 rounded-full border border-subtle bg-surface text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                            className="h-10 w-full rounded-lg border border-subtle bg-surface pl-4 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                                             value={newCommentContent} onChange={(e) => setNewCommentContent(e.target.value)} />
-                                                        <button type="submit" disabled={!newCommentContent.trim()} className="absolute right-1 top-1 w-8 h-8 flex items-center justify-center bg-blue-500 text-white rounded-full disabled:opacity-50 disabled:bg-slate-300 transition-all hover:scale-105">
+                                                        <button type="submit" disabled={!newCommentContent.trim()} className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:bg-slate-300 disabled:opacity-50">
                                                             <Send className="h-3.5 w-3.5" />
                                                         </button>
                                                     </form>
@@ -464,7 +464,7 @@ function MensajesTab() {
 
     const loadConversations = async () => {
         if (!user) return;
-        try { const data = await ChatService.getConversations(user.id); setConversations(data); } catch { console.error("Error loading conversations"); }
+        try { const data = await ChatService.getConversations(user.id); setConversations(data); } catch { console.warn("Error loading conversations"); }
     };
 
     const loadNeighbors = async () => {
@@ -502,35 +502,35 @@ function MensajesTab() {
     const filtered = neighbors.filter(n => (n.name || "").toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
-        <div className="h-[calc(100vh-20rem)] flex shadow-sm shadow-slate-200/50 dark:shadow-none border border-subtle rounded-lg bg-surface overflow-hidden">
+        <div className="flex h-[calc(100vh-20rem)] overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
             {/* Left Sidebar */}
-            <div className="hidden lg:flex flex-col w-72 border-r border-subtle bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="hidden w-72 flex-col border-r border-subtle bg-canvas lg:flex">
                 <div className="px-4 py-4">
-                    <div className="grid grid-cols-2 bg-elevated rounded-lg p-1 gap-1">
-                        <button onClick={() => { setMode("global"); setActivePeer(null); }} className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === "global" ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>🌐 Global</button>
-                        <button onClick={() => setMode("direct")} className={clsx("py-2 px-3 rounded-xl text-sm font-bold transition-all", mode === "direct" ? "bg-white dark:bg-slate-700 cc-text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>💬 Directos</button>
+                    <div className="grid grid-cols-2 gap-1 rounded-lg bg-elevated p-1">
+                        <button onClick={() => { setMode("global"); setActivePeer(null); }} className={clsx("rounded-md px-3 py-2 text-sm font-semibold transition-colors", mode === "global" ? "bg-surface cc-text-primary shadow-sm" : "cc-text-secondary hover:bg-surface")}>General</button>
+                        <button onClick={() => setMode("direct")} className={clsx("rounded-md px-3 py-2 text-sm font-semibold transition-colors", mode === "direct" ? "bg-surface cc-text-primary shadow-sm" : "cc-text-secondary hover:bg-surface")}>Directos</button>
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {mode === "global" ? (
-                        <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-success-bg text-success-fg">
-                            <div className="p-2 bg-success-bg rounded-xl"><Users className="h-4 w-4" /></div>
-                            <div className="text-left"><p className="font-bold text-sm">Canal General</p><p className="text-[11px] font-medium text-emerald-400">Todos los vecinos</p></div>
+                        <button className="flex w-full items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 p-3 text-brand-700">
+                            <div className="rounded-lg bg-white p-2"><Users className="h-4 w-4" /></div>
+                            <div className="text-left"><p className="text-sm font-semibold">Canal general</p><p className="text-[11px] font-medium text-brand-600">Todos los vecinos</p></div>
                         </button>
                     ) : (
                         <>
                             <div className="relative mb-3">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <input type="text" placeholder="Buscar vecino..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-surface border border-subtle text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
+                                    className="w-full rounded-lg border border-subtle bg-surface py-2.5 pl-9 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
                             </div>
                             {conversations.length > 0 && (
                                 <div className="mb-1">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Recientes</p>
                                     {conversations.map(conv => (
                                         <button key={conv.peerId} onClick={() => setActivePeer(conv)}
-                                            className={clsx("w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1", activePeer?.peerId === conv.peerId ? "bg-success-bg text-emerald-600" : "hover:bg-elevated cc-text-secondary")}>
-                                            <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-300 flex-shrink-0">
+                                            className={clsx("mb-1 flex w-full items-center gap-3 rounded-lg p-3 transition-colors", activePeer?.peerId === conv.peerId ? "bg-brand-50 text-brand-700" : "cc-text-secondary hover:bg-elevated")}>
+                                            <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-slate-300">
                                                 {conv.peerProfile?.avatar_url ? <img src={conv.peerProfile.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-slate-500">{conv.peerProfile?.name?.charAt(0) || "?"}</div>}
                                             </div>
                                             <div className="text-left min-w-0"><p className="font-bold text-sm truncate">{conv.peerProfile?.name}</p><p className="text-[11px] text-slate-400 truncate">{conv.lastMessage}</p></div>
@@ -541,8 +541,8 @@ function MensajesTab() {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Vecinos</p>
                             {filtered.length === 0 ? <p className="text-xs text-center text-slate-400 py-4">Sin resultados</p> : filtered.map(n => (
                                 <button key={n.id} onClick={() => openDirectChat(n)}
-                                    className={clsx("w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-1", activePeer?.peerId === n.id ? "bg-success-bg" : "hover:bg-elevated")}>
-                                    <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex-shrink-0">
+                                    className={clsx("mb-1 flex w-full items-center gap-3 rounded-lg p-3 transition-colors", activePeer?.peerId === n.id ? "bg-brand-50" : "hover:bg-elevated")}>
+                                    <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-brand-500">
                                         {n.avatar_url ? <img src={n.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-white">{n.name?.charAt(0) || "?"}</div>}
                                     </div>
                                     <p className="font-bold text-sm cc-text-secondary truncate">{n.name}</p>
@@ -555,31 +555,31 @@ function MensajesTab() {
 
             {/* Chat Area */}
             <div className="flex-1 flex flex-col bg-surface relative">
-                <div className="h-16 flex items-center justify-between px-6 border-b border-subtle bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-10">
+                <div className="z-10 flex h-16 items-center justify-between border-b border-subtle bg-surface px-6">
                     <div className="flex items-center gap-3">
-                        {mode === "direct" && activePeer && <button onClick={() => setActivePeer(null)} className="p-2 rounded-xl hover:bg-elevated"><ArrowLeft className="h-5 w-5 text-slate-400" /></button>}
-                        <div className={clsx("p-2 rounded-xl", mode === "global" ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] shadow-emerald-500/30" : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/30", "shadow-sm")}>
+                        {mode === "direct" && activePeer && <button onClick={() => setActivePeer(null)} className="rounded-lg p-2 hover:bg-elevated"><ArrowLeft className="h-5 w-5 text-slate-400" /></button>}
+                        <div className="rounded-lg bg-slate-900 p-2 shadow-sm">
                             <MessageSquare className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                            <h3 className="font-semibold cc-text-primary">{mode === "global" ? "Chat Global" : (activePeer?.peerProfile.name || "Mensajes Directos")}</h3>
-                            <p className="text-xs font-medium text-slate-500">{mode === "global" ? "Toda la comunidad" : (activePeer ? "1‑a‑1 privado" : "Selecciona un vecino")}</p>
+                            <h3 className="font-semibold cc-text-primary">{mode === "global" ? "Chat general" : (activePeer?.peerProfile.name || "Mensajes directos")}</h3>
+                            <p className="text-xs font-medium text-slate-500">{mode === "global" ? "Toda la comunidad" : (activePeer ? "Conversacion privada" : "Selecciona un vecino")}</p>
                         </div>
                     </div>
                 </div>
 
                 {mode === "direct" && !activePeer ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-                        <div className="p-6 bg-success-bg rounded-lg mb-2"><MessageCircle className="h-14 w-14 text-emerald-400" /></div>
-                        <h3 className="text-xl font-semibold cc-text-primary">Mensajes Directos</h3>
-                        <p className="text-sm font-medium text-slate-400 max-w-xs">Selecciona un vecino del panel izquierdo para iniciar una conversación privada.</p>
+                        <div className="mb-2 rounded-lg bg-brand-50 p-6"><MessageCircle className="h-14 w-14 text-brand-500" /></div>
+                        <h3 className="text-xl font-semibold cc-text-primary">Mensajes directos</h3>
+                        <p className="max-w-xs text-sm font-medium text-slate-400">Selecciona un vecino del panel izquierdo para iniciar una conversacion privada.</p>
                     </div>
                 ) : (
                     <>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                            {isLoading ? <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></div> : (
+                            {isLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></div> : (
                                 <AnimatePresence initial={false}>
-                                    {messages.length === 0 && <div className="flex flex-col items-center justify-center h-full py-16 text-center gap-3"><MessageCircle className="h-12 w-12 text-slate-200 dark:text-slate-700" /><p className="text-sm font-bold text-slate-400">Sin mensajes aún. ¡Saluda primero!</p></div>}
+                                    {messages.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center"><MessageCircle className="h-12 w-12 text-slate-200 dark:text-slate-700" /><p className="text-sm font-bold text-slate-400">Sin mensajes aun. Saluda primero.</p></div>}
                                     {messages.map((msg, idx) => {
                                         const isMe = msg.sender_id === user?.id;
                                         const prev = messages[idx - 1];
@@ -589,14 +589,14 @@ function MensajesTab() {
                                             <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={clsx("flex flex-col", isMe ? "items-end" : "items-start")}>
                                                 <div className={clsx("flex items-end gap-2 max-w-[85%] lg:max-w-[70%]", isMe && "flex-row-reverse")}>
                                                     {!isMe && (
-                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-elevated mb-1">
+                                                        <div className="mb-1 h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg bg-elevated">
                                                             {showAvatar ? (msg.profiles?.avatar_url ? <img src={msg.profiles.avatar_url} alt="av" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">{msg.profiles?.name?.charAt(0) || "?"}</div>) : null}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
                                                         {!isMe && showAvatar && <span className="text-[11px] font-semibold text-slate-400 ml-1 mb-1">{msg.profiles?.name}</span>}
-                                                        <div className={clsx("px-5 py-3 text-[15px] font-medium leading-relaxed drop-shadow-sm",
-                                                            isMe ? "bg-gradient-to-br from-[#10B981] to-[#0D9488] text-white rounded-lg rounded-tr-sm" : "bg-elevated cc-text-primary rounded-lg rounded-tl-sm border border-slate-200/50 dark:border-slate-700/50")}>
+                                                        <div className={clsx("px-5 py-3 text-[15px] font-medium leading-relaxed",
+                                                            isMe ? "rounded-lg rounded-tr-sm bg-brand-500 text-white" : "rounded-lg rounded-tl-sm border border-slate-200/50 bg-elevated cc-text-primary dark:border-slate-700/50")}>
                                                             {msg.content}
                                                         </div>
                                                     </div>
@@ -613,8 +613,8 @@ function MensajesTab() {
                             <form onSubmit={handleSendMessage} className="relative flex items-center max-w-4xl mx-auto">
                                 <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder={mode === "global" ? "Escribe un mensaje a la comunidad..." : `Escribe a ${activePeer?.peerProfile.name}...`}
-                                    className="w-full pl-6 pr-14 py-4 bg-elevated border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-inner" />
-                                <button type="submit" disabled={!newMessage.trim() || isSending} className="absolute right-2 p-2.5 bg-gradient-to-r from-[#10B981] to-[#0D9488] text-white rounded-full disabled:opacity-50 disabled:grayscale transition-all hover:scale-105 shadow-md">
+                                    className="w-full rounded-lg border border-subtle bg-elevated py-4 pl-6 pr-14 text-sm font-medium transition-all focus:ring-2 focus:ring-brand-500/30" />
+                                <button type="submit" disabled={!newMessage.trim() || isSending} className="absolute right-2 rounded-md bg-brand-500 p-2.5 text-white shadow-sm transition-colors hover:bg-brand-600 disabled:opacity-50">
                                     {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
                             </form>
@@ -641,7 +641,7 @@ export default function ComunicacionesPage() {
                     </div>
                     <h1 className="text-3xl font-bold cc-text-primary">Comunicaciones</h1>
                 </div>
-                <p className="cc-text-secondary ml-1">Centro unificado de comunicación de la comunidad</p>
+                <p className="ml-1 cc-text-secondary">Centro unificado de comunicacion de la comunidad</p>
             </div>
 
             {/* Tab Bar */}
