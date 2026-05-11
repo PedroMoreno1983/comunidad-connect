@@ -20,6 +20,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
     const [scanResult, setScanResult] = useState<Record<string, any> | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const { toast } = useToast();
+    const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
 
     const simulateScan = async () => {
         setIsScanning(true);
@@ -29,9 +30,36 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
         // Simulate camera focus/processing
         setTimeout(async () => {
             // 70% chance of success, 30% error
-            const isSuccess = Math.random() > 0.3;
+            const isSuccess = isDemoUser ? true : Math.random() > 0.3;
 
             if (isSuccess) {
+                if (isDemoUser) {
+                    const demoInvitations = [
+                        { guestName: "Valentina Torres", guestDni: "18.442.991-2", unitId: "1204" },
+                        { guestName: "Mateo Fuentes", guestDni: "21.004.312-8", unitId: "805" },
+                        { guestName: "Proveedor Mantencion", guestDni: "76.221.900-5", unitId: "1505" },
+                    ];
+                    const invitation = demoInvitations[Math.floor(Math.random() * demoInvitations.length)];
+                    const newLog: VisitorLog = {
+                        id: `demo-qr-${Date.now()}`,
+                        visitorName: invitation.guestName,
+                        unitId: invitation.unitId,
+                        entryTime: new Date().toISOString(),
+                        isQr: true,
+                    };
+
+                    setScanResult(invitation);
+                    toast({
+                        title: "Escaneo demo exitoso",
+                        description: `Acceso concedido a ${invitation.guestName}.`,
+                        variant: "success",
+                    });
+
+                    if (onScanSuccess) onScanSuccess(newLog);
+                    setIsScanning(false);
+                    return;
+                }
+
                 const supabase = createClient();
                 const { data } = await supabase
                     .from('qr_invitations')
