@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import * as XLSX from 'xlsx';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
@@ -23,6 +24,45 @@ REGLAS ABSOLUTAS:
 3. Si el documento es masivo, extrae la lista completa sin resumir.
 4. Si el documento no tiene personas, devuelve un array vacío [].
 `;
+
+function spreadsheetToText(buffer: Buffer) {
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const sections: string[] = [];
+
+    for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        if (!worksheet) continue;
+
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+            defval: '',
+            raw: false,
+        });
+
+        if (rows.length === 0) continue;
+
+        const headers = Array.from(
+            rows.reduce((set, row) => {
+                Object.keys(row).forEach(key => {
+                    if (key && !key.startsWith('__EMPTY')) set.add(key);
+                });
+                return set;
+            }, new Set<string>())
+        );
+
+        const rowLines = rows.slice(0, 1000).map((row, index) => {
+            const values = headers
+                .map(header => `${header}: ${String(row[header] ?? '').trim()}`)
+                .filter(item => !item.endsWith(':'));
+            return values.length ? `Fila ${index + 1}: ${values.join(' | ')}` : '';
+        }).filter(Boolean);
+
+        if (rowLines.length > 0) {
+            sections.push([`Hoja: ${sheetName}`, ...rowLines].join('\n'));
+        }
+    }
+
+    return sections.join('\n\n');
+}
 
 async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { mimeType: string, data: string }) {
     // Usamos un ID estable de Gemini; los alias "-latest" pueden saturarse o cambiar.
@@ -107,10 +147,12 @@ export async function POST(request: Request) {
             const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+            extractedText = spreadsheetToText(buffer);
         } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
             extractedText = buffer.toString('utf-8');
         } else {
-            return NextResponse.json({ error: 'Formato no soportado (.pdf, .docx, .txt, .csv)' }, { status: 400 });
+            return NextResponse.json({ error: 'Formato no soportado (.pdf, .docx, .xlsx, .xls, .txt, .csv)' }, { status: 400 });
         }
 
         if (!extractedText.trim() && !extractedInlineData) {
@@ -134,14 +176,14 @@ export async function POST(request: Request) {
                 parsedJson = [parsedJson]; // Forzar Array si devolvió objeto
             }
         } catch {
-            console.error("Gemini no devolvió un JSON válido:", jsonString);
+            console.warn("Gemini no devolvio un JSON valido:", jsonString);
             throw new Error("La Inteligencia Artificial no pudo estructurar los datos correctamente. Intenta subir un archivo más limpio.");
         }
 
         return NextResponse.json({ data: parsedJson });
 
     } catch (error: unknown) {
-        console.error('Extractor Error:', error);
+        console.warn('Extractor Error:', error);
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }

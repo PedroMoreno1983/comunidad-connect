@@ -39,7 +39,7 @@ function friendlyError(message?: string) {
         return "El archivo tardo demasiado en procesarse. Prueba con un PDF mas liviano o divide la nomina en partes.";
     }
     if (text.includes("json") || text.includes("gemini") || text.includes("api")) {
-        return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla CSV/TXT.";
+        return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla Excel/CSV/TXT.";
     }
     if (text.includes("supabase") || text.includes("database")) {
         return "No pudimos guardar la informacion en este momento. Revisa tu conexion e intenta nuevamente.";
@@ -139,7 +139,7 @@ export default function AdminOnboardingPage() {
 
             throw new Error(result?.error || "extract-failed");
         } catch (err: unknown) {
-            console.error("[AdminOnboarding] extract failed:", err);
+            console.warn("[AdminOnboarding] extract failed:", err);
             toast({
                 title: "No se pudo procesar el archivo",
                 description: friendlyError(err instanceof Error ? err.message : undefined),
@@ -210,7 +210,7 @@ export default function AdminOnboardingPage() {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || "upsert-failed");
         } catch (error: unknown) {
-            console.error("[AdminOnboarding] sync failed:", error);
+            console.warn("[AdminOnboarding] sync failed:", error);
             toast({
                 title: "No se pudo sincronizar",
                 description: friendlyError(error instanceof Error ? error.message : undefined),
@@ -282,7 +282,7 @@ export default function AdminOnboardingPage() {
                         <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
                                 ? "Estamos extrayendo nombres, unidades, correos y telefonos. Manten esta ventana abierta."
-                                : "Acepta PDF, Word, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
+                                : "Acepta PDF, Word, Excel, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
                         </p>
 
                         {!isExtracting && (
@@ -292,7 +292,7 @@ export default function AdminOnboardingPage() {
                                     Seleccionar archivo
                                     <input
                                         type="file"
-                                        accept=".pdf,.docx,.doc,.txt,.csv"
+                                        accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv"
                                         onChange={handleFileUpload}
                                         disabled={isExtracting}
                                         className="hidden"
