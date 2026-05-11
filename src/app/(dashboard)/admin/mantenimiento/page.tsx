@@ -71,6 +71,8 @@ const fallbackServices: ServiceRow[] = [
     { id: "demo-s3", service_type: "seguridad", description: "Ajuste de camaras en estacionamiento subterraneo", status: "in-progress", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
 ];
 
+const demoMaintenanceStorageKey = "cc_demo_maintenance_services";
+
 const fallbackCases: CaseRow[] = [
     { id: "demo-c1", title: "Filtracion reportada en 1204", category: "plomeria", urgency: "alta", status: "open", unit_label: "1204", source_message: "Agua cayendo desde el cielo del bano", created_at: new Date().toISOString() },
     { id: "demo-c2", title: "Ruidos recurrentes fuera de horario", category: "ruido", urgency: "media", status: "in_progress", unit_label: "1505", source_message: "Cuarto reporte del mes", created_at: new Date(Date.now() - 5 * 36e5).toISOString() },
@@ -88,6 +90,21 @@ const fallbackLogs: LogRow[] = [
 ];
 
 const categories = ["plomeria", "electrico", "ascensor", "seguridad", "limpieza", "otro"] as const;
+
+function getDemoMaintenanceServices(): ServiceRow[] {
+    if (typeof window === "undefined") return fallbackServices;
+    try {
+        const stored = JSON.parse(window.localStorage.getItem(demoMaintenanceStorageKey) || "[]") as ServiceRow[];
+        return stored.length > 0 ? stored : fallbackServices;
+    } catch {
+        return fallbackServices;
+    }
+}
+
+function saveDemoMaintenanceServices(services: ServiceRow[]) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(demoMaintenanceStorageKey, JSON.stringify(services));
+}
 
 function dateLabel(value?: string | null) {
     if (!value) return "Sin fecha";
@@ -121,6 +138,7 @@ function serviceDateOf(item: ServiceRow) {
 export default function MantenimientoAdminPage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"operacion" | "activos" | "sensores">("operacion");
     const [services, setServices] = useState<ServiceRow[]>([]);
@@ -138,6 +156,15 @@ export default function MantenimientoAdminPage() {
 
     async function loadData() {
         setLoading(true);
+        if (isDemoUser) {
+            setServices(getDemoMaintenanceServices());
+            setCases(fallbackCases);
+            setAssets(fallbackAssets);
+            setLogs(fallbackLogs);
+            setLoading(false);
+            return;
+        }
+
         const [serviceRes, caseRes, assetRes, logRes] = await Promise.allSettled([
             supabase.from("service_requests").select("*").order("created_at", { ascending: false }).limit(12),
             supabase.from("coco_cases").select("id, title, category, urgency, status, unit_label, source_message, created_at").order("created_at", { ascending: false }).limit(12),
@@ -158,9 +185,10 @@ export default function MantenimientoAdminPage() {
     }
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadData();
-    }, []);
+        // Mantencion recarga solo cuando cambia entre demo/produccion.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDemoUser]);
 
     const metrics = useMemo(() => {
         const activeCases = cases.filter(item => !["resolved", "closed", "cancelled"].includes(item.status || ""));
@@ -180,6 +208,25 @@ export default function MantenimientoAdminPage() {
         }
 
         setSaving(true);
+        if (isDemoUser) {
+            const task: ServiceRow = {
+                id: `demo-maintenance-${Date.now()}`,
+                service_type: form.service_type,
+                description: `[${form.title}] ${form.description}`,
+                status: "pending",
+                scheduled_date: form.scheduled_date || new Date().toISOString(),
+                created_at: new Date().toISOString(),
+            };
+            const nextServices = [task, ...services];
+            setServices(nextServices);
+            saveDemoMaintenanceServices(nextServices);
+            setSaving(false);
+            toast({ title: "Tarea demo creada", description: "Quedó visible en la cola operativa.", variant: "success" });
+            setShowTask(false);
+            setForm({ title: "", description: "", service_type: "plomeria", scheduled_date: "" });
+            return;
+        }
+
         const { error } = await supabase.from("service_requests").insert({
             requester_id: user?.id,
             unit_id: user?.unitId || "administracion",
@@ -203,7 +250,13 @@ export default function MantenimientoAdminPage() {
     }
 
     async function closeService(id: string) {
-        setServices(prev => prev.map(item => item.id === id ? { ...item, status: "completed" } : item));
+        const nextServices = services.map(item => item.id === id ? { ...item, status: "completed" } : item);
+        setServices(nextServices);
+        if (isDemoUser) {
+            saveDemoMaintenanceServices(nextServices);
+            toast({ title: "Tarea demo cerrada", description: "El estado quedó guardado en esta demo.", variant: "success" });
+            return;
+        }
         await supabase.from("service_requests").update({ status: "completed" }).eq("id", id);
     }
 
@@ -264,13 +317,13 @@ export default function MantenimientoAdminPage() {
                 <Metric icon={<Bot className="h-5 w-5" />} label="Casos CoCo activos" value={metrics.activeCases} tone="emerald" detail={`${metrics.criticalCases} alta prioridad`} />
                 <Metric icon={<Wrench className="h-5 w-5" />} label="Solicitudes cerradas" value={`${metrics.completed}/${metrics.total}`} tone="blue" detail="Ciclo mensual" />
                 <Metric icon={<AlertTriangle className="h-5 w-5" />} label="Activos criticos" value={assets.filter(item => healthOf(item) === "critical").length} tone="amber" detail="Requieren seguimiento" />
-                <Metric icon={<Activity className="h-5 w-5" />} label="Costo mantencion" value={money(metrics.cost)} tone="slate" detail="Ultimos registros" />
+                <Metric icon={<Activity className="h-5 w-5" />} label="Costo mantención" value={money(metrics.cost)} tone="slate" detail="Últimos registros" />
                 </div>
             </section>
 
             <nav className="flex gap-2 overflow-x-auto border-b border-subtle">
                 {[
-                    ["operacion", "Operacion"],
+                    ["operacion", "Operación"],
                     ["activos", "Activos"],
                     ["sensores", "Sensores"],
                 ].map(([key, label]) => (
@@ -301,7 +354,7 @@ export default function MantenimientoAdminPage() {
                                             <Badge tone={item.status === "completed" ? "green" : "blue"}>{statusLabel(item.status)}</Badge>
                                             <span className="text-xs font-bold cc-text-tertiary">{dateLabel(serviceDateOf(item))}</span>
                                         </div>
-                                        <h3 className="font-semibold cc-text-primary">{item.description || "Solicitud tecnica"}</h3>
+                                        <h3 className="font-semibold cc-text-primary">{item.description || "Solicitud técnica"}</h3>
                                     </div>
                                     <button onClick={() => closeService(item.id)} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white disabled:opacity-40" disabled={item.status === "completed"}>
                                         <CheckCircle2 className="h-4 w-4" />
@@ -340,9 +393,9 @@ export default function MantenimientoAdminPage() {
                                 </div>
                                 <h3 className="text-lg font-semibold cc-text-primary">{asset.name || "Activo tecnico"}</h3>
                                 <p className="mt-1 text-sm font-bold cc-text-secondary">{asset.brand} {asset.model}</p>
-                                <p className="mt-4 text-xs font-bold uppercase tracking-widest cc-text-tertiary">{asset.location || "Sin ubicacion"}</p>
+                                <p className="mt-4 text-xs font-bold uppercase tracking-widest cc-text-tertiary">{asset.location || "Sin ubicación"}</p>
                                 <div className="mt-5 flex items-center justify-between rounded-lg bg-elevated px-4 py-3">
-                                    <span className="text-xs font-bold cc-text-secondary">Proxima revision</span>
+                                    <span className="text-xs font-bold cc-text-secondary">Próxima revisión</span>
                                     <span className="text-xs font-bold cc-text-primary">{dateLabel(asset.next_maintenance || asset.nextMaintenance)}</span>
                                 </div>
                             </article>
@@ -380,8 +433,8 @@ export default function MantenimientoAdminPage() {
                             <button onClick={() => setShowTask(false)} className="rounded-lg p-2 hover:bg-elevated"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="space-y-4">
-                            <input value={form.title} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Titulo" />
-                            <textarea value={form.description} onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))} className="h-28 w-full resize-none rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Descripcion del trabajo" />
+                            <input value={form.title} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Título" />
+                            <textarea value={form.description} onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))} className="h-28 w-full resize-none rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none" placeholder="Descripción del trabajo" />
                             <div className="grid grid-cols-2 gap-3">
                                 <select value={form.service_type} onChange={event => setForm(prev => ({ ...prev, service_type: event.target.value }))} className="rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm font-semibold outline-none">
                                     {categories.map(category => <option key={category} value={category}>{category}</option>)}
