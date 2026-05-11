@@ -345,14 +345,48 @@ export const CondoFeeService = {
     async getAll() {
         const { data, error } = await supabase
             .from('expenses')
-            .select(`
-                *,
-                units:unit_id (number, tower)
-            `)
+            .select('*')
             .order('month', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+
+        const expenses = data || [];
+        const unitIds = Array.from(new Set(expenses.map((expense: { unit_id?: string }) => expense.unit_id).filter(Boolean)));
+
+        if (unitIds.length === 0) {
+            return expenses.map((expense: { unit_id?: string }) => ({
+                ...expense,
+                units: {
+                    number: expense.unit_id || 'Sin unidad',
+                    tower: 'A',
+                },
+            }));
+        }
+
+        const { data: units, error: unitsError } = await supabase
+            .from('units')
+            .select('id, number, unit_number, tower')
+            .in('id', unitIds);
+
+        if (unitsError) {
+            console.warn('[CondoFeeService] Units lookup unavailable, using unit ids as labels:', unitsError.message || unitsError);
+        }
+
+        type UnitLookup = { id: string; number?: string; unit_number?: string; tower?: string };
+        const unitsById = new Map<string, UnitLookup>(
+            ((units || []) as UnitLookup[]).map(unit => [unit.id, unit])
+        );
+
+        return expenses.map((expense: { unit_id?: string }) => {
+            const unit = expense.unit_id ? unitsById.get(expense.unit_id) : null;
+            return {
+                ...expense,
+                units: {
+                    number: unit?.number || unit?.unit_number || expense.unit_id || 'Sin unidad',
+                    tower: unit?.tower || 'A',
+                },
+            };
+        });
     },
 
     async markAsPaid(expenseId: string) {
