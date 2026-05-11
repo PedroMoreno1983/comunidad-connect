@@ -20,8 +20,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { createDemoAnnouncement, getDemoAnnouncements, mergeDemoAnnouncements, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
 export default function FeedPage() {
     const { user } = useAuth();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -42,9 +44,13 @@ export default function FeedPage() {
                     priority: ann.priority as any,
                     createdAt: ann.created_at,
                 }));
-                setAnnouncements(mappedData);
+                setAnnouncements(isDemoUser ? mergeDemoAnnouncements(mappedData) : mappedData);
             } catch (error) {
                 console.error("Error al cargar anuncios:", error);
+                if (isDemoUser) {
+                    setAnnouncements(getDemoAnnouncements());
+                    return;
+                }
                 toast({
                     title: "Error de Conexión",
                     description: "No se pudieron cargar los comunicados.",
@@ -56,7 +62,7 @@ export default function FeedPage() {
         };
 
         fetchAnnouncements();
-    }, [toast]);
+    }, [isDemoUser, toast]);
 
     const getIcon = (priority: string) => {
         switch (priority) {
@@ -103,6 +109,21 @@ export default function FeedPage() {
         }
 
         try {
+            if (isDemoUser) {
+                const demoAnnouncement = createDemoAnnouncement(user, newPost as { title: string; content: string; priority: "info" | "alert" | "event" });
+                const nextAnnouncements = [demoAnnouncement, ...announcements];
+                setAnnouncements(nextAnnouncements);
+                saveDemoAnnouncements(nextAnnouncements);
+                setIsDialogOpen(false);
+                setNewPost({ title: '', content: '', priority: 'info' });
+                toast({
+                    title: "Aviso demo publicado",
+                    description: "Quedo visible en Muro de Avisos y Comunicaciones.",
+                    variant: "success",
+                });
+                return;
+            }
+
             const data = await AnnouncementsService.createAnnouncement({
                 title: newPost.title,
                 content: newPost.content,
