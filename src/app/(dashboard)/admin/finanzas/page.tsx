@@ -39,8 +39,8 @@ export default function AdminFinanzasPage() {
                         { id: 'a1', type: 'income', title: 'Recaudación Registrada', amount: stats.totalRevenue, date: new Date().toISOString() },
                     ]
                 });
-            } catch (err) {
-                console.error("Error loading finance stats:", err);
+            } catch {
+                console.warn("Finance stats unavailable; using demo fallback data.");
                 setUsingFallback(true);
                 setFinances(fallbackFinances);
             } finally {
