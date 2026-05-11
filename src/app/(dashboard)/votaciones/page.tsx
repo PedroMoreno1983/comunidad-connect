@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PollCard } from "@/components/polls/PollCard";
 import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import {
-    Vote, BarChart3,
-    ShieldCheck, Filter, Users
-} from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, ShieldCheck, Users, Vote } from "lucide-react";
 import { Poll } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
+
+const demoStorageKey = "cc_demo_admin_polls";
 
 const demoActivePolls: Poll[] = [
     {
@@ -40,6 +39,21 @@ const demoClosedPolls: Poll[] = [
     },
 ];
 
+function loadDemoPublishedPolls() {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as Poll[];
+    } catch {
+        return [];
+    }
+}
+
+function saveDemoPublishedPolls(polls: Poll[]) {
+    if (typeof window === "undefined") return;
+    const published = polls.filter(poll => poll.id.startsWith("demo-admin-poll-"));
+    window.localStorage.setItem(demoStorageKey, JSON.stringify(published.slice(0, 20)));
+}
+
 export default function VotacionesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -48,26 +62,31 @@ export default function VotacionesPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
-            loadPolls();
-        }
+        if (user) loadPolls();
         // Polls are refreshed when the authenticated user identity changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
+    const stats = useMemo(() => {
+        const totalActiveVotes = activePolls.reduce((sum, poll) => sum + poll.totalVotes, 0);
+        const pendingVotes = activePolls.filter(poll => !(poll as any).hasVotedInit).length;
+        const closingSoon = activePolls.filter(poll => {
+            const daysLeft = Math.ceil((new Date(poll.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            return daysLeft <= 3;
+        }).length;
+        return { totalActiveVotes, pendingVotes, closingSoon };
+    }, [activePolls]);
+
     const mapSupabasePoll = (pollData: any, userVotesArray: { poll_id: string; option_id: string }[]): Poll => {
-        // Map raw supabase payload into frontend Poll format
         const totalVotes = pollData.votes?.length || 0;
         const optionsWithCounts = (pollData.options || []).map((opt: any) => {
             const votesForOption = (pollData.votes || []).filter((v: any) => v.option_id === opt.id).length;
             return {
                 id: opt.id,
                 text: opt.text,
-                votes: votesForOption
+                votes: votesForOption,
             };
         });
-
-        // Did the current user vote in this poll?
         const userVote = userVotesArray.find(v => v.poll_id === pollData.id);
 
         return {
@@ -77,14 +96,13 @@ export default function VotacionesPage() {
             endDate: pollData.end_date,
             status: pollData.status,
             category: pollData.category,
-            totalVotes: totalVotes,
+            totalVotes,
             options: optionsWithCounts,
             createdAt: pollData.created_at,
-            // Extensions for UI that are not in the base Poll interface
             ...({
                 hasVotedInit: !!userVote,
-                votedOptionId: userVote?.option_id || null
-            } as any)
+                votedOptionId: userVote?.option_id || null,
+            } as any),
         } as Poll;
     };
 
@@ -92,29 +110,26 @@ export default function VotacionesPage() {
         setLoading(true);
         try {
             if (user?.email.toLowerCase().endsWith("@demo.com")) {
-                setActivePolls(demoActivePolls);
+                setActivePolls([...loadDemoPublishedPolls(), ...demoActivePolls]);
                 setClosedPolls(demoClosedPolls);
                 return;
             }
 
             const [active, closed] = await Promise.all([
                 PollsService.getActivePolls(),
-                PollsService.getClosedPolls()
+                PollsService.getClosedPolls(),
             ]);
 
-            // To be precise for the UI, let's map them.
-            // We fetch user vote statuses in parallel.
-            const checkVotesPromises = [...(active || []), ...(closed || [])].map((p: any) =>
-                PollsService.hasUserVoted(p.id, user!.id).then(res => ({ poll_id: p.id, vote: res as any }))
+            const checkVotesPromises = [...(active || []), ...(closed || [])].map((poll: any) =>
+                PollsService.hasUserVoted(poll.id, user!.id).then(res => ({ poll_id: poll.id, vote: res as any }))
             );
             const userVotesResults = await Promise.all(checkVotesPromises);
             const validUserVotes = userVotesResults
-                .filter(r => r.vote !== null)
-                .map((r: any) => ({ poll_id: r.poll_id, option_id: r.vote!.option_id }));
+                .filter(result => result.vote !== null)
+                .map((result: any) => ({ poll_id: result.poll_id, option_id: result.vote!.option_id }));
 
-            setActivePolls((active || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
-            setClosedPolls((closed || []).map((p: any) => mapSupabasePoll(p, validUserVotes)));
-
+            setActivePolls((active || []).map((poll: any) => mapSupabasePoll(poll, validUserVotes)));
+            setClosedPolls((closed || []).map((poll: any) => mapSupabasePoll(poll, validUserVotes)));
         } catch (error: unknown) {
             console.error("Error loading polls:", error);
             setActivePolls([]);
@@ -128,12 +143,16 @@ export default function VotacionesPage() {
         if (!user) return;
         try {
             if (user.email.toLowerCase().endsWith("@demo.com")) {
-                setActivePolls(prev => prev.map(poll => poll.id === pollId ? ({
-                    ...poll,
-                    totalVotes: poll.totalVotes + 1,
-                    options: poll.options.map(option => option.id === optionId ? { ...option, votes: option.votes + 1 } : option),
-                    ...({ hasVotedInit: true, votedOptionId: optionId } as any)
-                }) : poll));
+                setActivePolls(prev => {
+                    const next = prev.map(poll => poll.id === pollId ? ({
+                        ...poll,
+                        totalVotes: poll.totalVotes + 1,
+                        options: poll.options.map(option => option.id === optionId ? { ...option, votes: option.votes + 1 } : option),
+                        ...({ hasVotedInit: true, votedOptionId: optionId } as any),
+                    }) : poll);
+                    saveDemoPublishedPolls(next);
+                    return next;
+                });
                 toast({ title: "Voto demo registrado", description: "La preferencia quedo reflejada en esta sesion.", variant: "success" });
                 return;
             }
@@ -143,74 +162,73 @@ export default function VotacionesPage() {
         } catch (error: unknown) {
             console.error("Error voting:", error);
             const err = error as any;
-            if (err.code === '23505') {
-                toast({
-                    title: "Ya has votado",
-                    description: "Solo puedes emitir un voto por consulta.",
-                    variant: "destructive"
-                });
+            if (err.code === "23505") {
+                toast({ title: "Ya has votado", description: "Solo puedes emitir un voto por consulta.", variant: "destructive" });
             } else {
-                const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexión.";
-                toast({
-                    title: "Error al registrar el voto",
-                    description: errorMessage,
-                    variant: "destructive"
-                });
+                const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexion.";
+                toast({ title: "Error al registrar el voto", description: errorMessage, variant: "destructive" });
             }
         }
     };
 
     if (loading) {
-        return <div className="flex items-center justify-center p-20 text-slate-500">Cargando consultas...</div>;
+        return <div className="flex items-center justify-center p-20 text-sm cc-text-secondary">Cargando consultas...</div>;
     }
 
     return (
-        <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                <div className="space-y-2">
-                    <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em]">Participación Comunitaria</h2>
-                    <h1 className="text-4xl font-semibold cc-text-primary">Centro de Votación</h1>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 px-6 py-4 bg-surface rounded-lg border border-subtle shadow-sm">
-                        <Users className="h-5 w-5 text-blue-500" />
-                        <span className="text-sm font-semibold cc-text-primary">Participando</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-slate-900 rounded-lg p-10 text-white relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">
-                    <ShieldCheck className="h-40 w-40 text-blue-400" />
-                </div>
-                <div className="relative z-10 max-w-2xl space-y-6">
-                    <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                        <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">Democracia Digital</span>
-                    </div>
-                    <h2 className="text-3xl font-semibold leading-tight">Su opinión es fundamental para el desarrollo del condominio.</h2>
-                    <p className="font-medium text-slate-400">
-                        Todas las votaciones en ComunidadConnect son seguras. Los resultados finales se publican automáticamente al finalizar el período de consulta.
+        <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
+            <header className="flex flex-col justify-between gap-5 border-b border-subtle pb-6 lg:flex-row lg:items-end">
+                <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Participacion comunitaria</p>
+                    <h1 className="mt-2 text-3xl font-semibold cc-text-primary">Centro de votacion</h1>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">
+                        Revisa las consultas abiertas de tu comunidad, emite tu voto y consulta resultados historicos de forma ordenada.
                     </p>
                 </div>
-            </div>
-
-            <div className="space-y-8">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Vote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <h2 className="text-2xl font-semibold cc-text-primary">Consultas Activas</h2>
+                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Estado actual</p>
+                    <div className="mt-2 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-success-fg" />
+                        <span className="text-sm font-semibold cc-text-primary">{stats.pendingVotes} votacion(es) por revisar</span>
                     </div>
-                    <button className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest hover:text-blue-500 transition-colors">
-                        <Filter className="h-4 w-4" />
-                        Filtrar
-                    </button>
+                </div>
+            </header>
+
+            <section className="grid gap-4 md:grid-cols-3">
+                <MetricCard icon={<Vote className="h-5 w-5" />} label="Consultas activas" value={activePolls.length} helper="Disponibles para votar" />
+                <MetricCard icon={<Users className="h-5 w-5" />} label="Votos activos" value={stats.totalActiveVotes} helper="Participacion registrada" />
+                <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los proximos 3 dias" dark />
+            </section>
+
+            <section className="rounded-lg border border-subtle bg-slate-950 p-6 text-white shadow-sm lg:p-8">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+                    <div>
+                        <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-300">
+                            <ShieldCheck className="h-4 w-4" />
+                            Democracia digital
+                        </div>
+                        <h2 className="text-2xl font-semibold">Tu voto queda registrado para la decision comunitaria.</h2>
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                            Las consultas abiertas se muestran con fecha de cierre, opciones y resultados agregados cuando ya participaste o cuando finalizan.
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Confianza</p>
+                        <p className="mt-2 text-3xl font-semibold">{activePolls.length + closedPolls.length}</p>
+                        <p className="mt-1 text-sm text-slate-300">consultas en la comunidad</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="space-y-5">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-xl font-semibold cc-text-primary">Consultas activas</h2>
+                        <p className="mt-1 text-sm cc-text-secondary">Selecciona una opcion y confirma tu voto.</p>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid gap-5 lg:grid-cols-2">
                     {activePolls.map((poll) => (
                         <PollCard
                             key={poll.id}
@@ -224,23 +242,24 @@ export default function VotacionesPage() {
                         <div className="lg:col-span-2">
                             <EmptyState
                                 icon={<Vote className="h-6 w-6" />}
-                                title="Sin Consultas Activas"
+                                title="Sin consultas activas"
                                 description="No hay votaciones o consultas comunitarias activas en este momento."
                             />
                         </div>
                     )}
                 </div>
-            </div>
+            </section>
 
             {closedPolls.length > 0 && (
-                <div className="space-y-8">
-                    <div className="flex items-center gap-4 px-2">
-                        <div className="p-3 bg-elevated rounded-lg text-slate-500">
-                            <BarChart3 className="h-6 w-6" />
-                        </div>
-                        <h2 className="text-2xl font-semibold cc-text-primary">Resultados Históricos</h2>
+                <section className="space-y-5">
+                    <div>
+                        <h2 className="flex items-center gap-2 text-xl font-semibold cc-text-primary">
+                            <BarChart3 className="h-5 w-5 cc-text-secondary" />
+                            Resultados historicos
+                        </h2>
+                        <p className="mt-1 text-sm cc-text-secondary">Consultas cerradas y participacion agregada.</p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                         {closedPolls.map((poll) => (
                             <PollCard
                                 key={poll.id}
@@ -250,8 +269,21 @@ export default function VotacionesPage() {
                             />
                         ))}
                     </div>
-                </div>
+                </section>
             )}
         </div>
+    );
+}
+
+function MetricCard({ icon, label, value, helper, dark = false }: { icon: React.ReactNode; label: string; value: number; helper: string; dark?: boolean }) {
+    return (
+        <article className={`rounded-lg border p-5 shadow-sm ${dark ? "border-slate-900 bg-slate-950 text-white" : "border-subtle bg-surface"}`}>
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${dark ? "bg-white/10 text-brand-300" : "bg-brand-50 text-brand-600"}`}>
+                {icon}
+            </div>
+            <p className={`mt-5 text-3xl font-semibold ${dark ? "text-white" : "cc-text-primary"}`}>{value}</p>
+            <p className={`mt-1 text-xs font-bold uppercase tracking-[0.12em] ${dark ? "text-slate-400" : "cc-text-secondary"}`}>{label}</p>
+            <p className={`mt-2 text-sm ${dark ? "text-slate-300" : "cc-text-secondary"}`}>{helper}</p>
+        </article>
     );
 }
