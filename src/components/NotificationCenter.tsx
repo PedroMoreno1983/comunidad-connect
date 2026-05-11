@@ -152,7 +152,7 @@ export function NotificationCenter() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(384px,calc(100vw-32px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50"
+                        className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(264px,calc(100vw-24px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50"
                     >
                         {/* Header */}
                         <div className="p-4 border-b border-subtle flex items-center justify-between">
