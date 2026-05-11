@@ -1,9 +1,49 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import * as XLSX from 'xlsx';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender timeout a 60s en Vercel Hobby
+
+function sheetToTrainingText(buffer: Buffer) {
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const sections: string[] = [];
+
+    for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        if (!worksheet) continue;
+
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+            defval: '',
+            raw: false,
+        });
+
+        if (rows.length === 0) continue;
+
+        const headers = Array.from(
+            rows.reduce((set, row) => {
+                Object.keys(row).forEach(key => {
+                    if (key && !key.startsWith('__EMPTY')) set.add(key);
+                });
+                return set;
+            }, new Set<string>())
+        );
+
+        const rowLines = rows.slice(0, 500).map((row, index) => {
+            const values = headers
+                .map(header => `${header}: ${String(row[header] ?? '').trim()}`)
+                .filter(item => !item.endsWith(':'));
+            return values.length ? `Fila ${index + 1}: ${values.join(' | ')}` : '';
+        }).filter(Boolean);
+
+        if (rowLines.length > 0) {
+            sections.push([`Hoja: ${sheetName}`, ...rowLines].join('\n'));
+        }
+    }
+
+    return sections.join('\n\n');
+}
 
 export async function POST(request: Request) {
     try {
@@ -62,12 +102,14 @@ export async function POST(request: Request) {
             const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+            extractedText = sheetToTrainingText(buffer);
         } else if (fileName.endsWith('.txt')) {
             // Leer TXT directamente
             extractedText = buffer.toString('utf-8');
         } else {
             return NextResponse.json({
-                error: 'Formato de archivo no soportado. Por favor sube un PDF, Word (.docx) o TXT.'
+                error: 'Formato de archivo no soportado. Por favor sube PDF, Word, Excel, CSV o TXT.'
             }, { status: 400 });
         }
 
@@ -84,7 +126,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ text: cleanedText });
 
     } catch (error: unknown) {
-        console.error('Error parsing document:', error);
+        console.warn('Error parsing document:', error);
         return NextResponse.json({
             error: 'Ocurrió un error al procesar el archivo. ' + (error instanceof Error ? error.message : '')
         }, { status: 500 });

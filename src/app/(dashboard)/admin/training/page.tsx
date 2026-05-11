@@ -331,7 +331,7 @@ export default function AdminTrainingPage() {
                         <div className="p-8 max-w-4xl mx-auto space-y-8">
                             <div className="relative p-10 border-2 border-dashed border-default rounded-lg bg-canvas/50 hover:bg-elevated transition text-center overflow-hidden">
                                 <input
-                                    type="file" multiple accept=".pdf,.docx,.doc,.txt"
+                                    type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt"
                                     onChange={handleFileUpload} disabled={isUploading || isGenerating}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
                                 />
@@ -342,10 +342,10 @@ export default function AdminTrainingPage() {
                                         <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
                                     <h3 className="text-lg font-bold cc-text-secondary">
-                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDFs, documentos o reglamentos'}
+                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDF, Word, Excel, CSV o reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
-                                        La IA leerá el material y propondrá un guion estructurado para explicar el contenido a la comunidad.
+                                        La IA leera el material y propondra un guion estructurado para explicar el contenido a la comunidad.
                                     </p>
                                 </div>
                             </div>
@@ -360,7 +360,7 @@ export default function AdminTrainingPage() {
                                     onChange={e => setRawText(e.target.value)}
                                     disabled={isGenerating}
                                     className="w-full resize-y rounded-lg border border-default bg-surface px-5 py-4"
-                                    placeholder="Ej: Módulo 1. Cómo reciclar en el condominio..."
+                                    placeholder="Ej: Modulo 1. Como reciclar en el condominio..."
                                 />
                             </div>
 
@@ -371,7 +371,7 @@ export default function AdminTrainingPage() {
                                     disabled={isGenerating || isUploading || !rawText.trim()}
                                     className="flex items-center gap-2 rounded-lg bg-brand-500 px-8 py-3 font-semibold text-white shadow-sm hover:bg-brand-600 disabled:opacity-50"
                                 >
-                                    {isGenerating ? 'Diseñando presentación...' : 'Generar presentación'}
+                                    {isGenerating ? 'Disenando presentacion...' : 'Generar presentacion'}
                                 </button>
                             </div>
                         </div>
