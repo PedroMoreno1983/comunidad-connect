@@ -97,6 +97,23 @@ function getDemoBookings(userId: string): Booking[] {
     ];
 }
 
+const demoBookingsStorageKey = "cc_demo_amenity_bookings";
+
+function getStoredDemoBookings(): Booking[] {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoBookingsStorageKey) || "[]") as Booking[];
+    } catch {
+        return [];
+    }
+}
+
+function saveStoredDemoBookings(bookings: Booking[]) {
+    if (typeof window === "undefined") return;
+    const createdBookings = bookings.filter(booking => booking.id.startsWith("demo-booking-created-"));
+    window.localStorage.setItem(demoBookingsStorageKey, JSON.stringify(createdBookings.slice(0, 30)));
+}
+
 type AmenityRow = Record<string, unknown>;
 type BookingRow = Record<string, unknown> & {
     amenities?: AmenityRow | AmenityRow[] | null;
@@ -160,7 +177,7 @@ export default function AmenitiesPage() {
         setLoading(true);
         if (user && isDemoUser) {
             setAmenities(demoAmenities);
-            setBookings(getDemoBookings(user.id));
+            setBookings([...getStoredDemoBookings(), ...getDemoBookings(user.id)]);
             setLoading(false);
             return;
         }
@@ -232,18 +249,22 @@ export default function AmenitiesPage() {
         try {
             const endTime = `${parseInt(selectedTime) + 2}:00`;
             if (isDemoUser) {
-                setBookings(current => [
-                    ...current,
-                    {
-                        id: `demo-booking-${Date.now()}`,
+                setBookings(current => {
+                    const nextBookings = [
+                        {
+                        id: `demo-booking-created-${Date.now()}`,
                         amenityId: selectedAmenity.id,
                         userId: user.id,
                         date: selectedDate,
                         startTime: selectedTime,
                         endTime,
                         status: "confirmed",
-                    },
-                ]);
+                        } satisfies Booking,
+                        ...current,
+                    ];
+                    saveStoredDemoBookings(nextBookings);
+                    return nextBookings;
+                });
                 setIsDialogOpen(false);
                 toast({
                     title: "Reserva confirmada",
@@ -430,10 +451,12 @@ export default function AmenitiesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {userBookings.map((booking) => {
-                                const amenity = firstRelation((booking as Booking & { amenities?: AmenityRow | AmenityRow[] | null }).amenities);
+                                const amenity = firstRelation((booking as Booking & { amenities?: AmenityRow | AmenityRow[] | null }).amenities)
+                                    || amenities.find(item => item.id === booking.amenityId);
                                 if (!amenity) return null;
-                                const Icon = getIcon(String(amenity.icon_name || amenity.iconName || "Calendar"));
-                                const amenityName = String(amenity.name || "Espacio común");
+                                const amenityRecord = amenity as Amenity & AmenityRow;
+                                const Icon = getIcon(String(amenityRecord.icon_name || amenityRecord.iconName || "Calendar"));
+                                const amenityName = String(amenityRecord.name || "Espacio común");
                                 return (
                                     <div key={booking.id} className="flex items-center gap-4 rounded-lg border border-subtle bg-elevated p-4">
                                         <div className="rounded-lg bg-surface p-2 cc-text-secondary">
