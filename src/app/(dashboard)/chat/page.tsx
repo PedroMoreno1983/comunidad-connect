@@ -34,6 +34,15 @@ function minutesAgo(minutes: number) {
 }
 
 function getDemoGlobalMessages(userName?: string): ChatMessage[] {
+    let storedMessages: ChatMessage[] = [];
+    if (typeof window !== "undefined") {
+        try {
+            storedMessages = JSON.parse(window.localStorage.getItem("cc_demo_global_chat_messages" ) || "[]") as ChatMessage[];
+        } catch {
+            storedMessages = [];
+        }
+    }
+
     return [
         {
             id: "demo-global-1",
@@ -56,6 +65,7 @@ function getDemoGlobalMessages(userName?: string): ChatMessage[] {
             created_at: minutesAgo(34),
             profiles: { name: "Admin Demo" },
         },
+        ...storedMessages.reverse(),
     ];
 }
 

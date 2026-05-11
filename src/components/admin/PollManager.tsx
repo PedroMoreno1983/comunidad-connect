@@ -77,6 +77,7 @@ const categoryLabels: Record<Poll["category"], string> = {
 };
 
 const demoStorageKey = "cc_demo_admin_polls";
+const demoChatStorageKey = "cc_demo_global_chat_messages";
 
 function getDefaultEndDate() {
     return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -129,6 +130,26 @@ function saveDemoPoll(poll: Poll) {
     if (typeof window === "undefined") return;
     const existing = JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as Poll[];
     window.localStorage.setItem(demoStorageKey, JSON.stringify([poll, ...existing].slice(0, 20)));
+}
+
+function saveDemoChatPollAnnouncement(poll: Poll) {
+    if (typeof window === "undefined") return;
+    const existing = JSON.parse(window.localStorage.getItem(demoChatStorageKey) || "[]");
+    const message = {
+        id: `demo-poll-chat-${poll.id}`,
+        sender_id: "demo-admin",
+        content: [
+            `Nueva votacion: ${poll.title}`,
+            "",
+            poll.description,
+            "",
+            `Cierre: ${new Date(poll.endDate).toLocaleDateString("es-CL")}`,
+            "Vota en ComunidadConnect > Votaciones.",
+        ].join("\n"),
+        created_at: new Date().toISOString(),
+        profiles: { name: "Admin Demo" },
+    };
+    window.localStorage.setItem(demoChatStorageKey, JSON.stringify([message, ...existing].slice(0, 20)));
 }
 
 export function PollManager() {
@@ -234,6 +255,7 @@ export function PollManager() {
                     createdAt: new Date().toISOString(),
                 };
                 saveDemoPoll(createdPoll);
+                if (form.sendChat) saveDemoChatPollAnnouncement(createdPoll);
                 setPolls([createdPoll, ...polls]);
                 setDeliverySummary({
                     mode: "demo",
