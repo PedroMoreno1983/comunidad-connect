@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) {
-                console.error("Error fetching profile:", error);
+                console.warn("[auth] Profile unavailable, using auth metadata fallback:", error.message || error);
                 // Fallback to metadata if profile fails
                 mapSupabaseUserFromMetadata(sbUser);
             } else if (profile) {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 fetchUnitForUser(sbUser.id);
             }
         } catch (err) {
-            console.error(err);
+            console.warn("[auth] Profile fetch failed, using auth metadata fallback:", err);
             mapSupabaseUserFromMetadata(sbUser);
         } finally {
             setLoading(false);
