@@ -83,6 +83,29 @@ const demoProviders: ServiceProvider[] = [
     },
 ];
 
+const demoReviews: Review[] = [
+    {
+        id: 'demo-review-1',
+        providerId: 'demo-provider-plumbing',
+        userId: 'demo-resident-1',
+        userName: 'Andrea Dupre',
+        rating: 5,
+        comment: 'Llegaron a la hora, detectaron la fuga y dejaron registro claro del trabajo.',
+        createdAt: new Date(Date.now() - 9 * 864e5).toISOString(),
+        serviceType: 'Gasfiteria',
+    },
+    {
+        id: 'demo-review-2',
+        providerId: 'demo-provider-electrical',
+        userId: 'demo-resident-2',
+        userName: 'Carlos Rivas',
+        rating: 5,
+        comment: 'Muy ordenados para explicar el problema del tablero y cotizar antes de intervenir.',
+        createdAt: new Date(Date.now() - 16 * 864e5).toISOString(),
+        serviceType: 'Electricidad',
+    },
+];
+
 function mapProvider(p: any): ServiceProvider {
     return {
         id: p.id,
@@ -333,6 +356,10 @@ export const providersService = {
  */
 export const reviewsService = {
     async getByProvider(providerId: string): Promise<Review[]> {
+        if (providerId.startsWith('demo-')) {
+            return demoReviews.filter(review => review.providerId === providerId);
+        }
+
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('reviews')

@@ -21,9 +21,43 @@ interface AuthContextType {
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string, userData: Record<string, unknown>) => Promise<{ error: Error | null }>;
+    loginDemo: (role: User["role"]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const DEMO_STORAGE_KEY = 'cc-demo-user';
+
+function buildDemoUser(role: User["role"]): User {
+    const profiles: Record<User["role"], User> = {
+        admin: {
+            id: 'demo-admin',
+            name: 'Admin Demo',
+            email: 'admin@demo.com',
+            role: 'admin',
+            communityId: 'demo-community',
+            features: {},
+        },
+        resident: {
+            id: 'demo-resident',
+            name: 'Residente Demo',
+            email: 'residente@demo.com',
+            role: 'resident',
+            unitId: 'demo-unit-1204',
+            unitName: 'Depto 1204',
+            communityId: 'demo-community',
+            features: {},
+        },
+        concierge: {
+            id: 'demo-concierge',
+            name: 'Conserje Demo',
+            email: 'conserje@demo.com',
+            role: 'concierge',
+            communityId: 'demo-community',
+            features: {},
+        },
+    };
+    return profiles[role];
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     // Demo state
@@ -34,8 +68,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const getStoredDemoUser = (): User | null => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+            return raw ? JSON.parse(raw) as User : null;
+        } catch {
+            return null;
+        }
+    };
+
     // Initialize Supabase auth listener
     useEffect(() => {
+        const storedDemoUser = getStoredDemoUser();
+        if (storedDemoUser) {
+            setUser(storedDemoUser);
+            setLoading(false);
+        }
+
         // Check if Supabase is configured
         const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         
@@ -64,6 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (session?.user) {
                     await fetchUserProfile(session.user); // Await profile fetch
                 } else {
+                    const demoUser = getStoredDemoUser();
+                    if (demoUser) setUser(demoUser);
                     setLoading(false);
                 }
             } catch (err) {
@@ -102,8 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (session?.user) {
                 fetchUserProfile(session.user);
             } else {
-                // Clear user if logged out
-                setUser(null);
+                const demoUser = getStoredDemoUser();
+                setUser(demoUser);
                 setLoading(false);
             }
         });
@@ -225,10 +277,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Logout (handles both modes)
     const logout = async () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(DEMO_STORAGE_KEY);
+        }
         setUser(null);
         setSupabaseUser(null);
         setSession(null);
         await supabase.auth.signOut();
+    };
+
+    const loginDemo = (role: User["role"]) => {
+        const demoUser = buildDemoUser(role);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser));
+        }
+        setUser(demoUser);
+        setSupabaseUser(null);
+        setSession(null);
+        setLoading(false);
     };
 
     return (
@@ -240,6 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             signIn,
             signUp,
+            loginDemo,
         }}>
             {children}
         </AuthContext.Provider>

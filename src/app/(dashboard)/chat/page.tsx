@@ -23,6 +23,85 @@ function timeLabel(value: string) {
     return new Date(value).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
+const demoNeighbors: Neighbor[] = [
+    { id: "demo-resident-marta", name: "Marta Rojas" },
+    { id: "demo-resident-diego", name: "Diego Salinas" },
+    { id: "demo-concierge-turno", name: "Conserje Turno" },
+];
+
+function minutesAgo(minutes: number) {
+    return new Date(Date.now() - minutes * 60 * 1000).toISOString();
+}
+
+function getDemoGlobalMessages(userName?: string): ChatMessage[] {
+    return [
+        {
+            id: "demo-global-1",
+            sender_id: "demo-resident-marta",
+            content: "Hola comunidad, recuerden que hoy hay mantencion preventiva del ascensor B desde las 16:00.",
+            created_at: minutesAgo(52),
+            profiles: { name: "Marta Rojas" },
+        },
+        {
+            id: "demo-global-2",
+            sender_id: "demo-concierge-turno",
+            content: "Confirmado. Dejamos el aviso visible en hall y ascensores.",
+            created_at: minutesAgo(48),
+            profiles: { name: "Conserje Turno" },
+        },
+        {
+            id: "demo-global-3",
+            sender_id: "demo-admin",
+            content: `Gracias ${userName || "Admin"}. Cualquier novedad quedara registrada en comunicaciones.`,
+            created_at: minutesAgo(34),
+            profiles: { name: "Admin Demo" },
+        },
+    ];
+}
+
+function getDemoConversations(): Conversation[] {
+    return [
+        {
+            peerId: "demo-resident-marta",
+            peerProfile: { name: "Marta Rojas" },
+            lastMessage: "Te envie el comprobante de reserva del quincho.",
+            lastAt: minutesAgo(18),
+        },
+        {
+            peerId: "demo-concierge-turno",
+            peerProfile: { name: "Conserje Turno" },
+            lastMessage: "El proveedor ya ingreso por recepcion.",
+            lastAt: minutesAgo(7),
+        },
+    ];
+}
+
+function getDemoDirectMessages(userId: string, userName: string | undefined, peerId: string): ChatMessage[] {
+    const peer = demoNeighbors.find(neighbor => neighbor.id === peerId);
+    const peerName = peer?.name || "Vecino";
+
+    return [
+        {
+            id: `demo-direct-${peerId}-1`,
+            sender_id: peerId,
+            receiver_id: userId,
+            content: peerId === "demo-concierge-turno"
+                ? "Hola, dejo registrado que el proveedor de electricidad ya llego y esta esperando autorizacion."
+                : "Hola, puedes ayudarme a revisar el estado de mi solicitud cuando tengas un minuto?",
+            created_at: minutesAgo(16),
+            profiles: { name: peerName },
+        },
+        {
+            id: `demo-direct-${peerId}-2`,
+            sender_id: userId,
+            receiver_id: peerId,
+            content: "Si, lo reviso ahora y te confirmo por este mismo chat.",
+            created_at: minutesAgo(11),
+            profiles: { name: userName || "Admin Demo" },
+        },
+    ];
+}
+
 export default function ChatPage() {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -39,6 +118,7 @@ export default function ChatPage() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,6 +152,12 @@ export default function ChatPage() {
         setMessages([]);
         subscriptionRef.current?.unsubscribe();
 
+        if (isDemoUser) {
+            setMessages(getDemoGlobalMessages(user?.name));
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const data = await ChatService.getGlobalMessages();
             setMessages(data as unknown as ChatMessage[]);
@@ -89,6 +175,11 @@ export default function ChatPage() {
 
     const loadConversations = async () => {
         if (!user) return;
+        if (isDemoUser) {
+            setConversations(getDemoConversations());
+            return;
+        }
+
         try {
             const data = await ChatService.getConversations(user.id);
             setConversations(data);
@@ -100,6 +191,11 @@ export default function ChatPage() {
 
     const loadNeighbors = async () => {
         if (!user) return;
+        if (isDemoUser) {
+            setNeighbors(demoNeighbors);
+            return;
+        }
+
         const { data, error } = await supabase
             .from("profiles")
             .select("id, name, avatar_url")
@@ -119,6 +215,12 @@ export default function ChatPage() {
         setIsLoading(true);
         setMessages([]);
         subscriptionRef.current?.unsubscribe();
+
+        if (isDemoUser) {
+            setMessages(getDemoDirectMessages(user.id, user.name, peerId));
+            setIsLoading(false);
+            return;
+        }
 
         try {
             const data = await ChatService.getDirectMessages(user.id, peerId);
@@ -152,6 +254,20 @@ export default function ChatPage() {
         const content = newMessage.trim();
 
         try {
+            if (isDemoUser) {
+                const optimisticMessage: ChatMessage = {
+                    id: `demo-message-${Date.now()}`,
+                    sender_id: user.id,
+                    receiver_id: mode === "direct" ? activePeer?.peerId : undefined,
+                    content,
+                    created_at: new Date().toISOString(),
+                    profiles: { name: user.name },
+                };
+                setMessages(prev => [...prev, optimisticMessage]);
+                setNewMessage("");
+                return;
+            }
+
             if (mode === "global") {
                 await ChatService.sendMessage({ sender_id: user.id, content });
             } else if (activePeer) {

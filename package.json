@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint src",
     "lint:all": "eslint .",
-    "qa:visual": "node scripts/visual-qa.js"
+    "qa:visual": "node scripts/visual-qa.js",
+    "qa:functional": "node scripts/functional-qa.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

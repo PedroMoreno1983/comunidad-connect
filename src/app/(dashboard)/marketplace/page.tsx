@@ -137,6 +137,10 @@ export default function MarketplacePage() {
     const loadItems = useCallback(async () => {
         setLoading(true);
         try {
+            if (user?.email.toLowerCase().endsWith("@demo.com")) {
+                setItems(demoMarketplaceItems);
+                return;
+            }
             const realItems = await MarketplaceService.getItemsV2();
             setItems(realItems?.length ? realItems : demoMarketplaceItems);
         } catch (error: unknown) {
@@ -145,7 +149,7 @@ export default function MarketplacePage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user?.email]);
 
     useEffect(() => {
         if (searchParams.get('status') === 'success') {

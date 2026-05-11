@@ -248,7 +248,7 @@ export function ProviderDashboardClient() {
             setRequests(current => current.map(row => row.id === request.id ? { ...row, status } : row));
             toast({
                 title: "Solicitud actualizada",
-                description: `Qued? como ${STATUS_LABELS[status].toLowerCase()}.`,
+                description: `Quedo como ${STATUS_LABELS[status].toLowerCase()}.`,
                 variant: "success",
             });
         } catch (error) {

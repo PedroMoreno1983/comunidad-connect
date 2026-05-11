@@ -30,10 +30,19 @@ export default function UsersPage() {
     const [conciergeCode, setConciergeCode] = useState<string | null>(null);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const { user } = useAuth();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         const fetchData = async () => {
             try {
+                if (isDemoUser) {
+                    setCommunityName("Comunidad Demo");
+                    setResidentCode("RES-DEMO");
+                    setConciergeCode("CON-DEMO");
+                    setUsers(demoUsers);
+                    return;
+                }
+
                 // Fetch community codes for the admin's community
                 if (user) {
                     const { data: profile } = await supabase
@@ -82,7 +91,7 @@ export default function UsersPage() {
             }
         };
         fetchData();
-    }, [user]);
+    }, [isDemoUser, user]);
 
     const handleCopy = (code: string, type: string) => {
         navigator.clipboard.writeText(code).then(() => {
