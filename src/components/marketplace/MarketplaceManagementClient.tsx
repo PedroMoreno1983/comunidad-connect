@@ -89,6 +89,23 @@ function getDemoManagementItems(userId: string): MarketplaceItem[] {
     ];
 }
 
+const demoMarketplaceStorageKey = "cc_demo_marketplace_items";
+
+function getDemoPublishedItems() {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoMarketplaceStorageKey) || "[]") as MarketplaceItem[];
+    } catch {
+        return [];
+    }
+}
+
+function saveDemoPublishedItems(items: MarketplaceItem[]) {
+    if (typeof window === "undefined") return;
+    const published = items.filter(item => item.id.startsWith("demo-market-published-"));
+    window.localStorage.setItem(demoMarketplaceStorageKey, JSON.stringify(published.slice(0, 30)));
+}
+
 interface MarketplaceManagementClientProps {
     mode: Mode;
 }
@@ -109,7 +126,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
 
         setLoading(true);
         if (isDemoUser) {
-            setItems(getDemoManagementItems(user.id));
+            setItems([...getDemoPublishedItems(), ...getDemoManagementItems(user.id)]);
             setLoading(false);
             return;
         }
@@ -152,7 +169,11 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
         setSavingId(item.id);
         try {
             if (isDemoUser || item.id.startsWith("demo-")) {
-                setItems(current => current.map(row => row.id === item.id ? { ...row, status } : row));
+                setItems(current => {
+                    const next = current.map(row => row.id === item.id ? { ...row, status } : row);
+                    saveDemoPublishedItems(next);
+                    return next;
+                });
                 toast({
                     title: "Publicación actualizada",
                     description: `${item.title} quedó como ${STATUS_LABELS[status].toLowerCase()}.`,
@@ -196,7 +217,11 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
         setSavingId(item.id);
         try {
             if (isDemoUser || item.id.startsWith("demo-")) {
-                setItems(current => current.filter(row => row.id !== item.id));
+                setItems(current => {
+                    const next = current.filter(row => row.id !== item.id);
+                    saveDemoPublishedItems(next);
+                    return next;
+                });
                 toast({
                     title: "Publicación eliminada",
                     description: "Ya no aparecerá en el marketplace.",

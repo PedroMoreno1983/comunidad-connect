@@ -27,6 +27,18 @@ interface ProviderProfileClientProps {
     reviews: Review[];
 }
 
+const demoServiceRequestsStorageKey = "cc_demo_service_requests";
+
+function saveDemoServiceRequest(request: Record<string, unknown>) {
+    if (typeof window === "undefined") return;
+    try {
+        const existing = JSON.parse(window.localStorage.getItem(demoServiceRequestsStorageKey) || "[]");
+        window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify([request, ...existing].slice(0, 30)));
+    } catch {
+        window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify([request]));
+    }
+}
+
 export function ProviderProfileClient({ provider, reviews }: ProviderProfileClientProps) {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
@@ -47,6 +59,24 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
         try {
             setIsRequestSaving(true);
             if (isDemoUser || provider.id.startsWith("demo-")) {
+                saveDemoServiceRequest({
+                    id: `demo-service-request-created-${Date.now()}`,
+                    provider_id: provider.id,
+                    preferred_date: requestForm.date,
+                    preferred_time: requestForm.time,
+                    description: requestForm.description,
+                    status: "pending",
+                    created_at: new Date().toISOString(),
+                    service_providers: {
+                        name: provider.name,
+                        category: provider.category,
+                        contact_phone: provider.contactPhone,
+                    },
+                    profiles: {
+                        name: user?.name || "Admin Demo",
+                        email: user?.email || "admin@demo.com",
+                    },
+                });
                 toast({
                     title: "Solicitud demo enviada",
                     description: "Quedo registrada para seguimiento en Mis solicitudes.",

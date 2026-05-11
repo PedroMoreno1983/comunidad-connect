@@ -110,6 +110,23 @@ const demoProviderRequests: ProviderRequestRow[] = [
     },
 ];
 
+const demoServiceRequestsStorageKey = "cc_demo_service_requests";
+
+function getDemoCreatedProviderRequests() {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoServiceRequestsStorageKey) || "[]") as ProviderRequestRow[];
+    } catch {
+        return [];
+    }
+}
+
+function saveDemoCreatedProviderRequests(requests: ProviderRequestRow[]) {
+    if (typeof window === "undefined") return;
+    const created = requests.filter(request => request.id.startsWith("demo-service-request-created-"));
+    window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify(created.slice(0, 30)));
+}
+
 function formatDate(value: string) {
     if (!value) return "Sin fecha";
     return new Date(value).toLocaleDateString("es-CL", {
@@ -176,7 +193,7 @@ export function ProviderDashboardClient() {
         setLoading(true);
         try {
             if (providerId.startsWith("demo-")) {
-                setRequests(demoProviderRequests);
+                setRequests([...getDemoCreatedProviderRequests(), ...demoProviderRequests]);
                 return;
             }
             const rows = await serviceRequestsService.getByProvider(providerId);
@@ -234,6 +251,20 @@ export function ProviderDashboardClient() {
     const updateStatus = async (request: ProviderRequestRow, status: RequestStatus) => {
         setSavingId(request.id);
         try {
+            if (request.id.startsWith("demo-")) {
+                setRequests(current => {
+                    const next = current.map(row => row.id === request.id ? { ...row, status } : row);
+                    saveDemoCreatedProviderRequests(next);
+                    return next;
+                });
+                toast({
+                    title: "Solicitud actualizada",
+                    description: `Quedo como ${STATUS_LABELS[status].toLowerCase()}.`,
+                    variant: "success",
+                });
+                return;
+            }
+
             const response = await fetch(`/api/service-requests/${request.id}/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },

@@ -99,6 +99,32 @@ const demoMarketplaceItems: MarketplaceItem[] = [
     },
 ];
 
+const demoMarketplaceStorageKey = "cc_demo_marketplace_items";
+
+async function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
+        reader.readAsDataURL(file);
+    });
+}
+
+function getDemoPublishedItems() {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(window.localStorage.getItem(demoMarketplaceStorageKey) || "[]") as MarketplaceItem[];
+    } catch {
+        return [];
+    }
+}
+
+function saveDemoPublishedItem(item: MarketplaceItem) {
+    if (typeof window === "undefined") return;
+    const existing = getDemoPublishedItems();
+    window.localStorage.setItem(demoMarketplaceStorageKey, JSON.stringify([item, ...existing].slice(0, 30)));
+}
+
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [items, setItems] = useState<MarketplaceItem[]>([]);
@@ -138,7 +164,7 @@ export default function MarketplacePage() {
         setLoading(true);
         try {
             if (user?.email.toLowerCase().endsWith("@demo.com")) {
-                setItems(demoMarketplaceItems);
+                setItems([...getDemoPublishedItems(), ...demoMarketplaceItems]);
                 return;
             }
             const realItems = await MarketplaceService.getItemsV2();
@@ -306,10 +332,35 @@ export default function MarketplacePage() {
                 return;
             }
 
-            await MarketplaceService.createItem({
-                ...newItem,
-                price: Number(newItem.price)
-            } as Partial<MarketplaceItem>, imageFiles);
+            const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
+            if (isDemoUser) {
+                const imageUrls = await Promise.all(imageFiles.map(fileToDataUrl));
+                const createdItem: MarketplaceItem = {
+                    id: `demo-market-published-${Date.now()}`,
+                    title: newItem.title.trim(),
+                    price: Number(newItem.price) || 0,
+                    description: newItem.description.trim(),
+                    category: newItem.category as MarketplaceItem["category"],
+                    sellerId: user?.id || "demo",
+                    imageUrl: imageUrls[0],
+                    images: imageUrls,
+                    createdAt: new Date().toISOString(),
+                    status: "available",
+                    allowSale: newItem.allowSale,
+                    allowSwap: newItem.allowSwap,
+                    swapDetails: newItem.swapDetails,
+                    allowBarter: newItem.allowBarter,
+                    barterDetails: newItem.barterDetails,
+                    paymentStatus: "none",
+                };
+                saveDemoPublishedItem(createdItem);
+                setItems(current => [createdItem, ...current]);
+            } else {
+                await MarketplaceService.createItem({
+                    ...newItem,
+                    price: Number(newItem.price)
+                } as Partial<MarketplaceItem>, imageFiles);
+            }
 
             toast({
                 title: "¡Artículo publicado!",
@@ -331,7 +382,7 @@ export default function MarketplacePage() {
             });
             setImageFiles([]);
             setPreviewUrls([]);
-            loadItems();
+            if (!isDemoUser) loadItems();
         } catch (error: unknown) {
             console.error("Error al publicar item:", error);
             toast({
