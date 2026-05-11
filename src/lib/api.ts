@@ -107,19 +107,56 @@ export const WaterService = {
 
     // Obtener el promedio de consumo del edificio (para comparación)
     async getBuildingAverage(month: string, year: number) {
-        const { data, error } = await supabase
+        type AverageReadingRow = { unit_id: string | number | null; reading_value: string | number | null };
+        const monthNames = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+        ];
+        const monthIndex = monthNames.findIndex(item => item.toLowerCase() === month.toLowerCase());
+        const previousDate = monthIndex >= 0
+            ? new Date(year, monthIndex - 1, 1)
+            : new Date(year, new Date().getMonth() - 1, 1);
+        const previousMonth = monthNames[previousDate.getMonth()];
+        const previousYear = previousDate.getFullYear();
+
+        const { data: currentReadings, error: currentError } = await supabase
             .from('water_readings')
-            .select('reading_value')
+            .select('unit_id, reading_value')
             .eq('month', month)
             .eq('year', year);
 
-        if (error) throw error;
-        if (!data || data.length === 0) return 0;
+        if (currentError) throw currentError;
+        if (!currentReadings || currentReadings.length === 0) return 0;
 
-        // Calcular consumo promedio (simplificado: asume lectura es consumo directo por ahora)
-        // En realidad deberíamos restar lectura anterior, pero para MVP está bien.
-        const total = data.reduce((acc: number, curr: Record<string, unknown>) => acc + (Number(curr.reading_value) || 0), 0);
-        return total / data.length;
+        // Calcula consumo real comparando contra la lectura del periodo anterior.
+        const { data: previousReadings, error: previousError } = await supabase
+            .from('water_readings')
+            .select('unit_id, reading_value')
+            .eq('month', previousMonth)
+            .eq('year', previousYear);
+
+        if (previousError) throw previousError;
+
+        const currentRows = currentReadings as AverageReadingRow[];
+        const previousRows = (previousReadings || []) as AverageReadingRow[];
+        const previousByUnit = new Map<string, number>(
+            previousRows.map(row => [String(row.unit_id), Number(row.reading_value) || 0])
+        );
+        const consumptions = currentRows
+            .map((row): number | null => {
+                const currentValue = Number(row.reading_value) || 0;
+                const previousValue = previousByUnit.get(String(row.unit_id));
+                return previousValue === undefined ? null : Math.max(0, currentValue - previousValue);
+            })
+            .filter((value): value is number => value !== null);
+
+        if (consumptions.length > 0) {
+            const totalConsumption = consumptions.reduce((acc, value) => acc + value, 0);
+            return totalConsumption / consumptions.length;
+        }
+
+        const fallbackTotal = currentRows.reduce((acc, curr) => acc + (Number(curr.reading_value) || 0), 0);
+        return fallbackTotal / currentRows.length;
     }
 };
 
