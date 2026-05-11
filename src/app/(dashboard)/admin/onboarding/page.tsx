@@ -26,6 +26,14 @@ interface ExtractedUser {
     phone: string;
 }
 
+interface SyncResult {
+    mode: "demo" | "real";
+    fileName: string;
+    rows: number;
+    success: number;
+    errors: number;
+}
+
 const demoExtractedUsers: ExtractedUser[] = [
     { id: "demo-row-1", name: "Andrea Dupre", unit_id: "1204", email: "andrea@example.com", phone: "+56 9 5555 1204" },
     { id: "demo-row-2", name: "Carlos Rivas", unit_id: "805", email: "carlos@example.com", phone: "+56 9 5555 0805" },
@@ -58,6 +66,9 @@ export default function AdminOnboardingPage() {
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [confirmingSync, setConfirmingSync] = useState(false);
+    const [lastFileName, setLastFileName] = useState("");
+    const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+    const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
 
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
@@ -79,6 +90,9 @@ export default function AdminOnboardingPage() {
     const setDemoNomina = () => {
         setSyncSuccess(false);
         setConfirmingSync(false);
+        setSyncResult(null);
+        setSyncedPreview([]);
+        setLastFileName("nomina-demo.csv");
         setExtractedData(demoExtractedUsers);
         toast({
             title: "Nomina demo cargada",
@@ -92,14 +106,17 @@ export default function AdminOnboardingPage() {
         setExtractedData(null);
         setSyncSuccess(false);
         setConfirmingSync(false);
+        setSyncResult(null);
+        setSyncedPreview([]);
+        setLastFileName(uploadedFile.name);
 
         try {
             if (isDemoUser) {
                 await new Promise(resolve => setTimeout(resolve, 650));
                 setExtractedData(demoExtractedUsers);
                 toast({
-                    title: "Archivo demo procesado",
-                    description: "Cargamos una nomina de ejemplo para revisar el flujo.",
+                    title: "Archivo recibido en modo demo",
+                    description: "La cuenta demo no guarda datos reales; cargamos filas de prueba para revisar el flujo.",
                     variant: "success",
                 });
                 return;
@@ -183,27 +200,49 @@ export default function AdminOnboardingPage() {
             return;
         }
 
+        const rowsToSync = extractedData.filter(row => row.name.trim() && row.unit_id.trim());
+        if (!rowsToSync.length) return;
+
         setConfirmingSync(false);
         setIsSyncing(true);
         try {
             if (isDemoUser) {
                 await new Promise(resolve => setTimeout(resolve, 700));
+                setSyncedPreview(rowsToSync);
+                setSyncResult({
+                    mode: "demo",
+                    fileName: lastFileName || "nomina-demo.csv",
+                    rows: rowsToSync.length,
+                    success: rowsToSync.length,
+                    errors: 0,
+                });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Sincronizacion demo lista", description: "La nomina quedo simulada para esta sesion.", variant: "success" });
+                toast({ title: "Carga demo simulada", description: "No se guardo en la base real; queda visible solo como resumen de prueba.", variant: "success" });
                 return;
             }
 
             const res = await fetch("/api/onboarding/upsert", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ residents: extractedData }),
+                body: JSON.stringify({ residents: rowsToSync }),
             });
 
             if (res.ok) {
+                const result = await res.json().catch(() => ({}));
+                const success = typeof result.success === "number" ? result.success : rowsToSync.length;
+                const errors = typeof result.errors === "number" ? result.errors : 0;
+                setSyncedPreview(rowsToSync);
+                setSyncResult({
+                    mode: "real",
+                    fileName: lastFileName || "archivo importado",
+                    rows: rowsToSync.length,
+                    success,
+                    errors,
+                });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Residentes sincronizados", description: "La nomina quedo disponible para operacion.", variant: "success" });
+                toast({ title: "Residentes sincronizados", description: `${success} fila(s) quedaron disponibles para operacion.`, variant: "success" });
                 return;
             }
 
@@ -219,6 +258,22 @@ export default function AdminOnboardingPage() {
         } finally {
             setIsSyncing(false);
         }
+    };
+
+    const resetImport = () => {
+        setSyncSuccess(false);
+        setExtractedData(null);
+        setConfirmingSync(false);
+        setSyncResult(null);
+        setSyncedPreview([]);
+        setLastFileName("");
+    };
+
+    const restoreSyncedRows = () => {
+        if (!syncedPreview.length) return;
+        setExtractedData(syncedPreview);
+        setSyncSuccess(false);
+        setConfirmingSync(false);
     };
 
     if (user && user.role !== "admin") return null;
@@ -311,18 +366,90 @@ export default function AdminOnboardingPage() {
                 <motion.section
                     initial={{ scale: 0.98, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="rounded-lg border border-success-border bg-success-bg p-8 text-center shadow-sm"
+                    className={`rounded-lg border p-8 shadow-sm ${syncResult?.mode === "demo" ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}
                 >
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                    <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-lg text-white ${syncResult?.mode === "demo" ? "bg-amber-600" : "bg-emerald-600"}`}>
                         <CheckCircle2 className="h-8 w-8" />
                     </div>
-                    <h2 className="mt-5 text-2xl font-semibold text-success-fg">Nomina sincronizada</h2>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-800">
-                        Los residentes quedaron preparados para invitacion, asignacion de unidades y operacion diaria.
+                    <h2 className={`mt-5 text-2xl font-semibold ${syncResult?.mode === "demo" ? "text-warning-fg" : "text-success-fg"}`}>
+                        {syncResult?.mode === "demo" ? "Carga simulada en cuenta demo" : "Nomina sincronizada"}
+                    </h2>
+                    <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${syncResult?.mode === "demo" ? "text-amber-900" : "text-emerald-800"}`}>
+                        {syncResult?.mode === "demo"
+                            ? "Esta cuenta protege la demostracion: no guarda residentes reales ni modifica Directorio o Unidades. El archivo quedo procesado como flujo de prueba para revisar el resultado."
+                            : "Los residentes quedaron guardados y preparados para invitacion, asignacion de unidades y operacion diaria."}
                     </p>
-                    <Button type="button" className="mt-6" onClick={() => setSyncSuccess(false)}>
-                        Cargar otro archivo
-                    </Button>
+
+                    <div className="mx-auto mt-6 grid max-w-4xl gap-3 text-left md:grid-cols-4">
+                        {[
+                            { label: "Archivo", value: syncResult?.fileName || "Sin nombre" },
+                            { label: "Filas aceptadas", value: `${syncResult?.success ?? 0}/${syncResult?.rows ?? 0}` },
+                            { label: "Con errores", value: `${syncResult?.errors ?? 0}` },
+                            {
+                                label: "Destino",
+                                value: syncResult?.mode === "demo" ? "Simulacion local" : "Directorio y Unidades",
+                            },
+                        ].map(item => (
+                            <div key={item.label} className="rounded-lg border border-white/60 bg-white/75 p-4 shadow-sm">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
+                                <p className="mt-2 break-words text-sm font-semibold cc-text-primary">{item.value}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {syncedPreview.length > 0 && (
+                        <div className="mx-auto mt-5 max-w-4xl overflow-hidden rounded-lg border border-white/70 bg-white/80 text-left shadow-sm">
+                            <div className="border-b border-subtle px-4 py-3">
+                                <p className="text-sm font-semibold cc-text-primary">
+                                    Resumen de filas {syncResult?.mode === "demo" ? "simuladas" : "sincronizadas"}
+                                </p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[620px] text-sm">
+                                    <thead className="bg-canvas text-xs font-bold uppercase tracking-[0.08em] cc-text-secondary">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left">Nombre</th>
+                                            <th className="px-4 py-3 text-left">Unidad</th>
+                                            <th className="px-4 py-3 text-left">Contacto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-subtle">
+                                        {syncedPreview.slice(0, 5).map(row => (
+                                            <tr key={row.id}>
+                                                <td className="px-4 py-3 font-semibold cc-text-primary">{row.name}</td>
+                                                <td className="px-4 py-3 font-mono cc-text-secondary">{row.unit_id}</td>
+                                                <td className="px-4 py-3 cc-text-secondary">{row.email || row.phone || "Sin contacto"}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {syncedPreview.length > 5 && (
+                                <p className="border-t border-subtle px-4 py-3 text-xs cc-text-secondary">
+                                    +{syncedPreview.length - 5} fila(s) adicionales en el lote.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                        <Button type="button" variant="outline" onClick={restoreSyncedRows} disabled={!syncedPreview.length}>
+                            Volver a revisar filas
+                        </Button>
+                        {syncResult?.mode === "real" && (
+                            <>
+                                <Button type="button" variant="outline" onClick={() => router.push("/directorio")}>
+                                    Ver Directorio
+                                </Button>
+                                <Button type="button" variant="outline" onClick={() => router.push("/admin/units")}>
+                                    Ver Unidades
+                                </Button>
+                            </>
+                        )}
+                        <Button type="button" onClick={resetImport}>
+                            Cargar otro archivo
+                        </Button>
+                    </div>
                 </motion.section>
             )}
 
@@ -343,6 +470,11 @@ export default function AdminOnboardingPage() {
                                 <p className="mt-1 text-sm text-slate-300">
                                     {quality.validRows} de {quality.totalRows} filas tienen nombre y unidad. Corrige o elimina registros dudosos antes de guardar.
                                 </p>
+                                {lastFileName && (
+                                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                        Archivo: {lastFileName}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row">
                                 <Button type="button" variant="secondary" onClick={() => setExtractedData(null)}>
