@@ -15,6 +15,15 @@ import { Input } from "@/components/ui/Input";
 import { SkeletonAnnouncement, SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
+    createDemoSocialComment,
+    createDemoSocialPost,
+    fileToDataUrl,
+    getDemoSocialComments,
+    getDemoSocialPosts,
+    saveDemoSocialComment,
+    saveDemoSocialPosts,
+} from "@/lib/services/demoSocialStorage";
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -202,6 +211,7 @@ function OficialTab() {
 function ComunidadTab() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -220,12 +230,13 @@ function ComunidadTab() {
             setIsLoading(true);
             try {
                 const data = await SocialService.getPosts();
-                if (data) setPosts(data as SocialPost[]);
-            } catch { setPosts([]); }
+                if (isDemoUser) setPosts([...getDemoSocialPosts(), ...((data || []) as SocialPost[])]);
+                else if (data) setPosts(data as SocialPost[]);
+            } catch { setPosts(isDemoUser ? getDemoSocialPosts() : []); }
             finally { setIsLoading(false); }
         };
         load();
-    }, []);
+    }, [isDemoUser]);
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -239,6 +250,20 @@ function ComunidadTab() {
         if (!user || (!newPostContent.trim() && !newPostImageFile)) return;
         setIsSubmitting(true);
         let imageUrl: string | undefined;
+        if (isDemoUser) {
+            try {
+                imageUrl = newPostImageFile ? await fileToDataUrl(newPostImageFile) : undefined;
+                const newPost = createDemoSocialPost(user, newPostContent.trim(), imageUrl);
+                const nextPosts = [newPost, ...posts];
+                setPosts(nextPosts);
+                saveDemoSocialPosts(nextPosts);
+                setNewPostContent(""); setNewPostImageFile(null); setNewPostImagePreview(null);
+                toast({ title: "Publicado en demo", description: "Tu publicacion con imagen quedo visible en esta sesion.", variant: "success" });
+            } catch {
+                toast({ title: "Error", description: "No se pudo leer la imagen.", variant: "destructive" });
+            } finally { setIsSubmitting(false); }
+            return;
+        }
         if (newPostImageFile) {
             setIsUploadingImage(true);
             try {
@@ -263,6 +288,14 @@ function ComunidadTab() {
     };
 
     const handleLike = async (postId: string) => {
+        if (postId.startsWith("demo-social-post-")) {
+            setPosts(prev => {
+                const next = prev.map(p => p.id === postId ? { ...p, likes_count: (p.likes_count || 0) + 1, has_liked: true } : p);
+                saveDemoSocialPosts(next);
+                return next;
+            });
+            return;
+        }
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: (p.likes_count || 0) + 1, has_liked: true } : p));
         try { await SocialService.likePost(postId); }
         catch { setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1), has_liked: false } : p)); }
@@ -273,7 +306,13 @@ function ComunidadTab() {
         setActiveCommentPostId(postId);
         if (!comments[postId]) {
             setLoadingCommentsPostId(postId);
-            try { const data = await SocialService.getComments(postId); setComments(prev => ({ ...prev, [postId]: data })); }
+            try {
+                if (postId.startsWith("demo-social-post-")) {
+                    setComments(prev => ({ ...prev, [postId]: getDemoSocialComments(postId) }));
+                    return;
+                }
+                const data = await SocialService.getComments(postId); setComments(prev => ({ ...prev, [postId]: data }));
+            }
             catch { console.warn("Error loading comments"); }
             finally { setLoadingCommentsPostId(null); }
         }
@@ -283,6 +322,18 @@ function ComunidadTab() {
         e.preventDefault();
         if (!user || !newCommentContent.trim()) return;
         try {
+            if (postId.startsWith("demo-social-post-")) {
+                const comment = createDemoSocialComment(user, postId, newCommentContent.trim());
+                saveDemoSocialComment(postId, comment);
+                setComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), comment] }));
+                setPosts(prev => {
+                    const next = prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p);
+                    saveDemoSocialPosts(next);
+                    return next;
+                });
+                setNewCommentContent("");
+                return;
+            }
             const comment = await SocialService.createComment({ post_id: postId, author_id: user.id, content: newCommentContent.trim() });
             setComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), comment] }));
             setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));

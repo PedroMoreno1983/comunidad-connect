@@ -9,6 +9,15 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
+import {
+    createDemoSocialComment,
+    createDemoSocialPost,
+    fileToDataUrl,
+    getDemoSocialComments,
+    getDemoSocialPosts,
+    saveDemoSocialComment,
+    saveDemoSocialPosts,
+} from "@/lib/services/demoSocialStorage";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
     Heart, MessageCircle, Share2, MoreHorizontal,
@@ -20,6 +29,7 @@ import clsx from "clsx";
 export default function SocialFeedPage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -40,16 +50,19 @@ export default function SocialFeedPage() {
 
     useEffect(() => {
         loadPosts();
-    }, []);
+        // Post loading intentionally follows demo/live mode.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDemoUser]);
 
     const loadPosts = async () => {
         setIsLoading(true);
         try {
             const data = await SocialService.getPosts();
-            if (data) setPosts(data as SocialPost[]);
+            if (isDemoUser) setPosts([...getDemoSocialPosts(), ...((data || []) as SocialPost[])]);
+            else if (data) setPosts(data as SocialPost[]);
         } catch (error) {
             console.error("Error loading social posts:", error);
-            setPosts([]);
+            setPosts(isDemoUser ? getDemoSocialPosts() : []);
         } finally {
             setIsLoading(false);
         }
@@ -68,6 +81,25 @@ export default function SocialFeedPage() {
 
         setIsSubmitting(true);
         let imageUrl: string | undefined;
+
+        if (isDemoUser) {
+            try {
+                imageUrl = newPostImageFile ? await fileToDataUrl(newPostImageFile) : undefined;
+                const newPost = createDemoSocialPost(user, newPostContent.trim(), imageUrl);
+                const nextPosts = [newPost, ...posts];
+                setPosts(nextPosts);
+                saveDemoSocialPosts(nextPosts);
+                setNewPostContent("");
+                setNewPostImageFile(null);
+                setNewPostImagePreview(null);
+                toast({ title: "Publicado en demo", description: "Tu publicacion con imagen quedo visible en esta sesion.", variant: "success" });
+            } catch {
+                toast({ title: "Error", description: "No se pudo leer la imagen.", variant: "destructive" });
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
 
         // Upload image to Supabase Storage if provided
         if (newPostImageFile) {
@@ -116,6 +148,15 @@ export default function SocialFeedPage() {
     };
 
     const handleLike = async (postId: string) => {
+        if (postId.startsWith("demo-social-post-")) {
+            setPosts(prev => {
+                const next = prev.map((p) => p.id === postId ? { ...p, likes_count: (p.likes_count || 0) + 1, has_liked: true } : p);
+                saveDemoSocialPosts(next);
+                return next;
+            });
+            return;
+        }
+
         try {
             // Optimistic Update
             setPosts(prev => prev.map((p) => {
@@ -149,6 +190,10 @@ export default function SocialFeedPage() {
         if (!comments[postId]) {
             setLoadingCommentsPostId(postId);
             try {
+                if (postId.startsWith("demo-social-post-")) {
+                    setComments(prev => ({ ...prev, [postId]: getDemoSocialComments(postId) }));
+                    return;
+                }
                 const data = await SocialService.getComments(postId);
                 setComments(prev => ({ ...prev, [postId]: data }));
             } catch (error) {
@@ -164,6 +209,19 @@ export default function SocialFeedPage() {
         if (!user || !newCommentContent.trim()) return;
 
         try {
+            if (postId.startsWith("demo-social-post-")) {
+                const comment = createDemoSocialComment(user, postId, newCommentContent.trim());
+                saveDemoSocialComment(postId, comment);
+                setComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), comment] }));
+                setPosts(prev => {
+                    const next = prev.map((p) => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p);
+                    saveDemoSocialPosts(next);
+                    return next;
+                });
+                setNewCommentContent("");
+                return;
+            }
+
             const comment = await SocialService.createComment({
                 post_id: postId,
                 author_id: user.id,
