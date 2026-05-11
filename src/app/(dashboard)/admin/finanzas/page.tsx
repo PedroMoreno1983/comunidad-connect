@@ -7,7 +7,7 @@ import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
 
 const fallbackFinances: CommunityFinance = {
     totalRevenue: 18450000,
@@ -79,6 +79,40 @@ export default function AdminFinanzasPage() {
                         </div>
                     </div>
                 )}
+                <section className="grid gap-4 lg:grid-cols-3">
+                    {[
+                        {
+                            title: "Cobranza prioritaria",
+                            description: "Revisar unidades atrasadas antes del cierre del periodo.",
+                            meta: "4 unidades en riesgo",
+                            icon: <BellRing className="h-4 w-4" />,
+                        },
+                        {
+                            title: "Reporte de comite",
+                            description: "Preparar resumen de ingresos, egresos y fondo de reserva.",
+                            meta: "Listo para exportar",
+                            icon: <FileText className="h-4 w-4" />,
+                        },
+                        {
+                            title: "Notificacion masiva",
+                            description: "Enviar recordatorio de vencimiento con detalle del gasto comun.",
+                            meta: "Canal email habilitado",
+                            icon: <Send className="h-4 w-4" />,
+                        },
+                    ].map(item => (
+                        <article key={item.title} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                            <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                                {item.icon}
+                            </div>
+                            <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                            <p className="mt-2 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-info-bg px-2.5 py-1 text-xs font-semibold text-info-fg">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                {item.meta}
+                            </div>
+                        </article>
+                    ))}
+                </section>
                 <FinanceDashboard data={finances} />
                 <div>
                     <CondoFeesTable />

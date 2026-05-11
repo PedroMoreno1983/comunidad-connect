@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { CondoFeeService } from "@/lib/services/supabaseServices";
 import { Badge } from "@/components/ui/Badge";
-import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2 } from "lucide-react";
+import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -24,20 +24,31 @@ interface CondoFee {
     };
 }
 
+const demoFees: CondoFee[] = [
+    { id: "demo-fee-1204", unit_id: "demo-unit-1204", amount: 126900, month: "2026-05", status: "pending", due_date: "2026-05-15", units: { number: "1204", tower: "A" } },
+    { id: "demo-fee-805", unit_id: "demo-unit-805", amount: 119500, month: "2026-05", status: "paid", due_date: "2026-05-15", paid_at: "2026-05-08T14:20:00.000Z", payment_method: "haulmer", units: { number: "805", tower: "A" } },
+    { id: "demo-fee-1505", unit_id: "demo-unit-1505", amount: 141200, month: "2026-05", status: "overdue", due_date: "2026-05-05", units: { number: "1505", tower: "B" } },
+    { id: "demo-fee-1802", unit_id: "demo-unit-1802", amount: 132800, month: "2026-05", status: "paid", due_date: "2026-05-15", paid_at: "2026-05-06T10:04:00.000Z", payment_method: "transfer", units: { number: "1802", tower: "B" } },
+];
+
 export function CondoFeesTable() {
     const [fees, setFees] = useState<CondoFee[]>([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [query, setQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | CondoFee["status"]>("all");
     const { user } = useAuth();
     const { toast } = useToast();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
-    useEffect(() => {
-        loadFees();
-    }, []);
-
-    const loadFees = async () => {
+    const loadFees = useCallback(async () => {
         try {
             setLoading(true);
+            if (isDemoUser) {
+                setFees(demoFees);
+                return;
+            }
+
             const data = await CondoFeeService.getAll();
             setFees(data || []);
         } catch (error) {
@@ -45,9 +56,26 @@ export function CondoFeesTable() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isDemoUser]);
+
+    useEffect(() => {
+        loadFees();
+    }, [loadFees]);
 
     const handleSendEmails = async () => {
+        if (isDemoUser) {
+            setSending(true);
+            setTimeout(() => {
+                setSending(false);
+                toast({
+                    title: "Envio demo preparado",
+                    description: "Se simulo la notificacion de cobros pendientes.",
+                    variant: "success",
+                });
+            }, 500);
+            return;
+        }
+
         if (!user?.communityId) {
             toast({ title: "Error", description: "No se encontró tu comunidad.", variant: "destructive" });
             return;
@@ -93,6 +121,12 @@ export function CondoFeesTable() {
         return <div className="p-10 text-center text-slate-500">Cargando registros...</div>;
     }
 
+    const filteredFees = fees.filter(fee => {
+        const matchesStatus = statusFilter === "all" || fee.status === statusFilter;
+        const text = `${fee.units?.tower || ""} ${fee.units?.number || ""} ${fee.month} ${fee.status}`.toLowerCase();
+        return matchesStatus && text.includes(query.trim().toLowerCase());
+    });
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -114,6 +148,37 @@ export function CondoFeesTable() {
                 </button>
             </div>
 
+            <div className="grid gap-3 border-b border-subtle p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        value={query}
+                        onChange={event => setQuery(event.target.value)}
+                        placeholder="Buscar por torre, unidad o mes"
+                        className="h-11 w-full rounded-lg border border-subtle bg-canvas pl-10 pr-4 text-sm font-medium outline-none transition-colors focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
+                    />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {([
+                        ["all", "Todos"],
+                        ["pending", "Pendientes"],
+                        ["overdue", "Atrasados"],
+                        ["paid", "Pagados"],
+                    ] as Array<["all" | CondoFee["status"], string]>).map(([key, label]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setStatusFilter(key)}
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                                statusFilter === key ? "bg-slate-950 text-white" : "bg-elevated cc-text-secondary hover:bg-surface"
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-elevated/50 cc-text-secondary">
@@ -126,7 +191,7 @@ export function CondoFeesTable() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-subtle/50">
-                        {fees.map((fee) => (
+                        {filteredFees.map((fee) => (
                             <tr key={fee.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                 <td className="py-4 px-6">
                                     <div className="flex items-center gap-3">
@@ -188,10 +253,10 @@ export function CondoFeesTable() {
                                 </td>
                             </tr>
                         ))}
-                        {fees.length === 0 && (
+                        {filteredFees.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="py-12 text-center text-slate-500 font-medium">
-                                    No hay registros de Gastos Comunes.
+                                    {fees.length === 0 ? "No hay registros de gastos comunes." : "No hay cobros para esta busqueda."}
                                 </td>
                             </tr>
                         )}
