@@ -43,11 +43,28 @@ const demoPackages: PackageItem[] = [
     { id: "demo-p3", recipientUnitId: "1505", description: "Pedido farmacia", receivedAt: new Date(Date.now() - 3 * 36e5).toISOString(), status: "picked-up", pickedUpAt: new Date(Date.now() - 45 * 60000).toISOString() },
 ];
 
+const demoPackagesStorageKey = "cc_demo_concierge_packages";
+
 const demoUnits: Unit[] = [
     { id: "demo-u1", number: "805" },
     { id: "demo-u2", number: "1204" },
     { id: "demo-u3", number: "1505" },
 ];
+
+function getDemoPackages(): PackageItem[] {
+    if (typeof window === "undefined") return demoPackages;
+    try {
+        const stored = JSON.parse(window.localStorage.getItem(demoPackagesStorageKey) || "[]") as PackageItem[];
+        return stored.length > 0 ? stored : demoPackages;
+    } catch {
+        return demoPackages;
+    }
+}
+
+function saveDemoPackages(packages: PackageItem[]) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(demoPackagesStorageKey, JSON.stringify(packages));
+}
 
 function receivedAgoLabel(value: string) {
     const receivedAt = new Date(value).getTime();
@@ -78,7 +95,7 @@ export default function PackagesPage() {
         const loadData = async () => {
             try {
                 if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                    setPackages(demoPackages);
+                    setPackages(getDemoPackages());
                     setUnits(demoUnits);
                     return;
                 }
@@ -114,7 +131,9 @@ export default function PackagesPage() {
                     receivedAt: new Date().toISOString(),
                     status: "pending",
                 };
-                setPackages([pkg, ...packages]);
+                const nextPackages = [pkg, ...packages];
+                setPackages(nextPackages);
+                saveDemoPackages(nextPackages);
                 setIsDialogOpen(false);
                 setNewPackage({ unit: "", description: "" });
                 toast({
@@ -178,14 +197,16 @@ export default function PackagesPage() {
     const handleMarkDelivered = async (id: string) => {
         try {
             if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                setPackages(prev => prev.map(pkg =>
+                const nextPackages = packages.map(pkg =>
                     pkg.id === id
                         ? { ...pkg, status: 'picked-up', pickedUpAt: new Date().toISOString() }
                         : pkg
-                ));
+                );
+                setPackages(nextPackages);
+                saveDemoPackages(nextPackages);
                 toast({
                     title: "Entrega demo actualizada",
-                    description: "La bitacora local quedo al dia.",
+                    description: "La bitácora local quedó al día.",
                 });
                 return;
             }

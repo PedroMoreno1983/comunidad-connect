@@ -186,6 +186,11 @@ export function Sidebar() {
         }
     };
 
+    const avatarSrc = user.photo || user.avatarUrl;
+    const displayName = user.name.includes('@')
+        ? (user.name.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.name.split('@')[0].split('.')[0].slice(1))
+        : user.name;
+
     const getRoleBadgeClass = () => {
         switch (user.role) {
             case 'admin':    return 'bg-role-admin-bg text-role-admin-fg border border-role-admin-border';
@@ -213,19 +218,18 @@ export function Sidebar() {
     const sidebarContent = (
         <>
             {/* Header / Logo */}
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-subtle px-4">
-                <div className="flex items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={getAvatarStyle()}>
+            <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-subtle px-4">
+                <div className="flex min-w-0 items-center">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={getAvatarStyle()}>
                         <Building2 className="h-5 w-5 text-white" />
                     </div>
-                    <div className="ml-3">
+                    <div className="ml-3 min-w-0 truncate">
                         <span className="text-base font-bold cc-text-primary">Comunidad</span>
                         <span className="text-base font-bold text-brand-500">Connect</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="shrink-0">
                     <NotificationCenter />
-                    <ThemeToggleCompact />
                 </div>
             </div>
 
@@ -233,14 +237,17 @@ export function Sidebar() {
             <div className="shrink-0 p-3">
                 <div className="rounded-lg border border-subtle bg-surface p-3">
                     <div className="flex items-center">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white" style={getAvatarStyle()}>
-                            {user.name.charAt(0)}
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sm font-bold text-white" style={avatarSrc ? undefined : getAvatarStyle()}>
+                            {avatarSrc ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- Demo avatars may be local data URLs.
+                                <img src={avatarSrc} alt={displayName} className="h-full w-full object-cover" />
+                            ) : (
+                                displayName.charAt(0)
+                            )}
                         </div>
                         <div className="ml-3 overflow-hidden flex-1">
                             <p className="text-sm font-semibold cc-text-primary truncate">
-                                {user.name.includes('@')
-                                    ? (user.name.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.name.split('@')[0].split('.')[0].slice(1))
-                                    : user.name}
+                                {displayName}
                             </p>
                             <span className={`mt-1 inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getRoleBadgeClass()}`}>
                                 {user.role === 'admin' ? 'Admin' : user.role === 'resident' ? 'Residente' : 'Conserjería'}
@@ -301,7 +308,11 @@ export function Sidebar() {
             </nav>
 
             {/* Footer / Logout */}
-            <div className="space-y-2 border-t border-subtle p-3">
+            <div className="space-y-3 border-t border-subtle p-3">
+                <div className="flex items-center justify-between rounded-lg border border-subtle bg-canvas px-3 py-2">
+                    <span className="text-xs font-semibold cc-text-secondary">Apariencia</span>
+                    <ThemeToggleCompact />
+                </div>
                 <button
                     onClick={handleLogout}
                     className="group flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium cc-text-secondary transition-colors hover:bg-danger-bg hover:text-danger-fg"

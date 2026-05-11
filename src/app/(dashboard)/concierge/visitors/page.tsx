@@ -35,11 +35,28 @@ const demoVisitorLogs: VisitorLog[] = [
     { id: "demo-v3", visitorName: "Courier Chilexpress", unitId: "1505", entryTime: new Date(Date.now() - 74 * 60000).toISOString(), isQr: false },
 ];
 
+const demoVisitorsStorageKey = "cc_demo_concierge_visitors";
+
 const demoUnits: Unit[] = [
     { id: "demo-u1", number: "805" },
     { id: "demo-u2", number: "1204" },
     { id: "demo-u3", number: "1505" },
 ];
+
+function getDemoVisitors(): VisitorLog[] {
+    if (typeof window === "undefined") return demoVisitorLogs;
+    try {
+        const stored = JSON.parse(window.localStorage.getItem(demoVisitorsStorageKey) || "[]") as VisitorLog[];
+        return stored.length > 0 ? stored : demoVisitorLogs;
+    } catch {
+        return demoVisitorLogs;
+    }
+}
+
+function saveDemoVisitors(visitors: VisitorLog[]) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(demoVisitorsStorageKey, JSON.stringify(visitors));
+}
 
 export default function VisitorsPage() {
     const { user } = useAuth();
@@ -59,7 +76,7 @@ export default function VisitorsPage() {
         const loadData = async () => {
             try {
                 if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                    setVisitors(demoVisitorLogs);
+                    setVisitors(getDemoVisitors());
                     setUnits(demoUnits);
                     return;
                 }
@@ -87,19 +104,21 @@ export default function VisitorsPage() {
         e.preventDefault();
         try {
             if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                const visitor = {
+                const visitor: VisitorLog = {
                     id: `demo-v-${Date.now()}`,
                     visitorName: newVisitor.name,
                     unitId: newVisitor.unit,
                     entryTime: new Date().toISOString(),
                     isQr: false
                 };
-                setVisitors([visitor, ...visitors]);
+                const nextVisitors = [visitor, ...visitors];
+                setVisitors(nextVisitors);
+                saveDemoVisitors(nextVisitors);
                 setIsDialogOpen(false);
                 setNewVisitor({ name: "", unit: "" });
                 toast({
                     title: "Registro demo listo",
-                    description: `Se agrego ${visitor.visitorName} a la bitacora local.`,
+                    description: `Se agregó ${visitor.visitorName} a la bitácora local.`,
                     variant: "success",
                 });
                 return;
@@ -220,7 +239,7 @@ export default function VisitorsPage() {
                     {[
                         { title: "Verificar", description: "Validar QR o registrar manualmente cuando el visitante no trae codigo.", icon: <ShieldCheck className="h-4 w-4" /> },
                         { title: "Autorizar", description: "Confirmar unidad destino y registrar hora de entrada para auditoria.", icon: <UserCheck className="h-4 w-4" /> },
-                        { title: "Consultar", description: "La bitacora queda disponible para administracion y cambios de turno.", icon: <ClipboardList className="h-4 w-4" /> },
+                        { title: "Consultar", description: "La bitácora queda disponible para administración y cambios de turno.", icon: <ClipboardList className="h-4 w-4" /> },
                     ].map(item => (
                         <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
@@ -236,7 +255,13 @@ export default function VisitorsPage() {
             </section>
 
             {/* Main Scanner Section */}
-            <QRScannerSimulator onScanSuccess={(newLog: VisitorLog) => setVisitors([newLog, ...visitors])} />
+            <QRScannerSimulator
+                onScanSuccess={(newLog: VisitorLog) => {
+                    const nextVisitors = [newLog, ...visitors];
+                    setVisitors(nextVisitors);
+                    if (user?.email?.toLowerCase().endsWith("@demo.com")) saveDemoVisitors(nextVisitors);
+                }}
+            />
 
             {/* Activity Log Section */}
             <div className="space-y-8">
