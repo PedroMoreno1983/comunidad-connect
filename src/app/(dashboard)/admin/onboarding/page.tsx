@@ -41,6 +41,53 @@ const demoExtractedUsers: ExtractedUser[] = [
     { id: "demo-row-4", name: "", unit_id: "1802", email: "pendiente@example.com", phone: "+56 9 5555 1802" },
 ];
 
+const fieldAliases = {
+    name: ["nombre", "name", "residente", "resident", "full_name", "fullname", "nombrecompleto", "propietario", "arrendatario"],
+    unit_id: ["unidad", "unit", "depto", "departamento", "nrodepartamento", "numerodepartamento", "unitnumber", "unitid", "numero", "casa"],
+    email: ["correo", "email", "mail", "correoelectronico", "e-mail"],
+    phone: ["telefono", "phone", "celular", "movil", "whatsapp", "contacto"],
+};
+
+function normalizeHeader(value: string) {
+    return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+}
+
+function pickField(row: Record<string, unknown>, aliases: string[]) {
+    const normalizedEntries = Object.entries(row).map(([key, value]) => ({
+        key: normalizeHeader(key),
+        value,
+    }));
+    const match = normalizedEntries.find(entry => aliases.includes(entry.key));
+    return match?.value === undefined || match.value === null ? "" : String(match.value).trim();
+}
+
+async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!extension || !["xlsx", "xls", "csv", "txt"].includes(extension)) return [];
+
+    const XLSX = await import("xlsx");
+    const workbook = extension === "csv" || extension === "txt"
+        ? XLSX.read(await file.text(), { type: "string" })
+        : XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) return [];
+
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], { defval: "" });
+    return rows
+        .map((row, index) => ({
+            id: `file-${index}`,
+            name: pickField(row, fieldAliases.name),
+            unit_id: pickField(row, fieldAliases.unit_id),
+            email: pickField(row, fieldAliases.email),
+            phone: pickField(row, fieldAliases.phone),
+        }))
+        .filter(row => row.name || row.unit_id || row.email || row.phone);
+}
+
 function friendlyError(message?: string) {
     const text = (message || "").toLowerCase();
     if (text.includes("timeout") || text.includes("504") || text.includes("large") || text.includes("grande")) {
@@ -113,10 +160,21 @@ export default function AdminOnboardingPage() {
         try {
             if (isDemoUser) {
                 await new Promise(resolve => setTimeout(resolve, 650));
+                const browserRows = await parseFileInBrowser(uploadedFile);
+                if (browserRows.length > 0) {
+                    setExtractedData(browserRows);
+                    toast({
+                        title: "Archivo demo leido",
+                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado seguira siendo simulado.`,
+                        variant: "success",
+                    });
+                    return;
+                }
+
                 setExtractedData(demoExtractedUsers);
                 toast({
                     title: "Archivo recibido en modo demo",
-                    description: "La cuenta demo no guarda datos reales; cargamos filas de prueba para revisar el flujo.",
+                    description: "Este formato usa extraccion asistida en produccion; en demo cargamos filas de prueba y no guardamos datos reales.",
                     variant: "success",
                 });
                 return;
