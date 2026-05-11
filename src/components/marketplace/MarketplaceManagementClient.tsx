@@ -11,6 +11,12 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
+import {
+    applyDemoMarketplaceStatusOverrides,
+    getDemoPublishedMarketplaceItems,
+    saveDemoMarketplaceStatusOverride,
+    saveDemoPublishedMarketplaceItems,
+} from "@/lib/services/demoMarketplaceStorage";
 
 type Mode = "mine" | "admin";
 type MarketplaceStatus = MarketplaceItem["status"];
@@ -42,12 +48,13 @@ function getDemoManagementItems(userId: string): MarketplaceItem[] {
 
     return [
         {
-            id: "demo-marketplace-management-bike",
-            title: "Bicicleta urbana aro 26",
-            description: "Usada pocas veces, ideal para trayectos cortos por el barrio. Incluye candado y luz trasera.",
+            id: "demo-market-1",
+            title: "Bicicleta plegable aro 20",
+            description: "Uso liviano, ideal para moverse cerca del edificio. Se entrega en conserjeria con coordinacion previa.",
             price: 85000,
-            sellerId: userId,
-            imageUrl: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=720&q=80",
+            sellerId: userId || "demo",
+            imageUrl: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop",
+            images: ["https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop"],
             category: "other",
             createdAt: now,
             status: "available",
@@ -57,53 +64,38 @@ function getDemoManagementItems(userId: string): MarketplaceItem[] {
             paymentStatus: "none",
         },
         {
-            id: "demo-marketplace-management-desk",
-            title: "Escritorio compacto",
-            description: "Mesa firme para home office, 100 x 50 cm. Se retira en conserjeria previa coordinacion.",
-            price: 42000,
-            sellerId: userId,
-            imageUrl: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=720&q=80",
+            id: "demo-market-2",
+            title: "Silla ergonomica home office",
+            description: "Respaldo regulable, buen estado. Perfecta para teletrabajo.",
+            price: 65000,
+            sellerId: userId || "demo",
+            imageUrl: "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop",
+            images: ["https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop"],
             category: "furniture",
+            createdAt: now,
+            status: "available",
+            allowSale: true,
+            allowSwap: false,
+            allowBarter: true,
+            paymentStatus: "none",
+        },
+        {
+            id: "demo-market-3",
+            title: "Monitor Samsung 24 pulgadas",
+            description: "Full HD, entrada HDMI. Probado y funcionando.",
+            price: 72000,
+            sellerId: userId || "demo",
+            imageUrl: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop",
+            images: ["https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop"],
+            category: "electronics",
             createdAt: now,
             status: "reserved",
             allowSale: true,
             allowSwap: false,
-            allowBarter: true,
+            allowBarter: false,
             paymentStatus: "pending",
         },
-        {
-            id: "demo-marketplace-management-lamp",
-            title: "Lampara de velador",
-            description: "Funcionando perfecto. Se oculta en demo para mostrar flujo de moderacion.",
-            price: 12000,
-            sellerId: userId,
-            imageUrl: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=720&q=80",
-            category: "furniture",
-            createdAt: now,
-            status: "hidden",
-            allowSale: true,
-            allowSwap: false,
-            allowBarter: false,
-            paymentStatus: "none",
-        },
     ];
-}
-
-const demoMarketplaceStorageKey = "cc_demo_marketplace_items";
-
-function getDemoPublishedItems() {
-    if (typeof window === "undefined") return [];
-    try {
-        return JSON.parse(window.localStorage.getItem(demoMarketplaceStorageKey) || "[]") as MarketplaceItem[];
-    } catch {
-        return [];
-    }
-}
-
-function saveDemoPublishedItems(items: MarketplaceItem[]) {
-    if (typeof window === "undefined") return;
-    const published = items.filter(item => item.id.startsWith("demo-market-published-"));
-    window.localStorage.setItem(demoMarketplaceStorageKey, JSON.stringify(published.slice(0, 30)));
 }
 
 interface MarketplaceManagementClientProps {
@@ -126,7 +118,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
 
         setLoading(true);
         if (isDemoUser) {
-            setItems([...getDemoPublishedItems(), ...getDemoManagementItems(user.id)]);
+            setItems(applyDemoMarketplaceStatusOverrides([...getDemoPublishedMarketplaceItems(), ...getDemoManagementItems(user.id)]));
             setLoading(false);
             return;
         }
@@ -171,7 +163,8 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
             if (isDemoUser || item.id.startsWith("demo-")) {
                 setItems(current => {
                     const next = current.map(row => row.id === item.id ? { ...row, status } : row);
-                    saveDemoPublishedItems(next);
+                    saveDemoMarketplaceStatusOverride(item.id, status);
+                    saveDemoPublishedMarketplaceItems(next);
                     return next;
                 });
                 toast({
@@ -219,7 +212,8 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
             if (isDemoUser || item.id.startsWith("demo-")) {
                 setItems(current => {
                     const next = current.filter(row => row.id !== item.id);
-                    saveDemoPublishedItems(next);
+                    saveDemoMarketplaceStatusOverride(item.id, "hidden");
+                    saveDemoPublishedMarketplaceItems(next);
                     return next;
                 });
                 toast({
