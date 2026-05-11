@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Save, Trash2, UploadCloud, UsersRound } from "lucide-react";
+import {
+    AlertCircle,
+    CheckCircle2,
+    FileSpreadsheet,
+    ListChecks,
+    Save,
+    ShieldCheck,
+    Trash2,
+    UploadCloud,
+    UsersRound,
+} from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
@@ -16,18 +26,25 @@ interface ExtractedUser {
     phone: string;
 }
 
+const demoExtractedUsers: ExtractedUser[] = [
+    { id: "demo-row-1", name: "Andrea Dupre", unit_id: "1204", email: "andrea@example.com", phone: "+56 9 5555 1204" },
+    { id: "demo-row-2", name: "Carlos Rivas", unit_id: "805", email: "carlos@example.com", phone: "+56 9 5555 0805" },
+    { id: "demo-row-3", name: "Marta Rojas", unit_id: "1505", email: "marta@example.com", phone: "" },
+    { id: "demo-row-4", name: "", unit_id: "1802", email: "pendiente@example.com", phone: "+56 9 5555 1802" },
+];
+
 function friendlyError(message?: string) {
     const text = (message || "").toLowerCase();
     if (text.includes("timeout") || text.includes("504") || text.includes("large") || text.includes("grande")) {
-        return "El archivo tardó demasiado en procesarse. Prueba con un PDF más liviano o divide la nómina en partes.";
+        return "El archivo tardo demasiado en procesarse. Prueba con un PDF mas liviano o divide la nomina en partes.";
     }
     if (text.includes("json") || text.includes("gemini") || text.includes("api")) {
         return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla CSV/TXT.";
     }
     if (text.includes("supabase") || text.includes("database")) {
-        return "No pudimos guardar la información en este momento. Revisa tu conexión e intenta nuevamente.";
+        return "No pudimos guardar la informacion en este momento. Revisa tu conexion e intenta nuevamente.";
     }
-    return "No pudimos completar la operación. Revisa el archivo e intenta nuevamente.";
+    return "No pudimos completar la operacion. Revisa el archivo e intenta nuevamente.";
 }
 
 export default function AdminOnboardingPage() {
@@ -42,9 +59,33 @@ export default function AdminOnboardingPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [confirmingSync, setConfirmingSync] = useState(false);
 
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
+
     useEffect(() => {
         if (user && user.role !== "admin") router.push("/home");
     }, [router, user]);
+
+    const quality = useMemo(() => {
+        const totalRows = extractedData?.length || 0;
+        const validRows = extractedData?.filter(row => row.name.trim() && row.unit_id.trim()).length || 0;
+        const missingNameRows = extractedData?.filter(row => !row.name.trim()).length || 0;
+        const missingUnitRows = extractedData?.filter(row => !row.unit_id.trim()).length || 0;
+        const missingContactRows = extractedData?.filter(row => !row.email.trim() && !row.phone.trim()).length || 0;
+        const score = totalRows > 0 ? Math.round((validRows / totalRows) * 100) : 0;
+
+        return { totalRows, validRows, missingNameRows, missingUnitRows, missingContactRows, score };
+    }, [extractedData]);
+
+    const setDemoNomina = () => {
+        setSyncSuccess(false);
+        setConfirmingSync(false);
+        setExtractedData(demoExtractedUsers);
+        toast({
+            title: "Nomina demo cargada",
+            description: "Puedes editar filas, eliminar dudas y simular la sincronizacion.",
+            variant: "success",
+        });
+    };
 
     const processFile = async (uploadedFile: File) => {
         setIsExtracting(true);
@@ -52,10 +93,20 @@ export default function AdminOnboardingPage() {
         setSyncSuccess(false);
         setConfirmingSync(false);
 
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
-
         try {
+            if (isDemoUser) {
+                await new Promise(resolve => setTimeout(resolve, 650));
+                setExtractedData(demoExtractedUsers);
+                toast({
+                    title: "Archivo demo procesado",
+                    description: "Cargamos una nomina de ejemplo para revisar el flujo.",
+                    variant: "success",
+                });
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", uploadedFile);
             const res = await fetch("/api/onboarding/extract", {
                 method: "POST",
                 body: formData,
@@ -80,7 +131,7 @@ export default function AdminOnboardingPage() {
                 setExtractedData(mappedData);
                 toast({
                     title: "Archivo procesado",
-                    description: `Detectamos ${mappedData.length} registros para revisión.`,
+                    description: `Detectamos ${mappedData.length} registros para revision.`,
                     variant: "success",
                 });
                 return;
@@ -135,6 +186,14 @@ export default function AdminOnboardingPage() {
         setConfirmingSync(false);
         setIsSyncing(true);
         try {
+            if (isDemoUser) {
+                await new Promise(resolve => setTimeout(resolve, 700));
+                setSyncSuccess(true);
+                setExtractedData(null);
+                toast({ title: "Sincronizacion demo lista", description: "La nomina quedo simulada para esta sesion.", variant: "success" });
+                return;
+            }
+
             const res = await fetch("/api/onboarding/upsert", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -144,7 +203,7 @@ export default function AdminOnboardingPage() {
             if (res.ok) {
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Residentes sincronizados", description: "La nómina quedó disponible para operación.", variant: "success" });
+                toast({ title: "Residentes sincronizados", description: "La nomina quedo disponible para operacion.", variant: "success" });
                 return;
             }
 
@@ -164,26 +223,47 @@ export default function AdminOnboardingPage() {
 
     if (user && user.role !== "admin") return null;
 
-    const validRows = extractedData?.filter(row => row.name.trim() && row.unit_id.trim()).length || 0;
-
     return (
-        <div className="mx-auto max-w-7xl space-y-8 pb-12">
-            <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
+            <header className="flex flex-col gap-5 border-b border-subtle pb-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Carga masiva</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Carga masiva</p>
                     <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold cc-text-primary">
                         <UsersRound className="h-8 w-8 text-brand-600" />
                         Onboarding de residentes
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 cc-text-secondary">
-                        Importa nóminas antiguas, revisa la extracción y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
+                        Importa nominas antiguas, revisa la extraccion y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
                     </p>
                 </div>
-                <div className="rounded-lg border border-subtle bg-surface px-4 py-3 text-sm shadow-sm">
+                <div className="rounded-lg border border-subtle bg-surface p-4 text-sm shadow-sm">
                     <p className="font-semibold cc-text-primary">Flujo recomendado</p>
-                    <p className="mt-1 cc-text-secondary">Subir archivo → revisar filas → sincronizar</p>
+                    <div className="mt-3 grid gap-2">
+                        {["Subir archivo", "Revisar filas", "Sincronizar"].map((step, index) => (
+                            <div key={step} className="flex items-center gap-2 cc-text-secondary">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[11px] font-bold">{index + 1}</span>
+                                {step}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </header>
+
+            <section className="grid gap-4 md:grid-cols-3">
+                {[
+                    { title: "Extraccion asistida", description: "Lee nominas antiguas y las convierte en filas editables.", icon: <FileSpreadsheet className="h-4 w-4" /> },
+                    { title: "Control de calidad", description: "Detecta campos criticos antes de guardar datos en la comunidad.", icon: <ListChecks className="h-4 w-4" /> },
+                    { title: "Carga segura", description: "Sincroniza solo despues de revisar y confirmar la nomina.", icon: <ShieldCheck className="h-4 w-4" /> },
+                ].map(item => (
+                    <article key={item.title} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                        <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                            {item.icon}
+                        </div>
+                        <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                        <p className="mt-2 text-sm leading-6 cc-text-secondary">{item.description}</p>
+                    </article>
+                ))}
+            </section>
 
             {!extractedData && !syncSuccess && (
                 <section
@@ -197,26 +277,31 @@ export default function AdminOnboardingPage() {
                             {isExtracting ? <FileSpreadsheet className="h-8 w-8 animate-pulse" /> : <UploadCloud className="h-8 w-8" />}
                         </div>
                         <h2 className="mt-6 text-2xl font-semibold cc-text-primary">
-                            {isExtracting ? "Procesando archivo" : "Sube una nómina de residentes"}
+                            {isExtracting ? "Procesando archivo" : "Sube una nomina de residentes"}
                         </h2>
                         <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
-                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mantén esta ventana abierta."
-                                : "Acepta PDF, Word, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y teléfono."}
+                                ? "Estamos extrayendo nombres, unidades, correos y telefonos. Manten esta ventana abierta."
+                                : "Acepta PDF, Word, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
                         </p>
 
                         {!isExtracting && (
-                            <label className="mt-8 inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
-                                <UploadCloud className="h-4 w-4" />
-                                Seleccionar archivo
-                                <input
-                                    type="file"
-                                    accept=".pdf,.docx,.doc,.txt,.csv"
-                                    onChange={handleFileUpload}
-                                    disabled={isExtracting}
-                                    className="hidden"
-                                />
-                            </label>
+                            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                                    <UploadCloud className="h-4 w-4" />
+                                    Seleccionar archivo
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.docx,.doc,.txt,.csv"
+                                        onChange={handleFileUpload}
+                                        disabled={isExtracting}
+                                        className="hidden"
+                                    />
+                                </label>
+                                <Button type="button" variant="outline" onClick={setDemoNomina}>
+                                    Cargar ejemplo
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </section>
@@ -231,9 +316,9 @@ export default function AdminOnboardingPage() {
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-600 text-white">
                         <CheckCircle2 className="h-8 w-8" />
                     </div>
-                    <h2 className="mt-5 text-2xl font-semibold text-success-fg">Nómina sincronizada</h2>
+                    <h2 className="mt-5 text-2xl font-semibold text-success-fg">Nomina sincronizada</h2>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-800">
-                        Los residentes quedaron preparados para invitación, asignación de unidades y operación diaria.
+                        Los residentes quedaron preparados para invitacion, asignacion de unidades y operacion diaria.
                     </p>
                     <Button type="button" className="mt-6" onClick={() => setSyncSuccess(false)}>
                         Cargar otro archivo
@@ -253,10 +338,10 @@ export default function AdminOnboardingPage() {
                             <div>
                                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                                     <FileSpreadsheet className="h-5 w-5 text-brand-300" />
-                                    Revisión antes de sincronizar
+                                    Revision antes de sincronizar
                                 </h2>
                                 <p className="mt-1 text-sm text-slate-300">
-                                    {validRows} de {extractedData.length} filas tienen nombre y unidad. Corrige o elimina registros dudosos antes de guardar.
+                                    {quality.validRows} de {quality.totalRows} filas tienen nombre y unidad. Corrige o elimina registros dudosos antes de guardar.
                                 </p>
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row">
@@ -265,7 +350,7 @@ export default function AdminOnboardingPage() {
                                 </Button>
                                 <button
                                     onClick={handleSyncToDatabase}
-                                    disabled={isSyncing || validRows === 0}
+                                    disabled={isSyncing || quality.validRows === 0}
                                     className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${confirmingSync ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                                 >
                                     {isSyncing ? (
@@ -273,16 +358,40 @@ export default function AdminOnboardingPage() {
                                     ) : confirmingSync ? (
                                         <>
                                             <AlertCircle className="h-4 w-4" />
-                                            Confirmar sincronización
+                                            Confirmar sincronizacion
                                         </>
                                     ) : (
                                         <>
                                             <Save className="h-4 w-4" />
-                                            Sincronizar nómina
+                                            Sincronizar nomina
                                         </>
                                     )}
                                 </button>
                             </div>
+                        </div>
+
+                        <div className="grid gap-3 border-b border-subtle p-5 md:grid-cols-4">
+                            {[
+                                { label: "Calidad", value: `${quality.score}%`, tone: quality.score >= 80 ? "text-success-fg" : "text-warning-fg" },
+                                { label: "Filas validas", value: `${quality.validRows}/${quality.totalRows}`, tone: "cc-text-primary" },
+                                { label: "Sin nombre", value: quality.missingNameRows, tone: quality.missingNameRows ? "text-warning-fg" : "text-success-fg" },
+                                { label: "Sin contacto", value: quality.missingContactRows, tone: quality.missingContactRows ? "text-warning-fg" : "text-success-fg" },
+                            ].map(item => (
+                                <div key={item.label} className="rounded-lg border border-subtle bg-elevated/40 p-4">
+                                    <p className={`text-2xl font-semibold ${item.tone}`}>{item.value}</p>
+                                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
+                                </div>
+                            ))}
+                            {quality.missingUnitRows > 0 && (
+                                <div className="rounded-lg border border-warning-border bg-warning-bg p-4 md:col-span-4">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="mt-0.5 h-5 w-5 text-warning-fg" />
+                                        <p className="text-sm font-semibold cc-text-primary">
+                                            Hay {quality.missingUnitRows} fila(s) sin unidad. Corrigelas antes de sincronizar para evitar residentes sin asignacion.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="overflow-x-auto">
@@ -292,8 +401,8 @@ export default function AdminOnboardingPage() {
                                         <th className="px-5 py-4">Nombre</th>
                                         <th className="px-5 py-4">Unidad</th>
                                         <th className="px-5 py-4">Correo</th>
-                                        <th className="px-5 py-4">Teléfono</th>
-                                        <th className="px-5 py-4 text-right">Acción</th>
+                                        <th className="px-5 py-4">Telefono</th>
+                                        <th className="px-5 py-4 text-right">Accion</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-subtle">
