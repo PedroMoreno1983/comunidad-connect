@@ -1,217 +1,242 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-    QrCode, Share2, UserPlus,
-    Smartphone, Copy,
-    ShieldCheck, Info
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CalendarClock, CheckCircle2, Copy, IdCard, Share2, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 import { InvitationService } from "@/lib/services/supabaseServices";
 
-export function QRInvitationGenerator({ onGenerated }: { onGenerated?: () => void }) {
+export interface GeneratedInvitation {
+    id: string;
+    residentId: string;
+    guestName: string;
+    guestDni: string;
+    status: "active";
+    validFrom: string;
+    validTo: string;
+    qrCode: string;
+}
+
+export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitation: GeneratedInvitation) => void }) {
     const { user } = useAuth();
-    const [step, setStep] = useState(1);
+    const { toast } = useToast();
     const [guestName, setGuestName] = useState("");
     const [guestDni, setGuestDni] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [invitationCode, setInvitationCode] = useState("");
-    const [qrPattern, setQrPattern] = useState<boolean[]>([]);
-    const { toast } = useToast();
+    const [generated, setGenerated] = useState<GeneratedInvitation | null>(null);
+
+    const qrCells = useMemo(() => {
+        const seed = generated?.qrCode || "COMMUNITY";
+        return Array.from({ length: 49 }, (_, index) => {
+            if ([0, 1, 7, 8, 40, 41, 47, 48].includes(index)) return true;
+            const code = seed.charCodeAt(index % seed.length);
+            return (code + index * 7) % 3 !== 0;
+        });
+    }, [generated?.qrCode]);
 
     const handleGenerate = async () => {
-        if (!guestName || !guestDni) {
+        if (!guestName.trim() || !guestDni.trim()) {
             toast({
-                title: "Campos Requeridos",
-                description: "Por favor complete los datos del invitado.",
-                variant: "destructive"
+                title: "Faltan datos",
+                description: "Ingresa nombre y documento del invitado.",
+                variant: "destructive",
             });
             return;
         }
 
         setIsGenerating(true);
         try {
-            const qrCodeValue = `INV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+            const validFrom = new Date();
+            const validTo = new Date(validFrom);
+            validTo.setDate(validTo.getDate() + 1);
+            const qrCodeValue = `INV-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+            const invitation: GeneratedInvitation = {
+                id: `local-${qrCodeValue}`,
+                residentId: user?.id || "resident",
+                guestName: guestName.trim(),
+                guestDni: guestDni.trim(),
+                status: "active",
+                validFrom: validFrom.toISOString(),
+                validTo: validTo.toISOString(),
+                qrCode: qrCodeValue,
+            };
 
             if (user && !user.email.toLowerCase().endsWith("@demo.com")) {
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-
                 await InvitationService.create({
                     resident_id: user.id,
-                    guest_name: guestName,
-                    guest_dni: guestDni,
-                    qr_code: qrCodeValue,
-                    valid_from: new Date().toISOString(),
-                    valid_to: tomorrow.toISOString()
+                    guest_name: invitation.guestName,
+                    guest_dni: invitation.guestDni,
+                    qr_code: invitation.qrCode,
+                    valid_from: invitation.validFrom,
+                    valid_to: invitation.validTo,
                 });
             }
 
-            setInvitationCode(qrCodeValue);
-            setQrPattern(Array.from({ length: 16 }, () => Math.random() > 0.4));
-            setIsGenerating(false);
-            setStep(2);
+            setGenerated(invitation);
+            onGenerated?.(invitation);
             toast({
-                title: "Invitación Generada",
-                description: "El código QR ya está listo para compartir.",
-                variant: "success"
+                title: "Invitacion generada",
+                description: "El pase quedo listo para conserjeria.",
+                variant: "success",
             });
-
-            if (onGenerated) onGenerated();
         } catch (error) {
             console.error("Error creating invitation:", error);
             toast({
-                title: "Error",
-                description: "No se pudo generar la invitación. Intente nuevamente.",
-                variant: "destructive"
+                title: "No se pudo generar",
+                description: "Intenta nuevamente en unos segundos.",
+                variant: "destructive",
             });
+        } finally {
             setIsGenerating(false);
         }
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(invitationCode);
-        toast({ title: "Copiado", description: "Código copiado al portapapeles." });
+        if (!generated) return;
+        navigator.clipboard.writeText(generated.qrCode);
+        toast({ title: "Codigo copiado", description: "El pase quedo en el portapapeles.", variant: "success" });
+    };
+
+    const shareInvitation = async () => {
+        if (!generated) return;
+        const text = `Pase ComunidadConnect para ${generated.guestName}: ${generated.qrCode}`;
+        if (navigator.share) {
+            await navigator.share({ title: "Pase de visita", text }).catch(() => undefined);
+            return;
+        }
+        navigator.clipboard.writeText(text);
+        toast({ title: "Pase copiado", description: "Puedes pegarlo en WhatsApp o correo.", variant: "success" });
+    };
+
+    const reset = () => {
+        setGuestName("");
+        setGuestDni("");
+        setGenerated(null);
     };
 
     return (
-        <div className="w-full max-w-md mx-auto">
+        <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+            <div className="border-b border-subtle p-5">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
+                        <UserPlus className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold cc-text-primary">Nuevo pase de visita</h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Genera un acceso temporal con trazabilidad para conserjeria.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <AnimatePresence mode="wait">
-                {step === 1 ? (
+                {!generated ? (
                     <motion.div
                         key="form"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="bg-surface rounded-lg p-10 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none space-y-8"
+                        exit={{ opacity: 0, y: -8 }}
+                        className="space-y-5 p-5"
                     >
-                        <div className="text-center space-y-2">
-                            <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                <UserPlus className="h-8 w-8" />
-                            </div>
-                            <h2 className="text-2xl font-semibold cc-text-primary">Nueva Invitación</h2>
-                            <p className="text-sm font-medium text-slate-400">Genere un acceso digital para su visita</p>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Invitado</label>
+                            <Input
+                                placeholder="Ej: Ana Garcia"
+                                className="h-12 rounded-lg"
+                                value={guestName}
+                                onChange={(event) => setGuestName(event.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Documento</label>
+                            <Input
+                                placeholder="Ej: 12.345.678-9"
+                                className="h-12 rounded-lg"
+                                value={guestDni}
+                                onChange={(event) => setGuestDni(event.target.value)}
+                            />
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Nombre del Invitado</label>
-                                <Input
-                                    placeholder="Ej: Ana García"
-                                    className="h-14 rounded-lg font-bold"
-                                    value={guestName}
-                                    onChange={(e) => setGuestName(e.target.value)}
-                                />
+                        <div className="grid gap-3 rounded-lg border border-subtle bg-elevated/40 p-4 text-sm cc-text-secondary">
+                            <div className="flex items-center gap-2">
+                                <CalendarClock className="h-4 w-4" />
+                                Vigencia automatica de 24 horas.
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">DNI / RUT</label>
-                                <Input
-                                    placeholder="Ej: 12.345.678-9"
-                                    className="h-14 rounded-lg font-bold"
-                                    value={guestDni}
-                                    onChange={(e) => setGuestDni(e.target.value)}
-                                />
+                            <div className="flex items-center gap-2">
+                                <IdCard className="h-4 w-4" />
+                                Conserjeria valida QR y documento.
                             </div>
-
-                            <div className="p-4 bg-elevated/50 rounded-lg flex gap-3">
-                                <Info className="h-5 w-5 text-blue-500 shrink-0" />
-                                <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
-                                    Esta invitación es válida por **24 horas** a partir de ahora. El invitado deberá presentar su documento de identidad original.
-                                </p>
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4" />
+                                El acceso queda registrado en bitacora.
                             </div>
-
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={isGenerating}
-                                className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all active:scale-95"
-                            >
-                                {isGenerating ? (
-                                    <span className="flex items-center gap-2">
-                                        <motion.div
-                                            animate={{ rotate: 360 }}
-                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                        >
-                                            <QrCode className="h-5 w-5" />
-                                        </motion.div>
-                                        Generando QR...
-                                    </span>
-                                ) : "Generar Acceso Digital"}
-                            </Button>
                         </div>
+
+                        <Button onClick={handleGenerate} disabled={isGenerating} className="h-12 w-full">
+                            {isGenerating ? "Generando..." : "Generar pase QR"}
+                        </Button>
                     </motion.div>
                 ) : (
                     <motion.div
-                        key="qr"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.1 }}
-                        className="bg-canvas rounded-lg p-10 shadow-sm relative overflow-hidden text-center space-y-8"
+                        key="generated"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="space-y-5 p-5"
                     >
-                        {/* Decorative Background */}
-                        <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12">
-                            <ShieldCheck className="h-48 w-48 text-blue-500" />
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                            <div className="flex items-center gap-2 font-semibold">
+                                <CheckCircle2 className="h-5 w-5" />
+                                Pase activo
+                            </div>
+                            <p className="mt-1 text-sm leading-6">
+                                {generated.guestName} puede presentarlo en conserjeria junto a su documento.
+                            </p>
                         </div>
 
-                        <div className="relative z-10 space-y-6">
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-semibold text-white">¡Pase Listo!</h3>
-                                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">{user?.unitName ?? user?.unitId ?? 'Mi Unidad'} • Válido 24hrs</p>
-                            </div>
-
-                            {/* QR Simulation Component */}
-                            <div className="mx-auto w-64 h-64 bg-white p-6 rounded-lg shadow-[0_0_50px_rgba(59,130,246,0.5)] relative group">
-                                <div className="w-full h-full border-4 border-slate-900 rounded-lg p-2 grid grid-cols-4 grid-rows-4 gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                                    {/* Abstract QR Pattern */}
-                                    {qrPattern.map((isFilled, i) => (
-                                        <div
-                                            key={i}
-                                            className={`rounded-sm ${isFilled ? 'bg-canvas' : 'bg-transparent'
-                                                } ${i === 0 || i === 3 || i === 12 || i === 15 ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
-                                        />
-                                    ))}
-                                </div>
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="bg-blue-600 p-3 rounded-xl shadow-sm">
-                                        <Smartphone className="h-6 w-6 text-white" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-                                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Invitado</p>
-                                    <p className="text-lg font-semibold text-white">{guestName}</p>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={copyToClipboard}
-                                        className="flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                        Copiar
-                                    </button>
-                                    <button className="flex-1 h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all active:scale-95">
-                                        <Share2 className="h-4 w-4" />
-                                        Compartir
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setStep(1)}
-                                className="text-xs font-bold text-slate-500 hover:text-white transition-colors"
-                            >
-                                Crear otra invitación
-                            </button>
+                        <div className="mx-auto grid aspect-square w-full max-w-[240px] grid-cols-7 gap-1 rounded-lg border border-subtle bg-white p-5 shadow-sm">
+                            {qrCells.map((filled, index) => (
+                                <span
+                                    key={index}
+                                    className={`rounded-[3px] ${filled ? "bg-slate-950" : "bg-slate-100"}`}
+                                    aria-hidden="true"
+                                />
+                            ))}
                         </div>
+
+                        <div className="rounded-lg border border-subtle bg-elevated/40 p-4">
+                            <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Codigo</p>
+                            <p className="mt-1 break-all font-mono text-xl font-bold cc-text-primary">{generated.qrCode}</p>
+                            <p className="mt-2 text-xs cc-text-secondary">
+                                Vence el {new Date(generated.validTo).toLocaleString("es-CL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <Button variant="outline" onClick={copyToClipboard}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copiar
+                            </Button>
+                            <Button onClick={shareInvitation}>
+                                <Share2 className="mr-2 h-4 w-4" />
+                                Compartir
+                            </Button>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={reset}
+                            className="w-full rounded-lg px-4 py-2 text-sm font-semibold cc-text-secondary transition-colors hover:bg-elevated"
+                        >
+                            Crear otro pase
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </section>
     );
 }

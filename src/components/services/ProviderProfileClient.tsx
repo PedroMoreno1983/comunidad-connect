@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/authContext";
 import { getProviderAvatar } from "@/lib/utils/avatar";
 import Image from "next/image";
 
@@ -34,6 +35,8 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     const [requestForm, setRequestForm] = useState({ date: '', time: '', description: '' });
     const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
     const { toast } = useToast();
+    const { user } = useAuth();
+    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const router = useRouter();
 
@@ -43,6 +46,18 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
         try {
             setIsRequestSaving(true);
+            if (isDemoUser || provider.id.startsWith("demo-")) {
+                toast({
+                    title: "Solicitud demo enviada",
+                    description: "Quedo registrada para seguimiento en Mis solicitudes.",
+                    variant: "success",
+                });
+                setIsRequestDialogOpen(false);
+                setRequestForm({ date: '', time: '', description: '' });
+                router.push('/services/my-requests');
+                return;
+            }
+
             const response = await fetch('/api/service-requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -94,6 +109,17 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
         try {
             setIsReviewSaving(true);
+            if (isDemoUser || provider.id.startsWith("demo-")) {
+                toast({
+                    title: "Resena demo publicada",
+                    description: "La evaluacion quedo simulada para esta sesion.",
+                    variant: "success",
+                });
+                setIsReviewDialogOpen(false);
+                setReviewForm({ rating: 5, comment: '' });
+                return;
+            }
+
             const response = await fetch('/api/reviews', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
