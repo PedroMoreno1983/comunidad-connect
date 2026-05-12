@@ -27,6 +27,13 @@ async function clickFirstVisible(page, locator, label) {
   throw new Error(`${label} was not clickable`);
 }
 
+async function expectNotVisible(page, locator, label) {
+  await page.waitForTimeout(500);
+  if (await locator.first().isVisible().catch(() => false)) {
+    throw new Error(`${label} should not be visible`);
+  }
+}
+
 async function loginAsAdmin(page) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle", timeout: 30000 });
   await clickFirstVisible(page, page.getByRole("button", { name: /Administrador/i }), "admin demo login");
@@ -68,6 +75,7 @@ async function runStep(name, fn, failures) {
   });
 
   const steps = [];
+  const qaPollTitle = `Consulta QA ${Date.now()}`;
 
   steps.push(await runStep("login demo admin", async () => {
     await loginAsAdmin(page);
@@ -80,6 +88,33 @@ async function runStep(name, fn, failures) {
     await expectVisible(page, page.getByRole("heading", { name: /Publicar producto/i }), "publish product dialog");
     await expectVisible(page, page.getByPlaceholder(/Bicicleta|producto|articulo/i), "product title field");
     await page.keyboard.press("Escape");
+  }, failures));
+
+  steps.push(await runStep("marketplace admin moderation affects public marketplace", async () => {
+    await page.evaluate(() => {
+      localStorage.removeItem("cc_demo_marketplace_items");
+      localStorage.removeItem("cc_demo_marketplace_status_overrides");
+    });
+
+    await page.goto(`${baseUrl}/marketplace`, { waitUntil: "networkidle", timeout: 30000 });
+    await expectVisible(page, page.getByText("Bicicleta plegable aro 20"), "demo bike before moderation");
+
+    await page.goto(`${baseUrl}/admin/marketplace`, { waitUntil: "networkidle", timeout: 30000 });
+    const bikeArticle = page.locator("article").filter({ hasText: "Bicicleta plegable aro 20" }).first();
+    await expectVisible(page, bikeArticle, "bike in admin marketplace");
+    await bikeArticle.getByRole("button", { name: /Ocultar/i }).click();
+
+    await page.goto(`${baseUrl}/marketplace`, { waitUntil: "networkidle", timeout: 30000 });
+    await expectNotVisible(page, page.getByText("Bicicleta plegable aro 20"), "hidden demo bike in public marketplace");
+
+    await page.goto(`${baseUrl}/admin/marketplace`, { waitUntil: "networkidle", timeout: 30000 });
+    await page.getByRole("button", { name: /^Ocultos/i }).click();
+    const hiddenBikeArticle = page.locator("article").filter({ hasText: "Bicicleta plegable aro 20" }).first();
+    await expectVisible(page, hiddenBikeArticle, "hidden bike in admin marketplace");
+    await hiddenBikeArticle.getByRole("button", { name: /^Disponible$/i }).click();
+
+    await page.goto(`${baseUrl}/marketplace`, { waitUntil: "networkidle", timeout: 30000 });
+    await expectVisible(page, page.getByText("Bicicleta plegable aro 20"), "restored demo bike in public marketplace");
   }, failures));
 
   steps.push(await runStep("services search and request dialog", async () => {
@@ -109,6 +144,27 @@ async function runStep(name, fn, failures) {
     await expectVisible(page, page.getByText(/Finanzas|Registro de cobros|Gastos/i), "admin finance surface");
     await page.goto(`${baseUrl}/admin/consumo`, { waitUntil: "networkidle", timeout: 30000 });
     await expectVisible(page, page.getByText(/Control hidrico|Control Hidrico|lecturas|Lecturas/i), "admin water surface");
+  }, failures));
+
+  steps.push(await runStep("admin onboarding demo import review and sync", async () => {
+    await page.goto(`${baseUrl}/admin/onboarding`, { waitUntil: "networkidle", timeout: 30000 });
+    await clickFirstVisible(page, page.getByRole("button", { name: /Cargar ejemplo/i }), "load onboarding example");
+    await expectVisible(page, page.getByText(/Revision antes|Revisi/i), "onboarding review table");
+    await clickFirstVisible(page, page.getByRole("button", { name: /Sincronizar nomina/i }), "sync roster first confirmation");
+    await clickFirstVisible(page, page.getByRole("button", { name: /Confirmar sincronizacion/i }), "sync roster final confirmation");
+    await expectVisible(page, page.getByText(/Carga simulada|Nomina sincronizada/i), "onboarding sync success");
+    await clickFirstVisible(page, page.getByRole("button", { name: /Ver Directorio/i }), "open directory after onboarding");
+    await expectVisible(page, page.getByText(/Andrea Dupre|Carlos Rivas|Marta Rojas/i), "synced demo resident in directory");
+  }, failures));
+
+  steps.push(await runStep("admin poll creation distributes to voting center", async () => {
+    await page.goto(`${baseUrl}/admin/votaciones`, { waitUntil: "networkidle", timeout: 30000 });
+    await page.getByPlaceholder(/Aprobacion|Aprobación/i).fill(qaPollTitle);
+    await page.getByPlaceholder(/Explica/i).fill("Consulta funcional de QA para validar creacion, envio por chat y publicacion en el centro de votacion.");
+    await clickFirstVisible(page, page.getByRole("button", { name: /Publicar y enviar/i }), "publish poll");
+    await expectVisible(page, page.getByText(/Envio simulado|Votacion enviada|Votacion demo publicada/i), "poll delivery summary");
+    await page.goto(`${baseUrl}/votaciones`, { waitUntil: "networkidle", timeout: 30000 });
+    await expectVisible(page, page.getByText(qaPollTitle), "created poll in resident voting center");
   }, failures));
 
   steps.push(await runStep("concierge operations", async () => {
