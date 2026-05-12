@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint src",
     "lint:all": "eslint .",
+    "qa:readiness": "node scripts/production-readiness.js",
     "qa:visual": "node scripts/visual-qa.js",
     "qa:functional": "node scripts/functional-qa.js"
   },
