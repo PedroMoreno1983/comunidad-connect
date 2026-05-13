@@ -46,7 +46,7 @@ export default function DashboardLayout({
                 )}
                 
                 {/* Main content with page transition */}
-                <div className="relative flex-1 p-4 pb-28 pt-16 sm:pt-20 lg:p-6 lg:pb-28 lg:pr-28">
+                <div className="relative flex-1 p-4 pb-28 pt-24 sm:pt-20 lg:p-6 lg:pb-28 lg:pr-28">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}
