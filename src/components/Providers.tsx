@@ -1,20 +1,15 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
-import { ToastProviderComponent } from "@/components/ui/Toast";
-import { AuthProvider } from "@/lib/authContext";
-import { NotificationProvider } from "@/lib/notificationContext";
+import { AppProviders } from "@/components/AppProviders";
+import { ThemeProviders } from "@/components/ThemeProviders";
+
+export { AppProviders } from "@/components/AppProviders";
+export { ThemeProviders } from "@/components/ThemeProviders";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <AuthProvider>
-                <NotificationProvider>
-                    <ToastProviderComponent>
-                        {children}
-                    </ToastProviderComponent>
-                </NotificationProvider>
-            </AuthProvider>
-        </ThemeProvider>
+        <ThemeProviders>
+            <AppProviders>{children}</AppProviders>
+        </ThemeProviders>
     );
 }

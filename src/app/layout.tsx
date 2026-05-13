@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
+import { ThemeProviders } from "@/components/ThemeProviders";
 
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -105,10 +105,10 @@ export default function RootLayout({
       <body
         className={`${plusJakarta.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
+        <ThemeProviders>
           {children}
 
-        </Providers>
+        </ThemeProviders>
         <script dangerouslySetInnerHTML={{
           __html: `
             if ('serviceWorker' in navigator) {

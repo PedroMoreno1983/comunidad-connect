@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/authContext';
 import { useTheme } from 'next-themes';
 import {
   Building2, User,
@@ -336,7 +335,6 @@ const testimonials = [
 
 /* ── Main Page ────────────────────────────────────────── */
 export default function LandingPage() {
-  const { user, loading: authLoading } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
@@ -347,9 +345,6 @@ export default function LandingPage() {
     const frame = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(frame);
   }, []);
-  useEffect(() => {
-    if (user && !authLoading) router.push('/home');
-  }, [user, authLoading, router]);
 
   const toggleTheme = () => setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
   const selectedRole = roles.find(r => r.id === selectedInfo);
