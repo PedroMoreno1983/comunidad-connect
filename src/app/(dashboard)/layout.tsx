@@ -4,7 +4,6 @@ import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/lib/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -58,21 +57,13 @@ function DashboardShell({
                     </div>
                 )}
                 
-                {/* Main content with page transition */}
+                {/* Main content */}
                 <div className="relative flex-1 p-4 pb-28 pt-24 sm:pt-20 lg:p-6 lg:pb-28 lg:pr-28">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={pathname}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                        >
-                            <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
-                                {children}
-                            </ErrorBoundary>
-                        </motion.div>
-                    </AnimatePresence>
+                    <div key={pathname} className="min-h-full">
+                        <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
+                            {children}
+                        </ErrorBoundary>
+                    </div>
                 </div>
             </main>
             <ErrorBoundary name="CoCo Widget">

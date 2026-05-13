@@ -8,7 +8,6 @@ import { clsx } from 'clsx';
 import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import {
     Building2,
@@ -45,29 +44,7 @@ export function MobileMenuButton({ onClick, isOpen }: { onClick: () => void; isO
             onClick={onClick}
             className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-surface shadow-md border border-subtle cc-text-primary"
         >
-            <AnimatePresence mode="wait">
-                {isOpen ? (
-                    <motion.div
-                        key="close"
-                        initial={{ rotate: -90, opacity: 0 }}
-                        animate={{ rotate: 0, opacity: 1 }}
-                        exit={{ rotate: 90, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        <X className="h-5 w-5" />
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="menu"
-                        initial={{ rotate: 90, opacity: 0 }}
-                        animate={{ rotate: 0, opacity: 1 }}
-                        exit={{ rotate: -90, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        <Menu className="h-5 w-5" />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
     );
 }
@@ -269,17 +246,13 @@ export function Sidebar() {
                             <h3 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">
                                 {section.title}
                             </h3>
-                            {validLinks.map((link, lIdx) => {
+                            {validLinks.map((link) => {
                                 const Icon = link.icon;
                                 const isActive = link.href === activeHref;
 
                                 return (
-                                    <motion.div
+                                    <div
                                         key={link.href}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: (sIdx * 0.1) + (lIdx * 0.05), duration: 0.3 }}
-                                        whileTap={{ scale: 0.99 }}
                                     >
                                         <Link
                                             href={link.href}
@@ -299,7 +272,7 @@ export function Sidebar() {
                                             )} />
                                             <span className="flex-1">{link.label}</span>
                                         </Link>
-                                    </motion.div>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -340,60 +313,26 @@ export function Sidebar() {
                     isDemoUser ? "top-16" : "top-4"
                 )}
             >
-                <AnimatePresence mode="wait">
-                    {isMobileOpen ? (
-                        <motion.div
-                            key="close"
-                            initial={{ rotate: -90, opacity: 0 }}
-                            animate={{ rotate: 0, opacity: 1 }}
-                            exit={{ rotate: 90, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <X className="h-5 w-5" />
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="menu"
-                            initial={{ rotate: 90, opacity: 0 }}
-                            animate={{ rotate: 0, opacity: 1 }}
-                            exit={{ rotate: -90, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <Menu className="h-5 w-5" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
 
             {/* Mobile Overlay */}
-            <AnimatePresence>
-                {isMobileOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setIsMobileOpen(false)}
-                    />
-                )}
-            </AnimatePresence>
+            {isMobileOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
 
             {/* Mobile Sidebar */}
-            <AnimatePresence>
-                {isMobileOpen && (
-                    <motion.div
-                        initial={{ x: -288 }}
-                        animate={{ x: 0 }}
-                        exit={{ x: -288 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        id="mobile-sidebar"
-                        className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
-                    >
-                        {sidebarContent}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {isMobileOpen && (
+                <div
+                    id="mobile-sidebar"
+                    className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
+                >
+                    {sidebarContent}
+                </div>
+            )}
 
             {/* Desktop Sidebar */}
             <div className="relative z-10 hidden h-screen w-72 flex-col border-r border-subtle bg-surface lg:flex">

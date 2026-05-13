@@ -3,7 +3,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
@@ -226,13 +225,8 @@ export default function CoCo() {
         <div
             className="fixed bottom-4 right-4 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
         >
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 12 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 12 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            {open && (
+                    <div
                         className="flex flex-col overflow-hidden rounded-lg border border-subtle bg-surface"
                         style={{ width: "min(360px, calc(100vw - 32px))", height: "min(500px, calc(100vh - 96px))", boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
                     >
@@ -368,30 +362,22 @@ export default function CoCo() {
                                 </button>
                             </form>
                         </div>
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
 
             {/* FAB */}
-            <motion.button
+            <button
                 onClick={() => setOpen(o => !o)}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.94 }}
-                className="relative flex items-center justify-center rounded-lg text-2xl"
+                className="relative flex items-center justify-center rounded-lg text-2xl transition-transform hover:scale-105 active:scale-95"
                 style={{
                     width: 56, height: 56,
                     background: "var(--cc-brand-500)",
                     boxShadow: "0 10px 30px rgba(244,91,61,0.32)"
                 }}
             >
-                <AnimatePresence mode="wait">
-                    {open
-                        ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X className="h-6 w-6 text-white" /></motion.span>
-                        : <motion.span key="g" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><Bot className="h-6 w-6 text-white" /></motion.span>
-                    }
-                </AnimatePresence>
+                {open ? <X className="h-6 w-6 text-white" /> : <Bot className="h-6 w-6 text-white" />}
 
-            </motion.button>
+            </button>
         </div>
     );
 }
