@@ -10,7 +10,8 @@
     "lint:all": "eslint .",
     "qa:readiness": "node scripts/production-readiness.js",
     "qa:visual": "node scripts/visual-qa.js",
-    "qa:functional": "node scripts/functional-qa.js"
+    "qa:functional": "node scripts/functional-qa.js",
+    "qa:workflows": "node scripts/workflow-qa.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

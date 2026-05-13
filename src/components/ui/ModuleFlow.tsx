@@ -33,13 +33,13 @@ export function ModuleFlow({
     const activeStep = currentStep ?? Math.min(completedSteps + 1, steps.length);
 
     return (
-        <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+        <section className="rounded-lg border border-subtle bg-surface shadow-sm" data-module-flow={title}>
             <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
                 <div className="border-b border-subtle p-5 lg:border-b-0 lg:border-r">
                     <div className="flex flex-wrap items-center gap-2">
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">{eyebrow}</p>
                         {statusLabel && (
-                            <span className="rounded-md bg-elevated px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] cc-text-secondary">
+                            <span className="rounded-md bg-elevated px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] cc-text-secondary" data-module-flow-status>
                                 {statusLabel}
                             </span>
                         )}
@@ -85,6 +85,8 @@ export function ModuleFlow({
                                                 ? "border-brand-300 bg-brand-50"
                                                 : "border-subtle bg-canvas"
                                     }`}
+                                    data-module-flow-step={stepNumber}
+                                    data-module-flow-step-state={isDone ? "done" : isCurrent ? "current" : "pending"}
                                 >
                                     <div
                                         className={`mb-3 flex h-7 w-7 items-center justify-center rounded-md text-xs font-bold ${
