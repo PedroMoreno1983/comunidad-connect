@@ -38,14 +38,15 @@ export default function DashboardLayout({
             <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
                 {/* Demo Banner */}
                 {isDemoUser && (
-                    <div className="sticky top-0 z-50 flex min-h-12 items-center justify-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-2 pl-20 text-xs font-semibold text-white lg:min-h-0 lg:pl-4">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0 text-brand-300" />
-                        <span className="text-center">{demoMessage}</span>
+                    <div className="sticky top-0 z-50 flex min-h-9 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-3 py-1.5 pl-16 text-[11px] font-semibold leading-tight text-white sm:min-h-10 sm:px-4 sm:pl-20 sm:text-xs lg:min-h-0 lg:pl-4">
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-brand-300 sm:h-4 sm:w-4" />
+                        <span className="text-center sm:hidden">Demo protegida: envios reales deshabilitados.</span>
+                        <span className="hidden text-center sm:inline">{demoMessage}</span>
                     </div>
                 )}
                 
                 {/* Main content with page transition */}
-                <div className="relative flex-1 p-4 pb-28 pt-20 lg:p-6 lg:pb-28 lg:pr-28">
+                <div className="relative flex-1 p-4 pb-28 pt-16 sm:pt-20 lg:p-6 lg:pb-28 lg:pr-28">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}

@@ -68,7 +68,7 @@ function AppMockup() {
   ];
 
   return (
-    <div className="relative w-full max-w-sm mx-auto">
+    <div className="relative mx-auto w-full max-w-sm overflow-visible sm:overflow-visible">
       {/* Phone frame */}
       <div className="relative bg-white dark:bg-[#1e1912] rounded-[2.5rem] shadow-2xl border border-[#e8e2dd] dark:border-[#3d3530] overflow-hidden"
         style={{ boxShadow: '0 40px 80px -20px rgba(255,107,71,0.25), 0 20px 40px -10px rgba(0,0,0,0.15)' }}>
@@ -142,7 +142,7 @@ function AppMockup() {
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute -right-6 top-16 bg-white dark:bg-[#26201a] shadow-xl rounded-2xl px-4 py-2.5 flex items-center gap-2.5 border border-[#e8e2dd] dark:border-[#3d3530]"
+        className="absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
       >
         <div className="w-7 h-7 rounded-xl bg-[#FF6B47]/10 flex items-center justify-center">
           <Package className="w-3.5 h-3.5 text-[#FF6B47]" />
@@ -157,7 +157,7 @@ function AppMockup() {
       <motion.div
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute -left-8 bottom-20 bg-white dark:bg-[#26201a] shadow-xl rounded-2xl px-4 py-2.5 flex items-center gap-2.5 border border-[#e8e2dd] dark:border-[#3d3530]"
+        className="absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
       >
         <div className="w-7 h-7 rounded-xl bg-[#0BC9A1]/10 flex items-center justify-center">
           <TrendingUp className="w-3.5 h-3.5 text-[#0BC9A1]" />
@@ -385,16 +385,16 @@ export default function LandingPage() {
       </div>
 
       {/* ── Header ── */}
-      <header className="relative z-10 w-full px-6 py-5 md:px-12 flex justify-between items-center max-w-7xl mx-auto">
+      <header className="relative z-10 mx-auto box-border flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 md:px-12 md:py-5">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3"
+          className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B47] to-[#e8502d] rounded-2xl flex items-center justify-center shadow-lg shadow-[#FF6B47]/30">
-            <Building2 className="text-white w-5 h-5" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF6B47] to-[#e8502d] shadow-lg shadow-[#FF6B47]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
+            <Building2 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-extrabold tracking-tight">
+          <span className="min-w-0 truncate text-base font-extrabold tracking-tight sm:text-xl">
             Comunidad<span className="text-[#FF6B47]">Connect</span>
           </span>
         </motion.div>
@@ -402,7 +402,7 @@ export default function LandingPage() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3"
+          className="flex shrink-0 items-center gap-2 sm:gap-3"
         >
           <button
             onClick={() => router.push('/login')}
@@ -412,13 +412,14 @@ export default function LandingPage() {
           </button>
           <button
             onClick={() => router.push('/login')}
-            className="px-5 py-2.5 rounded-xl bg-[#FF6B47] hover:bg-[#e8502d] text-white text-sm font-bold transition-all shadow-md shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-0.5"
+            className="whitespace-nowrap rounded-xl bg-[#FF6B47] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#FF6B47]/30 transition-all hover:-translate-y-0.5 hover:bg-[#e8502d] hover:shadow-[#FF6B47]/50 sm:px-5 sm:py-2.5 sm:text-sm"
           >
-            Empezar gratis
+            <span className="sm:hidden">Gratis</span>
+            <span className="hidden sm:inline">Empezar gratis</span>
           </button>
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-white/70 dark:bg-[#1e1912]/70 border border-[#e8e2dd] dark:border-[#3d3530] hover:bg-[#f5f1ee] dark:hover:bg-[#26201a] transition-colors backdrop-blur-sm"
+            className="shrink-0 rounded-xl border border-[#e8e2dd] bg-white/70 p-2 backdrop-blur-sm transition-colors hover:bg-[#f5f1ee] dark:border-[#3d3530] dark:bg-[#1e1912]/70 dark:hover:bg-[#26201a] sm:p-2.5"
           >
             {mounted ? (
               resolvedTheme === 'light' ? <Moon className="w-4 h-4 text-[#5a534e]" /> : <Sun className="w-4 h-4 text-amber-400" />
@@ -427,7 +428,7 @@ export default function LandingPage() {
         </motion.div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col w-full max-w-7xl mx-auto px-6 md:px-12">
+      <main className="relative z-10 mx-auto box-border flex w-full max-w-7xl flex-1 flex-col px-4 sm:px-6 md:px-12">
 
         {/* ── Hero: Asymmetric ── */}
         <section className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20 pt-10 pb-4 md:pt-16">
@@ -1055,7 +1056,7 @@ export default function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="relative z-10 py-8 border-t border-[#e8e2dd] dark:border-[#2e2820]">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mx-auto box-border flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row md:px-12">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-gradient-to-br from-[#FF6B47] to-[#e8502d] rounded-lg flex items-center justify-center">
               <Building2 className="text-white w-3.5 h-3.5" />
