@@ -181,7 +181,7 @@ export default function SignUpPage() {
                         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <span className="text-xl font-semibold cc-text-primary">Comunidad<span className="text-brand-500">Connect</span></span>
+                        <span className="text-xl font-semibold cc-text-primary">Convive</span>
                     </Link>
                     <div className="max-w-xl space-y-5">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Acceso controlado</p>

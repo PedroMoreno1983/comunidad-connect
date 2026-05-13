@@ -40,19 +40,19 @@ function AppMockup() {
 
   const cards = [
     {
-      icon: <BellRing className="w-5 h-5 text-[#FF6B47]" />,
+      icon: <BellRing className="w-5 h-5 text-[#C8705A]" />,
       label: "Nueva circular",
       sub: "Asamblea de propietarios — Sáb 19 Abr, 19:00",
       tag: "Urgente",
-      tagColor: "bg-[#FF6B47]/10 text-[#FF6B47]",
+      tagColor: "bg-[#C8705A]/10 text-[#C8705A]",
       delay: "animate-float-card",
     },
     {
-      icon: <CreditCard className="w-5 h-5 text-[#0BC9A1]" />,
+      icon: <CreditCard className="w-5 h-5 text-[#5A7D5A]" />,
       label: "Gasto común pagado",
       sub: "$45.200 — Marzo 2026 ✓",
       tag: "Pagado",
-      tagColor: "bg-[#0BC9A1]/10 text-[#0BC9A1]",
+      tagColor: "bg-[#5A7D5A]/10 text-[#5A7D5A]",
       delay: "animate-float-card-delay-1",
     },
     {
@@ -68,60 +68,60 @@ function AppMockup() {
   return (
     <div className="relative mx-auto w-full max-w-sm overflow-visible sm:overflow-visible">
       {/* Phone frame */}
-      <div className="relative bg-white dark:bg-[#1e1912] rounded-[2.5rem] shadow-2xl border border-[#e8e2dd] dark:border-[#3d3530] overflow-hidden"
+      <div className="relative bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl border border-[#E4D8CA] dark:border-[#3B3530] overflow-hidden"
         style={{ boxShadow: '0 40px 80px -20px rgba(255,107,71,0.25), 0 20px 40px -10px rgba(0,0,0,0.15)' }}>
         {/* Status bar */}
-        <div className="flex justify-between items-center px-6 pt-4 pb-2 text-xs font-semibold text-[#7a706a] dark:text-[#7a706a]">
+        <div className="flex justify-between items-center px-6 pt-4 pb-2 text-xs font-semibold text-[#8A8580] dark:text-[#8A8580]">
           <span>9:41</span>
-          <div className="w-20 h-5 bg-[#1A1512] dark:bg-[#f5f0ec] rounded-full mx-auto" />
+          <div className="w-20 h-5 bg-[#2D2A26] dark:bg-[#FBF8F3] rounded-full mx-auto" />
           <span>📶</span>
         </div>
 
         {/* App header */}
-        <div className="px-5 pt-2 pb-4 border-b border-[#f5f1ee] dark:border-[#2e2820]">
+        <div className="px-5 pt-2 pb-4 border-b border-[#F1EAE1] dark:border-[#3B3530]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FF6B47] to-[#e8502d] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] flex items-center justify-center">
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#1A1512] dark:text-[#f5f0ec]">ComunidadConnect</p>
-              <p className="text-[10px] text-[#a89e97]">Torre Norte · Depto 8B</p>
+              <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Convive</p>
+              <p className="text-[10px] text-[#8A8580]">Torre Norte · Depto 8B</p>
             </div>
             <div className="ml-auto relative">
-              <BellRing className="w-5 h-5 text-[#7a706a]" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#FF6B47] rounded-full border-2 border-white dark:border-[#1e1912]" />
+              <BellRing className="w-5 h-5 text-[#8A8580]" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#C8705A] rounded-full border-2 border-white dark:border-[#25242A]" />
             </div>
           </div>
         </div>
 
         {/* Cards stack */}
         <div className="px-5 py-4 space-y-3 pb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#a89e97]">Actividad reciente</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8A8580]">Actividad reciente</p>
           {cards.map((card, i) => (
             <div
               key={i}
-              className={`flex items-start gap-3 rounded-2xl border border-[#e8e2dd] bg-[#faf8f6] p-3.5 transition-[opacity,transform] duration-500 dark:border-[#3d3530] dark:bg-[#26201a] ${activeCard === i ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-1.5 scale-[0.97] opacity-50'}`}
+              className={`flex items-start gap-3 rounded-2xl border border-[#E4D8CA] bg-[#FBF8F3] p-3.5 transition-[opacity,transform] duration-500 dark:border-[#3B3530] dark:bg-[#302D2A] ${activeCard === i ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-1.5 scale-[0.97] opacity-50'}`}
             >
-              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1e1912] flex items-center justify-center shadow-sm flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#25242A] flex items-center justify-center shadow-sm flex-shrink-0">
                 {card.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#1A1512] dark:text-[#f5f0ec] leading-tight">{card.label}</p>
-                <p className="text-xs text-[#7a706a] mt-0.5 leading-relaxed break-words">{card.sub}</p>
+                <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3] leading-tight">{card.label}</p>
+                <p className="text-xs text-[#8A8580] mt-0.5 leading-relaxed break-words">{card.sub}</p>
               </div>
               <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${card.tagColor}`}>{card.tag}</span>
             </div>
           ))}
 
           {/* Mini bottom nav */}
-          <div className="flex justify-around pt-3 border-t border-[#f5f1ee] dark:border-[#2e2820]">
+          <div className="flex justify-around pt-3 border-t border-[#F1EAE1] dark:border-[#3B3530]">
             {[
               { icon: <Home className="w-4 h-4" />, label: "Inicio", active: true },
               { icon: <CreditCard className="w-4 h-4" />, label: "Pagos", active: false },
               { icon: <MessageSquare className="w-4 h-4" />, label: "Chat", active: false },
               { icon: <User className="w-4 h-4" />, label: "Perfil", active: false },
             ].map((item, i) => (
-              <div key={i} className={`flex flex-col items-center gap-1 ${item.active ? 'text-[#FF6B47]' : 'text-[#a89e97]'}`}>
+              <div key={i} className={`flex flex-col items-center gap-1 ${item.active ? 'text-[#C8705A]' : 'text-[#8A8580]'}`}>
                 {item.icon}
                 <span className="text-[9px] font-semibold">{item.label}</span>
               </div>
@@ -132,27 +132,27 @@ function AppMockup() {
 
       {/* Floating notification badge */}
       <div
-        className="animate-float-card absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
+        className="animate-float-card absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#E4D8CA] bg-white px-4 py-2.5 shadow-xl dark:border-[#3B3530] dark:bg-[#302D2A] sm:flex"
       >
-        <div className="w-7 h-7 rounded-xl bg-[#FF6B47]/10 flex items-center justify-center">
-          <Package className="w-3.5 h-3.5 text-[#FF6B47]" />
+        <div className="w-7 h-7 rounded-xl bg-[#C8705A]/10 flex items-center justify-center">
+          <Package className="w-3.5 h-3.5 text-[#C8705A]" />
         </div>
         <div>
-          <p className="text-xs font-bold text-[#1A1512] dark:text-[#f5f0ec]">Paquete llegó</p>
-          <p className="text-[10px] text-[#a89e97]">Conserjería · ahora</p>
+          <p className="text-xs font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Paquete llegó</p>
+          <p className="text-[10px] text-[#8A8580]">Conserjería · ahora</p>
         </div>
       </div>
 
       {/* Floating payment badge */}
       <div
-        className="animate-float-card-delay-1 absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
+        className="animate-float-card-delay-1 absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#E4D8CA] bg-white px-4 py-2.5 shadow-xl dark:border-[#3B3530] dark:bg-[#302D2A] sm:flex"
       >
-        <div className="w-7 h-7 rounded-xl bg-[#0BC9A1]/10 flex items-center justify-center">
-          <TrendingUp className="w-3.5 h-3.5 text-[#0BC9A1]" />
+        <div className="w-7 h-7 rounded-xl bg-[#5A7D5A]/10 flex items-center justify-center">
+          <TrendingUp className="w-3.5 h-3.5 text-[#5A7D5A]" />
         </div>
         <div>
-          <p className="text-xs font-bold text-[#1A1512] dark:text-[#f5f0ec]">Recaudo 98%</p>
-          <p className="text-[10px] text-[#a89e97]">Este mes</p>
+          <p className="text-xs font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Recaudo 98%</p>
+          <p className="text-[10px] text-[#8A8580]">Este mes</p>
         </div>
       </div>
     </div>
@@ -166,8 +166,8 @@ function TrustStats() {
   const satisfaction = useCounter(98, 1100, true);
 
   const stats = [
-    { value: `+${units}`, label: "Unidades gestionadas", icon: <Home className="w-5 h-5" />, color: "text-[#FF6B47]", bg: "bg-[#FF6B47]/10" },
-    { value: communities, label: "Comunidades activas", icon: <Building2 className="w-5 h-5" />, color: "text-[#0BC9A1]", bg: "bg-[#0BC9A1]/10" },
+    { value: `+${units}`, label: "Unidades gestionadas", icon: <Home className="w-5 h-5" />, color: "text-[#C8705A]", bg: "bg-[#C8705A]/10" },
+    { value: communities, label: "Comunidades activas", icon: <Building2 className="w-5 h-5" />, color: "text-[#5A7D5A]", bg: "bg-[#5A7D5A]/10" },
     { value: `${satisfaction}%`, label: "Satisfacción de usuarios", icon: <Star className="w-5 h-5" />, color: "text-amber-500", bg: "bg-amber-400/10" },
   ];
 
@@ -183,7 +183,7 @@ function TrustStats() {
               {s.icon}
             </div>
             <p className={`text-2xl md:text-4xl font-extrabold tracking-tight ${s.color}`}>{s.value}</p>
-            <p className="text-xs md:text-sm text-[#7a706a] dark:text-[#b0a8a2] font-medium leading-tight">{s.label}</p>
+            <p className="text-xs md:text-sm text-[#8A8580] dark:text-[#C8BFB6] font-medium leading-tight">{s.label}</p>
           </div>
         ))}
       </div>
@@ -198,11 +198,11 @@ const roles = [
     title: 'Administración',
     emoji: '🛡️',
     description: 'Panel de control centralizado. Finanzas, auditoría y gestión de comunidad integral.',
-    color: '#FF6B47',
-    gradientFrom: 'from-[#FF6B47]',
-    gradientTo: 'to-[#e8502d]',
-    shadowColor: 'hover:shadow-[#FF6B47]/20',
-    borderHover: 'hover:border-[#FF6B47]/40',
+    color: '#C8705A',
+    gradientFrom: 'from-[#C8705A]',
+    gradientTo: 'to-[#B45F4B]',
+    shadowColor: 'hover:shadow-[#C8705A]/20',
+    borderHover: 'hover:border-[#C8705A]/40',
     // Building window grid: each cell is a mini feature
     windows: [
       { icon: '📊', label: 'Finanzas' },
@@ -226,11 +226,11 @@ const roles = [
     title: 'Residente',
     emoji: '🏡',
     description: 'Tu hogar inteligente. Reservas, pagos y comunicación vecinal en un solo lugar.',
-    color: '#0BC9A1',
-    gradientFrom: 'from-[#0BC9A1]',
-    gradientTo: 'to-[#08a884]',
-    shadowColor: 'hover:shadow-[#0BC9A1]/20',
-    borderHover: 'hover:border-[#0BC9A1]/40',
+    color: '#5A7D5A',
+    gradientFrom: 'from-[#5A7D5A]',
+    gradientTo: 'to-[#466746]',
+    shadowColor: 'hover:shadow-[#5A7D5A]/20',
+    borderHover: 'hover:border-[#5A7D5A]/40',
     windows: [
       { icon: '💳', label: 'Pagos' },
       { icon: '🏊', label: 'Piscina' },
@@ -284,16 +284,16 @@ const steps = [
     title: 'Registra tu comunidad',
     desc: 'Sube tu lista de departamentos en Excel. En 48 horas tenemos todo configurado y listo.',
     icon: <Building2 className="w-6 h-6" />,
-    color: '#FF6B47',
-    bg: 'bg-[#FF6B47]/10',
+    color: '#C8705A',
+    bg: 'bg-[#C8705A]/10',
   },
   {
     num: '02',
     title: 'Invita a tus vecinos',
     desc: 'Enviamos el link de registro a cada residente. Se unen en segundos desde su celular.',
     icon: <Users className="w-6 h-6" />,
-    color: '#0BC9A1',
-    bg: 'bg-[#0BC9A1]/10',
+    color: '#5A7D5A',
+    bg: 'bg-[#5A7D5A]/10',
   },
   {
     num: '03',
@@ -310,9 +310,9 @@ const testimonials = [
   {
     name: 'Valentina Rojas',
     role: 'Administradora · Condominio Los Pinos',
-    quote: 'Los gastos comunes que antes tardaban una semana en recaudar, ahora los tenemos el mismo día. ComunidadConnect cambió todo.',
+    quote: 'Los gastos comunes que antes tardaban una semana en recaudar, ahora los tenemos el mismo día. Convive cambió todo.',
     avatar: '🧑‍💼',
-    color: '#FF6B47',
+    color: '#C8705A',
     stars: 5,
   },
   {
@@ -320,7 +320,7 @@ const testimonials = [
     role: 'Residente · Torre Andes',
     quote: 'Reservar la piscina, hablar con la conserjería y pagar todo desde el teléfono. Mi edificio por fin es moderno.',
     avatar: '👨‍💻',
-    color: '#0BC9A1',
+    color: '#5A7D5A',
     stars: 5,
   },
   {
@@ -350,16 +350,16 @@ export default function LandingPage() {
   const selectedRole = roles.find(r => r.id === selectedInfo);
 
   return (
-    <div className="min-h-screen bg-[#FFF8F5] dark:bg-[#111008] text-[#1A1512] dark:text-[#f5f0ec] flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700">
+    <div className="min-h-screen bg-[#FBF8F3] dark:bg-[#1E1E24] text-[#2D2A26] dark:text-[#FBF8F3] flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700">
 
       {/* ── Background blobs ── */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {/* Warm coral blob top-right */}
-        <div className="animate-morph-blob absolute -top-40 -right-40 w-[600px] h-[600px] bg-gradient-to-br from-[#FF6B47]/20 to-[#FF6B47]/5 blur-3xl" />
+        <div className="animate-morph-blob absolute -top-40 -right-40 w-[600px] h-[600px] bg-gradient-to-br from-[#C8705A]/20 to-[#C8705A]/5 blur-3xl" />
         {/* Teal blob bottom-left */}
-        <div className="animate-morph-blob absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-gradient-to-br from-[#0BC9A1]/15 to-[#0BC9A1]/5 blur-3xl" style={{ animationDelay: '3s' }} />
+        <div className="animate-morph-blob absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-gradient-to-br from-[#5A7D5A]/15 to-[#5A7D5A]/5 blur-3xl" style={{ animationDelay: '3s' }} />
         {/* Subtle warm grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#FF6B4706_1px,transparent_1px),linear-gradient(to_bottom,#FF6B4706_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#C8705A06_1px,transparent_1px),linear-gradient(to_bottom,#C8705A06_1px,transparent_1px)] bg-[size:32px_32px]" />
       </div>
 
       {/* ── Header ── */}
@@ -367,11 +367,11 @@ export default function LandingPage() {
         <div
           className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF6B47] to-[#e8502d] shadow-lg shadow-[#FF6B47]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] shadow-lg shadow-[#C8705A]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
             <Building2 className="h-5 w-5 text-white" />
           </div>
           <span className="min-w-0 truncate text-base font-extrabold tracking-tight sm:text-xl">
-            Comunidad<span className="text-[#FF6B47]">Connect</span>
+            Convive
           </span>
         </div>
 
@@ -380,23 +380,23 @@ export default function LandingPage() {
         >
           <button
             onClick={() => router.push('/login')}
-            className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-[#5a534e] dark:text-[#b0a8a2] hover:text-[#FF6B47] dark:hover:text-[#FF6B47] transition-colors"
+            className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-[#5F5A54] dark:text-[#C8BFB6] hover:text-[#C8705A] dark:hover:text-[#C8705A] transition-colors"
           >
             Iniciar sesión
           </button>
           <button
             onClick={() => router.push('/login')}
-            className="whitespace-nowrap rounded-xl bg-[#FF6B47] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#FF6B47]/30 transition-all hover:-translate-y-0.5 hover:bg-[#e8502d] hover:shadow-[#FF6B47]/50 sm:px-5 sm:py-2.5 sm:text-sm"
+            className="whitespace-nowrap rounded-xl bg-[#C8705A] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#C8705A]/30 transition-all hover:-translate-y-0.5 hover:bg-[#B45F4B] hover:shadow-[#C8705A]/50 sm:px-5 sm:py-2.5 sm:text-sm"
           >
             <span className="sm:hidden">Gratis</span>
             <span className="hidden sm:inline">Empezar gratis</span>
           </button>
           <button
             onClick={toggleTheme}
-            className="shrink-0 rounded-xl border border-[#e8e2dd] bg-white/70 p-2 backdrop-blur-sm transition-colors hover:bg-[#f5f1ee] dark:border-[#3d3530] dark:bg-[#1e1912]/70 dark:hover:bg-[#26201a] sm:p-2.5"
+            className="shrink-0 rounded-xl border border-[#E4D8CA] bg-white/70 p-2 backdrop-blur-sm transition-colors hover:bg-[#F1EAE1] dark:border-[#3B3530] dark:bg-[#25242A]/70 dark:hover:bg-[#302D2A] sm:p-2.5"
           >
             {mounted ? (
-              resolvedTheme === 'light' ? <Moon className="w-4 h-4 text-[#5a534e]" /> : <Sun className="w-4 h-4 text-amber-400" />
+              resolvedTheme === 'light' ? <Moon className="w-4 h-4 text-[#5F5A54]" /> : <Sun className="w-4 h-4 text-amber-400" />
             ) : <div className="w-4 h-4" />}
           </button>
         </div>
@@ -410,29 +410,28 @@ export default function LandingPage() {
           {/* Left: Text */}
           <div className="flex-1 max-w-xl">
             <div
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#FF6B47]/10 border border-[#FF6B47]/20 text-[#e8502d] dark:text-[#ff9d80] text-sm font-bold tracking-wide mb-6"
+              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#C8705A]/10 border border-[#C8705A]/20 text-[#B45F4B] dark:text-[#DFAF9B] text-sm font-bold tracking-wide mb-6"
             >
               <MapPin className="w-3.5 h-3.5" />
-              La plataforma de las comunidades chilenas
+              Bienestar comunitario inspirado en WELL v2
             </div>
 
             <h1
               className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-[1.08] mb-6"
             >
-              Tu edificio,{' '}
+              Tu convives.{' '}
               <span className="relative inline-block">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B47] to-[#e8502d]">más humano</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#B45F4B]">Tu comunidad.</span>
                 <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 5 Q50 1 100 5 Q150 9 200 5" stroke="#FF6B47" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
+                  <path d="M0 5 Q50 1 100 5 Q150 9 200 5" stroke="#C8705A" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
                 </svg>
               </span>
-              {' '}que nunca.
             </h1>
 
             <p
-              className="text-lg text-[#5a534e] dark:text-[#b0a8a2] leading-relaxed mb-8 max-w-md"
+              className="text-lg text-[#5F5A54] dark:text-[#C8BFB6] leading-relaxed mb-8 max-w-md"
             >
-              Gastos comunes, reservas, conserjería y vecinos — todo conectado en una app que la gente de verdad quiere usar.
+              Mas que software de administracion: una plataforma para que edificios reales se sientan conectados, saludables y con pertenencia.
             </p>
 
             <div
@@ -441,29 +440,29 @@ export default function LandingPage() {
               <button
                 onClick={() => router.push('/login')}
                 id="cta-hero-primary"
-                className="group flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#FF6B47] hover:bg-[#e8502d] text-white font-bold text-base transition-all shadow-xl shadow-[#FF6B47]/30 hover:shadow-[#FF6B47]/50 hover:-translate-y-1 w-full sm:w-auto"
+                className="group flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#C8705A] hover:bg-[#B45F4B] text-white font-bold text-base transition-all shadow-xl shadow-[#C8705A]/30 hover:shadow-[#C8705A]/50 hover:-translate-y-1 w-full sm:w-auto"
               >
                 Probar gratis 30 días
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] text-[#3d3835] dark:text-[#f5f0ec] font-bold text-base hover:border-[#FF6B47]/40 transition-all shadow-sm w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] text-[#2D2A26] dark:text-[#FBF8F3] font-bold text-base hover:border-[#C8705A]/40 transition-all shadow-sm w-full sm:w-auto"
               >
                 Iniciar sesión
               </button>
             </div>
 
             <div
-              className="flex items-center gap-2 mt-6 text-sm text-[#a89e97] dark:text-[#7a706a]"
+              className="flex items-center gap-2 mt-6 text-sm text-[#8A8580] dark:text-[#8A8580]"
             >
-              <CheckCircle2 className="w-4 h-4 text-[#0BC9A1]" />
+              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
               <span>Sin tarjeta de crédito</span>
               <span className="mx-2">·</span>
-              <CheckCircle2 className="w-4 h-4 text-[#0BC9A1]" />
+              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
               <span>Onboarding en 48 horas</span>
               <span className="mx-2">·</span>
-              <CheckCircle2 className="w-4 h-4 text-[#0BC9A1]" />
+              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
               <span>Cancela cuando quieras</span>
             </div>
           </div>
@@ -481,16 +480,16 @@ export default function LandingPage() {
 
         {/* ── Divider ── */}
         <div className="my-20 md:my-28 flex items-center gap-4">
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#e8e2dd] dark:via-[#3d3530] to-transparent" />
-          <span className="text-xs font-bold text-[#a89e97] uppercase tracking-widest px-0 md:px-4 text-center">Elige tu rol</span>
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#e8e2dd] dark:via-[#3d3530] to-transparent" />
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#E4D8CA] dark:via-[#3B3530] to-transparent" />
+          <span className="text-xs font-bold text-[#8A8580] uppercase tracking-widest px-0 md:px-4 text-center">Elige tu rol</span>
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#E4D8CA] dark:via-[#3B3530] to-transparent" />
         </div>
 
         {/* ── Role Cards — Building Window Style ── */}
         <section className="w-full pb-4">
           <div className="text-center mb-14">
             <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FF6B47]/10 border border-[#FF6B47]/20 text-[#e8502d] dark:text-[#ff9d80] text-xs font-bold tracking-widest uppercase mb-5"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C8705A]/10 border border-[#C8705A]/20 text-[#B45F4B] dark:text-[#DFAF9B] text-xs font-bold tracking-widest uppercase mb-5"
             >
               ✦ Tres roles, una sola plataforma
             </div>
@@ -498,10 +497,10 @@ export default function LandingPage() {
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Tu edificio desde{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B47] to-[#0BC9A1]">todos los ángulos</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#5A7D5A]">todos los ángulos</span>
             </h2>
             <p
-              className="text-[#7a706a] dark:text-[#b0a8a2] text-lg max-w-xl mx-auto"
+              className="text-[#8A8580] dark:text-[#C8BFB6] text-lg max-w-xl mx-auto"
             >
               Haz clic en tu rol para explorar todo lo que tienes a disposición.
             </p>
@@ -545,7 +544,7 @@ export default function LandingPage() {
                           className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-center"
                         >
                           <span className="text-base leading-none">{win.icon}</span>
-                          <span className="text-[9px] font-bold text-[#7a706a] dark:text-[#b0a8a2] tracking-wide uppercase leading-tight">{win.label}</span>
+                          <span className="text-[9px] font-bold text-[#8A8580] dark:text-[#C8BFB6] tracking-wide uppercase leading-tight">{win.label}</span>
                         </div>
                       ))}
                     </div>
@@ -571,11 +570,11 @@ export default function LandingPage() {
                       </div>
                     </div>
 
-                    <p className="text-[#7a706a] dark:text-[#b0a8a2] text-sm leading-relaxed">{role.description}</p>
+                    <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed">{role.description}</p>
 
                     <div className="flex-1" />
 
-                    <div className="flex items-center justify-between pt-4 border-t border-[#f5f1ee] dark:border-[#2e2820]">
+                    <div className="flex items-center justify-between pt-4 border-t border-[#F1EAE1] dark:border-[#3B3530]">
                       <span className="text-sm font-bold transition-colors duration-300" style={{ color: isHovered ? role.color : 'var(--cc-text-tertiary)' }}>
                         Explorar funciones
                       </span>
@@ -601,7 +600,7 @@ export default function LandingPage() {
         <section className="mt-24 md:mt-32 w-full">
           <div className="text-center mb-14">
             <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0BC9A1]/10 border border-[#0BC9A1]/20 text-[#08a884] dark:text-[#0BC9A1] text-xs font-bold tracking-widest uppercase mb-5"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#5A7D5A]/10 border border-[#5A7D5A]/20 text-[#466746] dark:text-[#5A7D5A] text-xs font-bold tracking-widest uppercase mb-5"
             >
               ✦ Proceso simple
             </div>
@@ -609,10 +608,10 @@ export default function LandingPage() {
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Listo en{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0BC9A1] to-[#FF6B47]">48 horas</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5A7D5A] to-[#C8705A]">48 horas</span>
             </h2>
             <p
-              className="text-[#7a706a] dark:text-[#b0a8a2] text-lg max-w-lg mx-auto"
+              className="text-[#8A8580] dark:text-[#C8BFB6] text-lg max-w-lg mx-auto"
             >
               Sin instalaciones complicadas. Sin cursos. Solo una comunidad más conectada.
             </p>
@@ -620,7 +619,7 @@ export default function LandingPage() {
 
           <div className="relative">
             {/* Connecting line */}
-            <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-[#FF6B47]/30 via-[#0BC9A1]/30 to-amber-400/30" />
+            <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-[#C8705A]/30 via-[#5A7D5A]/30 to-amber-400/30" />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {steps.map((step, i) => (
@@ -643,7 +642,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <h3 className="text-xl font-extrabold tracking-tight mb-2">{step.title}</h3>
-                  <p className="text-[#7a706a] dark:text-[#b0a8a2] text-sm leading-relaxed max-w-[220px]">{step.desc}</p>
+                  <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed max-w-[220px]">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -657,7 +656,7 @@ export default function LandingPage() {
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Lo que dicen{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B47] to-[#0BC9A1]">las comunidades</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#5A7D5A]">las comunidades</span>
             </h2>
           </div>
 
@@ -665,7 +664,7 @@ export default function LandingPage() {
             {testimonials.map((t, i) => (
               <div
                 key={i}
-                className="relative flex flex-col gap-5 p-7 rounded-[2rem] bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                className="relative flex flex-col gap-5 p-7 rounded-[2rem] bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
                 {/* Quote mark */}
                 <div className="text-5xl leading-none font-black opacity-10 absolute top-4 right-6" style={{ color: t.color }}>&quot;</div>
@@ -677,9 +676,9 @@ export default function LandingPage() {
                   ))}
                 </div>
 
-                <p className="text-[#3d3835] dark:text-[#e8e2dd] text-sm leading-relaxed font-medium flex-1">«{t.quote}»</p>
+                <p className="text-[#2D2A26] dark:text-[#E4D8CA] text-sm leading-relaxed font-medium flex-1">«{t.quote}»</p>
 
-                <div className="flex items-center gap-3 pt-4 border-t border-[#f5f1ee] dark:border-[#2e2820]">
+                <div className="flex items-center gap-3 pt-4 border-t border-[#F1EAE1] dark:border-[#3B3530]">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
                     style={{ background: `${t.color}15` }}
@@ -687,8 +686,8 @@ export default function LandingPage() {
                     {t.avatar}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#1A1512] dark:text-[#f5f0ec]">{t.name}</p>
-                    <p className="text-[11px] text-[#a89e97] font-medium">{t.role}</p>
+                    <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3]">{t.name}</p>
+                    <p className="text-[11px] text-[#8A8580] font-medium">{t.role}</p>
                   </div>
                 </div>
               </div>
@@ -701,10 +700,10 @@ export default function LandingPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
               onClick={() => setSelectedInfo(null)}
-              className="absolute inset-0 bg-[#1A1512]/60 backdrop-blur-md"
+              className="absolute inset-0 bg-[#2D2A26]/60 backdrop-blur-md"
             />
             <div
-              className="relative w-full max-w-xl bg-white dark:bg-[#1e1912] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#e8e2dd] dark:border-[#3d3530]"
+              className="relative w-full max-w-xl bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530]"
             >
               <div className={`h-1.5 bg-gradient-to-r ${selectedRole.gradientFrom} ${selectedRole.gradientTo}`} />
               <div className="p-8 md:p-10">
@@ -720,19 +719,19 @@ export default function LandingPage() {
                   </div>
                   <button
                     onClick={() => setSelectedInfo(null)}
-                    className="p-2 rounded-full hover:bg-[#f5f1ee] dark:hover:bg-[#26201a] transition-colors"
+                    className="p-2 rounded-full hover:bg-[#F1EAE1] dark:hover:bg-[#302D2A] transition-colors"
                   >
                     <ChevronRight className="w-6 h-6 rotate-180" />
                   </button>
                 </div>
 
-                <p className="text-[#5a534e] dark:text-[#b0a8a2] mb-8 leading-relaxed font-medium">{selectedRole.fullDescription}</p>
+                <p className="text-[#5F5A54] dark:text-[#C8BFB6] mb-8 leading-relaxed font-medium">{selectedRole.fullDescription}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
                   {selectedRole.extraFeatures.map((feat, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-[#faf8f6] dark:bg-[#26201a] border border-[#f5f1ee] dark:border-[#3d3530]">
+                    <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-[#FBF8F3] dark:bg-[#302D2A] border border-[#F1EAE1] dark:border-[#3B3530]">
                       <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: selectedRole.color }} />
-                      <span className="text-sm font-semibold leading-snug text-[#3d3835] dark:text-[#e8e2dd]">{feat}</span>
+                      <span className="text-sm font-semibold leading-snug text-[#2D2A26] dark:text-[#E4D8CA]">{feat}</span>
                     </div>
                   ))}
                 </div>
@@ -747,7 +746,7 @@ export default function LandingPage() {
                   </button>
                   <button
                     onClick={() => setSelectedInfo(null)}
-                    className="px-6 py-4 rounded-2xl bg-[#f5f1ee] dark:bg-[#26201a] font-bold hover:bg-[#e8e2dd] dark:hover:bg-[#3d3530] transition-all text-sm"
+                    className="px-6 py-4 rounded-2xl bg-[#F1EAE1] dark:bg-[#302D2A] font-bold hover:bg-[#E4D8CA] dark:hover:bg-[#3B3530] transition-all text-sm"
                   >
                     Cerrar
                   </button>
@@ -766,7 +765,7 @@ export default function LandingPage() {
               Planes simples y transparentes
             </h2>
             <p
-              className="text-lg text-[#7a706a] dark:text-[#b0a8a2]"
+              className="text-lg text-[#8A8580] dark:text-[#C8BFB6]"
             >
               Todos los planes incluyen 30 días de prueba gratuita. Sin tarjeta de crédito.
             </p>
@@ -775,38 +774,38 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Básico */}
             <div
-              className="bg-white dark:bg-[#1e1912] border-2 border-[#e8e2dd] dark:border-[#3d3530] rounded-[2rem] p-8 flex flex-col hover:border-[#FF6B47]/30 hover:shadow-xl hover:shadow-[#FF6B47]/10 transition-all"
+              className="bg-white dark:bg-[#25242A] border-2 border-[#E4D8CA] dark:border-[#3B3530] rounded-[2rem] p-8 flex flex-col hover:border-[#C8705A]/30 hover:shadow-xl hover:shadow-[#C8705A]/10 transition-all"
             >
-              <div className="w-11 h-11 rounded-2xl bg-[#FF6B47]/10 flex items-center justify-center mb-4 text-xl">🏢</div>
+              <div className="w-11 h-11 rounded-2xl bg-[#C8705A]/10 flex items-center justify-center mb-4 text-xl">🏢</div>
               <h3 className="text-xl font-extrabold mb-1">Básico</h3>
-              <p className="text-[#a89e97] mb-6 text-sm">Para condominios que recién se digitalizan.</p>
+              <p className="text-[#8A8580] mb-6 text-sm">Para condominios que recién se digitalizan.</p>
               <div className="mb-1">
                 <span className="text-4xl font-extrabold tracking-tight">$19.990</span>
-                <span className="text-[#a89e97] font-medium text-sm"> /mes base</span>
+                <span className="text-[#8A8580] font-medium text-sm"> /mes base</span>
               </div>
-              <p className="text-xs text-[#a89e97] mb-8">+ $490 por unidad/mes</p>
+              <p className="text-xs text-[#8A8580] mb-8">+ $490 por unidad/mes</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Muro y Avisos', 'Directorio Vecinal', 'Conserjería Digital', 'Espacios Comunes', 'Control de Visitas'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-[#3d3835] dark:text-[#e8e2dd] text-sm font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-[#FF6B47] flex-shrink-0" />
+                  <li key={i} className="flex items-center gap-3 text-[#2D2A26] dark:text-[#E4D8CA] text-sm font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-[#C8705A] flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
                 ))}
                 {['Mantenimiento', 'Votaciones', 'CoCo IA'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-[#a89e97] text-sm line-through">
+                  <li key={i} className="flex items-center gap-3 text-[#8A8580] text-sm line-through">
                     <div className="w-4 h-4 rounded-full border border-[#d4cbc4] flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#faf8f6] dark:bg-[#26201a] hover:bg-[#f5f1ee] dark:hover:bg-[#2e2820] font-bold transition-colors text-sm">
+              <button onClick={() => router.push('/admin-onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
                 Empezar Gratis
               </button>
             </div>
 
             {/* Avanzado (featured) */}
             <div
-              className="bg-gradient-to-b from-[#FF6B47] to-[#c03a1d] rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-[#FF6B47]/30 relative overflow-hidden md:-translate-y-4"
+              className="bg-gradient-to-b from-[#C8705A] to-[#974C3C] rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-[#C8705A]/30 relative overflow-hidden md:-translate-y-4"
             >
               <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-bl-2xl font-bold text-xs tracking-widest uppercase">Más Popular</div>
               <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center mb-4 text-xl mt-5 md:mt-0">🚀</div>
@@ -831,32 +830,32 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#e8502d] hover:bg-[#fff3f0] font-extrabold transition-colors shadow-lg text-sm">
+              <button onClick={() => router.push('/admin-onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
                 Empezar Gratis
               </button>
             </div>
 
             {/* Premium */}
             <div
-              className="bg-white dark:bg-[#1e1912] border-2 border-[#e8e2dd] dark:border-[#3d3530] rounded-[2rem] p-8 flex flex-col hover:border-[#0BC9A1]/30 hover:shadow-xl hover:shadow-[#0BC9A1]/10 transition-all"
+              className="bg-white dark:bg-[#25242A] border-2 border-[#E4D8CA] dark:border-[#3B3530] rounded-[2rem] p-8 flex flex-col hover:border-[#5A7D5A]/30 hover:shadow-xl hover:shadow-[#5A7D5A]/10 transition-all"
             >
-              <div className="w-11 h-11 rounded-2xl bg-[#0BC9A1]/10 flex items-center justify-center mb-4 text-xl">✨</div>
+              <div className="w-11 h-11 rounded-2xl bg-[#5A7D5A]/10 flex items-center justify-center mb-4 text-xl">✨</div>
               <h3 className="text-xl font-extrabold mb-1">Premium</h3>
-              <p className="text-[#a89e97] mb-6 text-sm">La solución total con inteligencia artificial.</p>
+              <p className="text-[#8A8580] mb-6 text-sm">La solución total con inteligencia artificial.</p>
               <div className="mb-1">
                 <span className="text-4xl font-extrabold tracking-tight">$49.990</span>
-                <span className="text-[#a89e97] font-medium text-sm"> /mes base</span>
+                <span className="text-[#8A8580] font-medium text-sm"> /mes base</span>
               </div>
-              <p className="text-xs text-[#a89e97] mb-8">+ $990 por unidad/mes</p>
+              <p className="text-xs text-[#8A8580] mb-8">+ $990 por unidad/mes</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Todo lo del plan Avanzado', 'CoCo IA Assistant', 'Aula Virtual', 'Integraciones', 'Soporte Prioritario 24/7'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-[#3d3835] dark:text-[#e8e2dd] text-sm font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-[#0BC9A1] flex-shrink-0" />
+                  <li key={i} className="flex items-center gap-3 text-[#2D2A26] dark:text-[#E4D8CA] text-sm font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-[#5A7D5A] flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#0BC9A1] to-[#08a884] hover:from-[#08a884] hover:to-[#06967a] text-white font-bold transition-colors shadow-lg shadow-[#0BC9A1]/20 text-sm">
+              <button onClick={() => router.push('/admin-onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
                 Empezar Gratis
               </button>
             </div>
@@ -872,7 +871,7 @@ export default function LandingPage() {
               Preguntas Frecuentes
             </h2>
             <p
-              className="text-[#7a706a] dark:text-[#b0a8a2]"
+              className="text-[#8A8580] dark:text-[#C8BFB6]"
             >
               Todo lo que necesitas saber antes de modernizar tu comunidad.
             </p>
@@ -880,22 +879,22 @@ export default function LandingPage() {
 
           <div className="space-y-3">
             {[
-              { q: "¿En qué países está disponible ComunidadConnect?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
+              { q: "¿En qué países está disponible Convive?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
               { q: "¿Es seguro el manejo del dinero y los pagos en la app?", a: "Absolutamente. No almacenamos ni procesamos tarjetas directamente. Usamos pasarelas con certificación PCI Compliance que aseguran máxima protección bancaria." },
               { q: "¿Qué pasa si un residente no tiene smartphone?", a: "No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web." },
               { q: "¿Cuánto tiempo toma instalar el sistema en el edificio?", a: "Muy poco. Una vez que nos envías la lista de departamentos y residentes en Excel, dejamos todo funcionando en menos de 48 horas hábiles." }
             ].map((faq, i) => (
               <div
                 key={i}
-                className="bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] rounded-2xl p-5 hover:border-[#FF6B47]/25 hover:shadow-md transition-all"
+                className="bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] rounded-2xl p-5 hover:border-[#C8705A]/25 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-[#FF6B47]/10 rounded-xl flex-shrink-0 mt-0.5">
-                    <HelpCircle className="w-4 h-4 text-[#FF6B47]" />
+                  <div className="p-2 bg-[#C8705A]/10 rounded-xl flex-shrink-0 mt-0.5">
+                    <HelpCircle className="w-4 h-4 text-[#C8705A]" />
                   </div>
                   <div>
-                    <h4 className="text-base font-bold text-[#1A1512] dark:text-[#f5f0ec] mb-1.5 tracking-tight">{faq.q}</h4>
-                    <p className="text-[#7a706a] dark:text-[#b0a8a2] leading-relaxed text-sm font-medium">{faq.a}</p>
+                    <h4 className="text-base font-bold text-[#2D2A26] dark:text-[#FBF8F3] mb-1.5 tracking-tight">{faq.q}</h4>
+                    <p className="text-[#8A8580] dark:text-[#C8BFB6] leading-relaxed text-sm font-medium">{faq.a}</p>
                   </div>
                 </div>
               </div>
@@ -906,11 +905,11 @@ export default function LandingPage() {
         {/* ── CTA Banner ── */}
         <section className="mb-16 w-full max-w-4xl mx-auto">
           <div
-            className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#FF6B47] via-[#e8502d] to-[#c03a1d] p-10 md:p-14 text-white text-center"
+            className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#C8705A] via-[#B45F4B] to-[#974C3C] p-10 md:p-14 text-white text-center"
           >
             {/* Decorative blobs inside banner */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#0BC9A1]/20 rounded-full blur-2xl transform -translate-x-10 translate-y-10" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#5A7D5A]/20 rounded-full blur-2xl transform -translate-x-10 translate-y-10" />
             <div className="relative z-10">
               <div className="text-4xl mb-4">🏘️</div>
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tighter mb-3">¿Listo para transformar tu comunidad?</h2>
@@ -918,7 +917,7 @@ export default function LandingPage() {
               <button
                 onClick={() => router.push('/signup')}
                 id="cta-footer-btn"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-[#e8502d] font-extrabold text-base hover:bg-[#fff3f0] transition-all shadow-xl shadow-black/20 hover:-translate-y-1"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-[#B45F4B] font-extrabold text-base hover:bg-[#F4E8DF] transition-all shadow-xl shadow-black/20 hover:-translate-y-1"
               >
                 Crear mi cuenta gratis
                 <ArrowRight className="w-4 h-4" />
@@ -930,21 +929,21 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="relative z-10 py-8 border-t border-[#e8e2dd] dark:border-[#2e2820]">
+      <footer className="relative z-10 py-8 border-t border-[#E4D8CA] dark:border-[#3B3530]">
         <div className="mx-auto box-border flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row md:px-12">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gradient-to-br from-[#FF6B47] to-[#e8502d] rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-[#C8705A] to-[#B45F4B] rounded-lg flex items-center justify-center">
               <Building2 className="text-white w-3.5 h-3.5" />
             </div>
-            <span className="text-sm font-bold text-[#5a534e] dark:text-[#b0a8a2]">
-              Comunidad<span className="text-[#FF6B47]">Connect</span>
+            <span className="text-sm font-bold text-[#5F5A54] dark:text-[#C8BFB6]">
+              Convive
             </span>
-            <span className="text-[#a89e97] text-sm">· © 2026</span>
+            <span className="text-[#8A8580] text-sm">· © 2026</span>
           </div>
-          <div className="flex items-center gap-6 text-sm font-semibold text-[#a89e97]">
-            <Link href="/privacy" className="hover:text-[#FF6B47] transition-colors">Privacidad</Link>
-            <Link href="/terms" className="hover:text-[#FF6B47] transition-colors">Términos</Link>
-            <a href="mailto:soporte@comunidadconnect.com" className="hover:text-[#FF6B47] transition-colors">Soporte</a>
+          <div className="flex items-center gap-6 text-sm font-semibold text-[#8A8580]">
+            <Link href="/privacy" className="hover:text-[#C8705A] transition-colors">Privacidad</Link>
+            <Link href="/terms" className="hover:text-[#C8705A] transition-colors">Términos</Link>
+            <a href="mailto:soporte@convive.app" className="hover:text-[#C8705A] transition-colors">Soporte</a>
           </div>
         </div>
       </footer>

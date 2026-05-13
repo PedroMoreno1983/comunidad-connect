@@ -1,5 +1,5 @@
 /* ============================================================
-   ComunidadConnect — Design Tokens v1.0
+   Convive — Design Tokens v1.0
    Source of truth for all design decisions.
    Import this file once in your app root (globals.css).
    ============================================================ */
@@ -13,52 +13,52 @@
      2. COLOR — BRAND & ROLES
      ============================================================ */
 
-  /* Primary brand (violet) — used for Admin role + default CTAs */
-  --cc-brand-50:   #FFF3EF;
-  --cc-brand-100:  #FFE2D8;
-  --cc-brand-200:  #FFC4B3;
-  --cc-brand-300:  #FF9A80;
-  --cc-brand-400:  #FF7657;
-  --cc-brand-500:  #F45B3D;  /* DEFAULT */
-  --cc-brand-600:  #D94328;
-  --cc-brand-700:  #B7341E;
-  --cc-brand-800:  #922D1F;
-  --cc-brand-900:  #4A1710;
+  /* Primary brand: Convive Terracota */
+  --cc-brand-50:   #FBF8F3;
+  --cc-brand-100:  #F4E8DF;
+  --cc-brand-200:  #E9D0C2;
+  --cc-brand-300:  #DFAF9B;
+  --cc-brand-400:  #D08B72;
+  --cc-brand-500:  #C8705A;  /* DEFAULT */
+  --cc-brand-600:  #B45F4B;
+  --cc-brand-700:  #974C3C;
+  --cc-brand-800:  #7A3D31;
+  --cc-brand-900:  #4E2923;
 
   /* Role — Admin (aliases brand) */
-  --cc-role-admin-fg:    #D94328;
-  --cc-role-admin-bg:    rgba(244, 91, 61, 0.12);
-  --cc-role-admin-border: rgba(244, 91, 61, 0.28);
+  --cc-role-admin-fg:    #974C3C;
+  --cc-role-admin-bg:    rgba(200, 112, 90, 0.12);
+  --cc-role-admin-border: rgba(200, 112, 90, 0.28);
 
   /* Role — Conserje (amber/copper) */
-  --cc-role-conserje-fg:     #FBBF5C;
-  --cc-role-conserje-bg:     rgba(245, 158, 11, 0.12);
-  --cc-role-conserje-border: rgba(245, 158, 11, 0.30);
-  --cc-role-conserje-500:    #F59E0B;
-  --cc-role-conserje-600:    #D97706;
+  --cc-role-conserje-fg:     #8C6538;
+  --cc-role-conserje-bg:     rgba(212, 165, 116, 0.16);
+  --cc-role-conserje-border: rgba(212, 165, 116, 0.34);
+  --cc-role-conserje-500:    #D4A574;
+  --cc-role-conserje-600:    #A97745;
 
   /* Role — Residente (emerald) */
-  --cc-role-residente-fg:     #34D399;
-  --cc-role-residente-bg:     rgba(16, 185, 129, 0.12);
-  --cc-role-residente-border: rgba(16, 185, 129, 0.30);
-  --cc-role-residente-500:    #10B981;
-  --cc-role-residente-600:    #059669;
+  --cc-role-residente-fg:     #5A7D5A;
+  --cc-role-residente-bg:     rgba(90, 125, 90, 0.14);
+  --cc-role-residente-border: rgba(90, 125, 90, 0.32);
+  --cc-role-residente-500:    #5A7D5A;
+  --cc-role-residente-600:    #466746;
 
   /* ============================================================
      3. COLOR — SEMANTIC (status, feedback)
      ============================================================ */
 
   /* Success */
-  --cc-success-fg:       #34D399;
-  --cc-success-bg:       rgba(16, 185, 129, 0.12);
-  --cc-success-border:   rgba(16, 185, 129, 0.30);
-  --cc-success-solid:    #10B981;
+  --cc-success-fg:       #5A7D5A;
+  --cc-success-bg:       rgba(90, 125, 90, 0.14);
+  --cc-success-border:   rgba(90, 125, 90, 0.32);
+  --cc-success-solid:    #5A7D5A;
 
   /* Warning */
-  --cc-warning-fg:       #FBBF5C;
-  --cc-warning-bg:       rgba(245, 158, 11, 0.12);
-  --cc-warning-border:   rgba(245, 158, 11, 0.30);
-  --cc-warning-solid:    #F59E0B;
+  --cc-warning-fg:       #8C6538;
+  --cc-warning-bg:       rgba(212, 165, 116, 0.16);
+  --cc-warning-border:   rgba(212, 165, 116, 0.34);
+  --cc-warning-solid:    #D4A574;
 
   /* Danger */
   --cc-danger-fg:        #F87171;
@@ -77,8 +77,8 @@
      ============================================================ */
 
   /* Font families */
-  --cc-font-display: 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --cc-font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-display: 'Hedvig Letters Sans', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-sans:    'Liter', ui-sans-serif, system-ui, sans-serif;
   --cc-font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Font sizes — fluid but predictable */
@@ -148,13 +148,13 @@
   --cc-shadow-xl:  0 16px 36px rgba(17, 24, 39, 0.12);
 
   /* Glows — used for focus + hero CTAs */
-  --cc-glow-brand:     0 8px 24px -12px rgba(244, 91, 61, 0.45);
-  --cc-glow-success:   0 0 20px -4px rgba(16, 185, 129, 0.40);
+  --cc-glow-brand:     0 8px 24px -12px rgba(200, 112, 90, 0.45);
+  --cc-glow-success:   0 0 20px -4px rgba(90, 125, 90, 0.36);
   --cc-glow-warning:   0 0 20px -4px rgba(245, 158, 11, 0.40);
   --cc-glow-danger:    0 0 20px -4px rgba(239, 68, 68, 0.40);
 
   /* Focus ring */
-  --cc-ring-default: 0 0 0 3px rgba(244, 91, 61, 0.25);
+  --cc-ring-default: 0 0 0 3px rgba(200, 112, 90, 0.25);
 
   /* ============================================================
      8. MOTION
@@ -189,25 +189,25 @@
 :root:not(.dark),
 .light {
   /* Backgrounds */
-  --cc-bg-canvas:        #F7F5F2;   /* warm neutral app background */
+  --cc-bg-canvas:        #FBF8F3;   /* Convive crema */
   --cc-bg-surface:       #FFFFFF;   /* pure white card */
-  --cc-bg-elevated:      #F0ECE6;   /* warm neutral hover/elevated */
-  --cc-bg-overlay:       #E6DED6;   /* slightly deeper hover */
-  --cc-bg-inverted:      #0A0A12;
+  --cc-bg-elevated:      #F1EAE1;   /* warm neutral hover/elevated */
+  --cc-bg-overlay:       #E4D8CA;   /* slightly deeper hover */
+  --cc-bg-inverted:      #1E1E24;
 
   /* Borders */
   --cc-border-subtle:    rgba(0, 0, 0, 0.06);
   --cc-border-default:   rgba(0, 0, 0, 0.10);
   --cc-border-strong:    rgba(0, 0, 0, 0.18);
-  --cc-border-focus:     rgba(244, 91, 61, 0.55);
+  --cc-border-focus:     rgba(200, 112, 90, 0.55);
 
   /* Text */
-  --cc-text-primary:     #0F0C1A;
-  --cc-text-secondary:   #4A4858;
-  --cc-text-tertiary:    #8B8899;
-  --cc-text-disabled:    #C5C3CF;
+  --cc-text-primary:     #2D2A26;
+  --cc-text-secondary:   #5F5A54;
+  --cc-text-tertiary:    #8A8580;
+  --cc-text-disabled:    #B9B1AA;
   --cc-text-inverted:    #FFFFFF;
-  --cc-text-link:        #D94328;
+  --cc-text-link:        #974C3C;
 
   /* Glass */
   --cc-glass-bg:     rgba(255, 255, 255, 0.80);
@@ -219,17 +219,17 @@
    ============================================================ */
 .dark {
   /* Backgrounds */
-  --cc-bg-canvas:        #11100F;
-  --cc-bg-surface:       #12121D;
-  --cc-bg-elevated:      #24211E;
-  --cc-bg-overlay:       #302B27;
+  --cc-bg-canvas:        #1E1E24;
+  --cc-bg-surface:       #25242A;
+  --cc-bg-elevated:      #302D2A;
+  --cc-bg-overlay:       #3B3530;
   --cc-bg-inverted:      #FFFFFF;
 
   /* Borders */
   --cc-border-subtle:    rgba(255, 255, 255, 0.06);
   --cc-border-default:   rgba(255, 255, 255, 0.10);
   --cc-border-strong:    rgba(255, 255, 255, 0.18);
-  --cc-border-focus:     rgba(244, 91, 61, 0.55);
+  --cc-border-focus:     rgba(200, 112, 90, 0.55);
 
   /* Text */
   --cc-text-primary:     #FFFFFF;
@@ -237,7 +237,7 @@
   --cc-text-tertiary:    #6E6E85;
   --cc-text-disabled:    #4A4A5E;
   --cc-text-inverted:    #0A0A12;
-  --cc-text-link:        #FF9A80;
+  --cc-text-link:        #DFAF9B;
 
   /* Glass */
   --cc-glass-bg:     rgba(18, 18, 29, 0.85);

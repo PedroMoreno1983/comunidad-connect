@@ -1,7 +1,7 @@
 /**
  * tools.ts — CoCo IA Súper Agente
  * 17 herramientas divididas por módulo y perfil.
- * El executor llama directamente a Supabase (ComunidadConnect DB).
+ * El executor llama directamente a Supabase (Convive DB).
  */
 
 import { createClient } from '@supabase/supabase-js';

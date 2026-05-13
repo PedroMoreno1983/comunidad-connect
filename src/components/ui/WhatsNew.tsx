@@ -9,7 +9,9 @@ export function WhatsNew() {
     const [show, setShow] = useState(false);
 
     useEffect(() => {
-        const hasSeen = localStorage.getItem("cc_seen_v2_pro");
+        const isSmallScreen = window.matchMedia("(max-width: 640px)").matches;
+        const hasSeen = localStorage.getItem("convive_seen_v2_pro");
+        if (isSmallScreen) return;
         if (!hasSeen) {
             const timer = setTimeout(() => setShow(true), 1500);
             return () => clearTimeout(timer);
@@ -17,7 +19,7 @@ export function WhatsNew() {
     }, []);
 
     const close = () => {
-        localStorage.setItem("cc_seen_v2_pro", "true");
+        localStorage.setItem("convive_seen_v2_pro", "true");
         setShow(false);
     };
 
@@ -26,8 +28,8 @@ export function WhatsNew() {
             title: "Supermercado IA",
             desc: "CoCo ahora te ayuda con listas de compras y recetas inteligentes.",
             icon: ShoppingCart,
-            color: "text-emerald-600",
-            bg: "bg-emerald-100",
+            color: "text-[#5A7D5A]",
+            bg: "bg-[#5A7D5A]/10",
             link: "/resident/supermercado"
         },
         {
@@ -42,8 +44,8 @@ export function WhatsNew() {
             title: "Pagos con Boleta SII",
             desc: "Integración con Haulmer para facturación electrónica automática.",
             icon: ReceiptText,
-            color: "text-rose-600",
-            bg: "bg-rose-100",
+            color: "text-[#C8705A]",
+            bg: "bg-[#C8705A]/10",
             link: "/resident/finances"
         }
     ];
@@ -59,7 +61,7 @@ export function WhatsNew() {
                 >
                     <div className="bg-surface rounded-lg shadow-sm border border-subtle overflow-hidden">
                         {/* Header */}
-                        <div className="p-4 bg-slate-950 flex items-center justify-between">
+                        <div className="p-4 bg-[#1E1E24] flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-white" />
                                 <span className="text-sm font-semibold text-white">Novedades v2.0 Pro</span>

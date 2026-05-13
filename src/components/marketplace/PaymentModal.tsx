@@ -99,7 +99,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                                     <CreditCard className="h-6 w-6 text-blue-600" />
                                     <div className="flex-1">
                                         <p className="text-sm font-bold cc-text-primary">Tarjeta de Crédito / Débito</p>
-                                        <p className="text-xs text-slate-500 font-medium">Transacción segura de ComunidadConnect</p>
+                                        <p className="text-xs text-slate-500 font-medium">Transacción segura de Convive</p>
                                     </div>
                                     <CheckCircle2 className="h-5 w-5 text-blue-600" />
                                 </div>

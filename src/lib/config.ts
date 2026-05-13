@@ -9,7 +9,7 @@ export const isNative = typeof window !== 'undefined' &&
 
 // URL base para las llamadas a la API
 // En el celular no podemos usar "/api/..." relativo, necesitamos la URL absoluta de producción.
-export const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://comunidadconnect.vercel.app';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app';
 
 /**
  * Helper para construir URLs de API

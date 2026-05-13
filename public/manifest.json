@@ -1,11 +1,11 @@
-{
-    "name": "ComunidadConnect",
-    "short_name": "ComunidadConnect",
-    "description": "Plataforma de gestión comunitaria inteligente",
+﻿{
+    "name": "Convive",
+    "short_name": "Convive",
+    "description": "Bienestar comunitario para condominios",
     "start_url": "/home",
     "display": "standalone",
-    "background_color": "#0B0F19",
-    "theme_color": "#6366f1",
+    "background_color": "#FBF8F3",
+    "theme_color": "#C8705A",
     "orientation": "portrait-primary",
     "icons": [
         {

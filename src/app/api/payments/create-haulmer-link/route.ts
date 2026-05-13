@@ -7,8 +7,8 @@ import { cookies } from 'next/headers';
 const ALLOWED_ORIGINS = [
     process.env.NEXT_PUBLIC_SITE_URL,
     'http://localhost:3000',
-    'https://comunidadconnect.cl',
-    'https://www.comunidadconnect.cl',
+    'https://convive.app',
+    'https://www.convive.app',
 ].filter(Boolean) as string[];
 
 function isAllowedReturnUrl(url: string): boolean {

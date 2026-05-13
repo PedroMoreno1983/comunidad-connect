@@ -12,7 +12,7 @@ export default function TermsPage() {
 
                 <div className="prose prose-slate dark:prose-invert">
                     <p className="text-lg cc-text-secondary leading-relaxed mb-6">
-                        Última actualización: Noviembre 2026. Al utilizar ComunidadConnect, usted acepta los siguientes términos y condiciones.
+                        Última actualización: Noviembre 2026. Al utilizar Convive, usted acepta los siguientes términos y condiciones.
                     </p>
                     <div className="space-y-8 bg-surface border border-subtle rounded-3xl p-8">
                         <section>
@@ -24,7 +24,7 @@ export default function TermsPage() {
                         <section>
                             <h2 className="text-xl font-bold mb-3">2. Responsabilidad</h2>
                             <p className="cc-text-secondary">
-                                ComunidadConnect facilita la comunicación y gestión de pagos pero no asume responsabilidad directa por disputas entre la comunidad, la conserjería ni administradores locales.
+                                Convive facilita la comunicación y gestión de pagos pero no asume responsabilidad directa por disputas entre la comunidad, la conserjería ni administradores locales.
                             </p>
                         </section>
                         <section>

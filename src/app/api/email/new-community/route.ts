@@ -12,7 +12,7 @@ export async function POST(request: Request) {
                 🏢 Nuevo Edificio Registrado
             </h1>
             <p style="margin:0 0 32px;color:#64748b;font-size:15px;">
-                Un administrador acaba de registrar su condominio en ComunidadConnect.
+                Un administrador acaba de registrar su condominio en Convive.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:32px;">
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
                 <tr style="background:#fafafa;"><td style="padding:14px 20px;font-weight:600;color:#475569;">Administrador</td><td style="padding:14px 20px;color:#1e293b;">${adminName} &lt;${adminEmail}&gt;</td></tr>
             </table>
 
-            <a href="https://comunidad-connect-eight.vercel.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;">
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app'}" style="display:inline-block;background:linear-gradient(135deg,#C8705A,#974C3C);color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;">
                 Ver en SuperAdmin →
             </a>
         `, 'Nuevo Edificio Registrado');

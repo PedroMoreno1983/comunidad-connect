@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hedvig+Letters+Sans&family=Liter&family=Geist+Mono:wght@400..600&display=swap');
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./design-system.css";
@@ -9,8 +9,8 @@
 
 /* Font theme tokens only - V4 supports these without var() issues */
 @theme {
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-sans: 'Geist', sans-serif;
+  --font-display: 'Hedvig Letters Sans', sans-serif;
+  --font-sans: 'Liter', sans-serif;
   --font-mono: 'Geist Mono', monospace;
 }
 
@@ -251,7 +251,7 @@ h1, h2 {
 
 .btn-primary:hover {
   background: linear-gradient(135deg, var(--cc-brand-600) 0%, var(--cc-brand-700) 100%);
-  box-shadow: 0 6px 20px 0 rgba(124, 58, 237, 0.50);
+  box-shadow: 0 6px 20px 0 rgba(200, 112, 90, 0.38);
   transform: translateY(-1px);
 }
 
