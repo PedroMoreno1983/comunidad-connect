@@ -117,6 +117,11 @@ export default function AdminFinanzasPage() {
                 <ModuleFlow
                     title="Cierre financiero del periodo"
                     description="El flujo financiero debe partir en cobranza, cruzar ingresos y egresos, y terminar con reporte y recordatorios enviados."
+                    statusLabel={`${finances.collectionRate}% cobranza`}
+                    completedSteps={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 2 : 0}
+                    currentStep={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 3 : 1}
+                    primaryActionLabel={finances.collectionRate >= 85 ? "Preparar reporte" : "Gestionar cobranza"}
+                    primaryActionHref="#control-financiero"
                     steps={[
                         "Revisar pagos pendientes",
                         "Validar ingresos y egresos",
@@ -125,8 +130,10 @@ export default function AdminFinanzasPage() {
                     ]}
                     outcome="Cierre esperado: la administracion sabe quien debe, cuanto se recaudo, que gastos explicar y que comunicaciones faltan."
                 />
-                <FinanceDashboard data={finances} />
-                <div>
+                <section id="control-financiero">
+                    <FinanceDashboard data={finances} />
+                </section>
+                <div id="cobranzas">
                     <CondoFeesTable />
                 </div>
             </motion.div>

@@ -329,7 +329,7 @@ export function PollManager() {
             </section>
 
             <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
-                <form onSubmit={handleCreatePoll} className="min-w-0 rounded-lg border border-subtle bg-surface shadow-sm">
+                <form id="crear-votacion" onSubmit={handleCreatePoll} className="min-w-0 rounded-lg border border-subtle bg-surface shadow-sm">
                     <div className="border-b border-subtle p-5">
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -463,7 +463,7 @@ export function PollManager() {
                         <DeliverySummaryCard summary={deliverySummary} />
                     )}
 
-                    <section className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+                    <section id="votaciones-publicadas" className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
                         <div className="flex flex-col gap-3 border-b border-subtle p-5 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h2 className="text-lg font-semibold cc-text-primary">Votaciones publicadas</h2>

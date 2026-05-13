@@ -325,6 +325,11 @@ export default function MantenimientoAdminPage() {
             <ModuleFlow
                 title="De alerta a tarea cerrada"
                 description="El flujo de mantenimiento debe convertir casos CoCo, solicitudes y sensores en una cola priorizada que termina con evidencia de cierre."
+                statusLabel={`${metrics.activeCases} casos activos`}
+                completedSteps={metrics.criticalCases > 0 ? 0 : services.some(item => item.status !== "completed") ? 2 : 4}
+                currentStep={metrics.criticalCases > 0 ? 1 : services.some(item => item.status !== "completed") ? 3 : 4}
+                primaryActionLabel={metrics.criticalCases > 0 ? "Revisar casos CoCo" : "Ir a cola operativa"}
+                primaryActionHref="#cola-operativa"
                 steps={[
                     "Detectar caso o activo critico",
                     "Crear tarea con responsable",
@@ -356,7 +361,7 @@ export default function MantenimientoAdminPage() {
                 </div>
             ) : activeTab === "operacion" ? (
                 <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-                    <section className="space-y-4">
+                    <section id="cola-operativa" className="space-y-4">
                         <SectionTitle icon={<CalendarDays className="h-5 w-5" />} title="Cola operativa" />
                         {services.map(item => (
                             <article key={item.id} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
