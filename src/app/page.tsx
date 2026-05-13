@@ -11,6 +11,7 @@ import {
   MessageSquare, Package, MapPin, TrendingUp, Star,
   Users, Home, Zap, ChevronRight
 } from 'lucide-react';
+import { BrandWordmark } from '@/components/BrandWordmark';
 
 /* ── Animated counter hook ────────────────────────────── */
 function useCounter(target: number, duration = 2000, start = false) {
@@ -84,7 +85,7 @@ function AppMockup() {
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Convive</p>
+              <BrandWordmark className="text-sm text-[#2D2A26] dark:text-[#FBF8F3]" />
               <p className="text-[10px] text-[#8A8580]">Torre Norte · Depto 8B</p>
             </div>
             <div className="ml-auto relative">
@@ -370,9 +371,7 @@ export default function LandingPage() {
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] shadow-lg shadow-[#C8705A]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
             <Building2 className="h-5 w-5 text-white" />
           </div>
-          <span className="min-w-0 truncate text-base font-extrabold tracking-tight sm:text-xl">
-            Convive
-          </span>
+          <BrandWordmark className="min-w-0 truncate text-base sm:text-xl" />
         </div>
 
         <div
@@ -419,19 +418,20 @@ export default function LandingPage() {
             <h1
               className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-[1.08] mb-6"
             >
-              Tu convives.{' '}
+              Tu edificio,{' '}
               <span className="relative inline-block">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#B45F4B]">Tu comunidad.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#B45F4B]">más humano</span>
                 <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M0 5 Q50 1 100 5 Q150 9 200 5" stroke="#C8705A" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
                 </svg>
-              </span>
+              </span>{' '}
+              que nunca.
             </h1>
 
             <p
               className="text-lg text-[#5F5A54] dark:text-[#C8BFB6] leading-relaxed mb-8 max-w-md"
             >
-              Mas que software de administracion: una plataforma para que edificios reales se sientan conectados, saludables y con pertenencia.
+              Gastos comunes, reservas, conserjería y vecinos; todo conectado en una app que la gente de verdad quiere usar.
             </p>
 
             <div
@@ -935,9 +935,7 @@ export default function LandingPage() {
             <div className="w-7 h-7 bg-gradient-to-br from-[#C8705A] to-[#B45F4B] rounded-lg flex items-center justify-center">
               <Building2 className="text-white w-3.5 h-3.5" />
             </div>
-            <span className="text-sm font-bold text-[#5F5A54] dark:text-[#C8BFB6]">
-              Convive
-            </span>
+            <BrandWordmark className="text-sm text-[#5F5A54] dark:text-[#C8BFB6]" />
             <span className="text-[#8A8580] text-sm">· © 2026</span>
           </div>
           <div className="flex items-center gap-6 text-sm font-semibold text-[#8A8580]">

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Lock, Mail, ShieldCheck, UserRoundCheck, Users } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
@@ -63,7 +64,7 @@ export default function LoginPage() {
                         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <span className="text-xl font-semibold cc-text-primary">Convive</span>
+                        <BrandWordmark className="text-xl cc-text-primary" />
                     </Link>
 
                     <div className="max-w-xl space-y-5">

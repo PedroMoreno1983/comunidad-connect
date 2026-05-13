@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Lock, Mail, Star, User, Zap } from "lucide-react";
 
@@ -151,7 +152,7 @@ export default function AdminOnboardingPage() {
                         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <span className="text-xl font-semibold cc-text-primary">Convive</span>
+                        <BrandWordmark className="text-xl cc-text-primary" />
                     </Link>
                     <div className="space-y-5">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Alta administradores</p>
