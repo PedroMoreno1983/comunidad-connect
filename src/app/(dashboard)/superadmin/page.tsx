@@ -40,7 +40,7 @@ export default function SuperAdminDashboard() {
 
     // Verification that Pedro is the superadmin
     // (In production, use a secure backend check or a specific superadmin role)
-    const isSuperAdmin = user?.email === 'pedromoreno1983@gmail.com' || user?.email?.includes('comunidadconnect');
+    const isSuperAdmin = user?.email === 'pedromoreno1983@gmail.com' || user?.email?.includes('convive');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -231,7 +231,7 @@ export default function SuperAdminDashboard() {
                     Para registrar un nuevo administrador y su condominio, envíales este link:
                     <br/><br/>
                     <code className="bg-surface px-3 py-2 rounded-lg font-mono font-bold select-all tracking-wider text-blue-600 dark:text-blue-400 shadow-sm">
-                        https://comunidadconnect.com/admin-onboarding
+                        https://convive.app/admin-onboarding
                     </code>
                     <br/><br/>
                     Una vez que se registren allí, aparecerán en esta lista y podrás asignarles un plan.

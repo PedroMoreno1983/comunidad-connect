@@ -350,7 +350,7 @@ export default function HomePage() {
                                 ? 'Gestiona tu comunidad desde un solo lugar'
                                 : user.role === 'concierge'
                                     ? 'Control de accesos y servicios del edificio'
-                                    : `Bienvenido a ComunidadConnect${user.unitName ? ` • ${user.unitName}` : ''}`
+                                    : `Bienvenido a Convive${user.unitName ? ` • ${user.unitName}` : ''}`
                             }
                         </p>
                     </div>

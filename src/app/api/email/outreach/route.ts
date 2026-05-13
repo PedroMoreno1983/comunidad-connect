@@ -20,11 +20,11 @@ export async function POST(request: Request) {
                 Preparamos esta propuesta pensando en <strong>${condoLabel}</strong>.
             </p>
             <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">
-                Te escribo para presentarte <strong>ComunidadConnect</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
+                Te escribo para presentarte <strong>Convive</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
             </p>
 
             <div style="background:#f8fafc;border-radius:12px;padding:24px;margin-bottom:32px;border:1px solid #e2e8f0;">
-                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#4f46e5;">¿Por qué elegir ComunidadConnect?</h2>
+                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#974C3C;">¿Por qué elegir Convive?</h2>
                 
                 <div style="margin-bottom:16px;">
                     <p style="margin:0;font-weight:700;color:#1e293b;">🤖 IA Onboarding</p>
@@ -51,20 +51,20 @@ export async function POST(request: Request) {
                 Estamos convencidos de que podemos ahorrarte mucho tiempo operativo.
             </p>
             <div style="margin-top: 30px; margin-bottom: 30px;">
-                <a href="https://comunidad-connect-eight.vercel.app/login" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app'}/login" style="display: inline-block; padding: 12px 24px; background-color: #C8705A; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
                     Ver Demo Gratis
                 </a>
             </div>
             <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; color: #666;">
                 Atentamente,<br>
-                <strong>Equipo Comunidad Connect</strong>
+                <strong>Equipo Convive</strong>
             </p>
 
             <p style="margin:32px 0 0;color:#94a3b8;font-size:13px;font-style:italic;">
-                Este es un correo de invitación directa de parte del equipo de ComunidadConnect. 
+                Este es un correo de invitación directa de parte del equipo de Convive.
                 Si deseas agendar una reunión personalizada, solo responde a este email.
             </p>
-        `, 'Invitación a ComunidadConnect');
+        `, 'Invitación a Convive');
 
         const { error } = await resend.emails.send({
             from: FROM_EMAIL,

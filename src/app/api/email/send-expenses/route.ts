@@ -66,6 +66,7 @@ export async function POST(request: Request) {
         }
 
         const communityName = community?.name || 'Tu Comunidad';
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app';
         const monthLabel = month
             ? new Date(month + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
             : 'Este mes';
@@ -99,8 +100,8 @@ export async function POST(request: Request) {
     <td align="center" style="padding-bottom:32px;">
       <table cellpadding="0" cellspacing="0">
         <tr>
-          <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;padding:10px 20px;">
-            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Comunidad<span style="color:#c4b5fd;">Connect</span></span>
+          <td style="background:linear-gradient(135deg,#C8705A,#974C3C);border-radius:14px;padding:10px 20px;">
+            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Convive</span>
           </td>
         </tr>
       </table>
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
       <!-- Card top accent -->
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);height:5px;"></td>
+          <td style="background:linear-gradient(90deg,#C8705A,#974C3C);height:5px;"></td>
         </tr>
       </table>
 
@@ -154,10 +155,10 @@ export async function POST(request: Request) {
         <!-- Total -->
         <tr>
           <td style="padding-top:0;padding-bottom:36px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-top:4px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4E8DF;border-radius:12px;margin-top:4px;">
               <tr>
-                <td style="padding:18px 20px;font-size:14px;font-weight:700;color:#6d28d9;">TOTAL A PAGAR</td>
-                <td style="padding:18px 20px;font-size:22px;font-weight:900;color:#4f46e5;text-align:right;">${formatCLP(totalAmount || 0)}</td>
+                <td style="padding:18px 20px;font-size:14px;font-weight:700;color:#974C3C;">TOTAL A PAGAR</td>
+                <td style="padding:18px 20px;font-size:22px;font-weight:900;color:#974C3C;text-align:right;">${formatCLP(totalAmount || 0)}</td>
               </tr>
             </table>
           </td>
@@ -180,8 +181,8 @@ export async function POST(request: Request) {
         <!-- CTA -->
         <tr>
           <td align="center" style="padding-bottom:48px;">
-            <a href="https://comunidad-connect-eight.vercel.app/expenses"
-               style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;letter-spacing:-.2px;">
+            <a href="${siteUrl}/expenses"
+               style="display:inline-block;background:linear-gradient(135deg,#C8705A,#974C3C);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;letter-spacing:-.2px;">
               Pagar en línea &rarr;
             </a>
             <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">También puedes pagar por transferencia bancaria según las instrucciones de tu administrador.</p>
@@ -196,8 +197,8 @@ export async function POST(request: Request) {
   <tr>
     <td align="center" style="padding:32px 0 0;">
       <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
-        ComunidadConnect &mdash; Sistema de Gestión Inmobiliaria<br/>
-        Preguntas: <a href="mailto:soporte@datawiseconsultoria.com" style="color:#6d28d9;text-decoration:none;">soporte@datawiseconsultoria.com</a>
+        Convive &mdash; Sistema de Gestión Inmobiliaria<br/>
+        Preguntas: <a href="mailto:soporte@convive.app" style="color:#974C3C;text-decoration:none;">soporte@convive.app</a>
       </p>
     </td>
   </tr>

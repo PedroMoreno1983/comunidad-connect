@@ -1,7 +1,7 @@
-// Service Worker — ComunidadConnect PWA
+// Service Worker — Convive PWA
 // Basic caching strategy for offline support
 
-const CACHE_NAME = 'comunidadconnect-v1';
+const CACHE_NAME = 'convive-v1';
 const STATIC_ASSETS = [
     '/',
     '/home',

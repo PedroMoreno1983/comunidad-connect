@@ -1,13 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Hedvig_Letters_Sans, Liter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProviders } from "@/components/ThemeProviders";
 
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+const hedvigLetters = Hedvig_Letters_Sans({
+  variable: "--font-hedvig",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: "400",
+  display: "swap",
+  preload: true,
+});
+
+const liter = Liter({
+  variable: "--font-liter",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
   preload: true,
 });
@@ -22,11 +30,11 @@ const geistMono = Geist_Mono({
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "ComunidadConnect",
+  name: "Convive",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Plataforma de gestion comunitaria para condominios: gastos comunes, reservas, conserjeria, votaciones, marketplace y comunicacion vecinal.",
+    "Plataforma de bienestar comunitario para condominios: gastos comunes, reservas, conserjeria, votaciones, marketplace y comunicacion vecinal.",
   offers: {
     "@type": "Offer",
     priceCurrency: "CLP",
@@ -34,17 +42,17 @@ const structuredData = {
   },
   publisher: {
     "@type": "Organization",
-    name: "ComunidadConnect",
+    name: "Convive",
   },
 };
 
 export const metadata: Metadata = {
   title: {
-    default: "ComunidadConnect — Gestión Comunitaria Inteligente",
-    template: "%s | ComunidadConnect",
+    default: "Convive — Bienestar Comunitario",
+    template: "%s | Convive",
   },
   description:
-    "Plataforma premium de gestión comunitaria para condominios. Marketplace, reservas de amenidades, consumo de agua, votaciones y más. Digitaliza tu comunidad.",
+    "Plataforma de bienestar comunitario para condominios. Marketplace, reservas de amenidades, consumo de agua, votaciones y más. Convierte tu edificio en comunidad.",
   keywords: [
     "condominio",
     "gestión comunitaria",
@@ -55,20 +63,20 @@ export const metadata: Metadata = {
     "agua",
     "administración",
   ],
-  authors: [{ name: "ComunidadConnect" }],
+  authors: [{ name: "Convive" }],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'ComunidadConnect',
+    title: 'Convive',
   },
   openGraph: {
     type: "website",
     locale: "es_CL",
-    siteName: "ComunidadConnect",
-    title: "ComunidadConnect — Gestión Comunitaria Inteligente",
+    siteName: "Convive",
+    title: "Convive — Bienestar Comunitario",
     description:
-      "Digitaliza la convivencia en tu condominio. Marketplace, reservas, gastos comunes y mucho más.",
+      "Más que vecinos. Comunidad. Marketplace, reservas, gastos comunes y bienestar comunitario.",
   },
   robots: {
     index: true,
@@ -81,8 +89,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#FBF8F3" },
+    { media: "(prefers-color-scheme: dark)", color: "#1E1E24" },
   ],
 };
 
@@ -94,8 +102,8 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0B0F19" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#FBF8F3" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#1E1E24" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           type="application/ld+json"
@@ -103,7 +111,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${plusJakarta.variable} ${geistMono.variable} antialiased`}
+        className={`${hedvigLetters.variable} ${liter.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProviders>
           {children}

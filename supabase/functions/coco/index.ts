@@ -24,7 +24,7 @@ Rutas disponibles en la app:
 - /marketplace → Marketplace / Publicar artículos para vender o intercambiar
 `;
 
-const SYSTEM_PROMPT = `Eres CoCo, el asistente virtual inteligente de ComunidadConnect, una plataforma de gestión comunitaria para condominios y edificios residenciales en Chile.
+const SYSTEM_PROMPT = `Eres CoCo, el asistente virtual inteligente de Convive, una plataforma de gestión comunitaria para condominios y edificios residenciales en Chile.
 
 Tu personalidad:
 - Amable, directo y profesional pero cercano

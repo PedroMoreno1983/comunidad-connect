@@ -145,7 +145,7 @@ export function Sidebar() {
         }
     ];
 
-    if (user.email === 'pedromoreno1983@gmail.com' || user.email.includes('comunidadconnect')) {
+    if (user.email === 'pedromoreno1983@gmail.com' || user.email.includes('convive')) {
         menuSections.push({
             title: 'SaaS SUPERADMIN',
             links: [
@@ -201,8 +201,7 @@ export function Sidebar() {
                         <Building2 className="h-5 w-5 text-white" />
                     </div>
                     <div className="ml-3 min-w-0 truncate">
-                        <span className="text-base font-bold cc-text-primary">Comunidad</span>
-                        <span className="text-base font-bold text-brand-500">Connect</span>
+                        <span className="text-base font-bold cc-text-primary">Convive</span>
                     </div>
                 </div>
                 <div className="shrink-0">
@@ -294,7 +293,7 @@ export function Sidebar() {
                     Cerrar Sesión
                 </button>
                 <p className="mt-3 text-center text-xs cc-text-tertiary">
-                    v2.0 Pro • ComunidadConnect
+                    v2.0 Pro • Convive
                 </p>
             </div>
         </>

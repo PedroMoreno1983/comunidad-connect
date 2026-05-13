@@ -254,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signUp = async (email: string, password: string, userData: Record<string, any>) => {
         try {
             // Determine current origin for email redirection
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://comunidadconnect.vercel.app';
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://convive.app';
             
             if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
                 console.error("Supabase not configured. Signup will fail.");

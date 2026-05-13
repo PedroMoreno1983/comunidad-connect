@@ -1,7 +1,7 @@
 /**
  * GET /api/search?q=query&scope=marketplace|profiles|all
  *
- * Endpoint de búsqueda híbrida (léxica + semántica) de ComunidadConnect.
+ * Endpoint de búsqueda híbrida (léxica + semántica) de Convive.
  * Ejecuta búsqueda en Supabase via Full Text Search y pgvector.
  */
 

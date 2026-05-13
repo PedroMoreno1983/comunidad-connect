@@ -20,7 +20,7 @@ const supabase = createClient(
 
 function twiml(text: string): NextResponse {
     const safe = text
-        .replace(/&/g, '&amp;')
+        .replace(/&/g, '&')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
     return new NextResponse(

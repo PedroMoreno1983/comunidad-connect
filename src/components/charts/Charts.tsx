@@ -33,7 +33,7 @@ const currencyFormatter = new Intl.NumberFormat("es-CL", {
     maximumFractionDigits: 0,
 });
 
-const COLORS = ["#f45b3d", "#0bc9a1", "#2563eb", "#f59e0b", "#7c3aed", "#64748b"];
+const COLORS = ["#C8705A", "#5A7D5A", "#D4A574", "#8A8580", "#974C3C", "#2D2A26"];
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
@@ -61,8 +61,8 @@ export function ExpenseAreaChart({ data }: { data: ExpenseData[] }) {
             <AreaChart data={data} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
                 <defs>
                     <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f45b3d" stopOpacity={0.26} />
-                        <stop offset="95%" stopColor="#f45b3d" stopOpacity={0.02} />
+                        <stop offset="5%" stopColor="#C8705A" stopOpacity={0.26} />
+                        <stop offset="95%" stopColor="#C8705A" stopOpacity={0.02} />
                     </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e7e2dd" className="dark:stroke-slate-700" />
@@ -82,7 +82,7 @@ export function ExpenseAreaChart({ data }: { data: ExpenseData[] }) {
                 <Area
                     type="monotone"
                     dataKey="monto"
-                    stroke="#f45b3d"
+                    stroke="#C8705A"
                     strokeWidth={3}
                     fill="url(#colorExpense)"
                     name="Gasto"

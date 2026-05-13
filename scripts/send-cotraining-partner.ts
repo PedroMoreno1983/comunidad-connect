@@ -13,7 +13,7 @@ const html = `
   <p>Mi nombre es Pedro Moreno, soy fundador de <strong>DataWise</strong> (<a href="https://www.datawiseconsultoria.com">datawiseconsultoria.com</a>), empresa que opera con dos verticales de producto:</p>
 
   <ul>
-    <li><strong>ComunidadConnect</strong> — plataforma SaaS de administración de condominios residenciales</li>
+    <li><strong>Convive</strong> — plataforma SaaS de administración de condominios residenciales</li>
     <li><strong>People Analytics</strong> — solución de analítica de personas para equipos de RRHH y L&amp;D</li>
   </ul>
 
@@ -21,8 +21,8 @@ const html = `
 
   <hr style="border:none; border-top:1px solid #eee; margin: 24px 0;" />
 
-  <p><strong>🔹 Nivel 2 — Technology Partner: ComunidadConnect</strong><br/>
-  ComunidadConnect cuenta con un módulo de <strong>Aula Virtual IA</strong> orientado a la capacitación de residentes, conserjes y administradores de comunidades. Queremos integrar CoTraining como el motor de generación de cursos dentro de la plataforma, bajo el modelo "Powered by CoTraining". Nuestro stack es <strong>Next.js + Supabase</strong> y contamos con equipo técnico disponible para ejecutar la integración.</p>
+  <p><strong>🔹 Nivel 2 — Technology Partner: Convive</strong><br/>
+  Convive cuenta con un módulo de <strong>Aula Virtual IA</strong> orientado a la capacitación de residentes, conserjes y administradores de comunidades. Queremos integrar CoTraining como el motor de generación de cursos dentro de la plataforma, bajo el modelo "Powered by CoTraining". Nuestro stack es <strong>Next.js + Supabase</strong> y contamos con equipo técnico disponible para ejecutar la integración.</p>
 
   <hr style="border:none; border-top:1px solid #eee; margin: 24px 0;" />
 
