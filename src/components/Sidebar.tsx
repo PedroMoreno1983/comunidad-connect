@@ -333,7 +333,7 @@ export function Sidebar() {
             <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
                 className={clsx(
-                    "lg:hidden fixed left-4 z-50 p-3 rounded-lg bg-surface shadow-sm border border-subtle cc-text-primary",
+                    "lg:hidden fixed left-4 z-50 p-2.5 rounded-lg bg-surface shadow-sm border border-subtle cc-text-primary",
                     isDemoUser ? "top-16" : "top-4"
                 )}
             >
