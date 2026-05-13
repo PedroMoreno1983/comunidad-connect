@@ -331,7 +331,7 @@ export default function AdminTrainingPage() {
                         <div className="p-8 max-w-4xl mx-auto space-y-8">
                             <div className="relative p-10 border-2 border-dashed border-default rounded-lg bg-canvas/50 hover:bg-elevated transition text-center overflow-hidden">
                                 <input
-                                    type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt"
+                                    type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.csv,.txt"
                                     onChange={handleFileUpload} disabled={isUploading || isGenerating}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
                                 />
@@ -342,7 +342,7 @@ export default function AdminTrainingPage() {
                                         <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
                                     <h3 className="text-lg font-bold cc-text-secondary">
-                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDF, Word, Excel, CSV o reglamentos'}
+                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDF, Word, Excel .xlsx, CSV o reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
                                         La IA leera el material y propondra un guion estructurado para explicar el contenido a la comunidad.
