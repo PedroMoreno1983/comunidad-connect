@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/authContext';
@@ -12,7 +12,6 @@ import {
   MessageSquare, Package, MapPin, TrendingUp, Star,
   Users, Home, Zap, ChevronRight
 } from 'lucide-react';
-import { motion, useInView } from 'framer-motion';
 
 /* ── Animated counter hook ────────────────────────────── */
 function useCounter(target: number, duration = 2000, start = false) {
@@ -100,15 +99,9 @@ function AppMockup() {
         <div className="px-5 py-4 space-y-3 pb-6">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#a89e97]">Actividad reciente</p>
           {cards.map((card, i) => (
-            <motion.div
+            <div
               key={i}
-              animate={{
-                scale: activeCard === i ? 1 : 0.97,
-                opacity: activeCard === i ? 1 : 0.5,
-                y: activeCard === i ? 0 : 6,
-              }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#faf8f6] dark:bg-[#26201a] border border-[#e8e2dd] dark:border-[#3d3530]"
+              className={`flex items-start gap-3 rounded-2xl border border-[#e8e2dd] bg-[#faf8f6] p-3.5 transition-[opacity,transform] duration-500 dark:border-[#3d3530] dark:bg-[#26201a] ${activeCard === i ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-1.5 scale-[0.97] opacity-50'}`}
             >
               <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1e1912] flex items-center justify-center shadow-sm flex-shrink-0">
                 {card.icon}
@@ -118,7 +111,7 @@ function AppMockup() {
                 <p className="text-xs text-[#7a706a] mt-0.5 leading-relaxed break-words">{card.sub}</p>
               </div>
               <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${card.tagColor}`}>{card.tag}</span>
-            </motion.div>
+            </div>
           ))}
 
           {/* Mini bottom nav */}
@@ -139,10 +132,8 @@ function AppMockup() {
       </div>
 
       {/* Floating notification badge */}
-      <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
+      <div
+        className="animate-float-card absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
       >
         <div className="w-7 h-7 rounded-xl bg-[#FF6B47]/10 flex items-center justify-center">
           <Package className="w-3.5 h-3.5 text-[#FF6B47]" />
@@ -151,13 +142,11 @@ function AppMockup() {
           <p className="text-xs font-bold text-[#1A1512] dark:text-[#f5f0ec]">Paquete llegó</p>
           <p className="text-[10px] text-[#a89e97]">Conserjería · ahora</p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Floating payment badge */}
-      <motion.div
-        animate={{ y: [0, 8, 0] }}
-        transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
+      <div
+        className="animate-float-card-delay-1 absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#e8e2dd] bg-white px-4 py-2.5 shadow-xl dark:border-[#3d3530] dark:bg-[#26201a] sm:flex"
       >
         <div className="w-7 h-7 rounded-xl bg-[#0BC9A1]/10 flex items-center justify-center">
           <TrendingUp className="w-3.5 h-3.5 text-[#0BC9A1]" />
@@ -166,19 +155,16 @@ function AppMockup() {
           <p className="text-xs font-bold text-[#1A1512] dark:text-[#f5f0ec]">Recaudo 98%</p>
           <p className="text-[10px] text-[#a89e97]">Este mes</p>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
 
 /* ── Trust Stats ──────────────────────────────────────── */
 function TrustStats() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
-
-  const units = useCounter(850, 2000, inView);
-  const communities = useCounter(32, 1800, inView);
-  const satisfaction = useCounter(98, 1600, inView);
+  const units = useCounter(850, 1400, true);
+  const communities = useCounter(32, 1200, true);
+  const satisfaction = useCounter(98, 1100, true);
 
   const stats = [
     { value: `+${units}`, label: "Unidades gestionadas", icon: <Home className="w-5 h-5" />, color: "text-[#FF6B47]", bg: "bg-[#FF6B47]/10" },
@@ -187,14 +173,11 @@ function TrustStats() {
   ];
 
   return (
-    <div ref={ref} className="w-full max-w-4xl mx-auto mt-16 md:mt-20">
+    <div className="w-full max-w-4xl mx-auto mt-16 md:mt-20">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 md:gap-8">
         {stats.map((s, i) => (
-          <motion.div
+          <div
             key={i}
-            initial={{ opacity: 0, y: 30 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col items-center text-center gap-2"
           >
             <div className={`w-11 h-11 rounded-2xl ${s.bg} flex items-center justify-center ${s.color} mb-1`}>
@@ -202,7 +185,7 @@ function TrustStats() {
             </div>
             <p className={`text-2xl md:text-4xl font-extrabold tracking-tight ${s.color}`}>{s.value}</p>
             <p className="text-xs md:text-sm text-[#7a706a] dark:text-[#b0a8a2] font-medium leading-tight">{s.label}</p>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>
@@ -386,9 +369,7 @@ export default function LandingPage() {
 
       {/* ── Header ── */}
       <header className="relative z-10 mx-auto box-border flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 md:px-12 md:py-5">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <div
           className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF6B47] to-[#e8502d] shadow-lg shadow-[#FF6B47]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
@@ -397,11 +378,9 @@ export default function LandingPage() {
           <span className="min-w-0 truncate text-base font-extrabold tracking-tight sm:text-xl">
             Comunidad<span className="text-[#FF6B47]">Connect</span>
           </span>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <div
           className="flex shrink-0 items-center gap-2 sm:gap-3"
         >
           <button
@@ -425,7 +404,7 @@ export default function LandingPage() {
               resolvedTheme === 'light' ? <Moon className="w-4 h-4 text-[#5a534e]" /> : <Sun className="w-4 h-4 text-amber-400" />
             ) : <div className="w-4 h-4" />}
           </button>
-        </motion.div>
+        </div>
       </header>
 
       <main className="relative z-10 mx-auto box-border flex w-full max-w-7xl flex-1 flex-col px-4 sm:px-6 md:px-12">
@@ -435,20 +414,14 @@ export default function LandingPage() {
 
           {/* Left: Text */}
           <div className="flex-1 max-w-xl">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+            <div
               className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#FF6B47]/10 border border-[#FF6B47]/20 text-[#e8502d] dark:text-[#ff9d80] text-sm font-bold tracking-wide mb-6"
             >
               <MapPin className="w-3.5 h-3.5" />
               La plataforma de las comunidades chilenas
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 25 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.1 }}
+            <h1
               className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-[1.08] mb-6"
             >
               Tu edificio,{' '}
@@ -459,21 +432,15 @@ export default function LandingPage() {
                 </svg>
               </span>
               {' '}que nunca.
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+            <p
               className="text-lg text-[#5a534e] dark:text-[#b0a8a2] leading-relaxed mb-8 max-w-md"
             >
               Gastos comunes, reservas, conserjería y vecinos — todo conectado en una app que la gente de verdad quiere usar.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+            <div
               className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
             >
               <button
@@ -490,12 +457,9 @@ export default function LandingPage() {
               >
                 Iniciar sesión
               </button>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
+            <div
               className="flex items-center gap-2 mt-6 text-sm text-[#a89e97] dark:text-[#7a706a]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#0BC9A1]" />
@@ -506,18 +470,15 @@ export default function LandingPage() {
               <span className="mx-2">·</span>
               <CheckCircle2 className="w-4 h-4 text-[#0BC9A1]" />
               <span>Cancela cuando quieras</span>
-            </motion.div>
+            </div>
           </div>
 
           {/* Right: Interactive App Mockup */}
-          <motion.div
-            initial={{ opacity: 0, x: 40, rotate: 2 }}
-            animate={{ opacity: 1, x: 0, rotate: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="flex-shrink-0 w-full max-w-[320px] lg:max-w-[360px]"
           >
             <AppMockup />
-          </motion.div>
+          </div>
         </section>
 
         {/* ── Trust Stats ── */}
@@ -533,44 +494,30 @@ export default function LandingPage() {
         {/* ── Role Cards — Building Window Style ── */}
         <section className="w-full pb-4">
           <div className="text-center mb-14">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            <div
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FF6B47]/10 border border-[#FF6B47]/20 text-[#e8502d] dark:text-[#ff9d80] text-xs font-bold tracking-widest uppercase mb-5"
             >
               ✦ Tres roles, una sola plataforma
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            </div>
+            <h2
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Tu edificio desde{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B47] to-[#0BC9A1]">todos los ángulos</span>
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+            </h2>
+            <p
               className="text-[#7a706a] dark:text-[#b0a8a2] text-lg max-w-xl mx-auto"
             >
               Haz clic en tu rol para explorar todo lo que tienes a disposición.
-            </motion.p>
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {roles.map((role, idx) => {
+            {roles.map((role) => {
               const isHovered = hoveredRole === role.id;
               return (
-                <motion.div
+                <div
                   key={role.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.55, delay: idx * 0.12, ease: [0.16, 1, 0.3, 1] }}
                   onMouseEnter={() => setHoveredRole(role.id)}
                   onMouseLeave={() => setHoveredRole(null)}
                   onClick={() => setSelectedInfo(role.id)}
@@ -598,21 +545,13 @@ export default function LandingPage() {
                   <div className="px-6 pt-5 pb-3">
                     <div className="grid grid-cols-3 gap-2">
                       {role.windows.map((win, wi) => (
-                        <motion.div
+                        <div
                           key={wi}
-                          initial={false}
-                          animate={{
-                            background: isHovered
-                              ? `linear-gradient(135deg, ${role.color}18, ${role.color}08)`
-                              : 'var(--cc-bg-elevated)',
-                            borderColor: isHovered ? `${role.color}40` : 'var(--cc-border-subtle)',
-                          }}
-                          transition={{ duration: 0.3, delay: wi * 0.04 }}
                           className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-center"
                         >
                           <span className="text-base leading-none">{win.icon}</span>
                           <span className="text-[9px] font-bold text-[#7a706a] dark:text-[#b0a8a2] tracking-wide uppercase leading-tight">{win.label}</span>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -657,7 +596,7 @@ export default function LandingPage() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -666,32 +605,22 @@ export default function LandingPage() {
         {/* ── How It Works ── */}
         <section className="mt-24 md:mt-32 w-full">
           <div className="text-center mb-14">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            <div
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0BC9A1]/10 border border-[#0BC9A1]/20 text-[#08a884] dark:text-[#0BC9A1] text-xs font-bold tracking-widest uppercase mb-5"
             >
               ✦ Proceso simple
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            </div>
+            <h2
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Listo en{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0BC9A1] to-[#FF6B47]">48 horas</span>
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+            </h2>
+            <p
               className="text-[#7a706a] dark:text-[#b0a8a2] text-lg max-w-lg mx-auto"
             >
               Sin instalaciones complicadas. Sin cursos. Solo una comunidad más conectada.
-            </motion.p>
+            </p>
           </div>
 
           <div className="relative">
@@ -700,12 +629,8 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {steps.map((step, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.55, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-col items-center text-center"
                 >
                   <div className="relative mb-6">
@@ -724,7 +649,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-extrabold tracking-tight mb-2">{step.title}</h3>
                   <p className="text-[#7a706a] dark:text-[#b0a8a2] text-sm leading-relaxed max-w-[220px]">{step.desc}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -733,25 +658,18 @@ export default function LandingPage() {
         {/* ── Testimonials ── */}
         <section className="mt-24 md:mt-32 w-full">
           <div className="text-center mb-14">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            <h2
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
               Lo que dicen{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B47] to-[#0BC9A1]">las comunidades</span>
-            </motion.h2>
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                 className="relative flex flex-col gap-5 p-7 rounded-[2rem] bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
                 {/* Quote mark */}
@@ -778,7 +696,7 @@ export default function LandingPage() {
                     <p className="text-[11px] text-[#a89e97] font-medium">{t.role}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </section>
@@ -786,16 +704,11 @@ export default function LandingPage() {
         {/* ── Role Modal ── */}
         {selectedInfo && selectedRole && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
               onClick={() => setSelectedInfo(null)}
               className="absolute inset-0 bg-[#1A1512]/60 backdrop-blur-md"
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.4 }}
+            <div
               className="relative w-full max-w-xl bg-white dark:bg-[#1e1912] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#e8e2dd] dark:border-[#3d3530]"
             >
               <div className={`h-1.5 bg-gradient-to-r ${selectedRole.gradientFrom} ${selectedRole.gradientTo}`} />
@@ -845,39 +758,28 @@ export default function LandingPage() {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
 
         {/* ── Pricing ── */}
         <section className="mt-24 md:mt-32 w-full max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            <h2
               className="text-3xl md:text-5xl font-extrabold mb-3 tracking-tighter"
             >
               Planes simples y transparentes
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+            </h2>
+            <p
               className="text-lg text-[#7a706a] dark:text-[#b0a8a2]"
             >
               Todos los planes incluyen 30 días de prueba gratuita. Sin tarjeta de crédito.
-            </motion.p>
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Básico */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+            <div
               className="bg-white dark:bg-[#1e1912] border-2 border-[#e8e2dd] dark:border-[#3d3530] rounded-[2rem] p-8 flex flex-col hover:border-[#FF6B47]/30 hover:shadow-xl hover:shadow-[#FF6B47]/10 transition-all"
             >
               <div className="w-11 h-11 rounded-2xl bg-[#FF6B47]/10 flex items-center justify-center mb-4 text-xl">🏢</div>
@@ -905,14 +807,10 @@ export default function LandingPage() {
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#faf8f6] dark:bg-[#26201a] hover:bg-[#f5f1ee] dark:hover:bg-[#2e2820] font-bold transition-colors text-sm">
                 Empezar Gratis
               </button>
-            </motion.div>
+            </div>
 
             {/* Avanzado (featured) */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
+            <div
               className="bg-gradient-to-b from-[#FF6B47] to-[#c03a1d] rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-[#FF6B47]/30 relative overflow-hidden md:-translate-y-4"
             >
               <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-bl-2xl font-bold text-xs tracking-widest uppercase">Más Popular</div>
@@ -941,14 +839,10 @@ export default function LandingPage() {
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#e8502d] hover:bg-[#fff3f0] font-extrabold transition-colors shadow-lg text-sm">
                 Empezar Gratis
               </button>
-            </motion.div>
+            </div>
 
             {/* Premium */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
+            <div
               className="bg-white dark:bg-[#1e1912] border-2 border-[#e8e2dd] dark:border-[#3d3530] rounded-[2rem] p-8 flex flex-col hover:border-[#0BC9A1]/30 hover:shadow-xl hover:shadow-[#0BC9A1]/10 transition-all"
             >
               <div className="w-11 h-11 rounded-2xl bg-[#0BC9A1]/10 flex items-center justify-center mb-4 text-xl">✨</div>
@@ -970,30 +864,23 @@ export default function LandingPage() {
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#0BC9A1] to-[#08a884] hover:from-[#08a884] hover:to-[#06967a] text-white font-bold transition-colors shadow-lg shadow-[#0BC9A1]/20 text-sm">
                 Empezar Gratis
               </button>
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* ── FAQ ── */}
         <section className="mt-24 md:mt-32 mb-16 w-full max-w-2xl mx-auto">
           <div className="text-center mb-12">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+            <h2
               className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tighter"
             >
               Preguntas Frecuentes
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+            </h2>
+            <p
               className="text-[#7a706a] dark:text-[#b0a8a2]"
             >
               Todo lo que necesitas saber antes de modernizar tu comunidad.
-            </motion.p>
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -1003,12 +890,8 @@ export default function LandingPage() {
               { q: "¿Qué pasa si un residente no tiene smartphone?", a: "No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web." },
               { q: "¿Cuánto tiempo toma instalar el sistema en el edificio?", a: "Muy poco. Una vez que nos envías la lista de departamentos y residentes en Excel, dejamos todo funcionando en menos de 48 horas hábiles." }
             ].map((faq, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.08 * i }}
                 className="bg-white dark:bg-[#1e1912] border border-[#e8e2dd] dark:border-[#3d3530] rounded-2xl p-5 hover:border-[#FF6B47]/25 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-4">
@@ -1020,17 +903,14 @@ export default function LandingPage() {
                     <p className="text-[#7a706a] dark:text-[#b0a8a2] leading-relaxed text-sm font-medium">{faq.a}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </section>
 
         {/* ── CTA Banner ── */}
         <section className="mb-16 w-full max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+          <div
             className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#FF6B47] via-[#e8502d] to-[#c03a1d] p-10 md:p-14 text-white text-center"
           >
             {/* Decorative blobs inside banner */}
@@ -1050,7 +930,7 @@ export default function LandingPage() {
               </button>
               <p className="text-white/50 text-xs mt-4">Sin tarjeta · Onboarding en 48h · Cancela cuando quieras</p>
             </div>
-          </motion.div>
+          </div>
         </section>
       </main>
 
