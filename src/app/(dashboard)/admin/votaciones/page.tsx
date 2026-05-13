@@ -64,6 +64,13 @@ export default function AdminVotacionesPage() {
             <ModuleFlow
                 title="De consulta a decision trazable"
                 description="El modulo debe terminar con residentes notificados, votos disponibles y un resultado consultable por administracion."
+                statusLabel="listo para publicar"
+                completedSteps={0}
+                currentStep={1}
+                primaryActionLabel="Crear votacion"
+                primaryActionHref="#crear-votacion"
+                secondaryActionLabel="Ver publicadas"
+                secondaryActionHref="#votaciones-publicadas"
                 steps={[
                     "Redactar consulta y opciones",
                     "Elegir canales: app, notificacion y WhatsApp",

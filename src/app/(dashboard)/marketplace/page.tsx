@@ -390,7 +390,7 @@ export default function MarketplacePage() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
-            <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+            <section id="publicar-articulo" className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                     <div className="max-w-2xl space-y-3">
                         <motion.div
@@ -673,6 +673,13 @@ export default function MarketplacePage() {
             <ModuleFlow
                 title="Publicacion segura entre vecinos"
                 description="El flujo debe terminar con un articulo publicado, moderado y con conversacion trazable antes de reservar o vender."
+                statusLabel={`${marketplaceStats.available} disponibles`}
+                completedSteps={items.length > 0 ? 2 : 0}
+                currentStep={items.length > 0 ? 3 : 1}
+                primaryActionLabel={items.length > 0 ? "Explorar articulos" : "Publicar articulo"}
+                primaryActionHref={items.length > 0 ? "#vitrina-marketplace" : "#publicar-articulo"}
+                secondaryActionLabel="Mis publicaciones"
+                secondaryActionHref="/marketplace/my-listings"
                 steps={[
                     "Publicar con fotos y modalidad",
                     "Moderacion revisa visibilidad",
@@ -702,6 +709,7 @@ export default function MarketplacePage() {
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Precio promedio</p>
                     </div>
                 </section>
+                <div id="vitrina-marketplace" />
                 <ProductFilters
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}

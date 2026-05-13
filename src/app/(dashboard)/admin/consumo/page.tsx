@@ -271,6 +271,11 @@ export default function AdminConsumoPage() {
             <ModuleFlow
                 title="Cierre mensual de lecturas"
                 description="El modulo debe partir con lecturas pendientes y terminar con consumo validado, alertas revisadas y reporte listo para administracion."
+                statusLabel={`${coverage}% cobertura`}
+                completedSteps={pendingUnits > 0 ? 0 : stats.alertCount > 0 ? 2 : 4}
+                currentStep={pendingUnits > 0 ? 1 : stats.alertCount > 0 ? 3 : 4}
+                primaryActionLabel={pendingUnits > 0 ? "Completar lecturas" : stats.alertCount > 0 ? "Revisar alertas" : "Ver cierre"}
+                primaryActionHref={pendingUnits > 0 ? "#ingreso-lecturas" : "#estado-lecturas"}
                 steps={[
                     "Capturar lecturas por unidad",
                     "Procesar consumo del periodo",
@@ -326,7 +331,7 @@ export default function AdminConsumoPage() {
                 </div>
             </section>
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+            <section id="estado-lecturas" className="rounded-lg border border-subtle bg-surface shadow-sm">
                 <div className="flex items-center justify-between border-b border-subtle p-5">
                     <div className="flex items-center gap-3">
                         <Activity className="h-5 w-5 text-slate-500" />
@@ -394,7 +399,7 @@ export default function AdminConsumoPage() {
                 )}
             </section>
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
+            <section id="ingreso-lecturas" className="rounded-lg border border-subtle bg-surface shadow-sm">
                 <div className="flex items-center gap-3 border-b border-subtle p-5">
                     <Settings className="h-5 w-5 text-slate-500" />
                     <h2 className="text-lg font-semibold cc-text-primary">Ingreso de lecturas</h2>
