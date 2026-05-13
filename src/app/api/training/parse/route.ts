@@ -1,49 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import * as XLSX from 'xlsx';
+import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender timeout a 60s en Vercel Hobby
-
-function sheetToTrainingText(buffer: Buffer) {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-    const sections: string[] = [];
-
-    for (const sheetName of workbook.SheetNames) {
-        const worksheet = workbook.Sheets[sheetName];
-        if (!worksheet) continue;
-
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-            defval: '',
-            raw: false,
-        });
-
-        if (rows.length === 0) continue;
-
-        const headers = Array.from(
-            rows.reduce((set, row) => {
-                Object.keys(row).forEach(key => {
-                    if (key && !key.startsWith('__EMPTY')) set.add(key);
-                });
-                return set;
-            }, new Set<string>())
-        );
-
-        const rowLines = rows.slice(0, 500).map((row, index) => {
-            const values = headers
-                .map(header => `${header}: ${String(row[header] ?? '').trim()}`)
-                .filter(item => !item.endsWith(':'));
-            return values.length ? `Fila ${index + 1}: ${values.join(' | ')}` : '';
-        }).filter(Boolean);
-
-        if (rowLines.length > 0) {
-            sections.push([`Hoja: ${sheetName}`, ...rowLines].join('\n'));
-        }
-    }
-
-    return sections.join('\n\n');
-}
 
 export async function POST(request: Request) {
     try {
@@ -102,8 +63,14 @@ export async function POST(request: Request) {
             const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
-        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
-            extractedText = sheetToTrainingText(buffer);
+        } else if (fileName.endsWith('.xlsx')) {
+            extractedText = await spreadsheetBufferToText(buffer, { maxRows: 500 });
+        } else if (fileName.endsWith('.xls')) {
+            return NextResponse.json({
+                error: 'Excel .xls antiguo no soportado. Guarda el archivo como .xlsx o CSV y vuelve a subirlo.'
+            }, { status: 400 });
+        } else if (fileName.endsWith('.csv')) {
+            extractedText = buffer.toString('utf-8');
         } else if (fileName.endsWith('.txt')) {
             // Leer TXT directamente
             extractedText = buffer.toString('utf-8');

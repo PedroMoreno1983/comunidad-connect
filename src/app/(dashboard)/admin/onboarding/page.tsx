@@ -94,22 +94,26 @@ function mapRowsFromMatrix(rows: unknown[][]) {
 
 async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
     const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!extension || !["xlsx", "xls", "csv", "txt"].includes(extension)) return [];
+    if (!extension || !["csv", "txt"].includes(extension)) return [];
 
-    const XLSX = await import("xlsx");
-    const workbook = extension === "csv" || extension === "txt"
-        ? XLSX.read(await file.text(), { type: "string" })
-        : XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) return [];
+    const lines = (await file.text())
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+    if (lines.length === 0) return [];
 
-    const sheet = workbook.Sheets[firstSheetName];
-    const objectRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-    const mappedObjectRows = mapRowsFromObjectSheet(objectRows);
-    if (mappedObjectRows.length > 0) return mappedObjectRows;
+    const delimiter = lines[0].includes(";") ? ";" : ",";
+    const cells = lines.map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, "")));
+    const [firstRow, ...restRows] = cells;
+    const hasHeaders = firstRow.some(cell => Object.values(fieldAliases).flat().includes(normalizeHeader(cell)));
 
-    const matrixRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
-    return mapRowsFromMatrix(matrixRows);
+    if (hasHeaders) {
+        const rows = restRows.map(row => Object.fromEntries(firstRow.map((header, index) => [header, row[index] || ""])));
+        const mappedRows = mapRowsFromObjectSheet(rows);
+        if (mappedRows.length > 0) return mappedRows;
+    }
+
+    return mapRowsFromMatrix(cells);
 }
 
 function saveDemoOnboardedResidents(rows: ExtractedUser[], fileName: string) {
@@ -189,6 +193,35 @@ export default function AdminOnboardingPage() {
         });
     };
 
+    const extractFileWithApi = async (uploadedFile: File) => {
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+        const res = await fetch("/api/onboarding/extract", {
+            method: "POST",
+            body: formData,
+        });
+
+        const textResponse = await res.text();
+        let result: { data?: Partial<ExtractedUser>[]; error?: string } | null = null;
+        try {
+            result = JSON.parse(textResponse);
+        } catch {
+            throw new Error("non-json-response");
+        }
+
+        if (!res.ok || !result?.data) {
+            throw new Error(result?.error || "extract-failed");
+        }
+
+        return result.data.map((row, index) => ({
+            id: `temp-${index}`,
+            name: row.name || "",
+            unit_id: row.unit_id || "",
+            email: row.email || "",
+            phone: row.phone || "",
+        }));
+    };
+
     const processFile = async (uploadedFile: File) => {
         setIsExtracting(true);
         setExtractedData(null);
@@ -212,48 +245,35 @@ export default function AdminOnboardingPage() {
                     return;
                 }
 
+                try {
+                    const apiRows = await extractFileWithApi(uploadedFile);
+                    setExtractedData(apiRows);
+                    toast({
+                        title: "Archivo demo procesado",
+                        description: `Detectamos ${apiRows.length} fila(s). El guardado seguira siendo simulado.`,
+                        variant: "success",
+                    });
+                    return;
+                } catch (apiError) {
+                    console.warn("[AdminOnboarding] demo API extract failed:", apiError);
+                }
+
                 setExtractedData(demoExtractedUsers);
                 toast({
                     title: "Archivo recibido en modo demo",
-                    description: "Este formato usa extraccion asistida en produccion; en demo cargamos filas de prueba y no guardamos datos reales.",
+                    description: "No pudimos leerlo en esta demo, asi que cargamos filas de prueba para que puedas revisar el flujo sin guardar datos reales.",
                     variant: "success",
                 });
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("file", uploadedFile);
-            const res = await fetch("/api/onboarding/extract", {
-                method: "POST",
-                body: formData,
+            const mappedData = await extractFileWithApi(uploadedFile);
+            setExtractedData(mappedData);
+            toast({
+                title: "Archivo procesado",
+                description: `Detectamos ${mappedData.length} registros para revision.`,
+                variant: "success",
             });
-
-            const textResponse = await res.text();
-            let result: { data?: Partial<ExtractedUser>[]; error?: string } | null = null;
-            try {
-                result = JSON.parse(textResponse);
-            } catch {
-                throw new Error("non-json-response");
-            }
-
-            if (res.ok && result?.data) {
-                const mappedData = result.data.map((row, index) => ({
-                    id: `temp-${index}`,
-                    name: row.name || "",
-                    unit_id: row.unit_id || "",
-                    email: row.email || "",
-                    phone: row.phone || "",
-                }));
-                setExtractedData(mappedData);
-                toast({
-                    title: "Archivo procesado",
-                    description: `Detectamos ${mappedData.length} registros para revision.`,
-                    variant: "success",
-                });
-                return;
-            }
-
-            throw new Error(result?.error || "extract-failed");
         } catch (err: unknown) {
             console.warn("[AdminOnboarding] extract failed:", err);
             toast({
@@ -437,7 +457,7 @@ export default function AdminOnboardingPage() {
                         <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
                                 ? "Estamos extrayendo nombres, unidades, correos y telefonos. Manten esta ventana abierta."
-                                : "Acepta PDF, Word, Excel, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
+                                : "Acepta PDF, Word, Excel .xlsx, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
                         </p>
 
                         {!isExtracting && (
@@ -447,8 +467,8 @@ export default function AdminOnboardingPage() {
                                     Seleccionar archivo
                                     <input
                                         type="file"
-                                        accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                                        aria-label="Seleccionar nomina en PDF, Word, Excel, TXT o CSV"
+                                        accept=".pdf,.docx,.doc,.xlsx,.txt,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                                        aria-label="Seleccionar nomina en PDF, Word, Excel XLSX, TXT o CSV"
                                         onChange={handleFileUpload}
                                         disabled={isExtracting}
                                         className="hidden"
