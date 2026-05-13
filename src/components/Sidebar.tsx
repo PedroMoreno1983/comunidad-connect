@@ -202,7 +202,7 @@ export function Sidebar() {
                         <Building2 className="h-5 w-5 text-white" />
                     </div>
                     <div className="ml-3 min-w-0 truncate">
-                        <BrandWordmark className="text-base cc-text-primary" />
+                        <BrandWordmark className="text-base text-brand-600" />
                     </div>
                 </div>
                 <div className="shrink-0">

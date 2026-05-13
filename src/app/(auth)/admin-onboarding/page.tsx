@@ -152,7 +152,7 @@ export default function AdminOnboardingPage() {
                         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <BrandWordmark className="text-xl cc-text-primary" />
+                        <BrandWordmark className="text-xl text-brand-600" />
                     </Link>
                     <div className="space-y-5">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Alta administradores</p>

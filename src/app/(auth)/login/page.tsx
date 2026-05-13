@@ -46,14 +46,14 @@ export default function LoginPage() {
             description: "Has iniciado sesion correctamente",
             variant: "success",
         });
-        router.push("/");
+        router.push("/home");
     };
 
     const handleDemoLogin = async (_demoEmail: string, _demoPass: string, role: string) => {
         setLoading(true);
         loginDemo(role as "admin" | "resident" | "concierge");
         toast({ title: "Entrando a la demo", description: "Has iniciado sesion", variant: "success" });
-        router.push("/");
+        router.push("/home");
     };
 
     return (
@@ -64,7 +64,7 @@ export default function LoginPage() {
                         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <BrandWordmark className="text-xl cc-text-primary" />
+                        <BrandWordmark className="text-xl text-brand-600" />
                     </Link>
 
                     <div className="max-w-xl space-y-5">

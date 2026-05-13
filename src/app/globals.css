@@ -124,7 +124,8 @@
 .cc-wordmark {
   font-family: var(--cc-font-display);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: 0.095em;
+  text-transform: uppercase;
 }
 
 /* Suppress hydration error overlay in DEV mode which breaks UX tests */
