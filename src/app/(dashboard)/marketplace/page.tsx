@@ -28,6 +28,7 @@ import { ProductFilters } from "@/components/marketplace/ProductFilters";
 import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
 import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
     applyDemoMarketplaceStatusOverrides,
     getDemoPublishedMarketplaceItems,
@@ -668,6 +669,18 @@ export default function MarketplacePage() {
                     </motion.div>
                 </div>
             </section>
+
+            <ModuleFlow
+                title="Publicacion segura entre vecinos"
+                description="El flujo debe terminar con un articulo publicado, moderado y con conversacion trazable antes de reservar o vender."
+                steps={[
+                    "Publicar con fotos y modalidad",
+                    "Moderacion revisa visibilidad",
+                    "Vecino contacta desde la ficha",
+                    "Marcar reservado, vendido u oculto",
+                ]}
+                outcome="Cierre esperado: el articulo queda con estado claro en la vitrina y en Mis Publicaciones, evitando contactos perdidos o anuncios desactualizados."
+            />
 
             {/* Filters & Search Section */}
             <div className="space-y-4">

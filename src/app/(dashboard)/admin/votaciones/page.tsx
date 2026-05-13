@@ -1,6 +1,7 @@
 "use client";
 
 import { PollManager } from "@/components/admin/PollManager";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Activity, Calendar, ShieldCheck, Users } from "lucide-react";
 
 export default function AdminVotacionesPage() {
@@ -59,6 +60,18 @@ export default function AdminVotacionesPage() {
                     </div>
                 </div>
             </section>
+
+            <ModuleFlow
+                title="De consulta a decision trazable"
+                description="El modulo debe terminar con residentes notificados, votos disponibles y un resultado consultable por administracion."
+                steps={[
+                    "Redactar consulta y opciones",
+                    "Elegir canales: app, notificacion y WhatsApp",
+                    "Publicar para residentes",
+                    "Revisar participacion y cierre",
+                ]}
+                outcome="Cierre esperado: la votacion aparece en el centro de votacion, queda anunciada en canales elegidos y el admin puede revisar resultados agregados."
+            />
 
             <PollManager />
         </div>

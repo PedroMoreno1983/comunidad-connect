@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 const fallbackFinances: CommunityFinance = {
     totalRevenue: 18450000,
@@ -113,6 +114,17 @@ export default function AdminFinanzasPage() {
                         </article>
                     ))}
                 </section>
+                <ModuleFlow
+                    title="Cierre financiero del periodo"
+                    description="El flujo financiero debe partir en cobranza, cruzar ingresos y egresos, y terminar con reporte y recordatorios enviados."
+                    steps={[
+                        "Revisar pagos pendientes",
+                        "Validar ingresos y egresos",
+                        "Preparar reporte de comite",
+                        "Enviar recordatorios",
+                    ]}
+                    outcome="Cierre esperado: la administracion sabe quien debe, cuanto se recaudo, que gastos explicar y que comunicaciones faltan."
+                />
                 <FinanceDashboard data={finances} />
                 <div>
                     <CondoFeesTable />
