@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNotifications, Notification } from '@/lib/notificationContext';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bell, X, Info, CheckCircle, AlertTriangle, AlertCircle,
     Trash2, CheckCheck
@@ -134,26 +133,17 @@ export function NotificationCenter() {
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (
-                    <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
+                    <span
                         className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white"
                     >
                         {unreadCount > 9 ? '9+' : unreadCount}
-                    </motion.span>
+                    </span>
                 )}
             </button>
 
             {/* Dropdown */}
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(264px,calc(100vw-24px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50"
-                    >
+            {isOpen && (
+                <div className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(264px,calc(100vw-24px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50">
                         {/* Header */}
                         <div className="p-4 border-b border-subtle flex items-center justify-between">
                             <div>
@@ -207,9 +197,8 @@ export function NotificationCenter() {
                                 ))
                             )}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
         </div>
     );
 }
