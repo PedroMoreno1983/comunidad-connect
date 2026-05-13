@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/authContext';
 import { clsx } from 'clsx';
 import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { BrandWordmark } from '@/components/BrandWordmark';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
 import { useState, useEffect } from 'react';
 import {
@@ -201,7 +202,7 @@ export function Sidebar() {
                         <Building2 className="h-5 w-5 text-white" />
                     </div>
                     <div className="ml-3 min-w-0 truncate">
-                        <span className="text-base font-bold cc-text-primary">Convive</span>
+                        <BrandWordmark className="text-base cc-text-primary" />
                     </div>
                 </div>
                 <div className="shrink-0">

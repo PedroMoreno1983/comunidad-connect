@@ -121,6 +121,12 @@
 /* Font display */
 @utility font-display { font-family: var(--cc-font-display); }
 
+.cc-wordmark {
+  font-family: var(--cc-font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 /* Suppress hydration error overlay in DEV mode which breaks UX tests */
 nextjs-portal {
   display: none !important;
