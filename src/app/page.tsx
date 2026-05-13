@@ -85,7 +85,7 @@ function AppMockup() {
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <BrandWordmark className="text-sm text-[#2D2A26] dark:text-[#FBF8F3]" />
+              <BrandWordmark className="text-sm text-[#C8705A]" />
               <p className="text-[10px] text-[#8A8580]">Torre Norte · Depto 8B</p>
             </div>
             <div className="ml-auto relative">
@@ -371,7 +371,7 @@ export default function LandingPage() {
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] shadow-lg shadow-[#C8705A]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
             <Building2 className="h-5 w-5 text-white" />
           </div>
-          <BrandWordmark className="min-w-0 truncate text-base sm:text-xl" />
+          <BrandWordmark className="min-w-0 truncate text-base text-[#C8705A] sm:text-xl" />
         </div>
 
         <div
@@ -935,7 +935,7 @@ export default function LandingPage() {
             <div className="w-7 h-7 bg-gradient-to-br from-[#C8705A] to-[#B45F4B] rounded-lg flex items-center justify-center">
               <Building2 className="text-white w-3.5 h-3.5" />
             </div>
-            <BrandWordmark className="text-sm text-[#5F5A54] dark:text-[#C8BFB6]" />
+            <BrandWordmark className="text-sm text-[#C8705A]" />
             <span className="text-[#8A8580] text-sm">· © 2026</span>
           </div>
           <div className="flex items-center gap-6 text-sm font-semibold text-[#8A8580]">
