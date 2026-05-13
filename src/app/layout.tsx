@@ -8,12 +8,35 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "ComunidadConnect",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "Plataforma de gestion comunitaria para condominios: gastos comunes, reservas, conserjeria, votaciones, marketplace y comunicacion vecinal.",
+  offers: {
+    "@type": "Offer",
+    priceCurrency: "CLP",
+    price: "19990",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "ComunidadConnect",
+  },
+};
 
 export const metadata: Metadata = {
   title: {
@@ -56,8 +79,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
@@ -76,6 +97,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#0B0F19" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </head>
       <body
         className={`${plusJakarta.variable} ${geistMono.variable} antialiased`}

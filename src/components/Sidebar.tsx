@@ -332,6 +332,9 @@ export function Sidebar() {
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
+                aria-label={isMobileOpen ? "Cerrar menu de navegacion" : "Abrir menu de navegacion"}
+                aria-expanded={isMobileOpen}
+                aria-controls="mobile-sidebar"
                 className={clsx(
                     "lg:hidden fixed left-4 z-50 p-2.5 rounded-lg bg-surface shadow-sm border border-subtle cc-text-primary",
                     isDemoUser ? "top-16" : "top-4"
@@ -384,6 +387,7 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: -288 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        id="mobile-sidebar"
                         className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
                     >
                         {sidebarContent}
