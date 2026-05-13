@@ -18,6 +18,7 @@ import { Unit, WaterReading } from "@/lib/types";
 import { WaterService } from "@/lib/api";
 import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 import { useAuth } from "@/lib/authContext";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 const fallbackWaterStats = {
     totalConsumption: 348.6,
@@ -266,6 +267,18 @@ export default function AdminConsumoPage() {
                     </div>
                 </div>
             </section>
+
+            <ModuleFlow
+                title="Cierre mensual de lecturas"
+                description="El modulo debe partir con lecturas pendientes y terminar con consumo validado, alertas revisadas y reporte listo para administracion."
+                steps={[
+                    "Capturar lecturas por unidad",
+                    "Procesar consumo del periodo",
+                    "Revisar sobreconsumos",
+                    "Generar reporte y planillas",
+                ]}
+                outcome="Cierre esperado: todas las unidades quedan con estado de lectura, las fugas quedan priorizadas y el reporte del periodo queda disponible para seguimiento."
+            />
 
             <section className="grid gap-4 lg:grid-cols-3">
                 <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">

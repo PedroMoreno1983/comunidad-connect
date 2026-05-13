@@ -224,7 +224,7 @@ export default function CoCo() {
 
     return (
         <div
-            className="fixed right-4 top-16 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 sm:top-auto"
+            className="fixed bottom-4 right-4 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
         >
             <AnimatePresence>
                 {open && (

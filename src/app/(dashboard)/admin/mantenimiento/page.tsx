@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 type ServiceRow = {
     id: string;
@@ -320,6 +321,18 @@ export default function MantenimientoAdminPage() {
                 <Metric icon={<Activity className="h-5 w-5" />} label="Costo mantención" value={money(metrics.cost)} tone="slate" detail="Últimos registros" />
                 </div>
             </section>
+
+            <ModuleFlow
+                title="De alerta a tarea cerrada"
+                description="El flujo de mantenimiento debe convertir casos CoCo, solicitudes y sensores en una cola priorizada que termina con evidencia de cierre."
+                steps={[
+                    "Detectar caso o activo critico",
+                    "Crear tarea con responsable",
+                    "Ejecutar y registrar avance",
+                    "Cerrar con historial exportable",
+                ]}
+                outcome="Cierre esperado: cada mantencion queda con estado, fecha, responsable y trazabilidad para administracion y comite."
+            />
 
             <nav className="flex gap-2 overflow-x-auto border-b border-subtle">
                 {[

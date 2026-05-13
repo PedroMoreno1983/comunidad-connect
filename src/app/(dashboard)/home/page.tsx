@@ -20,6 +20,27 @@ import { WhatsNew } from "@/components/ui/WhatsNew";
 import { DebugStats } from "@/components/ui/DebugStats";
 
 const CATEGORY_COLORS = ['#F45B3D', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'];
+const demoExpenseTrend = [
+    { month: "Oct", monto: 11200000 },
+    { month: "Nov", monto: 12850000 },
+    { month: "Dic", monto: 14600000 },
+    { month: "Ene", monto: 11900000 },
+    { month: "Feb", monto: 13400000 },
+    { month: "Mar", monto: 15200000 },
+];
+const demoExpenseCategories = [
+    { name: "Mantencion", value: 38, color: "#F45B3D" },
+    { name: "Seguridad", value: 24, color: "#0bc9a1" },
+    { name: "Servicios", value: 18, color: "#2563eb" },
+    { name: "Aseo", value: 14, color: "#f59e0b" },
+    { name: "Otros", value: 6, color: "#64748b" },
+];
+const demoAmenityUsage = [
+    { name: "Quincho", reservas: 18 },
+    { name: "Sala multiuso", reservas: 12 },
+    { name: "Gimnasio", reservas: 9 },
+    { name: "Piscina", reservas: 7 },
+];
 
 function requestCategory(row: Record<string, unknown>) {
     return String(row.service_type || row.category || row.request_type || row.type || 'Otro');
@@ -110,10 +131,11 @@ export default function HomePage() {
                     (expTrend.data ?? []).forEach((e: { month: string; amount: number }) => {
                         byMonth[e.month] = (byMonth[e.month] ?? 0) + Number(e.amount);
                     });
-                    setExpenseChartData(Object.entries(byMonth).map(([m, monto]) => {
+                    const trendData = Object.entries(byMonth).map(([m, monto]) => {
                         const [y, mo] = m.split('-');
                         return { month: new Date(Number(y), Number(mo) - 1).toLocaleDateString('es-CL', { month: 'short' }), monto };
-                    }));
+                    });
+                    setExpenseChartData(trendData.length ? trendData : demoExpenseTrend);
 
                     // Use the broad row shape because older deployments have different request schemas.
                     const reqCatRes = await supabase.from('service_requests').select('*');
@@ -122,9 +144,10 @@ export default function HomePage() {
                         const cat = requestCategory(r);
                         catCount[cat] = (catCount[cat] ?? 0) + 1;
                     });
-                    setExpenseCategoryData(Object.entries(catCount).map(([name, value], i) => ({
+                    const categoryData = Object.entries(catCount).map(([name, value], i) => ({
                         name, value, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
-                    })));
+                    }));
+                    setExpenseCategoryData(categoryData.length ? categoryData : demoExpenseCategories);
 
                     // Amenity booking counts
                     const amenityCount: Record<string, number> = {};
@@ -132,7 +155,8 @@ export default function HomePage() {
                         const name = b.amenities?.name ?? 'Otro';
                         amenityCount[name] = (amenityCount[name] ?? 0) + 1;
                     });
-                    setAmenityUsageData(Object.entries(amenityCount).map(([name, reservas]) => ({ name, reservas })));
+                    const usageData = Object.entries(amenityCount).map(([name, reservas]) => ({ name, reservas }));
+                    setAmenityUsageData(usageData.length ? usageData : demoAmenityUsage);
 
                     setStatsData(prev => ({
                         ...prev, ...commonStats,
@@ -408,7 +432,12 @@ export default function HomePage() {
                             <h2 className="text-lg font-bold cc-text-primary">Por Categoría</h2>
                         </div>
                         <ErrorBoundary name="Distribución por categoría">
-                            <ExpensePieChart data={expenseCategoryData} />
+                            <ExpensePieChart
+                                data={expenseCategoryData}
+                                valueFormatter={(value) => `${value} solicitudes`}
+                                totalFormatter={(value) => `${value}`}
+                                centerLabel="Solicitudes"
+                            />
                         </ErrorBoundary>
                         <div className="mt-4 space-y-2">
                             {expenseCategoryData.map((item) => (
@@ -418,7 +447,7 @@ export default function HomePage() {
                                         <span className="text-sm cc-text-secondary">{item.name}</span>
                                     </div>
                                     <span className="text-sm font-medium cc-text-primary">
-                                        ${item.value.toLocaleString('es-CL')}
+                                        {item.value.toLocaleString('es-CL')}
                                     </span>
                                 </div>
                             ))}

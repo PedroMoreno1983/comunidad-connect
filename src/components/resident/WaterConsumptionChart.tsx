@@ -31,19 +31,19 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
         : 0;
 
     return (
-        <div className="space-y-8">
-            <section className={`rounded-lg border p-8 transition-all ${
+        <div className="space-y-6 md:space-y-8">
+            <section className={`rounded-lg border p-5 transition-all md:p-8 ${
                 isEfficient
                     ? "border-emerald-100 bg-emerald-50/50 dark:border-emerald-500/20 dark:bg-emerald-500/5"
                     : "border-amber-100 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-500/5"
             }`}>
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-                    <div className="flex items-center gap-6">
-                        <div className={`rounded-lg p-5 text-white ${isEfficient ? "bg-emerald-500" : "bg-amber-500"}`}>
-                            {isEfficient ? <TrendingDown className="h-8 w-8" /> : <AlertTriangle className="h-8 w-8" />}
+                <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+                    <div className="flex items-center gap-4 md:gap-6">
+                        <div className={`rounded-lg p-4 text-white md:p-5 ${isEfficient ? "bg-emerald-500" : "bg-amber-500"}`}>
+                            {isEfficient ? <TrendingDown className="h-6 w-6 md:h-8 md:w-8" /> : <AlertTriangle className="h-6 w-6 md:h-8 md:w-8" />}
                         </div>
                         <div className="space-y-1">
-                            <h2 className="text-2xl font-semibold leading-tight cc-text-primary">
+                            <h2 className="text-xl font-semibold leading-tight cc-text-primary md:text-2xl">
                                 {isEfficient ? "Consumo eficiente" : "Consumo elevado"}
                             </h2>
                             <p className="text-sm font-medium text-slate-500">
@@ -60,8 +60,8 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                 </div>
             </section>
 
-            <section className="space-y-10 rounded-lg border border-subtle bg-surface p-8 shadow-sm shadow-slate-200/20 dark:shadow-none md:p-12">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+            <section className="space-y-8 rounded-lg border border-subtle bg-surface p-5 shadow-sm shadow-slate-200/20 dark:shadow-none md:space-y-10 md:p-10">
+                <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
                     <div className="flex items-center gap-4">
                         <div className="rounded-lg bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                             <Droplets className="h-6 w-6" />
@@ -69,7 +69,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                         <h2 className="text-2xl font-semibold cc-text-primary">Tendencia histórica</h2>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-wrap items-center gap-4 md:gap-6">
                         <div className="flex items-center gap-2">
                             <div className="h-3 w-3 rounded-full bg-blue-500" />
                             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Personal</span>
@@ -81,10 +81,10 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                     </div>
                 </div>
 
-                <div className="h-[350px] w-full">
+                <div className="h-[280px] w-full md:h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <BarChart data={data} margin={{ top: 20, right: 8, left: -18, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e7e2dd" />
                             <XAxis
                                 dataKey="month"
                                 axisLine={false}
@@ -119,12 +119,12 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                                     );
                                 }}
                             />
-                            <Bar dataKey="personal" radius={[8, 8, 0, 0]} barSize={40}>
+                            <Bar dataKey="personal" radius={[8, 8, 0, 0]} barSize={28}>
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${entry.month}-${index}`} fill={index === data.length - 1 ? "#3b82f6" : "#94a3b833"} />
                                 ))}
                             </Bar>
-                            <Bar dataKey="average" fill="#cbd5e144" radius={[8, 8, 0, 0]} barSize={40} />
+                            <Bar dataKey="average" fill="#cbd5e166" radius={[8, 8, 0, 0]} barSize={28} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
