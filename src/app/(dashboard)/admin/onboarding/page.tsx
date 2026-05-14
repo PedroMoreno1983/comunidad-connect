@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -47,7 +47,7 @@ const fieldAliases = {
     name: ["nombre", "name", "residente", "resident", "full_name", "fullname", "nombrecompleto", "propietario", "arrendatario"],
     unit_id: ["unidad", "unit", "depto", "departamento", "nrodepartamento", "numerodepartamento", "unitnumber", "unitid", "numero", "casa"],
     email: ["correo", "email", "mail", "correoelectronico", "e-mail"],
-    phone: ["telefono", "phone", "celular", "movil", "whatsapp", "contacto"],
+    phone: ["teléfono", "phone", "celular", "móvil", "whatsapp", "contacto"],
 };
 
 function normalizeHeader(value: string) {
@@ -92,9 +92,44 @@ function mapRowsFromMatrix(rows: unknown[][]) {
         .filter(row => row.name || row.unit_id || row.email || row.phone);
 }
 
+function mapRowsFromCells(rows: unknown[][]) {
+    const cleanRows = rows
+        .map(row => row.map(cell => String(cell ?? "").trim()))
+        .filter(row => row.some(Boolean));
+    if (cleanRows.length === 0) return [];
+
+    const [firstRow, ...restRows] = cleanRows;
+    const hasHeaders = firstRow.some(cell => Object.values(fieldAliases).flat().includes(normalizeHeader(cell)));
+
+    if (hasHeaders) {
+        const rowsAsObjects = restRows.map(row => Object.fromEntries(firstRow.map((header, index) => [header, row[index] || ""])));
+        const mappedRows = mapRowsFromObjectSheet(rowsAsObjects);
+        if (mappedRows.length > 0) return mappedRows;
+    }
+
+    return mapRowsFromMatrix(cleanRows);
+}
+
 async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
     const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!extension || !["csv", "txt"].includes(extension)) return [];
+    if (!extension || !["csv", "txt", "xlsx"].includes(extension)) return [];
+
+    if (extension === "xlsx") {
+        const ExcelJS = await import("exceljs");
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(await file.arrayBuffer());
+        const rows: unknown[][] = [];
+        workbook.eachSheet((worksheet) => {
+            worksheet.eachRow({ includeEmpty: false }, (row) => {
+                const values: unknown[] = [];
+                row.eachCell({ includeEmpty: true }, (cell, columnIndex) => {
+                    values[columnIndex - 1] = cell.text || String(cell.value ?? "");
+                });
+                if (values.some(value => String(value ?? "").trim())) rows.push(values);
+            });
+        });
+        return mapRowsFromCells(rows);
+    }
 
     const lines = (await file.text())
         .split(/\r?\n/)
@@ -113,7 +148,7 @@ async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
         if (mappedRows.length > 0) return mappedRows;
     }
 
-    return mapRowsFromMatrix(cells);
+    return mapRowsFromCells(cells);
 }
 
 function saveDemoOnboardedResidents(rows: ExtractedUser[], fileName: string) {
@@ -136,15 +171,15 @@ function saveDemoOnboardedResidents(rows: ExtractedUser[], fileName: string) {
 function friendlyError(message?: string) {
     const text = (message || "").toLowerCase();
     if (text.includes("timeout") || text.includes("504") || text.includes("large") || text.includes("grande")) {
-        return "El archivo tardo demasiado en procesarse. Prueba con un PDF mas liviano o divide la nomina en partes.";
+        return "El archivo tardó demasiado en procesarse. Prueba con un PDF más liviano o divide la nómina en partes.";
     }
     if (text.includes("json") || text.includes("gemini") || text.includes("api")) {
         return "No pudimos leer el archivo con suficiente confianza. Revisa el formato o intenta con una planilla Excel/CSV/TXT.";
     }
     if (text.includes("supabase") || text.includes("database")) {
-        return "No pudimos guardar la informacion en este momento. Revisa tu conexion e intenta nuevamente.";
+        return "No pudimos guardar la información en este momento. Revisa tu conexión e intenta nuevamente.";
     }
-    return "No pudimos completar la operacion. Revisa el archivo e intenta nuevamente.";
+    return "No pudimos completar la operación. Revisa el archivo e intenta nuevamente.";
 }
 
 export default function AdminOnboardingPage() {
@@ -161,12 +196,21 @@ export default function AdminOnboardingPage() {
     const [lastFileName, setLastFileName] = useState("");
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
     const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
+    const activeSectionRef = useRef<HTMLElement | null>(null);
 
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         if (user && user.role !== "admin") router.push("/home");
     }, [router, user]);
+
+    useEffect(() => {
+        if (extractedData || syncSuccess) {
+            window.setTimeout(() => {
+                activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 80);
+        }
+    }, [extractedData, syncSuccess]);
 
     const quality = useMemo(() => {
         const totalRows = extractedData?.length || 0;
@@ -187,8 +231,8 @@ export default function AdminOnboardingPage() {
         setLastFileName("nomina-demo.csv");
         setExtractedData(demoExtractedUsers);
         toast({
-            title: "Nomina demo cargada",
-            description: "Puedes editar filas, eliminar dudas y simular la sincronizacion.",
+            title: "Nómina demo cargada",
+            description: "Puedes editar filas, eliminar dudas y simular la sincronización.",
             variant: "success",
         });
     };
@@ -238,8 +282,8 @@ export default function AdminOnboardingPage() {
                 if (browserRows.length > 0) {
                     setExtractedData(browserRows);
                     toast({
-                        title: "Archivo demo leido",
-                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado seguira siendo simulado.`,
+                        title: "Archivo demo leído",
+                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado seguirá siendo simulado.`,
                         variant: "success",
                     });
                     return;
@@ -250,7 +294,7 @@ export default function AdminOnboardingPage() {
                     setExtractedData(apiRows);
                     toast({
                         title: "Archivo demo procesado",
-                        description: `Detectamos ${apiRows.length} fila(s). El guardado seguira siendo simulado.`,
+                        description: `Detectamos ${apiRows.length} fila(s). El guardado seguirá siendo simulado.`,
                         variant: "success",
                     });
                     return;
@@ -261,7 +305,7 @@ export default function AdminOnboardingPage() {
                 setExtractedData(demoExtractedUsers);
                 toast({
                     title: "Archivo recibido en modo demo",
-                    description: "No pudimos leerlo en esta demo, asi que cargamos filas de prueba para que puedas revisar el flujo sin guardar datos reales.",
+                    description: "No pudimos leerlo en esta demo, así que cargamos filas de prueba para que puedas revisar el flujo sin guardar datos reales.",
                     variant: "success",
                 });
                 return;
@@ -271,7 +315,7 @@ export default function AdminOnboardingPage() {
             setExtractedData(mappedData);
             toast({
                 title: "Archivo procesado",
-                description: `Detectamos ${mappedData.length} registros para revision.`,
+                description: `Detectamos ${mappedData.length} registros para revisión.`,
                 variant: "success",
             });
         } catch (err: unknown) {
@@ -338,7 +382,7 @@ export default function AdminOnboardingPage() {
                 });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Nomina demo aplicada", description: "Quedo visible en Directorio y Unidades dentro de esta demo.", variant: "success" });
+                toast({ title: "Nómina demo aplicada", description: "Quedó visible en Directorio y Unidades dentro de esta demo.", variant: "success" });
                 return;
             }
 
@@ -362,7 +406,7 @@ export default function AdminOnboardingPage() {
                 });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Residentes sincronizados", description: `${success} fila(s) quedaron disponibles para operacion.`, variant: "success" });
+                toast({ title: "Residentes sincronizados", description: `${success} fila(s) quedaron disponibles para operación.`, variant: "success" });
                 return;
             }
 
@@ -408,7 +452,7 @@ export default function AdminOnboardingPage() {
                         Onboarding de residentes
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 cc-text-secondary">
-                        Importa nominas antiguas, revisa la extraccion y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
+                        Importa nóminas antiguas, revisa la extracción y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
                     </p>
                 </div>
                 <div className="rounded-lg border border-subtle bg-surface p-4 text-sm shadow-sm">
@@ -426,9 +470,9 @@ export default function AdminOnboardingPage() {
 
             <section className="grid gap-4 md:grid-cols-3">
                 {[
-                    { title: "Extraccion asistida", description: "Lee nominas antiguas y las convierte en filas editables.", icon: <FileSpreadsheet className="h-4 w-4" /> },
-                    { title: "Control de calidad", description: "Detecta campos criticos antes de guardar datos en la comunidad.", icon: <ListChecks className="h-4 w-4" /> },
-                    { title: "Carga segura", description: "Sincroniza solo despues de revisar y confirmar la nomina.", icon: <ShieldCheck className="h-4 w-4" /> },
+                    { title: "Extracción asistida", description: "Lee nóminas antiguas y las convierte en filas editables.", icon: <FileSpreadsheet className="h-4 w-4" /> },
+                    { title: "Control de calidad", description: "Detecta campos críticos antes de guardar datos en la comunidad.", icon: <ListChecks className="h-4 w-4" /> },
+                    { title: "Carga segura", description: "Sincroniza solo después de revisar y confirmar la nómina.", icon: <ShieldCheck className="h-4 w-4" /> },
                 ].map(item => (
                     <article key={item.title} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                         <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
@@ -452,12 +496,12 @@ export default function AdminOnboardingPage() {
                             {isExtracting ? <FileSpreadsheet className="h-8 w-8 animate-pulse" /> : <UploadCloud className="h-8 w-8" />}
                         </div>
                         <h2 className="mt-6 text-2xl font-semibold cc-text-primary">
-                            {isExtracting ? "Procesando archivo" : "Sube una nomina de residentes"}
+                            {isExtracting ? "Procesando archivo" : "Sube una nómina de residentes"}
                         </h2>
                         <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
-                                ? "Estamos extrayendo nombres, unidades, correos y telefonos. Manten esta ventana abierta."
-                                : "Acepta PDF, Word, Excel .xlsx, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y telefono."}
+                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mant?n esta ventana abierta."
+                                : "Acepta PDF, Word, Excel .xls/.xlsx, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y teléfono."}
                         </p>
 
                         {!isExtracting && (
@@ -468,7 +512,7 @@ export default function AdminOnboardingPage() {
                                     <input
                                         type="file"
                                         accept=".pdf,.docx,.doc,.xlsx,.txt,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                                        aria-label="Seleccionar nomina en PDF, Word, Excel XLSX, TXT o CSV"
+                                        aria-label="Seleccionar nómina en PDF, Word, Excel XLS/XLSX, TXT o CSV"
                                         onChange={handleFileUpload}
                                         disabled={isExtracting}
                                         className="hidden"
@@ -485,6 +529,7 @@ export default function AdminOnboardingPage() {
 
             {syncSuccess && (
                 <motion.section
+                    ref={activeSectionRef}
                     initial={{ scale: 0.98, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className={`rounded-lg border p-8 shadow-sm ${syncResult?.mode === "demo" ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}
@@ -493,12 +538,12 @@ export default function AdminOnboardingPage() {
                         <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <h2 className={`mt-5 text-2xl font-semibold ${syncResult?.mode === "demo" ? "text-warning-fg" : "text-success-fg"}`}>
-                        {syncResult?.mode === "demo" ? "Carga simulada en cuenta demo" : "Nomina sincronizada"}
+                        {syncResult?.mode === "demo" ? "Carga simulada en cuenta demo" : "Nómina sincronizada"}
                     </h2>
                     <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${syncResult?.mode === "demo" ? "text-amber-900" : "text-emerald-800"}`}>
                         {syncResult?.mode === "demo"
                             ? "Esta cuenta protege la demostracion: no escribe en la base real. El lote quedo guardado localmente y visible en Directorio y Unidades para validar el flujo completo."
-                            : "Los residentes quedaron guardados y preparados para invitacion, asignacion de unidades y operacion diaria."}
+                            : "Los residentes quedaron guardados y preparados para invitación, asignación de unidades y operación diaria."}
                     </p>
 
                     <div className="mx-auto mt-6 grid max-w-4xl gap-3 text-left md:grid-cols-4">
@@ -573,6 +618,7 @@ export default function AdminOnboardingPage() {
             <AnimatePresence>
                 {extractedData && (
                     <motion.section
+                        ref={activeSectionRef}
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
@@ -600,6 +646,7 @@ export default function AdminOnboardingPage() {
                                 <button
                                     onClick={handleSyncToDatabase}
                                     disabled={isSyncing || quality.validRows === 0}
+                                    aria-label={confirmingSync ? "Confirmar sincronizacion" : "Sincronizar nomina"}
                                     className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${confirmingSync ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                                 >
                                     {isSyncing ? (
@@ -607,12 +654,12 @@ export default function AdminOnboardingPage() {
                                     ) : confirmingSync ? (
                                         <>
                                             <AlertCircle className="h-4 w-4" />
-                                            Confirmar sincronizacion
+                                            Confirmar sincronización
                                         </>
                                     ) : (
                                         <>
                                             <Save className="h-4 w-4" />
-                                            Sincronizar nomina
+                                            Sincronizar nómina
                                         </>
                                     )}
                                 </button>
@@ -622,7 +669,7 @@ export default function AdminOnboardingPage() {
                         <div className="grid gap-3 border-b border-subtle p-5 md:grid-cols-4">
                             {[
                                 { label: "Calidad", value: `${quality.score}%`, tone: quality.score >= 80 ? "text-success-fg" : "text-warning-fg" },
-                                { label: "Filas validas", value: `${quality.validRows}/${quality.totalRows}`, tone: "cc-text-primary" },
+                                { label: "Filas válidas", value: `${quality.validRows}/${quality.totalRows}`, tone: "cc-text-primary" },
                                 { label: "Sin nombre", value: quality.missingNameRows, tone: quality.missingNameRows ? "text-warning-fg" : "text-success-fg" },
                                 { label: "Sin contacto", value: quality.missingContactRows, tone: quality.missingContactRows ? "text-warning-fg" : "text-success-fg" },
                             ].map(item => (
@@ -636,7 +683,7 @@ export default function AdminOnboardingPage() {
                                     <div className="flex items-start gap-3">
                                         <AlertCircle className="mt-0.5 h-5 w-5 text-warning-fg" />
                                         <p className="text-sm font-semibold cc-text-primary">
-                                            Hay {quality.missingUnitRows} fila(s) sin unidad. Corrigelas antes de sincronizar para evitar residentes sin asignacion.
+                                            Hay {quality.missingUnitRows} fila(s) sin unidad. Corrígelas antes de sincronizar para evitar residentes sin asignación.
                                         </p>
                                     </div>
                                 </div>
@@ -650,8 +697,8 @@ export default function AdminOnboardingPage() {
                                         <th className="px-5 py-4">Nombre</th>
                                         <th className="px-5 py-4">Unidad</th>
                                         <th className="px-5 py-4">Correo</th>
-                                        <th className="px-5 py-4">Telefono</th>
-                                        <th className="px-5 py-4 text-right">Accion</th>
+                                        <th className="px-5 py-4">Teléfono</th>
+                                        <th className="px-5 py-4 text-right">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-subtle">

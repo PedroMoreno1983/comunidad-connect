@@ -111,7 +111,7 @@ export async function POST(request: Request) {
         } else if (fileName.endsWith('.xlsx')) {
             extractedText = await spreadsheetBufferToText(buffer, { maxRows: 1000 });
         } else if (fileName.endsWith('.xls')) {
-            return NextResponse.json({ error: 'Excel .xls antiguo no soportado. Guarda el archivo como .xlsx o CSV y vuelve a subirlo.' }, { status: 400 });
+            return NextResponse.json({ error: 'Excel .xls antiguo no soportado por seguridad. Guarda el archivo como .xlsx o CSV y vuelve a subirlo.' }, { status: 400 });
         } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
             extractedText = buffer.toString('utf-8');
         } else {

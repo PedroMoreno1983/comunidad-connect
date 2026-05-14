@@ -342,7 +342,7 @@ export default function AdminTrainingPage() {
                                         <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
                                     )}
                                     <h3 className="text-lg font-bold cc-text-secondary">
-                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDF, Word, Excel .xlsx, CSV o reglamentos'}
+                                        {isUploading ? 'Extrayendo textos...' : 'Sube PDF, Word, Excel, CSV o reglamentos'}
                                     </h3>
                                     <p className="text-sm text-slate-500 max-w-md">
                                         La IA leera el material y propondra un guion estructurado para explicar el contenido a la comunidad.
