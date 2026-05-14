@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { MarketplaceService } from "@/lib/api";
 import {
-    Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck
+    CheckCircle2, ExternalLink, Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck
 } from "lucide-react";
 import { MarketplaceItem } from "@/lib/types";
 import { useSearchParams } from 'next/navigation';
@@ -33,6 +33,7 @@ import {
     applyDemoMarketplaceStatusOverrides,
     getDemoPublishedMarketplaceItems,
     prependDemoPublishedMarketplaceItem,
+    saveDemoMarketplaceStatusOverride,
 } from "@/lib/services/demoMarketplaceStorage";
 import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
@@ -105,6 +106,13 @@ const demoMarketplaceItems: MarketplaceItem[] = [
     },
 ];
 
+type PublicationSummary = {
+    title: string;
+    modes: string[];
+    imageCount: number;
+    createdAt: string;
+};
+
 async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -127,6 +135,7 @@ export default function MarketplacePage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [publicationSummary, setPublicationSummary] = useState<PublicationSummary | null>(null);
     const [newItem, setNewItem] = useState({
         title: '',
         price: '',
@@ -145,6 +154,7 @@ export default function MarketplacePage() {
     const [publishing, setPublishing] = useState(false);
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+    const publicationSummaryRef = useRef<HTMLDivElement | null>(null);
     const { toast } = useToast();
     const { user } = useAuth();
     const searchParams = useSearchParams();
@@ -298,6 +308,13 @@ export default function MarketplacePage() {
         setSortMode('recent');
     };
 
+    const showPublicationSummary = (summary: PublicationSummary) => {
+        setPublicationSummary(summary);
+        window.setTimeout(() => {
+            publicationSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 80);
+    };
+
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
         setPublishing(true);
@@ -344,11 +361,31 @@ export default function MarketplacePage() {
                 };
                 prependDemoPublishedMarketplaceItem(createdItem);
                 setItems(current => [createdItem, ...current]);
+                showPublicationSummary({
+                    title: createdItem.title,
+                    modes: [
+                        createdItem.allowSale !== false ? "Venta" : "",
+                        createdItem.allowSwap ? "Permuta" : "",
+                        createdItem.allowBarter ? "Trueque" : "",
+                    ].filter(Boolean),
+                    imageCount: imageUrls.length,
+                    createdAt: createdItem.createdAt,
+                });
             } else {
                 await MarketplaceService.createItem({
                     ...newItem,
                     price: Number(newItem.price)
                 } as Partial<MarketplaceItem>, imageFiles);
+                showPublicationSummary({
+                    title: newItem.title.trim(),
+                    modes: [
+                        newItem.allowSale ? "Venta" : "",
+                        newItem.allowSwap ? "Permuta" : "",
+                        newItem.allowBarter ? "Trueque" : "",
+                    ].filter(Boolean),
+                    imageCount: imageFiles.length,
+                    createdAt: new Date().toISOString(),
+                });
             }
 
             toast({
@@ -689,6 +726,40 @@ export default function MarketplacePage() {
                 outcome="Cierre esperado: el articulo queda con estado claro en la vitrina y en Mis Publicaciones, evitando contactos perdidos o anuncios desactualizados."
             />
 
+            {publicationSummary && (
+                <section ref={publicationSummaryRef} className="rounded-lg border border-success-border bg-success-bg p-5 shadow-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="flex gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                                <CheckCircle2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-success-fg">Publicacion lista</p>
+                                <h2 className="mt-1 text-lg font-semibold cc-text-primary">{publicationSummary.title}</h2>
+                                <p className="mt-1 text-sm leading-6 text-emerald-900">
+                                    Visible en la vitrina comunitaria con {publicationSummary.imageCount || "sin"} foto{publicationSummary.imageCount === 1 ? "" : "s"} y modalidad {publicationSummary.modes.join(", ") || "por definir"}.
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-emerald-900/70">
+                                    Publicada {new Date(publicationSummary.createdAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <a
+                                href="#vitrina-marketplace"
+                                className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white/80 px-3 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-white"
+                            >
+                                Ver en vitrina
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                            <Link href="/marketplace/my-listings">
+                                <Button variant="outline">Gestionar publicacion</Button>
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {/* Filters & Search Section */}
             <div className="space-y-4">
                 <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -902,9 +973,11 @@ export default function MarketplacePage() {
                         title: "¡Compra exitosa!",
                         description: "Te hemos enviado los detalles a tu correo.",
                     });
-                    // Mark as reserved in local state
                     if (selectedItem) {
                         setItems(items.map(i => i.id === selectedItem.id ? { ...i, status: 'reserved' } : i));
+                        if (user?.email.toLowerCase().endsWith("@demo.com") || selectedItem.id.startsWith("demo-")) {
+                            saveDemoMarketplaceStatusOverride(selectedItem.id, "reserved");
+                        }
                     }
                 }}
             />
