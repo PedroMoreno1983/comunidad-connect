@@ -64,10 +64,10 @@ function BlackboardMarkdown({ content }: { content: string }) {
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-                h1: ({ children }) => <h1 className="mb-5 text-3xl font-semibold tracking-tight cc-text-primary">{children}</h1>,
-                h2: ({ children }) => <h2 className="mb-3 mt-8 text-xl font-semibold cc-text-primary">{children}</h2>,
-                h3: ({ children }) => <h3 className="mb-2 mt-6 text-base font-semibold cc-text-primary">{children}</h3>,
-                p: ({ children }) => <p className="mb-4 text-base leading-8 cc-text-secondary">{children}</p>,
+                h1: ({ children }) => <h1 className="mb-4 text-2xl font-semibold tracking-tight cc-text-primary sm:mb-5 sm:text-3xl">{children}</h1>,
+                h2: ({ children }) => <h2 className="mb-3 mt-6 text-lg font-semibold cc-text-primary sm:mt-8 sm:text-xl">{children}</h2>,
+                h3: ({ children }) => <h3 className="mb-2 mt-5 text-base font-semibold cc-text-primary sm:mt-6">{children}</h3>,
+                p: ({ children }) => <p className="mb-4 text-sm leading-7 cc-text-secondary sm:text-base sm:leading-8">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold text-brand-600">{children}</strong>,
                 ul: ({ children }) => <ul className="mb-5 space-y-2 pl-0">{children}</ul>,
                 ol: ({ children }) => <ol className="mb-5 list-decimal space-y-2 pl-5 cc-text-secondary">{children}</ol>,
@@ -78,10 +78,10 @@ function BlackboardMarkdown({ content }: { content: string }) {
                     </li>
                 ),
                 img: ({ src, alt }) => (
-                    <figure className="my-6 overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+                    <figure className="my-5 overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm sm:my-6">
                         <div className="relative aspect-[16/9] w-full bg-slate-100">
                             <img src={src || ""} alt={alt || "Imagen generada para la clase"} className="h-full w-full object-cover" />
-                            <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm">
+                            <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-semibold text-slate-900 shadow-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
                                 <ImageIcon className="h-3.5 w-3.5 text-brand-500" />
                                 Imagen generada
                             </div>
@@ -115,10 +115,10 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [blackboardContent, setBlackboardContent] = useState<string>(
-        "# Preparando la pizarra\n\nCoCo esta armando una vista visual para esta clase."
+        "# Preparando la pizarra\n\nCoCo está armando una vista visual para esta clase."
     );
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let isPresentation = false;
@@ -140,7 +140,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
             setMessages([{
                 id: "system-1",
                 role: "system",
-                text: "Clase iniciada. CoCo ira guiando cada lamina con ejemplos practicos.",
+                text: "Clase iniciada. CoCo irá guiando cada lámina con ejemplos prácticos.",
             }]);
         } else {
             setMessages([{
@@ -148,7 +148,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 role: "system",
                 text: "Aula CoCo lista. Haz una pregunta o comenta el caso para actualizar la pizarra.",
             }]);
-            setBlackboardContent(courseContent || "# Bienvenido a la capacitacion\n\nAqui apareceran conceptos clave, imagenes generadas y decisiones practicas para la comunidad.");
+            setBlackboardContent(courseContent || "# Bienvenido a la capacitación\n\nAquí aparecerán conceptos clave, imágenes generadas y decisiones prácticas para la comunidad.");
         }
     }, [courseContent]);
 
@@ -167,7 +167,10 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     }, [currentSlideIndex, parsedSlides]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        }
     }, [messages, isTyping]);
 
     const handleSend = async () => {
@@ -228,14 +231,14 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     const currentSlide = parsedSlides?.[currentSlideIndex];
 
     return (
-        <div className="flex h-[85vh] w-full flex-col overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm lg:flex-row">
-            <div className="relative flex h-[42vh] w-full flex-col overflow-hidden border-b border-subtle bg-surface lg:h-full lg:w-[64%] lg:border-b-0 lg:border-r">
+        <div className="flex w-full flex-col gap-4 lg:h-[82vh] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-subtle lg:bg-surface lg:shadow-sm">
+            <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm lg:h-full lg:w-[64%] lg:rounded-none lg:border-0 lg:border-r lg:shadow-none">
                 {parsedSlides && currentSlide ? (
-                    <div className="flex h-full flex-col bg-canvas p-4 lg:p-8">
+                    <div className="flex min-h-[340px] flex-col bg-canvas p-3 sm:min-h-[420px] sm:p-4 lg:h-full lg:min-h-0 lg:p-8">
                         <div className="z-20 mb-4 flex items-center justify-between">
                             <span className="inline-flex items-center gap-2 rounded-md border border-subtle bg-surface px-3 py-1.5 text-xs font-semibold cc-text-secondary">
                                 <PanelRightOpen className="h-3.5 w-3.5 text-brand-500" />
-                                Presentacion interactiva
+                                Presentación interactiva
                             </span>
                             <span className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
                                 {currentSlideIndex + 1} / {parsedSlides.length}
@@ -250,13 +253,13 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -20 }}
                                     transition={{ duration: 0.25 }}
-                                    className={`flex aspect-[16/9] w-full max-w-4xl flex-col justify-center rounded-lg border p-8 shadow-sm lg:p-12 ${visualThemes[currentSlide.visual_theme] || visualThemes.default}`}
+                                    className={`flex aspect-[4/5] w-full max-w-4xl flex-col justify-center rounded-lg border p-5 shadow-sm sm:aspect-[16/9] sm:p-8 lg:p-12 ${visualThemes[currentSlide.visual_theme] || visualThemes.default}`}
                                 >
                                     <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Aula CoCo</p>
-                                    <h1 className="mb-7 text-3xl font-semibold leading-tight tracking-tight text-white md:text-5xl">
+                                    <h1 className="mb-5 text-2xl font-semibold leading-tight tracking-tight text-white sm:mb-7 md:text-5xl">
                                         {currentSlide.title}
                                     </h1>
-                                    <ul className="space-y-4 text-base font-medium leading-7 text-white/88 md:text-lg">
+                                    <ul className="space-y-3 text-sm font-medium leading-6 text-white/88 sm:space-y-4 sm:text-base sm:leading-7 md:text-lg">
                                         {currentSlide.bullets.map((bullet, index) => (
                                             <li key={index} className="flex items-start gap-3">
                                                 <span className="mt-2.5 h-2 w-2 shrink-0 rounded-sm bg-brand-400" />
@@ -299,15 +302,15 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         </div>
                     </div>
                 ) : (
-                    <div className="flex h-full flex-col bg-surface p-5 lg:p-8">
-                        <div className="mb-6 flex items-center justify-between gap-4">
+                    <div className="flex max-h-none min-h-[330px] flex-col bg-surface p-4 sm:min-h-[420px] sm:p-5 lg:h-full lg:min-h-0 lg:p-8">
+                        <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                                     <Monitor className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-semibold cc-text-primary">Pizarra interactiva</h2>
-                                    <p className="text-sm cc-text-secondary">Sintesis visual guiada por CoCo</p>
+                                    <h2 className="text-lg font-semibold cc-text-primary sm:text-xl">Pizarra interactiva</h2>
+                                    <p className="text-sm cc-text-secondary">Síntesis visual guiada por CoCo</p>
                                 </div>
                             </div>
                             <span className="hidden rounded-md border border-subtle bg-canvas px-3 py-1.5 text-xs font-semibold cc-text-secondary sm:inline-flex">
@@ -315,7 +318,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             </span>
                         </div>
 
-                        <div className="relative z-10 flex-1 overflow-y-auto pr-2">
+                        <div className="relative z-10 flex-1 overflow-y-auto pr-1 sm:pr-2">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={blackboardContent.substring(0, 50)}
@@ -332,8 +335,8 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 )}
             </div>
 
-            <div className="flex h-[43vh] w-full flex-col bg-canvas lg:h-full lg:w-[36%]">
-                <div className="z-10 flex items-center justify-between border-b border-subtle bg-surface p-5">
+            <div className="flex max-h-[70vh] min-h-[380px] w-full flex-col overflow-hidden rounded-lg border border-subtle bg-canvas shadow-sm sm:min-h-[440px] lg:h-full lg:max-h-none lg:min-h-0 lg:w-[36%] lg:rounded-none lg:border-0 lg:shadow-none">
+                <div className="z-10 flex items-center justify-between border-b border-subtle bg-surface p-4 sm:p-5">
                     <div className="flex items-center gap-3">
                         <div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white">
                             <GraduationCap className="h-5 w-5" />
@@ -349,7 +352,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     </div>
                 </div>
 
-                <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
                     <AnimatePresence initial={false}>
                         {messages.map(msg => (
                             <motion.div
@@ -360,12 +363,12 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             >
                                 {msg.role !== "system" && (
                                     <span className={`mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${msg.role === "user" ? "text-brand-600" : "cc-text-tertiary"}`}>
-                                        {msg.role === "tutor" ? "Profesora CoCo" : msg.role === "classmate" ? (msg.name || "Companero IA") : "Tu"}
+                                        {msg.role === "tutor" ? "Profesora CoCo" : msg.role === "classmate" ? (msg.name || "Compañero IA") : "Tú"}
                                     </span>
                                 )}
                                 <div
                                     className={`
-                                        max-w-[88%] rounded-lg p-4 shadow-sm
+                                        max-w-[92%] rounded-lg p-3 shadow-sm sm:max-w-[88%] sm:p-4
                                         ${msg.role === "user" ? "bg-brand-500 text-white" : ""}
                                         ${msg.role === "tutor" ? "border border-subtle bg-surface cc-text-primary" : ""}
                                         ${msg.role === "classmate" ? "ml-5 border border-subtle bg-warning-bg cc-text-primary" : ""}
@@ -382,14 +385,13 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start">
                             <div className="flex items-center gap-2 rounded-lg border border-subtle bg-surface p-4 text-sm cc-text-secondary shadow-sm">
                                 <Lightbulb className="h-4 w-4 animate-pulse text-brand-500" />
-                                CoCo esta preparando una respuesta
+                                CoCo está preparando una respuesta
                             </div>
                         </motion.div>
                     )}
-                    <div ref={messagesEndRef} />
                 </div>
 
-                <div className="border-t border-subtle bg-surface p-4">
+                <div className="border-t border-subtle bg-surface p-3 sm:p-4">
                     <form
                         onSubmit={event => {
                             event.preventDefault();
