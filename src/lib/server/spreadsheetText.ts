@@ -54,9 +54,9 @@ function rowsToNarrative(rows: string[][], maxRows: number) {
 
 export async function spreadsheetBufferToText(buffer: Buffer, options: SpreadsheetTextOptions = {}) {
     const workbook = new ExcelJS.Workbook();
+    const maxRows = options.maxRows ?? 1000;
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
 
-    const maxRows = options.maxRows ?? 1000;
     const sections: string[] = [];
 
     workbook.eachSheet((worksheet) => {
