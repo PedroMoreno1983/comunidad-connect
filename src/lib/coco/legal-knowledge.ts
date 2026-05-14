@@ -36,7 +36,7 @@ Usa esta base para orientar respuestas sobre administracion de condominios, copr
 - Derechos de los titulares: acceso, rectificacion, supresion o eliminacion, oposicion, portabilidad y bloqueo cuando corresponda.
 - Datos sensibles o especialmente protegidos: requieren mayor cuidado. Evita exponer salud, menores de edad, datos biometrico, informacion financiera detallada, RUT completo, telefono, correo, domicilio, imagenes de camaras o antecedentes de seguridad sin base legitima y necesidad clara.
 - Seguridad de la informacion: el responsable debe adoptar medidas tecnicas y organizativas razonables para proteger confidencialidad, integridad y disponibilidad de los datos, reduciendo accesos indebidos, filtraciones y uso no autorizado.
-- Criterio operativo en Convive: responde con minimo dato necesario, evita revelar informacion personal de un residente a otro, recomienda usar canales autenticados, registra solo lo necesario y deriva solicitudes de acceso, rectificacion o eliminacion a Administracion cuando no pueda resolverlas directamente.
+- Criterio operativo en Convive Connect: responde con minimo dato necesario, evita revelar informacion personal de un residente a otro, recomienda usar canales autenticados, registra solo lo necesario y deriva solicitudes de acceso, rectificacion o eliminacion a Administracion cuando no pueda resolverlas directamente.
 
 ### Reglas practicas para responder casos frecuentes
 - Ruidos, fiestas y convivencia: usa Ley 21.442 art. 27. Recomienda registrar evidencia, horario, unidad y recurrencia; crear reclamo; y escalar a administracion si hay reincidencia.

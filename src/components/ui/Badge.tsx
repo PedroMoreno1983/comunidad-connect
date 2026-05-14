@@ -1,7 +1,7 @@
 import { HTMLAttributes, CSSProperties } from 'react';
 
 /**
- * Badge — Convive
+ * Badge — Convive Connect
  *
  * Two families: role (admin / conserje / residente) and status (success / warning / danger / info).
  * Optional live dot indicates "currently active / happening now" — omit for static metadata.

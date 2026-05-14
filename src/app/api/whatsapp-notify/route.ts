@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         }
 
         const emoji = type === "alert" ? "🚨" : type === "success" ? "✅" : type === "warning" ? "⚠️" : "📢";
-        const message = [`${emoji} *Convive*`, ``, `*${title}*`, notifBody || "", ``, `👉 Revisa tu cuenta en la plataforma.`].join("\n");
+        const message = [`${emoji} *Convive Connect*`, ``, `*${title}*`, notifBody || "", ``, `👉 Revisa tu cuenta en la plataforma.`].join("\n");
 
         await sendWhatsApp(profile.phone_number, message);
 

@@ -294,7 +294,7 @@ export function Sidebar() {
                     Cerrar Sesión
                 </button>
                 <p className="mt-3 text-center text-xs cc-text-tertiary">
-                    v2.0 Pro • Convive
+                    v2.0 Pro • Convive Connect
                 </p>
             </div>
         </>

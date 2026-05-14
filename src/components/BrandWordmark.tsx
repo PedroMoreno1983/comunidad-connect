@@ -7,10 +7,10 @@ interface BrandWordmarkProps {
 export function BrandWordmark({ className }: BrandWordmarkProps) {
   return (
     <span
-      className={clsx("cc-wordmark inline-flex items-baseline leading-none", className)}
-      aria-label="Convive"
+      className={clsx("cc-wordmark inline-flex items-baseline whitespace-nowrap leading-none", className)}
+      aria-label="Convive Connect"
     >
-      <span className="sr-only">CONVIVE</span>
+      <span className="sr-only">CONVIVE CONNECT</span>
       <span aria-hidden="true" className="inline-flex items-baseline leading-none">
         <span>CON</span>
         <svg
@@ -27,6 +27,7 @@ export function BrandWordmark({ className }: BrandWordmarkProps) {
           />
         </svg>
         <span>IVE</span>
+        <span className="ml-[0.48em] text-[0.82em] tracking-[0.16em] opacity-85">CONNECT</span>
       </span>
     </span>
   );

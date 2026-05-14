@@ -501,7 +501,7 @@ export default function TrainingPage() {
                             </div>
                             <h1 className="text-2xl font-bold text-white mb-1">Centro de Capacitación</h1>
                             <p className="text-slate-400 text-sm">
-                                Domina cada función de Convive paso a paso. Marca cada paso como completado para llevar tu progreso.
+                                Domina cada función de Convive Connect paso a paso. Marca cada paso como completado para llevar tu progreso.
                             </p>
                         </div>
                     </div>

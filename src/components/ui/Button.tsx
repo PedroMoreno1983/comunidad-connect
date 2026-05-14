@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, CSSProperties, forwardRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 /**
- * Button — Convive design system
+ * Button — Convive Connect design system
  *
  * Variants: primary, secondary, ghost, danger, outline
  * Sizes:    sm, md (default), lg

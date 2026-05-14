@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
                 <div className="prose prose-slate dark:prose-invert">
                     <p className="text-lg cc-text-secondary leading-relaxed mb-6">
-                        Última actualización: Noviembre 2026. En Convive respetamos su privacidad y protegemos sus datos personales.
+                        Última actualización: Noviembre 2026. En Convive Connect respetamos su privacidad y protegemos sus datos personales.
                     </p>
                     <div className="space-y-8 bg-surface border border-subtle rounded-3xl p-8">
                         <section>

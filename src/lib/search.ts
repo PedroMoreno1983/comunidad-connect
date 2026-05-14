@@ -1,5 +1,5 @@
 /**
- * Convive — Motor de Búsqueda Híbrida
+ * Convive Connect — Motor de Búsqueda Híbrida
  *
  * Combina:
  *   1. Búsqueda léxica → PostgreSQL Full Text Search (español)

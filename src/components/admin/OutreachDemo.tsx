@@ -57,7 +57,7 @@ export default function OutreachDemo() {
                         Envía una propuesta personalizada 🚀
                     </h2>
                     <p className="cc-text-secondary leading-relaxed max-w-lg">
-                        Invita a administradores a conocer **Convive**. El correo incluye
+                        Invita a administradores a conocer **Convive Connect**. El correo incluye
                         detalles de IA Onboarding, Gestión Financiera y App Residente con un diseño 
                         premium para causar una excelente primera impresión.
                     </p>

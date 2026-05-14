@@ -73,7 +73,7 @@ export default function CoCo() {
     const [open, setOpen] = useState(false);
     const [msgs, setMsgs] = useState<Message[]>([{
         id: "w", role: "assistant",
-        text: "Hola. Soy **CoCo**, tu asistente operativo de Convive. ¿En qué te puedo ayudar?",
+        text: "Hola. Soy **CoCo**, tu asistente operativo de Convive Connect. ¿En qué te puedo ayudar?",
     }]);
     const [input, setInput] = useState("");
     const [selectedImage, setSelectedImage] = useState<string | null>(null);

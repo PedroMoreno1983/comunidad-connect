@@ -20,11 +20,11 @@ export async function POST(request: Request) {
                 Preparamos esta propuesta pensando en <strong>${condoLabel}</strong>.
             </p>
             <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">
-                Te escribo para presentarte <strong>Convive</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
+                Te escribo para presentarte <strong>Convive Connect</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
             </p>
 
             <div style="background:#f8fafc;border-radius:12px;padding:24px;margin-bottom:32px;border:1px solid #e2e8f0;">
-                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#974C3C;">¿Por qué elegir Convive?</h2>
+                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#974C3C;">¿Por qué elegir Convive Connect?</h2>
                 
                 <div style="margin-bottom:16px;">
                     <p style="margin:0;font-weight:700;color:#1e293b;">🤖 IA Onboarding</p>
@@ -57,14 +57,14 @@ export async function POST(request: Request) {
             </div>
             <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; color: #666;">
                 Atentamente,<br>
-                <strong>Equipo Convive</strong>
+                <strong>Equipo Convive Connect</strong>
             </p>
 
             <p style="margin:32px 0 0;color:#94a3b8;font-size:13px;font-style:italic;">
-                Este es un correo de invitación directa de parte del equipo de Convive.
+                Este es un correo de invitación directa de parte del equipo de Convive Connect.
                 Si deseas agendar una reunión personalizada, solo responde a este email.
             </p>
-        `, 'Invitación a Convive');
+        `, 'Invitación a Convive Connect');
 
         const { error } = await resend.emails.send({
             from: FROM_EMAIL,
