@@ -13,11 +13,11 @@ import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeO
 const PLANS = [
     {
         id: "11111111-1111-1111-1111-111111111111",
-        name: "Basico",
+        name: "Básico",
         price: "$19.990",
         unit: "+ $490 / unidad/mes",
         icon: Star,
-        features: ["Muro y avisos", "Directorio vecinal", "Conserjeria digital", "Espacios comunes", "Control de visitas"],
+        features: ["Muro y avisos", "Directorio vecinal", "Conserjería digital", "Espacios comunes", "Control de visitas"],
     },
     {
         id: "22222222-2222-2222-2222-222222222222",
@@ -26,7 +26,7 @@ const PLANS = [
         unit: "+ $690 / unidad/mes",
         icon: Zap,
         badge: "Recomendado",
-        features: ["Todo lo del Basico", "Mantenimiento", "Votaciones online", "Pagos online", "Reportes financieros"],
+        features: ["Todo lo del Básico", "Mantenimiento", "Votaciones online", "Pagos online", "Reportes financieros"],
     },
     {
         id: "33333333-3333-3333-3333-333333333333",
@@ -59,11 +59,11 @@ export default function AdminOnboardingPage() {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast({ title: "Error", description: "Las contrasenas no coinciden", variant: "destructive" });
+            toast({ title: "Error", description: "Las contraseñas no coinciden", variant: "destructive" });
             return;
         }
         if (password.length < 6) {
-            toast({ title: "Error", description: "La contrasena debe tener al menos 6 caracteres", variant: "destructive" });
+            toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
             return;
         }
         if (!communityName.trim()) {
@@ -88,7 +88,7 @@ export default function AdminOnboardingPage() {
             if (!authData.session) {
                 toast({
                     title: "Cuenta creada",
-                    description: "Revisa tu correo para confirmar la cuenta y luego inicia sesion.",
+                    description: "Revisa tu correo para confirmar la cuenta y luego inicia sesión.",
                     variant: "success",
                 });
                 router.push("/login");
@@ -132,12 +132,12 @@ export default function AdminOnboardingPage() {
 
             toast({
                 title: "Comunidad creada",
-                description: `Bienvenido a la administracion de ${communityName}`,
+                description: `Bienvenido a la administración de ${communityName}`,
                 variant: "success",
             });
             router.push("/home");
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Ocurrio un error inesperado";
+            const message = err instanceof Error ? err.message : "Ocurrió un error inesperado";
             toast({ title: "Error en el registro", description: message, variant: "destructive" });
         } finally {
             setLoading(false);
@@ -162,8 +162,8 @@ export default function AdminOnboardingPage() {
                         </p>
                     </div>
                     <div className="rounded-lg border border-subtle bg-surface p-5">
-                        <p className="text-sm font-semibold cc-text-primary">Incluye 30 dias de prueba</p>
-                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Puedes partir con datos base y activar cobros, reservas o CoCo IA cuando el edificio este listo.</p>
+                        <p className="text-sm font-semibold cc-text-primary">Incluye 30 días de prueba</p>
+                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Puedes partir con datos base y activar cobros, reservas o CoCo IA cuando el edificio esté listo.</p>
                     </div>
                 </aside>
 
@@ -172,7 +172,7 @@ export default function AdminOnboardingPage() {
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Registro</p>
                             <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Registra tu condominio</h2>
-                            <p className="mt-2 text-sm cc-text-secondary">Completa los datos minimos para crear el espacio administrativo.</p>
+                            <p className="mt-2 text-sm cc-text-secondary">Completa los datos mínimos para crear el espacio administrativo.</p>
                         </div>
                         <Link href="/login" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al login">
                             <ArrowLeft className="h-5 w-5" />
@@ -227,7 +227,7 @@ export default function AdminOnboardingPage() {
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <Button type="button" variant="outline" onClick={() => { setSelectedPlan(null); setStep(1); }}>
-                                    Decidir despues
+                                    Decidir después
                                 </Button>
                                 <Button type="button" disabled={!selectedPlan} onClick={() => setStep(1)} trailingIcon={<ArrowRight className="h-4 w-4" />}>
                                     Continuar
@@ -241,10 +241,10 @@ export default function AdminOnboardingPage() {
                             <Field label="Nombre del condominio" required>
                                 <Input type="text" value={communityName} onChange={(e) => setCommunityName(e.target.value)} placeholder="Edificio Los Pinos" required />
                             </Field>
-                            <Field label="Direccion">
+                            <Field label="Dirección">
                                 <Input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Av. Providencia 1234, Santiago" />
                             </Field>
-                            <Field label="Numero de unidades">
+                            <Field label="Número de unidades">
                                 <Input type="number" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="80" min="1" />
                             </Field>
                             <div className="grid gap-3 sm:grid-cols-2">
@@ -263,13 +263,13 @@ export default function AdminOnboardingPage() {
                                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="pl-10" />
                             </IconField>
                             <IconField icon={<Lock className="h-5 w-5" />}>
-                                <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contrasena, minimo 6 caracteres" required className="pl-10 pr-10" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}>
+                                <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña, mínimo 6 caracteres" required className="pl-10 pr-10" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </IconField>
                             <IconField icon={<Lock className="h-5 w-5" />}>
-                                <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirma tu contrasena" required className="pl-10" />
+                                <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirma tu contraseña" required className="pl-10" />
                             </IconField>
 
                             <div className="rounded-lg border border-subtle bg-canvas p-4 text-sm">
