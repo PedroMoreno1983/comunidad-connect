@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { useNotifications, Notification } from '@/lib/notificationContext';
-import {
-    Bell, X, Info, CheckCircle, AlertTriangle, AlertCircle,
-    Trash2, CheckCheck
-} from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { AlertCircle, AlertTriangle, Bell, CheckCheck, CheckCircle, Info, Trash2, X } from "lucide-react";
+import { Notification, useNotifications } from "@/lib/notificationContext";
 
 const iconMap = {
     info: Info,
@@ -16,10 +13,10 @@ const iconMap = {
 };
 
 const colorMap = {
-    info: 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
-    success: 'bg-success-bg text-success-fg',
-    warning: 'bg-warning-bg text-warning-fg',
-    alert: 'bg-danger-bg text-danger-fg',
+    info: "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+    success: "bg-success-bg text-success-fg",
+    warning: "bg-warning-bg text-warning-fg",
+    alert: "bg-danger-bg text-danger-fg",
 };
 
 function formatTimeAgo(date: Date): string {
@@ -29,13 +26,17 @@ function formatTimeAgo(date: Date): string {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 1) return "Ahora";
     if (diffMins < 60) return `Hace ${diffMins}m`;
     if (diffHours < 24) return `Hace ${diffHours}h`;
     return `Hace ${diffDays}d`;
 }
 
-function NotificationItem({ notification, onRead, onRemove }: {
+function NotificationItem({
+    notification,
+    onRead,
+    onRemove,
+}: {
     notification: Notification;
     onRead: () => void;
     onRemove: () => void;
@@ -43,43 +44,49 @@ function NotificationItem({ notification, onRead, onRemove }: {
     const Icon = iconMap[notification.type];
 
     const content = (
-        <div className={`relative rounded-lg border p-4 transition-colors ${notification.read
-                ? 'bg-elevated/50 border-subtle/50'
-                : 'bg-surface border-subtle shadow-sm'
-            }`}>
-            {!notification.read && (
-                <div className="absolute top-4 right-4 w-2 h-2 bg-brand-500 rounded-full" />
-            )}
-            <div className="flex gap-3">
-                <div className={`flex-shrink-0 rounded-lg p-2 ${colorMap[notification.type]}`}>
+        <div
+            className={`group relative rounded-lg border p-3.5 transition-colors sm:p-4 ${
+                notification.read ? "border-subtle/60 bg-elevated/50" : "border-subtle bg-surface shadow-sm"
+            }`}
+        >
+            {!notification.read && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-brand-500" />}
+
+            <div className="flex items-start gap-3">
+                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${colorMap[notification.type]}`}>
                     <Icon className="h-4 w-4" />
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm font-semibold ${notification.read ? 'cc-text-secondary' : 'cc-text-primary'}`}>
-                            {notification.title}
-                        </p>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-sm cc-text-secondary">
-                        {notification.message}
+
+                <div className="min-w-0 flex-1 pr-6">
+                    <p className={`text-sm font-semibold leading-5 ${notification.read ? "cc-text-secondary" : "cc-text-primary"}`}>
+                        {notification.title}
                     </p>
-                    <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs cc-text-tertiary">
-                            {formatTimeAgo(notification.timestamp)}
-                        </span>
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 cc-text-secondary">{notification.message}</p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="text-xs cc-text-tertiary">{formatTimeAgo(notification.timestamp)}</span>
                         {!notification.read && (
                             <button
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRead(); }}
-                                className="text-xs font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300"
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onRead();
+                                }}
+                                className="text-xs font-semibold text-brand-600 transition-colors hover:text-brand-700 dark:hover:text-brand-300"
                             >
                                 Marcar leído
                             </button>
                         )}
                     </div>
                 </div>
+
                 <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-                    className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-elevated hover:text-slate-600 dark:hover:text-slate-300"
+                    onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onRemove();
+                    }}
+                    className="absolute right-2 top-8 rounded-md p-1.5 text-slate-400 opacity-80 transition-colors hover:bg-elevated hover:text-slate-600 group-hover:opacity-100 dark:hover:text-slate-300"
+                    aria-label="Eliminar notificación"
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -89,7 +96,7 @@ function NotificationItem({ notification, onRead, onRemove }: {
 
     if (notification.link) {
         return (
-            <Link href={notification.link} onClick={onRead}>
+            <Link href={notification.link} onClick={onRead} className="block">
                 {content}
             </Link>
         );
@@ -103,107 +110,104 @@ export function NotificationCenter() {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close on click outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Close on escape
     useEffect(() => {
-        function handleEscape(e: KeyboardEvent) {
-            if (e.key === 'Escape') setIsOpen(false);
+        function handleEscape(event: KeyboardEvent) {
+            if (event.key === "Escape") setIsOpen(false);
         }
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
+
+        window.addEventListener("keydown", handleEscape);
+        return () => window.removeEventListener("keydown", handleEscape);
     }, []);
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            {/* Trigger Button */}
+        <div ref={dropdownRef} className="relative">
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => setIsOpen((open) => !open)}
                 className="relative inline-flex h-11 w-11 items-center justify-center overflow-visible rounded-lg bg-elevated transition-colors hover:bg-surface"
                 aria-label="Abrir notificaciones"
+                aria-expanded={isOpen}
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (
-                    <span
-                        className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white"
-                    >
-                        {unreadCount > 9 ? '9+' : unreadCount}
+                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* Dropdown */}
             {isOpen && (
-                <div className="absolute right-0 z-50 mt-2 max-h-[70vh] w-[min(264px,calc(100vw-24px))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50">
-                        {/* Header */}
-                        <div className="p-4 border-b border-subtle flex items-center justify-between">
-                            <div>
-                                <h3 className="font-bold cc-text-primary">Notificaciones</h3>
-                                <p className="text-xs cc-text-secondary">
-                                    {unreadCount > 0 ? `${unreadCount} sin leer` : 'Todo al día'}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {unreadCount > 0 && (
-                                    <button
-                                        onClick={markAllAsRead}
-                                        className="p-2 rounded-lg hover:bg-elevated text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                                        title="Marcar todo como leído"
-                                    >
-                                        <CheckCheck className="h-4 w-4" />
-                                    </button>
-                                )}
-                                {notifications.length > 0 && (
-                                    <button
-                                        onClick={clearAll}
-                                        className="p-2 rounded-lg hover:bg-elevated text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                                        title="Limpiar todo"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
+                <div className="fixed left-3 right-3 top-28 z-50 max-h-[calc(100vh-8rem)] overflow-hidden rounded-lg border border-subtle bg-surface shadow-2xl shadow-slate-200/60 dark:shadow-slate-950/50 sm:left-4 sm:right-auto sm:top-16 sm:max-h-[min(74vh,640px)] sm:w-[360px]">
+                    <div className="flex items-center justify-between border-b border-subtle p-4">
+                        <div>
+                            <h3 className="text-base font-semibold cc-text-primary">Notificaciones</h3>
+                            <p className="text-xs cc-text-secondary">
+                                {unreadCount > 0 ? `${unreadCount} sin leer` : "Todo al día"}
+                            </p>
                         </div>
 
-                        {/* Notifications List */}
-                        <div className="overflow-y-auto max-h-[50vh] p-3 space-y-2">
-                            {notifications.length === 0 ? (
-                                <div className="py-8 text-center">
-                                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-elevated">
-                                        <Bell className="h-6 w-6 text-slate-400" />
-                                    </div>
-                                    <p className="text-sm font-semibold cc-text-primary">Todo al día</p>
-                                    <p className="mx-auto mt-1 max-w-[220px] text-xs leading-5 cc-text-secondary">
-                                        Aquí aparecerán avisos, reservas, pagos y novedades relevantes.
-                                    </p>
-                                </div>
-                            ) : (
-                                notifications.map((notification) => (
-                                    <NotificationItem
-                                        key={notification.id}
-                                        notification={notification}
-                                        onRead={() => markAsRead(notification.id)}
-                                        onRemove={() => removeNotification(notification.id)}
-                                    />
-                                ))
+                        <div className="flex items-center gap-1">
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={markAllAsRead}
+                                    className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-elevated hover:text-slate-700 dark:hover:text-slate-300"
+                                    title="Marcar todo como leído"
+                                    aria-label="Marcar todo como leído"
+                                >
+                                    <CheckCheck className="h-4 w-4" />
+                                </button>
+                            )}
+                            {notifications.length > 0 && (
+                                <button
+                                    onClick={clearAll}
+                                    className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-elevated hover:text-slate-700 dark:hover:text-slate-300"
+                                    title="Limpiar todo"
+                                    aria-label="Limpiar todo"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
                             )}
                         </div>
+                    </div>
+
+                    <div className="max-h-[calc(100vh-13rem)] space-y-2 overflow-y-auto bg-canvas/45 p-3 sm:max-h-[calc(min(74vh,640px)-74px)]">
+                        {notifications.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-elevated">
+                                    <Bell className="h-6 w-6 text-slate-400" />
+                                </div>
+                                <p className="text-sm font-semibold cc-text-primary">Todo al día</p>
+                                <p className="mx-auto mt-1 max-w-[220px] text-xs leading-5 cc-text-secondary">
+                                    Aquí aparecerán avisos, reservas, pagos y novedades relevantes.
+                                </p>
+                            </div>
+                        ) : (
+                            notifications.map((notification) => (
+                                <NotificationItem
+                                    key={notification.id}
+                                    notification={notification}
+                                    onRead={() => markAsRead(notification.id)}
+                                    onRemove={() => removeNotification(notification.id)}
+                                />
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>
     );
 }
 
-// Compact version for sidebar
 export function NotificationBell() {
     const { unreadCount } = useNotifications();
 
@@ -211,8 +215,8 @@ export function NotificationBell() {
         <div className="relative">
             <Bell className="h-5 w-5 cc-text-secondary" />
             {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unreadCount > 9 ? '9' : unreadCount}
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9" : unreadCount}
                 </span>
             )}
         </div>
