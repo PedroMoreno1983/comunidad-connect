@@ -153,7 +153,6 @@ export default function VotacionesPage() {
                     saveDemoPublishedPolls(next);
                     return next;
                 });
-                toast({ title: "Voto demo registrado", description: "La preferencia quedo reflejada en esta sesion.", variant: "success" });
                 return;
             }
 
@@ -168,6 +167,7 @@ export default function VotacionesPage() {
                 const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexion.";
                 toast({ title: "Error al registrar el voto", description: errorMessage, variant: "destructive" });
             }
+            throw error;
         }
     };
 
@@ -218,6 +218,12 @@ export default function VotacionesPage() {
                         <p className="mt-1 text-sm text-slate-300">consultas en la comunidad</p>
                     </div>
                 </div>
+            </section>
+
+            <section className="grid gap-3 md:grid-cols-3">
+                <ResidentFlowStep label="1. Revisa" text="Lee el contexto, fecha de cierre y alternativas disponibles." />
+                <ResidentFlowStep label="2. Vota" text="Selecciona una opcion y confirma una sola vez." />
+                <ResidentFlowStep label="3. Consulta" text="Despues de votar veras resultados agregados de la comunidad." />
             </section>
 
             <section className="space-y-5">
@@ -284,6 +290,15 @@ function MetricCard({ icon, label, value, helper, dark = false }: { icon: React.
             <p className={`mt-5 text-3xl font-semibold ${dark ? "text-white" : "cc-text-primary"}`}>{value}</p>
             <p className={`mt-1 text-xs font-bold uppercase tracking-[0.12em] ${dark ? "text-slate-400" : "cc-text-secondary"}`}>{label}</p>
             <p className={`mt-2 text-sm ${dark ? "text-slate-300" : "cc-text-secondary"}`}>{helper}</p>
+        </article>
+    );
+}
+
+function ResidentFlowStep({ label, text }: { label: string; text: string }) {
+    return (
+        <article className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-brand-600">{label}</p>
+            <p className="mt-2 text-sm leading-6 cc-text-secondary">{text}</p>
         </article>
     );
 }

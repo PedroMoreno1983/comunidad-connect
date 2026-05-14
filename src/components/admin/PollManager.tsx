@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     AlertCircle,
     BarChart3,
@@ -8,6 +8,8 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock,
+    ExternalLink,
+    FileText,
     MessageCircle,
     Plus,
     Send,
@@ -36,6 +38,7 @@ type PollFormState = {
 type DeliverySummary = {
     mode: "demo" | "real";
     title: string;
+    publishedAt: string;
     chatSent: boolean;
     notificationsSent: number;
     whatsappSent: number;
@@ -160,6 +163,7 @@ export function PollManager() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [form, setForm] = useState<PollFormState>(() => defaultForm());
     const [deliverySummary, setDeliverySummary] = useState<DeliverySummary | null>(null);
+    const deliverySummaryRef = useRef<HTMLDivElement | null>(null);
 
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
@@ -216,6 +220,13 @@ export function PollManager() {
         setForm(defaultForm());
     };
 
+    const showDeliverySummary = (summary: DeliverySummary) => {
+        setDeliverySummary(summary);
+        window.setTimeout(() => {
+            deliverySummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
+    };
+
     const validateForm = () => {
         const cleanOptions = form.options.map(option => option.trim()).filter(Boolean);
         if (!form.title.trim() || !form.description.trim() || !form.endDate) {
@@ -257,9 +268,10 @@ export function PollManager() {
                 saveDemoPoll(createdPoll);
                 if (form.sendChat) saveDemoChatPollAnnouncement(createdPoll);
                 setPolls([createdPoll, ...polls]);
-                setDeliverySummary({
+                showDeliverySummary({
                     mode: "demo",
                     title: createdPoll.title,
+                    publishedAt: new Date().toISOString(),
                     chatSent: form.sendChat,
                     notificationsSent: form.sendNotifications ? 18 : 0,
                     whatsappSent: form.sendWhatsapp ? 12 : 0,
@@ -296,9 +308,10 @@ export function PollManager() {
 
             const createdPoll = mapPollRecord({ ...result.poll, options: result.options });
             setPolls([createdPoll, ...polls]);
-            setDeliverySummary({
+            showDeliverySummary({
                 mode: "real",
                 title: createdPoll.title,
+                publishedAt: new Date().toISOString(),
                 chatSent: Boolean(result.delivery?.chat?.sent),
                 notificationsSent: Number(result.delivery?.notifications?.sent || 0),
                 whatsappSent: Number(result.delivery?.whatsapp?.sent || 0),
@@ -459,8 +472,29 @@ export function PollManager() {
                 </form>
 
                 <div className="min-w-0 space-y-5">
+                    <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                                <FileText className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-semibold cc-text-primary">Flujo de publicacion</h2>
+                                <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                                    Cada consulta termina en el centro de votacion del residente, un anuncio para la comunidad y un registro de envio para auditoria.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                            <FlowStep label="1. Crear" text="Define pregunta, cierre y opciones." />
+                            <FlowStep label="2. Distribuir" text="Chat, notificacion app y WhatsApp." />
+                            <FlowStep label="3. Medir" text="Revisa participacion y cierre." />
+                        </div>
+                    </section>
+
                     {deliverySummary && (
-                        <DeliverySummaryCard summary={deliverySummary} />
+                        <div ref={deliverySummaryRef}>
+                            <DeliverySummaryCard summary={deliverySummary} />
+                        </div>
                     )}
 
                     <section id="votaciones-publicadas" className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
@@ -573,6 +607,15 @@ function StatCard({ icon, label, value, helper, dark = false }: { icon: React.Re
     );
 }
 
+function FlowStep({ label, text }: { label: string; text: string }) {
+    return (
+        <div className="rounded-md border border-subtle bg-canvas p-3">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-brand-600">{label}</p>
+            <p className="mt-1 text-sm leading-5 cc-text-secondary">{text}</p>
+        </div>
+    );
+}
+
 function ChannelToggle({
     checked,
     onChange,
@@ -606,16 +649,28 @@ function ChannelToggle({
 function DeliverySummaryCard({ summary }: { summary: DeliverySummary }) {
     return (
         <section className="rounded-lg border border-success-border bg-success-bg p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                    <CheckCircle2 className="h-5 w-5" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                        <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-success-fg">
+                            {summary.mode === "demo" ? "Envio simulado" : "Votacion enviada"}
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-emerald-900">{summary.title}</p>
+                        <p className="mt-1 text-xs font-semibold text-emerald-900/70">
+                            Publicada {new Date(summary.publishedAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-semibold text-success-fg">
-                        {summary.mode === "demo" ? "Envio simulado" : "Votacion enviada"}
-                    </h3>
-                    <p className="mt-1 text-sm leading-6 text-emerald-900">{summary.title}</p>
-                </div>
+                <a
+                    href="/votaciones"
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white/80 px-3 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-white"
+                >
+                    Ver centro residente
+                    <ExternalLink className="h-4 w-4" />
+                </a>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-md bg-white/70 p-3">

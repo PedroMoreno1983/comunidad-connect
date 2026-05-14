@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 
 interface PollCardProps {
     poll: Poll;
-    onVote?: (optionId: string) => void;
+    onVote?: (optionId: string) => Promise<void> | void;
     isAdmin?: boolean;
     initialHasVoted?: boolean;
     initialSelectedOption?: string | null;
@@ -25,6 +25,7 @@ const categoryLabels: Record<Poll["category"], string> = {
 export function PollCard({ poll, onVote, initialHasVoted = false, initialSelectedOption = null }: PollCardProps) {
     const [selectedOption, setSelectedOption] = useState<string | null>(initialSelectedOption);
     const [hasVoted, setHasVoted] = useState(initialHasVoted);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [now] = useState(() => Date.now());
     const { toast } = useToast();
 
@@ -39,15 +40,22 @@ export function PollCard({ poll, onVote, initialHasVoted = false, initialSelecte
         return Math.round((votes / currentTotalVotes) * 100);
     };
 
-    const handleVote = () => {
-        if (!selectedOption) return;
-        setHasVoted(true);
-        onVote?.(selectedOption);
-        toast({
-            title: "Voto registrado",
-            description: "Gracias por participar en la decision comunitaria.",
-            variant: "success",
-        });
+    const handleVote = async () => {
+        if (!selectedOption || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await onVote?.(selectedOption);
+            setHasVoted(true);
+            toast({
+                title: "Voto registrado",
+                description: "Gracias por participar en la decision comunitaria.",
+                variant: "success",
+            });
+        } catch {
+            setHasVoted(false);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -72,10 +80,11 @@ export function PollCard({ poll, onVote, initialHasVoted = false, initialSelecte
                             key={option.id}
                             type="button"
                             onClick={() => setSelectedOption(option.id)}
+                            disabled={isSubmitting}
                             className={`flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3 text-left transition-colors ${selectedOption === option.id
                                 ? "border-brand-500 bg-brand-50 text-brand-700"
                                 : "border-subtle bg-canvas cc-text-secondary hover:border-brand-200 hover:bg-elevated"
-                            }`}
+                            } disabled:cursor-not-allowed disabled:opacity-70`}
                         >
                             <span className="text-sm font-semibold">{option.text}</span>
                             <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selectedOption === option.id ? "border-brand-600 bg-brand-600" : "border-subtle bg-surface"}`}>
@@ -125,9 +134,9 @@ export function PollCard({ poll, onVote, initialHasVoted = false, initialSelecte
                 </div>
 
                 {!showResults ? (
-                    <Button onClick={handleVote} disabled={!selectedOption} className="w-full">
+                    <Button onClick={handleVote} disabled={!selectedOption || isSubmitting} className="w-full">
                         <VoteIcon className="h-4 w-4" />
-                        Enviar mi voto
+                        {isSubmitting ? "Registrando voto..." : "Enviar mi voto"}
                     </Button>
                 ) : (
                     <div className="flex items-center justify-center gap-2 rounded-md border border-subtle bg-surface px-4 py-3 text-sm font-semibold text-brand-700">
