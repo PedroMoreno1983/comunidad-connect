@@ -311,7 +311,7 @@ const testimonials = [
   {
     name: 'Valentina Rojas',
     role: 'Administradora · Condominio Los Pinos',
-    quote: 'Los gastos comunes que antes tardaban una semana en recaudar, ahora los tenemos el mismo día. Convive cambió todo.',
+    quote: 'Los gastos comunes que antes tardaban una semana en recaudar, ahora los tenemos el mismo día. Convive Connect cambió todo.',
     avatar: '🧑‍💼',
     color: '#C8705A',
     stars: 5,
@@ -879,7 +879,7 @@ export default function LandingPage() {
 
           <div className="space-y-3">
             {[
-              { q: "¿En qué países está disponible Convive?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
+              { q: "¿En qué países está disponible Convive Connect?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
               { q: "¿Es seguro el manejo del dinero y los pagos en la app?", a: "Absolutamente. No almacenamos ni procesamos tarjetas directamente. Usamos pasarelas con certificación PCI Compliance que aseguran máxima protección bancaria." },
               { q: "¿Qué pasa si un residente no tiene smartphone?", a: "No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web." },
               { q: "¿Cuánto tiempo toma instalar el sistema en el edificio?", a: "Muy poco. Una vez que nos envías la lista de departamentos y residentes en Excel, dejamos todo funcionando en menos de 48 horas hábiles." }

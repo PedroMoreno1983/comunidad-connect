@@ -30,7 +30,7 @@ const geistMono = Geist_Mono({
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "Convive",
+  name: "Convive Connect",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
@@ -42,14 +42,14 @@ const structuredData = {
   },
   publisher: {
     "@type": "Organization",
-    name: "Convive",
+    name: "Convive Connect",
   },
 };
 
 export const metadata: Metadata = {
   title: {
-    default: "Convive — Bienestar Comunitario",
-    template: "%s | Convive",
+    default: "Convive Connect — Bienestar Comunitario",
+    template: "%s | Convive Connect",
   },
   description:
     "Plataforma de bienestar comunitario para condominios. Marketplace, reservas de amenidades, consumo de agua, votaciones y más. Convierte tu edificio en comunidad.",
@@ -63,18 +63,18 @@ export const metadata: Metadata = {
     "agua",
     "administración",
   ],
-  authors: [{ name: "Convive" }],
+  authors: [{ name: "Convive Connect" }],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Convive',
+    title: 'Convive Connect',
   },
   openGraph: {
     type: "website",
     locale: "es_CL",
-    siteName: "Convive",
-    title: "Convive — Bienestar Comunitario",
+    siteName: "Convive Connect",
+    title: "Convive Connect — Bienestar Comunitario",
     description:
       "Más que vecinos. Comunidad. Marketplace, reservas, gastos comunes y bienestar comunitario.",
   },

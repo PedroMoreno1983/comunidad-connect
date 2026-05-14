@@ -1,5 +1,5 @@
 /* ============================================================
-   Convive — Design Tokens v1.0
+   Convive Connect — Design Tokens v1.0
    Source of truth for all design decisions.
    Import this file once in your app root (globals.css).
    ============================================================ */
@@ -13,7 +13,7 @@
      2. COLOR — BRAND & ROLES
      ============================================================ */
 
-  /* Primary brand: Convive Terracota */
+  /* Primary brand: Convive Connect Terracota */
   --cc-brand-50:   #FBF8F3;
   --cc-brand-100:  #F4E8DF;
   --cc-brand-200:  #E9D0C2;
@@ -189,7 +189,7 @@
 :root:not(.dark),
 .light {
   /* Backgrounds */
-  --cc-bg-canvas:        #FBF8F3;   /* Convive crema */
+  --cc-bg-canvas:        #FBF8F3;   /* Convive Connect crema */
   --cc-bg-surface:       #FFFFFF;   /* pure white card */
   --cc-bg-elevated:      #F1EAE1;   /* warm neutral hover/elevated */
   --cc-bg-overlay:       #E4D8CA;   /* slightly deeper hover */

@@ -102,7 +102,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
 
     const shareInvitation = async () => {
         if (!generated) return;
-        const text = `Pase Convive para ${generated.guestName}: ${generated.qrCode}`;
+        const text = `Pase Convive Connect para ${generated.guestName}: ${generated.qrCode}`;
         if (navigator.share) {
             await navigator.share({ title: "Pase de visita", text }).catch(() => undefined);
             return;

@@ -414,7 +414,7 @@ export default function MarketplacePage() {
                             transition={{ delay: 0.1 }}
                             className="max-w-xl text-sm leading-6 cc-text-secondary"
                         >
-                            Vende lo que ya no usas y compra artículos de confianza a tus vecinos de Convive.
+                            Vende lo que ya no usas y compra artículos de confianza a tus vecinos de Convive Connect.
                         </motion.p>
 
                         <motion.div

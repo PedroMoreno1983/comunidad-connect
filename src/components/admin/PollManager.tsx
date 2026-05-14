@@ -144,7 +144,7 @@ function saveDemoChatPollAnnouncement(poll: Poll) {
             poll.description,
             "",
             `Cierre: ${new Date(poll.endDate).toLocaleDateString("es-CL")}`,
-            "Vota en Convive > Votaciones.",
+            "Vota en Convive Connect > Votaciones.",
         ].join("\n"),
         created_at: new Date().toISOString(),
         profiles: { name: "Admin Demo" },

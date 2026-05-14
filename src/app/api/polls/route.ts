@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
             description,
             '',
             `Cierre: ${new Date(endDate).toLocaleDateString('es-CL')}`,
-            `Vota en Convive: ${pollUrl}`,
+            `Vota en Convive Connect: ${pollUrl}`,
         ].join('\n');
 
         const delivery = {
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
 
         if (channels.whatsapp) {
             const whatsappMessage = [
-                '*Convive*',
+                '*Convive Connect*',
                 '',
                 `Nueva votacion: *${title}*`,
                 description,

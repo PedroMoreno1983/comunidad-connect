@@ -1,6 +1,6 @@
 ﻿{
-    "name": "Convive",
-    "short_name": "Convive",
+    "name": "Convive Connect",
+    "short_name": "Convive Connect",
     "description": "Bienestar comunitario para condominios",
     "start_url": "/home",
     "display": "standalone",

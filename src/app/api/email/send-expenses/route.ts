@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       <table cellpadding="0" cellspacing="0">
         <tr>
           <td style="background:linear-gradient(135deg,#C8705A,#974C3C);border-radius:14px;padding:10px 20px;">
-            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Convive</span>
+            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Convive Connect</span>
           </td>
         </tr>
       </table>
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
   <tr>
     <td align="center" style="padding:32px 0 0;">
       <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
-        Convive &mdash; Sistema de Gestión Inmobiliaria<br/>
+        Convive Connect &mdash; Sistema de Gestión Inmobiliaria<br/>
         Preguntas: <a href="mailto:soporte@convive.app" style="color:#974C3C;text-decoration:none;">soporte@convive.app</a>
       </p>
     </td>

@@ -38,7 +38,7 @@ export const resend = {
     },
 };
 
-export const FROM_EMAIL = 'Convive <notificaciones@datawiseconsultoria.com>';
+export const FROM_EMAIL = 'Convive Connect <notificaciones@datawiseconsultoria.com>';
 export const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'pedromoreno1983@gmail.com';
 
 // Format Chilean pesos
@@ -62,7 +62,7 @@ export function emailWrapper(content: string, title: string): string {
         <tr>
           <td style="background:linear-gradient(135deg,#C8705A,#974C3C);padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">
-              Convive
+              Convive Connect
             </p>
           </td>
         </tr>
@@ -74,7 +74,7 @@ export function emailWrapper(content: string, title: string): string {
         <tr>
           <td style="padding:24px 40px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
-              Convive — Sistema de Gestión Inmobiliaria<br/>
+              Convive Connect — Sistema de Gestión Inmobiliaria<br/>
               Si tienes dudas, escríbenos a <a href="mailto:soporte@convive.app" style="color:#974C3C;">soporte@convive.app</a>
             </p>
           </td>
@@ -87,7 +87,7 @@ export function emailWrapper(content: string, title: string): string {
 }
 
 // ============================================================
-// Plantillas de Email Transaccional — Convive
+// Plantillas de Email Transaccional — Convive Connect
 // ============================================================
 
 /**
@@ -213,7 +213,7 @@ export async function sendWelcomeEmail({
     to,
     residentName,
     unitName,
-    condoName = 'Convive',
+    condoName = 'Convive Connect',
     temporaryPassword,
 }: {
     to: string;

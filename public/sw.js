@@ -1,4 +1,4 @@
-// Service Worker — Convive PWA
+// Service Worker — Convive Connect PWA
 // Basic caching strategy for offline support
 
 const CACHE_NAME = 'convive-v1';

@@ -92,7 +92,7 @@ function MockPaymentContent() {
                             <div className="p-3 bg-role-admin-bg rounded-lg">
                                 <Building2 className="w-6 h-6 text-role-admin-fg" />
                             </div>
-                            <h2 className="text-xl font-semibold cc-text-primary">Convive</h2>
+                            <h2 className="text-xl font-semibold cc-text-primary">Convive Connect</h2>
                         </div>
 
                         <p className="text-sm font-bold cc-text-secondary uppercase tracking-widest mb-2">Total a Pagar</p>
