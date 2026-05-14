@@ -14,7 +14,7 @@ import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, Key, Lock, Mail, S
 const ROLES = [
     { id: "resident", label: "Residente", description: "Unidad y gastos personales", icon: Home },
     { id: "concierge", label: "Conserje", description: "Turno, visitas y paquetes", icon: ShieldCheck },
-    { id: "admin", label: "Admin", description: "Gestion completa", icon: Building2 },
+    { id: "admin", label: "Admin", description: "Gestión completa", icon: Building2 },
 ] as const;
 
 export default function SignUpPage() {
@@ -35,17 +35,17 @@ export default function SignUpPage() {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast({ title: "Error", description: "Las contrasenas no coinciden", variant: "destructive" });
+            toast({ title: "Error", description: "Las contraseñas no coinciden", variant: "destructive" });
             return;
         }
 
         if (password.length < 6) {
-            toast({ title: "Error", description: "La contrasena debe tener al menos 6 caracteres", variant: "destructive" });
+            toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
             return;
         }
 
         if (!accessCode.trim()) {
-            toast({ title: "Error", description: "Debes ingresar un codigo de invitacion", variant: "destructive" });
+            toast({ title: "Error", description: "Debes ingresar un código de invitación", variant: "destructive" });
             return;
         }
 
@@ -58,7 +58,7 @@ export default function SignUpPage() {
             .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode},admin_code.eq.${cleanCode}`);
 
         if (codeError || !communities || communities.length === 0) {
-            toast({ title: "Codigo invalido", description: "El codigo de invitacion no existe o es incorrecto.", variant: "destructive" });
+            toast({ title: "Código inválido", description: "El código de invitación no existe o es incorrecto.", variant: "destructive" });
             setLoading(false);
             return;
         }
@@ -71,7 +71,7 @@ export default function SignUpPage() {
 
         if (!isCodeValidForRole) {
             const roleLabel = selectedRole === "resident" ? "Residente" : selectedRole === "admin" ? "Administrador" : "Conserje";
-            toast({ title: "Rol no coincide", description: `El codigo ingresado no corresponde al perfil ${roleLabel}.`, variant: "destructive" });
+            toast({ title: "Rol no coincide", description: `El código ingresado no corresponde al perfil ${roleLabel}.`, variant: "destructive" });
             setLoading(false);
             return;
         }
@@ -91,7 +91,7 @@ export default function SignUpPage() {
 
         toast({
             title: "Cuenta creada",
-            description: `Enviamos un correo a ${email}. Confirmalo para iniciar sesion.`,
+            description: `Enviamos un correo a ${email}. Confírmalo para iniciar sesión.`,
             variant: "success",
         });
         router.push("/login");
@@ -103,9 +103,9 @@ export default function SignUpPage() {
                 <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm sm:p-8">
                     <div className="mb-8 flex items-start justify-between gap-4">
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Invitacion</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Invitación</p>
                             <h1 className="mt-2 text-3xl font-semibold cc-text-primary">Crear cuenta</h1>
-                            <p className="mt-2 text-sm cc-text-secondary">Ingresa con el codigo entregado por tu comunidad.</p>
+                            <p className="mt-2 text-sm cc-text-secondary">Ingresa con el código entregado por tu comunidad.</p>
                         </div>
                         <Link href="/" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al inicio">
                             <ArrowLeft className="h-5 w-5" />
@@ -144,18 +144,18 @@ export default function SignUpPage() {
                             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="pl-10" />
                         </Field>
 
-                        <Field id="password" label="Contrasena" icon={<Lock className="h-5 w-5" />}>
-                            <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" required className="pl-10 pr-10" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}>
+                        <Field id="password" label="Contraseña" icon={<Lock className="h-5 w-5" />}>
+                            <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required className="pl-10 pr-10" />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                             </button>
                         </Field>
 
-                        <Field id="confirmPassword" label="Confirmar contrasena" icon={<Lock className="h-5 w-5" />}>
-                            <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite tu contrasena" required className="pl-10" />
+                        <Field id="confirmPassword" label="Confirmar contraseña" icon={<Lock className="h-5 w-5" />}>
+                            <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite tu contraseña" required className="pl-10" />
                         </Field>
 
-                        <Field id="accessCode" label="Codigo de invitacion" icon={<Key className="h-5 w-5" />}>
+                        <Field id="accessCode" label="Código de invitación" icon={<Key className="h-5 w-5" />}>
                             <Input id="accessCode" type="text" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase())} placeholder="RSD-A3F9K2" required className="pl-10 font-mono uppercase tracking-[0.16em]" />
                         </Field>
 
@@ -188,11 +188,11 @@ export default function SignUpPage() {
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Acceso controlado</p>
                         <h2 className="text-5xl font-semibold leading-tight cc-text-primary">Cada usuario entra con el rol correcto.</h2>
                         <p className="text-lg leading-8 cc-text-secondary">
-                            Los codigos separan permisos de residentes, conserjeria y administracion para mantener datos y acciones bajo control.
+                            Los códigos separan permisos de residentes, conserjería y administración para mantener datos y acciones bajo control.
                         </p>
                     </div>
                     <div className="grid max-w-2xl grid-cols-3 gap-3">
-                        {["Codigo validado", "Unidad vinculada", "Permisos por rol"].map((item) => (
+                        {["Código validado", "Unidad vinculada", "Permisos por rol"].map((item) => (
                             <div key={item} className="rounded-lg border border-subtle bg-surface p-4">
                                 <Users className="mb-3 h-5 w-5 text-brand-500" />
                                 <p className="text-sm font-semibold cc-text-primary">{item}</p>

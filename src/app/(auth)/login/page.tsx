@@ -33,7 +33,7 @@ export default function LoginPage() {
 
         if (error) {
             toast({
-                title: "Error al iniciar sesion",
+                title: "Error al iniciar sesión",
                 description: error.message || "Verifica tus credenciales",
                 variant: "destructive",
             });
@@ -43,7 +43,7 @@ export default function LoginPage() {
 
         toast({
             title: "Bienvenido",
-            description: "Has iniciado sesion correctamente",
+            description: "Has iniciado sesión correctamente",
             variant: "success",
         });
         router.push("/home");
@@ -52,7 +52,7 @@ export default function LoginPage() {
     const handleDemoLogin = async (_demoEmail: string, _demoPass: string, role: string) => {
         setLoading(true);
         loginDemo(role as "admin" | "resident" | "concierge");
-        toast({ title: "Entrando a la demo", description: "Has iniciado sesion", variant: "success" });
+        toast({ title: "Entrando a la demo", description: "Has iniciado sesión", variant: "success" });
         router.push("/home");
     };
 
@@ -68,10 +68,10 @@ export default function LoginPage() {
                     </Link>
 
                     <div className="max-w-xl space-y-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Operacion comunitaria</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Operación comunitaria</p>
                         <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Administra tu comunidad con control real.</h1>
                         <p className="text-lg leading-8 cc-text-secondary">
-                            Entra al panel para revisar pagos, reservas, conserjeria, mantenimiento, casos CoCo y reportes sin cambiar de sistema.
+                            Entra al panel para revisar pagos, reservas, conserjería, mantenimiento, casos CoCo y reportes sin cambiar de sistema.
                         </p>
                     </div>
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
                     <div className="mb-8 flex items-center justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Acceso</p>
-                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Iniciar sesion</h2>
+                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Iniciar sesión</h2>
                             <p className="mt-2 text-sm cc-text-secondary">Usa tus credenciales o entra a una demo segura.</p>
                         </div>
                         <Link href="/" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al inicio">
@@ -107,11 +107,11 @@ export default function LoginPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="mb-2 block text-sm font-semibold cc-text-primary">Contrasena</label>
+                            <label htmlFor="password" className="mb-2 block text-sm font-semibold cc-text-primary">Contraseña</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tu contrasena" required className="pl-10 pr-10" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}>
+                                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tu contraseña" required className="pl-10 pr-10" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
@@ -127,7 +127,7 @@ export default function LoginPage() {
                     <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
                             <h3 className="text-sm font-semibold cc-text-primary">Acceso demo</h3>
-                            <span className="rounded-md bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-700">Sin envios reales</span>
+                            <span className="rounded-md bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-700">Sin envíos reales</span>
                         </div>
                         {DEMO_ACCOUNTS.map(({ label, email: demoEmail, role, icon: Icon }) => (
                             <button
