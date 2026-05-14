@@ -45,8 +45,8 @@ function demoNotifications(role: string): Notification[] {
         {
             id: 'demo-notification-maintenance',
             type: 'info',
-            title: 'Mantencion programada',
-            message: 'Ascensor B tendra revision preventiva manana entre 10:00 y 12:00.',
+            title: 'Mantención programada',
+            message: 'Ascensor B tendrá revisión preventiva mañana entre 10:00 y 12:00.',
             timestamp: new Date(now - 35 * 60 * 1000),
             read: false,
             link: '/admin/mantenimiento',
@@ -73,8 +73,8 @@ function demoNotifications(role: string): Notification[] {
             {
                 id: 'demo-notification-expense',
                 type: 'warning',
-                title: 'Gasto comun por vencer',
-                message: 'Tu gasto comun de mayo vence el 15 de mayo.',
+                title: 'Gasto común por vencer',
+                message: 'Tu gasto común de mayo vence el 15 de mayo.',
                 timestamp: new Date(now - 18 * 60 * 1000),
                 read: false,
                 link: '/resident/finances',
@@ -87,8 +87,8 @@ function demoNotifications(role: string): Notification[] {
         {
             id: 'demo-notification-coco',
             type: 'alert',
-            title: 'Caso CoCo requiere revision',
-            message: 'Se detecto recurrencia en reportes de ruido del piso 12.',
+            title: 'Caso CoCo requiere revisión',
+            message: 'Se detectó recurrencia en reportes de ruido del piso 12.',
             timestamp: new Date(now - 8 * 60 * 1000),
             read: false,
             link: '/resident/cases',
