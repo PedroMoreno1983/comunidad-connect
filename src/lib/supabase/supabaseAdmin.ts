@@ -1,20 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let cachedAdminClient: SupabaseClient | null = null;
 
-if (!url || !serviceKey) {
-    // Log a warning in production build rather than crashing, 
-    // since Next.js static generation evaluates this file but doesn't actually hit the API.
-    if (process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ WARNING: SUPABASE_SERVICE_ROLE_KEY is not configured. Webhooks will fail at runtime.');
+export function getSupabaseAdmin() {
+    if (cachedAdminClient) return cachedAdminClient;
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !serviceKey) {
+        throw new Error('Supabase admin client is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
     }
+
+    cachedAdminClient = createClient(url, serviceKey, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        },
+    });
+
+    return cachedAdminClient;
 }
 
-// Cliente de Supabase con Service Role Key (bypasses RLS)
-// SOLO usar en API Routes server-side. NUNCA en Client Components.
-export const supabaseAdmin = createClient(
-    url || 'https://placeholder.supabase.co',
-    serviceKey || 'placeholder'
-);
-
+// Backward-compatible lazy proxy for existing API routes.
+// Only use this from server-side code: service role bypasses RLS.
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+    get(_target, property, receiver) {
+        return Reflect.get(getSupabaseAdmin(), property, receiver);
+    },
+});
