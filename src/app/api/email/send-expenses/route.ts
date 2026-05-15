@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server';
 import { resend, FROM_EMAIL, formatCLP } from '@/lib/email';
-import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-    // Lazy init — avoids build-time crash if SUPABASE_SERVICE_ROLE_KEY is missing
-    const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     try {
         // ─── Auth gate: only authenticated admins can send mass emails ───
         const cookieStore = await cookies();
@@ -25,6 +19,8 @@ export async function POST(request: Request) {
         if (authError || !user) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
+
+        const supabaseAdmin = getSupabaseAdmin();
 
         // Verify caller is admin and get their communityId
         const { data: callerProfile } = await supabaseAdmin

@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder'
-);
+import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -68,7 +63,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing user_id or title" }, { status: 400 });
         }
 
-        const { data: profile, error } = await supabaseAdmin
+        const { data: profile, error } = await getSupabaseAdmin()
             .from("profiles")
             .select("phone_number, whatsapp_enabled, name")
             .eq("id", user_id)
