@@ -6,6 +6,10 @@ function hasEnv(name: string) {
     return Boolean(process.env[name]?.trim());
 }
 
+function envFlag(name: string) {
+    return process.env[name] === 'true';
+}
+
 export async function GET() {
     const core = {
         supabaseUrl: hasEnv('NEXT_PUBLIC_SUPABASE_URL'),
@@ -33,14 +37,26 @@ export async function GET() {
 
     const coreReady = Object.values(core).every(Boolean);
     const aiReady = Object.values(ai).some(Boolean);
-    const demoReady = coreReady && aiReady;
-    const paidProductionReady = demoReady && Object.values(communications).every(Boolean) && Object.values(paidIntegrations).every(Boolean);
+    const appReady = coreReady && aiReady;
+    const commercialChannelsReady = Object.values(communications).every(Boolean);
+    const paidProductionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean);
+    const demoEnabled = envFlag('NEXT_PUBLIC_ENABLE_DEMO');
+    const missingProduction = [
+        ...Object.entries(communications).filter(([, value]) => !value).map(([key]) => `communications.${key}`),
+        ...Object.entries(paidIntegrations).filter(([, value]) => !value).map(([key]) => `paidIntegrations.${key}`),
+        ...(demoEnabled ? ['runtime.demoModeEnabled'] : []),
+    ];
 
     return NextResponse.json({
-        ok: demoReady,
-        status: paidProductionReady ? 'ready' : demoReady ? 'degraded' : 'not_ready',
+        ok: appReady,
+        status: paidProductionReady && !demoEnabled ? 'ready' : appReady ? 'operational_needs_production_config' : 'not_ready',
         service: 'convive-connect',
         checkedAt: new Date().toISOString(),
+        runtime: {
+            demoEnabled,
+            productionReady: paidProductionReady && !demoEnabled,
+            missingProduction,
+        },
         checks: {
             core,
             ai,
@@ -48,7 +64,7 @@ export async function GET() {
             paidIntegrations,
         },
     }, {
-        status: demoReady ? 200 : 503,
+        status: appReady ? 200 : 503,
         headers: {
             'Cache-Control': 'no-store',
         },
