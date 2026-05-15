@@ -8,6 +8,7 @@ import { askCoCo } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -178,6 +179,9 @@ function buildLocalCoCoFallback(
 }
 
 export async function POST(req: NextRequest) {
+    const limited = enforceRateLimit(req, 'coco.chat', { limit: 90, windowMs: 60_000 });
+    if (limited) return limited;
+
     // ── 1. Rate Limit ────────────────────────────────────────────────────────
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
         ?? req.headers.get('x-real-ip')

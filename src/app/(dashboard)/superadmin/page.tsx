@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
 import { Building2, Shield, Check, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -36,25 +35,21 @@ export default function SuperAdminDashboard() {
     const [communities, setCommunities] = useState<Community[]>([]);
     const [tiers, setTiers] = useState<PricingTier[]>([]);
     const [loading, setLoading] = useState(true);
+    const [accessDenied, setAccessDenied] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-
-    // Verification that Pedro is the superadmin
-    // (In production, use a secure backend check or a specific superadmin role)
-    const isSuperAdmin = user?.email === 'pedromoreno1983@gmail.com' || user?.email?.includes('convive');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [commRes, tiersRes] = await Promise.all([
-                supabase.from('communities').select('*').order('created_at', { ascending: false }),
-                supabase.from('pricing_tiers').select('*').order('price_per_unit', { ascending: true })
-            ]);
+            const response = await fetch('/api/superadmin/communities', { cache: 'no-store' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 503) setAccessDenied(true);
+                throw new Error(data.error || 'No se pudo cargar el panel');
+            }
 
-            if (commRes.error) throw commRes.error;
-            if (tiersRes.error) throw tiersRes.error;
-
-            setCommunities(commRes.data || []);
-            setTiers(tiersRes.data || []);
+            setCommunities(data.communities || []);
+            setTiers(data.tiers || []);
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "No se pudieron cargar los datos";
             toast({ title: "Error", description: errorMessage, variant: "destructive" });
@@ -64,25 +59,25 @@ export default function SuperAdminDashboard() {
     }, [toast]);
 
     useEffect(() => {
-        if (!authLoading && !isSuperAdmin) {
-            toast({ title: "Acceso Denegado", description: "No tienes permisos de Super Administrador", variant: "destructive" });
+        if (!authLoading && !user) {
             router.push('/home');
             return;
         }
 
-        if (isSuperAdmin) {
+        if (!authLoading && user) {
             fetchData();
         }
-    }, [authLoading, fetchData, isSuperAdmin, router, toast]);
+    }, [authLoading, fetchData, router, user]);
 
     const handleTierChange = async (communityId: string, newTierId: string) => {
         try {
-            const { error } = await supabase
-                .from('communities')
-                .update({ tier_id: newTierId })
-                .eq('id', communityId);
-
-            if (error) throw error;
+            const response = await fetch('/api/superadmin/communities', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ communityId, tierId: newTierId }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Error al actualizar el plan');
             toast({ title: "Plan actualizado", description: "El condominio ahora tiene los nuevos módulos habilitados.", variant: "success" });
             fetchData();
         } catch (error: unknown) {
@@ -95,7 +90,18 @@ export default function SuperAdminDashboard() {
         return <div className="p-8 text-center text-slate-500">Cargando Panel SuperAdmin...</div>;
     }
 
-    if (!isSuperAdmin) return null;
+    if (accessDenied) {
+        return (
+            <div className="mx-auto max-w-3xl p-8">
+                <div className="rounded-lg border border-danger-border bg-danger-bg p-6">
+                    <h1 className="text-xl font-semibold text-danger-fg">Acceso restringido</h1>
+                    <p className="mt-2 text-sm text-danger-fg">
+                        Este panel requiere que el correo este configurado en SUPERADMIN_EMAILS.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const filteredCommunities = communities.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 

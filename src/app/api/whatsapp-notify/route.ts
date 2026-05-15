@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -44,6 +45,9 @@ async function sendWhatsApp(to: string, message: string) {
 // Requires: Authorization: Bearer <WHATSAPP_WEBHOOK_SECRET>
 // Body: { user_id, title, body, type }
 export async function POST(req: NextRequest) {
+    const limited = enforceRateLimit(req, 'whatsapp.notify', { limit: 60, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         // ─── Auth gate: validate internal webhook secret ───
         if (WEBHOOK_SECRET) {

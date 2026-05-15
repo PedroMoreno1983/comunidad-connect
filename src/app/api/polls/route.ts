@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -85,6 +86,9 @@ async function sendWhatsApp(to: string, message: string) {
 }
 
 export async function POST(request: NextRequest) {
+    const limited = enforceRateLimit(request, 'polls.create', { limit: 25, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const supabaseUser = await getSupabaseUserClient();
         const { data: { user }, error: authError } = await supabaseUser.auth.getUser();

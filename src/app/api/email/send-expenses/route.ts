@@ -4,10 +4,14 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'email.send_expenses', { limit: 10, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         // ─── Auth gate: only authenticated admins can send mass emails ───
         const cookieStore = await cookies();

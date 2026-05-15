@@ -10,6 +10,7 @@
     "lint:all": "eslint .",
     "qa:readiness": "node scripts/production-readiness.js",
     "qa:production-mode": "node scripts/production-mode-qa.js",
+    "qa:production-hardening": "node scripts/production-hardening-qa.js",
     "qa:visual": "node scripts/visual-qa.js",
     "qa:functional": "node scripts/functional-qa.js",
     "qa:workflows": "node scripts/workflow-qa.js",

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 import crypto from 'crypto';
 
 function verifyHaulmerSignature(body: string, signature: string | null, secret: string): boolean {
@@ -9,6 +10,9 @@ function verifyHaulmerSignature(body: string, signature: string | null, secret: 
 }
 
 export async function POST(req: Request) {
+    const limited = enforceRateLimit(req, 'webhooks.haulmer', { limit: 180, windowMs: 60_000 });
+    if (limited) return limited;
+
     const rawBody = await req.text();
     const signature = req.headers.get('x-haulmer-signature') ?? req.headers.get('x-webhook-signature');
     const secret = process.env.HAULMER_WEBHOOK_SECRET;

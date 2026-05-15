@@ -13,30 +13,30 @@ export default function OutreachDemo() {
     const [formData, setFormData] = useState({
         adminName: "",
         adminEmail: "",
-        condoName: ""
+        condoName: "",
     });
     const { isDemoUser } = useDemoRestrictions();
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSend = async (event: React.FormEvent) => {
+        event.preventDefault();
         if (!formData.adminName || !formData.adminEmail) {
-            toast({ title: "Faltan datos", description: "Por favor completa el nombre y el correo", variant: "destructive" });
+            toast({ title: "Faltan datos", description: "Completa el nombre y el correo.", variant: "destructive" });
             return;
         }
 
         setLoading(true);
         try {
-            const res = await fetch("/api/email/outreach", {
+            const response = await fetch("/api/email/outreach", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
             });
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Error al enviar el correo");
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Error al enviar el correo");
 
-            toast({ title: "¡Correo enviado!", description: `Se ha enviado la propuesta a ${formData.adminName}`, variant: "success" });
-            setFormData({ adminName: "", adminEmail: "", condoName: "" }); // Reset form
+            toast({ title: "Correo enviado", description: `Se envio la propuesta a ${formData.adminName}.`, variant: "success" });
+            setFormData({ adminName: "", adminEmail: "", condoName: "" });
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo enviar el correo";
             toast({ title: "Error", description: errorMessage, variant: "destructive" });
@@ -46,107 +46,90 @@ export default function OutreachDemo() {
     };
 
     return (
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-lg p-6 md:p-8 shadow-sm">
-            <div className="flex flex-col md:flex-row gap-8 items-center">
+        <div className="rounded-lg border border-brand-100 bg-brand-50/40 p-6 shadow-sm md:p-8">
+            <div className="flex flex-col items-center gap-8 md:flex-row">
                 <div className="flex-1 space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-100 dark:bg-brand-900/30 text-role-admin-fg rounded-full text-xs font-bold uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 rounded-md bg-brand-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-700">
                         <Sparkles className="h-3 w-3" />
-                        Campaña de Captación
+                        Campaña comercial
                     </div>
-                    <h2 className="text-2xl font-bold cc-text-primary">
-                        Envía una propuesta personalizada 🚀
+                    <h2 className="text-2xl font-semibold cc-text-primary">
+                        Envia una propuesta personalizada
                     </h2>
-                    <p className="cc-text-secondary leading-relaxed max-w-lg">
-                        Invita a administradores a conocer **Convive Connect**. El correo incluye
-                        detalles de IA Onboarding, Gestión Financiera y App Residente con un diseño 
-                        premium para causar una excelente primera impresión.
+                    <p className="max-w-lg leading-relaxed cc-text-secondary">
+                        Invita a administradores a conocer Convive Connect. El correo incluye IA onboarding,
+                        gestion financiera y app residente con un diseño comercial cuidado.
                     </p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
+
+                    <div className="flex flex-wrap items-center gap-4 text-sm font-medium cc-text-secondary">
                         <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Diseño Premium
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                            Enfoque en IA
+                            <div className="h-1.5 w-1.5 rounded-full bg-success-fg" />
+                            Diseño oficial
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                            Directo a Demo
+                            Enfoque operacional
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-warning-fg" />
+                            Directo a reunion
                         </div>
                     </div>
                 </div>
 
-                <form onSubmit={handleSend} className="w-full md:w-96 bg-surface p-6 rounded-xl shadow-sm border border-subtle space-y-4">
+                <form onSubmit={handleSend} className="w-full space-y-4 rounded-lg border border-subtle bg-surface p-6 shadow-sm md:w-96">
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
                             <User className="h-4 w-4 text-brand-500" />
-                            Nombre del Administrador
+                            Nombre del administrador
                         </label>
-                        <Input 
-                            placeholder="Ej. Pedro Picapiedra" 
+                        <Input
+                            placeholder="Ej. Pedro Moreno"
                             value={formData.adminName}
-                            onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                            onChange={(event) => setFormData({ ...formData, adminName: event.target.value })}
                             required
-                            className="bg-slate-50 border-slate-200"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
                             <Mail className="h-4 w-4 text-brand-500" />
                             Email de destino
                         </label>
-                        <Input 
+                        <Input
                             type="email"
-                            placeholder="correo@ejemplo.com" 
+                            placeholder="correo@ejemplo.com"
                             value={formData.adminEmail}
-                            onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                            onChange={(event) => setFormData({ ...formData, adminEmail: event.target.value })}
                             required
-                            className="bg-slate-50 border-slate-200"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold cc-text-secondary flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
                             <Building className="h-4 w-4 text-brand-500" />
-                            Nombre del Condominio (Opcional)
+                            Nombre del condominio
                         </label>
-                        <Input 
-                            placeholder="Ej. Edificio Costa del Sol" 
+                        <Input
+                            placeholder="Ej. Edificio Costa del Sol"
                             value={formData.condoName}
-                            onChange={(e) => setFormData({ ...formData, condoName: e.target.value })}
-                            className="bg-slate-50 border-slate-200"
+                            onChange={(event) => setFormData({ ...formData, condoName: event.target.value })}
                         />
                     </div>
 
                     {isDemoUser && (
-                        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
-                            <Lock className="w-4 h-4 flex-shrink-0" />
-                            El envío de correos está deshabilitado en esta cuenta Demo por seguridad.
+                        <div className="flex items-center gap-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-xs font-medium text-warning-fg">
+                            <Lock className="h-4 w-4 shrink-0" />
+                            El envio de correos esta deshabilitado en esta cuenta demo por seguridad.
                         </div>
                     )}
 
-                    <Button 
-                        type="submit" 
-                        disabled={loading || isDemoUser}
-                        className={`w-full text-white font-bold py-6 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] mt-2 group ${
-                            isDemoUser ? "bg-slate-400" : "bg-gradient-to-r from-[#6D28D9] to-[#2563EB] hover:from-indigo-700 hover:to-blue-700"
-                        }`}
-                    >
-                        {loading ? (
-                            "Enviando invitación..."
-                        ) : (
-                            <>
-                                Enviar Invitación Demo
-                                <Send className="ml-2 h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                            </>
-                        )}
+                    <Button type="submit" disabled={loading || isDemoUser} className="w-full" trailingIcon={<Send className="h-4 w-4" />}>
+                        {loading ? "Enviando..." : "Enviar invitacion comercial"}
                     </Button>
-                    
-                    <p className="text-[10px] text-center text-slate-400 mt-4 leading-tight">
-                        Este correo será enviado desde notificaciones@send.datawiseconsultoria.com con el diseño oficial de la plataforma.
+
+                    <p className="text-center text-[11px] leading-5 cc-text-tertiary">
+                        El correo se envia desde el remitente transaccional configurado para la plataforma.
                     </p>
                 </form>
             </div>
