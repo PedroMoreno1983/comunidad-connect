@@ -42,15 +42,15 @@ function DashboardShell({
     if (loading || !user) return null;
 
     return (
-        <div className="cc-dashboard flex h-screen bg-transparent overflow-hidden relative">
+        <div className="cc-dashboard grid h-dvh bg-transparent" style={{ gridTemplateColumns: "auto minmax(0, 1fr)" }}>
             <AnimatedBackground />
             <ErrorBoundary name="Sidebar">
                 <Sidebar />
             </ErrorBoundary>
-            <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
+            <main className="relative z-10 flex min-w-0 flex-col overflow-y-auto">
                 {/* Demo Banner */}
                 {isDemoUser && (
-                    <div className="sticky top-0 z-50 flex min-h-9 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-3 py-1.5 pl-16 text-[11px] font-semibold leading-tight text-white sm:min-h-10 sm:px-4 sm:pl-20 sm:text-xs lg:min-h-0 lg:pl-4">
+                    <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
                         <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-brand-300 sm:h-4 sm:w-4" />
                         <span className="text-center sm:hidden">Demo protegida: envíos reales deshabilitados.</span>
                         <span className="hidden text-center sm:inline">{demoMessage}</span>
@@ -58,7 +58,7 @@ function DashboardShell({
                 )}
                 
                 {/* Main content */}
-                <div className="relative flex-1 p-4 pb-28 pt-24 sm:pt-20 lg:p-6 lg:pb-28 lg:pr-28">
+                <div className="relative flex-1 p-4 pb-28 pt-8 sm:p-5 sm:pb-28 lg:p-6 lg:pb-28 lg:pr-28">
                     <div key={pathname} className="min-h-full">
                         <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
                             {children}

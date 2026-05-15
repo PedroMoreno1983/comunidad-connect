@@ -22,6 +22,7 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 // TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
 // from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
@@ -339,6 +340,25 @@ export default function AmenitiesPage() {
                 <ModuleStat label="Horarios diarios" value={timeSlots.length} icon={<Clock className="h-4 w-4" />} />
             </div>
 
+            <ModuleFlow
+                title="De disponibilidad a reserva confirmada"
+                description="El residente elige un espacio, revisa horarios disponibles, confirma la reserva y deja registro visible para conserjería y administración."
+                steps={[
+                    "Comparar espacios y reglas",
+                    "Seleccionar fecha y horario",
+                    "Confirmar reserva",
+                    "Usar el espacio con registro",
+                ]}
+                outcome="Cierre esperado: reserva confirmada, horario bloqueado y registro consultable desde Mis Reservas."
+                currentStep={userBookings.length ? 4 : amenities.length ? 2 : 1}
+                completedSteps={userBookings.length ? 3 : 1}
+                statusLabel={userBookings.length ? "Con reservas" : "Disponible"}
+                primaryActionLabel="Reservar espacio"
+                primaryActionHref="#reservar-espacio"
+                secondaryActionLabel="Ver mis reservas"
+                secondaryActionHref="#mis-reservas"
+            />
+
             <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
@@ -376,7 +396,7 @@ export default function AmenitiesPage() {
                         description="Cuando administración active quinchos, salas o piscinas, aparecerán acá para reservar."
                     />
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div id="reservar-espacio" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {amenities.map((amenity) => {
                             const Icon = getIcon(amenity.iconName);
                             const amenityBookings = bookings.filter(booking => booking.amenityId === amenity.id);
@@ -442,7 +462,7 @@ export default function AmenitiesPage() {
             {/* My Bookings */}
             {!loading && userBookings.length > 0 && (
                 <ErrorBoundary name="Mis Reservas">
-                    <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <div id="mis-reservas" className="scroll-mt-24 rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
                                 <Check className="h-5 w-5" />
