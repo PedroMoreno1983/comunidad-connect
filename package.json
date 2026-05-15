@@ -13,7 +13,8 @@
     "qa:functional": "node scripts/functional-qa.js",
     "qa:workflows": "node scripts/workflow-qa.js",
     "qa:coco-legal": "node scripts/coco-legal-qa.js",
-    "qa:human-flows": "node scripts/human-flow-qa.js"
+    "qa:human-flows": "node scripts/human-flow-qa.js",
+    "qa:multitenant": "node scripts/multitenant-qa.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

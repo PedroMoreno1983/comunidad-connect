@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Titulo, descripcion, fecha y al menos dos opciones son obligatorios' }, { status: 400 });
         }
 
-        let { data: poll, error: pollError } = await supabaseAdmin
+        const { data: poll, error: pollError } = await supabaseAdmin
             .from('polls')
             .insert({
                 title,
@@ -131,23 +131,6 @@ export async function POST(request: NextRequest) {
             })
             .select('*')
             .single();
-
-        if (pollError && pollError.message?.toLowerCase().includes('community_id')) {
-            const retry = await supabaseAdmin
-                .from('polls')
-                .insert({
-                    title,
-                    description,
-                    category,
-                    end_date: endDate,
-                    status: 'active',
-                    created_by: profile.id,
-                })
-                .select('*')
-                .single();
-            poll = retry.data;
-            pollError = retry.error;
-        }
 
         if (pollError || !poll) {
             return NextResponse.json({ error: pollError?.message || 'No se pudo crear la votacion' }, { status: 500 });
