@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { HaulmerService } from '@/lib/services/haulmer';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 // Allowed return URL origins to prevent open redirect
 const ALLOWED_ORIGINS = [
@@ -29,6 +30,9 @@ function sanitize(value: unknown, maxLen: number): string {
 }
 
 export async function POST(req: NextRequest) {
+    const limited = enforceRateLimit(req, 'payments.create_link', { limit: 20, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const cookieStore = await cookies();
         const supabaseUser = createServerClient(

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
@@ -70,6 +71,9 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
 }
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'onboarding.extract', { limit: 12, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const cookieStore = await cookies();
         const supabaseUser = createServerClient(

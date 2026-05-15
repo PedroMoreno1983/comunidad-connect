@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 /**
  * Recibe eventos de sensores (Shelly, Tuya, etc.) e invoca a CoCo IA
  * de forma autónoma con privilegios de sistema.
  */
 export async function POST(req: NextRequest) {
+    const limited = enforceRateLimit(req, 'webhooks.iot', { limit: 120, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const authHeader = req.headers.get('authorization');
         const secret = process.env.IOT_WEBHOOK_SECRET;

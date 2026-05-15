@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-
-const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS || "")
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
+import { isSuperAdminEmail } from "@/lib/security/superadmin";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -35,7 +31,7 @@ export async function proxy(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const email = user?.email?.toLowerCase();
-  if (!email || !SUPERADMIN_EMAILS.includes(email)) {
+  if (!isSuperAdminEmail(email)) {
     return NextResponse.redirect(new URL("/home", req.url));
   }
 
