@@ -28,6 +28,10 @@ function hasValue(key) {
   return typeof value === "string" && value.trim().length > 0 && !value.toLowerCase().includes("placeholder");
 }
 
+function getValue(key) {
+  return process.env[key] || localEnv[key] || "";
+}
+
 function checkKeys(keys) {
   return keys.map((key) => ({ key, present: hasValue(key) }));
 }
@@ -46,6 +50,7 @@ const groups = [
     critical: true,
     checks: [
       ...checkKeys(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"]),
+      { key: "NEXT_PUBLIC_ENABLE_DEMO=false", present: getValue("NEXT_PUBLIC_ENABLE_DEMO") !== "true" },
     ],
   },
   {

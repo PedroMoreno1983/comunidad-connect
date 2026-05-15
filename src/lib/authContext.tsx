@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { isDemoEmail, isDemoModeEnabled } from '@/lib/runtimeMode';
 
 // ============================================
 // Unified Auth Context
@@ -71,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const getStoredDemoUser = (): User | null => {
         if (typeof window === 'undefined') return null;
+        if (!isDemoModeEnabled()) {
+            localStorage.removeItem(DEMO_STORAGE_KEY);
+            return null;
+        }
         try {
             const raw = localStorage.getItem(DEMO_STORAGE_KEY);
             return raw ? JSON.parse(raw) as User : null;
@@ -258,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
                 console.error("Supabase not configured. Signup will fail.");
-                return { error: new Error("Sistema configurado en modo DEMO. El registro real no está disponible.") };
+                return { error: new Error("Sistema no configurado para registro real. Revisa Supabase.") };
             }
 
             const { error } = await supabase.auth.signUp({
@@ -288,6 +293,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const loginDemo = (role: User["role"]) => {
+        if (!isDemoModeEnabled()) {
+            throw new Error('El acceso demo no esta habilitado en este entorno.');
+        }
         const demoUser = buildDemoUser(role);
         if (typeof window !== 'undefined') {
             localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser));
@@ -300,7 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updateDemoUser = (updates: Partial<User>) => {
         setUser(current => {
-            if (!current || !current.email.toLowerCase().endsWith('@demo.com')) return current;
+            if (!isDemoModeEnabled() || !current || !isDemoEmail(current.email)) return current;
             const next = { ...current, ...updates };
             if (typeof window !== 'undefined') {
                 localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
