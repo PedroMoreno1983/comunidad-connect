@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { ServiceProvider } from "@/lib/types";
 import { saveDemoCreatedProvider } from "@/lib/services/demoProvidersStorage";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
 
@@ -212,6 +213,25 @@ export default function ProviderRegisterPage() {
                 </p>
             </div>
 
+            <ModuleFlow
+                title="De perfil a proveedor verificable"
+                description="El técnico completa datos básicos, especialidades, certificaciones y foto antes de quedar disponible para recibir solicitudes."
+                steps={[
+                    "Identificar proveedor",
+                    "Completar experiencia",
+                    "Adjuntar respaldo visual",
+                    "Publicar perfil",
+                ]}
+                outcome="Cierre esperado: perfil creado, visible en el directorio y disponible para solicitudes con trazabilidad."
+                currentStep={step}
+                completedSteps={step - 1}
+                statusLabel={`Paso ${step} de 3`}
+                primaryActionLabel="Completar perfil"
+                primaryActionHref="#formulario-proveedor"
+                secondaryActionLabel="Volver a servicios"
+                secondaryActionHref="/services"
+            />
+
             {/* Progress Steps */}
             <div className="flex items-center justify-center gap-4 mb-8">
                 {[1, 2, 3].map((s) => (
@@ -232,7 +252,7 @@ export default function ProviderRegisterPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="bg-surface rounded-lg shadow-sm border border-subtle p-8">
+            <form id="formulario-proveedor" onSubmit={handleSubmit} className="scroll-mt-24 bg-surface rounded-lg shadow-sm border border-subtle p-8">
                 {/* Step 1: Basic Info */}
                 {step === 1 && (
                     <div className="space-y-6">

@@ -589,6 +589,15 @@ export async function executeTool(
             }
 
             case 'send_whatsapp_notification': {
+                const secret = process.env.WHATSAPP_WEBHOOK_SECRET || '';
+                if (!secret) {
+                    return {
+                        success: false,
+                        skipped: true,
+                        error: 'WhatsApp interno no está configurado: falta WHATSAPP_WEBHOOK_SECRET.',
+                    };
+                }
+
                 // Find all profiles for this unit
                 const { data: profiles } = await supabase
                     .from('profiles')
@@ -599,7 +608,6 @@ export async function executeTool(
                     return { error: 'No se encontraron residentes registrados con WhatsApp para ese departamento.' };
                 }
 
-                const secret = process.env.WHATSAPP_WEBHOOK_SECRET || '';
                 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
                     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
                 
