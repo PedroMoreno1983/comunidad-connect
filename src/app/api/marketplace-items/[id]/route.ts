@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 const VALID_STATUSES = ['available', 'reserved', 'sold', 'hidden'] as const;
 type MarketplaceStatus = typeof VALID_STATUSES[number];
@@ -116,6 +117,24 @@ export async function PATCH(
             });
         }
 
+        await recordOperationEvent({
+            communityId: context.actor?.community_id,
+            actorId: context.actor?.id,
+            actorRole: context.actor?.role,
+            action: 'marketplace_item.status_changed',
+            entityType: 'marketplace_item',
+            entityId: item.id,
+            severity: status === 'hidden' ? 'warning' : 'success',
+            status: status === 'hidden' ? 'blocked' : 'success',
+            summary: `Publicacion ${context.item.title} cambiada a ${status}`,
+            metadata: {
+                previousStatus: context.item.status,
+                nextStatus: status,
+                sellerId: context.item.seller_id,
+            },
+            requestId: getRequestId(req),
+        });
+
         return NextResponse.json({ item }, { status: 200 });
     } catch (error) {
         return NextResponse.json(
@@ -126,7 +145,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-    _req: NextRequest,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
@@ -143,6 +162,23 @@ export async function DELETE(
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        await recordOperationEvent({
+            communityId: context.actor?.community_id,
+            actorId: context.actor?.id,
+            actorRole: context.actor?.role,
+            action: 'marketplace_item.deleted',
+            entityType: 'marketplace_item',
+            entityId: id,
+            severity: 'warning',
+            status: 'success',
+            summary: `Publicacion eliminada: ${context.item.title}`,
+            metadata: {
+                sellerId: context.item.seller_id,
+                previousStatus: context.item.status,
+            },
+            requestId: getRequestId(req),
+        });
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {

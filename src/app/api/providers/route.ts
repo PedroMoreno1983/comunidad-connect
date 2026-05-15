@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 const VALID_CATEGORIES = ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'] as const;
 type ProviderCategory = typeof VALID_CATEGORIES[number];
@@ -133,6 +134,25 @@ export async function POST(request: NextRequest) {
             body: 'Tu perfil quedo registrado y pendiente de verificacion.',
             link: `/services/provider/${provider.id}`,
             community_id: profile.community_id,
+        });
+
+        await recordOperationEvent({
+            communityId: profile.community_id,
+            actorId: profile.id,
+            actorRole: profile.role,
+            action: 'provider.created',
+            entityType: 'service_provider',
+            entityId: provider.id,
+            severity: 'success',
+            status: 'pending',
+            summary: `Proveedor registrado pendiente de verificacion: ${provider.name}`,
+            metadata: {
+                category,
+                yearsExperience: provider.years_experience,
+                specialties: provider.specialties,
+                certifications: provider.certifications,
+            },
+            requestId: getRequestId(request),
         });
 
         return NextResponse.json({

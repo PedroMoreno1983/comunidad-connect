@@ -15,6 +15,7 @@
     "qa:coco-legal": "node scripts/coco-legal-qa.js",
     "qa:human-flows": "node scripts/human-flow-qa.js",
     "qa:multitenant": "node scripts/multitenant-qa.js",
+    "qa:operations": "node scripts/operations-qa.js",
     "qa:security-headers": "node scripts/security-headers-qa.js"
   },
   "dependencies": {

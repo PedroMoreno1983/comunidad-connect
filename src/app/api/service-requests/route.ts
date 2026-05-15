@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 async function getSupabaseUserClient() {
     const cookieStore = await cookies();
@@ -110,6 +111,25 @@ export async function POST(req: NextRequest) {
             body: `Tu solicitud a ${provider.name} quedo registrada.`,
             link: '/services/my-requests',
             community_id: profile.community_id,
+        });
+
+        await recordOperationEvent({
+            communityId: profile.community_id,
+            actorId: profile.id,
+            actorRole: profile.role,
+            action: 'service_request.created',
+            entityType: 'service_request',
+            entityId: request.id,
+            severity: 'success',
+            status: 'pending',
+            summary: `Solicitud enviada a ${provider.name}`,
+            metadata: {
+                providerId: provider.id,
+                preferredDate,
+                preferredTime,
+                descriptionLength: description.length,
+            },
+            requestId: getRequestId(req),
         });
 
         return NextResponse.json({ request }, { status: 201 });
