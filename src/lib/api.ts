@@ -438,7 +438,7 @@ export const PollsService = {
             .select(`
                 *,
                 options:poll_options(*),
-                votes:votes(option_id)
+                votes:poll_votes(option_id)
             `)
             .eq('status', 'active')
             .order('created_at', { ascending: false });
@@ -457,7 +457,7 @@ export const PollsService = {
             .select(`
                 *,
                 options:poll_options(*),
-                votes:votes(option_id)
+                votes:poll_votes(option_id)
             `)
             .eq('status', 'closed')
             .order('end_date', { ascending: false });
@@ -473,7 +473,7 @@ export const PollsService = {
     async submitVote(pollId: string, optionId: string, userId: string) {
         // En modo Demo, el userId es un UUID quemado (ej. Pedro Dueño)
         const { data, error } = await supabase
-            .from('votes')
+            .from('poll_votes')
             .insert({
                 poll_id: pollId,
                 option_id: optionId,
@@ -492,7 +492,7 @@ export const PollsService = {
 
     async hasUserVoted(pollId: string, userId: string) {
         const { data, error } = await supabase
-            .from('votes')
+            .from('poll_votes')
             .select('id, option_id')
             .eq('poll_id', pollId)
             .eq('user_id', userId)
