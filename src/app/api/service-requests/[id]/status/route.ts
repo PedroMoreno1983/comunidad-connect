@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordAiEvent } from '@/lib/ai/telemetry';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 const VALID_STATUSES = ['pending', 'accepted', 'completed', 'cancelled'] as const;
 type ServiceRequestStatus = typeof VALID_STATUSES[number];
@@ -159,6 +160,24 @@ export async function PATCH(
             model: 'api-v1',
             latencyMs: Date.now() - started,
             outputChars: updatedRequest.description.length,
+        });
+
+        await recordOperationEvent({
+            communityId: request.community_id || actorProfile.community_id,
+            actorId: actorProfile.id,
+            actorRole: actorProfile.role,
+            action: 'service_request.status_changed',
+            entityType: 'service_request',
+            entityId: updatedRequest.id,
+            severity: status === 'cancelled' ? 'warning' : 'success',
+            status: status === 'completed' ? 'success' : status === 'cancelled' ? 'blocked' : 'pending',
+            summary: `Solicitud ${statusLabel(status)}`,
+            metadata: {
+                previousStatus: request.status,
+                nextStatus: status,
+                providerId: provider?.id || null,
+            },
+            requestId: getRequestId(req),
         });
 
         return NextResponse.json({ request: updatedRequest }, { status: 200 });

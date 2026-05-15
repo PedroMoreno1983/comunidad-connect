@@ -11,6 +11,7 @@ import { BrandWordmark } from '@/components/BrandWordmark';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
 import { useState, useEffect } from 'react';
 import {
+    Activity,
     Building2,
     Home,
     ShoppingBag,
@@ -134,6 +135,7 @@ export function Sidebar() {
                 { href: '/admin/marketplace', label: 'Marketplace Admin', icon: ShoppingBag, roles: ['admin'] },
                 { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'], feature: 'maintenance' },
                 { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'], feature: 'voting' },
+                { href: '/admin/operations', label: 'Centro Operativo', icon: Activity, roles: ['admin'] },
                 { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
                 { href: '/admin/onboarding', label: 'Carga Masiva de Datos', icon: Upload, roles: ['admin'], feature: 'coco_ai' },
             ]

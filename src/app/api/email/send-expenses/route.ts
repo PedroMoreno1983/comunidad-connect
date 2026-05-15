@@ -3,6 +3,7 @@ import { resend, FROM_EMAIL, formatCLP } from '@/lib/email';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
         // Verify caller is admin and get their communityId
         const { data: callerProfile } = await supabaseAdmin
             .from('profiles')
-            .select('role, community_id')
+            .select('id, role, community_id')
             .eq('id', user.id)
             .single();
 
@@ -217,6 +218,25 @@ export async function POST(request: Request) {
 
         const sent = results.filter(r => r.status === 'fulfilled').length;
         const failed = results.filter(r => r.status === 'rejected').length;
+
+        await recordOperationEvent({
+            communityId,
+            actorId: callerProfile.id,
+            actorRole: callerProfile.role,
+            action: 'expenses.email_batch_sent',
+            entityType: 'expense_batch',
+            severity: failed > 0 ? 'warning' : 'success',
+            status: failed > 0 ? 'pending' : 'success',
+            summary: `Gastos comunes enviados por email: ${sent} de ${residents.length}`,
+            metadata: {
+                month,
+                totalAmount,
+                sent,
+                failed,
+                recipients: residents.length,
+            },
+            requestId: getRequestId(request),
+        });
 
         return NextResponse.json({ ok: true, sent, failed, total: residents.length });
     } catch (err: unknown) {

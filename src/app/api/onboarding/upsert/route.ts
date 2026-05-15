@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,6 +138,24 @@ export async function POST(request: Request) {
                 console.error('[onboarding/upsert] row failed:', err);
             }
         }
+
+        await recordOperationEvent({
+            communityId,
+            actorId: user.id,
+            actorRole: profile.role,
+            action: 'onboarding.roster_synced',
+            entityType: 'resident_roster',
+            severity: errorCount > 0 ? 'warning' : 'success',
+            status: errorCount > 0 ? 'pending' : 'success',
+            summary: `Nomina sincronizada: ${successCount} residentes preparados`,
+            metadata: {
+                processed: residents.length,
+                success: successCount,
+                errors: errorCount,
+                destinations: ['profiles', 'units'],
+            },
+            requestId: getRequestId(request),
+        });
 
         return NextResponse.json({
             message: 'Sincronizacion completada',

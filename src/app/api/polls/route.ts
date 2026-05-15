@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -236,6 +237,26 @@ export async function POST(request: NextRequest) {
                 }
             }
         }
+
+        await recordOperationEvent({
+            communityId: profile.community_id,
+            actorId: profile.id,
+            actorRole: profile.role,
+            action: 'poll.created',
+            entityType: 'poll',
+            entityId: poll.id,
+            severity: delivery.whatsapp.failed || delivery.notifications.failed ? 'warning' : 'success',
+            status: 'success',
+            summary: `Votacion publicada: ${title}`,
+            metadata: {
+                category,
+                options: options.length,
+                channels,
+                delivery,
+                recipients: recipients.length,
+            },
+            requestId: getRequestId(request),
+        });
 
         return NextResponse.json({
             poll,
