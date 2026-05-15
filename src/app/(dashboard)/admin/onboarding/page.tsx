@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 interface ExtractedUser {
     id: string;
@@ -112,7 +113,7 @@ function mapRowsFromCells(rows: unknown[][]) {
 
 async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
     const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!extension || !["csv", "txt", "xlsx"].includes(extension)) return [];
+    if (!extension || !["csv", "txt", "xlsx", "xls"].includes(extension)) return [];
 
     if (extension === "xlsx") {
         const ExcelJS = await import("exceljs");
@@ -129,6 +130,10 @@ async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
             });
         });
         return mapRowsFromCells(rows);
+    }
+
+    if (extension === "xls") {
+        return [];
     }
 
     const lines = (await file.text())
@@ -484,8 +489,28 @@ export default function AdminOnboardingPage() {
                 ))}
             </section>
 
+            <ModuleFlow
+                title="De nómina a comunidad operativa"
+                description="La administración sube un archivo, revisa la extracción, corrige filas incompletas y sincroniza residentes solo cuando el lote está limpio."
+                steps={[
+                    "Subir archivo",
+                    "Revisar extracción",
+                    "Confirmar calidad",
+                    "Sincronizar residentes",
+                ]}
+                outcome="Cierre esperado: residentes disponibles en Directorio y Unidades, con filas dudosas corregidas antes de guardar."
+                currentStep={extractedData ? 2 : syncSuccess ? 4 : 1}
+                completedSteps={syncSuccess ? 4 : extractedData ? 1 : 0}
+                statusLabel={syncSuccess ? "Sincronizado" : extractedData ? "En revisión" : "Listo para carga"}
+                primaryActionLabel={extractedData ? "Revisar filas" : "Subir nómina"}
+                primaryActionHref={extractedData ? "#revision-nomina" : "#subir-nomina"}
+                secondaryActionLabel="Ver unidades"
+                secondaryActionHref="/admin/units"
+            />
+
             {!extractedData && !syncSuccess && (
                 <section
+                    id="subir-nomina"
                     onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
                     onDragLeave={(event) => { event.preventDefault(); setIsDragging(false); }}
                     onDrop={handleDrop}
@@ -500,7 +525,7 @@ export default function AdminOnboardingPage() {
                         </h2>
                         <p className="mt-3 text-sm leading-6 cc-text-secondary">
                             {isExtracting
-                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mant?n esta ventana abierta."
+                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mantén esta ventana abierta."
                                 : "Acepta PDF, Word, Excel .xls/.xlsx, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y teléfono."}
                         </p>
 
@@ -511,7 +536,7 @@ export default function AdminOnboardingPage() {
                                     Seleccionar archivo
                                     <input
                                         type="file"
-                                        accept=".pdf,.docx,.doc,.xlsx,.txt,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                                        accept=".pdf,.docx,.doc,.xls,.xlsx,.txt,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                                         aria-label="Seleccionar nómina en PDF, Word, Excel XLS/XLSX, TXT o CSV"
                                         onChange={handleFileUpload}
                                         disabled={isExtracting}
@@ -619,6 +644,7 @@ export default function AdminOnboardingPage() {
                 {extractedData && (
                     <motion.section
                         ref={activeSectionRef}
+                        id="revision-nomina"
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}

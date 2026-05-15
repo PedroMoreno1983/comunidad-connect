@@ -43,7 +43,7 @@ export function MobileMenuButton({ onClick, isOpen }: { onClick: () => void; isO
     return (
         <button
             onClick={onClick}
-            className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-surface shadow-md border border-subtle cc-text-primary"
+            className="fixed left-3 top-2 z-50 rounded-lg border border-subtle bg-surface p-2.5 shadow-sm cc-text-primary lg:hidden"
         >
             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -196,13 +196,13 @@ export function Sidebar() {
     const sidebarContent = (
         <>
             {/* Header / Logo */}
-            <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-subtle px-4">
+            <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-subtle px-3">
                 <div className="flex min-w-0 items-center">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={getAvatarStyle()}>
                         <Building2 className="h-5 w-5 text-white" />
                     </div>
-                    <div className="ml-3 min-w-0 truncate">
-                        <BrandWordmark className="text-base text-brand-600" />
+                    <div className="ml-3 min-w-0 overflow-hidden">
+                        <BrandWordmark className="max-w-[180px] text-xs text-brand-600" />
                     </div>
                 </div>
                 <div className="shrink-0">
@@ -309,8 +309,8 @@ export function Sidebar() {
                 aria-expanded={isMobileOpen}
                 aria-controls="mobile-sidebar"
                 className={clsx(
-                    "lg:hidden fixed left-4 z-50 p-2.5 rounded-lg bg-surface shadow-sm border border-subtle cc-text-primary",
-                    isDemoUser ? "top-16" : "top-4"
+                    "fixed left-3 z-50 rounded-lg border border-subtle bg-surface p-2.5 shadow-sm cc-text-primary lg:hidden",
+                    isDemoUser ? "top-2" : "top-4"
                 )}
             >
                 {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -328,7 +328,7 @@ export function Sidebar() {
             {isMobileOpen && (
                 <div
                     id="mobile-sidebar"
-                    className="fixed inset-y-0 left-0 z-40 flex h-screen w-72 flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
+                    className="fixed inset-y-0 left-0 z-40 flex h-dvh w-[min(20rem,86vw)] flex-col border-r border-subtle bg-surface shadow-xl lg:hidden"
                 >
                     {sidebarContent}
                 </div>

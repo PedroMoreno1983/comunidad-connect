@@ -97,9 +97,51 @@ function buildLocalCoCoFallback(
     const text = message.toLowerCase();
     const page = context.currentPage || '';
 
+    if (
+        text.includes('ley') ||
+        text.includes('copropiedad') ||
+        text.includes('reglamento') ||
+        text.includes('ruido') ||
+        text.includes('moroso') ||
+        text.includes('morosidad') ||
+        text.includes('gasto comun') ||
+        text.includes('gastos comunes') ||
+        text.includes('administrador')
+    ) {
+        if (text.includes('dato') || text.includes('camara') || text.includes('cámara') || text.includes('rut') || text.includes('whatsapp')) {
+            return {
+                reply: 'Como orientación operativa, aplica minimización y acceso por rol. La Ley 21.719 exige tratar datos personales con finalidad, proporcionalidad, seguridad, transparencia y confidencialidad. No conviene exponer RUT, teléfonos, imágenes de cámaras, deudas o datos de contacto a vecinos no autorizados. Si es una solicitud formal de acceso, rectificación o eliminación, debe canalizarla Administración.',
+                navigate: context.role === 'admin' ? '/admin/users' : '/profile',
+                action: 'OPEN_PRIVACY_CONTEXT',
+            };
+        }
+
+        if (text.includes('ruido') || text.includes('fiesta') || text.includes('molestia')) {
+            return {
+                reply: 'Como orientación operativa, la Ley 21.442 art. 27 prohíbe usar una unidad de forma que perturbe la tranquilidad, seguridad, salubridad o habitabilidad, incluyendo ruidos en horas de descanso. Lo correcto es registrar fecha, hora, unidad, evidencia y recurrencia; si hay reincidencia, Administración puede aplicar el flujo del reglamento y, cuando corresponda, escalar a la vía legal. Esto no reemplaza asesoría jurídica.',
+                navigate: context.role === 'admin' ? '/admin/mantenimiento' : '/resident/cases',
+                action: 'OPEN_CLAIMS_CONTEXT',
+            };
+        }
+
+        if (text.includes('moroso') || text.includes('morosidad') || text.includes('gasto comun') || text.includes('gastos comunes') || text.includes('corte') || text.includes('suspension')) {
+            return {
+                reply: 'Como orientación operativa, los gastos comunes se rigen por la Ley 21.442 arts. 31 y 32, y el aviso de cobro firmado por la administración tiene mérito ejecutivo. Para suspensión de servicios, el art. 36 exige tres o más cuotas morosas, autorización previa del comité y solicitud escrita del administrador; además, no se puede suspender electricidad a personas electrodependientes. Evita divulgar deudas de otros residentes fuera de perfiles autorizados.',
+                navigate: context.role === 'admin' ? '/admin/finanzas' : '/resident/finances',
+                action: 'OPEN_FINANCES',
+            };
+        }
+
+        return {
+            reply: 'Como orientación operativa, CoCo usa la Ley 21.442 de Copropiedad Inmobiliaria, su reglamento y la Ley 21.719 de datos personales. Para administrador: revisar inscripción vigente, rendición de cuentas, cobro y conservación de bienes comunes. Para convivencia: registrar hechos, aplicar reglamento y mantener trazabilidad. Para datos personales: mínimo dato necesario, finalidad clara y acceso por rol. No reemplazo asesoría legal, pero puedo ayudarte a ordenar el caso.',
+            navigate: context.role === 'admin' ? '/admin/training' : '/resident/training',
+            action: 'OPEN_LEGAL_GUIDANCE',
+        };
+    }
+
     if (text.includes('agua') || text.includes('consumo') || page.includes('consumo')) {
         return {
-            reply: 'Puedo ayudarte con control hidrico: revisa consumo mensual, unidades sin lectura y alertas de fuga. Si quieres actuar ahora, entra al modulo de Control Hidrico y prioriza las unidades con sobreconsumo.',
+            reply: 'Puedo ayudarte con control hídrico: revisa consumo mensual, unidades sin lectura y alertas de fuga. Si quieres actuar ahora, entra al módulo de Control Hídrico y prioriza las unidades con sobreconsumo.',
             navigate: context.role === 'admin' ? '/admin/consumo' : '/resident/consumo',
             action: 'OPEN_WATER_MODULE',
         };
@@ -107,7 +149,7 @@ function buildLocalCoCoFallback(
 
     if (text.includes('reserva') || text.includes('quincho') || text.includes('sala') || page.includes('amenities')) {
         return {
-            reply: 'Para reservas, lo mas rapido es elegir el espacio, fecha y horario disponible. Si hay conflicto, conviene proponer un segundo horario para no dejar la solicitud abierta.',
+            reply: 'Para reservas, lo más rápido es elegir el espacio, fecha y horario disponible. Si hay conflicto, conviene proponer un segundo horario para no dejar la solicitud abierta.',
             navigate: '/amenities',
             action: 'OPEN_AMENITIES',
         };
@@ -115,7 +157,7 @@ function buildLocalCoCoFallback(
 
     if (text.includes('mantencion') || text.includes('mantenimiento') || text.includes('reparacion') || page.includes('mantenimiento')) {
         return {
-            reply: 'Para mantenimiento, registra el caso con ubicacion, urgencia, evidencia y responsable. Si hay riesgo a personas o bienes, tratalo como alta prioridad y escalar a administracion.',
+            reply: 'Para mantenimiento, registra el caso con ubicación, urgencia, evidencia y responsable. Si hay riesgo a personas o bienes, trátalo como alta prioridad y escala a administración.',
             navigate: context.role === 'admin' ? '/admin/mantenimiento' : '/resident/cases',
             action: 'OPEN_MAINTENANCE',
         };
@@ -130,7 +172,7 @@ function buildLocalCoCoFallback(
     }
 
     return {
-        reply: `Estoy en modo operativo local, ${context.name || 'vecino/a'}. Puedo orientarte por modulo, crear criterios de priorizacion y llevarte a la seccion correcta mientras el motor IA principal no esta disponible.`,
+        reply: `Estoy en modo operativo local, ${context.name || 'vecino/a'}. Puedo orientarte por módulo, crear criterios de priorización y llevarte a la sección correcta mientras el motor IA principal no está disponible.`,
         action: 'LOCAL_FALLBACK',
     };
 }

@@ -19,6 +19,7 @@ import { ProviderCard } from "@/components/services/ProviderCard";
 import { ServiceCategoryCard } from "@/components/services/ServiceCategoryCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { mergeDemoCreatedProviders } from "@/lib/services/demoProvidersStorage";
 
 interface ServiceCategory {
@@ -143,6 +144,25 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                 ))}
             </section>
 
+            <ModuleFlow
+                title="De búsqueda a servicio cerrado"
+                description="El residente encuentra un proveedor, solicita el trabajo, coordina la visita y deja el cierre trazable para la comunidad."
+                steps={[
+                    "Filtrar proveedor verificado",
+                    "Enviar solicitud",
+                    "Coordinar trabajo",
+                    "Cerrar y evaluar",
+                ]}
+                outcome="Cierre esperado: solicitud registrada, proveedor notificado y estado visible en Mis solicitudes."
+                currentStep={filteredProviders.length ? 2 : 1}
+                completedSteps={availableCount > 0 ? 1 : 0}
+                statusLabel="Red activa"
+                primaryActionLabel="Explorar servicios"
+                primaryActionHref="#catalogo-servicios"
+                secondaryActionLabel="Mis solicitudes"
+                secondaryActionHref="/services/my-requests"
+            />
+
             <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
@@ -163,7 +183,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                 </div>
             </section>
 
-            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+            <section id="catalogo-servicios" className="scroll-mt-24 rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />

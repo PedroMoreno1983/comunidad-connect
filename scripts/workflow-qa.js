@@ -109,6 +109,27 @@ async function assertModuleFlow(page, route, expectedTitle, options = {}) {
     });
   }, failures));
 
+  steps.push(await runStep("amenities workflow anchors to booking grid", async () => {
+    await assertModuleFlow(page, "/amenities", "De disponibilidad a reserva confirmada", {
+      primaryAction: /Reservar espacio/i,
+      targetSelector: "#reservar-espacio",
+    });
+  }, failures));
+
+  steps.push(await runStep("services workflow anchors to catalog", async () => {
+    await assertModuleFlow(page, "/services", "De búsqueda a servicio cerrado", {
+      primaryAction: /Explorar servicios/i,
+      targetSelector: "#catalogo-servicios",
+    });
+  }, failures));
+
+  steps.push(await runStep("onboarding workflow anchors to upload", async () => {
+    await assertModuleFlow(page, "/admin/onboarding", "De nómina a comunidad operativa", {
+      primaryAction: /Subir nómina|Subir nomina|Revisar filas/i,
+      targetSelector: "#subir-nomina, #revision-nomina",
+    });
+  }, failures));
+
   steps.push(await runStep("maintenance workflow anchors to queue", async () => {
     await assertModuleFlow(page, "/admin/mantenimiento", "De alerta a tarea cerrada", {
       primaryAction: /Revisar casos CoCo|Ir a cola operativa/i,

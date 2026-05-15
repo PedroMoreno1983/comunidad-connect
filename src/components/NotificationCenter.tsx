@@ -147,7 +147,7 @@ export function NotificationCenter() {
             </button>
 
             {isOpen && (
-                <div className="fixed left-3 right-3 top-28 z-50 max-h-[calc(100vh-8rem)] overflow-hidden rounded-lg border border-subtle bg-surface shadow-2xl shadow-slate-200/60 dark:shadow-slate-950/50 sm:left-4 sm:right-auto sm:top-16 sm:max-h-[min(74vh,640px)] sm:w-[360px]">
+                <div className="absolute right-0 top-12 z-50 max-h-[min(72vh,620px)] w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-2xl shadow-slate-200/60 dark:shadow-slate-950/50 sm:w-[22rem]">
                     <div className="flex items-center justify-between border-b border-subtle p-4">
                         <div>
                             <h3 className="text-base font-semibold cc-text-primary">Notificaciones</h3>
@@ -180,7 +180,7 @@ export function NotificationCenter() {
                         </div>
                     </div>
 
-                    <div className="max-h-[calc(100vh-13rem)] space-y-2 overflow-y-auto bg-canvas/45 p-3 sm:max-h-[calc(min(74vh,640px)-74px)]">
+                    <div className="max-h-[calc(min(72vh,620px)-74px)] space-y-2 overflow-y-auto bg-canvas/45 p-3">
                         {notifications.length === 0 ? (
                             <div className="py-8 text-center">
                                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-elevated">

@@ -72,8 +72,9 @@ export function ModuleFlow({
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {steps.map((step, index) => {
                             const stepNumber = index + 1;
-                            const isDone = completedSteps >= stepNumber;
-                            const isCurrent = !isDone && activeStep === stepNumber;
+                            const isFinalCurrent = completedSteps >= steps.length && stepNumber === steps.length;
+                            const isDone = completedSteps >= stepNumber && !isFinalCurrent;
+                            const isCurrent = isFinalCurrent || (!isDone && activeStep === stepNumber);
 
                             return (
                                 <div
