@@ -123,6 +123,20 @@ async function assertModuleFlow(page, route, expectedTitle, options = {}) {
     });
   }, failures));
 
+  steps.push(await runStep("provider registration workflow anchors to form", async () => {
+    await assertModuleFlow(page, "/services/register", "De perfil a proveedor verificable", {
+      primaryAction: /Completar perfil/i,
+      targetSelector: "#formulario-proveedor",
+    });
+  }, failures));
+
+  steps.push(await runStep("training workflow anchors to course catalog", async () => {
+    await assertModuleFlow(page, "/resident/training", "De curso a aprendizaje guiado", {
+      primaryAction: /Ver cursos/i,
+      targetSelector: "#catalogo-cursos",
+    });
+  }, failures));
+
   steps.push(await runStep("onboarding workflow anchors to upload", async () => {
     await assertModuleFlow(page, "/admin/onboarding", "De nómina a comunidad operativa", {
       primaryAction: /Subir nómina|Subir nomina|Revisar filas/i,

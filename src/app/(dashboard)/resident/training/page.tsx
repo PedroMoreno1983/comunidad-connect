@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
+import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 interface Course {
     id: string;
@@ -146,12 +147,31 @@ export default function ResidentTrainingPage() {
                     </div>
                 </section>
 
+                <ModuleFlow
+                    title="De curso a aprendizaje guiado"
+                    description="El residente elige un curso, entra a una clase con Tutora CoCo, conversa con alumnos virtuales y sale con criterios prácticos para convivir mejor."
+                    steps={[
+                        "Elegir tema",
+                        "Abrir clase guiada",
+                        "Resolver dudas con CoCo",
+                        "Aplicar acuerdos en comunidad",
+                    ]}
+                    outcome="Cierre esperado: residente entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
+                    currentStep={courses.length ? 2 : 1}
+                    completedSteps={courses.length ? 1 : 0}
+                    statusLabel={courses.length ? "Cursos activos" : "Modo libre"}
+                    primaryActionLabel="Ver cursos"
+                    primaryActionHref="#catalogo-cursos"
+                    secondaryActionLabel="Abrir modo libre"
+                    secondaryActionHref="#modo-libre"
+                />
+
                 {loading ? (
                     <div className="rounded-lg border border-subtle bg-surface p-6 text-center text-sm cc-text-secondary shadow-sm sm:p-10">
                         Cargando cursos disponibles...
                     </div>
                 ) : (
-                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <section id="catalogo-cursos" className="grid scroll-mt-24 gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {courses.length === 0 ? (
                             <div className="rounded-lg border border-dashed border-subtle bg-surface p-6 text-center shadow-sm sm:p-10 md:col-span-2 xl:col-span-3">
                                 <AlertCircle className="mx-auto mb-3 h-10 w-10 text-slate-400" />
@@ -197,6 +217,7 @@ export default function ResidentTrainingPage() {
                         )}
 
                         <article
+                            id="modo-libre"
                             onClick={() => {
                                 setSelectedCourseContent("");
                                 setSelectedCourseTitle("Modo libre con Tutora CoCo");
