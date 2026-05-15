@@ -197,7 +197,7 @@ export default function ProviderRegisterPage() {
             {/* Back Button */}
             <Link
                 href="/services"
-                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Servicios
@@ -206,7 +206,7 @@ export default function ProviderRegisterPage() {
             {/* Header */}
             <div className="text-center space-y-3">
                 <h1 className="text-3xl font-bold cc-text-primary">
-                    Regístrate como <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">Técnico Profesional</span>
+                    Regístrate como <span className="text-brand-600">Técnico Profesional</span>
                 </h1>
                 <p className="text-lg cc-text-secondary max-w-2xl mx-auto">
                     Une a nuestra plataforma y conecta con cientos de clientes potenciales
@@ -237,7 +237,7 @@ export default function ProviderRegisterPage() {
                 {[1, 2, 3].map((s) => (
                     <div key={s} className="flex items-center gap-2">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${s === step
-                            ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-sm'
+                            ? 'bg-brand-500 text-white shadow-sm'
                             : s < step
                                 ? 'bg-emerald-500 text-white'
                                 : 'bg-elevated text-slate-400'
@@ -308,7 +308,7 @@ export default function ProviderRegisterPage() {
                                 required
                                 value={formData.category}
                                 onChange={(e) => setFormData({ ...formData, category: e.target.value as ProviderCategory })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                             >
                                 <option value="plumbing">Gasfitería</option>
                                 <option value="electrical">Electricidad</option>
@@ -371,7 +371,7 @@ export default function ProviderRegisterPage() {
                                 required
                                 value={formData.responseTime}
                                 onChange={(e) => setFormData({ ...formData, responseTime: e.target.value })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                             >
                                 <option value="< 30 minutos">Menos de 30 minutos</option>
                                 <option value="< 1 hora">Menos de 1 hora</option>
@@ -387,7 +387,7 @@ export default function ProviderRegisterPage() {
                             </label>
                             <textarea
                                 required
-                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                                 placeholder="Cuenta sobre tu experiencia, especialidades y que te hace confiable para la comunidad..."
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
@@ -445,13 +445,13 @@ export default function ProviderRegisterPage() {
                                     {formData.specialties.map((specialty, idx) => (
                                         <span
                                             key={idx}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg text-sm border border-blue-100 dark:border-blue-500/20"
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-sm border border-brand-100"
                                         >
                                             {specialty}
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveSpecialty(idx)}
-                                                className="hover:text-blue-900 dark:hover:text-blue-300"
+                                                className="hover:text-brand-900"
                                             >
                                                 ×
                                             </button>
@@ -593,9 +593,9 @@ export default function ProviderRegisterPage() {
             </form>
 
             {/* Info Box */}
-            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-xl p-6">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-400 mb-2">¿Qué sigue después del registro?</h3>
-                <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
+            <div className="rounded-lg border border-brand-100 bg-brand-50 p-6">
+                <h3 className="mb-2 font-semibold text-brand-900">¿Qué sigue después del registro?</h3>
+                <ul className="space-y-2 text-sm text-brand-800">
                     <li className="flex items-start gap-2">
                         <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
                         <span>Revisaremos tu perfil en 24-48 horas</span>

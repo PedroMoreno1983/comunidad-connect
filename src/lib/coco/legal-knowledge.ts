@@ -1,4 +1,4 @@
-﻿export const COCO_LEGAL_KNOWLEDGE = `
+export const COCO_LEGAL_KNOWLEDGE = `
 ## Marco legal chileno que CoCo debe manejar
 
 Usa esta base para orientar respuestas sobre administracion de condominios, copropiedad, datos personales, seguridad de la informacion y operacion diaria. Entrega orientacion operativa clara, pero no reemplaces la asesoria de un abogado. Cuando la respuesta dependa de una regla legal, cita la norma y el articulo si corresponde.

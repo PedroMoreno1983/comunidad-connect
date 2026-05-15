@@ -41,6 +41,32 @@ const demoAmenityUsage = [
     { name: "Gimnasio", reservas: 9 },
     { name: "Piscina", reservas: 7 },
 ];
+const demoRecentAnnouncements = [
+    {
+        id: "demo-ann-1",
+        title: "Mantención preventiva de ascensores",
+        content: "Ascensor torre B tendrá revisión el jueves entre 10:00 y 12:00. Conserjería coordinará apoyo para adultos mayores.",
+        priority: "info",
+        createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+        author: "Administración",
+    },
+    {
+        id: "demo-ann-2",
+        title: "Corte programado de agua caliente",
+        content: "Proveedor revisará la sala de calderas del piso -1. El servicio se normaliza durante la tarde.",
+        priority: "alert",
+        createdAt: new Date(Date.now() - 3 * 36e5).toISOString(),
+        author: "Comité",
+    },
+    {
+        id: "demo-ann-3",
+        title: "Nueva votación comunitaria",
+        content: "Ya está disponible la consulta para priorizar mejoras del quincho y bicicleteros.",
+        priority: "event",
+        createdAt: new Date(Date.now() - 26 * 36e5).toISOString(),
+        author: "Convive Connect",
+    },
+];
 
 function requestCategory(row: Record<string, unknown>) {
     return String(row.service_type || row.category || row.request_type || row.type || 'Otro');
@@ -70,6 +96,52 @@ export default function HomePage() {
         const fetchDashboardData = async () => {
             setIsLoading(true);
             try {
+                if (user.email.toLowerCase().endsWith("@demo.com")) {
+                    setExpenseChartData(demoExpenseTrend);
+                    setExpenseCategoryData(demoExpenseCategories);
+                    setAmenityUsageData(demoAmenityUsage);
+
+                    if (user.role === "admin") {
+                        setStatsData({
+                            announcements: 3,
+                            marketplace: 7,
+                            bookings: 5,
+                            pendingExpenses: 4,
+                            residents: 148,
+                            pendingRequests: 6,
+                            visitorsToday: 0,
+                            pendingPackages: 0,
+                            recentAnnouncements: demoRecentAnnouncements,
+                        });
+                    } else if (user.role === "resident") {
+                        setStatsData({
+                            announcements: 3,
+                            marketplace: 7,
+                            bookings: 2,
+                            pendingExpenses: 1,
+                            residents: 0,
+                            pendingRequests: 2,
+                            visitorsToday: 0,
+                            pendingPackages: 1,
+                            recentAnnouncements: demoRecentAnnouncements,
+                        });
+                    } else {
+                        setStatsData({
+                            announcements: 3,
+                            marketplace: 0,
+                            bookings: 0,
+                            pendingExpenses: 0,
+                            residents: 0,
+                            pendingRequests: 0,
+                            visitorsToday: 8,
+                            pendingPackages: 3,
+                            recentAnnouncements: demoRecentAnnouncements,
+                        });
+                    }
+                    setIsLoading(false);
+                    return;
+                }
+
                 // Fetch basic announcements and count in parallel
                 const [annCountRes, recentAnnRes] = await Promise.all([
                     supabase.from('announcements').select('*', { count: 'exact', head: true }),

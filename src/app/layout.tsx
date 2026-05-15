@@ -47,12 +47,13 @@ const structuredData = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://comunidad-connect-eight.vercel.app"),
   title: {
-    default: "Convive Connect — Bienestar Comunitario",
+    default: "Convive Connect — Tu edificio, más humano que nunca",
     template: "%s | Convive Connect",
   },
   description:
-    "Plataforma de bienestar comunitario para condominios. Marketplace, reservas de amenidades, consumo de agua, votaciones y más. Convierte tu edificio en comunidad.",
+    "Plataforma de bienestar comunitario para condominios. Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA en una sola experiencia.",
   keywords: [
     "condominio",
     "gestión comunitaria",
@@ -65,6 +66,14 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Convive Connect" }],
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -74,9 +83,17 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_CL",
     siteName: "Convive Connect",
-    title: "Convive Connect — Bienestar Comunitario",
+    title: "Convive Connect — Tu edificio, más humano que nunca",
     description:
-      "Más que vecinos. Comunidad. Marketplace, reservas, gastos comunes y bienestar comunitario.",
+      "Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA para comunidades residenciales.",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Convive Connect",
+      },
+    ],
   },
   robots: {
     index: true,
