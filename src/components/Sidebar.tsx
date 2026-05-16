@@ -93,8 +93,8 @@ export function Sidebar() {
         {
             title: 'AULA & INTELIGENCIA IA',
             links: [
-                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'], feature: 'coco_ai' },
-                { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'], feature: 'coco_ai' },
+                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'] },
+                { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'] },
             ]
         },
         {
