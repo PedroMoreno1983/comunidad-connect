@@ -91,6 +91,13 @@ export function Sidebar() {
             ]
         },
         {
+            title: 'AULA & INTELIGENCIA IA',
+            links: [
+                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'], feature: 'coco_ai' },
+                { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'], feature: 'coco_ai' },
+            ]
+        },
+        {
             title: 'MIS SERVICIOS',
             links: [
                 { href: '/amenities', label: 'Espacios Comunes', icon: Calendar, roles: ['resident', 'admin'], feature: 'amenities' },
@@ -111,14 +118,6 @@ export function Sidebar() {
                 { href: '/resident/consumo', label: 'Mi Consumo de Agua', icon: Waves, roles: ['resident', 'admin'] },
             ]
         },
-        {
-            title: 'AULA & INTELIGENCIA IA',
-            links: [
-                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'], feature: 'coco_ai' },
-                { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'], feature: 'coco_ai' },
-            ]
-        },
-
         {
             title: 'CONSERJERÍA',
             links: [
