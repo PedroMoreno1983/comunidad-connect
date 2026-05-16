@@ -238,7 +238,7 @@ async function main() {
   ], { onConflict: "id" });
 
   const userIds = [admin.id, resident.id, residentTwo.id, concierge.id];
-  for (const table of ["operation_events", "coco_cases", "service_requests", "bookings", "expenses", "marketplace_items", "amenities", "service_providers", "building_assets", "notifications", "visitors", "packages"]) {
+  for (const table of ["operation_events", "coco_cases", "service_requests", "bookings", "expenses", "marketplace_items", "amenities", "service_providers", "building_assets", "notifications", "visitors", "visitor_logs", "qr_invitations", "water_readings", "packages"]) {
     if (table === "notifications") {
       for (const userId of userIds) await removeWhere(supabase, table, "user_id", userId);
     } else {
@@ -304,6 +304,7 @@ async function main() {
     { id: "b392cf17-0005-4000-8000-000000000001", community_id: communityId, seller_id: resident.id, title: "Silla ergonomica home office", description: "Respaldo regulable, buen estado. Ideal para teletrabajo en departamento.", price: 65000, category: "furniture", status: "available", image_url: "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop"], allow_sale: true, allow_swap: false, allow_barter: true, barter_details: "Acepto plantas grandes o repisa.", payment_status: "none", created_at: iso(-3) },
     { id: "b392cf17-0005-4000-8000-000000000002", community_id: communityId, seller_id: residentTwo.id, title: "Bicicleta plegable aro 20", description: "Uso liviano, se entrega en conserjeria con coordinacion previa.", price: 85000, category: "other", status: "available", image_url: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop"], allow_sale: true, allow_swap: true, swap_details: "Acepto scooter o silla de escritorio.", allow_barter: false, barter_details: "", payment_status: "none", created_at: iso(-2) },
     { id: "b392cf17-0005-4000-8000-000000000003", community_id: communityId, seller_id: resident.id, title: "Monitor Samsung 24 pulgadas", description: "Full HD, entrada HDMI. Reservado para revision del comprador.", price: 72000, category: "electronics", status: "reserved", image_url: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop"], allow_sale: true, allow_swap: false, swap_details: "", allow_barter: false, barter_details: "", payment_status: "pending", created_at: iso(-4) },
+    { id: "b392cf17-0005-4000-8000-000000000004", community_id: communityId, seller_id: admin.id, title: "Kit emergencia comunitario", description: "Pack sellado para demostracion de retiro seguro desde administracion: linterna, pilas y manta termica.", price: 24000, category: "other", status: "available", image_url: "https://images.unsplash.com/photo-1583384964245-c1e492bd7398?q=80&w=1200&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1583384964245-c1e492bd7398?q=80&w=1200&auto=format&fit=crop"], allow_sale: true, allow_swap: false, swap_details: "", allow_barter: false, barter_details: "", payment_status: "none", created_at: iso(-1.5) },
   ], { onConflict: "id" });
 
   await upsert(supabase, "service_providers", [
@@ -356,9 +357,36 @@ async function main() {
     { id: "b392cf17-0014-4000-8000-000000000002", poll_id: pollId, option_id: "b392cf17-0013-4000-8000-000000000002", user_id: residentTwo.id, community_id: communityId, created_at: iso(-0.4) },
   ], { onConflict: "id" });
 
+  const currentReadingDate = date(0);
+  const previousReadingDate = date(-30);
+  await upsert(supabase, "water_readings", [
+    { id: "b392cf17-0019-4000-8000-000000000001", community_id: communityId, unit_id: units.u805, reading_value: 118.4, reading_date: previousReadingDate, month: "Abril", year: 2026, created_by: admin.id, created_at: iso(-30) },
+    { id: "b392cf17-0019-4000-8000-000000000002", community_id: communityId, unit_id: units.u805, reading_value: 132.9, reading_date: currentReadingDate, month: "Mayo", year: 2026, created_by: admin.id, created_at: iso(-0.2) },
+    { id: "b392cf17-0019-4000-8000-000000000003", community_id: communityId, unit_id: units.u1104, reading_value: 141.2, reading_date: previousReadingDate, month: "Abril", year: 2026, created_by: admin.id, created_at: iso(-30) },
+    { id: "b392cf17-0019-4000-8000-000000000004", community_id: communityId, unit_id: units.u1104, reading_value: 154.7, reading_date: currentReadingDate, month: "Mayo", year: 2026, created_by: admin.id, created_at: iso(-0.2) },
+    { id: "b392cf17-0019-4000-8000-000000000005", community_id: communityId, unit_id: units.u1204, reading_value: 132.1, reading_date: previousReadingDate, month: "Abril", year: 2026, created_by: admin.id, created_at: iso(-30) },
+    { id: "b392cf17-0019-4000-8000-000000000006", community_id: communityId, unit_id: units.u1204, reading_value: 151.9, reading_date: currentReadingDate, month: "Mayo", year: 2026, created_by: admin.id, created_at: iso(-0.2) },
+    { id: "b392cf17-0019-4000-8000-000000000007", community_id: communityId, unit_id: units.u1505, reading_value: 149.5, reading_date: previousReadingDate, month: "Abril", year: 2026, created_by: admin.id, created_at: iso(-30) },
+    { id: "b392cf17-0019-4000-8000-000000000008", community_id: communityId, unit_id: units.u1505, reading_value: 181.4, reading_date: currentReadingDate, month: "Mayo", year: 2026, created_by: admin.id, created_at: iso(-0.2) },
+    { id: "b392cf17-0019-4000-8000-000000000009", community_id: communityId, unit_id: units.u1702, reading_value: 164.0, reading_date: previousReadingDate, month: "Abril", year: 2026, created_by: admin.id, created_at: iso(-30) },
+    { id: "b392cf17-0019-4000-8000-000000000010", community_id: communityId, unit_id: units.u1702, reading_value: 177.8, reading_date: currentReadingDate, month: "Mayo", year: 2026, created_by: admin.id, created_at: iso(-0.2) },
+  ], { onConflict: "id" });
+
+  await upsert(supabase, "qr_invitations", [
+    { id: "b392cf17-0020-4000-8000-000000000001", community_id: communityId, resident_id: resident.id, unit_id: units.u1204, guest_name: "Paula Herrera", guest_dni: "16.442.991-2", qr_code: "INV-SHOW-PAULA", valid_from: iso(-0.1), valid_to: iso(1), status: "active", created_at: iso(-0.1) },
+    { id: "b392cf17-0020-4000-8000-000000000002", community_id: communityId, resident_id: resident.id, unit_id: units.u1204, guest_name: "Martin Silva", guest_dni: "18.245.110-8", qr_code: "INV-SHOW-MARTIN", valid_from: iso(-3), valid_to: iso(-2), status: "used", used_at: iso(-2.8), created_at: iso(-3) },
+    { id: "b392cf17-0020-4000-8000-000000000003", community_id: communityId, resident_id: residentTwo.id, unit_id: units.u805, guest_name: "Camila Rojas", guest_dni: "19.330.221-4", qr_code: "INV-SHOW-CAMILA", valid_from: iso(-1), valid_to: iso(0.5), status: "active", created_at: iso(-1) },
+  ], { onConflict: "id" });
+
   await upsert(supabase, "visitors", [
     { id: "b392cf17-0015-4000-8000-000000000001", community_id: communityId, visitor_name: "Paula Herrera", unit_id: units.u1204, entry_time: iso(-0.1), exit_time: null, purpose: "Visita autorizada por residente", created_at: iso(-0.1) },
     { id: "b392cf17-0015-4000-8000-000000000002", community_id: communityId, visitor_name: "Tecnico ascensores", unit_id: "Torre B", entry_time: iso(-0.3), exit_time: iso(-0.2), purpose: "Mantencion programada", created_at: iso(-0.3) },
+  ], { onConflict: "id" });
+
+  await upsert(supabase, "visitor_logs", [
+    { id: "b392cf17-0021-4000-8000-000000000001", community_id: communityId, visitor_name: "Paula Herrera", unit_id: units.u1204, entry_time: iso(-0.1), exit_time: null, purpose: "Visita autorizada por QR", registered_by: concierge.id, is_qr: true, created_at: iso(-0.1) },
+    { id: "b392cf17-0021-4000-8000-000000000002", community_id: communityId, visitor_name: "Tecnico Ascensores Andinos", unit_id: units.u1505, entry_time: iso(-0.35), exit_time: iso(-0.25), purpose: "Mantencion programada", registered_by: concierge.id, is_qr: false, created_at: iso(-0.35) },
+    { id: "b392cf17-0021-4000-8000-000000000003", community_id: communityId, visitor_name: "Camila Rojas", unit_id: units.u805, entry_time: iso(-1.2), exit_time: iso(-1.1), purpose: "Visita familiar", registered_by: concierge.id, is_qr: true, created_at: iso(-1.2) },
   ], { onConflict: "id" });
 
   await upsert(supabase, "packages", [
@@ -373,10 +401,10 @@ async function main() {
   ], { onConflict: "id" });
 
   await upsert(supabase, "notifications", [
-    { id: "b392cf17-0018-4000-8000-000000000001", user_id: admin.id, type: "warning", category: "coco", title: "Caso CoCo requiere revision", body: "Filtracion activa en depto 1204 escalada por CoCo.", link: "/admin/mantenimiento", read: false, created_at: iso(-0.2) },
-    { id: "b392cf17-0018-4000-8000-000000000002", user_id: admin.id, type: "info", category: "poll", title: "Votacion activa", body: "Prioridad de mejora 2026 ya tiene votos registrados.", link: "/admin/votaciones", read: false, created_at: iso(-0.5) },
-    { id: "b392cf17-0018-4000-8000-000000000003", user_id: resident.id, type: "success", category: "reservation", title: "Reserva confirmada", body: "Tu reserva de quincho panoramico fue confirmada.", link: "/amenities", read: false, created_at: iso(-0.4) },
-    { id: "b392cf17-0018-4000-8000-000000000004", user_id: concierge.id, type: "alert", category: "package", title: "Paquete pendiente", body: "Caja Mercado Libre pendiente para depto 1204.", link: "/concierge/packages", read: false, created_at: iso(-0.04) },
+    { id: "b392cf17-0018-4000-8000-000000000001", community_id: communityId, user_id: admin.id, type: "warning", category: "coco", title: "Caso CoCo requiere revision", body: "Filtracion activa en depto 1204 escalada por CoCo.", link: "/admin/mantenimiento", read: false, created_at: iso(-0.2) },
+    { id: "b392cf17-0018-4000-8000-000000000002", community_id: communityId, user_id: admin.id, type: "info", category: "poll", title: "Votacion activa", body: "Prioridad de mejora 2026 ya tiene votos registrados.", link: "/admin/votaciones", read: false, created_at: iso(-0.5) },
+    { id: "b392cf17-0018-4000-8000-000000000003", community_id: communityId, user_id: resident.id, type: "success", category: "reservation", title: "Reserva confirmada", body: "Tu reserva de quincho panoramico fue confirmada.", link: "/amenities", read: false, created_at: iso(-0.4) },
+    { id: "b392cf17-0018-4000-8000-000000000004", community_id: communityId, user_id: concierge.id, type: "alert", category: "package", title: "Paquete pendiente", body: "Caja Mercado Libre pendiente para depto 1204.", link: "/concierge/packages", read: false, created_at: iso(-0.04) },
   ], { onConflict: "id" });
 
   console.log("\nShowcase listo para venta:");
