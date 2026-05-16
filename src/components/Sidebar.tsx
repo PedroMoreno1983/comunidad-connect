@@ -9,6 +9,7 @@ import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
+import { isShowcaseUser } from '@/lib/showcase';
 import { useState, useEffect } from 'react';
 import {
     Activity,
@@ -36,7 +37,8 @@ import {
     BookOpen,
     Upload,
     Bot,
-    Briefcase
+    Briefcase,
+    Compass
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -152,6 +154,15 @@ export function Sidebar() {
             title: 'SaaS SUPERADMIN',
             links: [
                 { href: '/superadmin', label: 'Panel SaaS', icon: Shield, roles: ['admin'] }
+            ]
+        });
+    }
+
+    if (isShowcaseUser(user)) {
+        menuSections.unshift({
+            title: 'RECORRIDO COMERCIAL',
+            links: [
+                { href: '/showcase', label: 'Como venderlo', icon: Compass, roles: ['admin', 'resident', 'concierge'] }
             ]
         });
     }
