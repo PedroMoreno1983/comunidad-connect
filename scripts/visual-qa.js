@@ -4,6 +4,8 @@ const path = require("path");
 
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
 const outDir = process.env.QA_OUT_DIR || path.join(process.cwd(), ".tmp", "visual-qa");
+const adminEmail = process.env.QA_ADMIN_EMAIL || "admin.showcase@conviveconnect.cl";
+const adminPassword = process.env.QA_ADMIN_PASSWORD || "ConviveShowcase-2026!";
 
 const publicRoutes = [
   "/",
@@ -63,6 +65,16 @@ function safeName(route, viewport) {
 
 async function loginAsAdmin(page) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
+  const emailInput = page.getByPlaceholder(/correo|email/i).first();
+  if (await emailInput.isVisible().catch(() => false)) {
+    await emailInput.fill(adminEmail);
+    await page.getByPlaceholder(/contrase|password/i).first().fill(adminPassword);
+    await page.getByRole("button", { name: /iniciar|entrar|acceder/i }).first().click();
+    await page.waitForFunction(() => !location.pathname.startsWith("/login"), null, { timeout: 30000 });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    return;
+  }
+
   const demoButton = page.getByRole("button", { name: /Administrador/i });
   await demoButton.click();
   await page.waitForURL(/\/(home)?$/, { timeout: 20000 }).catch(() => {});
