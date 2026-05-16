@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
     Users, ShoppingBag, Wrench, ClipboardList, TrendingUp, Bell,
     Calendar, DollarSign, ArrowUpRight, Building2, Clock, Sparkles,
-    BarChart3, PieChart as PieChartIcon
+    BarChart3, PieChart as PieChartIcon, GraduationCap, BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
@@ -84,6 +84,7 @@ export default function HomePage() {
         pendingRequests: 0,
         visitorsToday: 0,
         pendingPackages: 0,
+        trainingCourses: 0,
         recentAnnouncements: [] as { id: string; title: string; content: string; priority: string; createdAt: string; author: string }[]
     });
     const [expenseChartData, setExpenseChartData] = useState<{ month: string; monto: number }[]>([]);
@@ -111,6 +112,7 @@ export default function HomePage() {
                             pendingRequests: 6,
                             visitorsToday: 0,
                             pendingPackages: 0,
+                            trainingCourses: 3,
                             recentAnnouncements: demoRecentAnnouncements,
                         });
                     } else if (user.role === "resident") {
@@ -123,6 +125,7 @@ export default function HomePage() {
                             pendingRequests: 2,
                             visitorsToday: 0,
                             pendingPackages: 1,
+                            trainingCourses: 3,
                             recentAnnouncements: demoRecentAnnouncements,
                         });
                     } else {
@@ -135,6 +138,7 @@ export default function HomePage() {
                             pendingRequests: 0,
                             visitorsToday: 8,
                             pendingPackages: 3,
+                            trainingCourses: 3,
                             recentAnnouncements: demoRecentAnnouncements,
                         });
                     }
@@ -143,12 +147,13 @@ export default function HomePage() {
                 }
 
                 // Fetch basic announcements and count in parallel
-                const [annCountRes, recentAnnRes] = await Promise.all([
+                const [annCountRes, recentAnnRes, trainingCountRes] = await Promise.all([
                     supabase.from('announcements').select('*', { count: 'exact', head: true }),
                     supabase.from('announcements')
                         .select('id, title, content, priority, created_at, profiles(name)')
                         .order('created_at', { ascending: false })
-                        .limit(3)
+                        .limit(3),
+                    supabase.from('training_modules').select('id', { count: 'exact', head: true }).eq('is_active', true)
                 ]);
 
                 const annCount = annCountRes.count;
@@ -156,6 +161,7 @@ export default function HomePage() {
 
                 let commonStats = {
                     announcements: annCount || 0,
+                    trainingCourses: trainingCountRes.count || 0,
                     recentAnnouncements: (recentAnn || []).map((a: any) => {
                         const profiles = a.profiles;
                         const authorName = Array.isArray(profiles) 
@@ -293,6 +299,13 @@ export default function HomePage() {
             link: "/amenities"
         },
         {
+            label: "Cursos IA",
+            value: statsData.trainingCourses,
+            icon: GraduationCap,
+            tone: "brand",
+            link: "/resident/training"
+        },
+        {
             label: "Gastos Pendientes",
             value: statsData.pendingExpenses,
             icon: DollarSign,
@@ -317,6 +330,13 @@ export default function HomePage() {
             icon: Bell,
             tone: "info",
             link: "/feed"
+        },
+        {
+            label: "Cursos IA",
+            value: statsData.trainingCourses,
+            icon: GraduationCap,
+            tone: "brand",
+            link: "/resident/training"
         },
         {
             label: "Solicitudes",
@@ -362,6 +382,13 @@ export default function HomePage() {
             icon: Bell,
             tone: "info",
             link: "/feed"
+        },
+        {
+            label: "Cursos IA",
+            value: statsData.trainingCourses,
+            icon: GraduationCap,
+            tone: "brand",
+            link: "/resident/training"
         },
     ];
 
@@ -442,7 +469,7 @@ export default function HomePage() {
                 <SkeletonStats />
             ) : (
                 <motion.div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6"
                     variants={container}
                     initial="hidden"
                     animate="show"
@@ -667,6 +694,22 @@ export default function HomePage() {
                                 </>
                             ) : (
                                 <>
+                                    <ActionCard
+                                        href="/resident/training"
+                                        title="Aula Virtual CoCo"
+                                        description="Cursos y clases guiadas por IA"
+                                        icon={<GraduationCap className="h-5 w-5" />}
+                                        tone="brand"
+                                    />
+                                    {user.role === 'admin' && (
+                                        <ActionCard
+                                            href="/admin/training"
+                                            title="Generador de Cursos IA"
+                                            description="Crea clases para residentes y conserjería"
+                                            icon={<BookOpen className="h-5 w-5" />}
+                                            tone="info"
+                                        />
+                                    )}
                                     <ActionCard
                                         href="/amenities"
                                         title="Reservar Espacio"
