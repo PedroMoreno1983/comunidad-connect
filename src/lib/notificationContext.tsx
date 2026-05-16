@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useAuth } from './authContext';
 import { NotificationService, DbNotification } from './services/notificationService';
+import { isShowcaseUser } from './showcase';
 
 // The Notification type used by the UI (maps from DbNotification)
 export interface Notification {
@@ -103,27 +104,41 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     // Load from Supabase when user changes
     useEffect(() => {
+        let isMounted = true;
+
         if (!user) {
             queueMicrotask(() => setNotifications([]));
-            return;
+            return () => { isMounted = false; };
         }
 
         if (user.email.toLowerCase().endsWith('@demo.com')) {
             queueMicrotask(() => setNotifications(demoNotifications(user.role)));
-            return;
+            return () => { isMounted = false; };
         }
 
         // Initial load
         NotificationService.getNotifications(user.id)
-            .then(data => setNotifications(data.map(dbToUi)))
-            .catch(err => console.error('[NotificationContext] load error:', err));
+            .then(data => {
+                if (isMounted) setNotifications(data.map(dbToUi));
+            })
+            .catch(err => {
+                if (!isMounted) return;
+                if (isShowcaseUser(user)) setNotifications(demoNotifications(user.role));
+                const message = String(err?.message || err || '').toLowerCase();
+                if (!message.includes('failed to fetch') && !message.includes('abort')) {
+                    console.warn('[NotificationContext] load warning:', err);
+                }
+            });
 
         // Realtime subscription — bell animates on new notification
         const subscription = NotificationService.subscribeToNotifications(user.id, (newN) => {
-            setNotifications(prev => [dbToUi(newN), ...prev]);
+            if (isMounted) setNotifications(prev => [dbToUi(newN), ...prev]);
         });
 
-        return () => { subscription.unsubscribe(); };
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, [user]);
 
     const visibleNotifications = user ? notifications : [];
