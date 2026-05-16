@@ -46,6 +46,18 @@ CREATE TABLE IF NOT EXISTS public.qr_invitations (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.units
+  ADD COLUMN IF NOT EXISTS tower text NOT NULL DEFAULT 'A',
+  ADD COLUMN IF NOT EXISTS unit_number text;
+
+UPDATE public.units
+SET tower = 'A'
+WHERE tower IS NULL OR btrim(tower) = '';
+
+UPDATE public.units
+SET unit_number = number
+WHERE unit_number IS NULL OR btrim(unit_number) = '';
+
 CREATE INDEX IF NOT EXISTS idx_water_readings_community ON public.water_readings(community_id);
 CREATE INDEX IF NOT EXISTS idx_water_readings_unit_period ON public.water_readings(unit_id, year, month);
 CREATE INDEX IF NOT EXISTS idx_visitor_logs_community_entry ON public.visitor_logs(community_id, entry_time DESC);

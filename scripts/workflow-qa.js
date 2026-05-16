@@ -4,6 +4,8 @@ const path = require("path");
 
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
 const outDir = process.env.QA_OUT_DIR || path.join(process.cwd(), ".tmp", "workflow-qa");
+const adminEmail = process.env.QA_ADMIN_EMAIL || "admin.showcase@conviveconnect.cl";
+const adminPassword = process.env.QA_ADMIN_PASSWORD || "ConviveShowcase-2026!";
 
 async function clickFirstVisible(locator, label) {
   const count = await locator.count();
@@ -25,6 +27,19 @@ async function expectVisible(locator, label) {
 
 async function loginAsAdmin(page) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle", timeout: 30000 });
+
+  const emailInput = page.getByPlaceholder(/correo|email/i).first();
+  const passwordInput = page.getByPlaceholder(/contrase|password/i).first();
+  if (await emailInput.isVisible().catch(() => false)) {
+    await emailInput.fill(adminEmail);
+    await passwordInput.fill(adminPassword);
+    await clickFirstVisible(page.getByRole("button", { name: /iniciar|entrar|acceder/i }), "admin credential login");
+    await page.waitForFunction(() => !location.pathname.startsWith("/login"), null, { timeout: 30000 });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await expectVisible(page.getByText(/Buenas|Admin|Inicio/i), "authenticated shell");
+    return;
+  }
+
   await clickFirstVisible(page.getByRole("button", { name: /Administrador/i }), "admin demo login");
   await page.waitForLoadState("networkidle").catch(() => {});
   await expectVisible(page.getByText(/Buenas|Admin|Inicio/i), "authenticated shell");
@@ -91,7 +106,7 @@ async function assertModuleFlow(page, route, expectedTitle, options = {}) {
     }
   });
 
-  steps.push(await runStep("login demo admin", async () => {
+  steps.push(await runStep("login admin", async () => {
     await loginAsAdmin(page);
   }, failures));
 
