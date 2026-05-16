@@ -63,7 +63,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                 const supabase = createClient();
                 const { data } = await supabase
                     .from('qr_invitations')
-                    .select('*')
+                    .select('*, units:unit_id (number)')
                     .eq('status', 'active')
                     .order('created_at', { ascending: false })
                     .limit(1)
@@ -73,7 +73,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                     const invitation = {
                         guestName: data.guest_name,
                         guestDni: data.guest_dni,
-                        unitId: data.unit_id || "101",
+                        unitId: (data.units as { number?: string } | null)?.number || data.unit_id || "101",
                     };
 
                     try {

@@ -134,7 +134,7 @@ export default function VisitorsPage() {
             const visitor = {
                 id: data.id,
                 visitorName: data.visitor_name,
-                unitId: data.unit_id,
+                unitId: units.find(unit => unit.id === data.unit_id)?.number || data.unit_id,
                 entryTime: data.entry_time,
                 isQr: false
             };
@@ -203,7 +203,7 @@ export default function VisitorsPage() {
                                     >
                                         <option value="">Seleccionar Departamento</option>
                                         {units.map((u) => (
-                                            <option key={u.id} value={u.number}>Unidad {u.number}</option>
+                                            <option key={u.id} value={u.id}>Unidad {u.number}</option>
                                         ))}
                                     </select>
                                 </div>

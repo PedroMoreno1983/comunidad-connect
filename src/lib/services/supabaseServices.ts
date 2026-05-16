@@ -455,7 +455,7 @@ export const VisitorService = {
             .from('visitor_logs')
             .select(`
         *,
-        units:unit_id (number, tower)
+        units:unit_id (number)
       `)
             .order('entry_time', { ascending: false });
 
