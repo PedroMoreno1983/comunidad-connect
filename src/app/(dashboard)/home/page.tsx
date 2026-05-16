@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
     Users, ShoppingBag, Wrench, ClipboardList, TrendingUp, Bell,
     Calendar, DollarSign, ArrowUpRight, Building2, Clock, Sparkles,
-    BarChart3, PieChart as PieChartIcon, GraduationCap, BookOpen
+    BarChart3, PieChart as PieChartIcon, GraduationCap, BookOpen, Compass
 } from "lucide-react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/components/charts/Charts";
 import { WhatsNew } from "@/components/ui/WhatsNew";
 import { DebugStats } from "@/components/ui/DebugStats";
+import { isShowcaseUser } from "@/lib/showcase";
 
 const CATEGORY_COLORS = ['#F45B3D', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'];
 const demoExpenseTrend = [
@@ -395,6 +396,7 @@ export default function HomePage() {
     const stats = user.role === 'admin' ? statsAdmin : user.role === 'concierge' ? statsConcierge : statsResident;
 
     const recentAnnouncements = statsData.recentAnnouncements;
+    const isShowcase = isShowcaseUser(user);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -694,6 +696,15 @@ export default function HomePage() {
                                 </>
                             ) : (
                                 <>
+                                    {isShowcase && (
+                                        <ActionCard
+                                            href="/showcase"
+                                            title="Recorrido comercial"
+                                            description="Guion recomendado para mostrar Convive"
+                                            icon={<Compass className="h-5 w-5" />}
+                                            tone="success"
+                                        />
+                                    )}
                                     <ActionCard
                                         href="/resident/training"
                                         title="Aula Virtual CoCo"
