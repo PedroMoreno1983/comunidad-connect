@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
@@ -26,7 +28,12 @@ REGLAS ABSOLUTAS:
 4. Si el documento no tiene personas, devuelve un array vacío [].
 `;
 
-async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { mimeType: string, data: string }) {
+async function callGeminiExtractor(
+    apiKey: string,
+    text: string,
+    inlineData: { mimeType: string, data: string } | undefined,
+    context: { userId: string; communityId?: string | null; role?: string | null }
+) {
     // Usamos un ID estable de Gemini; los alias "-latest" pueden saturarse o cambiar.
     const model = process.env.GEMINI_EXTRACT_MODEL || "gemini-2.5-flash-lite";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -56,6 +63,20 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
         },
     };
 
+    const promptTokens = estimateTokensFromText(GEMINI_JSON_PROMPT) + estimateTokensFromText(text) + (inlineData ? 2000 : 0);
+    await enforceAiBudget({
+        communityId: context.communityId,
+        userId: context.userId,
+        role: context.role,
+        module: 'onboarding.extract',
+        provider: 'gemini',
+        model,
+        actionType: 'extraction',
+        estimatedPromptTokens: promptTokens,
+        estimatedCompletionTokens: 2500,
+    });
+
+    const startedAt = Date.now();
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +88,32 @@ async function callGeminiExtractor(apiKey: string, text: string, inlineData?: { 
     }
 
     const data = await res.json();
-    return data.candidates[0].content.parts[0].text;
+    const output = data.candidates[0].content.parts[0].text;
+    const actualPromptTokens = data?.usageMetadata?.promptTokenCount ?? promptTokens;
+    const completionTokens = data?.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(output);
+
+    await recordAiUsage({
+        communityId: context.communityId,
+        userId: context.userId,
+        role: context.role,
+        module: 'onboarding.extract',
+        provider: 'gemini',
+        model,
+        actionType: 'extraction',
+        promptTokens: actualPromptTokens,
+        completionTokens,
+        totalTokens: data?.usageMetadata?.totalTokenCount ?? actualPromptTokens + completionTokens,
+        estimatedCostCents: estimateAiCostCents({
+            provider: 'gemini',
+            model,
+            promptTokens: actualPromptTokens,
+            completionTokens,
+        }),
+        status: 'success',
+        metadata: { latencyMs: Date.now() - startedAt, hasInlineData: Boolean(inlineData) },
+    });
+
+    return output;
 }
 
 export async function POST(request: Request) {
@@ -85,6 +131,12 @@ export async function POST(request: Request) {
         if (authError || !user) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
+
+        const { data: profile } = await getSupabaseAdmin()
+            .from('profiles')
+            .select('id, role, community_id')
+            .eq('id', user.id)
+            .maybeSingle();
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
@@ -136,7 +188,11 @@ export async function POST(request: Request) {
         // Limitamos el texto a ~100,000 caracteres para no romper el contexto por accidente (solo para inputs de docx/txt)
         const safeText = extractedText.trim() ? extractedText.substring(0, 100000) : "";
 
-        const jsonString = await callGeminiExtractor(apiKey, safeText, extractedInlineData);
+        const jsonString = await callGeminiExtractor(apiKey, safeText, extractedInlineData, {
+            userId: user.id,
+            communityId: profile?.community_id,
+            role: profile?.role,
+        });
 
         // 3. VALIDACIÓN FINAL: Parseamos el JSON para asegurarnos que la IA obedeció
         let parsedJson = [];
@@ -153,6 +209,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ data: parsedJson });
 
     } catch (error: unknown) {
+        if (isAiBudgetExceededError(error)) {
+            return NextResponse.json({ error: error.reason }, { status: 429 });
+        }
+
         console.warn('Extractor Error:', error);
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }

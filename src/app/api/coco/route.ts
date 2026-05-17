@@ -9,6 +9,7 @@ import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -28,6 +29,8 @@ async function askGeminiFallback(
         name: string;
         role: string;
         currentPage: string;
+        userId?: string;
+        communityId?: string;
     }
 ) {
     if (!GEMINI_API_KEY) {
@@ -54,9 +57,24 @@ Usuario dice: ${message}`;
     };
 
     const failures: string[] = [];
+    const estimatedPromptTokens = estimateTokensFromText(prompt);
+    const estimatedCompletionTokens = 700;
 
     for (const model of GEMINI_MODELS) {
+        await enforceAiBudget({
+            communityId: context.communityId,
+            userId: context.userId,
+            role: context.role,
+            module: 'coco.chat.fallback',
+            provider: 'gemini',
+            model,
+            actionType: 'fallback',
+            estimatedPromptTokens,
+            estimatedCompletionTokens,
+        });
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const startedAt = Date.now();
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -72,6 +90,28 @@ Usuario dice: ${message}`;
                 .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
                 .replace(/CMD:[A-Z_]+/g, '')
                 .trim();
+            const completionTokens = estimateTokensFromText(rawText);
+
+            await recordAiUsage({
+                communityId: context.communityId,
+                userId: context.userId,
+                role: context.role,
+                module: 'coco.chat.fallback',
+                provider: 'gemini',
+                model,
+                actionType: 'fallback',
+                promptTokens: estimatedPromptTokens,
+                completionTokens,
+                totalTokens: estimatedPromptTokens + completionTokens,
+                estimatedCostCents: estimateAiCostCents({
+                    provider: 'gemini',
+                    model,
+                    promptTokens: estimatedPromptTokens,
+                    completionTokens,
+                }),
+                status: 'success',
+                metadata: { latencyMs: Date.now() - startedAt },
+            });
 
             return {
                 reply: reply || 'No pude generar una respuesta clara.',
@@ -81,6 +121,21 @@ Usuario dice: ${message}`;
         }
 
         const errorMessage = data?.error?.message || res.statusText || 'Unknown Gemini error';
+        await recordAiUsage({
+            communityId: context.communityId,
+            userId: context.userId,
+            role: context.role,
+            module: 'coco.chat.fallback',
+            provider: 'gemini',
+            model,
+            actionType: 'fallback',
+            promptTokens: estimatedPromptTokens,
+            completionTokens: 0,
+            totalTokens: estimatedPromptTokens,
+            status: 'error',
+            metadata: { latencyMs: Date.now() - startedAt, status: res.status },
+            blockedReason: errorMessage,
+        });
         failures.push(`[${model}]: ${res.status} - ${errorMessage}`);
     }
 
@@ -227,9 +282,10 @@ export async function POST(req: NextRequest) {
         };
 
         if (!process.env.ANTHROPIC_API_KEY) {
-            const fallbackContext = { name: userName, role: safeRole, currentPage };
+            const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = process.env.GEMINI_API_KEY
                 ? await askGeminiFallback(message, fallbackContext).catch(error => {
+                    if (isAiBudgetExceededError(error)) throw error;
                     console.warn('[CoCo Gemini Fallback Error]', error);
                     return buildLocalCoCoFallback(message, fallbackContext);
                 })
@@ -261,10 +317,18 @@ export async function POST(req: NextRequest) {
                 }
             );
         } catch (agentError) {
+            if (isAiBudgetExceededError(agentError)) {
+                return NextResponse.json(
+                    { reply: agentError.reason, action: 'AI_BUDGET_EXCEEDED' },
+                    { status: 429 }
+                );
+            }
+
             console.error('[CoCo Anthropic Error]', agentError);
-            const fallbackContext = { name: userName, role: safeRole, currentPage };
+            const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = process.env.GEMINI_API_KEY
                 ? await askGeminiFallback(message, fallbackContext).catch(error => {
+                    if (isAiBudgetExceededError(error)) throw error;
                     console.warn('[CoCo Gemini Fallback Error]', error);
                     return buildLocalCoCoFallback(message, fallbackContext);
                 })
@@ -292,6 +356,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ reply, navigate, action, case: cocoCase }, { status: 200 });
 
     } catch (err) {
+        if (isAiBudgetExceededError(err)) {
+            return NextResponse.json(
+                { reply: err.reason, action: 'AI_BUDGET_EXCEEDED' },
+                { status: 429 }
+            );
+        }
+
         console.error('[CoCo API Error]', err);
         const message = err instanceof Error ? err.message : '';
 

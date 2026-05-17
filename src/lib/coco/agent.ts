@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_DEFINITIONS, executeTool } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import type { ConversationMessage, SessionData } from './session-store';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -62,12 +63,56 @@ export async function askCoCo(
     let response: Anthropic.Message;
 
     do {
+        const estimatedPromptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
+        const estimatedCompletionTokens = 2048;
+
+        await enforceAiBudget({
+            communityId: userCtx.community_id,
+            userId: userCtx.user_id,
+            role: userCtx.role,
+            module: 'coco.chat',
+            provider: 'anthropic',
+            model: MODEL,
+            actionType: 'chat',
+            estimatedPromptTokens,
+            estimatedCompletionTokens,
+        });
+
+        const startedAt = Date.now();
         response = await anthropic.messages.create({
             model: MODEL,
             max_tokens: 2048,
             system: systemPrompt,
             messages: history,
             tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+        });
+
+        const usage = response.usage;
+        const promptTokens = usage?.input_tokens ?? estimatedPromptTokens;
+        const completionTokens = usage?.output_tokens ?? estimateTokensFromMessages(response.content);
+        await recordAiUsage({
+            communityId: userCtx.community_id,
+            userId: userCtx.user_id,
+            role: userCtx.role,
+            module: 'coco.chat',
+            provider: 'anthropic',
+            model: MODEL,
+            actionType: 'chat',
+            promptTokens,
+            completionTokens,
+            totalTokens: promptTokens + completionTokens,
+            estimatedCostCents: estimateAiCostCents({
+                provider: 'anthropic',
+                model: MODEL,
+                promptTokens,
+                completionTokens,
+            }),
+            status: 'success',
+            metadata: {
+                latencyMs: Date.now() - startedAt,
+                stopReason: response.stop_reason,
+                toolRounds: rounds,
+            },
         });
 
         // Si Claude quiere usar herramientas

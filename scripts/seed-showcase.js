@@ -180,6 +180,20 @@ async function main() {
     },
   ], { onConflict: "id" });
 
+  await upsert(supabase, "ai_budgets", [
+    {
+      community_id: communityId,
+      plan: "pro",
+      is_enabled: true,
+      monthly_token_limit: 1000000,
+      monthly_image_limit: 30,
+      monthly_cost_limit_cents: 2500,
+      resident_daily_token_limit: 8000,
+      staff_daily_token_limit: 50000,
+      heavy_action_daily_limit: 10,
+    },
+  ], { onConflict: "community_id" });
+
   await upsert(supabase, "profiles", [
     {
       id: admin.id,
@@ -238,7 +252,7 @@ async function main() {
   ], { onConflict: "id" });
 
   const userIds = [admin.id, resident.id, residentTwo.id, concierge.id];
-  for (const table of ["operation_events", "coco_cases", "service_requests", "bookings", "expenses", "marketplace_items", "amenities", "service_providers", "building_assets", "notifications", "visitors", "visitor_logs", "qr_invitations", "water_readings", "packages"]) {
+  for (const table of ["operation_events", "ai_usage_events", "coco_cases", "service_requests", "bookings", "expenses", "marketplace_items", "amenities", "service_providers", "building_assets", "notifications", "visitors", "visitor_logs", "qr_invitations", "water_readings", "packages"]) {
     if (table === "notifications") {
       for (const userId of userIds) await removeWhere(supabase, table, "user_id", userId);
     } else {

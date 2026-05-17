@@ -18,6 +18,13 @@ Configurar en Production y Preview cuando corresponda:
 - `VOYAGE_API_KEY`
 - `VOYAGE_EMBEDDING_MODEL=voyage-3.5-lite`
 - `AI_HEALTH_TOKEN`
+- `AI_BUDGET_ENFORCEMENT=on`
+- `AI_DEFAULT_MONTHLY_TOKEN_LIMIT`
+- `AI_DEFAULT_MONTHLY_IMAGE_LIMIT`
+- `AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS`
+- `AI_RESIDENT_DAILY_TOKEN_LIMIT`
+- `AI_STAFF_DAILY_TOKEN_LIMIT`
+- `AI_HEAVY_DAILY_LIMIT`
 - `RESEND_API_KEY`
 - `FROM_EMAIL`
 - `SUPERADMIN_EMAILS`
@@ -61,6 +68,24 @@ npm run search:backfill
 ```
 
 `search:backfill` genera embeddings Voyage para publicaciones de marketplace pendientes.
+
+## Control de gasto IA
+
+Cada llamada a IA debe quedar registrada en `ai_usage_events`. Los limites por comunidad viven en `ai_budgets`.
+
+Valores recomendados iniciales:
+
+```text
+AI_BUDGET_ENFORCEMENT=on
+AI_DEFAULT_MONTHLY_TOKEN_LIMIT=1000000
+AI_DEFAULT_MONTHLY_IMAGE_LIMIT=30
+AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS=2500
+AI_RESIDENT_DAILY_TOKEN_LIMIT=8000
+AI_STAFF_DAILY_TOKEN_LIMIT=50000
+AI_HEAVY_DAILY_LIMIT=10
+```
+
+Si una comunidad requiere mas uso, se ajusta su fila en `ai_budgets`, no el codigo.
 
 ## QA final
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildTrainingFallbackTurn, runMultiAgentTurn } from "@/lib/ai/orchestrator";
+import { isAiBudgetExceededError } from "@/lib/ai/budget";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 50;
@@ -55,6 +56,16 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ responses }, { status: 200 });
     } catch (error: unknown) {
+        if (isAiBudgetExceededError(error)) {
+            return NextResponse.json({
+                responses: [{
+                    id: `budget-${Date.now()}`,
+                    role: 'system',
+                    text: error.reason,
+                }]
+            }, { status: 429 });
+        }
+
         console.error("Training MultiAgent API Error:", error);
         return NextResponse.json({
             responses: [{
