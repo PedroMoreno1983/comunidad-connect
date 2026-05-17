@@ -68,7 +68,7 @@ const groups = [
     critical: false,
     checks: [
       checkOneOf("SUPERADMIN_EMAIL(S)", ["SUPERADMIN_EMAIL", "SUPERADMIN_EMAILS"]),
-      ...checkKeys(["AI_HEALTH_TOKEN", "NEXT_PUBLIC_SITE_URL", "IOT_WEBHOOK_SECRET", "WHATSAPP_WEBHOOK_SECRET", "VOYAGE_API_KEY"]),
+      ...checkKeys(["AI_HEALTH_TOKEN", "NEXT_PUBLIC_SITE_URL", "IOT_WEBHOOK_SECRET", "WHATSAPP_WEBHOOK_SECRET", "VOYAGE_API_KEY", "VOYAGE_EMBEDDING_MODEL"]),
     ],
   },
 ];
@@ -102,6 +102,7 @@ const report = {
   summary,
   readyForCommercialDemo: criticalMissing.length === 0,
   readyForPaidProduction: summary.every((group) => group.ready),
+  nextActions: summary.flatMap((group) => group.missing.map((key) => `${group.name}: configure ${key}`)),
   strict,
 };
 

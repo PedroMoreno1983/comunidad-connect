@@ -13,7 +13,7 @@ export class MemoryService {
    */
   static async embedText(text) {
     if (!process.env.VOYAGE_API_KEY) {
-      return Array(1024).fill(0);
+      return null;
     }
 
     try {
@@ -25,16 +25,21 @@ export class MemoryService {
         },
         body: JSON.stringify({
           input: [text],
-          model: "voyage-3"
+          model: process.env.VOYAGE_EMBEDDING_MODEL || "voyage-3.5-lite",
+          input_type: "document",
+          output_dimension: 1024
         })
       });
-      
+
+      if (!response.ok) {
+        throw new Error(`Voyage AI REST error ${response.status}: ${await response.text()}`);
+      }
+
       const data = await response.json();
       return data.data[0].embedding;
     } catch (err) {
       console.error("Error al generar embedding con Voyage AI REST:", err);
-      // Fallback seguro de 1024 ceros si falla la API
-      return Array(1024).fill(0);
+      return null;
     }
   }
 

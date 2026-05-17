@@ -1,18 +1,12 @@
 /**
- * Convive Connect — Motor de Búsqueda Híbrida
+ * Convive Connect hybrid search engine.
  *
- * Combina:
- *   1. Búsqueda léxica → PostgreSQL Full Text Search (español)
- *   2. Búsqueda semántica → pgvector + Claude embeddings (Anthropic)
- *   3. Fusión → Reciprocal Rank Fusion (RRF)
- *
- * Inspirado en la arquitectura de Mercadona Tech (2025).
+ * Combines PostgreSQL full text search, Voyage AI embeddings and pgvector.
+ * If Voyage is not configured or unavailable, the endpoint keeps returning
+ * lexical results instead of breaking the user flow.
  */
 
 import { supabase } from './supabase';
-import Anthropic from '@anthropic-ai/sdk';
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface SearchResultItem {
   id: string;
@@ -31,9 +25,7 @@ export interface SearchResultItem {
   barter_details?: string;
   payment_status?: 'none' | 'pending' | 'completed';
   created_at: string;
-  /** Score final fusionado RRF (0–1) */
   score: number;
-  /** Método que produjo el resultado */
   source: 'lexical' | 'semantic' | 'hybrid';
 }
 
@@ -53,90 +45,59 @@ export interface SearchResults {
   durationMs: number;
 }
 
-// ─── Cliente Anthropic (server-side only) ─────────────────────────────────────
-
-let anthropicClient: Anthropic | null = null;
-
-function getAnthropicClient(): Anthropic {
-  if (!anthropicClient) {
-    anthropicClient = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-  }
-  return anthropicClient;
-}
-
-// ─── Embeddings ───────────────────────────────────────────────────────────────
-
-/**
- * Genera un vector de embedding para una query usando la API de Anthropic.
- * Usa claude-3-haiku como modelo de embeddings (más rápido y barato).
- *
- * NOTA: Anthropic no tiene una API dedicada de embeddings todavía.
- * Usamos voyage-3 via Anthropic (recomendado por ellos) o fallback a
- * una estrategia de keywords si no hay clave configurada.
- */
 async function generateEmbedding(text: string): Promise<number[] | null> {
-  try {
-    const client = getAnthropicClient();
+  const apiKey = process.env.VOYAGE_API_KEY?.trim();
+  if (!apiKey) return null;
 
-    // Anthropic recomienda Voyage AI para embeddings (integrado en su plataforma)
-    // Por ahora usamos su cliente con el modelo voyage-3-lite (1024 dims)
-    // Si no está disponible, retornamos null y solo usamos búsqueda léxica
-    const response = await (client as Anthropic & {
-      messages: { create: (params: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> };
-    }).messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 10,
-      messages: [
-        {
-          role: 'user',
-          content: `Embedding task: "${text}"`,
-        },
-      ],
+  try {
+    const model = process.env.VOYAGE_EMBEDDING_MODEL?.trim() || 'voyage-3.5-lite';
+    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        input: [text],
+        model,
+        input_type: 'query',
+        output_dimension: 1024,
+      }),
     });
 
-    // Anthropic no devuelve embeddings directamente todavía.
-    // Retornamos null para usar solo búsqueda léxica por ahora,
-    // hasta que Voyage esté disponible vía su SDK.
-    void response;
-    return null;
+    if (!response.ok) {
+      const body = await response.text();
+      console.warn(`[Search] Voyage embedding failed (${response.status}): ${body}`);
+      return null;
+    }
+
+    const payload = await response.json() as {
+      data?: Array<{ embedding?: number[] }>;
+    };
+
+    return payload.data?.[0]?.embedding ?? null;
   } catch (error) {
-    console.warn('[Search] Embedding generation not available, falling back to lexical only:', error);
+    console.warn('[Search] Voyage embedding unavailable, falling back to lexical only:', error);
     return null;
   }
 }
 
-// ─── Reciprocal Rank Fusion ───────────────────────────────────────────────────
+const RRF_K = 60;
 
-const RRF_K = 60; // Constante estándar de RRF
-
-function reciprocalRankFusion<T extends { id: string }>(
-  lists: T[][],
-  getScore: (item: T) => number
-): Map<string, number> {
+function reciprocalRankFusion<T extends { id: string }>(lists: T[][]): Map<string, number> {
   const scores = new Map<string, number>();
 
   for (const list of lists) {
     list.forEach((item, rank) => {
       const rrfScore = 1 / (RRF_K + rank + 1);
-      // Ponderar también por el score original (rank normalizado)
-      const originalScore = getScore(item);
-      const combined = rrfScore * (1 + originalScore);
-      scores.set(item.id, (scores.get(item.id) ?? 0) + combined);
+      scores.set(item.id, (scores.get(item.id) ?? 0) + rrfScore);
     });
   }
 
   return scores;
 }
 
-// ─── SearchService ────────────────────────────────────────────────────────────
-
 export const SearchService = {
-  /**
-   * Búsqueda híbrida en el marketplace.
-   * Combina full-text search de Postgres con búsqueda semántica por vectores.
-   */
   async searchMarketplace(query: string): Promise<SearchResultItem[]> {
     if (!query.trim()) return [];
 
@@ -149,22 +110,19 @@ export const SearchService = {
       ? await SearchService._semanticMarketplace(embedding)
       : [];
 
-    // Si solo hay resultados léxicos, devolverlos directamente
     if (semanticResults.length === 0) {
       return lexicalResults.map((item) => ({
         ...item,
-        score: (item as SearchResultItem & { rank: number }).rank ?? 0,
+        score: item.rank ?? 0,
         source: 'lexical' as const,
       }));
     }
 
-    // Fusión RRF
-    const fusedScores = reciprocalRankFusion(
-      [lexicalResults, semanticResults] as unknown as Array<{ id: string }[]>,
-      () => 0
-    );
+    const fusedScores = reciprocalRankFusion([
+      lexicalResults,
+      semanticResults,
+    ] as Array<Array<{ id: string }>>);
 
-    // Construir mapa de todos los items
     const allItems = new Map<string, SearchResultItem>();
     [...lexicalResults, ...semanticResults].forEach((item) => {
       if (!allItems.has(item.id)) {
@@ -172,21 +130,15 @@ export const SearchService = {
       }
     });
 
-    // Asignar scores RRF y ordenar
     const results: SearchResultItem[] = [];
     fusedScores.forEach((score, id) => {
       const item = allItems.get(id);
-      if (item) {
-        results.push({ ...item, score, source: 'hybrid' });
-      }
+      if (item) results.push({ ...item, score, source: 'hybrid' });
     });
 
     return results.sort((a, b) => b.score - a.score).slice(0, 20);
   },
 
-  /**
-   * Búsqueda de perfiles/directorio (solo léxica por ahora).
-   */
   async searchProfiles(query: string): Promise<SearchResultProfile[]> {
     if (!query.trim()) return [];
 
@@ -205,9 +157,6 @@ export const SearchService = {
     }));
   },
 
-  /**
-   * Búsqueda unificada en marketplace + directorio.
-   */
   async searchAll(query: string): Promise<SearchResults> {
     const start = Date.now();
 
@@ -223,8 +172,6 @@ export const SearchService = {
       durationMs: Date.now() - start,
     };
   },
-
-  // ─── Internos ──────────────────────────────────────────────────────────────
 
   async _lexicalMarketplace(query: string): Promise<(SearchResultItem & { rank: number })[]> {
     const { data, error } = await supabase.rpc('search_marketplace_lexical', {

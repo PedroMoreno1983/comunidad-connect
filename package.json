@@ -19,7 +19,8 @@
     "qa:multitenant": "node scripts/multitenant-qa.js",
     "qa:operations": "node scripts/operations-qa.js",
     "qa:security-headers": "node scripts/security-headers-qa.js",
-    "seed:showcase": "node scripts/seed-showcase.js"
+    "seed:showcase": "node scripts/seed-showcase.js",
+    "search:backfill": "node scripts/backfill-marketplace-embeddings.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
