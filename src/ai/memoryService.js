@@ -75,7 +75,7 @@ export class MemoryService {
           user_id: userId,
           role: role,
           content: content,
-          embedding: embedding, // Supabase pgvector maneja arrays de JS
+          embedding: embedding,
           importance: importance
         }]);
 
@@ -97,6 +97,9 @@ export class MemoryService {
 
     try {
       const queryEmbedding = await this.embedText(queryText);
+      if (!queryEmbedding) {
+        return [];
+      }
       
       // Llamamos a una función RPC de Supabase que implemente el match
       // Como alternativa, podemos hacer una query cruda si usamos el SDK pg puro.

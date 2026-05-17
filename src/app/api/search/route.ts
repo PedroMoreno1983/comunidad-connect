@@ -7,10 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchService } from '@/lib/search';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
+  const limited = enforceRateLimit(req, 'search.ai', { limit: 60, windowMs: 60_000 });
+  if (limited) return limited;
+
   const { searchParams } = req.nextUrl;
   const query = searchParams.get('q')?.trim() ?? '';
   const scope = searchParams.get('scope') ?? 'marketplace'; // marketplace | profiles | all

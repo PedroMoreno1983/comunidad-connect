@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { recordAiEvent } from './telemetry';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage, type AiBudgetContext } from './budget';
 
 const FALLBACK_IMAGE_URL =
   "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1200&auto=format&fit=crop";
@@ -16,7 +17,7 @@ export class ImageService {
    * Generates a training image with OpenAI Images.
    * Returns either a remote URL or a base64 data URL, depending on the model.
    */
-  static async generateTutorImage(prompt: string): Promise<string | null> {
+  static async generateTutorImage(prompt: string, budget?: Partial<AiBudgetContext>): Promise<string | null> {
     const safePrompt = clampPrompt(prompt);
 
     if (!process.env.OPENAI_API_KEY) {
@@ -36,6 +37,18 @@ export class ImageService {
     const startedAt = Date.now();
 
     try {
+      await enforceAiBudget({
+        communityId: budget?.communityId,
+        userId: budget?.userId,
+        role: budget?.role,
+        module: budget?.module || 'training.blackboard_image',
+        provider: 'openai',
+        model,
+        actionType: 'image',
+        estimatedPromptTokens: estimateTokensFromText(safePrompt),
+        estimatedImages: 1,
+      });
+
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
       });
@@ -52,6 +65,22 @@ export class ImageService {
       const imageUrl = image?.url || (image?.b64_json ? `data:image/png;base64,${image.b64_json}` : null);
 
       if (imageUrl) {
+        await recordAiUsage({
+          communityId: budget?.communityId,
+          userId: budget?.userId,
+          role: budget?.role,
+          module: budget?.module || 'training.blackboard_image',
+          provider: 'openai',
+          model,
+          actionType: 'image',
+          promptTokens: estimateTokensFromText(safePrompt),
+          completionTokens: 0,
+          totalTokens: estimateTokensFromText(safePrompt),
+          imageCount: 1,
+          estimatedCostCents: estimateAiCostCents({ provider: 'openai', model, imageCount: 1 }),
+          status: 'success',
+          metadata: { latencyMs: Date.now() - startedAt },
+        });
         recordAiEvent({
           provider: 'openai',
           feature: 'training.blackboard_image',

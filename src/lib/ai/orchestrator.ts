@@ -2,6 +2,7 @@ import { TUTOR_PROMPT } from './agents/tutor';
 import { CLASSMATE_PERSONAS } from './agents/classmate';
 import { ImageService } from './imageService';
 import { recordAiEvent } from './telemetry';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage, type AiBudgetContext } from './budget';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { MemoryService } from '../../ai/memoryService.js';
@@ -124,7 +125,7 @@ function buildAutoBlackboard(userMessage: string, tutorText: string) {
 /**
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
-async function callGemini(apiKey: string, systemPrompt: string, history: {role: MessageRole, text: string}[]) {
+async function callGemini(apiKey: string, systemPrompt: string, history: {role: MessageRole, text: string}[], budget?: Partial<AiBudgetContext>) {
     const formattedHistory = history.map(msg => ({
         role: msg.role,
         parts: [{ text: msg.text }]
@@ -146,6 +147,20 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
     for (const model of getGeminiModels()) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const startedAt = Date.now();
+        const promptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
+        const completionBudget = 1000;
+
+        await enforceAiBudget({
+            communityId: budget?.communityId,
+            userId: budget?.userId,
+            role: budget?.role,
+            module: budget?.module || 'training.multi_agent',
+            provider: 'gemini',
+            model,
+            actionType: budget?.actionType || 'chat',
+            estimatedPromptTokens: promptTokens,
+            estimatedCompletionTokens: completionBudget,
+        });
         
         try {
             const res = await fetch(url, {
@@ -159,6 +174,28 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
                 const candidate = data?.candidates?.[0];
                 const text = (candidate?.content?.parts?.[0]?.text || "").trim();
                 if (text) {
+                    const completionTokens = data?.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(text);
+                    const actualPromptTokens = data?.usageMetadata?.promptTokenCount ?? promptTokens;
+                    await recordAiUsage({
+                        communityId: budget?.communityId,
+                        userId: budget?.userId,
+                        role: budget?.role,
+                        module: budget?.module || 'training.multi_agent',
+                        provider: 'gemini',
+                        model,
+                        actionType: budget?.actionType || 'chat',
+                        promptTokens: actualPromptTokens,
+                        completionTokens,
+                        totalTokens: data?.usageMetadata?.totalTokenCount ?? actualPromptTokens + completionTokens,
+                        estimatedCostCents: estimateAiCostCents({
+                            provider: 'gemini',
+                            model,
+                            promptTokens: actualPromptTokens,
+                            completionTokens,
+                        }),
+                        status: 'success',
+                        metadata: { latencyMs: Date.now() - startedAt },
+                    });
                     recordAiEvent({
                         provider: 'gemini',
                         feature: 'training.multi_agent',
@@ -311,7 +348,15 @@ export async function runMultiAgentTurn(
             ? `\n\nCONTENIDO DEL CURSO: A continuación tienes el contenido estricto sobre el cual debes basar tu clase hoy. Úsalo como tu fuente principal de verdad:\n${courseContent}\n\n`
             : "";
 
-        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory);
+        const budgetContext = {
+            communityId,
+            userId,
+            role: 'resident',
+            module: 'training.multi_agent',
+            actionType: 'chat' as const,
+        };
+
+        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory, budgetContext);
         
         let tutorChatText = sanitizeAgentResponse(rawTutorResponse);
         let tutorBlackboard = "";
@@ -344,7 +389,7 @@ export async function runMultiAgentTurn(
             // Procesamos todas las imágenes que haya pedido
             for (const imgMatch of imageRequests) {
                 const prompt = imgMatch[1].trim();
-                const imgUrl = await ImageService.generateTutorImage(prompt);
+                const imgUrl = await ImageService.generateTutorImage(prompt, budgetContext);
                 if (imgUrl) {
                     tutorBlackboard = tutorBlackboard.replace(imgMatch[0], `![Imagen Generada](${imgUrl})`);
                 } else {
@@ -354,7 +399,7 @@ export async function runMultiAgentTurn(
 
             if (!hasMarkdownImage(tutorBlackboard)) {
                 const autoPrompt = buildBlackboardImagePrompt(tutorBlackboard);
-                const imgUrl = await ImageService.generateTutorImage(autoPrompt);
+                const imgUrl = await ImageService.generateTutorImage(autoPrompt, budgetContext);
                 if (imgUrl) {
                     tutorBlackboard = `![Imagen de apoyo](${imgUrl})\n\n${tutorBlackboard}`;
                 }
@@ -390,7 +435,7 @@ export async function runMultiAgentTurn(
         const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de hablar. Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos.\n3. Opina o duda sobre la Tutora.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
         let classmateResponse = "";
         try {
-            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History);
+            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History, budgetContext);
         } catch (err) {
             console.warn("Classmate 1 unavailable:", err);
         }
@@ -421,7 +466,7 @@ export async function runMultiAgentTurn(
                 const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente.\n3. NO uses etiquetas de nombre ni asteriscos de acciones.`;
                 let classmate2Response = "";
                 try {
-                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History);
+                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History, budgetContext);
                 } catch (err) {
                     console.warn("Classmate 2 unavailable:", err);
                 }
@@ -440,6 +485,8 @@ export async function runMultiAgentTurn(
         return newResponses;
 
     } catch (err) {
+        if (isAiBudgetExceededError(err)) throw err;
+
         console.error("MultiAgent Orchestrator Error:", err);
         recordAiEvent({
             provider: 'system',

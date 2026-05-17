@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 
 export const dynamic = 'force-dynamic';
 // Vercel Hobby allows up to 60s maxDuration for Edge/Serverless functions
@@ -18,6 +20,12 @@ export async function POST(request: Request) {
         if (authError || !user) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
+
+        const { data: profile } = await getSupabaseAdmin()
+            .from('profiles')
+            .select('id, role, community_id')
+            .eq('id', user.id)
+            .maybeSingle();
 
         const bodyReq = await request.json();
         const { text } = bodyReq;
@@ -74,6 +82,21 @@ ${text}
             }
         };
 
+        const model = 'gemini-2.5-flash';
+        const promptTokens = estimateTokensFromText(systemPrompt);
+        await enforceAiBudget({
+            communityId: profile?.community_id,
+            userId: user.id,
+            role: profile?.role,
+            module: 'training.generate_slides',
+            provider: 'gemini',
+            model,
+            actionType: 'course',
+            estimatedPromptTokens: promptTokens,
+            estimatedCompletionTokens: 2500,
+        });
+
+        const startedAt = Date.now();
         const response = await fetch(url, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -93,10 +116,37 @@ ${text}
 
         // Parseamos para comprobar seguridad (el modelo ya devuelve un JSON válido gracias a responseSchema)
         const slides = JSON.parse(rawResponse);
+        const actualPromptTokens = data?.usageMetadata?.promptTokenCount ?? promptTokens;
+        const completionTokens = data?.usageMetadata?.candidatesTokenCount ?? estimateTokensFromText(rawResponse);
+
+        await recordAiUsage({
+            communityId: profile?.community_id,
+            userId: user.id,
+            role: profile?.role,
+            module: 'training.generate_slides',
+            provider: 'gemini',
+            model,
+            actionType: 'course',
+            promptTokens: actualPromptTokens,
+            completionTokens,
+            totalTokens: data?.usageMetadata?.totalTokenCount ?? actualPromptTokens + completionTokens,
+            estimatedCostCents: estimateAiCostCents({
+                provider: 'gemini',
+                model,
+                promptTokens: actualPromptTokens,
+                completionTokens,
+            }),
+            status: 'success',
+            metadata: { latencyMs: Date.now() - startedAt, slides: Array.isArray(slides) ? slides.length : 0 },
+        });
 
         return NextResponse.json({ slides });
 
     } catch (error: unknown) {
+        if (isAiBudgetExceededError(error)) {
+            return NextResponse.json({ error: error.reason }, { status: 429 });
+        }
+
         console.error('Error generating slides:', error);
         return NextResponse.json({ 
             error: 'Ocurrió un error al diseñar la presentación. ' + (error instanceof Error ? error.message : '') 
