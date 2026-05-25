@@ -550,7 +550,6 @@ export const ExpensesService = {
             console.error("Error processing payment:", error);
             throw error;
         }
-
         return data;
     }
 };
@@ -575,8 +574,9 @@ export const AnnouncementsService = {
             .insert([{
                 title: announcementData.title,
                 content: announcementData.content,
-                category: announcementData.priority,
-                condo_id: '11111111-1111-1111-1111-111111111111'
+                priority: announcementData.priority,
+                author_id: announcementData.author_id,
+                author_name: announcementData.author_name
             }])
             .select()
             .single();
@@ -587,8 +587,8 @@ export const AnnouncementsService = {
             id: data.id,
             title: data.title,
             content: data.content,
-            priority: data.category || announcementData.priority,
-            author_name: announcementData.author_name,
+            priority: data.priority,
+            author_name: data.author_name || announcementData.author_name,
             created_at: data.created_at
         };
     }

@@ -39,6 +39,37 @@ function DashboardShell({
         }
     }, [loading, user, router]);
 
+    useEffect(() => {
+        const routeTitles: Record<string, string> = {
+            '/home': 'Inicio',
+            '/marketplace': 'Marketplace',
+            '/amenities': 'Reservas de Instalaciones',
+            '/expenses': 'Gastos Comunes',
+            '/votaciones': 'Votaciones',
+            '/feed': 'Avisos y Comunicaciones',
+            '/chat': 'CoCo AI Chat',
+            '/social': 'Red Social',
+            '/directorio': 'Directorio de Vecinos',
+            '/profile': 'Mi Perfil',
+            '/services': 'Solicitudes de Servicio',
+            '/concierge/visitors': 'Registro de Visitas',
+            '/concierge/packages': 'Encomiendas y Paquetes',
+            '/admin/users': 'Usuarios y Accesos',
+            '/admin/units': 'Departamentos y Copropiedad',
+            '/admin/consumo': 'Consumo de Agua e IoT',
+            '/admin/finanzas': 'Gastos Comunes y Facturación',
+            '/admin/mantenimiento': 'Operaciones e Incidencias',
+            '/admin/votaciones': 'Votaciones y Encuestas',
+            '/admin/training': 'Capacitación y Cursos IA',
+            '/superadmin': 'Consola SuperAdmin',
+        };
+
+        const currentTitle = routeTitles[pathname] || '';
+        document.title = currentTitle 
+            ? `${currentTitle} | Convive Connect` 
+            : 'Convive Connect — Tu edificio, más humano que nunca';
+    }, [pathname]);
+
     if (loading || !user) return null;
 
     return (
