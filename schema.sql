@@ -1,443 +1,620 @@
--- =============================================
--- ComunidadConnect - Schema Completo v5
--- Incluye TODAS las tablas necesarias
--- =============================================
+-- =====================================================================
+-- ComunidadConnect (CoCo) - Esquema de Base de Datos Maestro
+-- Versión: 6.0 (Producción Hardened)
+-- =====================================================================
+-- Este archivo contiene la estructura completa y unificada del esquema de la base de datos
+-- de ComunidadConnect, incluyendo soporte multi-tenant (SaaS), control de acceso por roles (RLS),
+-- marketplace vecinal de modalidad múltiple, sistema IoT e historial del agente IA.
+--
+-- Ejecución: Puedes pegar este script directamente en el SQL Editor de Supabase.
+-- =====================================================================
 
--- Extensiones necesarias
-create extension if not exists "uuid-ossp";
+-- Habilitar extensiones necesarias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS vector;
 
--- =============================================
--- 1. PERFILES (ya existe)
--- =============================================
-create table if not exists public.profiles (
-  id uuid references auth.users not null primary key,
-  email text,
-  full_name text,
-  role text default 'resident',
-  avatar_url text,
-  phone text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Limpieza preventiva de tablas duplicadas o conflictivas
+DROP TABLE IF EXISTS public.votes CASCADE;
+DROP TABLE IF EXISTS public.poll_votes CASCADE;
+DROP TABLE IF EXISTS public.poll_options CASCADE;
+DROP TABLE IF EXISTS public.polls CASCADE;
+
+-- =====================================================================
+-- 1. ESTRUCTURA SAAS MULTI-TENANT & FACTURACIÓN
+-- =====================================================================
+
+-- Tabla de Planes / Tiers de Precios
+CREATE TABLE IF NOT EXISTS public.pricing_tiers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  price_per_unit NUMERIC(10, 2) NOT NULL,
+  base_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  features JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-alter table public.profiles enable row level security;
-drop policy if exists "Public profiles are viewable by everyone." on public.profiles;
-create policy "Public profiles are viewable by everyone." on public.profiles for select using (true);
-drop policy if exists "Users can insert their own profile." on public.profiles;
-create policy "Users can insert their own profile." on public.profiles for insert with check (auth.uid() = id);
-drop policy if exists "Users can update own profile." on public.profiles;
-create policy "Users can update own profile." on public.profiles for update using (auth.uid() = id);
-
--- =============================================
--- 2. UNIDADES (ya existe)
--- =============================================
-create table if not exists public.units (
-  id uuid default uuid_generate_v4() primary key,
-  tower text not null,
-  number text not null,
-  floor integer not null,
-  type text,
-  resident_profile_id uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Tabla de Comunidades (El central Tenant)
+CREATE TABLE IF NOT EXISTS public.communities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  address TEXT,
+  tier_id UUID REFERENCES public.pricing_tiers(id) ON DELETE SET NULL,
+  stripe_customer_id TEXT,
+  subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'past_due', 'canceled', 'trialing')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-alter table public.units enable row level security;
-drop policy if exists "Units are viewable by everyone." on public.units;
-create policy "Units are viewable by everyone." on public.units for select using (true);
-drop policy if exists "Only Admins can manage units." on public.units;
-create policy "Only Admins can manage units." on public.units for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
+-- =====================================================================
+-- 2. USUARIOS Y PERFILES (INTEGRACIÓN AUTH SUPABASE)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  name TEXT, -- Compatibilidad con api.ts y supabaseServices.ts
+  full_name TEXT,
+  role TEXT NOT NULL DEFAULT 'resident' CHECK (role IN ('superadmin', 'admin', 'resident', 'concierge')),
+  avatar_url TEXT,
+  phone TEXT,
+  department_number TEXT,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  whatsapp_enabled BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- =============================================
--- 3. LECTURAS DE AGUA (ya existe)
--- =============================================
-create table if not exists public.water_readings (
-  id uuid default uuid_generate_v4() primary key,
-  unit_id uuid references public.units(id) not null,
-  reading_value numeric(10, 2) not null,
-  reading_date date not null,
-  month text not null,
-  year integer not null,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(unit_id, month, year)
+-- =====================================================================
+-- 3. UNIDADES / DEPARTAMENTOS
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.units (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tower TEXT NOT NULL,
+  number TEXT NOT NULL,
+  floor INTEGER NOT NULL,
+  type TEXT DEFAULT 'apartment',
+  resident_profile_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-alter table public.water_readings enable row level security;
+-- Vincular perfil a unidad si es residente
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS unit_id;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS unit_id UUID REFERENCES public.units(id) ON DELETE SET NULL;
 
--- =============================================
--- 4. MARKETPLACE (ya existe)
--- =============================================
-create table if not exists public.marketplace_items (
-  id uuid default uuid_generate_v4() primary key,
-  seller_id uuid references public.profiles(id) not null,
-  title text not null,
+-- =====================================================================
+-- 4. CONTROL HÍDRICO (LECTURAS DE AGUA E IoT)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.water_readings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
+  reading_value NUMERIC(10, 2) NOT NULL,
+  reading_date DATE NOT NULL,
+  month TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(unit_id, month, year)
+);
+
+-- =====================================================================
+-- 5. MARKETPLACE VECINAL (MODALIDADES DE INTERCAMBIO Y MULTI-IMAGEN)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.marketplace_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  seller_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  category TEXT NOT NULL CHECK (category IN ('electronics', 'furniture', 'clothing', 'other')),
+  image_url TEXT, -- Imagen principal de portada
+  images TEXT[] DEFAULT '{}', -- Soporte para múltiples fotos
+  status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'reserved', 'sold', 'hidden')),
+  allow_sale BOOLEAN NOT NULL DEFAULT TRUE, -- Acepta dinero
+  allow_swap BOOLEAN NOT NULL DEFAULT FALSE, -- Acepta permuta (swap)
+  swap_details TEXT DEFAULT '',
+  allow_barter BOOLEAN NOT NULL DEFAULT FALSE, -- Acepta trueque (barter)
+  barter_details TEXT DEFAULT '',
+  payment_status TEXT NOT NULL DEFAULT 'none' CHECK (payment_status IN ('none', 'pending', 'completed')),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  embedding_voyage vector(1024), -- Vector representation for semantic search (Voyage AI 1024-d)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 6. ESPACES COMUNES & RESERVAS (AMENITIES)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.amenities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT,
+  max_capacity INTEGER DEFAULT 0,
+  hourly_rate NUMERIC(10, 2) DEFAULT 0,
+  icon_name TEXT,
+  gradient TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.bookings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  amenity_id UUID REFERENCES public.amenities(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+  notes TEXT,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 7. FEED DE COMUNICACIONES Y AVISOS OFICIALES
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.announcements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  author_name TEXT DEFAULT 'Administración',
+  priority TEXT DEFAULT 'info' CHECK (priority IN ('info', 'alert', 'event')),
+  is_pinned BOOLEAN DEFAULT FALSE,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 8. VOTACIONES COMUNITARIAS (POLLS)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.polls (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'closed')),
+  category TEXT NOT NULL DEFAULT 'community' CHECK (category IN ('maintenance', 'community', 'rules', 'other')),
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.poll_options (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  poll_id UUID REFERENCES public.polls(id) ON DELETE CASCADE NOT NULL,
+  text TEXT NOT NULL,
+  votes INTEGER DEFAULT 0, -- Caché de votos acumulados
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.poll_votes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  poll_id UUID REFERENCES public.polls(id) ON DELETE CASCADE NOT NULL,
+  option_id UUID REFERENCES public.poll_options(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID NOT NULL, -- Referencia relajada (UUID o ID de sesión) para compatibilidad con modo demo
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(poll_id, user_id)
+);
+
+-- =====================================================================
+-- 9. GASTOS COMUNES Y COBROS (INTEGRACIÓN FACTURA/BOLETA CHILE)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.expenses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
+  month TEXT NOT NULL, -- Formato YYYY-MM
+  year INTEGER NOT NULL,
+  total_amount NUMERIC(10, 2) NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'overdue')),
+  due_date DATE NOT NULL,
+  paid_at TIMESTAMPTZ,
+  payment_metadata JSONB DEFAULT '{}'::jsonb, -- Datos tributarios (Haulmer Link, boleta electrónica, etc.)
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(unit_id, month, year)
+);
+
+CREATE TABLE IF NOT EXISTS public.expense_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  expense_id UUID REFERENCES public.expenses(id) ON DELETE CASCADE NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('water', 'electricity', 'salaries', 'maintenance', 'security', 'other')),
+  label TEXT NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL
+);
+
+-- =====================================================================
+-- 10. SEGURIDAD Y ACCESOS (CONSERJERÍA, VISITAS, PAQUETES)
+-- =====================================================================
+
+-- Invitaciones de Código QR dinámicos
+CREATE TABLE IF NOT EXISTS public.qr_invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  resident_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  unit_id UUID REFERENCES public.units(id) ON DELETE SET NULL,
+  guest_name TEXT NOT NULL,
+  guest_dni TEXT,
+  qr_code TEXT NOT NULL,
+  valid_from TIMESTAMPTZ NOT NULL,
+  valid_to TIMESTAMPTZ NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'used', 'expired', 'cancelled')),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Bitácora de Visitantes
+CREATE TABLE IF NOT EXISTS public.visitor_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  visitor_name TEXT NOT NULL,
+  unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE,
+  entry_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  exit_time TIMESTAMPTZ,
+  purpose TEXT,
+  registered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Encomiendas y Paquetes
+CREATE TABLE IF NOT EXISTS public.packages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipient_unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
+  description TEXT NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  picked_up_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'picked-up')),
+  registered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 11. DIRECTORIO DE PROVEEDORES Y SOLICITUD DE SERVICIOS
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.service_providers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('plumbing', 'electrical', 'locksmith', 'cleaning', 'general')),
+  rating NUMERIC(2, 1) NOT NULL DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
+  contact_phone TEXT NOT NULL,
+  email TEXT,
+  photo TEXT,
+  bio TEXT,
+  years_experience INTEGER DEFAULT 0,
+  specialties TEXT[] DEFAULT '{}',
+  certifications TEXT[] DEFAULT '{}',
+  hourly_rate NUMERIC(10, 2),
+  availability TEXT DEFAULT 'available' CHECK (availability IN ('available', 'busy', 'unavailable')),
+  response_time TEXT DEFAULT '< 24 horas',
+  completed_jobs INTEGER DEFAULT 0,
+  verified BOOLEAN DEFAULT FALSE,
+  review_count INTEGER DEFAULT 0,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.service_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  provider_id UUID NOT NULL REFERENCES public.service_providers(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  preferred_date DATE NOT NULL,
+  preferred_time TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'completed', 'cancelled')),
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  provider_id UUID REFERENCES public.service_providers(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(provider_id, user_id)
+);
+
+-- =====================================================================
+-- 12. RED SOCIAL CONDOMINIAL (SOCIAL FEED)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.social_posts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  content TEXT NOT NULL,
+  image_url TEXT,
+  likes_count INTEGER DEFAULT 0,
+  comments_count INTEGER DEFAULT 0,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.social_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id UUID REFERENCES public.social_posts(id) ON DELETE CASCADE NOT NULL,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  content TEXT NOT NULL,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 13. NOTIFICACIONES REALTIME Y ALERTAS PWA
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('info', 'success', 'warning', 'alert')),
+  category TEXT NOT NULL DEFAULT 'info',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  link TEXT,
+  read BOOLEAN DEFAULT FALSE,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 14. AULA INTERACTIVA & CAPACITACIÓN MULTI-AGENTE (TRAINING)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.training_modules (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  description TEXT,
+  target_audience TEXT DEFAULT 'all' CHECK (target_audience IN ('resident', 'concierge', 'admin', 'all')),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.training_lessons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  module_id UUID REFERENCES public.training_modules(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL, -- Pizarra en Markdown
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.user_training_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  module_id UUID REFERENCES public.training_modules(id) ON DELETE CASCADE NOT NULL,
+  status TEXT DEFAULT 'started' CHECK (status IN ('started', 'completed')),
+  score INTEGER DEFAULT 0,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, module_id)
+);
+
+-- =====================================================================
+-- 15. COCO AI AGENT - CASOS E HISTORIAL DE CONVERSACIÓN
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.coco_cases (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'escalated')),
+  description TEXT,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.coco_case_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  case_id UUID REFERENCES public.coco_cases(id) ON DELETE CASCADE NOT NULL,
+  actor TEXT NOT NULL CHECK (actor IN ('user', 'coco', 'admin')),
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- 16. VALORES SEMILLA POR DEFECTO
+-- =====================================================================
+
+-- Inserción de Tiers de Precios
+INSERT INTO public.pricing_tiers (id, name, price_per_unit, base_price, features) VALUES
+('11111111-1111-1111-1111-111111111111', 'Essential', 490, 19990, '{"amenities": false, "coco_ai": false, "maintenance": false}'::jsonb),
+('22222222-2222-2222-2222-222222222222', 'Pro', 690, 34990, '{"amenities": true, "coco_ai": true, "maintenance": true}'::jsonb),
+('33333333-3333-3333-3333-333333333333', 'Enterprise', 890, 0, '{"amenities": true, "coco_ai": true, "maintenance": true, "custom_roles": true}'::jsonb)
+ON CONFLICT (name) DO UPDATE 
+SET price_per_unit = EXCLUDED.price_per_unit, 
+    base_price = EXCLUDED.base_price, 
+    features = EXCLUDED.features;
+
+-- Inserción de la Comunidad por Defecto (Demo)
+INSERT INTO public.communities (id, name, address, tier_id) VALUES 
+('00000000-0000-0000-0000-000000000000', 'Condominio Demo Principal', 'Av. Siempreviva 742', '22222222-2222-2222-2222-222222222222')
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================================
+-- 17. TRIGGER AUTOMÁTICO DE REGISTRO DE USUARIOS
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_community_id UUID;
+  v_name TEXT;
+BEGIN
+  -- Obtener community_id de los metadatos de auth del usuario al registrarse
+  IF (NEW.raw_user_meta_data->>'community_id') IS NOT NULL AND (NEW.raw_user_meta_data->>'community_id') <> '' THEN
+    v_community_id := (NEW.raw_user_meta_data->>'community_id')::UUID;
+  ELSE
+    v_community_id := '00000000-0000-0000-0000-000000000000'::UUID;
+  END IF;
+
+  v_name := COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', NEW.email);
+
+  INSERT INTO public.profiles (id, name, full_name, email, role, community_id)
+  VALUES (
+    NEW.id,
+    v_name,
+    v_name,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'role', 'resident'),
+    v_community_id
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Crear trigger de inserción en auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- =====================================================================
+-- 18. SEGURIDAD DE ROW LEVEL SECURITY (RLS) GENERAL
+-- =====================================================================
+
+ALTER TABLE public.communities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_readings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.amenities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.poll_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expense_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.qr_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visitor_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.social_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.social_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de Acceso Básico para Perfiles (Visualizar todos para el Directorio, actualizar propio)
+CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Políticas de Multi-Tenant por defecto (Filtro estricto por community_id del perfil del usuario autenticado)
+CREATE POLICY "tenant_communities_select" ON public.communities FOR SELECT USING (
+  id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+);
+CREATE POLICY "tenant_units_select" ON public.units FOR SELECT USING (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+);
+CREATE POLICY "tenant_marketplace_select" ON public.marketplace_items FOR SELECT USING (true); -- Marketplace es abierto para lectura
+CREATE POLICY "tenant_marketplace_insert" ON public.marketplace_items FOR INSERT WITH CHECK (
+  auth.uid() = seller_id AND community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+);
+CREATE POLICY "tenant_marketplace_update" ON public.marketplace_items FOR UPDATE USING (auth.uid() = seller_id);
+
+CREATE POLICY "tenant_amenities_select" ON public.amenities FOR SELECT USING (true);
+CREATE POLICY "tenant_bookings_select" ON public.bookings FOR SELECT USING (
+  auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+);
+CREATE POLICY "tenant_bookings_insert" ON public.bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "tenant_announcements_select" ON public.announcements FOR SELECT USING (true);
+CREATE POLICY "tenant_announcements_insert" ON public.announcements FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+);
+
+CREATE POLICY "tenant_polls_select" ON public.polls FOR SELECT USING (true);
+CREATE POLICY "tenant_poll_options_select" ON public.poll_options FOR SELECT USING (true);
+CREATE POLICY "tenant_poll_votes_select" ON public.poll_votes FOR SELECT USING (true);
+CREATE POLICY "tenant_poll_votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (true); -- Habilitado para modo demo en cliente
+
+-- Políticas de Seguridad para Proveedores de Servicios
+CREATE POLICY "tenant_service_providers_select" ON public.service_providers FOR SELECT USING (true);
+CREATE POLICY "tenant_service_providers_insert" ON public.service_providers FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tenant_service_providers_update" ON public.service_providers FOR UPDATE USING (auth.uid() = user_id);
+
+-- Políticas de Seguridad para Solicitudes de Servicios
+CREATE POLICY "tenant_service_requests_select" ON public.service_requests FOR SELECT USING (
+  auth.uid() = user_id 
+  OR provider_id IN (SELECT id FROM public.service_providers WHERE user_id = auth.uid())
+);
+CREATE POLICY "tenant_service_requests_insert" ON public.service_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tenant_service_requests_update" ON public.service_requests FOR UPDATE USING (
+  auth.uid() = user_id 
+  OR provider_id IN (SELECT id FROM public.service_providers WHERE user_id = auth.uid())
+);
+
+-- Crear índices de optimización para búsquedas y RLS
+CREATE INDEX IF NOT EXISTS idx_profiles_community ON public.profiles(community_id);
+CREATE INDEX IF NOT EXISTS idx_units_community ON public.units(community_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_community ON public.marketplace_items(community_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_user ON public.bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_unit ON public.expenses(unit_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, read);
+
+-- Índice HNSW y función de búsqueda semántica para Marketplace (Voyage AI)
+CREATE INDEX IF NOT EXISTS marketplace_embedding_voyage_idx
+  ON public.marketplace_items USING hnsw (embedding_voyage vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION search_marketplace_semantic(
+  query_embedding vector(1024),
+  match_count int DEFAULT 10
+)
+RETURNS TABLE (
+  id uuid,
+  title text,
   description text,
-  price numeric(10, 2) not null,
+  price numeric,
   category text,
+  image_url text,
   images text[],
-  is_active boolean default true,
-  allow_barter boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.marketplace_items enable row level security;
-drop policy if exists "Marketplace items viewable by all" on public.marketplace_items;
-create policy "Marketplace items viewable by all" on public.marketplace_items for select using (true);
-drop policy if exists "Users can insert own items" on public.marketplace_items;
-create policy "Users can insert own items" on public.marketplace_items for insert with check (auth.uid() = seller_id);
-drop policy if exists "Users update own items" on public.marketplace_items;
-create policy "Users update own items" on public.marketplace_items for update using (auth.uid() = seller_id);
-
--- =============================================
--- 5. AMENIDADES (NUEVO)
--- =============================================
-create table if not exists public.amenities (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null,
-  description text,
-  max_capacity integer default 0,
-  hourly_rate numeric(10, 2) default 0,
-  icon_name text,
-  gradient text,
-  is_active boolean default true,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.amenities enable row level security;
-drop policy if exists "Amenities viewable by all" on public.amenities;
-create policy "Amenities viewable by all" on public.amenities for select using (true);
-drop policy if exists "Admins manage amenities" on public.amenities;
-create policy "Admins manage amenities" on public.amenities for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
--- =============================================
--- 6. RESERVAS / BOOKINGS (NUEVO)
--- =============================================
-create table if not exists public.bookings (
-  id uuid default uuid_generate_v4() primary key,
-  amenity_id uuid references public.amenities(id) not null,
-  user_id uuid references public.profiles(id) not null,
-  date date not null,
-  start_time time not null,
-  end_time time not null,
-  status text default 'pending' check (status in ('pending', 'confirmed', 'cancelled')),
-  notes text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.bookings enable row level security;
-drop policy if exists "Users view own bookings" on public.bookings;
-create policy "Users view own bookings" on public.bookings for select using (
-  auth.uid() = user_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-drop policy if exists "Users create bookings" on public.bookings;
-create policy "Users create bookings" on public.bookings for insert with check (auth.uid() = user_id);
-drop policy if exists "Admin manage bookings" on public.bookings;
-create policy "Admin manage bookings" on public.bookings for update using (
-  auth.uid() = user_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
--- =============================================
--- 7. ANUNCIOS / FEED (NUEVO)
--- =============================================
-create table if not exists public.announcements (
-  id uuid default uuid_generate_v4() primary key,
-  title text not null,
-  content text not null,
-  author_id uuid references public.profiles(id),
-  author_name text,
-  priority text default 'info' check (priority in ('info', 'alert', 'event')),
-  is_pinned boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.announcements enable row level security;
-drop policy if exists "Announcements viewable by all" on public.announcements;
-create policy "Announcements viewable by all" on public.announcements for select using (true);
-drop policy if exists "Staff create announcements" on public.announcements;
-create policy "Staff create announcements" on public.announcements for insert with check (
-  exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-
--- =============================================
--- 8. ENCUESTAS / POLLS (NUEVO)
--- =============================================
-create table if not exists public.polls (
-  id uuid default uuid_generate_v4() primary key,
-  title text not null,
-  description text,
-  category text default 'community',
-  status text default 'active' check (status in ('active', 'closed')),
-  end_date timestamp with time zone not null,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.poll_options (
-  id uuid default uuid_generate_v4() primary key,
-  poll_id uuid references public.polls(id) on delete cascade not null,
-  text text not null,
-  votes integer default 0,
-  display_order integer default 0
-);
-
-create table if not exists public.poll_votes (
-  id uuid default uuid_generate_v4() primary key,
-  poll_id uuid references public.polls(id) on delete cascade not null,
-  option_id uuid references public.poll_options(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(poll_id, user_id)
-);
-
-alter table public.polls enable row level security;
-alter table public.poll_options enable row level security;
-alter table public.poll_votes enable row level security;
-
-create policy "Polls viewable by all" on public.polls for select using (true);
-create policy "Admin create polls" on public.polls for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-create policy "Options viewable by all" on public.poll_options for select using (true);
-create policy "Votes viewable by all" on public.poll_votes for select using (true);
-create policy "Users can vote" on public.poll_votes for insert with check (auth.uid() = user_id);
-
--- =============================================
--- 9. GASTOS COMUNES / EXPENSES (NUEVO)
--- =============================================
-create table if not exists public.expenses (
-  id uuid default uuid_generate_v4() primary key,
-  unit_id uuid references public.units(id) not null,
-  month text not null,
-  year integer not null,
-  total_amount numeric(10, 2) not null,
-  status text default 'pending' check (status in ('pending', 'paid', 'overdue')),
-  due_date date not null,
-  paid_at timestamp with time zone,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(unit_id, month, year)
-);
-
-create table if not exists public.expense_items (
-  id uuid default uuid_generate_v4() primary key,
-  expense_id uuid references public.expenses(id) on delete cascade not null,
-  category text not null,
-  label text not null,
-  amount numeric(10, 2) not null
-);
-
-alter table public.expenses enable row level security;
-alter table public.expense_items enable row level security;
-
-create policy "Residents view own expenses" on public.expenses for select using (
-  exists (
-    select 1 from public.units u
-    where u.id = unit_id and u.resident_profile_id = auth.uid()
-  )
-  or exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-create policy "Admin manage expenses" on public.expenses for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-create policy "Expense items viewable" on public.expense_items for select using (true);
-
--- =============================================
--- 10. INVITACIONES QR (NUEVO)
--- =============================================
-create table if not exists public.qr_invitations (
-  id uuid default uuid_generate_v4() primary key,
-  resident_id uuid references public.profiles(id) not null,
-  unit_id uuid references public.units(id),
-  guest_name text not null,
-  guest_dni text,
-  qr_code text not null,
-  valid_from timestamp with time zone not null,
-  valid_to timestamp with time zone not null,
-  status text default 'active' check (status in ('active', 'used', 'expired', 'cancelled')),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.qr_invitations enable row level security;
-create policy "Residents view own invitations" on public.qr_invitations for select using (
-  auth.uid() = resident_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-create policy "Residents create invitations" on public.qr_invitations for insert with check (auth.uid() = resident_id);
-
--- =============================================
--- 11. VISITANTES / VISITOR LOG (NUEVO)
--- =============================================
-create table if not exists public.visitor_logs (
-  id uuid default uuid_generate_v4() primary key,
-  visitor_name text not null,
-  unit_id uuid references public.units(id),
-  entry_time timestamp with time zone default now(),
-  exit_time timestamp with time zone,
-  purpose text,
-  registered_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.visitor_logs enable row level security;
-create policy "Staff view visitors" on public.visitor_logs for select using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-create policy "Staff register visitors" on public.visitor_logs for insert with check (
-  exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-
--- =============================================
--- 12. PAQUETES / PACKAGES (NUEVO)
--- =============================================
-create table if not exists public.packages (
-  id uuid default uuid_generate_v4() primary key,
-  recipient_unit_id uuid references public.units(id) not null,
-  description text not null,
-  received_at timestamp with time zone default now(),
-  picked_up_at timestamp with time zone,
-  status text default 'pending' check (status in ('pending', 'picked-up')),
-  registered_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.packages enable row level security;
-create policy "Staff and residents view packages" on public.packages for select using (
-  exists (
-    select 1 from public.units u
-    where u.id = recipient_unit_id and u.resident_profile_id = auth.uid()
-  )
-  or exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-create policy "Staff manage packages" on public.packages for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-
--- =============================================
--- 13. SERVICE REQUESTS (NUEVO)
--- =============================================
-create table if not exists public.service_requests (
-  id uuid default uuid_generate_v4() primary key,
-  requester_id uuid references public.profiles(id) not null,
-  unit_id uuid references public.units(id),
-  provider_id text,
-  service_type text not null,
-  description text not null,
-  status text default 'pending' check (status in ('pending', 'approved', 'in-progress', 'completed', 'cancelled')),
-  scheduled_date date,
-  scheduled_time time,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.service_requests enable row level security;
-create policy "Users view own requests" on public.service_requests for select using (
-  auth.uid() = requester_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role in ('admin', 'concierge') )
-);
-create policy "Users create requests" on public.service_requests for insert with check (auth.uid() = requester_id);
-create policy "Admin update requests" on public.service_requests for update using (
-  auth.uid() = requester_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
--- =============================================
--- 14. VOTACIONES / POLLS (NUEVO)
--- =============================================
-create table if not exists public.polls (
-  id uuid default uuid_generate_v4() primary key,
-  title text not null,
-  description text not null,
-  end_date timestamp with time zone not null,
-  status text default 'active' check (status in ('active', 'closed')),
-  category text not null check (category in ('maintenance', 'community', 'rules', 'other')),
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.poll_options (
-  id uuid default uuid_generate_v4() primary key,
-  poll_id uuid references public.polls(id) on delete cascade not null,
-  text text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.votes (
-  id uuid default uuid_generate_v4() primary key,
-  poll_id uuid references public.polls(id) on delete cascade not null,
-  option_id uuid references public.poll_options(id) on delete cascade not null,
-  user_id uuid not null, -- Referencia relajada para modo Demo
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(poll_id, user_id) -- Un voto por usuario por votación
-);
-
-alter table public.polls enable row level security;
-create policy "Polls viewable by all" on public.polls for select using (true);
-create policy "Admin manage polls" on public.polls for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
-alter table public.poll_options enable row level security;
-create policy "Poll options viewable by all" on public.poll_options for select using (true);
-create policy "Admin manage options" on public.poll_options for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
-alter table public.votes enable row level security;
-create policy "Votes viewable by all" on public.votes for select using (true);
-CREATE POLICY "Allow inserts from Demo users" ON public.votes FOR INSERT WITH CHECK (true);
-
--- =============================================
--- 15. FORMACIÓN Y CAPACITACIÓN MULTI-AGENTE
--- =============================================
-create table if not exists public.training_modules (
-  id uuid default uuid_generate_v4() primary key,
-  title text not null,
-  description text,
-  target_audience text default 'all' check (target_audience in ('resident', 'concierge', 'admin', 'all')),
-  is_active boolean default true,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.training_lessons (
-  id uuid default uuid_generate_v4() primary key,
-  module_id uuid references public.training_modules(id) on delete cascade not null,
-  title text not null,
-  content text not null,
-  order_index integer default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.user_training_progress (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) not null,
-  module_id uuid references public.training_modules(id) on delete cascade not null,
-  status text default 'started' check (status in ('started', 'completed')),
-  score integer default 0,
-  completed_at timestamp with time zone,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(user_id, module_id)
-);
-
-alter table public.training_modules enable row level security;
-alter table public.training_lessons enable row level security;
-alter table public.user_training_progress enable row level security;
-
-create policy "Training modules viewable by all" on public.training_modules for select using (true);
-create policy "Admin manage training modules" on public.training_modules for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
-create policy "Training lessons viewable by all" on public.training_lessons for select using (true);
-create policy "Admin manage training lessons" on public.training_lessons for all using (
-  exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-
-create policy "Users view own progress" on public.user_training_progress for select using (
-  auth.uid() = user_id
-  or exists ( select 1 from public.profiles where id = auth.uid() and role = 'admin' )
-);
-create policy "Users insert own progress" on public.user_training_progress for insert with check (auth.uid() = user_id);
-create policy "Users update own progress" on public.user_training_progress for update using (auth.uid() = user_id);
+  seller_id uuid,
+  status text,
+  allow_sale boolean,
+  allow_swap boolean,
+  swap_details text,
+  allow_barter boolean,
+  barter_details text,
+  payment_status text,
+  created_at timestamptz,
+  similarity real
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    id,
+    title,
+    description,
+    price,
+    category,
+    image_url,
+    images,
+    seller_id,
+    status,
+    allow_sale,
+    allow_swap,
+    swap_details,
+    allow_barter,
+    barter_details,
+    payment_status,
+    created_at,
+    1 - (embedding_voyage <=> query_embedding) AS similarity
+  FROM public.marketplace_items
+  WHERE
+    status = 'available'
+    AND embedding_voyage IS NOT NULL
+  ORDER BY embedding_voyage <=> query_embedding
+  LIMIT match_count;
+$$;

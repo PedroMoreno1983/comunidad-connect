@@ -77,6 +77,23 @@ Si quieres agregar datos de prueba:
    - Encuentra el usuario recién creado
    - Cambia el campo `role` de `resident` a `admin`
 
+## 🤖 Paso 6: Automatización de Búsqueda Semántica con Webhooks
+
+Para que las búsquedas semánticas del Marketplace funcionen en tiempo real de forma automática cada vez que se agregue o modifique un producto, configura un Webhook en tu Dashboard de Supabase:
+
+1. Ve a **Database** ➔ **Webhooks** en Supabase.
+2. Haz clic en **Create Webhook**.
+3. Rellena los datos de configuración:
+   - **Name:** `embed_marketplace_items`
+   - **Table:** `marketplace_items`
+   - **Events:** Activa `INSERT` y `UPDATE`.
+   - **Type:** `HTTP POST`
+   - **URL:** `https://<tu-dominio-de-vercel>.vercel.app/api/marketplace-items/embed` (o tu túnel de ngrok si estás probando en local).
+   - **Headers:**
+     - `Content-Type`: `application/json`
+     - `Authorization`: `Bearer <tu-token-de-seguridad-webhook>` (debe coincidir con el valor de la variable de entorno `WHATSAPP_WEBHOOK_SECRET` que declaraste en Vercel para autorizar llamadas).
+4. Guarda y activa el Webhook. ¡Listo! Cada cambio en el catálogo se indexará en pgvector en tiempo real.
+
 ## 🔐 Notas de Seguridad
 
 - ✅ Las políticas RLS protegen los datos por rol

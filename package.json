@@ -20,7 +20,8 @@
     "qa:operations": "node scripts/operations-qa.js",
     "qa:security-headers": "node scripts/security-headers-qa.js",
     "seed:showcase": "node scripts/seed-showcase.js",
-    "search:backfill": "node scripts/backfill-marketplace-embeddings.js"
+    "search:backfill": "node scripts/backfill-marketplace-embeddings.js",
+    "test:whatsapp": "node scripts/test-whatsapp.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

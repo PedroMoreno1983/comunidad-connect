@@ -1,4 +1,7 @@
+"use client";
+
 import { CSSProperties, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
 /**
  * EmptyState — the most important component in the current codebase.
@@ -42,34 +45,41 @@ export function EmptyState({
   className = '',
 }: EmptyStateProps) {
   return (
-    <div
-      className={`py-12 px-8 text-center rounded-xl ${className}`}
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ scale: 1.005, y: -2 }}
+      className={`py-12 px-8 text-center rounded-2xl shadow-sm border transition-all duration-300 ${className}`}
       style={{
         backgroundColor: 'var(--cc-bg-surface)',
-        borderWidth: '1px',
+        backdropFilter: 'blur(8px)',
         borderStyle: dashed ? 'dashed' : 'solid',
         borderColor: dashed ? 'var(--cc-border-default)' : 'var(--cc-border-subtle)',
       }}
     >
-      <div
+      <motion.div
+        whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+        transition={{ type: "spring", stiffness: 400, damping: 15 }}
         style={{
           width: '56px',
           height: '56px',
-          borderRadius: '12px',
+          borderRadius: '16px',
           display: 'grid',
           placeItems: 'center',
           margin: '0 auto 20px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
           ...(iconToneStyles[tone ?? 'neutral'] || iconToneStyles.neutral),
         }}
       >
-        {icon}
-      </div>
+        <span className="scale-110">{icon}</span>
+      </motion.div>
       <h4
         style={{
           fontFamily: 'var(--cc-font-display)',
           fontSize: '20px',
           fontWeight: 600,
-          letterSpacing: '0',
+          letterSpacing: '-0.01em',
           marginBottom: '8px',
           color: 'var(--cc-text-primary)',
         }}
@@ -87,7 +97,14 @@ export function EmptyState({
       >
         {description}
       </p>
-      {action}
-    </div>
+      {action && (
+        <motion.div 
+          whileTap={{ scale: 0.98 }}
+          className="inline-block"
+        >
+          {action}
+        </motion.div>
+      )}
+    </motion.div>
   );
 }
