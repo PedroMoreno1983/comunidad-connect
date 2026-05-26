@@ -26,8 +26,8 @@ export function ProductFilters({
                 <Search className="absolute left-4 h-5 w-5 text-slate-400" />
                 <input
                     type="text"
-                    placeholder="Buscar articulos, categorias o palabras clave..."
-                    className="h-12 w-full rounded-lg border border-subtle bg-surface pl-12 pr-12 text-sm font-medium cc-text-primary shadow-sm transition-all focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    placeholder="Buscar artículos, categorías o palabras clave..."
+                    className="h-12 w-full rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] pl-12 pr-12 text-sm font-medium cc-text-primary shadow-sm transition-all focus:border-[var(--cc-copper)] focus:outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/20"
                     value={searchTerm}
                     onChange={event => setSearchTerm(event.target.value)}
                 />
@@ -59,8 +59,8 @@ export function ProductFilters({
                             onClick={() => setSelectedCategory(category.id === "all" ? null : category.id)}
                             className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors ${
                                 isActive
-                                    ? "border-brand-500 bg-brand-500 text-white"
-                                    : "border-subtle bg-surface cc-text-secondary hover:bg-elevated"
+                                    ? "border-[var(--cc-copper)] bg-[var(--cc-copper)] text-white"
+                                    : "border-[var(--cc-line)] bg-[var(--cc-paper)] cc-text-secondary hover:bg-[var(--cc-paper-warm)]"
                             }`}
                         >
                             <Icon className={`h-4 w-4 ${isActive ? "text-white" : "cc-text-tertiary"}`} />

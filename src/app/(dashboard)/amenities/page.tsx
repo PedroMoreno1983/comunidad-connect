@@ -3,33 +3,18 @@
 import { useCallback, useState, useEffect } from 'react';
 import { AmenitiesService } from "@/lib/api";
 import {
-    Calendar, Clock, Users, Check, ChevronLeft, ChevronRight, Sparkles,
+    Calendar, Clock, Users, Check, ChevronLeft, ArrowLeft, Sparkles,
     Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2
 } from "lucide-react";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/cc/Button";
 import { Booking, Amenity } from "@/lib/types";
-import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
-import { ModuleFlow } from "@/components/ui/ModuleFlow";
+import { ModuleHeader } from "@/components/ui/ModuleHeader";
+import { Tag } from "@/components/cc/Tag";
 
-// TAILWIND SAFELIST FOR DYNAMIC DB GRADIENTS:
-// from-orange-500 to-red-600 from-cyan-400 to-blue-600 from-fuchsia-500 to-pink-600 
-// from-slate-600 to-slate-900 from-emerald-400 to-teal-600 from-violet-500 to-purple-700 
-// from-purple-500 to-pink-500 from-[#3B82F6] to-[#6D28D9]
-
-// Icon mapping for amenities
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Flame,
     Waves,
@@ -42,8 +27,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 const demoAmenities: Amenity[] = [
     {
         id: "demo-amenity-quincho",
-        name: "Quincho panoramico",
-        description: "Terraza equipada para reuniones familiares, con parrilla, mesones y aforo controlado por administracion.",
+        name: "Quincho panorámico",
+        description: "Terraza equipada para reuniones familiares con parrilla, mesones y vistas espectaculares de la ciudad.",
         maxCapacity: 18,
         hourlyRate: 12000,
         iconName: "Flame",
@@ -52,7 +37,7 @@ const demoAmenities: Amenity[] = [
     {
         id: "demo-amenity-sala",
         name: "Sala multiuso",
-        description: "Espacio cerrado para reuniones, clases, cumpleaños infantiles o actividades del comite.",
+        description: "Espacio cerrado para reuniones, cumpleaños infantiles o actividades comunitarias.",
         maxCapacity: 24,
         hourlyRate: 0,
         iconName: "PartyPopper",
@@ -60,8 +45,8 @@ const demoAmenities: Amenity[] = [
     },
     {
         id: "demo-amenity-gym",
-        name: "Gimnasio",
-        description: "Equipamiento funcional para residentes, con control de horarios peak y mantencion programada.",
+        name: "Gimnasio de residentes",
+        description: "Equipamiento funcional, pesas y máquinas cardiovasculares completas.",
         maxCapacity: 10,
         hourlyRate: 0,
         iconName: "Dumbbell",
@@ -160,18 +145,17 @@ export default function AmenitiesPage() {
     const [amenities, setAmenities] = useState<Amenity[]>([]);
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
+    
+    // Booking flow state
     const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const { toast } = useToast();
 
-    const [currentMonth, setCurrentMonth] = useState(new Date());
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const timeSlots = [
-        '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
-        '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
+        '08:00', '10:00', '12:00', '14:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
     ];
 
     const loadData = useCallback(async () => {
@@ -193,8 +177,7 @@ export default function AmenitiesPage() {
             setAmenities(normalizedAmenities.length ? normalizedAmenities : demoAmenities);
             setBookings(normalizedBookings);
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-            console.error("Error loading amenities data:", errorMessage);
+            console.error("Error loading amenities data:", error);
             setAmenities(demoAmenities);
             setBookings([]);
         } finally {
@@ -208,10 +191,36 @@ export default function AmenitiesPage() {
         }
     }, [loadData, user]);
 
-    const handleOpenBooking = (amenity: Amenity) => {
+    // Generar strip de los próximos 7 días a partir de hoy
+    const getNext7Days = () => {
+        const list = [];
+        const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            const dateStr = d.toISOString().slice(0, 10);
+            list.push({
+                dateStr,
+                dayName: daysOfWeek[d.getDay()],
+                dayNumber: d.getDate(),
+                formattedLabel: d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+            });
+        }
+        return list;
+    };
+
+    const next7Days = getNext7Days();
+
+    // Configurar primer día por defecto si hay amenidad seleccionada
+    useEffect(() => {
+        if (selectedAmenity && !selectedDate) {
+            setSelectedDate(next7Days[0].dateStr);
+        }
+    }, [selectedAmenity, selectedDate, next7Days]);
+
+    const handleSelectAmenity = (amenity: Amenity) => {
         setSelectedAmenity(amenity);
-        setIsDialogOpen(true);
-        setSelectedDate('');
+        setSelectedDate(next7Days[0].dateStr);
         setSelectedTime('');
     };
 
@@ -222,7 +231,7 @@ export default function AmenitiesPage() {
         }
         if (!selectedAmenity) return;
         if (!selectedDate) {
-            toast({ title: "Faltan datos", description: "Por favor, selecciona un día en el calendario.", variant: "destructive" });
+            toast({ title: "Faltan datos", description: "Por favor, selecciona una fecha.", variant: "destructive" });
             return;
         }
         if (!selectedTime) {
@@ -230,7 +239,6 @@ export default function AmenitiesPage() {
             return;
         }
 
-        // Validar que no haya una reserva existente para esta amenidad en esta fecha y hora
         const isConflict = bookings.some(b =>
             b.amenityId === selectedAmenity.id &&
             b.date === selectedDate &&
@@ -253,23 +261,23 @@ export default function AmenitiesPage() {
                 setBookings(current => {
                     const nextBookings = [
                         {
-                        id: `demo-booking-created-${Date.now()}`,
-                        amenityId: selectedAmenity.id,
-                        userId: user.id,
-                        date: selectedDate,
-                        startTime: selectedTime,
-                        endTime,
-                        status: "confirmed",
+                            id: `demo-booking-created-${Date.now()}`,
+                            amenityId: selectedAmenity.id,
+                            userId: user.id,
+                            date: selectedDate,
+                            startTime: selectedTime,
+                            endTime,
+                            status: "confirmed",
                         } satisfies Booking,
                         ...current,
                     ];
                     saveStoredDemoBookings(nextBookings);
                     return nextBookings;
                 });
-                setIsDialogOpen(false);
+                setSelectedAmenity(null);
                 toast({
                     title: "Reserva confirmada",
-                    description: `${selectedAmenity.name} reservado para el ${selectedDate} a las ${selectedTime}.`,
+                    description: `${selectedAmenity.name} reservado exitosamente.`,
                     variant: "success",
                 });
                 return;
@@ -283,13 +291,11 @@ export default function AmenitiesPage() {
                 end_time: endTime
             });
 
-            // Recargar datos
             await loadData();
-
-            setIsDialogOpen(false);
+            setSelectedAmenity(null);
             toast({
                 title: "¡Reserva Confirmada!",
-                description: `${selectedAmenity.name} reservado para el ${selectedDate} a las ${selectedTime}.`,
+                description: `Tu reserva se guardó correctamente.`,
                 variant: "success",
             });
         } catch (error: unknown) {
@@ -304,326 +310,277 @@ export default function AmenitiesPage() {
         }
     };
 
-    // Calendar helpers
-    const getDaysInMonth = (date: Date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDay = firstDay.getDay();
-        return { daysInMonth, startingDay };
-    };
-
-    const { daysInMonth, startingDay } = getDaysInMonth(currentMonth);
-    const monthName = currentMonth.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-
     const userBookings = bookings.filter(b => b.userId === user?.id);
 
     const getIcon = (iconName: string) => {
         return iconMap[iconName] || Calendar;
     };
 
+    // Resolver tono por nombre de la amenidad
+    const getAmenityTone = (name: string): "copper" | "sage" | "plum" | "amber" | "neutral" => {
+        const lower = name.toLowerCase();
+        if (lower.includes("quincho")) return "sage";
+        if (lower.includes("piscina")) return "copper";
+        if (lower.includes("gimnasio") || lower.includes("sala")) return "plum";
+        return "amber";
+    };
+
     return (
-        <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
-            <ModuleHeader
-                eyebrow="Reservas"
-                title="Espacios Comunes"
-                description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
-                icon={<Calendar className="h-5 w-5" />}
-                meta={`${amenities.length} espacios activos · ${userBookings.length} reservas tuyas`}
-            />
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <ModuleStat label="Espacios activos" value={amenities.length} icon={<Calendar className="h-4 w-4" />} />
-                <ModuleStat label="Mis reservas" value={userBookings.length} icon={<Check className="h-4 w-4" />} />
-                <ModuleStat label="Horarios diarios" value={timeSlots.length} icon={<Clock className="h-4 w-4" />} />
-            </div>
-
-            <ModuleFlow
-                title="De disponibilidad a reserva confirmada"
-                description="El residente elige un espacio, revisa horarios disponibles, confirma la reserva y deja registro visible para conserjería y administración."
-                steps={[
-                    "Comparar espacios y reglas",
-                    "Seleccionar fecha y horario",
-                    "Confirmar reserva",
-                    "Usar el espacio con registro",
-                ]}
-                outcome="Cierre esperado: reserva confirmada, horario bloqueado y registro consultable desde Mis Reservas."
-                currentStep={userBookings.length ? 4 : amenities.length ? 2 : 1}
-                completedSteps={userBookings.length ? 3 : 1}
-                statusLabel={userBookings.length ? "Con reservas" : "Disponible"}
-                primaryActionLabel="Reservar espacio"
-                primaryActionHref="#reservar-espacio"
-                secondaryActionLabel="Ver mis reservas"
-                secondaryActionHref="#mis-reservas"
-            />
-
-            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                <div className="grid gap-4 md:grid-cols-3">
-                    {[
-                        { title: "Elige espacio", description: "Compara capacidad, costo y proxima disponibilidad antes de reservar.", icon: <Calendar className="h-4 w-4" /> },
-                        { title: "Confirma horario", description: "Selecciona una fecha futura y el sistema bloquea horarios ya tomados.", icon: <Clock className="h-4 w-4" /> },
-                        { title: "Llega con registro", description: "Tu reserva queda disponible para residente, administracion y conserjeria.", icon: <Users className="h-4 w-4" /> },
-                    ].map(item => (
-                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
-                                {item.icon}
-                            </div>
-                            <div>
-                                <h2 className="font-semibold cc-text-primary">{item.title}</h2>
-                                <p className="mt-1 text-sm leading-6 cc-text-secondary">{item.description}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Amenities Grid */}
-            <ErrorBoundary name="Espacios Comunes">
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="animate-pulse">
-                                <SkeletonCard />
-                            </div>
-                        ))}
-                    </div>
-                ) : amenities.length === 0 ? (
-                    <EmptyState
-                        icon={<Calendar className="h-6 w-6" />}
-                        title="No hay espacios configurados"
-                        description="Cuando administración active quinchos, salas o piscinas, aparecerán acá para reservar."
-                    />
+        <ErrorBoundary name="Espacios Comunes y Reservas">
+            <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-7 pb-24">
+                {/* Back Link or Navigation */}
+                {selectedAmenity ? (
+                    <button
+                        onClick={() => setSelectedAmenity(null)}
+                        className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-brand-600 transition-colors"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Volver a espacios comunes
+                    </button>
                 ) : (
-                    <div id="reservar-espacio" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {amenities.map((amenity) => {
-                            const Icon = getIcon(amenity.iconName);
-                            const amenityBookings = bookings.filter(booking => booking.amenityId === amenity.id);
-                            const upcomingBookings = amenityBookings.filter(booking => new Date(`${booking.date}T${booking.startTime || "00:00"}`) >= new Date());
-                            const nextBooking = [...upcomingBookings].sort((a, b) => new Date(`${a.date}T${a.startTime || "00:00"}`).getTime() - new Date(`${b.date}T${b.startTime || "00:00"}`).getTime())[0];
-                            return (
-                                <article
-                                    key={amenity.id}
-                                    className="group flex min-h-[300px] flex-col rounded-lg border border-subtle bg-surface p-5 shadow-sm transition-colors hover:border-brand-200"
-                                >
-                                    <div className="mb-5 flex items-start justify-between gap-4">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                                            <Icon className="h-6 w-6" />
-                                        </div>
-
-                                        {amenity.hourlyRate > 0 && (
-                                            <div className="rounded-md bg-elevated px-2.5 py-1 text-xs font-semibold cc-text-secondary">
-                                                ${amenity.hourlyRate.toLocaleString()}/hr
-                                            </div>
-                                        )}
-                                        {amenity.hourlyRate === 0 && (
-                                            <div className="flex items-center gap-1 rounded-md bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg">
-                                                <Sparkles className="h-3 w-3" />
-                                                Gratis
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex flex-1 flex-col">
-                                        <h3 className="mb-2 text-lg font-bold cc-text-primary">{amenity.name}</h3>
-                                        <p className="mb-4 line-clamp-3 text-sm leading-6 cc-text-secondary">{amenity.description}</p>
-
-                                        <div className="mb-2 grid grid-cols-2 gap-2 text-sm cc-text-secondary">
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-elevated px-3 py-2">
-                                                <Users className="h-4 w-4 text-slate-400" />
-                                                <span>Máx. {amenity.maxCapacity}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mb-5 rounded-lg border border-subtle bg-elevated/50 px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">Proxima reserva</p>
-                                            <p className="mt-1 text-sm font-semibold cc-text-primary">
-                                                {nextBooking
-                                                    ? `${new Date(`${nextBooking.date}T12:00:00`).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })} - ${formatTime(nextBooking.startTime)}`
-                                                    : "Sin reservas futuras"}
-                                            </p>
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleOpenBooking(amenity)}
-                                            className="mt-auto w-full rounded-lg bg-brand-500 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
-                                        >
-                                            Reservar ahora
-                                        </button>
-                                    </div>
-                                </article>
-                            );
-                        })}
-                    </div>
+                    <ModuleHeader
+                        eyebrow="Reservas"
+                        title="Espacios Comunes"
+                        description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
+                        icon={<Calendar className="h-5 w-5" />}
+                        meta={`${amenities.length} espacios activos · ${userBookings.length} reservas activas`}
+                    />
                 )}
-            </ErrorBoundary>
 
-            {/* My Bookings */}
-            {!loading && userBookings.length > 0 && (
-                <ErrorBoundary name="Mis Reservas">
-                    <div id="mis-reservas" className="scroll-mt-24 rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
-                                <Check className="h-5 w-5" />
-                            </div>
-                            <h2 className="text-lg font-bold cc-text-primary">Mis Reservas</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {userBookings.map((booking) => {
-                                const amenity = firstRelation((booking as Booking & { amenities?: AmenityRow | AmenityRow[] | null }).amenities)
-                                    || amenities.find(item => item.id === booking.amenityId);
-                                if (!amenity) return null;
-                                const amenityRecord = amenity as Amenity & AmenityRow;
-                                const Icon = getIcon(String(amenityRecord.icon_name || amenityRecord.iconName || "Calendar"));
-                                const amenityName = String(amenityRecord.name || "Espacio común");
-                                return (
-                                    <div key={booking.id} className="flex items-center gap-4 rounded-lg border border-subtle bg-elevated p-4">
-                                        <div className="rounded-lg bg-surface p-2 cc-text-secondary">
-                                            <Icon className="h-5 w-5" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="break-words font-semibold leading-snug cc-text-primary">{amenityName}</p>
-                                            <p className="text-sm cc-text-secondary">
-                                                {
-                                                    // Prevenir desfase de zona horaria forzando el parseo local a mediodía
-                                                    new Date(`${booking.date}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
-                                                }
-                                            </p>
-                                            <p className="text-sm cc-text-secondary font-medium">{formatTime(booking.startTime)} - {formatTime(booking.endTime)}</p>
-                                        </div>
-                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${booking.status === 'confirmed' ? 'bg-success-bg text-success-fg' : 'bg-warning-bg text-warning-fg'
-                                            }`}>
-                                            {booking.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
-                                        </span>
+                {/* Vista 1: Lista General de Espacios */}
+                {!selectedAmenity ? (
+                    <>
+                        {/* Stats Summary Panel */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            {[
+                                { label: "Espacios Activos", value: amenities.length, tone: "sage" as const },
+                                { label: "Mis Reservas", value: userBookings.length, tone: "copper" as const },
+                                { label: "Turnos Diarios", value: timeSlots.length, tone: "plum" as const }
+                            ].map(card => (
+                                <div key={card.label} className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
+                                    <p className="text-2xl font-bold cc-text-primary">{card.value}</p>
+                                    <div className="mt-2">
+                                        <Tag tone={card.tone} solid>{card.label}</Tag>
                                     </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* List of Amenities */}
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {amenities.map(amenity => {
+                                const Icon = getIcon(amenity.iconName);
+                                const tone = getAmenityTone(amenity.name);
+                                const isFree = amenity.hourlyRate === 0;
+
+                                return (
+                                    <article
+                                        key={amenity.id}
+                                        className="group rounded-xl border border-subtle bg-surface overflow-hidden shadow-sm hover:border-brand-200 transition-all flex flex-col justify-between"
+                                    >
+                                        {/* Dynamic color block banner */}
+                                        <div className="h-2 w-full" style={{ backgroundColor: `var(--cc-${tone})` }} />
+                                        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-elevated text-slate-700">
+                                                        <Icon className="h-5 w-5" />
+                                                    </div>
+                                                    <Tag tone={tone} solid>
+                                                        {isFree ? "Gratuito" : `$${amenity.hourlyRate.toLocaleString("es-CL")}/hr`}
+                                                    </Tag>
+                                                </div>
+                                                <h3 className="text-lg font-bold cc-text-primary">{amenity.name}</h3>
+                                                <p className="text-xs cc-text-secondary leading-relaxed line-clamp-3">
+                                                    {amenity.description}
+                                                </p>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-subtle space-y-3">
+                                                <div className="flex items-center justify-between text-xs cc-text-tertiary font-semibold">
+                                                    <span className="flex items-center gap-1">
+                                                        <Users className="h-3.5 w-3.5" /> Máx {amenity.maxCapacity} pers
+                                                    </span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    block
+                                                    onClick={() => handleSelectAmenity(amenity)}
+                                                >
+                                                    Reservar ahora
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </article>
                                 );
                             })}
                         </div>
-                    </div>
-                </ErrorBoundary>
-            )}
 
-            {/* Booking Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3">
-                            {selectedAmenity && (
-                                <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
-                                    {(() => { const Icon = getIcon(selectedAmenity.iconName); return <Icon className="h-5 w-5" />; })()}
+                        {/* Stored Bookings list */}
+                        {userBookings.length > 0 && (
+                            <section className="rounded-xl border border-subtle bg-surface p-6 shadow-sm">
+                                <h3 className="text-lg font-bold cc-text-primary mb-4 flex items-center gap-2">
+                                    <Check className="h-5 w-5 text-brand-500" /> Mis próximas reservas
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {userBookings.map(booking => {
+                                        const amenity = amenities.find(a => a.id === booking.amenityId);
+                                        const name = amenity?.name || "Espacio común";
+                                        const tone = getAmenityTone(name);
+                                        const Icon = getIcon(amenity?.iconName || "Calendar");
+                                        return (
+                                            <div key={booking.id} className="flex items-center gap-4 rounded-xl border border-subtle bg-elevated p-4">
+                                                <div className="rounded-lg bg-surface p-2 cc-text-secondary">
+                                                    <Icon className="h-5 w-5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold leading-snug cc-text-primary truncate text-sm">{name}</p>
+                                                    <p className="text-xs cc-text-secondary mt-1">
+                                                        {new Date(`${booking.date}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                    </p>
+                                                    <p className="text-xs cc-text-tertiary font-medium">{formatTime(booking.startTime)} - {formatTime(booking.endTime)}</p>
+                                                </div>
+                                                <Tag tone={tone} solid>Confirmado</Tag>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
-                            Reservar {selectedAmenity?.name}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Selecciona fecha y hora para tu reserva
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="py-4 space-y-6">
-                        {/* Mini Calendar */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <button
-                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                                    className="p-2 hover:bg-elevated rounded-lg transition-colors"
-                                >
-                                    <ChevronLeft className="h-5 w-5 cc-text-secondary" />
-                                </button>
-                                <span className="text-sm font-semibold cc-text-primary capitalize">{monthName}</span>
-                                <button
-                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                                    className="p-2 hover:bg-elevated rounded-lg transition-colors"
-                                >
-                                    <ChevronRight className="h-5 w-5 cc-text-secondary" />
-                                </button>
+                            </section>
+                        )}
+                    </>
+                ) : (
+                    /* Vista 2: Proceso de Reserva de Amenidad (Flujo Integrado) */
+                    <div className="space-y-6">
+                        {/* Hero con Striped Placeholder */}
+                        <div className="rounded-xl border border-subtle bg-surface overflow-hidden shadow-md relative">
+                            {/* Striped textured pattern on background */}
+                            <div className="h-32 w-full grid-bg relative overflow-hidden" 
+                                 style={{ 
+                                     backgroundColor: `var(--cc-${getAmenityTone(selectedAmenity.name)}-tint)`,
+                                     backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.4) 10px, rgba(255,255,255,0.4) 20px)`
+                                 }}>
+                                <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
                             </div>
-                            <div className="grid grid-cols-7 gap-1 text-center">
-                                {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(day => (
-                                    <div key={day} className="text-xs font-medium cc-text-secondary py-2">{day}</div>
-                                ))}
-                                {Array.from({ length: startingDay }).map((_, i) => (
-                                    <div key={`empty-${i}`} />
-                                ))}
-                                {Array.from({ length: daysInMonth }).map((_, i) => {
-                                    const day = i + 1;
-                                    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                    const isSelected = selectedDate === dateStr;
+                            <div className="p-6 relative -mt-10">
+                                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Tag tone={getAmenityTone(selectedAmenity.name)} solid>{selectedAmenity.hourlyRate > 0 ? `$${selectedAmenity.hourlyRate.toLocaleString()}/hr` : "Gratuito"}</Tag>
+                                            <Tag tone="neutral">Aforo {selectedAmenity.maxCapacity} máx</Tag>
+                                        </div>
+                                        <h2 className="text-2xl font-bold cc-text-primary">{selectedAmenity.name}</h2>
+                                        <p className="text-sm cc-text-secondary max-w-3xl leading-relaxed">
+                                            {selectedAmenity.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                    // Prevenir bug de zona horaria parseando el dateStr como mediodía local
-                                    const dayDate = new Date(`${dateStr}T12:00:00`);
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0); // Inicio del día actual
-                                    const isPast = dayDate < today;
+                        {/* Stats Row */}
+                        <div className="grid grid-cols-3 gap-4 border border-subtle rounded-xl bg-surface p-4 shadow-sm text-center">
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Disponibilidad</p>
+                                <p className="mt-1 text-base font-semibold text-emerald-600">85% libre</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Tarifa</p>
+                                <p className="mt-1 text-base font-semibold cc-text-primary">
+                                    {selectedAmenity.hourlyRate > 0 ? `$${selectedAmenity.hourlyRate.toLocaleString("es-CL")}` : "Gratis"}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Mín-Máx Hora</p>
+                                <p className="mt-1 text-base font-semibold cc-text-primary">1 - 4 hrs</p>
+                            </div>
+                        </div>
 
+                        {/* Date Strip 7 Días */}
+                        <div className="space-y-3">
+                            <p className="text-sm font-semibold cc-text-secondary">Selecciona un día</p>
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                                {next7Days.map(day => {
+                                    const isSelected = selectedDate === day.dateStr;
                                     return (
                                         <button
-                                            key={day}
-                                            disabled={isPast}
-                                            onClick={() => setSelectedDate(dateStr)}
-                                            className={`py-2 rounded-lg text-sm font-medium transition-all ${isSelected
-                                                ? 'bg-brand-500 text-white shadow-sm'
-                                                : isPast
-                                                    ? 'cc-text-tertiary cursor-not-allowed'
-                                                    : 'cc-text-secondary hover:bg-elevated'
-                                                }`}
+                                            key={day.dateStr}
+                                            onClick={() => { setSelectedDate(day.dateStr); setSelectedTime(''); }}
+                                            className={`flex-1 min-w-[70px] py-3 rounded-xl border text-center transition-all ${
+                                                isSelected
+                                                    ? 'border-brand-500 bg-brand-50 shadow-sm'
+                                                    : 'border-subtle bg-surface hover:border-brand-200'
+                                            }`}
                                         >
-                                            {day}
+                                            <p className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">{day.dayName}</p>
+                                            <p className={`text-base font-bold mt-1 ${isSelected ? 'text-brand-700' : 'cc-text-primary'}`}>{day.dayNumber}</p>
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        {/* Time Slots */}
-                        {selectedDate && (
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium cc-text-secondary flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-slate-400" />
-                                    Horario Disponible
-                                </label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {timeSlots.map(time => {
-                                        const isBooked = bookings.some(b =>
-                                            b.amenityId === selectedAmenity?.id &&
-                                            b.date === selectedDate &&
-                                            b.startTime.startsWith(time.split(':')[0])
-                                        );
-                                        return (
-                                            <button
-                                                key={time}
-                                                disabled={isBooked}
-                                                onClick={() => setSelectedTime(time)}
-                                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${isBooked
-                                                    ? 'bg-elevated cc-text-tertiary cursor-not-allowed line-through'
-                                                    : selectedTime === time
-                                                        ? 'bg-brand-500 text-white shadow-sm'
-                                                        : 'bg-elevated cc-text-secondary hover:bg-elevated'
-                                                    }`}
-                                            >
-                                                {time}
-                                            </button>
-                                        );
-                                    })}
+                        {/* Slots como cards con estados */}
+                        <div className="space-y-3">
+                            <p className="text-sm font-semibold cc-text-secondary">Selecciona un bloque de horario (2 horas por sesión)</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                                {timeSlots.map(time => {
+                                    const isBooked = bookings.some(b =>
+                                        b.amenityId === selectedAmenity.id &&
+                                        b.date === selectedDate &&
+                                        b.startTime.startsWith(time.split(':')[0])
+                                    );
+                                    const isSelected = selectedTime === time;
+
+                                    return (
+                                        <button
+                                            key={time}
+                                            disabled={isBooked}
+                                            onClick={() => setSelectedTime(time)}
+                                            className={`p-4 rounded-xl border text-center transition-all ${
+                                                isBooked
+                                                    ? 'bg-elevated/70 border-subtle cc-text-disabled cursor-not-allowed line-through'
+                                                    : isSelected
+                                                        ? 'border-transparent text-white font-bold'
+                                                        : 'border-subtle bg-surface hover:border-brand-200 cc-text-secondary'
+                                            }`}
+                                            style={{
+                                                backgroundColor: isSelected ? 'var(--cc-ink)' : undefined
+                                            }}
+                                        >
+                                            <p className="text-sm font-semibold">{time}</p>
+                                            <p className="text-[10px] mt-1 uppercase tracking-wider font-semibold opacity-80">
+                                                {isBooked ? "Reservado" : isSelected ? "Seleccionado" : "Libre"}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Fixed / Floating CTA Bar at Bottom */}
+                        {selectedDate && selectedTime && (
+                            <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-subtle py-4 px-6 z-50 shadow-2xl flex items-center justify-between">
+                                <div className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div className="text-sm font-medium cc-text-primary">
+                                        Confirmando <span className="font-bold">{selectedAmenity.name}</span> para el <span className="font-bold">{selectedDate}</span> a las <span className="font-bold">{selectedTime}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" onClick={() => setSelectedAmenity(null)}>Cancelar</Button>
+                                        <Button
+                                            variant="copper"
+                                            onClick={handleBook}
+                                            disabled={bookingLoading}
+                                        >
+                                            {bookingLoading ? "Confirmando..." : `Confirmar y pagar`}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                        <Button
-                            onClick={handleBook}
-                            disabled={bookingLoading}
-                            className="flex gap-2 border-0 bg-brand-500 hover:bg-brand-600"
-                        >
-                            {bookingLoading && <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent" />}
-                            {bookingLoading ? 'Reservando...' : 'Confirmar Reserva'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                )}
+            </div>
+        </ErrorBoundary>
     );
 }

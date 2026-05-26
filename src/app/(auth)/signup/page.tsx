@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { BrandWordmark } from "@/components/BrandWordmark";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, Key, Lock, Mail, ShieldCheck, User, Users } from "lucide-react";
+import { Brand } from "@/components/cc/Brand";
+import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 
 const ROLES = [
     { id: "resident", label: "Residente", description: "Unidad y gastos personales", icon: Home },
@@ -98,121 +97,218 @@ export default function SignUpPage() {
     };
 
     return (
-        <main className="min-h-screen bg-canvas px-4 py-8">
-            <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[420px_1fr]">
-                <section className="rounded-lg border border-subtle bg-surface p-6 shadow-sm sm:p-8">
-                    <div className="mb-8 flex items-start justify-between gap-4">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Invitación</p>
-                            <h1 className="mt-2 text-3xl font-semibold cc-text-primary">Crear cuenta</h1>
-                            <p className="mt-2 text-sm cc-text-secondary">Ingresa con el código entregado por tu comunidad.</p>
-                        </div>
-                        <Link href="/" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al inicio">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="space-y-2">
-                            <label className="block text-sm font-semibold cc-text-primary">Perfil</label>
-                            <div className="grid gap-2">
-                                {ROLES.map(({ id, label, description, icon: Icon }) => {
-                                    const active = selectedRole === id;
-                                    return (
-                                        <button
-                                            key={id}
-                                            type="button"
-                                            onClick={() => setSelectedRole(id)}
-                                            className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${active ? "border-brand-500 bg-brand-50" : "border-subtle bg-canvas hover:border-brand-300"}`}
-                                        >
-                                            <Icon className={`h-4 w-4 ${active ? "text-brand-600" : "cc-text-tertiary"}`} />
-                                            <span className="min-w-0">
-                                                <span className="block text-sm font-semibold cc-text-primary">{label}</span>
-                                                <span className="block text-xs cc-text-secondary">{description}</span>
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+        <main className="min-h-screen flex" style={{ background: "var(--cc-ivory)" }}>
+            <div className="grid w-full lg:grid-cols-[440px_1fr]">
+                {/* Left side: Signup Form */}
+                <section className="flex items-center justify-center p-6 sm:p-12 overflow-y-auto w-full">
+                    <div className="w-full max-w-[360px] space-y-7">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <Eyebrow className="mb-2">INVITACIÓN</Eyebrow>
+                                <DisplayHeading size={36}>
+                                    Crear <br />
+                                    <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>cuenta.</em>
+                                </DisplayHeading>
                             </div>
+                            <Link href="/" className="grid place-items-center w-9 h-9 rounded-xl border transition-colors hover:bg-paper-warm" style={{ borderColor: "var(--cc-line)" }}>
+                                <ArrowLeft size={16} />
+                            </Link>
                         </div>
 
-                        <Field id="fullName" label="Nombre completo" icon={<User className="h-5 w-5" />}>
-                            <Input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Juan Perez" required className="pl-10" />
-                        </Field>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Role selectors inside segmented grid */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">PERFIL DE ACCESO</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {ROLES.map(({ id, label }) => {
+                                        const active = selectedRole === id;
+                                        return (
+                                            <button
+                                                key={id}
+                                                type="button"
+                                                onClick={() => setSelectedRole(id)}
+                                                className="py-2.5 text-center text-xs font-semibold rounded-xl border transition-all"
+                                                style={{
+                                                    background: active ? "var(--cc-ink)" : "var(--cc-paper)",
+                                                    color: active ? "var(--cc-paper)" : "var(--cc-ink-muted)",
+                                                    borderColor: active ? "transparent" : "var(--cc-line-strong)",
+                                                    boxShadow: active ? "var(--cc-shadow-sm)" : "none"
+                                                }}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                        <Field id="email" label="Email" icon={<Mail className="h-5 w-5" />}>
-                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="pl-10" />
-                        </Field>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">NOMBRE COMPLETO</label>
+                                <input
+                                    type="text"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    placeholder="Juan Pérez"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                            </div>
 
-                        <Field id="password" label="Contraseña" icon={<Lock className="h-5 w-5" />}>
-                            <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required className="pl-10 pr-10" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
-                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CORREO ELECTRÓNICO</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="tu@correo.com"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONTRASEÑA</label>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setShowPassword(!showPassword)}
+                                      className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Mínimo 6 caracteres"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONFIRMAR CONTRASEÑA</label>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Repite tu contraseña"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CÓDIGO DE INVITACIÓN</label>
+                                <input
+                                    type="text"
+                                    value={accessCode}
+                                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                                    placeholder="INV-X93F"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all font-mono uppercase tracking-[0.16em]"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                            </div>
+
+                            {selectedRole === "resident" && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">DEPARTAMENTO / UNIDAD</label>
+                                    <input
+                                        type="text"
+                                        value={departmentNumber}
+                                        onChange={(e) => setDepartmentNumber(e.target.value)}
+                                        placeholder="Ej: 501, 3B, 1201"
+                                        required
+                                        className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                        style={{ borderColor: "var(--cc-line-strong)" }}
+                                    />
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3 px-4 bg-ink text-paper text-sm font-semibold rounded-xl inline-flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors mt-2"
+                                style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}
+                            >
+                                {loading ? "Creando cuenta..." : "Crear cuenta"}
+                                <ArrowRight size={15} />
                             </button>
-                        </Field>
+                        </form>
 
-                        <Field id="confirmPassword" label="Confirmar contraseña" icon={<Lock className="h-5 w-5" />}>
-                            <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite tu contraseña" required className="pl-10" />
-                        </Field>
-
-                        <Field id="accessCode" label="Código de invitación" icon={<Key className="h-5 w-5" />}>
-                            <Input id="accessCode" type="text" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase())} placeholder="RSD-A3F9K2" required className="pl-10 font-mono uppercase tracking-[0.16em]" />
-                        </Field>
-
-                        {selectedRole === "resident" && (
-                            <Field id="departmentNumber" label="Unidad o departamento" icon={<Home className="h-5 w-5" />}>
-                                <Input id="departmentNumber" type="text" value={departmentNumber} onChange={(e) => setDepartmentNumber(e.target.value)} placeholder="501, 3B, 1201" required className="pl-10" />
-                            </Field>
-                        )}
-
-                        <Button type="submit" disabled={loading} className="w-full" trailingIcon={<ArrowRight className="h-4 w-4" />}>
-                            {loading ? "Creando cuenta..." : "Crear cuenta"}
-                        </Button>
-                    </form>
-
-                    <div className="mt-6 text-center">
-                        <Link href="/login" className="text-sm font-semibold cc-text-secondary transition-colors hover:text-brand-600">
-                            Ya tengo cuenta
-                        </Link>
+                        <div className="pt-2 text-center">
+                            <Link href="/login" className="text-xs font-semibold text-slate-500 hover:text-slate-700">
+                                ¿Ya tienes cuenta? <span className="text-copper underline">Iniciar sesión</span>
+                            </Link>
+                        </div>
                     </div>
                 </section>
 
-                <section className="hidden space-y-6 lg:block">
-                    <Link href="/" className="inline-flex items-center gap-3">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500 text-white">
-                            <Building2 className="h-5 w-5" />
-                        </span>
-                        <BrandWordmark className="text-xl text-brand-600" />
-                    </Link>
-                    <div className="max-w-xl space-y-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Acceso controlado</p>
-                        <h2 className="text-5xl font-semibold leading-tight cc-text-primary">Cada usuario entra con el rol correcto.</h2>
-                        <p className="text-lg leading-8 cc-text-secondary">
-                            Los códigos separan permisos de residentes, conserjería y administración para mantener datos y acciones bajo control.
-                        </p>
+                {/* Right side: Onboarding Hero (hidden on mobile) */}
+                <section 
+                  className="hidden lg:flex flex-col relative overflow-hidden p-12 justify-between"
+                  style={{
+                    background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
+                    color: "var(--cc-paper)"
+                  }}
+                >
+                    {/* Warm ambient light */}
+                    <div 
+                      aria-hidden 
+                      className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
+                      style={{ background: "radial-gradient(circle, rgba(181,102,78,0.2) 0%, transparent 70%)" }}
+                    />
+
+                    <div className="relative z-10 flex justify-end">
+                        <Link href="/" className="inline-flex items-center gap-2">
+                            <Brand size={20} className="text-white" withMark />
+                        </Link>
                     </div>
-                    <div className="grid max-w-2xl grid-cols-3 gap-3">
-                        {["Código validado", "Unidad vinculada", "Permisos por rol"].map((item) => (
-                            <div key={item} className="rounded-lg border border-subtle bg-surface p-4">
-                                <Users className="mb-3 h-5 w-5 text-brand-500" />
-                                <p className="text-sm font-semibold cc-text-primary">{item}</p>
+
+                    <div className="relative z-10 max-w-md my-auto space-y-8 ml-auto text-right">
+                        <div className="space-y-4">
+                            <span className="text-[10px] font-semibold tracking-widest text-[#D9A691] uppercase">ACCESO CONTROLADO</span>
+                            <DisplayHeading size={44} style={{ color: "var(--cc-paper)" }}>
+                                Cada usuario entra con<br />
+                                el <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>rol correcto.</em>
+                            </DisplayHeading>
+                            <p className="text-sm leading-relaxed" style={{ color: "var(--cc-ink-faint)" }}>
+                                Los códigos separan los accesos de residentes, conserjería y administración para garantizar que tus datos y acciones se mantengan seguros.
+                            </p>
+                        </div>
+
+                        {/* Floating Card Mockup */}
+                        <div 
+                          className="rounded-2xl border p-5 shadow-xl bg-[#1A1611]/90 backdrop-blur-md relative transform rotate-[1deg] translate-y-2 text-left"
+                          style={{ borderColor: "rgba(250, 247, 241, 0.1)" }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-[rgba(250,247,241,0.08)]">
+                                    <Users className="h-5 w-5 text-white" />
+                                </div>
+                                <div className="text-xs font-semibold">Seguridad y Privacidad garantizadas</div>
                             </div>
-                        ))}
+                        </div>
+
+                        {/* Pagination Dots */}
+                        <div className="flex gap-1.5 justify-end pt-4">
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(250,247,241,0.2)" }} />
+                            <span className="w-6 h-1.5 rounded-full" style={{ background: "var(--cc-copper)" }} />
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(250,247,241,0.2)" }} />
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 text-xs text-right" style={{ color: "var(--cc-ink-tertiary)" }}>
+                        © 2026 Convive Connect. Todos los derechos reservados.
                     </div>
                 </section>
             </div>
         </main>
-    );
-}
-
-function Field({ id, label, icon, children }: { id: string; label: string; icon: React.ReactNode; children: React.ReactNode }) {
-    return (
-        <div>
-            <label htmlFor={id} className="mb-2 block text-sm font-semibold cc-text-primary">{label}</label>
-            <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</span>
-                {children}
-            </div>
-        </div>
     );
 }

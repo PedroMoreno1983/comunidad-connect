@@ -28,6 +28,9 @@ import { ProductFilters } from "@/components/marketplace/ProductFilters";
 import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
 import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { Button as CcButton } from "@/components/cc/Button";
+import { Tag as CcTag } from "@/components/cc/Tag";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
     applyDemoMarketplaceStatusOverrides,
@@ -425,287 +428,310 @@ export default function MarketplacePage() {
         return categoryConfig[category] || categoryConfig.other;
     };
 
+    const featuredItem = filteredItems.find(item => item.status === 'available');
+    const remainingItems = featuredItem ? filteredItems.filter(item => item.id !== featuredItem.id) : filteredItems;
+
     return (
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
-            <section id="publicar-articulo" className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-                    <div className="max-w-2xl space-y-3">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="inline-flex items-center gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-600"
-                        >
-                            <Sparkles className="h-3 w-3" />
-                            Comercio Comunitario Seguro
-                        </motion.div>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-2xl font-bold leading-tight cc-text-primary md:text-3xl"
-                        >
-                            Marketplace de la comunidad
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="max-w-xl text-sm leading-6 cc-text-secondary"
-                        >
-                            Vende lo que ya no usas y compra artículos de confianza a tus vecinos de Convive Connect.
-                        </motion.p>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="flex flex-wrap gap-3 md:justify-end"
-                        >
-                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="primary" size="lg" className="rounded-lg px-5 py-3 text-sm font-semibold shadow-sm">
-                                        <Plus className="h-5 w-5 mr-2" />
-                                        Publicar artículo
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="overflow-hidden rounded-lg border-subtle bg-surface p-0 shadow-sm sm:max-w-[550px]">
-                                    <div className="max-h-[85vh] space-y-7 overflow-y-auto p-6 md:p-8">
-                                        <DialogHeader className="space-y-3">
-                                            <DialogTitle className="text-2xl font-semibold cc-text-primary">Publicar producto</DialogTitle>
-                                            <DialogDescription className="text-sm font-medium leading-6 text-slate-500">
-                                                Conecta con tus vecinos y dale una nueva vida a tus artículos.
-                                            </DialogDescription>
-                                        </DialogHeader>
-
-                                        <form onSubmit={handleAddItem} className="space-y-7">
-                                            {/* Fotos */}
-                                            <div className="space-y-4">
-                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Fotos del Producto</label>
-                                                <div className="grid grid-cols-4 gap-4">
-                                                    {previewUrls.map((url, i) => (
-                                                        <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-subtle bg-elevated">
-                                                            <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setPreviewUrls(prev => prev.filter((_, idx) => idx !== i));
-                                                                    setImageFiles(prev => prev.filter((_, idx) => idx !== i));
-                                                                }}
-                                                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <ImageIcon className="h-3 w-3" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    {previewUrls.length < 4 && (
-                                                        <label className="group flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-subtle transition-colors hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/10">
-                                                            <Plus className="h-6 w-6 text-slate-400 group-hover:text-blue-500 mb-1" />
-                                                            <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-500">Añadir</span>
-                                                            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-                                                        </label>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Básicos */}
-                                            <div className="space-y-6">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Título del Anuncio</label>
-                                                    <Input
-                                                        placeholder="Ej: Bicicleta de Montaña Trek"
-                                                        className="h-12 rounded-lg border-subtle bg-surface text-sm font-semibold focus:ring-brand-500/20"
-                                                        required
-                                                        value={newItem.title}
-                                                        onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
-                                                        <select
-                                                            className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                                            value={newItem.category}
-                                                            onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                                                        >
-                                                            <option value="electronics">Electrónica</option>
-                                                            <option value="furniture">Muebles</option>
-                                                            <option value="clothing">Ropa</option>
-                                                            <option value="other">Otros</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Estado General</label>
-                                                        <select className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                                                            <option>Nuevo</option>
-                                                            <option>Como Nuevo</option>
-                                                            <option>Usado Excelente</option>
-                                                            <option>Usado Bueno</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Modalidades */}
-                                            <div className="space-y-6">
-                                                <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Opciones Comerciales</h4>
-
-                                                <div className="space-y-4">
-                                                    {/* Opción Venta */}
-                                                    <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowSale ? 'border-brand-500 bg-brand-50/40' : 'border-subtle'}`}
-                                                        onClick={() => setNewItem({ ...newItem, allowSale: !newItem.allowSale })}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-elevated text-slate-400'}`}>
-                                                                    <Tag className="h-5 w-5" />
-                                                                </div>
-                                                                <span className="font-semibold cc-text-primary">Venta Directa</span>
-                                                            </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-subtle'}`}>
-                                                                {newItem.allowSale && <div className="h-2 w-2 rounded-full bg-white" />}
-                                                            </div>
-                                                        </div>
-                                                        {newItem.allowSale && (
-                                                            <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
-                                                                <Input
-                                                                    type="number"
-                                                                    placeholder="Precio sugerido (Ej: 150000)"
-                                                                    className="h-12 rounded-xl bg-surface/50"
-                                                                    required={newItem.allowSale}
-                                                                    value={newItem.price}
-                                                                    onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Opción Permuta */}
-                                                    <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowSwap ? 'border-brand-500 bg-brand-50/40' : 'border-subtle'}`}
-                                                        onClick={() => setNewItem({ ...newItem, allowSwap: !newItem.allowSwap })}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 text-white' : 'bg-elevated text-slate-400'}`}>
-                                                                    <Repeat className="h-5 w-5" />
-                                                                </div>
-                                                                <span className="font-semibold cc-text-primary">Permuta</span>
-                                                            </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 border-purple-600' : 'border-subtle'}`}>
-                                                                {newItem.allowSwap && <div className="h-2 w-2 rounded-full bg-white" />}
-                                                            </div>
-                                                        </div>
-                                                        {newItem.allowSwap && (
-                                                            <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
-                                                                <textarea
-                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                                                    placeholder="¿Qué buscas a cambio? (Ej: Una tablet o una TV más pequeña)"
-                                                                    required={newItem.allowSwap}
-                                                                    value={newItem.swapDetails}
-                                                                    onChange={(e) => setNewItem({ ...newItem, swapDetails: e.target.value })}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Opción Trueque */}
-                                                    <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowBarter ? 'border-emerald-600 bg-emerald-50/30' : 'border-subtle'}`}
-                                                        onClick={() => setNewItem({ ...newItem, allowBarter: !newItem.allowBarter })}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 text-white' : 'bg-elevated text-slate-400'}`}>
-                                                                    <Sparkles className="h-5 w-5" />
-                                                                </div>
-                                                                <span className="font-semibold cc-text-primary">Trueque Abierto</span>
-                                                            </div>
-                                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 border-emerald-600' : 'border-subtle'}`}>
-                                                                {newItem.allowBarter && <div className="h-2 w-2 rounded-full bg-white" />}
-                                                            </div>
-                                                        </div>
-                                                        {newItem.allowBarter && (
-                                                            <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
-                                                                <textarea
-                                                                    className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                                                    placeholder="Cualquier artículo interesante que sea de utilidad..."
-                                                                    value={newItem.barterDetails}
-                                                                    onChange={(e) => setNewItem({ ...newItem, barterDetails: e.target.value })}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción del Artículo</label>
-                                                <textarea
-                                                    className="min-h-[120px] w-full rounded-lg border border-subtle bg-surface px-4 py-4 text-sm font-medium cc-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                                                    placeholder="Cuenta más detalles sobre el artículo..."
-                                                    required
-                                                    value={newItem.description}
-                                                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <DialogFooter className="pt-4 pb-2">
-                                                <Button
-                                                    type="submit"
-                                                    disabled={publishing}
-                                                    className="h-12 w-full rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-                                                >
-                                                    {publishing ? (
-                                                        <span className="flex items-center gap-2">
-                                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                                            Publicando...
-                                                        </span>
-                                                    ) : "Publicar Anuncio"}
-                                                </Button>
-                                            </DialogFooter>
-                                        </form>
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-                            <Link href="/marketplace/my-listings">
-                                <Button variant="secondary" className="rounded-lg px-5 py-3 text-sm font-semibold shadow-sm">
-                                    <ShoppingBag className="h-5 w-5 mr-2" />
-                                    Mis publicaciones
-                                </Button>
-                            </Link>
-                            <button 
-                                onClick={() => setIsRulesOpen(true)}
-                                className="flex items-center gap-2 rounded-lg border border-subtle bg-elevated px-5 py-3 text-sm font-semibold cc-text-secondary transition-colors hover:bg-surface"
-                            >
-                                <Info className="h-5 w-5" />
-                                Reglamento
-                            </button>
-
-                            {user?.role === 'admin' && (
-                                <Link
-                                    href="/admin/marketplace"
-                                    className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-100 px-5 py-3 text-sm font-semibold text-success-fg transition-colors hover:bg-emerald-200 dark:border-emerald-800 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
-                                >
-                                    <ShieldCheck className="h-5 w-5" />
-                                    Moderación
-                                </Link>
-                            )}
-                        </motion.div>
-                    </div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="hidden w-64 rounded-lg border border-subtle bg-elevated p-5 lg:block"
-                    >
-                        <div className="flex h-full flex-col gap-8">
-                            <Tag className="h-8 w-8 text-brand-500" />
-                            <div className="space-y-2">
-                                <p className="text-sm font-bold cc-text-primary">Artículos activos</p>
-                                <p className="text-3xl font-bold cc-text-primary">{items.length}</p>
-                                <div className="h-1 w-full overflow-hidden rounded-full bg-surface">
-                                    <div className="h-full w-2/3 bg-brand-500" />
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
+             {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[var(--cc-line)]">
+                <div>
+                    <Eyebrow className="mb-2">Vecinos</Eyebrow>
+                    <DisplayHeading size={40}>
+                        Mercado <em className="text-[var(--cc-copper)] font-serif italic font-normal">vecinal</em>
+                    </DisplayHeading>
                 </div>
-            </section>
+                
+                <div className="flex flex-wrap gap-3 items-center">
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <CcButton variant="copper" size="md">
+                                <Plus className="h-4.5 w-4.5" />
+                                Publicar artículo
+                            </CcButton>
+                        </DialogTrigger>
+                        <DialogContent className="overflow-hidden rounded-lg border-subtle bg-surface p-0 shadow-sm sm:max-w-[550px]">
+                            <div className="max-h-[85vh] space-y-7 overflow-y-auto p-6 md:p-8">
+                                <DialogHeader className="space-y-3">
+                                    <DialogTitle className="text-2xl font-semibold cc-text-primary">Publicar producto</DialogTitle>
+                                    <DialogDescription className="text-sm font-medium leading-6 text-slate-500">
+                                        Conecta con tus vecinos y dale una nueva vida a tus artículos.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <form onSubmit={handleAddItem} className="space-y-7">
+                                    {/* Fotos */}
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Fotos del Producto</label>
+                                        <div className="grid grid-cols-4 gap-4">
+                                            {previewUrls.map((url, i) => (
+                                                <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-subtle bg-elevated">
+                                                    <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setPreviewUrls(prev => prev.filter((_, idx) => idx !== i));
+                                                            setImageFiles(prev => prev.filter((_, idx) => idx !== i));
+                                                        }}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <ImageIcon className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {previewUrls.length < 4 && (
+                                                <label className="group flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-subtle transition-colors hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/10">
+                                                    <Plus className="h-6 w-6 text-slate-400 group-hover:text-blue-500 mb-1" />
+                                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-500">Añadir</span>
+                                                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                                                </label>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Básicos */}
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Título del Anuncio</label>
+                                            <Input
+                                                placeholder="Ej: Bicicleta de Montaña Trek"
+                                                className="h-12 rounded-lg border-subtle bg-surface text-sm font-semibold focus:ring-brand-500/20"
+                                                required
+                                                value={newItem.title}
+                                                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Categoría</label>
+                                                <select
+                                                    className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                    value={newItem.category}
+                                                    onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                                                >
+                                                    <option value="electronics">Electrónica</option>
+                                                    <option value="furniture">Muebles</option>
+                                                    <option value="clothing">Ropa</option>
+                                                    <option value="other">Otros</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Estado General</label>
+                                                <select className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-subtle bg-surface px-4 text-sm font-semibold cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                    <option>Nuevo</option>
+                                                    <option>Como Nuevo</option>
+                                                    <option>Usado Excelente</option>
+                                                    <option>Usado Bueno</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Modalidades */}
+                                    <div className="space-y-6">
+                                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Opciones Comerciales</h4>
+
+                                        <div className="space-y-4">
+                                            {/* Opción Venta */}
+                                            <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowSale ? 'border-brand-500 bg-brand-50/40' : 'border-subtle'}`}
+                                                onClick={() => setNewItem({ ...newItem, allowSale: !newItem.allowSale })}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-elevated text-slate-400'}`}>
+                                                            <Tag className="h-5 w-5" />
+                                                        </div>
+                                                        <span className="font-semibold cc-text-primary">Venta Directa</span>
+                                                    </div>
+                                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-subtle'}`}>
+                                                        {newItem.allowSale && <div className="h-2 w-2 rounded-full bg-white" />}
+                                                    </div>
+                                                </div>
+                                                {newItem.allowSale && (
+                                                    <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="Precio sugerido (Ej: 150000)"
+                                                            className="h-12 rounded-xl bg-surface/50"
+                                                            required={newItem.allowSale}
+                                                            value={newItem.price}
+                                                            onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Opción Permuta */}
+                                            <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowSwap ? 'border-brand-500 bg-brand-50/40' : 'border-subtle'}`}
+                                                onClick={() => setNewItem({ ...newItem, allowSwap: !newItem.allowSwap })}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 text-white' : 'bg-elevated text-slate-400'}`}>
+                                                            <Repeat className="h-5 w-5" />
+                                                        </div>
+                                                        <span className="font-semibold cc-text-primary">Permuta</span>
+                                                    </div>
+                                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSwap ? 'bg-brand-600 border-purple-600' : 'border-subtle'}`}>
+                                                        {newItem.allowSwap && <div className="h-2 w-2 rounded-full bg-white" />}
+                                                    </div>
+                                                </div>
+                                                {newItem.allowSwap && (
+                                                    <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
+                                                        <textarea
+                                                            className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                                            placeholder="¿Qué buscas a cambio? (Ej: Una tablet o una TV más pequeña)"
+                                                            required={newItem.allowSwap}
+                                                            value={newItem.swapDetails}
+                                                            onChange={(e) => setNewItem({ ...newItem, swapDetails: e.target.value })}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Opción Trueque */}
+                                            <div className={`cursor-pointer rounded-lg border p-4 transition-colors ${newItem.allowBarter ? 'border-emerald-600 bg-emerald-50/30' : 'border-subtle'}`}
+                                                onClick={() => setNewItem({ ...newItem, allowBarter: !newItem.allowBarter })}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 text-white' : 'bg-elevated text-slate-400'}`}>
+                                                            <Sparkles className="h-5 w-5" />
+                                                        </div>
+                                                        <span className="font-semibold cc-text-primary">Trueque Abierto</span>
+                                                    </div>
+                                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowBarter ? 'bg-emerald-600 border-emerald-600' : 'border-subtle'}`}>
+                                                        {newItem.allowBarter && <div className="h-2 w-2 rounded-full bg-white" />}
+                                                    </div>
+                                                </div>
+                                                {newItem.allowBarter && (
+                                                    <div className="pt-4 animate-in fade-in slide-in-from-top-2 duration-300" onClick={(e) => e.stopPropagation()}>
+                                                        <textarea
+                                                            className="w-full min-h-[80px] rounded-xl border border-subtle bg-surface/50 cc-text-primary px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                                            placeholder="Cualquier artículo interesante que sea de utilidad..."
+                                                            value={newItem.barterDetails}
+                                                            onChange={(e) => setNewItem({ ...newItem, barterDetails: e.target.value })}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] ml-1">Descripción del Artículo</label>
+                                        <textarea
+                                            className="min-h-[120px] w-full rounded-lg border border-subtle bg-surface px-4 py-4 text-sm font-medium cc-text-primary transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            placeholder="Cuenta más detalles sobre el artículo..."
+                                            required
+                                            value={newItem.description}
+                                            onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <DialogFooter className="pt-4 pb-2">
+                                        <Button
+                                            type="submit"
+                                            disabled={publishing}
+                                            className="h-12 w-full rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                                        >
+                                            {publishing ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    Publicando...
+                                                </span>
+                                            ) : "Publicar Anuncio"}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Link href="/marketplace/my-listings">
+                        <CcButton variant="ghost" size="md">
+                            <ShoppingBag className="h-4.5 w-4.5" />
+                            Mis publicaciones
+                        </CcButton>
+                    </Link>
+
+                    <CcButton variant="ghost" size="md" onClick={() => setIsRulesOpen(true)}>
+                        <Info className="h-4.5 w-4.5" />
+                        Reglamento
+                    </CcButton>
+
+                    {user?.role === 'admin' && (
+                        <Link href="/admin/marketplace">
+                            <CcButton variant="ghost" size="md" style={{ borderColor: "rgba(16,185,129,0.30)", color: "var(--cc-sage)" }}>
+                                <ShieldCheck className="h-4.5 w-4.5" />
+                                Moderación
+                            </CcButton>
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            {/* Featured Item Section */}
+            {featuredItem && (
+                <div className="relative overflow-hidden rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] shadow-sm p-6 md:p-8 flex flex-col md:flex-row gap-8 items-stretch">
+                    {/* Dark striped media placeholder */}
+                    <div className="relative w-full md:w-1/2 min-h-[220px] overflow-hidden rounded-lg bg-[var(--cc-ink)] flex items-center justify-center">
+                        <div className="absolute inset-0 opacity-15" style={{ backgroundImage: "repeating-linear-gradient(45deg, var(--cc-copper) 0px, var(--cc-copper) 2px, transparent 2px, transparent 10px)" }} />
+                        {featuredItem.imageUrl || (featuredItem.images && featuredItem.images.length > 0) ? (
+                            <Image
+                                src={featuredItem.imageUrl || (featuredItem.images?.[0] ?? '')}
+                                alt={featuredItem.title}
+                                fill
+                                className="object-cover opacity-80"
+                                unoptimized
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center gap-2">
+                                <Search className="h-10 w-10 text-[var(--cc-copper)] opacity-70" />
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--cc-copper)] opacity-60">Sin imagen</span>
+                            </div>
+                        )}
+                        <div className="absolute top-4 left-4 z-10">
+                            <CcTag tone="copper" solid>VERIFICADO</CcTag>
+                        </div>
+                    </div>
+                    
+                    <div className="w-full md:w-1/2 flex flex-col justify-between space-y-6">
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                                <CcTag tone="neutral" solid>{categories.find(c => c.id === featuredItem.category)?.label || featuredItem.category}</CcTag>
+                                <CcTag tone="copper">Destacado del edificio</CcTag>
+                            </div>
+                            <h2 className="text-2xl font-medium text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                {featuredItem.title}
+                            </h2>
+                            <p className="text-xs text-[var(--cc-ink-secondary)] leading-relaxed line-clamp-3">
+                                {featuredItem.description}
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between pt-4 border-t border-[var(--cc-line)]">
+                            <div>
+                                <span className="text-[9px] font-medium text-[var(--cc-ink-tertiary)] uppercase tracking-wider block mb-1">
+                                    {featuredItem.allowSale !== false ? 'Precio sugerido' : 'Modalidad'}
+                                </span>
+                                <span className="text-xl font-semibold text-[var(--cc-copper)]">
+                                    {featuredItem.allowSale !== false ? `$${featuredItem.price.toLocaleString('es-CL')}` : 'Intercambio / Trueque'}
+                                </span>
+                            </div>
+                            <CcButton 
+                                variant="primary" 
+                                size="sm"
+                                onClick={() => {
+                                    setSelectedItem(featuredItem);
+                                    setIsDetailOpen(true);
+                                }}
+                            >
+                                Ver detalles
+                            </CcButton>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             <ModuleFlow
                 title="Publicacion segura entre vecinos"
@@ -921,9 +947,9 @@ export default function MarketplacePage() {
             <AnimatePresence mode="popLayout">
                 <motion.div
                     layout
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 px-1"
+                    className="grid grid-cols-1 md:grid-cols-2 gap-8 px-1"
                 >
-                    {filteredItems.map((item, idx) => (
+                    {remainingItems.map((item, idx) => (
                         <MarketplaceCard
                             key={item.id}
                             item={item}
@@ -938,6 +964,7 @@ export default function MarketplacePage() {
                     ))}
                 </motion.div>
             </AnimatePresence>
+
 
             {/* Product Detail Modal */}
             <ProductDetailModal

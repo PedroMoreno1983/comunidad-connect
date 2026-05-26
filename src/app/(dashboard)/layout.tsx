@@ -1,15 +1,14 @@
 "use client";
 
-import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/lib/authContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
-import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
+import { useEffect, useState } from "react";
 import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
 import { AlertCircle } from "lucide-react";
 import { AppProviders } from "@/components/AppProviders";
+import { AdminShell } from "@/components/cc/AdminShell";
 
 export default function DashboardLayout({
     children,
@@ -32,6 +31,25 @@ function DashboardShell({
     const router = useRouter();
     const pathname = usePathname();
     const { isDemoUser, demoMessage } = useDemoRestrictions();
+    const [timeString, setTimeString] = useState("");
+
+    // Hydration-safe clock
+    useEffect(() => {
+        const updateTime = () => {
+            setTimeString(
+                new Date().toLocaleString("es-CL", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                })
+            );
+        };
+        updateTime();
+        const interval = setInterval(updateTime, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -72,31 +90,67 @@ function DashboardShell({
 
     if (loading || !user) return null;
 
+    const initials = user.name
+        ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+        : "U";
+
+    const roleLabels: Record<string, string> = {
+        admin: "Administrador",
+        concierge: "Conserjería",
+        resident: "Residente",
+    };
+
+    const isResident = user.role === "resident";
+
+    // Demo Banner element
+    const demoBanner = isDemoUser && (
+        <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-[#B5664E] sm:h-4 sm:w-4" />
+            <span className="text-center sm:hidden">Demo protegida: envíos reales deshabilitados.</span>
+            <span className="hidden text-center sm:inline">{demoMessage}</span>
+        </div>
+    );
+
+    if (isResident) {
+        // Resident mobile-first simple layout
+        return (
+            <div className="min-h-screen flex flex-col" style={{ background: "var(--cc-ivory)" }}>
+                {demoBanner}
+                <main className="flex-1 w-full relative z-10">
+                    <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
+                        {children}
+                    </ErrorBoundary>
+                </main>
+                <ErrorBoundary name="CoCo Widget">
+                    <CoCo />
+                </ErrorBoundary>
+            </div>
+        );
+    }
+
+    // Admin & Concierge wrapped in desktop AdminShell layout
+    const adminRoleMapped = user.role === "concierge" ? "conserje" : "admin";
+
     return (
-        <div className="cc-dashboard grid h-dvh bg-transparent" style={{ gridTemplateColumns: "auto minmax(0, 1fr)" }}>
-            <AnimatedBackground />
-            <ErrorBoundary name="Sidebar">
-                <Sidebar />
+        <div className="min-h-screen" style={{ background: "var(--cc-ivory)" }}>
+            {demoBanner}
+            <ErrorBoundary name="AdminShell Wrapper">
+                <AdminShell
+                    activeHref={pathname}
+                    role={adminRoleMapped}
+                    user={{
+                        name: user.name,
+                        initials,
+                        roleLabel: roleLabels[user.role] || "Miembro",
+                    }}
+                    building={(user as any).condoName || (user as any).communityName || "Mi Edificio"}
+                    rightSubtitle={timeString}
+                >
+                    <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
+                        {children}
+                    </ErrorBoundary>
+                </AdminShell>
             </ErrorBoundary>
-            <main className="relative z-10 flex min-w-0 flex-col overflow-y-auto">
-                {/* Demo Banner */}
-                {isDemoUser && (
-                    <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
-                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-brand-300 sm:h-4 sm:w-4" />
-                        <span className="text-center sm:hidden">Demo protegida: envíos reales deshabilitados.</span>
-                        <span className="hidden text-center sm:inline">{demoMessage}</span>
-                    </div>
-                )}
-                
-                {/* Main content */}
-                <div className="relative flex-1 p-4 pb-28 pt-8 sm:p-5 sm:pb-28 lg:p-6 lg:pb-28 lg:pr-28">
-                    <div key={pathname} className="min-h-full">
-                        <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
-                            {children}
-                        </ErrorBoundary>
-                    </div>
-                </div>
-            </main>
             <ErrorBoundary name="CoCo Widget">
                 <CoCo />
             </ErrorBoundary>

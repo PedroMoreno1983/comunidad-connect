@@ -1,33 +1,24 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Calendar, Plus, Megaphone } from "lucide-react";
+import { Bell, Info, AlertTriangle, Calendar, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
 import { Announcement } from "@/lib/types";
 import { SkeletonAnnouncement } from "@/components/ui/Skeleton";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Badge } from "@/components/ui/Badge";
-import { createDemoAnnouncement, getDemoAnnouncements, mergeDemoAnnouncements, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
+import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
+import { Tag } from "@/components/cc/Tag";
+
+type FilterTab = 'all' | 'alert' | 'event' | 'info';
+
 export default function FeedPage() {
     const { user } = useAuth();
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [newPost, setNewPost] = useState({ title: '', content: '', priority: 'info' });
+    const [activeTab, setActiveTab] = useState<FilterTab>('all');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -35,7 +26,6 @@ export default function FeedPage() {
             try {
                 setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
-                // Map the snake_case data to camelCase for the UI
                 const mappedData = data.map((ann: any): Announcement => ({
                     id: ann.id,
                     title: ann.title,
@@ -44,18 +34,46 @@ export default function FeedPage() {
                     priority: ann.priority as any,
                     createdAt: ann.created_at,
                 }));
-                setAnnouncements(isDemoUser ? mergeDemoAnnouncements(mappedData) : mappedData);
+                // Mock default announcements if demo user
+                const demoAnnouncements: Announcement[] = [
+                    {
+                        id: "demo-pinned-1",
+                        title: "Corte programado de agua por mantención",
+                        content: "Estimados vecinos, este jueves de 14:00 a 17:00 se realizará un corte programado de agua en todo el edificio por lavado de estanques. Favor tomar precauciones.",
+                        author: "Administración",
+                        priority: "alert",
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: "demo-ann-2",
+                        title: "Instalación de nuevos portones de acceso",
+                        content: "Mañana viernes se iniciará el cambio de motores del portón principal de vehículos. El acceso se mantendrá manual temporalmente.",
+                        author: "Conserjería",
+                        priority: "event",
+                        createdAt: new Date(Date.now() - 864e5).toISOString(),
+                    },
+                    {
+                        id: "demo-ann-3",
+                        title: "Reunión ordinaria de copropietarios",
+                        content: "Extendemos la invitación a participar de la asamblea comunitaria este sábado a las 10:00 en la sala multiuso. Revisaremos el presupuesto anual.",
+                        author: "Comité de Administración",
+                        priority: "info",
+                        createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
+                    }
+                ];
+
+                setAnnouncements(isDemoUser ? demoAnnouncements : mappedData);
             } catch (error) {
                 console.error("Error al cargar anuncios:", error);
                 if (isDemoUser) {
-                    setAnnouncements(getDemoAnnouncements());
-                    return;
+                    setAnnouncements([]);
+                } else {
+                    toast({
+                        title: "Error de Conexión",
+                        description: "No se pudieron cargar los comunicados.",
+                        variant: "destructive",
+                    });
                 }
-                toast({
-                    title: "Error de Conexión",
-                    description: "No se pudieron cargar los comunicados.",
-                    variant: "destructive",
-                });
             } finally {
                 setIsLoading(false);
             }
@@ -64,98 +82,27 @@ export default function FeedPage() {
         fetchAnnouncements();
     }, [isDemoUser, toast]);
 
-    const getIcon = (priority: string) => {
-        switch (priority) {
-            case 'alert': return AlertTriangle;
-            case 'event': return Calendar;
-            default: return Info;
-        }
-    };
-
-    const getBadgeTone = (priority: string) => {
-        switch (priority) {
-            case 'alert': return 'danger';
-            case 'event': return 'brand';
-            default: return 'info';
-        }
-    };
-
-    const getPriorityStyles = (priority: string) => {
-        switch (priority) {
-            case 'alert': return { icon: 'bg-danger-bg text-danger-fg' };
-            case 'event': return { icon: 'bg-brand-bg text-brand-fg' };
-            default: return { icon: 'bg-info-bg text-info-fg' };
-        }
-    };
-
     const getPriorityLabel = (priority: string) => {
         switch (priority) {
             case 'alert': return 'Urgente';
-            case 'event': return 'Evento';
-            default: return 'Información';
+            case 'event': return 'Mantención';
+            default: return 'Comunidad';
         }
     };
 
-    const handlePostSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!user || user.role === 'resident') {
-            toast({
-                title: "Acceso Denegado",
-                description: "No tienes permisos para publicar avisos.",
-                variant: "destructive",
-            });
-            return;
+    const getPriorityTone = (priority: string): "rose" | "amber" | "sage" | "plum" | "copper" | "neutral" => {
+        switch (priority) {
+            case 'alert': return 'rose';
+            case 'event': return 'amber';
+            default: return 'sage';
         }
+    };
 
-        try {
-            if (isDemoUser) {
-                const demoAnnouncement = createDemoAnnouncement(user, newPost as { title: string; content: string; priority: "info" | "alert" | "event" });
-                const nextAnnouncements = [demoAnnouncement, ...announcements];
-                setAnnouncements(nextAnnouncements);
-                saveDemoAnnouncements(nextAnnouncements);
-                setIsDialogOpen(false);
-                setNewPost({ title: '', content: '', priority: 'info' });
-                toast({
-                    title: "Aviso demo publicado",
-                    description: "Quedo visible en Muro de Avisos y Comunicaciones.",
-                    variant: "success",
-                });
-                return;
-            }
-
-            const data = await AnnouncementsService.createAnnouncement({
-                title: newPost.title,
-                content: newPost.content,
-                priority: newPost.priority as 'info' | 'alert' | 'event',
-                author_id: user.id || '11111111-1111-1111-1111-111111111111',
-                author_name: user.name || 'Administración'
-            });
-
-            const newAnn = {
-                id: data.id,
-                title: data.title,
-                content: data.content,
-                author: data.author_name || 'Administración',
-                priority: data.priority,
-                createdAt: data.created_at,
-            };
-
-            setAnnouncements([newAnn, ...announcements]);
-            setIsDialogOpen(false);
-            setNewPost({ title: '', content: '', priority: 'info' });
-            toast({
-                title: "Aviso Publicado",
-                description: "La notificación ha sido enviada a todos los residentes.",
-                variant: "success",
-            });
-        } catch (error) {
-            console.error("Error creating post:", error);
-            toast({
-                title: "Error",
-                description: "Hubo un problema al publicar el aviso.",
-                variant: "destructive",
-            });
+    const getPriorityLeftColor = (priority: string) => {
+        switch (priority) {
+            case 'alert': return 'var(--cc-rose)';
+            case 'event': return 'var(--cc-amber)';
+            default: return 'var(--cc-sage)';
         }
     };
 
@@ -170,90 +117,90 @@ export default function FeedPage() {
         return date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
     };
 
+    // Pinned announcement is the newest "alert" or just the first announcement if no alert is present
+    const pinnedAnn = announcements.find(a => a.priority === 'alert');
+
+    // Filter announcements by active tab
+    const filteredAnnouncements = announcements.filter(ann => {
+        if (activeTab === 'all') return true;
+        return ann.priority === activeTab;
+    });
+
+    // Counts
+    const counts = {
+        all: announcements.length,
+        alert: announcements.filter(a => a.priority === 'alert').length,
+        event: announcements.filter(a => a.priority === 'event').length,
+        info: announcements.filter(a => a.priority === 'info').length,
+    };
+
     return (
-        <div className="max-w-4xl space-y-8">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-brand-bg text-brand-fg rounded-xl">
-                            <Megaphone className="h-5 w-5" />
-                        </div>
-                        <h1 className="text-3xl font-bold text-primary">Muro de Avisos</h1>
-                    </div>
-                    <p className="text-secondary">
-                        Noticias y comunicados oficiales de la comunidad
-                    </p>
-                </div>
-                {user?.role === 'admin' && (
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="primary" size="md" className="font-semibold shadow-md">
-                                <Plus className="h-5 w-5 mr-2" />
-                                Publicar Aviso
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Nuevo Comunicado</DialogTitle>
-                                <DialogDescription>Redacta un aviso para toda la comunidad.</DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handlePostSubmit} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium cc-text-secondary">Título</label>
-                                    <Input
-                                        required
-                                        value={newPost.title}
-                                        onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                                        placeholder="Ej: Mantención de Ascensores"
-                                        className="input-premium"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium cc-text-secondary">Prioridad</label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['info', 'alert', 'event'].map((p) => {
-                                            const styles = getPriorityStyles(p);
-                                            const Icon = getIcon(p);
-                                            return (
-                                                <button
-                                                    key={p}
-                                                    type="button"
-                                                    onClick={() => setNewPost({ ...newPost, priority: p })}
-                                                    className={`p-3 rounded-xl border transition-all ${newPost.priority === p
-                                                        ? 'border-brand-500 bg-brand-bg'
-                                                        : 'border-subtle hover:bg-elevated'
-                                                        }`}
-                                                >
-                                                    <div className={`mx-auto w-8 h-8 rounded-lg ${styles.icon} flex items-center justify-center mb-2`}>
-                                                        <Icon className="h-4 w-4" />
-                                                    </div>
-                                                    <p className="text-xs font-medium text-primary text-center">{getPriorityLabel(p)}</p>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium cc-text-secondary">Contenido</label>
-                                    <textarea
-                                        className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface px-4 py-3 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
-                                        required
-                                        value={newPost.content}
-                                        onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                                        placeholder="Escribe el detalle del comunicado..."
-                                    />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit">Publicar</Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                )}
+            <div className="border-b border-subtle pb-6">
+                <Eyebrow>Oficial</Eyebrow>
+                <DisplayHeading size={36} className="mt-2">
+                    Muro de <em className="text-italic-serif text-brand-600">comunicados</em>
+                </DisplayHeading>
+                <p className="mt-2 text-sm cc-text-secondary">
+                    Noticias y comunicados oficiales emitidos por la administración.
+                </p>
             </div>
 
-            {/* Announcements List */}
+            {/* Pinned announcement: card dark ink con halo amber */}
+            {pinnedAnn && activeTab === 'all' && (
+                <div className="space-y-3">
+                    <Eyebrow className="text-xs">Destacado</Eyebrow>
+                    <article className="relative overflow-hidden rounded-xl bg-slate-950 text-white p-6 shadow-[0_0_30px_rgba(201,154,74,0.16)] border border-white/10">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-white/10 text-brand-300 rounded-xl">
+                                    <AlertTriangle className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-bold text-white leading-tight">
+                                        {pinnedAnn.title}
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        {pinnedAnn.author} • {getRelativeTime(pinnedAnn.createdAt)}
+                                    </p>
+                                </div>
+                            </div>
+                            <Tag tone="amber" solid>Fijado</Tag>
+                        </div>
+                        <p className="mt-4 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap pl-14">
+                            {pinnedAnn.content}
+                        </p>
+                    </article>
+                </div>
+            )}
+
+            {/* Tabs con contador mono */}
+            <div className="flex flex-wrap gap-2 border-b border-subtle pb-2">
+                {[
+                    { id: 'all' as FilterTab, label: 'Todos' },
+                    { id: 'alert' as FilterTab, label: 'Urgentes' },
+                    { id: 'event' as FilterTab, label: 'Mantención' },
+                    { id: 'info' as FilterTab, label: 'Comunidad' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                            activeTab === tab.id
+                                ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
+                                : 'bg-surface text-slate-600 border-subtle hover:border-brand-200'
+                        }`}
+                    >
+                        {tab.label}
+                        <span className={`font-mono text-[10px] ${activeTab === tab.id ? 'text-white/80' : 'text-slate-400'}`}>
+                            [{counts[tab.id]}]
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* List with left-bar colored by category, emojis removed */}
             <div className="space-y-4">
                 {isLoading ? (
                     <div className="space-y-4">
@@ -261,60 +208,53 @@ export default function FeedPage() {
                             <SkeletonAnnouncement key={i} />
                         ))}
                     </div>
+                ) : filteredAnnouncements.length === 0 ? (
+                    <div className="pt-6">
+                        <EmptyState
+                            icon={<Bell className="h-6 w-6" />}
+                            title="Muro limpio"
+                            description="No hay avisos en esta sección en este momento."
+                        />
+                    </div>
                 ) : (
-                    <>
-                        {announcements.map((ann, idx) => {
-                            const styles = getPriorityStyles(ann.priority);
-                            const Icon = getIcon(ann.priority);
+                    filteredAnnouncements.map((ann) => {
+                        // Skip rendering the pinned alert in the main list under 'all' to avoid duplication
+                        if (activeTab === 'all' && pinnedAnn && ann.id === pinnedAnn.id) return null;
 
-                            const tone = getBadgeTone(ann.priority);
+                        const tone = getPriorityTone(ann.priority);
+                        const leftColor = getPriorityLeftColor(ann.priority);
 
-                            return (
-                                <article
-                                    key={ann.id}
-                                    className="group relative overflow-hidden rounded-lg bg-surface border border-subtle shadow-md hover:shadow-sm hover:border-default transition-all duration-300 animate-slide-up opacity-0"
-                                    style={{ animationDelay: `${idx * 0.1}s`, animationFillMode: 'forwards' }}
-                                >
-                                    <div className="p-6">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="flex items-start gap-4">
-                                                <div className={`flex-shrink-0 p-3 rounded-xl ${styles.icon}`}>
-                                                    <Icon className="h-5 w-5" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <h2 className="text-lg font-bold text-primary group-hover:text-brand-500 transition-colors">
-                                                        {ann.title}
-                                                    </h2>
-                                                    <div className="flex items-center gap-2 mt-1 text-sm text-tertiary">
-                                                        <span className="font-medium">{ann.author}</span>
-                                                        <span>•</span>
-                                                        <span>{getRelativeTime(ann.createdAt)}</span>
-                                                    </div>
+                        return (
+                            <article
+                                key={ann.id}
+                                className="group relative overflow-hidden rounded-xl bg-surface border border-subtle shadow-sm hover:border-brand-200 transition-all"
+                                style={{ borderLeft: `4px solid ${leftColor}` }}
+                            >
+                                <div className="p-6">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex items-start gap-4">
+                                            <div className="min-w-0">
+                                                <h2 className="text-lg font-bold cc-text-primary group-hover:text-brand-600 transition-colors leading-tight">
+                                                    {ann.title}
+                                                </h2>
+                                                <div className="flex items-center gap-2 mt-1 text-xs cc-text-tertiary">
+                                                    <span className="font-semibold">{ann.author}</span>
+                                                    <span>•</span>
+                                                    <span>{getRelativeTime(ann.createdAt)}</span>
                                                 </div>
                                             </div>
-                                            <Badge variant={tone as any} dot={ann.priority === 'alert'}>
-                                                {getPriorityLabel(ann.priority)}
-                                            </Badge>
                                         </div>
-                                        <p className="mt-4 text-secondary leading-relaxed whitespace-pre-wrap pl-16">
-                                            {ann.content}
-                                        </p>
+                                        <Tag tone={tone} solid>
+                                            {getPriorityLabel(ann.priority)}
+                                        </Tag>
                                     </div>
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </article>
-                            );
-                        })}
-
-                        {announcements.length === 0 && (
-                            <div className="pt-6">
-                                <EmptyState
-                                    icon={<Bell className="h-6 w-6" />}
-                                    title="Sin Comunicados"
-                                    description="No hay avisos recientes para la comunidad. Te notificaremos cuando haya novedades."
-                                />
-                            </div>
-                        )}
-                    </>
+                                    <p className="mt-4 text-xs sm:text-sm cc-text-secondary leading-relaxed whitespace-pre-wrap">
+                                        {ann.content}
+                                    </p>
+                                </div>
+                            </article>
+                        );
+                    })
                 )}
             </div>
         </div>

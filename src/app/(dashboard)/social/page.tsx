@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- Social feed media can be Supabase URLs, user avatars, blob previews or inline uploads. */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
@@ -8,7 +7,9 @@ import { SocialPost, SocialComment } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/cc/Button";
+import { Tag } from "@/components/cc/Tag";
+import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import {
     createDemoSocialComment,
     createDemoSocialPost,
@@ -21,8 +22,8 @@ import {
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
     Heart, MessageCircle, Share2, MoreHorizontal,
-    Image as ImageIcon, Send, Smile, MapPin, Hash,
-    Loader2, X as XIcon
+    Image as ImageIcon, Send, Smile, MapPin,
+    Loader2, X as XIcon, ArrowRight
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -50,7 +51,6 @@ export default function SocialFeedPage() {
 
     useEffect(() => {
         loadPosts();
-        // Post loading intentionally follows demo/live mode.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDemoUser]);
 
@@ -92,7 +92,7 @@ export default function SocialFeedPage() {
                 setNewPostContent("");
                 setNewPostImageFile(null);
                 setNewPostImagePreview(null);
-                toast({ title: "Publicado en demo", description: "Tu publicacion con imagen quedo visible en esta sesion.", variant: "success" });
+                toast({ title: "Publicado en demo", description: "Tu publicación con imagen quedó visible en esta sesión.", variant: "success" });
             } catch {
                 toast({ title: "Error", description: "No se pudo leer la imagen.", variant: "destructive" });
             } finally {
@@ -101,7 +101,6 @@ export default function SocialFeedPage() {
             return;
         }
 
-        // Upload image to Supabase Storage if provided
         if (newPostImageFile) {
             setIsUploadingImage(true);
             try {
@@ -140,7 +139,8 @@ export default function SocialFeedPage() {
                 description: "Tu publicación ya está visible en el muro.",
                 variant: "success"
             });
-        } catch {
+        } catch (error) {
+            console.error("Post creation error:", error);
             toast({ title: "Error", description: "Hubo un problema al publicar.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
@@ -158,7 +158,6 @@ export default function SocialFeedPage() {
         }
 
         try {
-            // Optimistic Update
             setPosts(prev => prev.map((p) => {
                 if (p.id === postId) {
                     return { ...p, likes_count: (p.likes_count || 0) + 1, has_liked: true };
@@ -167,14 +166,13 @@ export default function SocialFeedPage() {
             }));
             await SocialService.likePost(postId);
         } catch {
-            // Revert on error
             setPosts(prev => prev.map((p) => {
                 if (p.id === postId) {
                     return { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1), has_liked: false };
                 }
                 return p;
             }));
-            toast({ title: "Error", description: "No se pudo dar like.", variant: "destructive" });
+            toast({ title: "Error", description: "No se pudo registrar tu reacción.", variant: "destructive" });
         }
     };
 
@@ -186,7 +184,6 @@ export default function SocialFeedPage() {
 
         setActiveCommentPostId(postId);
 
-        // Load Comments if not already loaded into dictionary
         if (!comments[postId]) {
             setLoadingCommentsPostId(postId);
             try {
@@ -228,53 +225,82 @@ export default function SocialFeedPage() {
                 content: newCommentContent.trim()
             });
 
-            // Update comments locally
             setComments(prev => ({
                 ...prev,
                 [postId]: [...(prev[postId] || []), comment]
             }));
 
-            // Increment comment count on Post summary
             setPosts(prev => prev.map((p) => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
             setNewCommentContent("");
 
-        } catch {
+        } catch (error) {
+            console.error("Error commenting:", error);
             toast({ title: "Error", description: "No se pudo enviar el comentario", variant: "destructive" });
         }
     };
 
     return (
-        <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 space-y-10">
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 space-y-8">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-br from-fuchsia-500 to-pink-600 rounded-lg shadow-sm shadow-fuchsia-500/30">
-                    <Hash className="h-6 w-6 text-white" />
+            <div className="border-b border-subtle pb-6">
+                <Eyebrow>Comunidad</Eyebrow>
+                <DisplayHeading size={36} className="mt-2">
+                    Plaza <em className="text-italic-serif text-brand-600">social</em>
+                </DisplayHeading>
+                <p className="mt-2 text-sm cc-text-secondary">
+                    Comparte novedades, datos, fotos y conversa informalmente con tus vecinos de copropiedad.
+                </p>
+            </div>
+
+            {/* Stories Row with avatares mono, dashed copper border for Tu avatar */}
+            <div className="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-none">
+                {/* Current User Story Creator */}
+                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-brand-500 flex items-center justify-center p-0.5 cursor-pointer hover:scale-105 transition-transform bg-canvas">
+                        <div className="w-full h-full rounded-full bg-elevated flex items-center justify-center text-brand-600 font-bold text-lg">
+                            +
+                        </div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Tu historia</span>
                 </div>
-                <div>
-                    <h1 className="text-3xl font-semibold cc-text-primary">Muro Social</h1>
-                    <p className="text-sm font-medium text-slate-500 mt-1">Comparte novedades, datos y fotos con tus vecinos.</p>
-                </div>
+
+                {/* Mock stories */}
+                {[
+                    { name: "Andrés R.", initials: "AR", active: true },
+                    { name: "Valentina D.", initials: "VD", active: true },
+                    { name: "Claudio G.", initials: "CG", active: false },
+                    { name: "Pilar O.", initials: "PO", active: false }
+                ].map(st => (
+                    <div key={st.name} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center p-0.5 cursor-pointer hover:scale-105 transition-transform ${
+                            st.active ? 'border-2 border-brand-300' : 'border border-subtle'
+                        }`}>
+                            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs">
+                                {st.initials}
+                            </div>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">{st.name.split(" ")[0]}</span>
+                    </div>
+                ))}
             </div>
 
             {/* Create Post Field */}
-            <div className="bg-surface rounded-lg p-6 sm:p-8 border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none transition-all hover:shadow-sm">
+            <div className="bg-surface rounded-xl p-6 border border-subtle shadow-sm transition-all hover:border-brand-200">
                 <form onSubmit={handleCreatePost}>
-                    <div className="flex gap-4 sm:gap-6">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[#7C3AED] to-[#7C3AED] flex-shrink-0 border-2 border-white dark:border-slate-800 shadow-md">
+                    <div className="flex gap-4">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-900 text-white flex-shrink-0 flex items-center justify-center font-bold text-base border border-subtle">
                             {user?.photo ? (
                                 <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white font-semibold text-lg">
-                                    {user?.name.charAt(0)}
-                                </div>
+                                user?.name?.charAt(0).toUpperCase() || 'U'
                             )}
                         </div>
                         <div className="flex-1 space-y-4">
                             <textarea
                                 value={newPostContent}
                                 onChange={(e) => setNewPostContent(e.target.value)}
-                                placeholder="¿Qué está pasando en el edificio?"
-                                className="w-full min-h-[100px] resize-none bg-transparent text-lg font-medium cc-text-primary placeholder:text-slate-400 focus:outline-none"
+                                placeholder="Comparte algo útil con tus vecinos..."
+                                className="w-full min-h-[90px] resize-none bg-transparent text-sm font-medium cc-text-primary placeholder:text-slate-400 focus:outline-none"
                             />
 
                             {/* Actions Footer */}
@@ -283,36 +309,37 @@ export default function SocialFeedPage() {
                                     <button
                                         type="button"
                                         onClick={() => imageInputRef.current?.click()}
-                                        className="p-2 text-slate-400 hover:text-fuchsia-500 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-500/10 rounded-full transition-colors"
+                                        className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                         title="Añadir Foto"
                                     >
                                         {isUploadingImage ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
                                     </button>
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                                    <button type="button" className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-full transition-colors hidden sm:block">
+                                    <button type="button" className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors hidden sm:block">
                                         <Smile className="h-5 w-5" />
                                     </button>
-                                    <button type="button" className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors hidden sm:block">
+                                    <button type="button" className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors hidden sm:block">
                                         <MapPin className="h-5 w-5" />
                                     </button>
                                 </div>
                                 <Button
                                     type="submit"
                                     disabled={(!newPostContent.trim() && !newPostImageFile) || isSubmitting}
-                                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full px-6 font-bold shadow-sm hover:scale-105 transition-transform"
+                                    variant="copper"
+                                    size="sm"
                                 >
-                                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Publicar'}
+                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Publicar'}
                                 </Button>
                             </div>
 
                             {/* Image Preview */}
                             {newPostImagePreview && (
-                                <div className="relative mt-3 rounded-lg overflow-hidden border border-subtle">
+                                <div className="relative mt-3 rounded-xl overflow-hidden border border-subtle">
                                     <img src={newPostImagePreview} alt="preview" className="w-full max-h-64 object-cover" />
                                     <button
                                         type="button"
                                         onClick={() => { setNewPostImageFile(null); setNewPostImagePreview(null); }}
-                                        className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                        className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black transition-colors"
                                     >
                                         <XIcon className="h-4 w-4" />
                                     </button>
@@ -326,18 +353,17 @@ export default function SocialFeedPage() {
             {/* Feed Stream */}
             <div className="space-y-6">
                 {isLoading && (
-                    <>
+                    <div className="space-y-4">
                         <SkeletonCard />
                         <SkeletonCard />
-                        <SkeletonCard />
-                    </>
+                    </div>
                 )}
 
                 {!isLoading && posts.length === 0 && (
-                    <div className="bg-canvas/50 rounded-lg border border-dashed border-subtle p-16 text-center space-y-4">
+                    <div className="bg-canvas/50 rounded-xl border border-dashed border-subtle p-16 text-center space-y-4">
                         <MessageCircle className="h-16 w-16 text-slate-300 mx-auto" />
-                        <h3 className="text-xl font-semibold text-slate-500">Nada por aquí aún</h3>
-                        <p className="text-sm font-medium text-slate-400">Sé el primero en saludar a tus vecinos.</p>
+                        <h3 className="text-lg font-bold cc-text-primary">Muro vacío</h3>
+                        <p className="text-xs cc-text-secondary">Sé el primero en saludar a tus vecinos.</p>
                     </div>
                 )}
 
@@ -345,82 +371,86 @@ export default function SocialFeedPage() {
                     {posts.map((post) => (
                         <motion.div
                             key={post.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-surface flex flex-col rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-none overflow-hidden"
+                            className="bg-surface flex flex-col rounded-xl border border-subtle shadow-sm overflow-hidden"
                         >
                             {/* Post Header */}
-                            <div className="p-6 sm:p-8 pb-4 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-elevated">
+                            <div className="p-6 pb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center font-bold text-white text-sm border border-subtle flex-shrink-0">
                                         {post.profiles?.avatar_url ? (
                                             <img src={post.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center font-semibold text-slate-400">
-                                                {post.profiles?.name?.charAt(0) || '?'}
-                                            </div>
+                                            post.profiles?.name?.charAt(0).toUpperCase() || '?'
                                         )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold cc-text-primary flex items-center gap-2">
+                                        <h3 className="font-bold cc-text-primary flex items-center gap-2 text-sm leading-snug">
                                             {post.profiles?.name || 'Residente'}
                                             {post.profiles?.unit_id && (
-                                                <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider bg-elevated px-2 py-0.5 rounded-full">
-                                                    Depto {post.profiles.unit_id}
-                                                </span>
+                                                <Tag tone="neutral">Depto {post.profiles.unit_id}</Tag>
                                             )}
                                         </h3>
-                                        <p className="text-xs font-semibold text-slate-400 mt-0.5">
+                                        <p className="text-[10px] cc-text-tertiary mt-0.5 font-medium">
                                             {new Date(post.created_at).toLocaleDateString()} a las {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
                                 </div>
-                                <button className="p-2 text-slate-400 hover:bg-elevated rounded-full transition-colors">
+                                <button className="p-2 text-slate-400 hover:bg-elevated rounded-lg transition-colors">
                                     <MoreHorizontal className="h-5 w-5" />
                                 </button>
                             </div>
 
                             {/* Post Body */}
-                            <div className="px-6 sm:px-8 py-2">
-                                <p className="cc-text-primary text-base leading-relaxed whitespace-pre-line">
+                            <div className="px-6 py-2">
+                                <p className="cc-text-primary text-sm leading-relaxed whitespace-pre-line">
                                     {post.content}
                                 </p>
-                                {post.image_url && (
-                                    <div className="mt-4 rounded-lg overflow-hidden border border-subtle">
-                                        <img src={post.image_url} alt="post image" className="w-full h-auto object-cover max-h-[500px]" />
+                                
+                                {/* Dynamic image preview or striped image placeholder */}
+                                {post.image_url ? (
+                                    <div className="mt-4 rounded-xl overflow-hidden border border-subtle">
+                                        <img src={post.image_url} alt="post media" className="w-full h-auto object-cover max-h-[400px]" />
                                     </div>
+                                ) : (
+                                    /* Handoff spec: "image striped placeholder" when no image is loaded to give visual texture */
+                                    <div className="mt-3 h-1.5 w-full bg-radial-gradient rounded-full opacity-40" 
+                                         style={{ 
+                                             backgroundImage: `repeating-linear-gradient(45deg, var(--cc-line) 0px, var(--cc-line) 2px, transparent 2px, transparent 10px)`
+                                         }} 
+                                    />
                                 )}
                             </div>
 
                             {/* Interaction Bar */}
-                            <div className="px-6 sm:px-8 py-4 mt-2 border-t border-subtle/50 flex items-center gap-6">
-                                <button
-                                    onClick={() => handleLike(post.id)}
-                                    className={clsx(
-                                        "flex items-center gap-2 group transition-colors",
-                                        post.has_liked ? "text-rose-500" : "text-slate-400 hover:text-rose-500"
-                                    )}
-                                >
-                                    <div className={clsx("p-2 rounded-full transition-all flex items-center justify-center", post.has_liked ? "bg-rose-50 dark:bg-rose-500/10" : "group-hover:bg-rose-50 dark:group-hover:bg-rose-500/10")}>
-                                        <Heart className={clsx("h-5 w-5", post.has_liked && "fill-current")} />
-                                    </div>
-                                    <span className="font-bold">{post.likes_count > 0 ? post.likes_count : 'Me gusta'}</span>
-                                </button>
+                            <div className="px-6 py-4 mt-2 border-t border-subtle/50 flex items-center justify-between">
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => handleLike(post.id)}
+                                        className={clsx(
+                                            "flex items-center gap-2 group transition-colors text-xs font-semibold",
+                                            post.has_liked ? "text-rose-500" : "cc-text-secondary hover:text-rose-500"
+                                        )}
+                                    >
+                                        <Heart className={clsx("h-4.5 w-4.5", post.has_liked && "fill-current")} />
+                                        <span>{post.likes_count > 0 ? post.likes_count : 'Me gusta'}</span>
+                                    </button>
 
-                                <button
+                                    <button
+                                        onClick={() => toggleComments(post.id)}
+                                        className="flex items-center gap-2 cc-text-secondary hover:text-brand-600 group transition-colors text-xs font-semibold"
+                                    >
+                                        <MessageCircle className="h-4.5 w-4.5" />
+                                        <span>{post.comments_count ? post.comments_count : 'Comentar'}</span>
+                                    </button>
+                                </div>
+
+                                <button 
                                     onClick={() => toggleComments(post.id)}
-                                    className="flex items-center gap-2 text-slate-400 hover:text-blue-500 group transition-colors"
+                                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 hover:underline"
                                 >
-                                    <div className="p-2 rounded-full transition-all flex items-center justify-center group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10">
-                                        <MessageCircle className="h-5 w-5" />
-                                    </div>
-                                    <span className="font-bold">{post.comments_count ? post.comments_count : 'Comentar'}</span>
-                                </button>
-
-                                <button className="flex items-center gap-2 text-slate-400 hover:text-emerald-500 group transition-colors ml-auto">
-                                    <div className="p-2 rounded-full transition-all flex items-center justify-center group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10">
-                                        <Share2 className="h-5 w-5" />
-                                    </div>
+                                    Ver conversación <ArrowRight className="h-3 w-3" />
                                 </button>
                             </div>
 
@@ -433,29 +463,27 @@ export default function SocialFeedPage() {
                                         exit={{ height: 0, opacity: 0 }}
                                         className="bg-elevated/30 border-t border-subtle overflow-hidden"
                                     >
-                                        <div className="p-6 sm:p-8 space-y-6">
+                                        <div className="p-6 space-y-5">
                                             {/* List of comments */}
                                             {loadingCommentsPostId === post.id ? (
                                                 <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                                             ) : (
-                                                <div className="space-y-5">
+                                                <div className="space-y-4">
                                                     {(comments[post.id] || []).map((comment) => (
-                                                        <div key={comment.id} className="flex gap-4">
-                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-elevated flex-shrink-0">
+                                                        <div key={comment.id} className="flex gap-3">
+                                                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-elevated flex-shrink-0 flex items-center justify-center font-bold text-xs border border-subtle">
                                                                 {comment.profiles?.avatar_url ? (
                                                                     <img src={comment.profiles.avatar_url} alt="av" className="w-full h-full object-cover" />
                                                                 ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-slate-500">
-                                                                        {comment.profiles?.name?.charAt(0) || '?'}
-                                                                    </div>
+                                                                    comment.profiles?.name?.charAt(0).toUpperCase() || '?'
                                                                 )}
                                                             </div>
                                                             <div className="flex-1">
-                                                                <div className="bg-surface px-4 py-3 rounded-lg rounded-tl-none border border-subtle inline-block">
-                                                                    <p className="text-xs font-semibold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
-                                                                    <p className="text-sm font-medium cc-text-secondary">{comment.content}</p>
+                                                                <div className="bg-surface px-4 py-2.5 rounded-xl rounded-tl-none border border-subtle inline-block">
+                                                                    <p className="text-[11px] font-bold cc-text-primary mb-0.5">{comment.profiles?.name}</p>
+                                                                    <p className="text-xs font-medium cc-text-secondary leading-relaxed">{comment.content}</p>
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-slate-400 mt-1 ml-2">
+                                                                <p className="text-[9px] font-bold text-slate-400 mt-1 ml-2">
                                                                     {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                 </p>
                                                             </div>
@@ -469,15 +497,6 @@ export default function SocialFeedPage() {
 
                                             {/* Add Comment */}
                                             <div className="flex gap-3 pt-2">
-                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-300 flex-shrink-0 hidden sm:block">
-                                                    {user?.photo ? (
-                                                        <img src={user.photo} alt="U" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-white bg-slate-400">
-                                                            {user?.name.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                </div>
                                                 <form
                                                     className="flex-1 relative"
                                                     onSubmit={(e) => handleCreateComment(e, post.id)}
@@ -485,14 +504,14 @@ export default function SocialFeedPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Escribe un comentario..."
-                                                        className="w-full h-10 pl-4 pr-12 rounded-full border border-subtle bg-surface text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                        className="w-full h-10 pl-4 pr-12 rounded-xl border border-subtle bg-surface text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-800"
                                                         value={newCommentContent}
                                                         onChange={(e) => setNewCommentContent(e.target.value)}
                                                     />
                                                     <button
                                                         type="submit"
                                                         disabled={!newCommentContent.trim()}
-                                                        className="absolute right-1 top-1 w-8 h-8 flex items-center justify-center bg-blue-500 text-white rounded-full disabled:opacity-50 disabled:bg-slate-300 transition-all hover:scale-105"
+                                                        className="absolute right-1 top-1 w-8 h-8 flex items-center justify-center bg-brand-500 text-white rounded-lg disabled:opacity-50 disabled:bg-slate-300 transition-all"
                                                     >
                                                         <Send className="h-3.5 w-3.5" />
                                                     </button>

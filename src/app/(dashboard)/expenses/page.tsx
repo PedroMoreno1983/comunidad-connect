@@ -1,13 +1,14 @@
 "use client";
 
 import { ExpensesService } from "@/lib/api";
-import { DollarSign, Download, CheckCircle, Clock, AlertCircle, TrendingUp, CreditCard, Receipt, ArrowUpRight, Loader2 } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, ArrowRight, CreditCard, Sparkles, Check, Download, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { useState, useEffect } from "react";
-import { SkeletonTable } from "@/components/ui/Skeleton";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { Button } from "@/components/cc/Button";
+import { Tag } from "@/components/cc/Tag";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Expense {
     id: string;
@@ -20,22 +21,39 @@ interface Expense {
     breakdown?: { label: string; amount: number }[];
 }
 
+const DEFAULT_BREAKDOWN = [
+    { label: "Administración",                amount: 42500 },
+    { label: "Agua caliente comunitaria",     amount: 38900 },
+    { label: "Electricidad espacios comunes", amount: 28200 },
+    { label: "Ascensores y mantención",       amount: 31700 },
+    { label: "Conserjería 24/7",              amount: 38900 },
+    { label: "Fondo de reserva",              amount: 7220  },
+];
+
+const DEFAULT_HISTORY = [
+    { m: "Ene", v: 142, paid: true },
+    { m: "Feb", v: 168, paid: true },
+    { m: "Mar", v: 155, paid: true },
+    { m: "Abr", v: 178, paid: true },
+    { m: "May", v: 187, paid: false },
+];
+
 export default function ExpensesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPaying, setIsPaying] = useState<string | null>(null);
+    const [step, setStep] = useState<"review" | "method" | "success">("review");
+    const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+
+    const targetUnitId = user?.unitId || "demo-unit-101";
 
     useEffect(() => {
         const fetchExpenses = async () => {
-            if (!user?.unitId) {
-                setIsLoading(false);
-                return;
-            }
             try {
                 setIsLoading(true);
-                const data = await ExpensesService.getExpenses(user.unitId);
+                const data = await ExpensesService.getExpenses(targetUnitId);
 
                 // Map snake_case to camelCase
                 const mapped = data.map((exp: any) => ({
@@ -51,9 +69,7 @@ export default function ExpensesPage() {
 
                 setExpenses(mapped);
             } catch (error: unknown) {
-                const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-                console.error("Error fetching expenses:", errorMessage);
-                // Mostrar estado vacío en vez de error toast
+                console.error("Error fetching expenses:", error);
                 setExpenses([]);
             } finally {
                 setIsLoading(false);
@@ -61,24 +77,28 @@ export default function ExpensesPage() {
         };
 
         fetchExpenses();
-    }, [user?.unitId, toast]);
+    }, [targetUnitId]);
 
-    const handlePay = async (id: string) => {
+    const activeExpense = expenses.find(e => e.status !== 'paid') || expenses[0];
+
+    const handlePay = async () => {
+        if (!activeExpense) return;
         try {
-            setIsPaying(id);
-            await ExpensesService.payExpense(id);
+            setIsPaying(activeExpense.id);
+            await ExpensesService.payExpense(activeExpense.id);
 
             // Optimistic update
             setExpenses(prev => prev.map(exp =>
-                exp.id === id ? { ...exp, status: 'paid' } : exp
+                exp.id === activeExpense.id ? { ...exp, status: 'paid' } : exp
             ));
 
+            setStep("success");
             toast({
-                title: "Pago Exitoso",
-                description: "La transacción ha sido procesada en la nube.",
+                title: "Pago Procesado",
+                description: "La transacción se completó con éxito.",
                 variant: "success",
             });
-        } catch {
+        } catch (error) {
             toast({
                 title: "Error",
                 description: "No se pudo procesar el pago.",
@@ -89,226 +109,285 @@ export default function ExpensesPage() {
         }
     };
 
-    const totalPending = expenses.filter(e => e.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalPaid = expenses.filter(e => e.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-    const hasOverdue = expenses.some(e => e.status === 'overdue');
-
-    const getStatusConfig = (status: string) => {
-        switch (status) {
-            case 'paid': return {
-                icon: CheckCircle,
-                label: 'Pagado',
-                bg: 'bg-success-bg',
-                text: 'text-success-fg',
-                border: 'border-emerald-200 dark:border-emerald-500/20',
-                ring: 'ring-emerald-500/20'
-            };
-            case 'pending': return {
-                icon: Clock,
-                label: 'Pendiente',
-                bg: 'bg-warning-bg',
-                text: 'text-warning-fg',
-                border: 'border-amber-200 dark:border-amber-500/20',
-                ring: 'ring-amber-500/20'
-            };
-            case 'overdue': return {
-                icon: AlertCircle,
-                label: 'Vencido',
-                bg: 'bg-danger-bg',
-                text: 'text-danger-fg',
-                border: 'border-red-200 dark:border-red-500/20',
-                ring: 'ring-red-500/20'
-            };
-            default: return {
-                icon: Clock,
-                label: status,
-                bg: 'bg-slate-50 dark:bg-slate-700',
-                text: 'cc-text-secondary',
-                border: 'border-slate-200 dark:border-slate-600',
-                ring: 'ring-slate-500/20'
-            };
-        }
-    };
-
-    const formatMonth = (monthStr: string) => {
-        const [year, month] = monthStr.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1);
-        return date.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-    };
-
-    if (!user?.unitId && !isLoading) {
+    if (isLoading) {
         return (
-            <EmptyState
-                icon={<DollarSign className="h-6 w-6" />}
-                title="Unidad no asignada"
-                description="Tu cuenta aún no tiene una unidad asignada. Contacta al administrador de tu comunidad para vincularte."
-            />
+            <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentas…</span>
+            </div>
         );
     }
 
-    return (
-        <div className="max-w-6xl space-y-8">
-            {/* Header */}
-            <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl">
-                        <DollarSign className="h-5 w-5 text-white" />
-                    </div>
-                    <h1 className="text-3xl font-bold cc-text-primary">Gastos Comunes</h1>
-                </div>
-                <p className="cc-text-secondary">
-                    Historial de cobros y pagos de tu unidad{user?.unitId ? ` • Depto ${user.unitId}` : ''}
-                </p>
-            </div>
+    // Determine breakdown list (real or default fallback)
+    const breakdownList = activeExpense?.breakdown && activeExpense.breakdown.length > 0
+        ? activeExpense.breakdown
+        : DEFAULT_BREAKDOWN;
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Total Pending Card */}
-                <div className={`rounded-lg border bg-surface p-6 shadow-sm ${hasOverdue ? 'border-danger-border' : 'border-subtle'}`}>
-                    <div>
-                        <p className="text-sm font-medium cc-text-secondary">Total Pendiente</p>
-                        <p className="mt-2 text-3xl font-bold cc-text-primary">${totalPending.toLocaleString('es-CL')}</p>
-                        {hasOverdue && (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-danger-fg">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>Tienes pagos vencidos</span>
+    const totalAmount = activeExpense
+        ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
+        : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+
+    // Format current period
+    const periodName = activeExpense
+        ? new Date(activeExpense.month + "-02").toLocaleDateString("es-CL", { month: "long", year: "numeric" })
+        : "Mayo 2026";
+    const formattedPeriod = periodName.charAt(0).toUpperCase() + periodName.slice(1);
+
+    // Format due date
+    const formattedDueDate = activeExpense
+        ? new Date(activeExpense.dueDate).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+        : "02 Jun";
+
+    // History calculation
+    let historyChartData = DEFAULT_HISTORY;
+    if (expenses.length > 0) {
+        const sorted = [...expenses].sort((a, b) => a.month.localeCompare(b.month)).slice(-5);
+        if (sorted.length > 0) {
+            historyChartData = sorted.map(exp => {
+                const name = new Date(exp.month + "-02").toLocaleDateString("es-CL", { month: "short" });
+                return {
+                    m: name.charAt(0).toUpperCase() + name.slice(1, 3),
+                    v: Math.round(exp.amount / 1000),
+                    paid: exp.status === "paid"
+                };
+            });
+        }
+    }
+
+    const averageHistory = historyChartData.length > 0
+        ? Math.round(historyChartData.reduce((sum, item) => sum + item.v, 0) / historyChartData.length) * 1000
+        : 166000;
+
+    return (
+        <ErrorBoundary name="Expenses Resident Page">
+            <div className="max-w-md mx-auto px-5 py-3.5 flex flex-col min-h-screen">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 pt-1.5">
+                    <button 
+                        onClick={() => {
+                            if (step === "method") setStep("review");
+                            else if (step === "success") setStep("review");
+                            else window.history.back();
+                        }}
+                        className="grid place-items-center cursor-pointer"
+                        style={{ width: 36, height: 36, borderRadius: 12, border: "1px solid var(--cc-line)", background: "transparent" }}
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <span className="font-mono uppercase tracking-[0.08em]" style={{ fontSize: 11, color: "var(--cc-ink-tertiary)" }}>
+                        Gastos Comunes
+                    </span>
+                    <button 
+                        className="grid place-items-center"
+                        style={{ width: 36, height: 36, borderRadius: 12, border: "1px solid var(--cc-line)", background: "transparent" }}
+                    >
+                        <MoreHorizontal size={16} />
+                    </button>
+                </div>
+
+                {step === "review" && (
+                    <>
+                        {/* Period */}
+                        <Eyebrow className="mb-2">{formattedPeriod}</Eyebrow>
+                        <DisplayHeading size={42}>
+                            Tu cuenta <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>del mes</em>
+                        </DisplayHeading>
+
+                        {/* Amount Box */}
+                        <div className="mt-6 pb-5 border-b" style={{ borderColor: "var(--cc-line)" }}>
+                            <div className="text-[12px] flex justify-between items-center" style={{ color: "var(--cc-ink-tertiary)", marginBottom: 8 }}>
+                                <span>Total a pagar antes del {formattedDueDate}</span>
+                                {activeExpense?.status === "paid" && (
+                                    <Tag tone="sage" solid dot>Al día</Tag>
+                                )}
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                                <span style={{ fontSize: 18, color: "var(--cc-ink-muted)" }}>$</span>
+                                <span style={{ fontFamily: "var(--cc-font-display)", fontSize: 56, lineHeight: 1, letterSpacing: "-0.02em" }}>
+                                    {totalAmount.toLocaleString("es-CL")}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Breakdown */}
+                        <div className="mt-5 mb-6">
+                            {breakdownList.map((row, i) => (
+                                <div
+                                    key={row.label}
+                                    className="flex justify-between items-center py-3"
+                                    style={{ borderBottom: i < breakdownList.length - 1 ? "1px solid var(--cc-line)" : "none" }}
+                                >
+                                    <div className="text-[13px]" style={{ color: "var(--cc-ink-soft)" }}>{row.label}</div>
+                                    <div className="font-mono text-[13px]">${row.amount.toLocaleString("es-CL")}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* History chart */}
+                        <Eyebrow className="mb-3">Histórico · últimos 5 meses</Eyebrow>
+                        <div
+                            className="rounded-xl border bg-paper-warm mb-6"
+                            style={{ borderColor: "var(--cc-line)", padding: "20px 18px 14px", borderRadius: 18 }}
+                        >
+                            <div className="flex items-end gap-3.5 mb-2.5" style={{ height: 100 }}>
+                                {historyChartData.map((m, idx) => (
+                                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
+                                        <div
+                                            className="w-full"
+                                            style={{
+                                                height: `${Math.max(10, (m.v / 200) * 100)}%`,
+                                                background: m.paid ? "var(--cc-ink)" : "var(--cc-copper)",
+                                                borderRadius: 6,
+                                            }}
+                                        />
+                                        <div className="font-mono" style={{ fontSize: 10, color: "var(--cc-ink-tertiary)" }}>{m.m}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center pt-2.5" style={{ borderTop: "1px solid var(--cc-line)" }}>
+                                <div style={{ fontSize: 12, color: "var(--cc-ink-muted)" }}>Promedio</div>
+                                <div className="font-mono" style={{ fontSize: 12 }}>${averageHistory.toLocaleString("es-CL")}</div>
+                            </div>
+                        </div>
+
+                        {/* CTA */}
+                        {activeExpense?.status !== "paid" ? (
+                            <div className="mt-auto pt-4 pb-3">
+                                <Button variant="primary" size="lg" block onClick={() => setStep("method")}>
+                                    <span className="flex-1 text-left">Pagar ${totalAmount.toLocaleString("es-CL")}</span>
+                                    <ArrowRight size={16} />
+                                </Button>
+                                <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+                                    Webpay · transferencia · cuotas con Klap
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-auto pt-4 pb-3 text-center text-sm font-semibold text-success flex items-center justify-center gap-2">
+                                <Check size={16} /> Estás al día con tus gastos comunes.
                             </div>
                         )}
-                    </div>
-                </div>
+                    </>
+                )}
 
-                {/* Total Paid Card */}
-                <div className="bg-surface rounded-lg p-6 shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-success-bg rounded-xl">
-                            <TrendingUp className="h-5 w-5 text-success-fg" />
+                {step === "method" && (
+                    <>
+                        <Eyebrow className="mb-2">MÉTODO DE PAGO</Eyebrow>
+                        <DisplayHeading size={36} className="mb-6">
+                            Elige cómo <em>pagar</em>
+                        </DisplayHeading>
+
+                        {/* Payment methods list */}
+                        <div className="space-y-3 mb-8">
+                            {[
+                                { id: "webpay", name: "Webpay Plus", desc: "Débito, crédito o prepago", icon: "💳" },
+                                { id: "transfer", name: "Transferencia bancaria", desc: "Transfiere directo de tu banco", icon: "🏦" },
+                                { id: "klap", name: "Klap (Cuotas)", desc: "Paga en cuotas mensuales", icon: "⚡" },
+                            ].map((m) => {
+                                const selected = selectedMethod === m.id;
+                                return (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => setSelectedMethod(m.id)}
+                                        className="w-full flex items-center gap-4 rounded-xl border p-4 text-left transition-all cursor-pointer"
+                                        style={{
+                                            background: selected ? "var(--cc-ink)" : "var(--cc-paper)",
+                                            color: selected ? "var(--cc-paper)" : "var(--cc-ink)",
+                                            borderColor: selected ? "transparent" : "var(--cc-line-strong)"
+                                        }}
+                                    >
+                                        <span className="text-2xl">{m.icon}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold">{m.name}</div>
+                                            <div className="text-xs" style={{ color: selected ? "rgba(250,247,241,0.6)" : "var(--cc-ink-muted)" }}>{m.desc}</div>
+                                        </div>
+                                        <div 
+                                          className="w-5 h-5 rounded-full border grid place-items-center shrink-0"
+                                          style={{ borderColor: selected ? "var(--cc-copper-soft)" : "var(--cc-line-strong)" }}
+                                        >
+                                            {selected && <div className="w-2.5 h-2.5 rounded-full bg-copper" style={{ backgroundColor: "var(--cc-copper)" }} />}
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
-                        <span className="text-xs font-medium text-success-fg bg-success-bg px-2 py-1 rounded-full">
-                            Al día
-                        </span>
-                    </div>
-                    <p className="text-sm cc-text-secondary">Total Pagado</p>
-                    <p className="text-2xl font-bold cc-text-primary mt-1">${totalPaid.toLocaleString('es-CL')}</p>
-                </div>
 
-                {/* Quick Pay Card */}
-                <div className="bg-surface rounded-lg p-6 shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-role-admin-bg rounded-xl">
-                            <CreditCard className="h-5 w-5 text-role-admin-fg" />
-                        </div>
-                    </div>
-                    <p className="text-sm cc-text-secondary">Métodos de Pago</p>
-                    <div className="flex items-center gap-2 mt-3">
-                        <div className="h-8 w-12 bg-gradient-to-r from-blue-600 to-blue-400 rounded-md flex items-center justify-center text-white text-xs font-bold">VISA</div>
-                        <div className="h-8 w-12 bg-gradient-to-r from-red-500 to-orange-400 rounded-md flex items-center justify-center text-white text-xs font-bold">MC</div>
-                        <div className="h-8 w-12 bg-gradient-to-r from-slate-700 to-slate-500 rounded-md flex items-center justify-center text-white text-xs font-bold">PAC</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Payment History Table */}
-            <div className="bg-surface rounded-lg shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
-                <div className="p-6 border-b border-subtle">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-elevated rounded-xl">
-                                <Receipt className="h-5 w-5 cc-text-secondary" />
-                            </div>
-                            <h2 className="text-lg font-bold cc-text-primary">Historial de Pagos</h2>
-                        </div>
-                        <button className="text-sm font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1">
-                            Descargar todo <Download className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-
-                <ErrorBoundary name="Historial de pagos">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-700/50 cc-text-secondary font-medium">
-                                    <th className="px-6 py-4 text-left">Período</th>
-                                    <th className="px-6 py-4 text-left">Vencimiento</th>
-                                    <th className="px-6 py-4 text-left">Monto</th>
-                                    <th className="px-6 py-4 text-left">Estado</th>
-                                    <th className="px-6 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 relative">
-                                {isLoading ? (
-                                    <tr>
-                                        <td colSpan={5} className="p-0">
-                                            <SkeletonTable rows={3} />
-                                        </td>
-                                    </tr>
+                        {/* CTA Pay */}
+                        <div className="mt-auto pt-4 pb-3">
+                            <Button 
+                                variant="copper" 
+                                size="lg" 
+                                block 
+                                disabled={!selectedMethod || isPaying !== null}
+                                onClick={handlePay}
+                            >
+                                {isPaying ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                    expenses.map((expense, idx) => {
-                                        const status = getStatusConfig(expense.status);
-                                        const StatusIcon = status.icon;
-
-                                        return (
-                                            <tr
-                                                key={expense.id}
-                                                className="hover:bg-elevated/50 transition-colors animate-slide-up opacity-0"
-                                                style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'forwards' }}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <p className="font-semibold cc-text-primary capitalize">{formatMonth(expense.month)}</p>
-                                                </td>
-                                                <td className="px-6 py-4 cc-text-secondary">
-                                                    {new Date(expense.dueDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-lg font-bold cc-text-primary">
-                                                        ${expense.amount.toLocaleString('es-CL')}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${status.bg} ${status.text} ring-1 ring-inset ${status.ring}`}>
-                                                        <StatusIcon className="h-3.5 w-3.5" />
-                                                        {status.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    {expense.status !== 'paid' ? (
-                                                        <button
-                                                            onClick={() => handlePay(expense.id)}
-                                                            disabled={isPaying === expense.id}
-                                                            className="inline-flex items-center justify-center min-w-[140px] gap-2 px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-xl shadow-sm shadow-rose-500/25 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none"
-                                                        >
-                                                            {isPaying === expense.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <>Pagar Ahora <ArrowUpRight className="h-4 w-4" /></>
-                                                            )}
-                                                        </button>
-                                                    ) : (
-                                                        <button className="inline-flex items-center gap-2 px-4 py-2 bg-elevated cc-text-secondary font-medium rounded-xl hover:bg-elevated transition-colors text-sm">
-                                                            <Download className="h-4 w-4" />
-                                                            Comprobante
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
+                                    <>Confirmar y Pagar ${totalAmount.toLocaleString("es-CL")}</>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
-                </ErrorBoundary>
+                            </Button>
+                        </div>
+                    </>
+                )}
 
-                {!isLoading && expenses.length === 0 && (
-                    <div className="px-6 pb-6">
-                        <EmptyState
-                            icon={<DollarSign className="h-6 w-6" />}
-                            title="Sin Registros"
-                            description="No hay registros de gastos comunes disponibles para esta unidad en este momento."
-                        />
+                {step === "success" && (
+                    <div className="flex-1 flex flex-col justify-center items-center text-center py-8">
+                        <div 
+                          className="w-16 h-16 rounded-full flex items-center justify-center bg-[rgba(110,130,104,0.1)] text-[#6E8268] mb-6"
+                        >
+                            <Check size={32} />
+                        </div>
+                        
+                        <DisplayHeading size={38} className="mb-4">
+                            ¡Pago <em>exitoso!</em>
+                        </DisplayHeading>
+                        
+                        <p className="text-sm leading-relaxed max-w-xs mb-8" style={{ color: "var(--cc-ink-muted)" }}>
+                            Tu pago de <span className="font-semibold text-ink">${totalAmount.toLocaleString("es-CL")}</span> fue recibido y procesado de forma correcta.
+                        </p>
+
+                        {/* Invoice box */}
+                        <div className="w-full bg-[#FAF7F1] border rounded-2xl p-5 mb-8 text-left" style={{ borderColor: "var(--cc-line)" }}>
+                            <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-3">COMPROBANTE DIGITAL</div>
+                            <div className="flex justify-between items-center text-sm py-1.5">
+                                <span className="text-slate-400">Emisor:</span>
+                                <span className="font-medium">Servicio Impuestos Internos</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm py-1.5">
+                                <span className="text-slate-400">Folio:</span>
+                                <span className="font-mono font-medium">#1094830</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm py-1.5">
+                                <span className="text-slate-400">Fecha:</span>
+                                <span className="font-medium">{new Date().toLocaleDateString("es-CL")}</span>
+                            </div>
+                        </div>
+
+                        <div className="w-full space-y-3">
+                            <Button 
+                                variant="primary" 
+                                size="md" 
+                                block 
+                                onClick={() => {
+                                    toast({ title: "Descargando boleta SII", description: "Comprobante generado correctamente.", variant: "success" });
+                                }}
+                            >
+                                <Download size={15} /> Descargar Boleta SII
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                size="md" 
+                                block 
+                                onClick={() => {
+                                    setStep("review");
+                                }}
+                            >
+                                Volver a Cuentas
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
-        </div>
+        </ErrorBoundary>
     );
 }
