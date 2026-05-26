@@ -118,6 +118,7 @@ export function Sidebar() {
             links: [
                 { href: '/resident/finances', label: 'Mis Gastos', icon: DollarSign, roles: ['resident', 'admin'] },
                 { href: '/resident/consumo', label: 'Mi Consumo de Agua', icon: Waves, roles: ['resident', 'admin'] },
+                { href: '/expenses/solidaridad', label: 'Solidaridad Vecinal', icon: Shield, roles: ['resident', 'admin'] },
             ]
         },
         {
