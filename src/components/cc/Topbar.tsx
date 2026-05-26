@@ -26,29 +26,31 @@ export function Topbar({
 }: TopbarProps) {
   return (
     <header
-      className="flex justify-between items-center border-b"
-      style={{ padding: "20px 32px", borderColor: "var(--cc-line)" }}
+      className="flex justify-between items-center border-b px-4 py-4 lg:px-8 gap-4 pl-16 lg:pl-8"
+      style={{ borderColor: "var(--cc-line)" }}
     >
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-3.5 min-w-0">
         <Tag tone="copper" solid dot>
-          {building} · {roleLabel}
+          <span className="truncate max-w-[120px] sm:max-w-none">
+            {building} · {roleLabel}
+          </span>
         </Tag>
-        <div className="text-[12px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+        <div className="text-[12px] hidden sm:block truncate" style={{ color: "var(--cc-ink-tertiary)" }}>
           {rightSubtitle}
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 shrink-0">
         <div
-          className="flex items-center gap-2.5 rounded-md bg-paper"
-          style={{ padding: "8px 14px", border: "1px solid var(--cc-line)", width: 320 }}
+          className="hidden md:flex items-center gap-2.5 rounded-md bg-paper"
+          style={{ padding: "8px 14px", border: "1px solid var(--cc-line)", width: 280 }}
         >
           <Search size={14} color="var(--cc-ink-tertiary)" />
-          <span className="flex-1 text-[12px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+          <span className="flex-1 text-[12px] truncate" style={{ color: "var(--cc-ink-tertiary)" }}>
             {searchPlaceholder}
           </span>
           <span
-            className="font-mono text-[10px]"
+            className="font-mono text-[10px] hidden lg:inline-block"
             style={{
               color: "var(--cc-ink-tertiary)",
               padding: "2px 6px",
@@ -61,7 +63,7 @@ export function Topbar({
         </div>
         {cta && (
           <Button variant="primary" size="sm" onClick={cta.onClick}>
-            <Plus size={13} /> {cta.label}
+            <Plus size={13} /> <span className="hidden sm:inline">{cta.label}</span>
           </Button>
         )}
       </div>
