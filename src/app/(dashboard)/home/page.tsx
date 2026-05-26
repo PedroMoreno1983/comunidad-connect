@@ -1,762 +1,288 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
-import {
-    Users, ShoppingBag, Wrench, ClipboardList, TrendingUp, Bell,
-    Calendar, DollarSign, ArrowUpRight, Building2, Clock, Sparkles,
-    BarChart3, PieChart as PieChartIcon, GraduationCap, BookOpen, Compass
-} from "lucide-react";
-import Link from "next/link";
-import { StatCard } from "@/components/ui/StatCard";
-import { ActionCard } from "@/components/ui/ActionCard";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { SkeletonStats, SkeletonList } from "@/components/ui/Skeleton";
+import { Bell, ChevronRight, ArrowRight, Mic, Sparkles, Droplets, Waves, BellRing } from "lucide-react";
+import { Brand } from "@/components/cc/Brand";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { Tag } from "@/components/cc/Tag";
+import { Button } from "@/components/cc/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { ExpenseAreaChart, ExpensePieChart, AmenityUsageChart } from "@/components/charts/Charts";
-import { WhatsNew } from "@/components/ui/WhatsNew";
-import { DebugStats } from "@/components/ui/DebugStats";
-import { isShowcaseUser } from "@/lib/showcase";
-
-const CATEGORY_COLORS = ['#F45B3D', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'];
-const demoExpenseTrend = [
-    { month: "Oct", monto: 11200000 },
-    { month: "Nov", monto: 12850000 },
-    { month: "Dic", monto: 14600000 },
-    { month: "Ene", monto: 11900000 },
-    { month: "Feb", monto: 13400000 },
-    { month: "Mar", monto: 15200000 },
-];
-const demoExpenseCategories = [
-    { name: "Mantencion", value: 38, color: "#F45B3D" },
-    { name: "Seguridad", value: 24, color: "#0bc9a1" },
-    { name: "Servicios", value: 18, color: "#2563eb" },
-    { name: "Aseo", value: 14, color: "#f59e0b" },
-    { name: "Otros", value: 6, color: "#64748b" },
-];
-const demoAmenityUsage = [
-    { name: "Quincho", reservas: 18 },
-    { name: "Sala multiuso", reservas: 12 },
-    { name: "Gimnasio", reservas: 9 },
-    { name: "Piscina", reservas: 7 },
-];
-const demoRecentAnnouncements = [
-    {
-        id: "demo-ann-1",
-        title: "Mantención preventiva de ascensores",
-        content: "Ascensor torre B tendrá revisión el jueves entre 10:00 y 12:00. Conserjería coordinará apoyo para adultos mayores.",
-        priority: "info",
-        createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
-        author: "Administración",
-    },
-    {
-        id: "demo-ann-2",
-        title: "Corte programado de agua caliente",
-        content: "Proveedor revisará la sala de calderas del piso -1. El servicio se normaliza durante la tarde.",
-        priority: "alert",
-        createdAt: new Date(Date.now() - 3 * 36e5).toISOString(),
-        author: "Comité",
-    },
-    {
-        id: "demo-ann-3",
-        title: "Nueva votación comunitaria",
-        content: "Ya está disponible la consulta para priorizar mejoras del quincho y bicicleteros.",
-        priority: "event",
-        createdAt: new Date(Date.now() - 26 * 36e5).toISOString(),
-        author: "Convive Connect",
-    },
-];
-
-function requestCategory(row: Record<string, unknown>) {
-    return String(row.service_type || row.category || row.request_type || row.type || 'Otro');
-}
 
 export default function HomePage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [statsData, setStatsData] = useState({
-        announcements: 0,
-        marketplace: 0,
-        bookings: 0,
-        pendingExpenses: 0,
-        residents: 0,
-        pendingRequests: 0,
-        visitorsToday: 0,
-        pendingPackages: 0,
-        trainingCourses: 0,
-        recentAnnouncements: [] as { id: string; title: string; content: string; priority: string; createdAt: string; author: string }[]
+        pendingExpensesCount: 0,
+        pendingExpensesAmount: 187420, // default placeholder
+        bookingsCount: 0,
+        recentAnnouncement: null as any,
     });
-    const [expenseChartData, setExpenseChartData] = useState<{ month: string; monto: number }[]>([]);
-    const [expenseCategoryData, setExpenseCategoryData] = useState<{ name: string; value: number; color: string }[]>([]);
-    const [amenityUsageData, setAmenityUsageData] = useState<{ name: string; reservas: number }[]>([]);
 
+    // ── Role Redirects ──
     useEffect(() => {
-        if (!user) return;
+        if (user) {
+            if (user.role === "admin") {
+                router.replace("/admin");
+            } else if (user.role === "concierge") {
+                router.replace("/concierge");
+            }
+        }
+    }, [user, router]);
 
-        const fetchDashboardData = async () => {
+    // ── Fetch Resident Data ──
+    useEffect(() => {
+        if (!user || user.role !== "resident") return;
+
+        const fetchData = async () => {
             setIsLoading(true);
             try {
+                // For demo accounts, load custom stats
                 if (user.email.toLowerCase().endsWith("@demo.com")) {
-                    setExpenseChartData(demoExpenseTrend);
-                    setExpenseCategoryData(demoExpenseCategories);
-                    setAmenityUsageData(demoAmenityUsage);
-
-                    if (user.role === "admin") {
-                        setStatsData({
-                            announcements: 3,
-                            marketplace: 7,
-                            bookings: 5,
-                            pendingExpenses: 4,
-                            residents: 148,
-                            pendingRequests: 6,
-                            visitorsToday: 0,
-                            pendingPackages: 0,
-                            trainingCourses: 3,
-                            recentAnnouncements: demoRecentAnnouncements,
-                        });
-                    } else if (user.role === "resident") {
-                        setStatsData({
-                            announcements: 3,
-                            marketplace: 7,
-                            bookings: 2,
-                            pendingExpenses: 1,
-                            residents: 0,
-                            pendingRequests: 2,
-                            visitorsToday: 0,
-                            pendingPackages: 1,
-                            trainingCourses: 3,
-                            recentAnnouncements: demoRecentAnnouncements,
-                        });
-                    } else {
-                        setStatsData({
-                            announcements: 3,
-                            marketplace: 0,
-                            bookings: 0,
-                            pendingExpenses: 0,
-                            residents: 0,
-                            pendingRequests: 0,
-                            visitorsToday: 8,
-                            pendingPackages: 3,
-                            trainingCourses: 3,
-                            recentAnnouncements: demoRecentAnnouncements,
-                        });
-                    }
+                    setStatsData({
+                        pendingExpensesCount: 1,
+                        pendingExpensesAmount: 187420,
+                        bookingsCount: 1,
+                        recentAnnouncement: {
+                            title: "Asamblea ordinaria de copropietarios",
+                            content: "Sáb 30 de mayo, 19:00 — Salón comunitario.",
+                            category: "Asamblea",
+                            time: "hace 2h"
+                        }
+                    });
                     setIsLoading(false);
                     return;
                 }
 
-                // Fetch basic announcements and count in parallel
-                const [annCountRes, recentAnnRes, trainingCountRes] = await Promise.all([
-                    supabase.from('announcements').select('*', { count: 'exact', head: true }),
-                    supabase.from('announcements')
-                        .select('id, title, content, priority, created_at, profiles(name)')
-                        .order('created_at', { ascending: false })
-                        .limit(3),
-                    supabase.from('training_modules').select('id', { count: 'exact', head: true }).eq('is_active', true)
+                // Fetch real data
+                const [expRes, bookRes, annRes] = await Promise.all([
+                    supabase.from('expenses').select('amount').eq('status', 'pending'),
+                    supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString().split('T')[0]),
+                    supabase.from('announcements').select('title, content, priority, created_at').order('created_at', { ascending: false }).limit(1).maybeSingle()
                 ]);
 
-                const annCount = annCountRes.count;
-                const recentAnn = recentAnnRes.data;
-
-                let commonStats = {
-                    announcements: annCount || 0,
-                    trainingCourses: trainingCountRes.count || 0,
-                    recentAnnouncements: (recentAnn || []).map((a: any) => {
-                        const profiles = a.profiles;
-                        const authorName = Array.isArray(profiles) 
-                            ? (profiles[0] as any)?.name 
-                            : (profiles as any)?.name;
-
-                        return {
-                            id: a.id,
-                            title: a.title,
-                            content: a.content,
-                            priority: a.priority,
-                            createdAt: a.created_at,
-                            author: authorName || 'Admin',
-                        };
-                    })
-                };
-
-                if (user.role === 'resident') {
-                    const [mpRes, expRes, bookRes] = await Promise.all([
-                        supabase.from('marketplace_items').select('*', { count: 'exact', head: true }),
-                        supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                        supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString().split('T')[0])
-                    ]);
-
-                    setStatsData(prev => ({
-                        ...prev, ...commonStats,
-                        marketplace: mpRes.count || 0,
-                        pendingExpenses: expRes.count || 0,
-                        bookings: bookRes.count || 0
-                    }));
-                } else if (user.role === 'admin') {
-                    const since6m = new Date();
-                    since6m.setMonth(since6m.getMonth() - 6);
-
-                    const [resProp, reqProp, expProp, expTrend, bookingsData] = await Promise.all([
-                        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'resident'),
-                        supabase.from('service_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                        supabase.from('expenses').select('*', { count: 'exact', head: true }).neq('status', 'paid'),
-                        supabase.from('expenses').select('month, amount').gte('month', since6m.toISOString().slice(0, 7)).order('month'),
-                        supabase.from('bookings').select('amenities:amenity_id(name)'),
-                    ]);
-
-                    // Monthly expense trend
-                    const byMonth: Record<string, number> = {};
-                    (expTrend.data ?? []).forEach((e: { month: string; amount: number }) => {
-                        byMonth[e.month] = (byMonth[e.month] ?? 0) + Number(e.amount);
-                    });
-                    const trendData = Object.entries(byMonth).map(([m, monto]) => {
-                        const [y, mo] = m.split('-');
-                        return { month: new Date(Number(y), Number(mo) - 1).toLocaleDateString('es-CL', { month: 'short' }), monto };
-                    });
-                    setExpenseChartData(trendData.length ? trendData : demoExpenseTrend);
-
-                    // Use the broad row shape because older deployments have different request schemas.
-                    const reqCatRes = await supabase.from('service_requests').select('*');
-                    const catCount: Record<string, number> = {};
-                    (reqCatRes.data ?? []).forEach((r: Record<string, unknown>) => {
-                        const cat = requestCategory(r);
-                        catCount[cat] = (catCount[cat] ?? 0) + 1;
-                    });
-                    const categoryData = Object.entries(catCount).map(([name, value], i) => ({
-                        name, value, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
-                    }));
-                    setExpenseCategoryData(categoryData.length ? categoryData : demoExpenseCategories);
-
-                    // Amenity booking counts
-                    const amenityCount: Record<string, number> = {};
-                    (bookingsData.data ?? []).forEach((b: { amenities: { name: string } | null }) => {
-                        const name = b.amenities?.name ?? 'Otro';
-                        amenityCount[name] = (amenityCount[name] ?? 0) + 1;
-                    });
-                    const usageData = Object.entries(amenityCount).map(([name, reservas]) => ({ name, reservas }));
-                    setAmenityUsageData(usageData.length ? usageData : demoAmenityUsage);
-
-                    setStatsData(prev => ({
-                        ...prev, ...commonStats,
-                        residents: resProp.count || 0,
-                        pendingRequests: reqProp.count || 0,
-                        pendingExpenses: expProp.count || 0
-                    }));
-                } else if (user.role === 'concierge') {
-                    if (user.email.toLowerCase().endsWith('@demo.com')) {
-                        setStatsData(prev => ({
-                            ...prev, ...commonStats,
-                            visitorsToday: 8,
-                            pendingPackages: 3
-                        }));
-                        return;
-                    }
-
-                    const today = new Date().toISOString().split('T')[0];
-                    const [visTodayRes, packRes] = await Promise.all([
-                        supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('entry_time', today),
-                        supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-                    ]);
-
-                    setStatsData(prev => ({
-                        ...prev, ...commonStats,
-                        visitorsToday: visTodayRes.count || 0,
-                        pendingPackages: packRes.count || 0
-                    }));
+                let totalAmount = 0;
+                if (expRes.data && expRes.data.length > 0) {
+                    totalAmount = expRes.data.reduce((sum: number, item: any) => sum + Number(item.amount), 0);
                 }
+
+                setStatsData({
+                    pendingExpensesCount: expRes.data?.length || 0,
+                    pendingExpensesAmount: totalAmount || 187420,
+                    bookingsCount: bookRes.count || 0,
+                    recentAnnouncement: annRes.data ? {
+                        title: annRes.data.title,
+                        content: annRes.data.content,
+                        category: annRes.data.priority === "alert" ? "Urgente" : "Aviso",
+                        time: new Date(annRes.data.created_at).toLocaleDateString('es-CL')
+                    } : null
+                });
             } catch (err) {
-                console.error("Error fetching dashboard stats:", err);
+                console.error("Error fetching resident home data:", err);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchDashboardData();
+        fetchData();
     }, [user]);
 
-    if (!user) return null;
+    if (!user || user.role !== "resident") return null;
 
-    const statsResident = [
-        {
-            label: "Avisos Nuevos",
-            value: statsData.announcements,
-            icon: Bell,
-            tone: "brand",
-            link: "/feed"
-        },
-        {
-            label: "En Marketplace",
-            value: statsData.marketplace,
-            icon: ShoppingBag,
-            tone: "success",
-            link: "/marketplace"
-        },
-        {
-            label: "Próximas Reservas",
-            value: statsData.bookings,
-            icon: Calendar,
-            tone: "info",
-            link: "/amenities"
-        },
-        {
-            label: "Cursos IA",
-            value: statsData.trainingCourses,
-            icon: GraduationCap,
-            tone: "brand",
-            link: "/resident/training"
-        },
-        {
-            label: "Gastos Pendientes",
-            value: statsData.pendingExpenses,
-            icon: DollarSign,
-            tone: "danger",
-            trend: { direction: 'down', value: 'Al día', inverted: true },
-            link: "/resident/finances"
-        },
-    ];
+    const firstName = user.name ? user.name.split(" ")[0] : "Martina";
+    const initials = user.name
+        ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+        : "U";
 
-    const statsAdmin = [
-        {
-            label: "Residentes",
-            value: statsData.residents,
-            icon: Users,
-            tone: "brand",
-            trend: { direction: 'up', value: 'Conectados' },
-            link: "/admin/users"
-        },
-        {
-            label: "Avisos Activos",
-            value: statsData.announcements,
-            icon: Bell,
-            tone: "info",
-            link: "/feed"
-        },
-        {
-            label: "Cursos IA",
-            value: statsData.trainingCourses,
-            icon: GraduationCap,
-            tone: "brand",
-            link: "/resident/training"
-        },
-        {
-            label: "Solicitudes",
-            value: statsData.pendingRequests,
-            icon: Wrench,
-            tone: "warning",
-            link: "/services"
-        },
-        {
-            label: "Pagos Pendientes",
-            value: statsData.pendingExpenses,
-            icon: DollarSign,
-            tone: "danger",
-            link: "/expenses"
-        },
-    ];
-
-    const statsConcierge = [
-        {
-            label: "Visitas Hoy",
-            value: statsData.visitorsToday,
-            icon: ClipboardList,
-            tone: "success",
-            link: "/concierge/visitors"
-        },
-        {
-            label: "Visitas Esperadas",
-            value: statsData.visitorsToday,
-            icon: Users,
-            tone: "brand",
-            link: "/concierge/visitors"
-        },
-        {
-            label: "Paquetes",
-            value: statsData.pendingPackages,
-            icon: ShoppingBag,
-            tone: "warning",
-            link: "/concierge/packages"
-        },
-        {
-            label: "Avisos",
-            value: statsData.announcements,
-            icon: Bell,
-            tone: "info",
-            link: "/feed"
-        },
-        {
-            label: "Cursos IA",
-            value: statsData.trainingCourses,
-            icon: GraduationCap,
-            tone: "brand",
-            link: "/resident/training"
-        },
-    ];
-
-    const stats = user.role === 'admin' ? statsAdmin : user.role === 'concierge' ? statsConcierge : statsResident;
-
-    const recentAnnouncements = statsData.recentAnnouncements;
-    const isShowcase = isShowcaseUser(user);
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Buenos días';
-        if (hour < 18) return 'Buenas tardes';
-        return 'Buenas noches';
-    };
-
-    const container = {
-        hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    };
-
-    const item = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
-    };
+    const dateToday = new Date().toLocaleDateString("es-CL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+    });
 
     return (
-        <div className="max-w-7xl space-y-8">
-            {/* Welcome Header */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-brand-500 rounded-lg shadow-sm">
-                                <Building2 className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-warning-bg rounded-lg">
-                                <Sparkles className="h-3.5 w-3.5 text-warning-fg" />
-                                <span className="text-xs font-semibold text-warning-fg">
-                                    {user.role === 'admin' ? 'Panel Admin' : user.role === 'concierge' ? 'Conserjería' : 'Mi Edificio'}
-                                </span>
-                            </div>
-                        </div>
-                        <h1 className="text-2xl lg:text-3xl font-bold cc-text-primary">
-                            {getGreeting()}, <span className="text-brand-600">
-                                {user.name.split(' ')[0]}
-                            </span>
-                        </h1>
-                        <p className="cc-text-secondary mt-1">
-                            {user.role === 'admin'
-                                ? 'Gestiona tu comunidad desde un solo lugar'
-                                : user.role === 'concierge'
-                                    ? 'Control de accesos y servicios del edificio'
-                                    : `Bienvenido a Convive Connect${user.unitName ? ` • ${user.unitName}` : ''}`
-                            }
-                        </p>
+        <ErrorBoundary name="Resident Home Screen">
+            <div className="max-w-md mx-auto px-5 pt-3.5 pb-6">
+                {/* Top bar */}
+                <div className="flex items-center justify-between mb-8 pt-1">
+                    <div className="flex items-center gap-2.5">
+                        <Brand size={16} withMark />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="px-4 py-2 bg-surface rounded-xl shadow-sm border border-subtle flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm font-medium cc-text-secondary">
-                                {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </span>
-                        </div>
+                    <div className="flex gap-2">
+                        <button
+                            className="grid place-items-center relative cursor-pointer"
+                            style={{ width: 36, height: 36, borderRadius: 12, border: "1px solid var(--cc-line)", background: "transparent" }}
+                        >
+                            <Bell size={16} />
+                            <span
+                                className="absolute"
+                                style={{
+                                    top: 9, right: 9,
+                                    width: 6, height: 6,
+                                    borderRadius: 999, background: "var(--cc-copper)",
+                                }}
+                            />
+                        </button>
+                        <Link
+                            href="/profile"
+                            className="grid place-items-center font-mono text-[12px] font-semibold text-ink"
+                            style={{ width: 36, height: 36, borderRadius: 12, border: "1px solid var(--cc-line)", background: "transparent" }}
+                        >
+                            {initials}
+                        </Link>
                     </div>
                 </div>
-            </motion.div>
 
-            {/* Stats Cards */}
-            {isLoading ? (
-                <SkeletonStats />
-            ) : (
-                <motion.div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6"
-                    variants={container}
-                    initial="hidden"
-                    animate="show"
-                >
-                    {stats.map((stat, idx) => {
-                        const Icon = stat.icon;
-                        return (
-                            <motion.div key={idx} variants={item} className="h-full">
-                                <StatCard
-                                    className="h-full"
-                                    href={stat.link}
-                                    icon={<Icon className="h-5 w-5" style={{ color: 'inherit' }} />}
-                                    label={stat.label}
-                                    value={stat.value}
-                                    tone={stat.tone as any}
-                                    trend={(stat as any).trend}
-                                />
-                            </motion.div>
-                        );
-                    })}
-                </motion.div>
-            )}
+                {/* Greeting — editorial */}
+                <div className="mb-7">
+                    <Eyebrow className="mb-3">{dateToday}</Eyebrow>
+                    <DisplayHeading size={46}>
+                        Buenos días,<br />
+                        <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{firstName}.</em>
+                    </DisplayHeading>
+                    <p className="mt-3.5 text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+                        Tu comunidad está al día. Tienes{" "}
+                        <span className="text-ink font-semibold">{statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva" : "reservas"}</span>{" "}
+                        esta semana y{" "}
+                        {statsData.pendingExpensesCount > 0 ? (
+                            <span><span className="text-[var(--cc-rose)] font-semibold">{statsData.pendingExpensesCount} cuenta pendiente</span> por pagar.</span>
+                        ) : (
+                            <span><span className="text-ink font-semibold">nada pendiente</span> por pagar.</span>
+                        )}
+                    </p>
+                </div>
 
-            {/* Analytics Section - Admin Only */}
-            {user.role === 'admin' && !isLoading && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                {/* Featured: pending bill */}
+                <div
+                    className="relative overflow-hidden mb-5"
+                    style={{ borderRadius: 22, padding: 22, background: "var(--cc-ink)", color: "var(--cc-paper)" }}
                 >
-                    {/* Expense Chart */}
-                    <div className="lg:col-span-2 bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124,58,237,0.12)', color: '#A58FFC' }}>
-                                    <BarChart3 className="h-5 w-5 text-role-admin-fg" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold cc-text-primary">Gastos Mensuales</h2>
-                                    <p className="text-xs cc-text-secondary">Últimos 6 meses</p>
-                                </div>
+                    <div
+                        aria-hidden
+                        style={{
+                            position: "absolute", top: -20, right: -30,
+                            width: 180, height: 180, borderRadius: "50%",
+                            background: "radial-gradient(circle, rgba(181,102,78,0.35) 0%, transparent 60%)",
+                        }}
+                    />
+                    <div className="relative flex justify-between items-start mb-6">
+                        <div>
+                            <Eyebrow style={{ color: "rgba(244,239,230,0.55)", marginBottom: 10 }}>Gasto común</Eyebrow>
+                            <div style={{ fontSize: 13, color: "rgba(244,239,230,0.75)" }}>
+                                {statsData.pendingExpensesCount > 0 ? "Mes actual · vence pronto" : "Al día · sin deuda"}
                             </div>
-                            <Link href="/expenses" className="text-sm font-medium text-role-admin-fg hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1">
-                                Ver más <ArrowUpRight className="h-4 w-4" />
-                            </Link>
                         </div>
-                        <ErrorBoundary name="Resumen de gastos">
-                            <ExpenseAreaChart data={expenseChartData} />
-                        </ErrorBoundary>
+                        <Tag tone="ink" solid dot={statsData.pendingExpensesCount > 0}>
+                            {statsData.pendingExpensesCount > 0 ? "Por pagar" : "Al día"}
+                        </Tag>
                     </div>
 
-                    {/* Category Breakdown */}
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#60A5FA' }}>
-                                <PieChartIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                            </div>
-                            <h2 className="text-lg font-bold cc-text-primary">Por Categoría</h2>
-                        </div>
-                        <ErrorBoundary name="Distribución por categoría">
-                            <ExpensePieChart
-                                data={expenseCategoryData}
-                                valueFormatter={(value) => `${value} solicitudes`}
-                                totalFormatter={(value) => `${value}`}
-                                centerLabel="Solicitudes"
-                            />
-                        </ErrorBoundary>
-                        <div className="mt-4 space-y-2">
-                            {expenseCategoryData.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                        <span className="text-sm cc-text-secondary">{item.name}</span>
-                                    </div>
-                                    <span className="text-sm font-medium cc-text-primary">
-                                        {item.value.toLocaleString('es-CL')}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="relative flex items-baseline gap-1.5 mb-5">
+                        <span style={{ fontSize: 14, color: "rgba(244,239,230,0.6)" }}>$</span>
+                        <span style={{ fontFamily: "var(--cc-font-display)", fontSize: 54, lineHeight: 1, letterSpacing: "-0.02em" }}>
+                            {statsData.pendingExpensesAmount.toLocaleString("es-CL")}
+                        </span>
+                        <span className="font-mono ml-1.5" style={{ fontSize: 11, color: "rgba(244,239,230,0.5)" }}>CLP</span>
                     </div>
-                </motion.div>
-            )}
 
-            {/* Amenity Usage Chart - Admin Only */}
-            {user.role === 'admin' && !isLoading && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8 relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
-                                    <Calendar className="h-5 w-5 text-success-fg" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold cc-text-primary">Uso de Amenidades</h2>
-                                    <p className="text-xs cc-text-secondary">Reservas este mes</p>
-                                </div>
-                            </div>
-                            <Link href="/amenities" className="text-sm font-medium text-success-fg hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1">
-                                Gestionar <ArrowUpRight className="h-4 w-4" />
-                            </Link>
-                        </div>
-                        <ErrorBoundary name="Uso de amenidades">
-                            <AmenityUsageChart data={amenityUsageData} />
-                        </ErrorBoundary>
-                    </div>
-                </motion.div>
-            )}
+                    <Link href="/expenses">
+                        <Button variant="copper" size="lg" block>
+                            Pagar ahora <ArrowRight size={16} />
+                        </Button>
+                    </Link>
+                </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent Announcements */}
-                {user.role !== 'concierge' && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="lg:col-span-2"
+                {/* For today — grid */}
+                <Eyebrow className="mt-5 mb-3">Para hoy</Eyebrow>
+                <div className="grid grid-cols-2 gap-3.5 mb-5">
+                    <QuickCard
+                        icon={<Waves size={14} color="var(--cc-sage)" />}
+                        tint="var(--cc-sage-tint)"
+                        eyebrow="Reserva"
+                        title="Piscina"
+                        sub="Sáb · 11:00 – 12:30"
+                    />
+                    <QuickCard
+                        icon={<Droplets size={14} color="#3B82F6" />}
+                        tint="rgba(96,165,250,0.12)"
+                        eyebrow="Consumo agua"
+                        title="8.4 m³"
+                        sub="−12% vs abril"
+                        subColor="var(--cc-sage)"
+                    />
+                </div>
+
+                {/* Announcement */}
+                {statsData.recentAnnouncement && (
+                    <Link
+                        href="/feed"
+                        className="flex gap-3 items-start mb-5 bg-paper border rounded-xl"
+                        style={{ borderColor: "var(--cc-line)", borderRadius: 18, padding: 16 }}
                     >
-                        <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md overflow-hidden">
-                            <div className="p-5 lg:p-6 flex items-center justify-between border-b border-subtle">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#60A5FA' }}>
-                                        <Bell className="h-5 w-5" />
-                                    </div>
-                                    <h2 className="text-lg font-bold">Avisos Recientes</h2>
-                                </div>
-                                <Link href="/feed" className="text-sm font-medium flex items-center gap-1" style={{ color: '#A58FFC' }}>
-                                    Ver todos <ArrowUpRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                            {isLoading ? (
-                                <div className="p-6">
-                                    <SkeletonList count={3} />
-                                </div>
-                            ) : recentAnnouncements.length === 0 ? (
-                                <div className="p-6">
-                                    <EmptyState
-                                        icon={<Bell className="h-6 w-6" />}
-                                        title="Sin avisos recientes"
-                                        description="No hay comunicados oficiales de la administración en este momento."
-                                        tone="info"
-                                        dashed={false}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-subtle">
-                                    {recentAnnouncements.map((ann, idx) => (
-                                        <motion.div
-                                            key={ann.id}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.4 + idx * 0.1 }}
-                                            className="p-4 lg:p-5 hover:bg-elevated/50 transition-colors"
-                                        >
-                                            <div className="flex items-start gap-4">
-                                                <div className={`p-2 rounded-xl flex-shrink-0 ${ann.priority === 'alert'
-                                                    ? 'bg-danger-bg text-danger-fg'
-                                                    : ann.priority === 'event'
-                                                        ? 'bg-brand-100 dark:bg-purple-500/20 text-brand-600 dark:text-purple-400'
-                                                        : 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                                                    }`}>
-                                                    <Bell className="h-4 w-4" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h3 className="font-semibold cc-text-primary truncate">{ann.title}</h3>
-                                                    <p className="text-sm cc-text-secondary line-clamp-1 mt-0.5">{ann.content}</p>
-                                                    <p className="text-xs cc-text-tertiary mt-2">{ann.author} • {new Date(ann.createdAt).toLocaleDateString('es-CL')}</p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            )}
+                        <div
+                            className="grid place-items-center shrink-0"
+                            style={{ width: 36, height: 36, borderRadius: 10, background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}
+                        >
+                            <BellRing size={16} />
                         </div>
-                    </motion.div>
+                        <div className="flex-1 min-w-0 text-left">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Tag tone="copper" size="sm">{statsData.recentAnnouncement.category}</Tag>
+                                <span className="font-mono" style={{ fontSize: 10, color: "var(--cc-ink-tertiary)" }}>{statsData.recentAnnouncement.time}</span>
+                            </div>
+                            <div style={{ fontSize: 14, lineHeight: 1.35, fontWeight: 500, color: "var(--cc-ink)" }}>{statsData.recentAnnouncement.title}</div>
+                            <div style={{ fontSize: 12, color: "var(--cc-ink-muted)", marginTop: 4, lineHeight: 1.4 }} className="line-clamp-2">
+                                {statsData.recentAnnouncement.content}
+                            </div>
+                        </div>
+                        <ChevronRight size={16} color="var(--cc-ink-faint)" className="shrink-0 self-center" />
+                    </Link>
                 )}
 
-                {/* Quick Actions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className={user.role === 'concierge' ? 'lg:col-span-3 max-w-lg mx-auto w-full' : ''}
+                {/* Coco prompt */}
+                <Link
+                    href="/chat"
+                    className="flex items-center gap-3 bg-paper sticky bottom-0 mt-2"
+                    style={{
+                        borderRadius: 999,
+                        padding: "14px 18px",
+                        border: "1px solid var(--cc-line-strong)",
+                        boxShadow: "var(--cc-shadow-lg)",
+                    }}
                 >
-                    <div className="bg-white dark:bg-[#12121D] border border-subtle rounded-lg shadow-md p-6 lg:p-8">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#A58FFC' }}>
-                                <TrendingUp className="h-5 w-5" />
-                            </div>
-                            <h2 className="text-lg font-bold">Acceso Rápido</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {user.role === 'concierge' ? (
-                                <>
-                                    <ActionCard
-                                        href="/concierge/visitors"
-                                        title="Registrar Visita"
-                                        description="Control de acceso peatonal"
-                                        icon={<Users className="h-5 w-5" />}
-                                        tone="brand"
-                                    />
-                                    <ActionCard
-                                        href="/concierge/packages"
-                                        title="Recibir Paquete"
-                                        description="Encomiendas y delivery"
-                                        icon={<ShoppingBag className="h-5 w-5" />}
-                                        tone="warning"
-                                    />
-                                    <ActionCard
-                                        href="/services"
-                                        title="Activar Emergencia"
-                                        description="Notificar a todos"
-                                        icon={<Bell className="h-5 w-5" />}
-                                        tone="danger"
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    {isShowcase && (
-                                        <ActionCard
-                                            href="/showcase"
-                                            title="Recorrido comercial"
-                                            description="Guion recomendado para mostrar Convive"
-                                            icon={<Compass className="h-5 w-5" />}
-                                            tone="success"
-                                        />
-                                    )}
-                                    <ActionCard
-                                        href="/resident/training"
-                                        title="Aula Virtual CoCo"
-                                        description="Cursos y clases guiadas por IA"
-                                        icon={<GraduationCap className="h-5 w-5" />}
-                                        tone="brand"
-                                    />
-                                    {user.role === 'admin' && (
-                                        <ActionCard
-                                            href="/admin/training"
-                                            title="Generador de Cursos IA"
-                                            description="Crea clases para residentes y conserjería"
-                                            icon={<BookOpen className="h-5 w-5" />}
-                                            tone="info"
-                                        />
-                                    )}
-                                    <ActionCard
-                                        href="/amenities"
-                                        title="Reservar Espacio"
-                                        description="Quinchos, salas y más"
-                                        icon={<Calendar className="h-5 w-5" />}
-                                        tone="info"
-                                    />
-                                    <ActionCard
-                                        href="/marketplace"
-                                        title="Publicar Artículo"
-                                        description="Vende en el edificio"
-                                        icon={<ShoppingBag className="h-5 w-5" />}
-                                        tone="success"
-                                    />
-                                    <ActionCard
-                                        href="/services"
-                                        title="Solicitar Servicio"
-                                        description="Reportar mantenimientos"
-                                        icon={<Wrench className="h-5 w-5" />}
-                                        tone="warning"
-                                    />
-                                    <ActionCard
-                                        href="/resident/finances"
-                                        title="Pagar Gastos"
-                                        description="Ponte al día revisando tu estado"
-                                        icon={<DollarSign className="h-5 w-5" />}
-                                        tone="danger"
-                                    />
-                                </>
-                            )}
-                        </div>
+                    <div
+                        className="grid place-items-center"
+                        style={{ width: 26, height: 26, borderRadius: 999, background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}
+                    >
+                        <Sparkles size={12} color="var(--cc-copper-soft)" />
                     </div>
-                </motion.div>
+                    <span className="flex-1 text-left" style={{ fontSize: 13, color: "var(--cc-ink-muted)" }}>
+                        Pregúntale a Coco…
+                    </span>
+                    <Mic size={16} color="var(--cc-ink-tertiary)" />
+                </Link>
             </div>
-            <WhatsNew />
-            <DebugStats />
-        </div>
+        </ErrorBoundary>
     );
+}
+
+function QuickCard({
+  icon, tint, eyebrow, title, sub, subColor,
+}: { icon: React.ReactNode; tint: string; eyebrow: string; title: string; sub: string; subColor?: string }) {
+  return (
+    <div className="border rounded-xl" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)", padding: 16, borderRadius: 18 }}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="grid place-items-center" style={{ width: 28, height: 28, borderRadius: 8, background: tint }}>
+          {icon}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--cc-ink-tertiary)" }}>{eyebrow}</div>
+      </div>
+      <div style={{ fontFamily: "var(--cc-font-display)", fontSize: 20, lineHeight: 1.05, marginBottom: 4, color: "var(--cc-ink)" }}>{title}</div>
+      <div className="font-mono" style={{ fontSize: 11, color: subColor ?? "var(--cc-ink-muted)" }}>{sub}</div>
+    </div>
+  );
 }

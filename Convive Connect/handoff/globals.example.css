@@ -1,0 +1,29 @@
+/* src/app/globals.css — ejemplo de cómo queda ───────────────── */
+@import "tw-animate-css";
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Aquí puedes mantener tus capas y overrides existentes. */
+
+@layer base {
+  body {
+    background: var(--cc-ivory);
+    color: var(--cc-ink);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--cc-font-display);
+    letter-spacing: -0.02em;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .text-italic-serif { font-style: italic; font-family: var(--cc-font-display); }
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--cc-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--cc-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}

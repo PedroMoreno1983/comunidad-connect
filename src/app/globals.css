@@ -1,17 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Hedvig+Letters+Sans&family=Liter&family=Geist+Mono:wght@400..600&display=swap');
 @import "tailwindcss";
 @import "./tokens.css";
-@import "./design-system.css";
 
-@source "../../src/**/*.{js,ts,jsx,tsx,mdx}";
-@source "../../src/components/**/*.{js,ts,jsx,tsx,mdx}";
-@source "../../src/app/**/*.{js,ts,jsx,tsx,mdx}";
+@layer base {
+  body {
+    background: var(--cc-ivory);
+    color: var(--cc-ink);
+  }
 
-/* Font theme tokens only - V4 supports these without var() issues */
-@theme {
-  --font-display: 'Hedvig Letters Sans', sans-serif;
-  --font-sans: 'Liter', sans-serif;
-  --font-mono: 'Geist Mono', monospace;
+  h1, h2, h3 {
+    font-family: var(--cc-font-display);
+    letter-spacing: -0.02em;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .text-italic-serif { font-style: italic; font-family: var(--cc-font-display); }
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--cc-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--cc-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
 }
 
 /* ============================================================

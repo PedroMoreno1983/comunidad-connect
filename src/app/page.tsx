@@ -9,7 +9,7 @@ import {
   Sun, Moon, CheckCircle2, HelpCircle,
   BellRing, CreditCard, CalendarCheck, ArrowRight,
   MessageSquare, Package, MapPin, TrendingUp, Star,
-  Users, Home, Zap, ChevronRight
+  Users, Home, Zap, ChevronRight, Sparkles
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
 
@@ -33,132 +33,56 @@ function useCounter(target: number, duration = 2000, start = false) {
 
 /* ── Mini App Mockup ──────────────────────────────────── */
 function AppMockup() {
-  const [activeCard, setActiveCard] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setActiveCard(c => (c + 1) % 3), 2800);
-    return () => clearInterval(t);
-  }, []);
-
-  const cards = [
-    {
-      icon: <BellRing className="w-5 h-5 text-[#C8705A]" />,
-      label: "Nueva circular",
-      sub: "Asamblea de propietarios — Sáb 19 Abr, 19:00",
-      tag: "Urgente",
-      tagColor: "bg-[#C8705A]/10 text-[#C8705A]",
-      delay: "animate-float-card",
-    },
-    {
-      icon: <CreditCard className="w-5 h-5 text-[#5A7D5A]" />,
-      label: "Gasto común pagado",
-      sub: "$45.200 — Marzo 2026 ✓",
-      tag: "Pagado",
-      tagColor: "bg-[#5A7D5A]/10 text-[#5A7D5A]",
-      delay: "animate-float-card-delay-1",
-    },
-    {
-      icon: <CalendarCheck className="w-5 h-5 text-amber-500" />,
-      label: "Reserva confirmada",
-      sub: "Piscina — Domingo 20 Abr, 11:00",
-      tag: "Confirmada",
-      tagColor: "bg-amber-400/10 text-warning-fg",
-      delay: "animate-float-card-delay-2",
-    },
-  ];
-
   return (
-    <div className="relative mx-auto w-full max-w-sm overflow-visible sm:overflow-visible">
-      {/* Phone frame */}
-      <div className="relative bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl border border-[#E4D8CA] dark:border-[#3B3530] overflow-hidden"
-        style={{ boxShadow: '0 40px 80px -20px rgba(255,107,71,0.25), 0 20px 40px -10px rgba(0,0,0,0.15)' }}>
-        {/* Status bar */}
-        <div className="flex justify-between items-center px-6 pt-4 pb-2 text-xs font-semibold text-[#8A8580] dark:text-[#8A8580]">
-          <span>9:41</span>
-          <div className="w-20 h-5 bg-[#2D2A26] dark:bg-[#FBF8F3] rounded-full mx-auto" />
-          <span>📶</span>
-        </div>
-
-        {/* App header */}
-        <div className="px-5 pt-2 pb-4 border-b border-[#F1EAE1] dark:border-[#3B3530]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-white" />
+    <div className="relative w-full max-w-[340px] h-[300px] flex items-center justify-center">
+      {/* Card 1: Gasto común pagado (slightly rotated left) */}
+      <div 
+        className="absolute w-[280px] bg-[#FAF7F1] border rounded-2xl p-5 shadow-md rotate-[-4deg] translate-x-[-15px] translate-y-[-25px] transition-transform hover:rotate-0 duration-300"
+        style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[rgba(110,130,104,0.1)] text-[#6E8268] flex items-center justify-center">
+              <CreditCard className="w-4 h-4" />
             </div>
             <div>
-              <BrandWordmark className="text-sm text-[#C8705A]" />
-              <p className="text-[10px] text-[#8A8580]">Torre Norte · Depto 8B</p>
-            </div>
-            <div className="ml-auto relative">
-              <BellRing className="w-5 h-5 text-[#8A8580]" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#C8705A] rounded-full border-2 border-white dark:border-[#25242A]" />
+              <div className="text-[10px] font-medium" style={{ color: 'var(--cc-ink-tertiary)' }}>GASTO COMÚN</div>
+              <div className="text-xs font-semibold">Marzo 2026</div>
             </div>
           </div>
+          <span className="inline-flex rounded-full bg-[rgba(110,130,104,0.1)] px-2.5 py-0.5 text-[10px] font-semibold text-[#6E8268]">
+            ✓ Pagado
+          </span>
         </div>
+        <div className="text-xl font-bold font-display" style={{ fontFamily: 'var(--cc-font-display)' }}>$45.200 <span className="text-xs font-normal text-slate-500 font-sans">CLP</span></div>
+      </div>
 
-        {/* Cards stack */}
-        <div className="px-5 py-4 space-y-3 pb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8A8580]">Actividad reciente</p>
-          {cards.map((card, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-3 rounded-2xl border border-[#E4D8CA] bg-[#FBF8F3] p-3.5 transition-[opacity,transform] duration-500 dark:border-[#3B3530] dark:bg-[#302D2A] ${activeCard === i ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-1.5 scale-[0.97] opacity-50'}`}
-            >
-              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#25242A] flex items-center justify-center shadow-sm flex-shrink-0">
-                {card.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3] leading-tight">{card.label}</p>
-                <p className="text-xs text-[#8A8580] mt-0.5 leading-relaxed break-words">{card.sub}</p>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${card.tagColor}`}>{card.tag}</span>
+      {/* Card 2: Coco AI confirmando reserva (slightly rotated right, overlay) */}
+      <div 
+        className="absolute w-[280px] bg-[#FAF7F1] border rounded-2xl p-5 shadow-lg rotate-[3deg] translate-x-[15px] translate-y-[25px] transition-transform hover:rotate-0 duration-300 z-10"
+        style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
+      >
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[rgba(181,102,78,0.08)] text-[#B5664E] flex items-center justify-center">
+              <Sparkles className="w-4 h-4" />
             </div>
-          ))}
-
-          {/* Mini bottom nav */}
-          <div className="flex justify-around pt-3 border-t border-[#F1EAE1] dark:border-[#3B3530]">
-            {[
-              { icon: <Home className="w-4 h-4" />, label: "Inicio", active: true },
-              { icon: <CreditCard className="w-4 h-4" />, label: "Pagos", active: false },
-              { icon: <MessageSquare className="w-4 h-4" />, label: "Chat", active: false },
-              { icon: <User className="w-4 h-4" />, label: "Perfil", active: false },
-            ].map((item, i) => (
-              <div key={i} className={`flex flex-col items-center gap-1 ${item.active ? 'text-[#C8705A]' : 'text-[#8A8580]'}`}>
-                {item.icon}
-                <span className="text-[9px] font-semibold">{item.label}</span>
-              </div>
-            ))}
+            <div>
+              <div className="text-[10px] font-medium" style={{ color: 'var(--cc-ink-tertiary)' }}>COCO ASSISTANT</div>
+              <div className="text-xs font-semibold">Reserva confirmada</div>
+            </div>
           </div>
+          <span className="cc-dot text-[#B5664E] animate-pulse" />
         </div>
-      </div>
-
-      {/* Floating notification badge */}
-      <div
-        className="animate-float-card absolute -right-6 top-16 hidden items-center gap-2.5 rounded-2xl border border-[#E4D8CA] bg-white px-4 py-2.5 shadow-xl dark:border-[#3B3530] dark:bg-[#302D2A] sm:flex"
-      >
-        <div className="w-7 h-7 rounded-xl bg-[#C8705A]/10 flex items-center justify-center">
-          <Package className="w-3.5 h-3.5 text-[#C8705A]" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Paquete llegó</p>
-          <p className="text-[10px] text-[#8A8580]">Conserjería · ahora</p>
-        </div>
-      </div>
-
-      {/* Floating payment badge */}
-      <div
-        className="animate-float-card-delay-1 absolute -left-8 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-[#E4D8CA] bg-white px-4 py-2.5 shadow-xl dark:border-[#3B3530] dark:bg-[#302D2A] sm:flex"
-      >
-        <div className="w-7 h-7 rounded-xl bg-[#5A7D5A]/10 flex items-center justify-center">
-          <TrendingUp className="w-3.5 h-3.5 text-[#5A7D5A]" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-[#2D2A26] dark:text-[#FBF8F3]">Recaudo 98%</p>
-          <p className="text-[10px] text-[#8A8580]">Este mes</p>
+        <div className="text-sm font-medium leading-relaxed text-[#1A1611]">
+          &ldquo;He reservado el <span className="text-[#B5664E] font-semibold">Quincho</span> para ti este sábado a las 14:00.&rdquo;
         </div>
       </div>
     </div>
   );
 }
+
+
 
 /* ── Trust Stats ──────────────────────────────────────── */
 function TrustStats() {
@@ -351,16 +275,12 @@ export default function LandingPage() {
   const selectedRole = roles.find(r => r.id === selectedInfo);
 
   return (
-    <div className="min-h-screen bg-[#FBF8F3] dark:bg-[#1E1E24] text-[#2D2A26] dark:text-[#FBF8F3] flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700">
+    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700" style={{ background: 'radial-gradient(circle at top right, rgba(181, 102, 78, 0.07) 0%, var(--cc-ivory) 100%)' }}>
 
       {/* ── Background blobs ── */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Warm coral blob top-right */}
-        <div className="animate-morph-blob absolute -top-40 -right-40 w-[600px] h-[600px] bg-gradient-to-br from-[#C8705A]/20 to-[#C8705A]/5 blur-3xl" />
-        {/* Teal blob bottom-left */}
-        <div className="animate-morph-blob absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-gradient-to-br from-[#5A7D5A]/15 to-[#5A7D5A]/5 blur-3xl" style={{ animationDelay: '3s' }} />
         {/* Subtle warm grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#C8705A06_1px,transparent_1px),linear-gradient(to_bottom,#C8705A06_1px,transparent_1px)] bg-[size:32px_32px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(26,22,17,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(26,22,17,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
       </div>
 
       {/* ── Header ── */}
@@ -409,61 +329,43 @@ export default function LandingPage() {
           {/* Left: Text */}
           <div className="flex-1 max-w-xl">
             <div
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#C8705A]/10 border border-[#C8705A]/20 text-[#B45F4B] dark:text-[#DFAF9B] text-sm font-bold tracking-wide mb-6"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FAF7F1] border text-xs font-semibold mb-6"
+              style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
             >
-              <MapPin className="w-3.5 h-3.5" />
-              Bienestar comunitario inspirado en WELL v2
+              <span className="px-2 py-0.5 bg-[#B5664E] text-white text-[10px] font-bold rounded-full">v 2.0</span>
+              <span style={{ color: 'var(--cc-ink-muted)' }}>Asistente Coco AI listo para ayudar en tu comunidad</span>
             </div>
 
             <h1
-              className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-[1.08] mb-6"
+              className="text-4xl sm:text-5xl md:text-6xl font-normal leading-[1.05] tracking-tight mb-6"
+              style={{ fontFamily: 'var(--cc-font-display)' }}
             >
-              Tu edificio,{' '}
-              <span className="relative inline-block">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#B45F4B]">más humano</span>
-                <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 5 Q50 1 100 5 Q150 9 200 5" stroke="#C8705A" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
-                </svg>
-              </span>{' '}
-              que nunca.
+              La <span className="italic" style={{ color: 'var(--cc-copper)' }}>buena vida</span> en comunidad, sin papeleo.
             </h1>
 
             <p
-              className="text-lg text-[#5F5A54] dark:text-[#C8BFB6] leading-relaxed mb-8 max-w-md"
+              className="text-base sm:text-lg text-[#524A40] mb-8 max-w-md leading-relaxed"
             >
               Gastos comunes, reservas, conserjería y vecinos; todo conectado en una app que la gente de verdad quiere usar.
             </p>
 
             <div
-              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
             >
               <button
                 onClick={() => router.push('/login')}
-                id="cta-hero-primary"
-                className="group flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#C8705A] hover:bg-[#B45F4B] text-white font-bold text-base transition-all shadow-xl shadow-[#C8705A]/30 hover:shadow-[#C8705A]/50 hover:-translate-y-1 w-full sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] text-sm"
               >
                 Probar gratis 30 días
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight size={15} />
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] text-[#2D2A26] dark:text-[#FBF8F3] font-bold text-base hover:border-[#C8705A]/40 transition-all shadow-sm w-full sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer px-6 py-3.5 rounded-xl border text-sm"
+                style={{ borderColor: 'rgba(26, 22, 17, 0.16)', background: 'transparent' }}
               >
-                Iniciar sesión
+                Demo en vivo
               </button>
-            </div>
-
-            <div
-              className="flex items-center gap-2 mt-6 text-sm text-[#8A8580] dark:text-[#8A8580]"
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
-              <span>Sin tarjeta de crédito</span>
-              <span className="mx-2">·</span>
-              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
-              <span>Onboarding en 48 horas</span>
-              <span className="mx-2">·</span>
-              <CheckCircle2 className="w-4 h-4 text-[#5A7D5A]" />
-              <span>Cancela cuando quieras</span>
             </div>
           </div>
 
