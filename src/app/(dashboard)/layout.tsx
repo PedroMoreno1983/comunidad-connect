@@ -100,8 +100,6 @@ function DashboardShell({
         resident: "Residente",
     };
 
-    const isResident = user.role === "resident";
-
     // Demo Banner element
     const demoBanner = isDemoUser && (
         <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
@@ -111,25 +109,8 @@ function DashboardShell({
         </div>
     );
 
-    if (isResident) {
-        // Resident mobile-first simple layout
-        return (
-            <div className="min-h-screen flex flex-col" style={{ background: "var(--cc-ivory)" }}>
-                {demoBanner}
-                <main className="flex-1 w-full relative z-10">
-                    <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>
-                        {children}
-                    </ErrorBoundary>
-                </main>
-                <ErrorBoundary name="CoCo Widget">
-                    <CoCo />
-                </ErrorBoundary>
-            </div>
-        );
-    }
-
-    // Admin & Concierge wrapped in desktop AdminShell layout
-    const adminRoleMapped = user.role === "concierge" ? "conserje" : "admin";
+    // Admin, Concierge, & Resident wrapped in responsive AdminShell layout
+    const roleMapped = user.role === "concierge" ? "conserje" : user.role === "resident" ? "resident" : "admin";
 
     return (
         <div className="min-h-screen" style={{ background: "var(--cc-ivory)" }}>
@@ -137,7 +118,7 @@ function DashboardShell({
             <ErrorBoundary name="AdminShell Wrapper">
                 <AdminShell
                     activeHref={pathname}
-                    role={adminRoleMapped}
+                    role={roleMapped}
                     user={{
                         name: user.name,
                         initials,
