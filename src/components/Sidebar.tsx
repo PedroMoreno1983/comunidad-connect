@@ -13,7 +13,7 @@ import { isShowcaseUser } from '@/lib/showcase';
 import { useState, useEffect } from 'react';
 import {
     Activity,
-    Building2,
+    HeartHandshake,
     Home,
     ShoppingBag,
     Wrench,
@@ -212,7 +212,7 @@ export function Sidebar() {
             <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-subtle px-3">
                 <div className="flex min-w-0 items-center">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={getAvatarStyle()}>
-                        <Building2 className="h-5 w-5 text-white" />
+                        <HeartHandshake className="h-5 w-5 text-white" />
                     </div>
                     <div className="ml-3 min-w-0 overflow-hidden">
                         <BrandWordmark className="max-w-[180px] text-xs text-brand-600" />
