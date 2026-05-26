@@ -46,6 +46,7 @@ export default function ExpensesPage() {
     const [isPaying, setIsPaying] = useState<string | null>(null);
     const [step, setStep] = useState<"review" | "method" | "success">("review");
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+    const [contributionType, setContributionType] = useState<string>("none");
 
     const targetUnitId = user?.unitId || "demo-unit-101";
 
@@ -81,11 +82,57 @@ export default function ExpensesPage() {
 
     const activeExpense = expenses.find(e => e.status !== 'paid') || expenses[0];
 
+    const getContributionAmount = (type: string, base: number) => {
+        switch (type) {
+            case 'round_1000': {
+                const remainder = base % 1000;
+                return remainder === 0 ? 0 : 1000 - remainder;
+            }
+            case 'round_5000': {
+                const remainder = base % 5000;
+                return remainder === 0 ? 0 : 5000 - remainder;
+            }
+            case 'fixed_1000': return 1000;
+            case 'fixed_2000': return 2000;
+            case 'fixed_5000': return 5000;
+            default: return 0;
+        }
+    };
+
     const handlePay = async () => {
         if (!activeExpense) return;
+        
+        // Determine breakdown list (real or default fallback)
+        const breakdownList = activeExpense?.breakdown && activeExpense.breakdown.length > 0
+            ? activeExpense.breakdown
+            : DEFAULT_BREAKDOWN;
+
+        const baseAmount = activeExpense
+            ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
+            : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+
+        const extraContribution = getContributionAmount(contributionType, baseAmount);
+
         try {
             setIsPaying(activeExpense.id);
             await ExpensesService.payExpense(activeExpense.id);
+
+            // Record solidarity contribution if selected
+            if (extraContribution > 0) {
+                try {
+                    await fetch("/api/solidarity/fund", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            amount: extraContribution,
+                            type: contributionType.startsWith("round") ? "round_up" : "donation",
+                            expenseId: activeExpense.id
+                        })
+                    });
+                } catch (err) {
+                    console.error("Failed to record solidarity contribution:", err);
+                }
+            }
 
             // Optimistic update
             setExpenses(prev => prev.map(exp =>
@@ -95,7 +142,9 @@ export default function ExpensesPage() {
             setStep("success");
             toast({
                 title: "Pago Procesado",
-                description: "La transacción se completó con éxito.",
+                description: extraContribution > 0 
+                  ? `Pago y aporte de $${extraContribution.toLocaleString("es-CL")} CLP procesados con éxito.`
+                  : "La transacción se completó con éxito.",
                 variant: "success",
             });
         } catch (error) {
@@ -123,9 +172,12 @@ export default function ExpensesPage() {
         ? activeExpense.breakdown
         : DEFAULT_BREAKDOWN;
 
-    const totalAmount = activeExpense
+    const baseAmount = activeExpense
         ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
         : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+
+    const extraContribution = getContributionAmount(contributionType, baseAmount);
+    const totalAmount = baseAmount + extraContribution;
 
     // Format current period
     const periodName = activeExpense
@@ -215,13 +267,103 @@ export default function ExpensesPage() {
                                 <div
                                     key={row.label}
                                     className="flex justify-between items-center py-3"
-                                    style={{ borderBottom: i < breakdownList.length - 1 ? "1px solid var(--cc-line)" : "none" }}
+                                    style={{ borderBottom: "1px solid var(--cc-line)" }}
                                 >
                                     <div className="text-[13px]" style={{ color: "var(--cc-ink-soft)" }}>{row.label}</div>
                                     <div className="font-mono text-[13px]">${row.amount.toLocaleString("es-CL")}</div>
                                 </div>
                             ))}
+                            {extraContribution > 0 && (
+                                <div
+                                    className="flex justify-between items-center py-3"
+                                    style={{ borderBottom: "none", color: "var(--cc-copper)" }}
+                                >
+                                    <div className="text-[13px] font-semibold flex items-center gap-1">
+                                        <Sparkles size={12} /> Aporte Solidario Vecinal
+                                    </div>
+                                    <div className="font-mono text-[13px] font-semibold">+${extraContribution.toLocaleString("es-CL")}</div>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Solidarity Option Card */}
+                        {activeExpense?.status !== "paid" && (
+                            <div 
+                                className="mb-6 rounded-xl border p-4 bg-paper"
+                                style={{ 
+                                    borderColor: "var(--cc-copper-soft)",
+                                    borderWidth: "1.5px",
+                                    background: "rgba(181, 102, 78, 0.03)"
+                                }}
+                            >
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Sparkles size={16} className="text-[#B5664E]" />
+                                    <span className="text-sm font-semibold uppercase tracking-wider text-[#B5664E]">
+                                        Fondo de Solidaridad Vecinal
+                                    </span>
+                                </div>
+                                <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--cc-ink-soft)" }}>
+                                    Apoya a familias del edificio con dificultades para cubrir su gasto común debido a cesantía o jubilación. 100% regulado y anónimo.
+                                </p>
+                                
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                    {/* Rounding Options */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setContributionType(prev => prev === "round_1000" ? "none" : "round_1000")}
+                                        className="rounded-lg py-2.5 px-3 text-left border text-xs cursor-pointer transition-all flex flex-col justify-between h-[52px]"
+                                        style={{
+                                            borderColor: contributionType === "round_1000" ? "var(--cc-copper)" : "var(--cc-line)",
+                                            background: contributionType === "round_1000" ? "var(--cc-paper)" : "transparent",
+                                            color: "var(--cc-ink)"
+                                        }}
+                                    >
+                                        <span className="font-semibold text-[10px] uppercase text-slate-400">Redondear $1.000</span>
+                                        <span className="font-mono text-xs">
+                                            {baseAmount % 1000 === 0 ? "Sin redondeo" : `+$${(1000 - (baseAmount % 1000)).toLocaleString("es-CL")}`}
+                                        </span>
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={() => setContributionType(prev => prev === "round_5000" ? "none" : "round_5000")}
+                                        className="rounded-lg py-2.5 px-3 text-left border text-xs cursor-pointer transition-all flex flex-col justify-between h-[52px]"
+                                        style={{
+                                            borderColor: contributionType === "round_5000" ? "var(--cc-copper)" : "var(--cc-line)",
+                                            background: contributionType === "round_5000" ? "var(--cc-paper)" : "transparent",
+                                            color: "var(--cc-ink)"
+                                        }}
+                                    >
+                                        <span className="font-semibold text-[10px] uppercase text-slate-400">Redondear $5.000</span>
+                                        <span className="font-mono text-xs">
+                                            {baseAmount % 5000 === 0 ? "Sin redondeo" : `+$${(5000 - (baseAmount % 5000)).toLocaleString("es-CL")}`}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    {[
+                                        { id: "fixed_1000", label: "+$1k" },
+                                        { id: "fixed_2000", label: "+$2k" },
+                                        { id: "fixed_5000", label: "+$5k" },
+                                    ].map((opt) => (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() => setContributionType(prev => prev === opt.id ? "none" : opt.id)}
+                                            className="flex-1 py-2 px-1 text-center border text-[11px] rounded-lg cursor-pointer transition-all font-mono"
+                                            style={{
+                                                borderColor: contributionType === opt.id ? "var(--cc-copper)" : "var(--cc-line)",
+                                                background: contributionType === opt.id ? "var(--cc-paper)" : "transparent",
+                                                color: "var(--cc-ink)"
+                                            }}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* History chart */}
                         <Eyebrow className="mb-3">Histórico · últimos 5 meses</Eyebrow>
