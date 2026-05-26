@@ -993,7 +993,7 @@ export default function SolidarityHubPage() {
               </div>
 
               <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-                ¿Confirmas la reserva de la tarea <strong className="text-ink">"{bookingTask.title}"</strong> por {Number(bookingTask.hours)} horas comunitarias? Una vez realizada, deberás solicitar a conserjería que verifique su cumplimiento ingresando su PIN de supervisor.
+                ¿Confirmas la reserva de la tarea <strong className="text-ink">&ldquo;{bookingTask.title}&rdquo;</strong> por {Number(bookingTask.hours)} horas comunitarias? Una vez realizada, deberás solicitar a conserjería que verifique su cumplimiento ingresando su PIN de supervisor.
               </p>
 
               <div className="flex gap-2">
@@ -1030,7 +1030,7 @@ export default function SolidarityHubPage() {
               </div>
 
               <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                Para validar el cumplimiento de las {Number(verifyingTask.hours)} horas de la tarea <strong className="text-ink">"{verifyingTask.title}"</strong>, el supervisor (conserje o administrador) debe ingresar su PIN de seguridad.
+                Para validar el cumplimiento de las {Number(verifyingTask.hours)} horas de la tarea <strong className="text-ink">&ldquo;{verifyingTask.title}&rdquo;</strong>, el supervisor (conserje o administrador) debe ingresar su PIN de seguridad.
               </p>
 
               <div className="mb-5">
