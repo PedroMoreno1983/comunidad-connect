@@ -377,7 +377,7 @@ export default function SolidarityHubPage() {
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
+      <div className="max-w-4xl mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
         <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando Solidaridad Vecinal…</span>
       </div>
@@ -386,7 +386,7 @@ export default function SolidarityHubPage() {
 
   return (
     <ErrorBoundary name="Solidarity Resident Page">
-      <div className="max-w-md mx-auto px-5 py-3.5 flex flex-col min-h-screen pb-20">
+      <div className="max-w-4xl mx-auto px-5 py-3.5 flex flex-col min-h-screen pb-20">
         
         {/* Header */}
         <div className="mb-6 pt-1.5">
@@ -404,8 +404,37 @@ export default function SolidarityHubPage() {
           <div className="flex gap-3">
             <Heart className="h-5 w-5 text-[#6E8268] shrink-0 mt-0.5" />
             <div className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-soft)" }}>
-              Inspirado en la teoría de <strong className="text-ink">Apoyo Mutuo de Kropotkin</strong>: nos organizamos para amortiguar los shocks del sistema a nivel micro. Redondeamos pagos para ayudar a familias en cesantía o jubilación, a cambio de retribución voluntaria en el edificio.
+              <strong className="text-ink">Fondo de Apoyo Mutuo:</strong> Nos organizamos en comunidad para ayudarnos en momentos difíciles. Cuando un residente no puede cubrir su gasto común debido a cesantía o jubilación, el fondo solidario lo apoya de forma confidencial. A cambio, el residente retribuye colaborando con tareas útiles para la convivencia en el edificio.
             </div>
+          </div>
+        </div>
+
+        {/* Solidarity Cycle Diagram */}
+        <div className="mb-6 bg-[#FAF7F1] border rounded-2xl p-5" style={{ borderColor: "var(--cc-line)" }}>
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">El Círculo de Apoyo Mutuo</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* Step 1 */}
+            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#6E8268]/20 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[rgba(110,130,104,0.1)] text-[#6E8268] flex items-center justify-center font-bold font-mono text-xs mb-2">1</div>
+              <span className="font-semibold text-xs mb-1 text-ink">1. Aporte Colectivo</span>
+              <p className="text-[11px] leading-relaxed text-slate-500">Los vecinos redondean opcionalmente sus gastos comunes para financiar el fondo.</p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#C99A4A]/20 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[rgba(201,154,74,0.1)] text-[#C99A4A] flex items-center justify-center font-bold font-mono text-xs mb-2">2</div>
+              <span className="font-semibold text-xs mb-1 text-ink">2. Apoyo Confidencial</span>
+              <p className="text-[11px] leading-relaxed text-slate-500">Familias en situación vulnerable reciben subsidios directos aplicados a sus cuentas.</p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#B5664E]/20 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[rgba(181,102,78,0.1)] text-[#B5664E] flex items-center justify-center font-bold font-mono text-xs mb-2">3</div>
+              <span className="font-semibold text-xs mb-1 text-ink">3. Retribución Activa</span>
+              <p className="text-[11px] leading-relaxed text-slate-500">Los beneficiados devuelven la ayuda colaborando en horas de servicio comunitario.</p>
+            </div>
+
           </div>
         </div>
 

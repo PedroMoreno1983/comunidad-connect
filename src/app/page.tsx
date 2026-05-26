@@ -9,7 +9,7 @@ import {
   Sun, Moon, CheckCircle2, HelpCircle,
   BellRing, CreditCard, CalendarCheck, ArrowRight,
   MessageSquare, Package, MapPin, TrendingUp, Star,
-  Users, Home, Zap, ChevronRight, Sparkles
+  Users, Home, Zap, ChevronRight, Sparkles, HeartHandshake, Heart
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
 
@@ -75,7 +75,7 @@ function AppMockup() {
           <span className="cc-dot text-[#B5664E] animate-pulse" />
         </div>
         <div className="text-sm font-medium leading-relaxed text-[#1A1611]">
-          &ldquo;He reservado el <span className="text-[#B5664E] font-semibold">Quincho</span> para ti este sábado a las 14:00.&rdquo;
+          &ldquo;He reservado el <span className="text-[#B5664E] font-semibold">Quincho</span>{' '}para ti este sábado a las 14:00.&rdquo;
         </div>
       </div>
     </div>
@@ -289,7 +289,7 @@ export default function LandingPage() {
           className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] shadow-lg shadow-[#C8705A]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
-            <Building2 className="h-5 w-5 text-white" />
+            <HeartHandshake className="h-5 w-5 text-white" />
           </div>
           <BrandWordmark className="min-w-0 truncate text-base text-[#C8705A] sm:text-xl" />
         </div>
@@ -329,11 +329,11 @@ export default function LandingPage() {
           {/* Left: Text */}
           <div className="flex-1 max-w-xl">
             <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FAF7F1] border text-xs font-semibold mb-6"
-              style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[rgba(110,130,104,0.06)] border text-xs font-semibold mb-6 transition-all"
+              style={{ borderColor: 'rgba(110, 130, 104, 0.15)' }}
             >
-              <span className="px-2 py-0.5 bg-[#B5664E] text-white text-[10px] font-bold rounded-full">v 2.0</span>
-              <span style={{ color: 'var(--cc-ink-muted)' }}>Asistente Coco AI listo para ayudar en tu comunidad</span>
+              <Heart className="h-3.5 w-3.5 text-[#6E8268]" />
+              <span style={{ color: 'var(--cc-sage)' }}>Apoyo Mutuo y Convivencia Vecinal</span>
             </div>
 
             <h1
@@ -835,7 +835,7 @@ export default function LandingPage() {
         <div className="mx-auto box-border flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row md:px-12">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-gradient-to-br from-[#C8705A] to-[#B45F4B] rounded-lg flex items-center justify-center">
-              <Building2 className="text-white w-3.5 h-3.5" />
+              <HeartHandshake className="text-white w-3.5 h-3.5" />
             </div>
             <BrandWordmark className="text-sm text-[#C8705A]" />
             <span className="text-[#8A8580] text-sm">· © 2026</span>
