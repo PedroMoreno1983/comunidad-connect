@@ -62,7 +62,7 @@ function getDemoBaseGlobalMessages(userName?: string): ChatMessage[] {
             sender_id: "demo-admin",
             content: `Gracias ${userName || "Admin"}. Cualquier novedad quedara registrada en comunicaciones.`,
             created_at: minutesAgo(34),
-            profiles: { name: "Admin Demo" },
+            profiles: { name: "Admin Showcase" },
         },
     ];
 }
@@ -104,7 +104,7 @@ function getDemoBaseDirectMessages(userId: string, userName: string | undefined,
             receiver_id: peerId,
             content: "Si, lo reviso ahora y te confirmo por este mismo chat.",
             created_at: minutesAgo(11),
-            profiles: { name: userName || "Admin Demo" },
+            profiles: { name: userName || "Admin Showcase" },
         },
     ];
 }
@@ -157,7 +157,7 @@ export function createDemoChatMessage(user: User, content: string, receiverId?: 
         receiver_id: receiverId,
         content,
         created_at: new Date().toISOString(),
-        profiles: { name: user.name || "Admin Demo", avatar_url: user.photo || user.avatarUrl },
+        profiles: { name: user.name || "Admin Showcase", avatar_url: user.photo || user.avatarUrl },
     };
 }
 

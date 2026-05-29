@@ -153,8 +153,8 @@ export default function ProviderRegisterPage() {
 
                 saveDemoCreatedProvider(demoProvider);
                 toast({
-                    title: "Proveedor demo registrado",
-                    description: "El perfil quedo visible en Directorio de Servicios y Panel Proveedor.",
+                    title: "Proveedor showcase registrado",
+                    description: "El perfil quedó visible en Directorio de Servicios y Panel Proveedor.",
                     variant: "success",
                 });
                 router.push(`/services/provider/${demoProvider.id}`);

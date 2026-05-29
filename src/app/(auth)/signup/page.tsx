@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, Key, Lock, Mail, ShieldCheck, User, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, ShieldCheck, Users } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 
@@ -267,7 +267,7 @@ export default function SignUpPage() {
 
                     <div className="relative z-10 flex justify-end">
                         <Link href="/" className="inline-flex items-center gap-2">
-                            <Brand size={20} className="text-white" withMark />
+                            <Brand size={20} tone="inverse" withMark />
                         </Link>
                     </div>
 

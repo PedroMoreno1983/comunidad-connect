@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { maybeCreateCoCoCase } from './caseService';
+import { PUBLIC_SITE_URL } from '@/lib/config';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -608,8 +609,7 @@ export async function executeTool(
                     return { error: 'No se encontraron residentes registrados con WhatsApp para ese departamento.' };
                 }
 
-                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+                const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PUBLIC_SITE_URL;
                 
                 let successCount = 0;
                 for (const p of profiles) {
@@ -673,7 +673,7 @@ export async function executeTool(
             case 'update_unit_data': {
                 if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden modificar información de departamentos.' };
                 
-                const updates: Record<string, any> = {};
+                const updates: Record<string, string | number> = {};
                 if (input.number !== undefined) updates.number = input.number;
                 if (input.floor !== undefined) updates.floor = Number(input.floor);
 

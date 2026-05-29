@@ -70,21 +70,21 @@ const adminSteps = [
 const roleCards = [
     {
         role: "Administracion",
-        email: "admin.showcase@conviveconnect.cl",
+        email: "admin.showcase@conviveconnect.com",
         route: "/home",
         icon: UserCog,
         bullets: ["vision global", "votaciones", "mantencion", "centro operativo"],
     },
     {
         role: "Residente",
-        email: "residente.showcase@conviveconnect.cl",
+        email: "residente.showcase@conviveconnect.com",
         route: "/resident/finances",
         icon: MessageSquare,
         bullets: ["gastos comunes", "reservas", "votaciones", "cursos IA"],
     },
     {
         role: "Conserjeria",
-        email: "conserje.showcase@conviveconnect.cl",
+        email: "conserje.showcase@conviveconnect.com",
         route: "/concierge/packages",
         icon: ShieldCheck,
         bullets: ["paqueteria", "visitas", "novedades", "aula operativa"],
@@ -218,7 +218,7 @@ export default function ShowcasePage() {
                     <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
                         <CheckCircle2 className="h-5 w-5" />
                     </div>
-                    <h2 className="text-lg font-semibold">Cierre de la demo</h2>
+                    <h2 className="text-lg font-semibold">Cierre del showcase</h2>
                     <div className="mt-4 space-y-3">
                         {closeChecks.map((check) => (
                             <div key={check} className="flex gap-3 text-sm text-slate-200">

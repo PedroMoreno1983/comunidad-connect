@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Bell, Info, AlertTriangle, Calendar, Megaphone } from "lucide-react";
+import { Bell, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
 import { Announcement } from "@/lib/types";
@@ -12,6 +12,14 @@ import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 
 type FilterTab = 'all' | 'alert' | 'event' | 'info';
+type AnnouncementRow = {
+    id: string;
+    title: string;
+    content: string;
+    author_name?: string | null;
+    priority: Announcement["priority"];
+    created_at: string;
+};
 
 export default function FeedPage() {
     const { user } = useAuth();
@@ -26,15 +34,15 @@ export default function FeedPage() {
             try {
                 setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
-                const mappedData = data.map((ann: any): Announcement => ({
+                const mappedData = (data as AnnouncementRow[]).map((ann): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
                     author: ann.author_name || 'Administración',
-                    priority: ann.priority as any,
+                    priority: ann.priority,
                     createdAt: ann.created_at,
                 }));
-                // Mock default announcements if demo user
+                // Showcase default announcements for protected account sessions.
                 const demoAnnouncements: Announcement[] = [
                     {
                         id: "demo-pinned-1",

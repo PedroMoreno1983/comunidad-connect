@@ -1,5 +1,6 @@
 /* src/components/cc/Sidebar.tsx ─────────────────────────────── */
 "use client";
+/* eslint-disable @next/next/no-img-element -- Sidebar avatars may be Supabase URLs or local data previews. */
 
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -40,6 +41,15 @@ import {
 import { Brand } from "./Brand";
 
 type Role = "admin" | "conserje" | "resident";
+type ActiveSidebarUser = {
+  role?: "admin" | "resident" | "concierge";
+  name?: string;
+  email: string;
+  communityId?: string;
+  photo?: string | null;
+  avatarUrl?: string | null;
+  features?: Record<string, boolean>;
+};
 
 const ACCENT: Record<Role, string> = {
   admin:    "var(--cc-copper)",
@@ -92,7 +102,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     router.push("/");
   };
 
-  const activeUser = authUser || {
+  const activeUser: ActiveSidebarUser = authUser || {
     role: propRole === "conserje" ? "concierge" : propRole || "admin",
     name: propUser?.name || "Usuario",
     email: "",
@@ -191,13 +201,13 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
 
   const canShowLink = (link: { roles: string[]; feature?: string }) => {
     if (!link.roles.includes(activeUser.role || "resident")) return false;
-    if (link.feature && (activeUser as any).features) {
-      if ((activeUser as any).features[link.feature] === false) return false;
+    if (link.feature && activeUser.features) {
+      if (activeUser.features[link.feature] === false) return false;
     }
     return true;
   };
 
-  const avatarSrc = activeUser.photo || (activeUser as any).avatarUrl;
+  const avatarSrc = activeUser.photo || activeUser.avatarUrl;
   const displayName = activeUser.name
     ? (activeUser.name.includes("@")
         ? (activeUser.name.split("@")[0].split(".")[0].charAt(0).toUpperCase() + activeUser.name.split("@")[0].split(".")[0].slice(1))
@@ -317,8 +327,12 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
 
       {/* Desktop Sidebar */}
       <aside
-        className="relative z-10 hidden lg:flex h-screen w-[240px] flex-col border-r border-subtle bg-surface shrink-0"
-        style={{ background: "var(--cc-paper-warm)" }}
+        className="sticky z-10 hidden lg:flex w-[240px] flex-col border-r border-subtle bg-surface shrink-0"
+        style={{
+          background: "var(--cc-paper-warm)",
+          top: isDemoUser ? "40px" : "0px",
+          height: isDemoUser ? "calc(100vh - 40px)" : "100vh",
+        }}
       >
         {sidebarContent}
       </aside>

@@ -37,6 +37,26 @@ interface Unit {
     number: string;
 }
 
+type PackageRow = {
+    id: string;
+    recipient_unit_id?: string | null;
+    description?: string | null;
+    received_at?: string | null;
+    status?: string | null;
+    picked_up_at?: string | null;
+};
+
+function mapPackageRow(row: PackageRow): PackageItem {
+    return {
+        id: row.id,
+        recipientUnitId: row.recipient_unit_id || "Sin unidad",
+        description: row.description || "Encomienda sin descripcion",
+        receivedAt: row.received_at || new Date().toISOString(),
+        status: row.status || "pending",
+        pickedUpAt: row.picked_up_at || null,
+    };
+}
+
 const demoPackages: PackageItem[] = [
     { id: "demo-p1", recipientUnitId: "1204", description: "Caja Mercado Libre", receivedAt: new Date().toISOString(), status: "pending" },
     { id: "demo-p2", recipientUnitId: "805", description: "Sobre Chilexpress", receivedAt: new Date(Date.now() - 54 * 60000).toISOString(), status: "pending" },
@@ -101,14 +121,7 @@ export default function PackagesPage() {
                 }
 
                 const pkgs = await PackageService.getAll();
-                setPackages((pkgs as any[]).map((p) => ({
-                    id: p.id,
-                    recipientUnitId: p.recipient_unit_id,
-                    description: p.description,
-                    receivedAt: p.received_at,
-                    status: p.status,
-                    pickedUpAt: p.picked_up_at
-                })));
+                setPackages(((pkgs || []) as PackageRow[]).map(mapPackageRow));
 
                 const uns = await WaterService.getUnits();
                 setUnits(uns);
@@ -150,13 +163,7 @@ export default function PackagesPage() {
                 registered_by: user?.id || 'admin'
             });
 
-            const pkg: PackageItem = {
-                id: data.id,
-                recipientUnitId: data.recipient_unit_id,
-                description: data.description,
-                receivedAt: data.received_at,
-                status: data.status,
-            };
+            const pkg = mapPackageRow(data as PackageRow);
 
             setPackages([pkg, ...packages]);
             setIsDialogOpen(false);

@@ -196,7 +196,7 @@ export default function AdminTrainingPage() {
 
     const handleCreate = async () => {
         if (isDemoUser) {
-            toast({ title: "Cuenta Demo", description: demoMessage, variant: "destructive" });
+            toast({ title: "Cuenta showcase", description: demoMessage, variant: "destructive" });
             return;
         }
         setIsSaving(true);
@@ -231,7 +231,7 @@ export default function AdminTrainingPage() {
 
     const handleDelete = async (id: string) => {
         if (isDemoUser) {
-            toast({ title: "Cuenta Demo", description: demoMessage, variant: "destructive" });
+            toast({ title: "Cuenta showcase", description: demoMessage, variant: "destructive" });
             return;
         }
         if (deletingId !== id) {

@@ -7,9 +7,9 @@ import {
     AlertTriangle, History, ArrowRight, Activity,
     Check, Info, Bot, ShieldAlert, RefreshCw, MessageSquare, Send, Filter
 } from "lucide-react";
-import { MaintenanceTask, BuildingAsset, MaintenanceLog } from "@/lib/types";
-import { supabase } from "@/lib/supabase";
+import { MaintenanceTask, BuildingAsset, MaintenanceLog, CocoCase, CocoCaseEvent, ServiceRequestQueueItem } from "@/lib/types";
 import { getApiUrl } from "@/lib/config";
+import { MaintenanceService } from "@/lib/api";
 import {
     Dialog,
     DialogContent
@@ -17,60 +17,18 @@ import {
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
-type CoCoCase = {
-    id: string;
-    title: string;
-    type: string;
-    category: string;
-    urgency: 'baja' | 'media' | 'alta' | 'emergencia';
-    action: string;
-    status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
-    reason: string | null;
-    source_message: string;
-    assistant_reply: string | null;
-    unit_label: string | null;
-    created_at: string;
-};
-
-type CoCoCaseEvent = {
-    id: string;
-    case_id: string;
-    event_type: 'created' | 'status_changed' | 'comment' | 'system';
-    from_status: string | null;
-    to_status: string | null;
-    body: string | null;
-    actor_role: string | null;
-    created_at: string;
-};
-
-type ServiceRequestQueueItem = {
-    id: string;
-    provider_id: string | null;
-    user_id: string;
-    preferred_date: string | null;
-    preferred_time: string | null;
-    description: string;
-    status: 'pending' | 'accepted' | 'completed' | 'cancelled';
-    created_at: string;
-    service_providers?: {
-        name: string;
-        category: string;
-        contact_phone?: string | null;
-    } | null;
-};
-
 export function MaintenanceDashboard() {
     const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
     const [assets, setAssets] = useState<BuildingAsset[]>([]);
     const [logs, setLogs] = useState<MaintenanceLog[]>([]);
-    const [cocoCases, setCocoCases] = useState<CoCoCase[]>([]);
+    const [cocoCases, setCocoCases] = useState<CocoCase[]>([]);
     const [serviceRequests, setServiceRequests] = useState<ServiceRequestQueueItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [serviceUpdatingId, setServiceUpdatingId] = useState<string | null>(null);
     const [caseUpdatingId, setCaseUpdatingId] = useState<string | null>(null);
-    const [selectedCase, setSelectedCase] = useState<CoCoCase | null>(null);
+    const [selectedCase, setSelectedCase] = useState<CocoCase | null>(null);
     const [isCaseDetailOpen, setIsCaseDetailOpen] = useState(false);
-    const [caseEvents, setCaseEvents] = useState<CoCoCaseEvent[]>([]);
+    const [caseEvents, setCaseEvents] = useState<CocoCaseEvent[]>([]);
     const [caseEventsLoading, setCaseEventsLoading] = useState(false);
     const [caseComment, setCaseComment] = useState('');
     const [caseCommentSaving, setCaseCommentSaving] = useState(false);
@@ -84,82 +42,12 @@ export function MaintenanceDashboard() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [tasksRes, assetsRes, logsRes, cocoCasesRes, serviceRequestsRes] = await Promise.all([
-                    supabase.from('maintenance_tasks').select('*'),
-                    supabase.from('building_assets').select('*'),
-                    supabase.from('maintenance_logs').select('*').order('date', { ascending: false }).limit(5),
-                    supabase
-                        .from('coco_cases')
-                        .select('id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at')
-                        .order('created_at', { ascending: false })
-                        .limit(8),
-                    supabase
-                        .from('service_requests')
-                        .select(`
-                            id,
-                            provider_id,
-                            user_id,
-                            preferred_date,
-                            preferred_time,
-                            description,
-                            status,
-                            created_at,
-                            service_providers (
-                                name,
-                                category,
-                                contact_phone
-                            )
-                        `)
-                        .order('created_at', { ascending: false })
-                        .limit(8)
-                ]);
-
-                if (tasksRes.data) {
-                    setTasks(tasksRes.data.map((t: Record<string, any>) => ({
-                        id: t.id,
-                        assetId: t.asset_id || t.assetId,
-                        title: t.title,
-                        description: t.description,
-                        frequency: t.frequency,
-                        dueDate: t.due_date || t.dueDate,
-                        priority: t.priority,
-                        status: t.status
-                    })));
-                }
-
-                if (assetsRes.data) {
-                    setAssets(assetsRes.data.map((dbAsset: Record<string, any>) => ({
-                        id: dbAsset.id,
-                        name: dbAsset.name,
-                        category: dbAsset.category,
-                        brand: dbAsset.brand,
-                        model: dbAsset.model,
-                        installationDate: dbAsset.installation_date || dbAsset.installationDate,
-                        location: dbAsset.location,
-                        healthStatus: dbAsset.health_status || dbAsset.healthStatus,
-                        lastMaintenance: dbAsset.last_maintenance || dbAsset.lastMaintenance,
-                        nextMaintenance: dbAsset.next_maintenance || dbAsset.nextMaintenance,
-                    })));
-                }
-
-                if (logsRes.data) {
-                    setLogs(logsRes.data.map((l: Record<string, any>) => ({
-                        id: l.id,
-                        assetId: l.asset_id || l.assetId,
-                        performedBy: l.performed_by || l.performedBy,
-                        description: l.description,
-                        cost: l.cost,
-                        date: l.date
-                    })));
-                }
-
-                if (cocoCasesRes.data) {
-                    setCocoCases(cocoCasesRes.data as CoCoCase[]);
-                }
-
-                if (serviceRequestsRes.data) {
-                    setServiceRequests(serviceRequestsRes.data as unknown as ServiceRequestQueueItem[]);
-                }
+                const data = await MaintenanceService.getDashboardData();
+                setTasks(data.tasks);
+                setAssets(data.assets);
+                setLogs(data.logs);
+                setCocoCases(data.cases);
+                setServiceRequests(data.serviceRequests);
             } catch (err) {
                 console.error("Error fetching maintenance data:", err);
             } finally {
@@ -172,7 +60,7 @@ export function MaintenanceDashboard() {
 
     const handleCompleteTask = async (taskId: string) => {
         try {
-            await supabase.from('maintenance_tasks').update({ status: 'completed' }).eq('id', taskId);
+            await MaintenanceService.completeTask(taskId);
             setTasks(prev => prev.map(t =>
                 t.id === taskId ? { ...t, status: 'completed' } : t
             ));
@@ -221,7 +109,7 @@ export function MaintenanceDashboard() {
         }
     };
 
-    const handleUpdateCaseStatus = async (caseId: string, status: CoCoCase['status']) => {
+    const handleUpdateCaseStatus = async (caseId: string, status: CocoCase['status']) => {
         setCaseUpdatingId(caseId);
         try {
             const response = await fetch(getApiUrl(`/api/coco/cases/${caseId}/status`), {
@@ -270,7 +158,7 @@ export function MaintenanceDashboard() {
         }
     };
 
-    const openCaseDetail = (item: CoCoCase) => {
+    const openCaseDetail = (item: CocoCase) => {
         setSelectedCase(item);
         setCaseComment('');
         setCaseEvents([]);

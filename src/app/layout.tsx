@@ -1,31 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Hedvig_Letters_Sans, Liter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProviders } from "@/components/ThemeProviders";
-
-
-const hedvigLetters = Hedvig_Letters_Sans({
-  variable: "--font-hedvig",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-  preload: true,
-});
-
-const liter = Liter({
-  variable: "--font-liter",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-  preload: true,
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-  preload: true,
-});
+import { PUBLIC_SITE_URL } from "@/lib/config";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -47,25 +23,25 @@ const structuredData = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://comunidad-connect-eight.vercel.app"),
+  metadataBase: new URL(PUBLIC_SITE_URL),
   title: {
-    default: "Convive Connect — Tu edificio, más humano que nunca",
+    default: "Convive Connect - Tu edificio, mas humano que nunca",
     template: "%s | Convive Connect",
   },
   description:
-    "Plataforma de bienestar comunitario para condominios. Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA en una sola experiencia.",
+    "Plataforma de bienestar comunitario para condominios. Gastos comunes, reservas, conserjeria, votaciones, marketplace y CoCo IA en una sola experiencia.",
   keywords: [
     "condominio",
-    "gestión comunitaria",
+    "gestion comunitaria",
     "comunidad",
     "marketplace",
     "amenidades",
     "gastos comunes",
     "agua",
-    "administración",
+    "administracion",
   ],
   authors: [{ name: "Convive Connect" }],
-  manifest: '/manifest.json',
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -76,16 +52,16 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Convive Connect',
+    statusBarStyle: "black-translucent",
+    title: "Convive Connect",
   },
   openGraph: {
     type: "website",
     locale: "es_CL",
     siteName: "Convive Connect",
-    title: "Convive Connect — Tu edificio, más humano que nunca",
+    title: "Convive Connect - Tu edificio, mas humano que nunca",
     description:
-      "Gastos comunes, reservas, conserjería, votaciones, marketplace y CoCo IA para comunidades residenciales.",
+      "Gastos comunes, reservas, conserjeria, votaciones, marketplace y CoCo IA para comunidades residenciales.",
     images: [
       {
         url: "/icons/icon-512.png",
@@ -127,22 +103,19 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body
-        className={`${hedvigLetters.variable} ${liter.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProviders>
-          {children}
-
-        </ThemeProviders>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').catch(console.error);
-              });
-            }
-          `
-        }} />
+      <body className="antialiased">
+        <ThemeProviders>{children}</ThemeProviders>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(console.error);
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

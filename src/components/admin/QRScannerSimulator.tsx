@@ -9,15 +9,27 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { createClient } from "@/lib/supabase/client";
 import { VisitorService } from "@/lib/services/supabaseServices";
 import { useAuth } from "@/lib/authContext";
 import { VisitorLog } from "@/lib/types";
 
+type ScanResult = {
+    guestName: string;
+    guestDni?: string | null;
+    unitId: string;
+};
+
+type VisitorRegisterResult = {
+    id: string;
+    visitor_name?: string | null;
+    unit_id?: string | null;
+    entry_time?: string | null;
+};
+
 export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: VisitorLog) => void }) {
     const { user } = useAuth();
     const [isScanning, setIsScanning] = useState(false);
-    const [scanResult, setScanResult] = useState<Record<string, any> | null>(null);
+    const [scanResult, setScanResult] = useState<ScanResult | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const { toast } = useToast();
     const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
@@ -50,7 +62,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
 
                     setScanResult(invitation);
                     toast({
-                        title: "Escaneo demo exitoso",
+                        title: "Escaneo showcase exitoso",
                         description: `Acceso concedido a ${invitation.guestName}.`,
                         variant: "success",
                     });
@@ -60,14 +72,7 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                     return;
                 }
 
-                const supabase = createClient();
-                const { data } = await supabase
-                    .from('qr_invitations')
-                    .select('*, units:unit_id (number)')
-                    .eq('status', 'active')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
+                const data = await VisitorService.getLatestActiveInvitationForScan();
 
                 if (data) {
                     const invitation = {
@@ -80,9 +85,10 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                         // Insert into DB
                         const newLog = await VisitorService.register({
                             visitor_name: data.guest_name,
-                            unit_id: data.unit_id,
+                            unit_id: data.unit_id || undefined,
                             registered_by: user?.id || 'admin',
-                        } as Parameters<typeof VisitorService.register>[0]);
+                            is_qr: true,
+                        }) as VisitorRegisterResult;
 
                         // Mark invitation as used (optional, depends on your business rules)
                         // await VisitorService.cancel(data.id); 
@@ -97,9 +103,9 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                         if (onScanSuccess) {
                             onScanSuccess({
                                 id: newLog.id,
-                                visitorName: newLog.visitor_name,
-                                unitId: newLog.unit_id,
-                                entryTime: newLog.entry_time,
+                                visitorName: newLog.visitor_name || invitation.guestName,
+                                unitId: newLog.unit_id || invitation.unitId,
+                                entryTime: newLog.entry_time || new Date().toISOString(),
                                 isQr: true
                             });
                         }

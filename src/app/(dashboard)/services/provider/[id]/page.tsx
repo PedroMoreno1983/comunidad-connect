@@ -12,10 +12,10 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
 
     if (resolvedParams.id.startsWith("demo-provider-created-")) {
         return (
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
                 <Link
                     href="/services"
-                    className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    className="inline-flex items-center gap-2 text-sm font-semibold cc-text-secondary transition-colors hover:text-brand-700"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Volver a Servicios
@@ -37,11 +37,11 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
     const providerReviews = await reviewsService.getByProvider(provider.id);
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
             {/* Back Button */}
             <Link
                 href="/services"
-                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-semibold cc-text-secondary transition-colors hover:text-brand-700"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Servicios

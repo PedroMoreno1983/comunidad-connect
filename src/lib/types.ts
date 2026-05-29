@@ -61,6 +61,38 @@ export interface Conversation {
   lastAt: string;
 }
 
+export interface DirectoryNeighbor {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  role: UserRole;
+  unit_id?: string;
+  unitLabel?: string;
+  email?: string;
+}
+
+export interface ProfileSettings {
+  avatarUrl?: string;
+  phoneNumber: string;
+  whatsappEnabled: boolean;
+  unitNumber: string;
+  unitTower: string;
+}
+
+export interface ResidentHomeAnnouncement {
+  title: string;
+  content: string;
+  category: string;
+  time: string;
+}
+
+export interface ResidentHomeSummary {
+  pendingExpensesCount: number;
+  pendingExpensesAmount: number;
+  bookingsCount: number;
+  recentAnnouncement: ResidentHomeAnnouncement | null;
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;
@@ -174,6 +206,19 @@ export interface ExpenseRecord {
   paidAt?: string;
 }
 
+export interface ResidentFinanceExpense {
+  id: string;
+  unit_id: string;
+  month: string;
+  amount: number;
+  status: 'pending' | 'paid' | 'overdue';
+  due_date: string;
+  paid_at?: string;
+  units?: {
+    number: string;
+  };
+}
+
 export interface CommunityFinance {
   totalRevenue: number;
   totalExpenses: number;
@@ -219,6 +264,16 @@ export interface Poll {
   createdAt: string;
 }
 
+export interface PollWithVoteState extends Poll {
+  hasVotedInit?: boolean;
+  votedOptionId?: string | null;
+}
+
+export interface PollVoteRecord {
+  poll_id: string;
+  option_id: string;
+}
+
 export interface Vote {
   id: string;
   pollId: string;
@@ -260,6 +315,71 @@ export interface MaintenanceLog {
   cost: number;
   date: string;
   attachments?: string[];
+}
+
+export interface MaintenanceServiceRow {
+  id: string;
+  service_type?: string | null;
+  category?: string | null;
+  description?: string | null;
+  status?: string | null;
+  scheduled_date?: string | null;
+  preferred_date?: string | null;
+  created_at?: string | null;
+}
+
+export interface CocoCase {
+  id: string;
+  title: string;
+  type?: string | null;
+  category: string;
+  urgency: 'baja' | 'media' | 'alta' | 'emergencia';
+  action?: string | null;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+  reason?: string | null;
+  source_message: string;
+  assistant_reply?: string | null;
+  unit_label?: string | null;
+  created_at: string;
+}
+
+export interface CocoCaseEvent {
+  id: string;
+  case_id: string;
+  event_type: 'created' | 'status_changed' | 'comment' | 'system';
+  from_status: string | null;
+  to_status: string | null;
+  body: string | null;
+  actor_role: string | null;
+  created_at: string;
+}
+
+export interface ServiceRequestQueueItem {
+  id: string;
+  provider_id: string | null;
+  user_id: string;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  description: string;
+  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  created_at: string;
+  service_providers?: {
+    name: string;
+    category: string;
+    contact_phone?: string | null;
+  } | null;
+}
+
+export interface MaintenanceAdminOverview {
+  services: MaintenanceServiceRow[];
+  cases: CocoCase[];
+  assets: BuildingAsset[];
+  logs: MaintenanceLog[];
+}
+
+export interface MaintenanceDashboardData extends MaintenanceAdminOverview {
+  tasks: MaintenanceTask[];
+  serviceRequests: ServiceRequestQueueItem[];
 }
 
 export interface WaterReading {

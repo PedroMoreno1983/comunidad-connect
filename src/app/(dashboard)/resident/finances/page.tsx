@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
-import { createClient } from "@/lib/supabase/client";
+import { ResidentFinanceService } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, History, Home } from "lucide-react";
@@ -12,25 +12,13 @@ import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { getDemoResidentFees, markDemoCondoFeePaid } from "@/lib/services/demoFinanceStorage";
-
-interface Expense {
-    id: string;
-    unit_id: string;
-    month: string;
-    amount: number;
-    status: 'pending' | 'paid' | 'overdue';
-    due_date: string;
-    paid_at?: string;
-    units?: {
-        number: string;
-    };
-}
+import type { ResidentFinanceExpense } from "@/lib/types";
 
 export default function FinancesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenses, setExpenses] = useState<ResidentFinanceExpense[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -55,31 +43,7 @@ export default function FinancesPage() {
                 return;
             }
 
-            const supabase = createClient();
-            let targetUnitId = user.unitId;
-
-            if (!targetUnitId) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('unit_id')
-                    .eq('id', user.id)
-                    .single();
-                targetUnitId = profile?.unit_id;
-            }
-
-            if (!targetUnitId) {
-                setExpenses([]);
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from('expenses')
-                .select('*')
-                .eq('unit_id', targetUnitId)
-                .order('month', { ascending: false });
-
-            if (error) throw error;
-            setExpenses(data || []);
+            setExpenses(await ResidentFinanceService.getExpensesForResident(user));
 
         } catch (error) {
             console.error(error);
@@ -104,7 +68,7 @@ export default function FinancesPage() {
         loadFinances();
     }, [loadFinances, searchParams, toast]);
 
-    const handlePayHaulmer = async (expense: Expense) => {
+    const handlePayHaulmer = async (expense: ResidentFinanceExpense) => {
         setProcessingId(expense.id);
         try {
             if (user?.email.toLowerCase().endsWith("@demo.com")) {

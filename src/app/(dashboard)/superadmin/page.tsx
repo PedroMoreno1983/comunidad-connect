@@ -237,7 +237,7 @@ export default function SuperAdminDashboard() {
                     Para registrar un nuevo administrador y su condominio, envíales este link:
                     <br/><br/>
                     <code className="bg-surface px-3 py-2 rounded-lg font-mono font-bold select-all tracking-wider text-blue-600 dark:text-blue-400 shadow-sm">
-                        https://convive.app/admin-onboarding
+                        https://conviveconnect.com/admin-onboarding
                     </code>
                     <br/><br/>
                     Una vez que se registren allí, aparecerán en esta lista y podrás asignarles un plan.

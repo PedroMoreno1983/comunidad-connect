@@ -4,7 +4,6 @@
    Drop this at: src/app/tokens.css
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 
 :root {
   /* ─── Surfaces — warm ivory & deep ink ──────────────────── */
@@ -28,6 +27,16 @@
   --cc-copper-soft:   #D9A691;
   --cc-copper-tint:   rgba(181, 102, 78, 0.08);
   --cc-copper-bg:     #F2DDD0;
+  --cc-brand-50:      #F8EDE7;
+  --cc-brand-100:     #F2DDD0;
+  --cc-brand-200:     #E5BDAA;
+  --cc-brand-300:     #D79B81;
+  --cc-brand-400:     #C9795E;
+  --cc-brand-500:     #B5664E;
+  --cc-brand-600:     #9F563F;
+  --cc-brand-700:     #8E4A35;
+  --cc-brand-800:     #6E3526;
+  --cc-brand-900:     #452016;
 
   /* ─── Role accents — quiet ──────────────────────────────── */
   --cc-sage:          #6E8268;
@@ -70,10 +79,140 @@
   --cc-shadow-md:   0 1px 0 rgba(26,22,17,0.04), 0 8px 24px -10px rgba(26,22,17,0.12);
   --cc-shadow-lg:   0 1px 0 rgba(26,22,17,0.04), 0 24px 48px -28px rgba(26,22,17,0.18);
   --cc-shadow-xl:   0 1px 0 rgba(26,22,17,0.04), 0 40px 80px -32px rgba(26,22,17,0.30);
+  --cc-glow-brand:  0 10px 30px -14px rgba(181, 102, 78, 0.65);
+  --cc-ring-default: 0 0 0 4px rgba(181, 102, 78, 0.18);
+  --cc-duration-fast: 140ms;
+  --cc-duration-normal: 220ms;
+  --cc-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --cc-leading-normal: 1.5;
+  --cc-tracking-tight: 0;
 
   /* ─── Motion ────────────────────────────────────────────── */
   --cc-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
   --cc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Compatibility Aliases (Old Design System) ─────────── */
+  --cc-bg-canvas:        var(--cc-ivory);
+  --cc-bg-surface:       var(--cc-paper);
+  --cc-bg-elevated:      var(--cc-paper-warm);
+  --cc-bg-overlay:       var(--cc-ivory-soft);
+  --cc-bg-inverted:      var(--cc-ink);
+
+  --cc-text-primary:     var(--cc-ink);
+  --cc-text-secondary:   var(--cc-ink-muted);
+  --cc-text-tertiary:    var(--cc-ink-tertiary);
+  --cc-text-disabled:    var(--cc-ink-faint);
+  --cc-text-inverted:    var(--cc-ivory);
+  --cc-text-link:        var(--cc-copper);
+
+  --cc-border-subtle:    rgba(26, 22, 17, 0.04);
+  --cc-border-default:   var(--cc-line);
+  --cc-border-strong:    var(--cc-line-strong);
+  --cc-border-focus:     var(--cc-copper);
+
+  /* ─── Role Accents — Admin (Copper/Brand) ──────────────── */
+  --cc-role-admin-fg:    var(--cc-copper);
+  --cc-role-admin-bg:    var(--cc-copper-tint);
+  --cc-role-admin-border: rgba(181, 102, 78, 0.20);
+
+  /* ─── Role Accents — Conserje (Amber) ──────────────────── */
+  --cc-role-conserje-fg:     #C99A4A;
+  --cc-role-conserje-bg:     var(--cc-amber-tint);
+  --cc-role-conserje-border: rgba(201, 154, 74, 0.20);
+
+  /* ─── Role Accents — Residente (Sage) ──────────────────── */
+  --cc-role-residente-fg:     var(--cc-sage);
+  --cc-role-residente-bg:     var(--cc-sage-tint);
+  --cc-role-residente-border: rgba(110, 130, 104, 0.20);
+
+  /* ─── Semantic Mappings (Success/Warning/Danger/Info) ──── */
+  --cc-success-fg:     var(--cc-sage);
+  --cc-success-bg:     var(--cc-sage-tint);
+  --cc-success-border: rgba(110, 130, 104, 0.20);
+
+  --cc-warning-fg:     #C99A4A;
+  --cc-warning-bg:     var(--cc-amber-tint);
+  --cc-warning-border: rgba(201, 154, 74, 0.20);
+
+  --cc-danger-fg:      var(--cc-rose);
+  --cc-danger-bg:      var(--cc-rose-tint);
+  --cc-danger-border:  rgba(181, 82, 78, 0.20);
+
+  --cc-info-fg:        var(--cc-plum);
+  --cc-info-bg:        var(--cc-plum-tint);
+  --cc-info-border:    rgba(92, 72, 104, 0.20);
+}
+
+.dark {
+  /* ─── Surfaces — dark warm tones ────────────────────────── */
+  --cc-ivory:            #0C0A08; /* Deep dark canvas */
+  --cc-ivory-soft:       #16120F; /* Slightly lighter canvas */
+  --cc-paper:            #15110E; /* Dark card surface */
+  --cc-paper-warm:       #221A15; /* Dark elevated surface */
+  --cc-ink:              #FBF8F3; /* Primary light text */
+  --cc-ink-soft:         #EDE6D9; /* Soft light text */
+  --cc-ink-muted:        #C8BFB6; /* Muted text */
+  --cc-ink-tertiary:     #8A8580; /* Tertiary text */
+  --cc-ink-faint:        #5F5A54; /* Disabled text */
+
+  /* ─── Borders & lines ──────────────────────────────────── */
+  --cc-line:             rgba(251, 248, 243, 0.08);
+  --cc-line-strong:      rgba(251, 248, 243, 0.16);
+
+  /* ─── Accents & Tints for dark mode ────────────────────── */
+  --cc-copper-tint:      rgba(181, 102, 78, 0.15);
+  --cc-brand-50:         #2B1B15;
+  --cc-brand-100:        #3B241B;
+  --cc-brand-200:        #593629;
+  --cc-brand-300:        #7B4936;
+  --cc-brand-400:        #A65D45;
+  --cc-brand-500:        #D0876B;
+  --cc-brand-600:        #E0A38C;
+  --cc-brand-700:        #EABCA9;
+  --cc-brand-800:        #F3D7CB;
+  --cc-brand-900:        #FAEEE8;
+  --cc-sage-tint:        rgba(110, 130, 104, 0.18);
+  --cc-amber-tint:       rgba(201, 154, 74, 0.18);
+  --cc-rose-tint:        rgba(181, 82, 78, 0.18);
+  --cc-plum-tint:        rgba(92, 72, 104, 0.18);
+
+  /* ─── Shadows for dark mode ────────────────────────────── */
+  --cc-shadow-sm:        0 1px 0 rgba(0,0,0,0.2);
+  --cc-shadow-md:        0 1px 0 rgba(0,0,0,0.2), 0 8px 24px -10px rgba(0,0,0,0.5);
+  --cc-shadow-lg:        0 1px 0 rgba(0,0,0,0.2), 0 24px 48px -28px rgba(0,0,0,0.6);
+  --cc-shadow-xl:        0 1px 0 rgba(0,0,0,0.2), 0 40px 80px -32px rgba(0,0,0,0.8);
+
+  /* ─── Role Accents — Admin (Copper/Brand) ──────────────── */
+  --cc-role-admin-fg:    var(--cc-copper-soft);
+  --cc-role-admin-bg:    rgba(217, 166, 145, 0.15);
+  --cc-role-admin-border: rgba(217, 166, 145, 0.30);
+
+  /* ─── Role Accents — Conserje (Amber) ──────────────────── */
+  --cc-role-conserje-fg:     var(--cc-amber-soft);
+  --cc-role-conserje-bg:     rgba(226, 200, 146, 0.15);
+  --cc-role-conserje-border: rgba(226, 200, 146, 0.30);
+
+  /* ─── Role Accents — Residente (Sage) ──────────────────── */
+  --cc-role-residente-fg:     var(--cc-sage-soft);
+  --cc-role-residente-bg:     rgba(183, 194, 177, 0.15);
+  --cc-role-residente-border: rgba(183, 194, 177, 0.30);
+
+  /* ─── Semantic Mappings (Success/Warning/Danger/Info) ──── */
+  --cc-success-fg:     var(--cc-sage-soft);
+  --cc-success-bg:     rgba(183, 194, 177, 0.15);
+  --cc-success-border: rgba(183, 194, 177, 0.30);
+
+  --cc-warning-fg:     var(--cc-amber-soft);
+  --cc-warning-bg:     rgba(226, 200, 146, 0.15);
+  --cc-warning-border: rgba(226, 200, 146, 0.30);
+
+  --cc-danger-fg:      #E89A8F;
+  --cc-danger-bg:      rgba(232, 154, 143, 0.15);
+  --cc-danger-border:  rgba(232, 154, 143, 0.30);
+
+  --cc-info-fg:        #AF9EC3;
+  --cc-info-bg:        rgba(175, 158, 195, 0.15);
+  --cc-info-border:    rgba(175, 158, 195, 0.30);
 }
 
 /* ============================================================

@@ -47,6 +47,28 @@ type DeliverySummary = {
     whatsappConfigured: boolean;
 };
 
+type PollRecordOption = {
+    id?: string;
+    text?: string | null;
+    label?: string | null;
+    votes?: number | string | null;
+};
+
+type PollRecord = {
+    id: string;
+    title: string;
+    description?: string | null;
+    options?: PollRecordOption[] | null;
+    poll_options?: PollRecordOption[] | null;
+    endDate?: string | null;
+    end_date?: string | null;
+    totalVotes?: number | string | null;
+    status?: Poll["status"] | null;
+    category?: Poll["category"] | null;
+    createdAt?: string | null;
+    created_at?: string | null;
+};
+
 const demoPolls: Poll[] = [
     {
         id: "demo-admin-poll-1",
@@ -99,9 +121,9 @@ function defaultForm(): PollFormState {
     };
 }
 
-function mapPollRecord(record: any): Poll {
+function mapPollRecord(record: PollRecord): Poll {
     const rawOptions = record.options || record.poll_options || [];
-    const options = rawOptions.map((option: any, index: number) => ({
+    const options = rawOptions.map((option, index: number) => ({
         id: option.id || `${record.id}-option-${index}`,
         text: option.text || option.label || `Opcion ${index + 1}`,
         votes: Number(option.votes || 0),
@@ -111,7 +133,7 @@ function mapPollRecord(record: any): Poll {
         title: record.title,
         description: record.description || "",
         options,
-        endDate: record.endDate || record.end_date,
+        endDate: record.endDate || record.end_date || new Date().toISOString(),
         totalVotes: Number(record.totalVotes ?? options.reduce((sum: number, option: { votes: number }) => sum + option.votes, 0)),
         status: record.status || "active",
         category: record.category || "community",
@@ -150,7 +172,7 @@ function saveDemoChatPollAnnouncement(poll: Poll) {
             "Vota en Convive Connect > Votaciones.",
         ].join("\n"),
         created_at: new Date().toISOString(),
-        profiles: { name: "Admin Demo" },
+        profiles: { name: "Admin Showcase" },
     };
     window.localStorage.setItem(demoChatStorageKey, JSON.stringify([message, ...existing].slice(0, 20)));
 }
@@ -177,7 +199,7 @@ export function PollManager() {
                 }
 
                 const data = await PollService.getAll();
-                setPolls((data || []).map(mapPollRecord));
+                setPolls(((data || []) as PollRecord[]).map(mapPollRecord));
             } catch (err) {
                 console.error("Error loading polls:", err);
                 setPolls([]);
@@ -280,7 +302,7 @@ export function PollManager() {
                     whatsappConfigured: true,
                 });
                 resetForm();
-                toast({ title: "Votacion demo publicada", description: "Quedo visible en el gestor y el envio fue simulado.", variant: "success" });
+                toast({ title: "Votación showcase publicada", description: "Quedó visible en el gestor y el envío fue preparado.", variant: "success" });
                 return;
             }
 

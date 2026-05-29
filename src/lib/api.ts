@@ -1,5 +1,23 @@
 import { supabase } from './supabase';
-import { Unit, WaterReading, MarketplaceItem } from './types';
+import {
+    BuildingAsset,
+    CocoCase,
+    MaintenanceAdminOverview,
+    MaintenanceDashboardData,
+    MaintenanceLog,
+    MaintenanceServiceRow,
+    MaintenanceTask,
+    DirectoryNeighbor,
+    MarketplaceItem,
+    ProfileSettings,
+    ResidentHomeSummary,
+    ResidentFinanceExpense,
+    ServiceRequestQueueItem,
+    Unit,
+    User,
+    WaterReading,
+} from './types';
+import { isDemoEmail } from './runtimeMode';
 
 async function sendBookingConfirmation(payload: {
     to: string;
@@ -15,6 +33,586 @@ async function sendBookingConfirmation(payload: {
         body: JSON.stringify(payload),
     });
 }
+
+function isUuid(value?: string | null) {
+    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+}
+
+function getProfileName(profile: Record<string, unknown>) {
+    const rawName = String(profile.name || profile.full_name || "").trim();
+    const email = String(profile.email || "").trim();
+    if (rawName && rawName !== email) return rawName;
+    if (email) return email.split("@")[0];
+    return "Vecino";
+}
+
+function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, unknown>) {
+    const profileDepartment = String(profile.department_number || "").trim();
+    if (profileDepartment) return profileDepartment;
+
+    const unitNumber = String(unit?.number || unit?.unit_number || unit?.department_number || "").trim();
+    const tower = String(unit?.tower || "").trim();
+    if (unitNumber && tower) return `${tower}-${unitNumber}`;
+    if (unitNumber) return unitNumber;
+
+    const rawUnitId = String(profile.unit_id || "").trim();
+    return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
+}
+
+const demoDirectoryNeighbors: DirectoryNeighbor[] = [
+    {
+        id: "demo-resident-marta",
+        name: "Marta Rojas",
+        role: "resident",
+        unit_id: "demo-unit-805",
+        unitLabel: "805",
+        email: "marta.rojas@demo.com",
+    },
+    {
+        id: "demo-resident-diego",
+        name: "Diego Salinas",
+        role: "resident",
+        unit_id: "demo-unit-1204",
+        unitLabel: "1204",
+        email: "diego.salinas@demo.com",
+    },
+    {
+        id: "demo-concierge-turno",
+        name: "Conserje Turno",
+        role: "concierge",
+        unitLabel: "Acceso principal",
+        email: "conserjeria@demo.com",
+    },
+    {
+        id: "demo-admin-community",
+        name: "Administración Comunidad",
+        role: "admin",
+        unitLabel: "Oficina admin",
+        email: "admin@demo.com",
+    },
+];
+
+const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
+
+function getDemoOnboardedNeighbors(): DirectoryNeighbor[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const rows = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as Array<{
+            id?: string;
+            name?: string;
+            unit_id?: string;
+            email?: string;
+        }>;
+
+        return rows
+            .filter(row => String(row.name || "").trim() && String(row.unit_id || "").trim())
+            .map((row, index) => ({
+                id: row.id || `demo-onboarded-neighbor-${index}`,
+                name: String(row.name || "Vecino").trim(),
+                role: "resident",
+                unit_id: `demo-onboarded-unit-${String(row.unit_id || "").trim()}`,
+                unitLabel: String(row.unit_id || "").trim(),
+                email: String(row.email || "").trim() || undefined,
+            }));
+    } catch {
+        return [];
+    }
+}
+
+// ==========================================
+// Directory API
+// ==========================================
+
+export const DirectoryService = {
+    async getNeighbors(user: Pick<User, "id" | "email">): Promise<DirectoryNeighbor[]> {
+        const isDemoUser = user.email.toLowerCase().endsWith("@demo.com");
+
+        if (isDemoUser) {
+            const byKey = new Map<string, DirectoryNeighbor>();
+            [...getDemoOnboardedNeighbors(), ...demoDirectoryNeighbors].forEach(neighbor => {
+                const key = neighbor.email || `${neighbor.role}-${neighbor.unitLabel || neighbor.id}`;
+                if (!byKey.has(key)) byKey.set(key, neighbor);
+            });
+            return Array.from(byKey.values()).filter(neighbor => neighbor.id !== user.id);
+        }
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .neq('id', user.id)
+            .order('name');
+
+        if (error) throw error;
+
+        const profiles = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+        const unitIds = Array.from(new Set(
+            profiles
+                .map(profile => String(profile.unit_id || ""))
+                .filter(unitId => isUuid(unitId))
+        ));
+
+        let unitById = new Map<string, Record<string, unknown>>();
+        if (unitIds.length > 0) {
+            const { data: unitsData, error: unitsError } = await supabase
+                .from('units')
+                .select('*')
+                .in('id', unitIds);
+
+            if (!unitsError && Array.isArray(unitsData)) {
+                unitById = new Map((unitsData as Array<Record<string, unknown>>).map(unit => [String(unit.id), unit]));
+            }
+        }
+
+        return profiles.map(profile => {
+            const unitId = String(profile.unit_id || "");
+            const unit = unitById.get(unitId);
+
+            return {
+                id: String(profile.id),
+                name: getProfileName(profile),
+                avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : undefined,
+                role: (profile.role === "admin" || profile.role === "concierge" ? profile.role : "resident") as DirectoryNeighbor["role"],
+                unit_id: unitId,
+                unitLabel: getUnitLabel(profile, unit),
+                email: typeof profile.email === "string" ? profile.email : undefined,
+            };
+        });
+    },
+};
+
+async function updateUnitSafely(unitId: string, values: Record<string, unknown>) {
+    const { error } = await supabase.from('units').update(values).eq('id', unitId);
+    if (!error) return;
+
+    if ('tower' in values) {
+        const fallbackValues = { ...values };
+        delete fallbackValues.tower;
+        const fallback = await supabase.from('units').update(fallbackValues).eq('id', unitId);
+        if (!fallback.error) return;
+        throw fallback.error;
+    }
+
+    throw error;
+}
+
+async function insertUnitSafely(values: Record<string, unknown>) {
+    const { error } = await supabase.from('units').insert(values);
+    if (!error) return;
+
+    if ('tower' in values) {
+        const fallbackValues = { ...values };
+        delete fallbackValues.tower;
+        const fallback = await supabase.from('units').insert(fallbackValues);
+        if (!fallback.error) return;
+        throw fallback.error;
+    }
+
+    throw error;
+}
+
+// ==========================================
+// Profile API
+// ==========================================
+
+export const ProfileService = {
+    async getSettings(userId: string): Promise<ProfileSettings> {
+        const { data } = await supabase
+            .from('profiles')
+            .select('name, avatar_url, phone_number, whatsapp_enabled')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const { data: unitData } = await supabase
+            .from('units')
+            .select('*')
+            .eq('owner_id', userId)
+            .maybeSingle();
+
+        const unit = unitData as Record<string, string | null | undefined> | null;
+
+        return {
+            avatarUrl: typeof data?.avatar_url === "string" ? data.avatar_url : undefined,
+            phoneNumber: typeof data?.phone_number === "string" ? data.phone_number.replace('+56', '') : "",
+            whatsappEnabled: Boolean(data?.whatsapp_enabled),
+            unitNumber: unit?.number || unit?.unit_number || "",
+            unitTower: unit?.tower || "",
+        };
+    },
+
+    async uploadAvatar(userId: string, file: File): Promise<string> {
+        const ext = file.name.split('.').pop();
+        const path = `avatars/${userId}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(path, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(path);
+
+        const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
+        if (error) throw error;
+
+        return publicUrl;
+    },
+
+    async saveProfile(userId: string, values: { fullName: string; unitNumber: string; unitTower: string }) {
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ name: values.fullName.trim() })
+            .eq('id', userId);
+
+        if (profileError) throw profileError;
+
+        const unitNumber = values.unitNumber.trim();
+        if (!unitNumber) return;
+
+        const { data: existingUnit } = await supabase
+            .from('units')
+            .select('id')
+            .eq('owner_id', userId)
+            .maybeSingle();
+
+        if (existingUnit) {
+            await updateUnitSafely(existingUnit.id, { number: unitNumber, tower: values.unitTower.trim() });
+            return;
+        }
+
+        const { data: foundUnit } = await supabase
+            .from('units')
+            .select('id')
+            .eq('number', unitNumber)
+            .is('owner_id', null)
+            .maybeSingle();
+
+        if (foundUnit) {
+            await updateUnitSafely(foundUnit.id, { owner_id: userId, tower: values.unitTower.trim() });
+            return;
+        }
+
+        await insertUnitSafely({
+            number: unitNumber,
+            tower: values.unitTower.trim(),
+            owner_id: userId,
+            floor: parseInt(unitNumber.substring(0, 1)) || 1,
+        });
+    },
+
+    async sendPasswordReset(email: string, redirectTo: string) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) throw error;
+    },
+
+    async saveWhatsapp(userId: string, phoneNumber: string, whatsappEnabled: boolean) {
+        const { error } = await supabase.from('profiles').update({
+            phone_number: `+56${phoneNumber}`,
+            whatsapp_enabled: whatsappEnabled,
+        }).eq('id', userId);
+
+        if (error) throw error;
+    },
+};
+
+// ==========================================
+// Resident Home API
+// ==========================================
+
+const demoResidentHomeSummary: ResidentHomeSummary = {
+    pendingExpensesCount: 1,
+    pendingExpensesAmount: 187420,
+    bookingsCount: 1,
+    recentAnnouncement: {
+        title: "Asamblea ordinaria de copropietarios",
+        content: "Sabado 30 de mayo, 19:00 - Salon comunitario.",
+        category: "Asamblea",
+        time: "hace 2h",
+    },
+};
+
+function getAnnouncementCategory(priority: unknown): string {
+    return priority === "alert" ? "Urgente" : "Aviso";
+}
+
+export const HomeService = {
+    async getResidentSummary(user: Pick<User, "id" | "email" | "unitId" | "communityId">): Promise<ResidentHomeSummary> {
+        if (isDemoEmail(user.email)) return demoResidentHomeSummary;
+
+        let expensesQuery = supabase
+            .from('expenses')
+            .select('amount')
+            .eq('status', 'pending');
+
+        if (user.unitId) {
+            expensesQuery = expensesQuery.eq('unit_id', user.unitId);
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        let bookingsQuery = supabase
+            .from('bookings')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gte('date', today);
+
+        if (user.unitId) {
+            bookingsQuery = bookingsQuery.eq('unit_id', user.unitId);
+        }
+
+        let announcementsQuery = supabase
+            .from('announcements')
+            .select('title, content, priority, created_at')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (user.communityId) {
+            announcementsQuery = announcementsQuery.eq('community_id', user.communityId);
+        }
+
+        const [expensesResult, bookingsResult, announcementResult] = await Promise.all([
+            expensesQuery,
+            bookingsQuery,
+            announcementsQuery,
+        ]);
+
+        if (expensesResult.error) throw expensesResult.error;
+        if (bookingsResult.error) throw bookingsResult.error;
+        if (announcementResult.error) throw announcementResult.error;
+
+        const expenses = (expensesResult.data || []) as Array<{ amount: number | string | null }>;
+        const pendingExpensesAmount = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const announcement = announcementResult.data as Record<string, unknown> | null;
+
+        return {
+            pendingExpensesCount: expenses.length,
+            pendingExpensesAmount,
+            bookingsCount: bookingsResult.count || 0,
+            recentAnnouncement: announcement ? {
+                title: String(announcement.title || "Aviso de la comunidad"),
+                content: String(announcement.content || ""),
+                category: getAnnouncementCategory(announcement.priority),
+                time: announcement.created_at
+                    ? new Date(String(announcement.created_at)).toLocaleDateString('es-CL')
+                    : "",
+            } : null,
+        };
+    },
+};
+
+// ==========================================
+// Maintenance / Admin API
+// ==========================================
+
+type DbRow = Record<string, unknown>;
+
+function textValue(value: unknown, fallback = ""): string {
+    return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function nullableText(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value : null;
+}
+
+function mapBuildingAsset(row: DbRow): BuildingAsset {
+    return {
+        id: textValue(row.id),
+        name: textValue(row.name, "Activo tecnico"),
+        category: (textValue(row.category, "other") as BuildingAsset["category"]),
+        brand: textValue(row.brand),
+        model: textValue(row.model),
+        installationDate: textValue(row.installation_date || row.installationDate, new Date().toISOString()),
+        location: textValue(row.location, "Sin ubicacion"),
+        healthStatus: (textValue(row.health_status || row.healthStatus, "optimal") as BuildingAsset["healthStatus"]),
+        lastMaintenance: textValue(row.last_maintenance || row.lastMaintenance, new Date().toISOString()),
+        nextMaintenance: textValue(row.next_maintenance || row.nextMaintenance, new Date().toISOString()),
+    };
+}
+
+function mapMaintenanceLog(row: DbRow): MaintenanceLog {
+    return {
+        id: textValue(row.id),
+        assetId: textValue(row.asset_id || row.assetId),
+        taskId: nullableText(row.task_id || row.taskId) || undefined,
+        performedBy: textValue(row.performed_by || row.performedBy, "Administracion"),
+        description: textValue(row.description, "Registro de mantenimiento"),
+        cost: Number(row.cost || 0),
+        date: textValue(row.date, new Date().toISOString()),
+    };
+}
+
+function mapMaintenanceTask(row: DbRow): MaintenanceTask {
+    return {
+        id: textValue(row.id),
+        assetId: textValue(row.asset_id || row.assetId),
+        title: textValue(row.title, "Tarea de mantenimiento"),
+        description: textValue(row.description),
+        frequency: (textValue(row.frequency, "monthly") as MaintenanceTask["frequency"]),
+        dueDate: textValue(row.due_date || row.dueDate, new Date().toISOString()),
+        priority: (textValue(row.priority, "medium") as MaintenanceTask["priority"]),
+        status: (textValue(row.status, "pending") as MaintenanceTask["status"]),
+    };
+}
+
+function mapMaintenanceServiceRow(row: DbRow): MaintenanceServiceRow {
+    return {
+        id: textValue(row.id),
+        service_type: nullableText(row.service_type),
+        category: nullableText(row.category),
+        description: nullableText(row.description),
+        status: nullableText(row.status),
+        scheduled_date: nullableText(row.scheduled_date),
+        preferred_date: nullableText(row.preferred_date),
+        created_at: nullableText(row.created_at),
+    };
+}
+
+function mapCocoCase(row: DbRow): CocoCase {
+    return {
+        id: textValue(row.id),
+        title: textValue(row.title, "Caso operativo"),
+        type: nullableText(row.type),
+        category: textValue(row.category, "general"),
+        urgency: (textValue(row.urgency, "media") as CocoCase["urgency"]),
+        action: nullableText(row.action),
+        status: (textValue(row.status, "open") as CocoCase["status"]),
+        reason: nullableText(row.reason),
+        source_message: textValue(row.source_message),
+        assistant_reply: nullableText(row.assistant_reply),
+        unit_label: nullableText(row.unit_label),
+        created_at: textValue(row.created_at, new Date().toISOString()),
+    };
+}
+
+function mapServiceRequestQueueItem(row: DbRow): ServiceRequestQueueItem {
+    const provider = row.service_providers as DbRow | null | undefined;
+    return {
+        id: textValue(row.id),
+        provider_id: nullableText(row.provider_id),
+        user_id: textValue(row.user_id),
+        preferred_date: nullableText(row.preferred_date),
+        preferred_time: nullableText(row.preferred_time),
+        description: textValue(row.description, "Solicitud tecnica"),
+        status: (textValue(row.status, "pending") as ServiceRequestQueueItem["status"]),
+        created_at: textValue(row.created_at, new Date().toISOString()),
+        service_providers: provider ? {
+            name: textValue(provider.name, "Proveedor"),
+            category: textValue(provider.category, "general"),
+            contact_phone: nullableText(provider.contact_phone),
+        } : null,
+    };
+}
+
+export const MaintenanceService = {
+    async getAdminOverview(): Promise<MaintenanceAdminOverview> {
+        const [serviceRes, caseRes, assetRes, logRes] = await Promise.all([
+            supabase.from("service_requests").select("*").order("created_at", { ascending: false }).limit(12),
+            supabase.from("coco_cases").select("id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at").order("created_at", { ascending: false }).limit(12),
+            supabase.from("building_assets").select("id, name, category, brand, model, location, health_status, last_maintenance, next_maintenance, installation_date").order("name", { ascending: true }),
+            supabase.from("maintenance_logs").select("id, asset_id, task_id, description, cost, date, performed_by").order("date", { ascending: false }).limit(8),
+        ]);
+
+        if (serviceRes.error) throw serviceRes.error;
+        if (caseRes.error) throw caseRes.error;
+        if (assetRes.error) throw assetRes.error;
+        if (logRes.error) throw logRes.error;
+
+        return {
+            services: ((serviceRes.data || []) as DbRow[]).map(mapMaintenanceServiceRow),
+            cases: ((caseRes.data || []) as DbRow[]).map(mapCocoCase),
+            assets: ((assetRes.data || []) as DbRow[]).map(mapBuildingAsset),
+            logs: ((logRes.data || []) as DbRow[]).map(mapMaintenanceLog),
+        };
+    },
+
+    async getDashboardData(): Promise<MaintenanceDashboardData> {
+        const [tasksRes, overview, serviceRequestsRes] = await Promise.all([
+            supabase.from('maintenance_tasks').select('*'),
+            this.getAdminOverview(),
+            supabase
+                .from('service_requests')
+                .select(`
+                    id,
+                    provider_id,
+                    user_id,
+                    preferred_date,
+                    preferred_time,
+                    description,
+                    status,
+                    created_at,
+                    service_providers (
+                        name,
+                        category,
+                        contact_phone
+                    )
+                `)
+                .order('created_at', { ascending: false })
+                .limit(8),
+        ]);
+
+        if (tasksRes.error) throw tasksRes.error;
+        if (serviceRequestsRes.error) throw serviceRequestsRes.error;
+
+        return {
+            ...overview,
+            tasks: ((tasksRes.data || []) as DbRow[]).map(mapMaintenanceTask),
+            serviceRequests: ((serviceRequestsRes.data || []) as DbRow[]).map(mapServiceRequestQueueItem),
+        };
+    },
+
+    async getAssets(): Promise<BuildingAsset[]> {
+        const { data, error } = await supabase
+            .from('building_assets')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+        return ((data || []) as DbRow[]).map(mapBuildingAsset);
+    },
+
+    async getAssetLogs(assetId: string): Promise<MaintenanceLog[]> {
+        const { data, error } = await supabase
+            .from('maintenance_logs')
+            .select('*')
+            .eq('asset_id', assetId)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+        return ((data || []) as DbRow[]).map(mapMaintenanceLog);
+    },
+
+    async createServiceTask(payload: {
+        requesterId?: string;
+        unitId?: string;
+        serviceType: string;
+        title: string;
+        description: string;
+        scheduledDate?: string;
+    }) {
+        const { error } = await supabase.from("service_requests").insert({
+            requester_id: payload.requesterId,
+            unit_id: payload.unitId || "administracion",
+            service_type: payload.serviceType,
+            description: `[${payload.title}] ${payload.description}`,
+            status: "pending",
+            scheduled_date: payload.scheduledDate || null,
+            scheduled_time: null,
+        });
+
+        if (error) throw error;
+    },
+
+    async closeService(id: string) {
+        const { error } = await supabase.from("service_requests").update({ status: "completed" }).eq("id", id);
+        if (error) throw error;
+    },
+
+    async completeTask(taskId: string) {
+        const { error } = await supabase.from('maintenance_tasks').update({ status: 'completed' }).eq('id', taskId);
+        if (error) throw error;
+    },
+};
 
 // ==========================================
 // Water Consumption API
@@ -552,6 +1150,45 @@ export const ExpensesService = {
         }
         return data;
     }
+};
+
+export const ResidentFinanceService = {
+    async getExpensesForResident(user: Pick<User, "id" | "unitId" | "unitName">): Promise<ResidentFinanceExpense[]> {
+        let targetUnitId = user.unitId;
+
+        if (!targetUnitId) {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('unit_id')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (error) throw error;
+            targetUnitId = typeof profile?.unit_id === "string" ? profile.unit_id : undefined;
+        }
+
+        if (!targetUnitId) return [];
+
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('unit_id', targetUnitId)
+            .order('month', { ascending: false });
+
+        if (error) throw error;
+
+        const fallbackUnitNumber = user.unitName?.replace(/^Depto\s+/i, "") || targetUnitId;
+        return ((data || []) as Array<Record<string, unknown>>).map(row => ({
+            id: String(row.id),
+            unit_id: String(row.unit_id || targetUnitId),
+            month: String(row.month || new Date().toISOString().slice(0, 7)),
+            amount: Number(row.amount || 0),
+            status: (String(row.status || "pending") as ResidentFinanceExpense["status"]),
+            due_date: String(row.due_date || new Date().toISOString()),
+            paid_at: typeof row.paid_at === "string" ? row.paid_at : undefined,
+            units: { number: fallbackUnitNumber },
+        }));
+    },
 };
 
 // ==========================================

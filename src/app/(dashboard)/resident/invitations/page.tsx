@@ -21,6 +21,30 @@ interface Invitation {
     qrCode: string;
 }
 
+type InvitationRow = {
+    id: string;
+    resident_id?: string | null;
+    guest_name?: string | null;
+    guest_dni?: string | null;
+    status?: Invitation["status"] | null;
+    valid_from?: string | null;
+    valid_to?: string | null;
+    qr_code?: string | null;
+};
+
+function mapInvitationRow(invitation: InvitationRow): Invitation {
+    return {
+        id: invitation.id,
+        residentId: invitation.resident_id || "",
+        guestName: invitation.guest_name || "Invitado",
+        guestDni: invitation.guest_dni || "",
+        status: invitation.status || "active",
+        validFrom: invitation.valid_from || new Date().toISOString(),
+        validTo: invitation.valid_to || new Date().toISOString(),
+        qrCode: invitation.qr_code || "",
+    };
+}
+
 const demoInvitations: Invitation[] = [
     { id: "demo-inv-1", residentId: "demo", guestName: "Ana Garcia", guestDni: "12.345.678-9", status: "active", validFrom: new Date().toISOString(), validTo: new Date(Date.now() + 8 * 36e5).toISOString(), qrCode: "INV-DEMO-ANA" },
     { id: "demo-inv-2", residentId: "demo", guestName: "Martin Soto", guestDni: "18.222.111-5", status: "used", validFrom: new Date(Date.now() - 2 * 864e5).toISOString(), validTo: new Date(Date.now() - 864e5).toISOString(), qrCode: "INV-DEMO-MAR" },
@@ -42,18 +66,7 @@ export default function ResidentInvitationsPage() {
                 }
 
                 const data = await InvitationService.getByResident(user.id);
-                if (data) {
-                    setInvitations((data as any[]).map((inv) => ({
-                        id: inv.id,
-                        residentId: inv.resident_id,
-                        guestName: inv.guest_name,
-                        guestDni: inv.guest_dni || '',
-                        status: (inv.status as any) || 'active',
-                        validFrom: inv.valid_from,
-                        validTo: inv.valid_to,
-                        qrCode: inv.qr_code
-                    })));
-                }
+                if (data) setInvitations((data as InvitationRow[]).map(mapInvitationRow));
             } catch (error) {
                 console.error("Error fetching invitations:", error);
             } finally {

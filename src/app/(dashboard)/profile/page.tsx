@@ -3,15 +3,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import {
-    User, Camera, Save, Loader2, ShieldCheck,
-    Home, Mail, Lock, CheckCircle, Smartphone, MessageCircle, ChevronRight
+    Camera, Save, Loader2,
+    Mail, Lock, CheckCircle, Smartphone, MessageCircle, ChevronRight
 } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Tag as CcTag } from "@/components/cc/Tag";
+import { ProfileService } from "@/lib/api";
 
 export default function ProfilePage() {
     const { user, updateDemoUser } = useAuth();
@@ -56,60 +55,12 @@ export default function ProfilePage() {
             return;
         }
 
-        const { data } = await supabase
-            .from('profiles')
-            .select('name, avatar_url, phone_number, whatsapp_enabled')
-            .eq('id', user.id)
-            .maybeSingle();
-        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
-        if (data?.phone_number) {
-            // Remove +56 for the input field
-            setPhoneNumber(data.phone_number.replace('+56', ''));
-        }
-        if (data?.whatsapp_enabled) setWhatsappEnabled(data.whatsapp_enabled);
-
-        // Load unit info
-        const { data: unitData } = await supabase
-            .from('units')
-            .select('*')
-            .eq('owner_id', user.id)
-            .maybeSingle();
-
-        if (unitData) {
-            const unit = unitData as Record<string, string | null | undefined>;
-            setUnitNumber(unit.number || unit.unit_number || "");
-            setUnitTower(unit.tower || "");
-        }
-    };
-
-    const updateUnitSafely = async (unitId: string, values: Record<string, unknown>) => {
-        const { error } = await supabase.from('units').update(values).eq('id', unitId);
-        if (!error) return;
-
-        if ('tower' in values) {
-            const fallbackValues = { ...values };
-            delete fallbackValues.tower;
-            const fallback = await supabase.from('units').update(fallbackValues).eq('id', unitId);
-            if (!fallback.error) return;
-            throw fallback.error;
-        }
-
-        throw error;
-    };
-
-    const insertUnitSafely = async (values: Record<string, unknown>) => {
-        const { error } = await supabase.from('units').insert(values);
-        if (!error) return;
-
-        if ('tower' in values) {
-            const fallbackValues = { ...values };
-            delete fallbackValues.tower;
-            const fallback = await supabase.from('units').insert(fallbackValues);
-            if (!fallback.error) return;
-            throw fallback.error;
-        }
-
-        throw error;
+        const profile = await ProfileService.getSettings(user.id);
+        setAvatarUrl(profile.avatarUrl);
+        setPhoneNumber(profile.phoneNumber);
+        setWhatsappEnabled(profile.whatsappEnabled);
+        setUnitNumber(profile.unitNumber);
+        setUnitTower(profile.unitTower);
     };
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,21 +82,7 @@ export default function ProfilePage() {
                 return;
             }
 
-            const ext = file.name.split('.').pop();
-            const path = `avatars/${user.id}.${ext}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(path, file, { upsert: true });
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(path);
-
-            // Save to profile
-            await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+            const publicUrl = await ProfileService.uploadAvatar(user.id, file);
             setAvatarUrl(publicUrl);
             toast({ title: "Foto actualizada", description: "Tu foto de perfil fue guardada.", variant: "success" });
         } catch (error) {
@@ -166,52 +103,11 @@ export default function ProfilePage() {
                     name: fullName.trim(),
                     unitName: normalizedUnit ? `Depto ${normalizedUnit}` : user.unitName,
                 });
-                toast({ title: "Perfil actualizado", description: "Tus cambios quedaron guardados en esta sesion demo.", variant: "success" });
+                toast({ title: "Perfil actualizado", description: "Tus cambios quedaron guardados para esta sesión.", variant: "success" });
                 return;
             }
 
-            // Update profile
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({ name: fullName.trim() })
-                .eq('id', user.id);
-
-            if (profileError) throw profileError;
-
-            // Update unit info
-            if (unitNumber.trim()) {
-                // Check if user already has a unit assigned
-                const { data: existingUnit } = await supabase
-                    .from('units')
-                    .select('id')
-                    .eq('owner_id', user.id)
-                    .maybeSingle();
-
-                if (existingUnit) {
-                    await updateUnitSafely(existingUnit.id, { number: unitNumber.trim(), tower: unitTower.trim() });
-                } else {
-                    // Try to find if the unit number already exists but is unowned
-                    const { data: foundUnit } = await supabase
-                        .from('units')
-                        .select('id')
-                        .eq('number', unitNumber.trim())
-                        .is('owner_id', null)
-                        .maybeSingle();
-                    
-                    if (foundUnit) {
-                        await updateUnitSafely(foundUnit.id, { owner_id: user.id, tower: unitTower.trim() });
-                    } else {
-                        // Create new unit (as fallback for demo/enrollment flow)
-                        await insertUnitSafely({
-                            number: unitNumber.trim(),
-                            tower: unitTower.trim(),
-                            owner_id: user.id,
-                            floor: parseInt(unitNumber.substring(0, 1)) || 1
-                        });
-                    }
-                }
-            }
-
+            await ProfileService.saveProfile(user.id, { fullName, unitNumber, unitTower });
             toast({ title: "Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
         } catch (error) {
             console.error(error);
@@ -227,14 +123,11 @@ export default function ProfilePage() {
         try {
             if (isDemoUser) {
                 setShowEmailConfirm(true);
-                toast({ title: "Email simulado", description: "En demo no enviamos correos reales.", variant: "success" });
+                toast({ title: "Email preparado", description: "En showcase no enviamos correos reales.", variant: "success" });
                 return;
             }
 
-            const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-                redirectTo: `${window.location.origin}/reset-password`
-            });
-            if (error) throw error;
+            await ProfileService.sendPasswordReset(user.email, `${window.location.origin}/reset-password`);
             setShowEmailConfirm(true);
             toast({ title: "Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
         } catch {
@@ -244,19 +137,6 @@ export default function ProfilePage() {
         }
     };
 
-    const ROLE_LABEL: Record<string, string> = {
-        admin: 'Administrador',
-        resident: 'Residente',
-        concierge: 'Conserjería'
-    };
-
-    const ROLE_GRADIENT: Record<string, string> = {
-        admin: 'from-[#7C3AED] to-[#5B21B6]',
-        resident: 'from-[#10B981] to-[#0D9488]',
-        concierge: 'from-[#F59E0B] to-[#F97316]'
-    };
-
-    const gradient = ROLE_GRADIENT[user?.role || 'resident'];
     return (
         <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 space-y-8">
             {/* Header */}
@@ -450,14 +330,10 @@ export default function ProfilePage() {
                                         setIsSavingWa(false);
                                         return;
                                     }
-                                    const fullPhone = `+56${phoneNumber}`;
-                                    const { error } = await supabase.from('profiles').update({
-                                        phone_number: fullPhone,
-                                        whatsapp_enabled: whatsappEnabled
-                                    }).eq('id', user.id);
-                                    if (!error) {
+                                    try {
+                                        await ProfileService.saveWhatsapp(user.id, phoneNumber, whatsappEnabled);
                                         toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
-                                    } else {
+                                    } catch {
                                         toast({ title: 'Error', description: 'No se pudo guardar el número.', variant: 'destructive' });
                                     }
                                     setIsSavingWa(false);

@@ -32,16 +32,16 @@ interface AdminProfile {
 }
 
 const demoUsers: AdminProfile[] = [
-    { id: "demo-admin", name: "Admin Demo", email: "admin@demo.com", role: "admin", units: null },
+    { id: "demo-admin", name: "Admin Showcase", email: "admin@demo.com", role: "admin", units: null },
     { id: "demo-resident-1", name: "Andrea Dupre", email: "andrea@example.com", role: "resident", units: { number: "1204" } },
     { id: "demo-resident-2", name: "Carlos Rivas", email: "carlos@example.com", role: "resident", units: { number: "805" } },
-    { id: "demo-concierge", name: "Conserje Demo", email: "conserjeria@example.com", role: "concierge", units: null },
+    { id: "demo-concierge", name: "Conserje Showcase", email: "conserjeria@example.com", role: "concierge", units: null },
 ];
 
 const roleLabels: Record<string, string> = {
-    admin: "Administracion",
+    admin: "Administración",
     resident: "Residente",
-    concierge: "Conserjeria",
+    concierge: "Conserjería",
 };
 
 const roleVariants: Record<string, "admin" | "residente" | "conserje" | "neutral"> = {
@@ -82,9 +82,9 @@ export default function UsersPage() {
             setIsLoading(true);
             try {
                 if (isDemoUser) {
-                    setCommunityName("Comunidad Demo");
-                    setResidentCode("RES-DEMO");
-                    setConciergeCode("CON-DEMO");
+                    setCommunityName("Comunidad Showcase");
+                    setResidentCode("RES-SHOW");
+                    setConciergeCode("CON-SHOW");
                     setUsers(demoUsers);
                     return;
                 }
@@ -120,9 +120,9 @@ export default function UsersPage() {
                 setUsers((data || []) as AdminProfile[]);
             } catch (err) {
                 console.error("Error fetching users:", err);
-                setCommunityName("Comunidad Demo");
-                setResidentCode("RES-DEMO");
-                setConciergeCode("CON-DEMO");
+                setCommunityName("Comunidad Showcase");
+                setResidentCode("RES-SHOW");
+                setConciergeCode("CON-SHOW");
                 setUsers(demoUsers);
             } finally {
                 setIsLoading(false);

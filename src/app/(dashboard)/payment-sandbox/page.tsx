@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { CheckCircle2, AlertCircle, ShieldCheck, CreditCard, Building2, Loader2, ArrowLeft } from "lucide-react";
 import { useId, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isDemoModeEnabled } from '@/lib/runtimeMode';
 
-function MockPaymentContent() {
+function PaymentSandboxContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const generatedRef = useId().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -16,7 +17,7 @@ function MockPaymentContent() {
     const amount = searchParams.get('amount') || '0';
     const callback = searchParams.get('callback') || '/home';
 
-    // Para un efecto visual de tarjeta rotando
+    const sandboxAllowed = isDemoModeEnabled();
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     const handleMouseMove = (e: React.MouseEvent) => {
@@ -27,7 +28,7 @@ function MockPaymentContent() {
         setMousePos({ x, y });
     };
 
-    const handleSimulatePayment = async (success: boolean) => {
+    const handleSandboxPayment = async (success: boolean) => {
         setStatus('processing');
 
         // Timeout para dar tiempo a la animación de carga "Procesando pago seguro..."
@@ -35,14 +36,14 @@ function MockPaymentContent() {
 
         try {
             if (success) {
-                // Simular webhook local llamando a nuestro endpoint
+                // Ejecuta el webhook local del gateway para validar el flujo completo.
                 await fetch('/api/webhooks/haulmer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         event: 'payment.success',
                         data: {
-                            id: `mock_tx_${Math.floor(Math.random() * 10000)}`,
+                            id: `sandbox_tx_${Math.floor(Math.random() * 10000)}`,
                             status: 'paid',
                             payment_id: ref,
                             amount: Number(amount)
@@ -55,7 +56,7 @@ function MockPaymentContent() {
                 setStatus('error');
             }
 
-            // Simular cierre de popup y regreso después del éxito/error visual
+            // Vuelve al portal después del resultado visual.
             setTimeout(() => {
                 router.push(callback + "?payment_status=" + (success ? 'success' : 'failed'));
             }, 2500);
@@ -68,6 +69,25 @@ function MockPaymentContent() {
             }, 2500);
         }
     };
+
+    if (!sandboxAllowed) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
+                <div className="w-full max-w-lg rounded-lg border border-subtle bg-surface p-8 text-center shadow-sm">
+                    <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-warning-bg text-warning-fg">
+                        <ShieldCheck className="h-6 w-6" />
+                    </div>
+                    <h1 className="text-2xl font-semibold cc-text-primary">Checkout no disponible</h1>
+                    <p className="mt-3 text-sm leading-6 cc-text-secondary">
+                        Este entorno acepta solo pagos reales configurados por la comunidad. Activa Haulmer para publicar cobros en producción.
+                    </p>
+                    <Button className="mt-6" onClick={() => router.push(callback)}>
+                        Volver al portal
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-4 sm:p-8 font-sans overflow-hidden relative">
@@ -113,7 +133,7 @@ function MockPaymentContent() {
                     </div>
 
                     <div className="mt-12 flex items-center justify-between opacity-60">
-                        <span className="text-xs font-bold text-slate-400">Desarrollado para testing local</span>
+                        <span className="text-xs font-bold text-slate-400">Sandbox protegido para validación interna</span>
                         <div className="flex gap-1">
                              <div className="w-2 h-2 rounded-full bg-elevated" />
                              <div className="w-2 h-2 rounded-full bg-elevated" />
@@ -122,7 +142,7 @@ function MockPaymentContent() {
                     </div>
                 </div>
 
-                {/* Columna Derecha: Tarjeta UI / Haulmer Mock */}
+                {/* Columna Derecha: Tarjeta UI / Haulmer Sandbox */}
                 <div
                     className="p-8 md:p-12 lg:pl-16 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col justify-center relative perspective-[1000px]"
                     onMouseMove={handleMouseMove}
@@ -142,7 +162,7 @@ function MockPaymentContent() {
                                         <ShieldCheck className="w-8 h-8 text-[#1b4382] dark:text-blue-400" />
                                     </div>
                                     <h3 className="text-2xl font-semibold cc-text-primary">Haulmer Sandbox</h3>
-                                    <p className="text-sm text-slate-500 font-medium mt-1">Simula una transacción segura</p>
+                                    <p className="text-sm text-slate-500 font-medium mt-1">Valida una transacción segura de showcase</p>
                                 </div>
 
                                 {/* Tarjeta 3D interactiva */}
@@ -154,7 +174,7 @@ function MockPaymentContent() {
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl translate-x-10 -translate-y-10" />
                                     <div className="flex justify-between items-center mb-10 relative z-10">
                                         <CreditCard className="w-8 h-8 opacity-80" />
-                                        <div className="text-xs font-semibold uppercase tracking-widest opacity-60">Mock Card</div>
+                                        <div className="text-xs font-semibold uppercase tracking-widest opacity-60">Sandbox Card</div>
                                     </div>
                                     <div className="text-xl font-mono tracking-[0.2em] opacity-90 mb-2 relative z-10">
                                         •••• •••• •••• 4242
@@ -168,15 +188,15 @@ function MockPaymentContent() {
                                 <div className="space-y-4 relative z-20">
                                     <Button
                                         className="w-full h-14 bg-[#1b4382] hover:bg-[#133060] font-bold text-white shadow-sm shadow-[#1b4382]/20 rounded-xl text-lg transition-transform active:scale-[0.98]"
-                                        onClick={() => handleSimulatePayment(true)}
+                                        onClick={() => handleSandboxPayment(true)}
                                     >
-                                        Pagar Exitosamente
+                                        Validar pago exitoso
                                     </Button>
                                     <button
                                         className="w-full h-14 bg-transparent border-2 border-subtle cc-text-secondary font-bold rounded-xl text-sm hover:bg-elevated transition-colors active:scale-[0.98]"
-                                        onClick={() => handleSimulatePayment(false)}
+                                        onClick={() => handleSandboxPayment(false)}
                                     >
-                                        Simular Pago Fallido
+                                        Validar pago fallido
                                     </button>
                                 </div>
                             </motion.div>
@@ -195,7 +215,7 @@ function MockPaymentContent() {
                                     <Loader2 className="w-16 h-16 text-[#1b4382] dark:text-blue-400 animate-spin relative z-10" />
                                 </div>
                                 <h3 className="text-xl font-semibold cc-text-primary mt-8 mb-2">Procesando Pago Seguro...</h3>
-                                <p className="text-slate-500 font-medium">Conectando con Haulmer via API</p>
+                                <p className="text-slate-500 font-medium">Conectando con el gateway de pagos</p>
                             </motion.div>
                         )}
 
@@ -227,7 +247,7 @@ function MockPaymentContent() {
                                     <AlertCircle className="w-12 h-12" />
                                 </div>
                                 <h3 className="text-3xl font-semibold cc-text-primary mb-2">Pago Rechazado</h3>
-                                <p className="text-slate-500 font-bold">La tarjeta fue declinada en el ambiente local</p>
+                                <p className="text-slate-500 font-bold">La transacción fue declinada en sandbox</p>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -237,10 +257,10 @@ function MockPaymentContent() {
     );
 }
 
-export default function MockPaymentPage() {
+export default function PaymentSandboxPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-12 h-12 animate-spin text-slate-400" /></div>}>
-            <MockPaymentContent />
+            <PaymentSandboxContent />
         </Suspense>
     );
 }

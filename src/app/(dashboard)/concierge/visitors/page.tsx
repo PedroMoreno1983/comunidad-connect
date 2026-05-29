@@ -29,6 +29,27 @@ interface Unit {
     number: string;
 }
 
+type VisitorRow = {
+    id: string;
+    visitor_name?: string | null;
+    unit_id?: string | null;
+    entry_time?: string | null;
+    is_qr?: boolean | null;
+    units?: {
+        number?: string | null;
+    } | null;
+};
+
+function mapVisitorRow(row: VisitorRow): VisitorLog {
+    return {
+        id: row.id,
+        visitorName: row.visitor_name || "Visita",
+        unitId: row.units?.number || row.unit_id || "Sin unidad",
+        entryTime: row.entry_time || new Date().toISOString(),
+        isQr: Boolean(row.is_qr),
+    };
+}
+
 const demoVisitorLogs: VisitorLog[] = [
     { id: "demo-v1", visitorName: "Camila Rojas", unitId: "1204", entryTime: new Date().toISOString(), isQr: true },
     { id: "demo-v2", visitorName: "Luis Araya", unitId: "805", entryTime: new Date(Date.now() - 38 * 60000).toISOString(), isQr: false },
@@ -82,13 +103,7 @@ export default function VisitorsPage() {
                 }
 
                 const logs = await VisitorService.getAll();
-                setVisitors(logs.map((v: any) => ({
-                    id: v.id,
-                    visitorName: v.visitor_name,
-                    unitId: (v.units as { number: string } | undefined)?.number || v.unit_id,
-                    entryTime: v.entry_time,
-                    isQr: v.is_qr || false
-                })));
+                setVisitors(((logs || []) as VisitorRow[]).map(mapVisitorRow));
 
                 const uns = await WaterService.getUnits();
                 setUnits(uns);
@@ -129,15 +144,12 @@ export default function VisitorsPage() {
                 unit_id: newVisitor.unit,
                 registered_by: user?.id || 'admin',
                 is_qr: false
-            } as any);
+            });
 
-            const visitor = {
-                id: data.id,
-                visitorName: data.visitor_name,
-                unitId: units.find(unit => unit.id === data.unit_id)?.number || data.unit_id,
-                entryTime: data.entry_time,
-                isQr: false
-            };
+            const visitor = mapVisitorRow({
+                ...(data as VisitorRow),
+                units: { number: units.find(unit => unit.id === (data as VisitorRow).unit_id)?.number },
+            });
 
             setVisitors([visitor, ...visitors]);
             setIsDialogOpen(false);

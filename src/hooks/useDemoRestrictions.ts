@@ -7,6 +7,6 @@ export function useDemoRestrictions() {
 
     return {
         isDemoUser,
-        demoMessage: "Estas en una cuenta demo compartida. Las funciones destructivas y envios reales estan deshabilitados para proteger la demostracion.",
+        demoMessage: "Estás en un showcase compartido. Las acciones destructivas y envíos reales están deshabilitados para proteger el entorno comercial.",
     };
 }

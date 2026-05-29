@@ -99,12 +99,14 @@ function DashboardShell({
         concierge: "Conserjería",
         resident: "Residente",
     };
+    const communityUser = user as typeof user & { condoName?: string; communityName?: string };
+    const buildingName = communityUser.condoName || communityUser.communityName || "Mi Edificio";
 
     // Demo Banner element
     const demoBanner = isDemoUser && (
         <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-[#B5664E] sm:h-4 sm:w-4" />
-            <span className="text-center sm:hidden">Demo protegida: envíos reales deshabilitados.</span>
+            <span className="text-center sm:hidden">Showcase protegido: envíos reales deshabilitados.</span>
             <span className="hidden text-center sm:inline">{demoMessage}</span>
         </div>
     );
@@ -124,7 +126,7 @@ function DashboardShell({
                         initials,
                         roleLabel: roleLabels[user.role] || "Miembro",
                     }}
-                    building={(user as any).condoName || (user as any).communityName || "Mi Edificio"}
+                    building={buildingName}
                     rightSubtitle={timeString}
                 >
                     <ErrorBoundary name={`Contenido ${pathname}`} resetKey={pathname}>

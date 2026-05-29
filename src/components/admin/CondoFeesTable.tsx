@@ -63,7 +63,7 @@ export function CondoFeesTable() {
                 saveDemoCondoFees(fees);
                 setSending(false);
                 toast({
-                    title: "Envío demo preparado",
+                    title: "Envío showcase preparado",
                     description: "Se simuló la notificación de cobros pendientes.",
                     variant: "success",
                 });
