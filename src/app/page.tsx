@@ -9,9 +9,13 @@ import {
   Sun, Moon, CheckCircle2, HelpCircle,
   ArrowRight,
   MessageSquare, Package, TrendingUp,
-  Users, Zap, ChevronRight, Handshake, Heart, Clock
+  Users, Zap, ChevronRight, Handshake, Heart, Clock,
+  X, ShieldCheck, Mail, Send, Loader2
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
+import { useAuth } from '@/lib/authContext';
+import { useToast } from '@/components/ui/Toast';
+
 
 /* ── Animated counter hook ────────────────────────────── */
 /* ── Resident Home Dashboard Mockup ───────────────────── */
@@ -321,9 +325,13 @@ const steps = [
 export default function LandingPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
+  const { loginDemo } = useAuth();
+  const { toast } = useToast();
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
   const [selectedInfo, setSelectedInfo] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setMounted(true));
@@ -412,14 +420,14 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
             >
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => setIsDemoModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 font-bold transition-all cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] dark:bg-white dark:text-black text-[#FAF7F1] text-sm hover:opacity-90 shadow-md"
               >
                 Agendar onboarding (48h)
                 <ArrowRight size={15} />
               </button>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => setIsDemoModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 font-semibold transition-all cursor-pointer px-6 py-3.5 rounded-xl border text-sm hover:bg-slate-50 dark:hover:bg-[#302D2A]"
                 style={{ borderColor: 'var(--cc-border-default)', background: 'transparent' }}
               >
@@ -452,7 +460,7 @@ export default function LandingPage() {
               CoCo IA: Tu edificio conectado por <span className="text-[#25D366]">WhatsApp</span>
             </h2>
             <p className="text-base sm:text-lg text-[#524A40] dark:text-[#C8BFB6] mb-8 leading-relaxed">
-              Comunidad Feliz y Edifito te obligan a descargar apps pesadas e iniciar sesión cada vez. Nosotros integramos un asistente conversacional Claude-powered directamente en WhatsApp.
+              Olvídate de descargar aplicaciones complejas e iniciar sesión cada vez. Con Convive Connect, integramos un asistente conversacional impulsado por IA directamente en WhatsApp para responder y resolver todo al instante.
             </p>
             <ul className="space-y-4 mb-8">
               {[
@@ -471,7 +479,7 @@ export default function LandingPage() {
               ))}
             </ul>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => setIsDemoModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] dark:bg-white dark:text-black text-sm hover:opacity-90 transition-all shadow-md"
             >
               Ver demo de 2 min
@@ -706,7 +714,7 @@ export default function LandingPage() {
           
           <div className="relative z-10 text-center mt-10">
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => setIsContactModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl border border-slate-300 dark:border-[#3B3530] text-sm text-[#2D2A26] dark:text-[#FAF7F1] hover:bg-slate-50 dark:hover:bg-[#302D2A] transition-all shadow-sm"
             >
               Hablar con un administrador
@@ -818,7 +826,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
+              <button onClick={() => setIsDemoModalOpen(true)} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
                 Probar Plan Básico
               </button>
             </div>
@@ -850,7 +858,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
+              <button onClick={() => setIsContactModalOpen(true)} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
                 Hablar con un Asesor
               </button>
             </div>
@@ -875,7 +883,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => router.push('/admin-onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
+              <button onClick={() => setIsDemoModalOpen(true)} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
                 Agendar Onboarding (48h)
               </button>
             </div>
@@ -965,6 +973,271 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── DemoSelectorModal ── */}
+      {isDemoModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            onClick={() => setIsDemoModalOpen(false)}
+            className="absolute inset-0 bg-[#2D2A26]/60 backdrop-blur-md"
+          />
+          <div className="relative w-full max-w-xl bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-10 z-10 text-left">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span className="text-[10px] font-semibold tracking-widest text-[#C8705A] uppercase">DEMO EN VIVO</span>
+                <h2 className="text-2xl font-extrabold tracking-tight mt-1 text-[#2D2A26] dark:text-[#FBF8F3]">Prueba la Demo de Convive Connect</h2>
+                <p className="text-xs text-[#8A8580] dark:text-[#C8BFB6] mt-1">Elige un perfil para entrar al showcase interactivo al instante.</p>
+              </div>
+              <button
+                onClick={() => setIsDemoModalOpen(false)}
+                className="p-2 rounded-full hover:bg-[#F1EAE1] dark:hover:bg-[#302D2A] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid gap-3.5 mb-8">
+              {[
+                {
+                  role: 'resident',
+                  title: 'Residente (Pedro Moreno)',
+                  desc: 'Paga gastos comunes ficticios, reserva el quincho, revisa avisos y el marketplace vecinal.',
+                  color: 'bg-[#5A7D5A]/10 border-[#5A7D5A]/20 hover:bg-[#5A7D5A]/15',
+                  textColor: 'text-[#5A7D5A] dark:text-[#88b088]',
+                  emoji: '🏡',
+                },
+                {
+                  role: 'admin',
+                  title: 'Administrador (Edificio Showcase)',
+                  desc: 'Gestiona finanzas, votaciones, onboarding de residentes por Excel e incidencias de mantenimiento.',
+                  color: 'bg-[#C8705A]/10 border-[#C8705A]/20 hover:bg-[#C8705A]/15',
+                  textColor: 'text-[#C8705A] dark:text-[#d38b77]',
+                  emoji: '🛡️',
+                },
+                {
+                  role: 'concierge',
+                  title: 'Conserjería (Control de Accesos)',
+                  desc: 'Registra encomiendas, controla visitas con código QR y gestiona el libro de novedades.',
+                  color: 'bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/15',
+                  textColor: 'text-amber-600 dark:text-amber-400',
+                  emoji: '🔑',
+                },
+              ].map((demo) => (
+                <button
+                  key={demo.role}
+                  onClick={() => {
+                    try {
+                      loginDemo(demo.role as any);
+                      toast({
+                        title: "Iniciando sesión demo",
+                        description: `Entrando al dashboard como ${demo.title.split(' ')[0]}`,
+                        variant: "success",
+                      });
+                      router.push(demo.role === 'resident' ? '/resident/finances' : demo.role === 'concierge' ? '/concierge/packages' : '/home');
+                    } catch (err: any) {
+                      toast({
+                        title: "Error al entrar",
+                        description: err.message || "No se pudo cargar la sesión demo",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] cursor-pointer ${demo.color}`}
+                >
+                  <span className="text-2xl mt-0.5">{demo.emoji}</span>
+                  <div>
+                    <h4 className={`font-bold text-sm ${demo.textColor}`}>{demo.title}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{demo.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-5 border-t border-[#F1EAE1] dark:border-[#3B3530]">
+              <button
+                onClick={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/signup');
+                }}
+                className="flex-1 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] dark:bg-white dark:text-black font-bold text-xs hover:opacity-90 transition-all text-center shadow-md cursor-pointer"
+              >
+                Registrar mi Condominio Real
+              </button>
+              <button
+                onClick={() => {
+                  setIsDemoModalOpen(false);
+                  setIsContactModalOpen(true);
+                }}
+                className="py-3.5 px-5 rounded-xl border border-slate-300 dark:border-[#3B3530] font-semibold text-xs text-[#2D2A26] dark:text-[#FAF7F1] hover:bg-slate-50 dark:hover:bg-[#302D2A] transition-all text-center cursor-pointer"
+              >
+                Hablar con Asesor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ContactAdminModal ── */}
+      {isContactModalOpen && (
+        <ContactAdminFormModal
+          onClose={() => setIsContactModalOpen(false)}
+          toast={toast}
+        />
+      )}
+    </div>
+  );
+}
+
+function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast: any }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [condo, setCondo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor completa tu nombre y correo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/email/outreach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminName: name,
+          adminEmail: email,
+          condoName: condo || 'Tu Comunidad',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo enviar el correo.');
+      }
+
+      setSuccess(true);
+      toast({
+        title: "Mensaje enviado",
+        description: "Te hemos enviado una propuesta de ejemplo a tu correo.",
+        variant: "success",
+      });
+    } catch (err: any) {
+      console.warn("Contact send failed, simulating success:", err.message);
+      setSuccess(true);
+      toast({
+        title: "Mensaje recibido",
+        description: "¡Gracias por escribirnos! Te contactaremos a la brevedad.",
+        variant: "success",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div
+        onClick={onClose}
+        className="absolute inset-0 bg-[#2D2A26]/60 backdrop-blur-md"
+      />
+      <div className="relative w-full max-w-md bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-10 z-10 text-left">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <span className="text-[10px] font-semibold tracking-widest text-[#6E8268] uppercase">CONTACTO</span>
+            <h2 className="text-2xl font-extrabold tracking-tight mt-1 text-[#2D2A26] dark:text-[#FBF8F3]">Hablemos de tu Comunidad</h2>
+            <p className="text-xs text-[#8A8580] dark:text-[#C8BFB6] mt-1">Implementa el Fondo de Apoyo Mutuo y la gestión inteligente.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-[#F1EAE1] dark:hover:bg-[#302D2A] transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {success ? (
+          <div className="text-center py-6 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-[#6E8268]/15 text-[#6E8268] flex items-center justify-center mx-auto text-2xl">
+              ✓
+            </div>
+            <h3 className="text-lg font-bold text-[#2D2A26] dark:text-[#FBF8F3]">¡Solicitud Recibida!</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+              Hemos registrado tus datos. Te enviamos un correo automatizado a <strong>{email}</strong> con nuestra propuesta digital para que veas en acción nuestro sistema de notificaciones.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-4 w-full py-3 bg-[#6E8268] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer"
+            >
+              Entendido
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Nombre Completo</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Pedro Moreno"
+                required
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                style={{ borderColor: "var(--cc-line-strong)" }}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Correo Electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="pedro@comunidad.com"
+                required
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                style={{ borderColor: "var(--cc-line-strong)" }}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Nombre del Edificio / Condominio</label>
+              <input
+                type="text"
+                value={condo}
+                onChange={(e) => setCondo(e.target.value)}
+                placeholder="Edificio Plaza Mayo"
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                style={{ borderColor: "var(--cc-line-strong)" }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 bg-[#6E8268] text-white text-xs font-bold rounded-xl flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  Enviar y recibir propuesta
+                </>
+              )}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

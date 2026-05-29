@@ -7,7 +7,6 @@ import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
 import { AlertCircle } from "lucide-react";
-import { AppProviders } from "@/components/AppProviders";
 import { AdminShell } from "@/components/cc/AdminShell";
 
 export default function DashboardLayout({
@@ -15,11 +14,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return (
-        <AppProviders>
-            <DashboardShell>{children}</DashboardShell>
-        </AppProviders>
-    );
+    return <DashboardShell>{children}</DashboardShell>;
 }
 
 function DashboardShell({

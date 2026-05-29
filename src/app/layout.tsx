@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProviders } from "@/components/ThemeProviders";
+import { AppProviders } from "@/components/AppProviders";
 import { PUBLIC_SITE_URL } from "@/lib/config";
 
 const structuredData = {
@@ -10,7 +11,7 @@ const structuredData = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Plataforma de bienestar comunitario para condominios: gastos comunes, reservas, conserjeria, votaciones, marketplace y comunicacion vecinal.",
+    "Plataforma de bienestar comunitario para condominios: gastos comunes, reservas, conserjeria, votaciones, marketplace y comunacion vecinal.",
   offers: {
     "@type": "Offer",
     priceCurrency: "CLP",
@@ -47,6 +48,7 @@ export const metadata: Metadata = {
       { url: "/favicon.ico" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
@@ -104,7 +106,11 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ThemeProviders>{children}</ThemeProviders>
+        <ThemeProviders>
+          <AppProviders>
+            {children}
+          </AppProviders>
+        </ThemeProviders>
         <script
           dangerouslySetInnerHTML={{
             __html: `
