@@ -1,10 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Social feed renders user-uploaded Supabase assets and local image previews. */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
 import { SocialService } from "@/lib/services/supabaseServices";
 import { SocialPost, SocialComment } from "@/lib/types";
-import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
@@ -21,7 +21,7 @@ import {
 } from "@/lib/services/demoSocialStorage";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
-    Heart, MessageCircle, Share2, MoreHorizontal,
+    Heart, MessageCircle, MoreHorizontal,
     Image as ImageIcon, Send, Smile, MapPin,
     Loader2, X as XIcon, ArrowRight
 } from "lucide-react";
@@ -92,7 +92,7 @@ export default function SocialFeedPage() {
                 setNewPostContent("");
                 setNewPostImageFile(null);
                 setNewPostImagePreview(null);
-                toast({ title: "Publicado en demo", description: "Tu publicación con imagen quedó visible en esta sesión.", variant: "success" });
+                toast({ title: "Publicado en showcase", description: "Tu publicación con imagen quedó visible en esta sesión.", variant: "success" });
             } catch {
                 toast({ title: "Error", description: "No se pudo leer la imagen.", variant: "destructive" });
             } finally {
@@ -104,17 +104,7 @@ export default function SocialFeedPage() {
         if (newPostImageFile) {
             setIsUploadingImage(true);
             try {
-                const ext = newPostImageFile.name.split('.').pop();
-                const path = `posts/${user.id}/${Date.now()}.${ext}`;
-                const { error: uploadError } = await supabase.storage
-                    .from('social-images')
-                    .upload(path, newPostImageFile, { upsert: false });
-                if (!uploadError) {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('social-images')
-                        .getPublicUrl(path);
-                    imageUrl = publicUrl;
-                }
+                imageUrl = await SocialService.uploadPostImage(user.id, newPostImageFile);
             } catch (err) {
                 console.error('Image upload failed:', err);
             } finally {

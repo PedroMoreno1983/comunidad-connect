@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resend, FROM_EMAIL, emailWrapper } from '@/lib/email';
+import { getPublicUrl } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,8 +52,8 @@ export async function POST(request: Request) {
                 Estamos convencidos de que podemos ahorrarte mucho tiempo operativo.
             </p>
             <div style="margin-top: 30px; margin-bottom: 30px;">
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app'}/login" style="display: inline-block; padding: 12px 24px; background-color: #C8705A; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                    Ver Demo Gratis
+                <a href="${getPublicUrl('/login')}" style="display: inline-block; padding: 12px 24px; background-color: #C8705A; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                    Ver Convive Connect
                 </a>
             </div>
             <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; color: #666;">

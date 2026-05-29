@@ -468,12 +468,32 @@ export const VisitorService = {
         unit_id?: string;
         purpose?: string;
         registered_by: string;
+        is_qr?: boolean;
     }) {
         const { data, error } = await supabase
             .from('visitor_logs')
             .insert(visitor)
             .select()
             .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async getLatestActiveInvitationForScan(): Promise<{
+        id: string;
+        guest_name: string;
+        guest_dni?: string | null;
+        unit_id?: string | null;
+        units?: { number?: string | null } | null;
+    } | null> {
+        const { data, error } = await supabase
+            .from('qr_invitations')
+            .select('*, units:unit_id (number)')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         if (error) throw error;
         return data;
@@ -648,6 +668,22 @@ export const ReservationService = {
 // Social Network (Phase 4)
 // ==========================================
 export const SocialService = {
+    async uploadPostImage(userId: string, file: File): Promise<string> {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `posts/${userId}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+            .from('social-images')
+            .upload(path, file, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('social-images')
+            .getPublicUrl(path);
+
+        return publicUrl;
+    },
+
     async getPosts() {
         const { data, error } = await supabase
             .from('social_posts')

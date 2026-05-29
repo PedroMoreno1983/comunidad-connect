@@ -97,7 +97,7 @@ export async function POST(
 
         if (actorProfile.email?.toLowerCase().endsWith('@demo.com')) {
             return NextResponse.json(
-                { error: 'Modo demo compartido: los comentarios reales estan deshabilitados.' },
+                { error: 'Modo showcase compartido: los comentarios reales estan deshabilitados.' },
                 { status: 403 }
             );
         }

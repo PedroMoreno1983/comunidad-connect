@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
         if (profile.email?.toLowerCase().endsWith('@demo.com')) {
             return NextResponse.json(
-                { error: 'Modo demo compartido: las solicitudes reales estan deshabilitadas.' },
+                { error: 'Modo showcase compartido: las solicitudes reales estan deshabilitadas.' },
                 { status: 403 }
             );
         }

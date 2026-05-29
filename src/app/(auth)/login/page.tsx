@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { isDemoModeEnabled } from "@/lib/runtimeMode";
-import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Lock, Mail, ShieldCheck, Users, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, ShieldCheck, Users, Sparkles } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 
@@ -55,11 +55,11 @@ export default function LoginPage() {
         setLoading(true);
         try {
             loginDemo(role as "admin" | "resident" | "concierge");
-            toast({ title: "Entrando a la demo", description: "Has iniciado sesión", variant: "success" });
+            toast({ title: "Entrando al showcase", description: "Has iniciado sesión", variant: "success" });
             router.push("/home");
         } catch (error) {
             toast({
-                title: "Demo deshabilitada",
+                title: "Showcase no disponible",
                 description: error instanceof Error ? error.message : "Este entorno acepta solo usuarios reales.",
                 variant: "destructive",
             });
@@ -86,8 +86,8 @@ export default function LoginPage() {
                     />
 
                     <div className="relative z-10">
-                        <Link href="/" className="inline-flex items-center gap-2">
-                            <Brand size={20} className="text-white" withMark />
+                        <Link href="/" className="inline-flex items-center gap-2 rounded-2xl bg-white/[0.03] px-3 py-2 ring-1 ring-white/10">
+                            <Brand size={20} tone="inverse" withMark />
                         </Link>
                     </div>
 
@@ -98,15 +98,15 @@ export default function LoginPage() {
                                 Gestiona tu comunidad <br />
                                 con <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>control real.</em>
                             </DisplayHeading>
-                            <p className="text-sm leading-relaxed" style={{ color: "var(--cc-ink-faint)" }}>
+                            <p className="text-sm leading-relaxed text-[#EDE6D9]/82">
                                 Accede a pagos, reservas de espacios, comunicación con conserjería y asambleas digitales en una sola interfaz limpia.
                             </p>
                         </div>
 
                         {/* Floating Card Mockup */}
                         <div 
-                          className="rounded-2xl border p-5 shadow-xl bg-[#1A1611]/90 backdrop-blur-md relative transform rotate-[-1deg] translate-y-2"
-                          style={{ borderColor: "rgba(250, 247, 241, 0.1)" }}
+                          className="rounded-2xl border p-5 shadow-2xl bg-[#110D0A]/88 backdrop-blur-md relative transform rotate-[-1deg] translate-y-2"
+                          style={{ borderColor: "rgba(250, 247, 241, 0.16)" }}
                         >
                             <div className="flex items-center gap-2.5 mb-3">
                                 <div 
@@ -120,7 +120,7 @@ export default function LoginPage() {
                                     <div className="text-xs font-medium">Te está esperando</div>
                                 </div>
                             </div>
-                            <p className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-faint)" }}>
+                            <p className="text-xs leading-relaxed text-[#EDE6D9]/75">
                                 &ldquo;Hola, he preparado el reporte mensual de gastos comunes. ¿Quieres que te lo envíe por correo?&rdquo;
                             </p>
                         </div>
@@ -133,7 +133,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <div className="relative z-10 text-xs" style={{ color: "var(--cc-ink-tertiary)" }}>
+                    <div className="relative z-10 text-xs text-[#EDE6D9]/55">
                         © 2026 Convive Connect. Todos los derechos reservados.
                     </div>
                 </section>
@@ -246,7 +246,7 @@ export default function LoginPage() {
                                     key={prov}
                                     type="button"
                                     onClick={() => {
-                                        toast({ title: "Iniciando con " + prov, description: "Servicio externo en pruebas.", variant: "default" });
+                                        toast({ title: "Acceso con " + prov, description: "Este proveedor se habilita por comunidad.", variant: "default" });
                                     }}
                                     className="py-2.5 px-2 text-center text-xs font-semibold rounded-xl bg-paper border hover:bg-paper-warm transition-colors"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
@@ -260,8 +260,8 @@ export default function LoginPage() {
                         {demoEnabled && (
                             <div className="space-y-2.5 pt-4 border-t" style={{ borderColor: "var(--cc-line-strong)" }}>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase">ACCESO RÁPIDO DEMO</span>
-                                    <span className="px-2 py-0.5 rounded bg-[#FAF7F1] text-[9px] font-bold text-copper border" style={{ borderColor: "var(--cc-line-strong)" }}>MOCK DATA</span>
+                                    <span className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase">ACCESO SHOWCASE INTERNO</span>
+                                    <span className="px-2 py-0.5 rounded bg-[#FAF7F1] text-[9px] font-bold text-copper border" style={{ borderColor: "var(--cc-line-strong)" }}>DATOS PROTEGIDOS</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2">
                                     {DEMO_ACCOUNTS.map(({ label, email: demoEmail, role }) => (

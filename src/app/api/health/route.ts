@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
+import { isDemoModeEnabled, isDemoModeRequested } from '@/lib/runtimeMode';
 
 export const dynamic = 'force-dynamic';
 
 function hasEnv(name: string) {
     return Boolean(process.env[name]?.trim());
-}
-
-function envFlag(name: string) {
-    return process.env[name] === 'true';
 }
 
 export async function GET() {
@@ -40,7 +37,8 @@ export async function GET() {
     const appReady = coreReady && aiReady;
     const commercialChannelsReady = Object.values(communications).every(Boolean);
     const paidProductionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean);
-    const demoEnabled = envFlag('NEXT_PUBLIC_ENABLE_DEMO');
+    const demoRequested = isDemoModeRequested();
+    const demoEnabled = isDemoModeEnabled();
     const missingProduction = [
         ...Object.entries(communications).filter(([, value]) => !value).map(([key]) => `communications.${key}`),
         ...Object.entries(paidIntegrations).filter(([, value]) => !value).map(([key]) => `paidIntegrations.${key}`),
@@ -53,6 +51,7 @@ export async function GET() {
         service: 'convive-connect',
         checkedAt: new Date().toISOString(),
         runtime: {
+            demoRequested,
             demoEnabled,
             productionReady: paidProductionReady && !demoEnabled,
             missingProduction,

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabase";
+import { HomeService } from "@/lib/api";
+import type { ResidentHomeSummary } from "@/lib/types";
 import { Bell, ChevronRight, ArrowRight, Mic, Sparkles, Droplets, Waves, BellRing } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
@@ -15,12 +16,11 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 export default function HomePage() {
     const { user } = useAuth();
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(true);
-    const [statsData, setStatsData] = useState({
+    const [statsData, setStatsData] = useState<ResidentHomeSummary>({
         pendingExpensesCount: 0,
-        pendingExpensesAmount: 187420, // default placeholder
+        pendingExpensesAmount: 0,
         bookingsCount: 0,
-        recentAnnouncement: null as any,
+        recentAnnouncement: null,
     });
 
     // ── Role Redirects ──
@@ -39,52 +39,10 @@ export default function HomePage() {
         if (!user || user.role !== "resident") return;
 
         const fetchData = async () => {
-            setIsLoading(true);
             try {
-                // For demo accounts, load custom stats
-                if (user.email.toLowerCase().endsWith("@demo.com")) {
-                    setStatsData({
-                        pendingExpensesCount: 1,
-                        pendingExpensesAmount: 187420,
-                        bookingsCount: 1,
-                        recentAnnouncement: {
-                            title: "Asamblea ordinaria de copropietarios",
-                            content: "Sáb 30 de mayo, 19:00 — Salón comunitario.",
-                            category: "Asamblea",
-                            time: "hace 2h"
-                        }
-                    });
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Fetch real data
-                const [expRes, bookRes, annRes] = await Promise.all([
-                    supabase.from('expenses').select('amount').eq('status', 'pending'),
-                    supabase.from('bookings').select('*', { count: 'exact', head: true }).gte('date', new Date().toISOString().split('T')[0]),
-                    supabase.from('announcements').select('title, content, priority, created_at').order('created_at', { ascending: false }).limit(1).maybeSingle()
-                ]);
-
-                let totalAmount = 0;
-                if (expRes.data && expRes.data.length > 0) {
-                    totalAmount = expRes.data.reduce((sum: number, item: any) => sum + Number(item.amount), 0);
-                }
-
-                setStatsData({
-                    pendingExpensesCount: expRes.data?.length || 0,
-                    pendingExpensesAmount: totalAmount || 187420,
-                    bookingsCount: bookRes.count || 0,
-                    recentAnnouncement: annRes.data ? {
-                        title: annRes.data.title,
-                        content: annRes.data.content,
-                        category: annRes.data.priority === "alert" ? "Urgente" : "Aviso",
-                        time: new Date(annRes.data.created_at).toLocaleDateString('es-CL')
-                    } : null
-                });
+                setStatsData(await HomeService.getResidentSummary(user));
             } catch (err) {
                 console.error("Error fetching resident home data:", err);
-            } finally {
-                setIsLoading(false);
             }
         };
 
@@ -191,7 +149,7 @@ export default function HomePage() {
 
                     <Link href="/expenses">
                         <Button variant="copper" size="lg" block>
-                            Pagar ahora <ArrowRight size={16} />
+                            {statsData.pendingExpensesCount > 0 ? "Pagar ahora" : "Ver gastos"} <ArrowRight size={16} />
                         </Button>
                     </Link>
                 </div>

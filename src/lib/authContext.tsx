@@ -5,6 +5,7 @@ import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { isDemoEmail, isDemoModeEnabled } from '@/lib/runtimeMode';
+import { PUBLIC_SITE_URL } from '@/lib/config';
 
 // ============================================
 // Unified Auth Context
@@ -33,7 +34,7 @@ function buildDemoUser(role: User["role"]): User {
     const profiles: Record<User["role"], User> = {
         admin: {
             id: 'demo-admin',
-            name: 'Admin Demo',
+            name: 'Admin Showcase',
             email: 'admin@demo.com',
             role: 'admin',
             communityId: 'demo-community',
@@ -51,7 +52,7 @@ function buildDemoUser(role: User["role"]): User {
         },
         concierge: {
             id: 'demo-concierge',
-            name: 'Conserje Demo',
+            name: 'Conserje Showcase',
             email: 'conserje@demo.com',
             role: 'concierge',
             communityId: 'demo-community',
@@ -256,10 +257,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Supabase sign up
-    const signUp = async (email: string, password: string, userData: Record<string, any>) => {
+    const signUp = async (email: string, password: string, userData: Record<string, unknown>) => {
         try {
             // Determine current origin for email redirection
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://convive.app';
+            const origin = typeof window !== 'undefined' ? window.location.origin : PUBLIC_SITE_URL;
             
             if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
                 console.error("Supabase not configured. Signup will fail.");

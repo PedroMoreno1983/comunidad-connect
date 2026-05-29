@@ -5,15 +5,30 @@ import { PollCard } from "@/components/polls/PollCard";
 import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { BarChart3, CalendarDays, CheckCircle2, ShieldCheck, Users, Vote } from "lucide-react";
-import { Poll } from "@/lib/types";
+import { BarChart3, CalendarDays, CheckCircle2, Users, Vote } from "lucide-react";
+import { Poll, PollVoteRecord, PollWithVoteState } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 
 const demoStorageKey = "cc_demo_admin_polls";
 
-const demoActivePolls: Poll[] = [
+type SupabasePollOption = { id: string; text?: string | null; label?: string | null };
+type SupabaseVoteRow = { option_id: string };
+type SupabasePollRow = {
+    id: string;
+    title: string;
+    description?: string | null;
+    end_date?: string | null;
+    status?: Poll["status"] | null;
+    category?: Poll["category"] | null;
+    created_at?: string | null;
+    options?: SupabasePollOption[];
+    poll_options?: SupabasePollOption[];
+    votes?: SupabaseVoteRow[];
+};
+
+const demoActivePolls: PollWithVoteState[] = [
     {
         id: "demo-poll-1",
         title: "Renovar luminarias del estacionamiento",
@@ -41,16 +56,16 @@ const demoClosedPolls: Poll[] = [
     },
 ];
 
-function loadDemoPublishedPolls() {
+function loadDemoPublishedPolls(): PollWithVoteState[] {
     if (typeof window === "undefined") return [];
     try {
-        return JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as Poll[];
+        return JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as PollWithVoteState[];
     } catch {
         return [];
     }
 }
 
-function saveDemoPublishedPolls(polls: Poll[]) {
+function saveDemoPublishedPolls(polls: PollWithVoteState[]) {
     if (typeof window === "undefined") return;
     const published = polls.filter(poll => poll.id.startsWith("demo-admin-poll-"));
     window.localStorage.setItem(demoStorageKey, JSON.stringify(published.slice(0, 20)));
@@ -59,8 +74,8 @@ function saveDemoPublishedPolls(polls: Poll[]) {
 export default function VotacionesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [activePolls, setActivePolls] = useState<Poll[]>([]);
-    const [closedPolls, setClosedPolls] = useState<Poll[]>([]);
+    const [activePolls, setActivePolls] = useState<PollWithVoteState[]>([]);
+    const [closedPolls, setClosedPolls] = useState<PollWithVoteState[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -70,7 +85,7 @@ export default function VotacionesPage() {
 
     const stats = useMemo(() => {
         const totalActiveVotes = activePolls.reduce((sum, poll) => sum + poll.totalVotes, 0);
-        const pendingVotes = activePolls.filter(poll => !(poll as any).hasVotedInit).length;
+        const pendingVotes = activePolls.filter(poll => !poll.hasVotedInit).length;
         const closingSoon = activePolls.filter(poll => {
             const daysLeft = Math.ceil((new Date(poll.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
             return daysLeft <= 3;
@@ -78,13 +93,14 @@ export default function VotacionesPage() {
         return { totalActiveVotes, pendingVotes, closingSoon };
     }, [activePolls]);
 
-    const mapSupabasePoll = (pollData: any, userVotesArray: { poll_id: string; option_id: string }[]): Poll => {
+    const mapSupabasePoll = (pollData: SupabasePollRow, userVotesArray: PollVoteRecord[]): PollWithVoteState => {
         const totalVotes = pollData.votes?.length || 0;
-        const optionsWithCounts = (pollData.options || []).map((opt: any) => {
-            const votesForOption = (pollData.votes || []).filter((v: any) => v.option_id === opt.id).length;
+        const rawOptions = pollData.options || pollData.poll_options || [];
+        const optionsWithCounts = rawOptions.map((opt) => {
+            const votesForOption = (pollData.votes || []).filter((v) => v.option_id === opt.id).length;
             return {
                 id: opt.id,
-                text: opt.text,
+                text: opt.text || opt.label || "Opcion",
                 votes: votesForOption,
             };
         });
@@ -93,18 +109,16 @@ export default function VotacionesPage() {
         return {
             id: pollData.id,
             title: pollData.title,
-            description: pollData.description,
-            endDate: pollData.end_date,
-            status: pollData.status,
-            category: pollData.category,
+            description: pollData.description || "",
+            endDate: pollData.end_date || new Date().toISOString(),
+            status: pollData.status || "active",
+            category: pollData.category || "community",
             totalVotes,
             options: optionsWithCounts,
-            createdAt: pollData.created_at,
-            ...({
-                hasVotedInit: !!userVote,
-                votedOptionId: userVote?.option_id || null,
-            } as any),
-        } as Poll;
+            createdAt: pollData.created_at || new Date().toISOString(),
+            hasVotedInit: Boolean(userVote),
+            votedOptionId: userVote?.option_id || null,
+        };
     };
 
     const loadPolls = async () => {
@@ -121,16 +135,21 @@ export default function VotacionesPage() {
                 PollsService.getClosedPolls(),
             ]);
 
-            const checkVotesPromises = [...(active || []), ...(closed || [])].map((poll: any) =>
-                PollsService.hasUserVoted(poll.id, user!.id).then(res => ({ poll_id: poll.id, vote: res as any }))
+            const activeRows = (active || []) as SupabasePollRow[];
+            const closedRows = (closed || []) as SupabasePollRow[];
+            const checkVotesPromises = [...activeRows, ...closedRows].map((poll) =>
+                PollsService.hasUserVoted(poll.id, user!.id).then(res => ({
+                    poll_id: poll.id,
+                    vote: res as { option_id?: string } | null,
+                }))
             );
             const userVotesResults = await Promise.all(checkVotesPromises);
-            const validUserVotes = userVotesResults
-                .filter(result => result.vote !== null)
-                .map((result: any) => ({ poll_id: result.poll_id, option_id: result.vote!.option_id }));
+            const validUserVotes: PollVoteRecord[] = userVotesResults
+                .filter((result): result is { poll_id: string; vote: { option_id: string } } => Boolean(result.vote?.option_id))
+                .map((result) => ({ poll_id: result.poll_id, option_id: result.vote.option_id }));
 
-            setActivePolls((active || []).map((poll: any) => mapSupabasePoll(poll, validUserVotes)));
-            setClosedPolls((closed || []).map((poll: any) => mapSupabasePoll(poll, validUserVotes)));
+            setActivePolls(activeRows.map((poll) => mapSupabasePoll(poll, validUserVotes)));
+            setClosedPolls(closedRows.map((poll) => mapSupabasePoll(poll, validUserVotes)));
         } catch (error: unknown) {
             console.error("Error loading polls:", error);
             setActivePolls([]);
@@ -149,7 +168,8 @@ export default function VotacionesPage() {
                         ...poll,
                         totalVotes: poll.totalVotes + 1,
                         options: poll.options.map(option => option.id === optionId ? { ...option, votes: option.votes + 1 } : option),
-                        ...({ hasVotedInit: true, votedOptionId: optionId } as any),
+                        hasVotedInit: true,
+                        votedOptionId: optionId,
                     }) : poll);
                     saveDemoPublishedPolls(next);
                     return next;
@@ -161,8 +181,8 @@ export default function VotacionesPage() {
             await loadPolls();
         } catch (error: unknown) {
             console.error("Error voting:", error);
-            const err = error as any;
-            if (err.code === "23505") {
+            const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+            if (errorCode === "23505") {
                 toast({ title: "Ya has votado", description: "Solo puedes emitir un voto por consulta.", variant: "destructive" });
             } else {
                 const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexión.";
@@ -269,8 +289,8 @@ export default function VotacionesPage() {
                             key={poll.id}
                             poll={poll}
                             onVote={(optionId) => handleVote(poll.id, optionId)}
-                            initialHasVoted={(poll as any).hasVotedInit}
-                            initialSelectedOption={(poll as any).votedOptionId}
+                            initialHasVoted={poll.hasVotedInit}
+                            initialSelectedOption={poll.votedOptionId}
                         />
                     ))}
                     {activePolls.length === 0 && (
@@ -299,8 +319,8 @@ export default function VotacionesPage() {
                             <PollCard
                                 key={poll.id}
                                 poll={poll}
-                                initialHasVoted={(poll as any).hasVotedInit}
-                                initialSelectedOption={(poll as any).votedOptionId}
+                                initialHasVoted={poll.hasVotedInit}
+                                initialSelectedOption={poll.votedOptionId}
                             />
                         ))}
                     </div>

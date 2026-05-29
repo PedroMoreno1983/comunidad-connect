@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+/* eslint-disable @next/next/no-img-element */
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-    Star, Phone, Mail, Clock, TrendingUp, CheckCircle, Award,
-    Calendar, MessageSquare, BadgeCheck, Briefcase
+    Award,
+    BadgeCheck,
+    Briefcase,
+    Calendar,
+    CheckCircle,
+    Clock,
+    Mail,
+    MessageSquare,
+    Phone,
+    Send,
+    ShieldCheck,
+    Star,
+    TrendingUp,
 } from "lucide-react";
 import { ServiceProvider, Review } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -19,8 +31,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
-import { getProviderAvatar } from "@/lib/utils/avatar";
-import Image from "next/image";
+import { getInitials, getProviderAvatar } from "@/lib/utils/avatar";
 
 interface ProviderProfileClientProps {
     provider: ServiceProvider;
@@ -28,6 +39,14 @@ interface ProviderProfileClientProps {
 }
 
 const demoServiceRequestsStorageKey = "cc_demo_service_requests";
+
+const CATEGORY_LABELS: Record<string, string> = {
+    plumbing: "Gasfiteria",
+    electrical: "Electricidad",
+    locksmith: "Cerrajeria",
+    cleaning: "Limpieza",
+    general: "Multiservicios",
+};
 
 function saveDemoServiceRequest(request: Record<string, unknown>) {
     if (typeof window === "undefined") return;
@@ -39,18 +58,66 @@ function saveDemoServiceRequest(request: Record<string, unknown>) {
     }
 }
 
+function getAvailabilityConfig(availability: string) {
+    if (availability === "available") {
+        return {
+            dot: "bg-emerald-500",
+            label: "Disponible hoy",
+            bg: "bg-success-bg",
+            text: "text-success-fg",
+        };
+    }
+    if (availability === "busy") {
+        return {
+            dot: "bg-amber-500",
+            label: "Agenda ocupada",
+            bg: "bg-warning-bg",
+            text: "text-warning-fg",
+        };
+    }
+    return {
+        dot: "bg-red-500",
+        label: "Sin cupos",
+        bg: "bg-danger-bg",
+        text: "text-danger-fg",
+    };
+}
+
+function ProviderProfileAvatar({ provider }: { provider: ServiceProvider }) {
+    const [failed, setFailed] = useState(false);
+    const initials = getInitials(provider.name);
+
+    return (
+        <div className="relative h-32 w-32 overflow-hidden rounded-2xl border-4 border-surface bg-brand-600 shadow-lg">
+            {!failed ? (
+                <img
+                    src={getProviderAvatar(provider.name, provider.photo)}
+                    alt={provider.name}
+                    className="h-full w-full object-cover"
+                    onError={() => setFailed(true)}
+                />
+            ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,var(--cc-brand-600),var(--cc-ink))] text-3xl font-bold text-white">
+                    {initials}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function ProviderProfileClient({ provider, reviews }: ProviderProfileClientProps) {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
     const [isRequestSaving, setIsRequestSaving] = useState(false);
     const [isReviewSaving, setIsReviewSaving] = useState(false);
-    const [requestForm, setRequestForm] = useState({ date: '', time: '', description: '' });
-    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+    const [requestForm, setRequestForm] = useState({ date: "", time: "", description: "" });
+    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
     const { toast } = useToast();
     const { user } = useAuth();
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-
     const router = useRouter();
+    const availability = getAvailabilityConfig(provider.availability);
+    const categoryLabel = CATEGORY_LABELS[provider.category] || provider.category;
 
     const handleRequestService = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,24 +140,24 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         contact_phone: provider.contactPhone,
                     },
                     profiles: {
-                        name: user?.name || "Admin Demo",
+                        name: user?.name || "Admin Showcase",
                         email: user?.email || "admin@demo.com",
                     },
                 });
                 toast({
-                    title: "Solicitud demo enviada",
-                    description: "Quedo registrada para seguimiento en Mis solicitudes.",
+                    title: "Solicitud showcase enviada",
+                    description: "Quedó registrada para seguimiento en Mis solicitudes.",
                     variant: "success",
                 });
                 setIsRequestDialogOpen(false);
-                setRequestForm({ date: '', time: '', description: '' });
-                router.push('/services/my-requests');
+                setRequestForm({ date: "", time: "", description: "" });
+                router.push("/services/my-requests");
                 return;
             }
 
-            const response = await fetch('/api/service-requests', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch("/api/service-requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     provider_id: provider.id,
                     preferred_date: requestForm.date,
@@ -104,23 +171,23 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             if (!response.ok) {
                 if (response.status === 401) {
                     toast({
-                        title: "Debes iniciar sesión",
-                        description: "Por favor inicia sesión para solicitar servicios.",
+                        title: "Debes iniciar sesion",
+                        description: "Por favor inicia sesion para solicitar servicios.",
                         variant: "default",
                     });
                     return;
                 }
-                throw new Error(data.error || 'Error al enviar solicitud');
+                throw new Error(data.error || "Error al enviar solicitud");
             }
 
             toast({
-                title: "Solicitud Enviada",
-                description: `Tu solicitud ha sido enviada. Puedes ver el estado en 'Mis Solicitudes'.`,
+                title: "Solicitud enviada",
+                description: "Tu solicitud fue enviada. Puedes ver el estado en Mis solicitudes.",
                 variant: "success",
             });
             setIsRequestDialogOpen(false);
-            setRequestForm({ date: '', time: '', description: '' });
-            router.push('/services/my-requests');
+            setRequestForm({ date: "", time: "", description: "" });
+            router.push("/services/my-requests");
         } catch (error: unknown) {
             console.error("[ProviderProfile] request service failed:", error);
             toast({
@@ -141,18 +208,18 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             setIsReviewSaving(true);
             if (isDemoUser || provider.id.startsWith("demo-")) {
                 toast({
-                    title: "Resena demo publicada",
-                    description: "La evaluacion quedo simulada para esta sesion.",
+                    title: "Reseña showcase publicada",
+                    description: "La evaluación quedó disponible para esta sesión.",
                     variant: "success",
                 });
                 setIsReviewDialogOpen(false);
-                setReviewForm({ rating: 5, comment: '' });
+                setReviewForm({ rating: 5, comment: "" });
                 return;
             }
 
-            const response = await fetch('/api/reviews', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch("/api/reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     provider_id: provider.id,
                     rating: reviewForm.rating,
@@ -166,24 +233,22 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
             if (!response.ok) {
                 if (response.status === 401) {
                     toast({
-                        title: "Debes iniciar sesión",
-                        description: "Por favor inicia sesión para dejar una reseña.",
+                        title: "Debes iniciar sesion",
+                        description: "Por favor inicia sesion para dejar una resena.",
                         variant: "default",
                     });
                     return;
                 }
-                throw new Error(data.error || 'Error al publicar reseña');
+                throw new Error(data.error || "Error al publicar resena");
             }
 
             toast({
-                title: "Reseña Publicada",
-                description: "Gracias por compartir tu experiencia. Recarga la página para verla.",
+                title: "Resena publicada",
+                description: "Gracias por compartir tu experiencia. Recarga la pagina para verla.",
                 variant: "success",
             });
             setIsReviewDialogOpen(false);
-            setReviewForm({ rating: 5, comment: '' });
-
-            // Refresh the page to show new review
+            setReviewForm({ rating: 5, comment: "" });
             router.refresh();
         } catch (error: unknown) {
             console.error("[ProviderProfile] submit review failed:", error);
@@ -197,314 +262,231 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
         }
     };
 
-    const getAvailabilityConfig = (availability: string) => {
-        if (availability === 'available') {
-            return {
-                dot: 'bg-emerald-500',
-                label: 'Disponible',
-                bg: 'bg-success-bg',
-                text: 'text-success-fg'
-            };
-        }
-        if (availability === 'busy') {
-            return {
-                dot: 'bg-amber-500',
-                label: 'Ocupado',
-                bg: 'bg-warning-bg',
-                text: 'text-warning-fg'
-            };
-        }
-        return {
-            dot: 'bg-red-500',
-            label: 'No disponible',
-            bg: 'bg-danger-bg',
-            text: 'text-danger-fg'
-        };
-    };
-
-    const availability = getAvailabilityConfig(provider.availability);
-
     return (
         <>
-            {/* Header Card */}
-            <div className="bg-surface rounded-lg shadow-sm shadow-slate-200/50 dark:shadow-slate-950/50 border border-subtle overflow-hidden">
-                {/* Cover */}
-                <div className="h-32 bg-gradient-to-br from-blue-500 to-cyan-600"></div>
-
-                {/* Profile Info */}
-                <div className="px-8 pb-8">
-                    {/* Avatar */}
-                    <div className="flex flex-col md:flex-row gap-6 -mt-16 relative z-10">
-                        {/* Foto de perfil */}
-                        <div className="relative w-40 h-40 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-sm bg-elevated">
-                            <Image
-                                src={getProviderAvatar(provider.name, provider.photo)}
-                                alt={provider.name}
-                                fill
-                                sizes="160px"
-                                className="object-cover"
-                            />
-                        </div>
-
-                        <div className="flex-grow pt-4">
-                            {/* Name and verification */}
-                            <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h1 className="text-3xl font-bold cc-text-primary">
-                                            {provider.name}
-                                        </h1>
-                                        {provider.verified && (
-                                            <BadgeCheck className="h-7 w-7 text-blue-500 fill-blue-100 dark:fill-blue-500/20" />
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-3 cc-text-secondary">
-                                        <div className="flex items-center gap-1">
-                                            <Star className="h-5 w-5 text-amber-500 fill-current" />
-                                            <span className="font-bold cc-text-primary">{provider.rating}</span>
-                                            <span className="text-sm">({provider.reviewCount} reseñas)</span>
-                                        </div>
-                                        <span>•</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <TrendingUp className="h-4 w-4" />
-                                            <span>{provider.yearsExperience} años de experiencia</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${availability.bg} ${availability.text}`}>
-                                    <span className={`h-2.5 w-2.5 rounded-full ${availability.dot} animate-pulse`}></span>
-                                    <span className="font-semibold">{availability.label}</span>
-                                </div>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex flex-wrap gap-3">
-                                <Button
-                                    onClick={() => setIsRequestDialogOpen(true)}
-                                    className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-                                >
-                                    <Calendar className="h-4 w-4 mr-2" />
-                                    Solicitar Servicio
-                                </Button>
-                                <a
-                                    href={`tel:${provider.contactPhone}`}
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-elevated transition-colors"
-                                >
-                                    <Phone className="h-4 w-4" />
-                                    Llamar
-                                </a>
-                                {provider.email && (
-                                    <a
-                                        href={`mailto:${provider.email}`}
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-subtle bg-surface cc-text-secondary font-semibold hover:bg-elevated transition-colors"
-                                    >
-                                        <Mail className="h-4 w-4" />
-                                        Email
-                                    </a>
-                                )}
-                            </div>
-                        </div>
+            <section className="overflow-hidden rounded-2xl border border-default bg-surface shadow-sm">
+                <div className="relative h-44 bg-[#111827]">
+                    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(181,102,78,0.78),rgba(17,24,39,0.96))]" />
+                    <div className="absolute bottom-5 left-6 inline-flex items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/82">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        Perfil profesional verificado
                     </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* About */}
-                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                        <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-blue-600" />
-                            Sobre Mí
-                        </h2>
-                        <p className="cc-text-secondary leading-relaxed">
-                            {provider.bio}
-                        </p>
+                <div className="px-5 pb-6 sm:px-8">
+                    <div className="relative z-10 -mt-16 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+                            <ProviderProfileAvatar provider={provider} />
+                            <div className="pb-1 pt-2 sm:pt-16">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-3xl font-bold tracking-normal cc-text-primary md:text-4xl">
+                                        {provider.name}
+                                    </h1>
+                                    {provider.verified && (
+                                        <BadgeCheck className="h-7 w-7 fill-brand-100 text-brand-600" />
+                                    )}
+                                </div>
+                                <p className="mt-2 text-base font-semibold cc-text-secondary">
+                                    {categoryLabel} para comunidades residenciales
+                                </p>
+                                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm cc-text-secondary">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                                        <strong className="cc-text-primary">{provider.rating}</strong>
+                                        ({provider.reviewCount} resenas)
+                                    </span>
+                                    <span className="hidden sm:inline">|</span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <TrendingUp className="h-4 w-4 text-brand-500" />
+                                        {provider.yearsExperience} anos de experiencia
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 lg:pt-16">
+                            <Button onClick={() => setIsRequestDialogOpen(true)} className="bg-brand-600 hover:bg-brand-700">
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Solicitar servicio
+                            </Button>
+                            <a
+                                href={`tel:${provider.contactPhone}`}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-default bg-surface px-4 py-2 text-sm font-bold cc-text-primary transition hover:bg-elevated"
+                            >
+                                <Phone className="h-4 w-4" />
+                                Llamar
+                            </a>
+                        </div>
                     </div>
 
-                    {/* Specialties */}
-                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                        <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
-                            <Award className="h-5 w-5 text-blue-600" />
-                            Especialidades
-                        </h2>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-4">
+                        {[
+                            { label: "Trabajos", value: provider.completedJobs },
+                            { label: "Respuesta", value: provider.responseTime },
+                            { label: "Tarifa", value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotiza" },
+                            { label: "Estado", value: availability.label },
+                        ].map(stat => (
+                            <div key={stat.label} className="rounded-xl border border-default bg-elevated p-4">
+                                <p className="text-lg font-bold cc-text-primary">{stat.value}</p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+                <main className="space-y-6">
+                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                        <div className="mb-4 flex items-center gap-2">
+                            <Briefcase className="h-5 w-5 text-brand-600" />
+                            <h2 className="text-xl font-bold tracking-normal cc-text-primary">Acerca del proveedor</h2>
+                        </div>
+                        <p className="text-sm leading-7 cc-text-secondary">{provider.bio}</p>
+                    </section>
+
+                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                        <div className="mb-4 flex items-center gap-2">
+                            <Award className="h-5 w-5 text-brand-600" />
+                            <h2 className="text-xl font-bold tracking-normal cc-text-primary">Habilidades principales</h2>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                            {provider.specialties.map((specialty, idx) => (
-                                <span
-                                    key={idx}
-                                    className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-medium border border-blue-100 dark:border-blue-500/20"
-                                >
+                            {provider.specialties.map((specialty) => (
+                                <span key={specialty} className="rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">
                                     {specialty}
                                 </span>
                             ))}
                         </div>
-                    </div>
+                    </section>
 
-                    {/* Certifications */}
                     {provider.certifications.length > 0 && (
-                        <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                            <h2 className="text-xl font-bold cc-text-primary mb-4 flex items-center gap-2">
-                                <CheckCircle className="h-5 w-5 text-blue-600" />
-                                Certificaciones
-                            </h2>
-                            <div className="space-y-2">
-                                {provider.certifications.map((cert, idx) => (
-                                    <div key={idx} className="flex items-start gap-3">
-                                        <Award className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                        <span className="cc-text-secondary">{cert}</span>
+                        <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                            <div className="mb-4 flex items-center gap-2">
+                                <ShieldCheck className="h-5 w-5 text-brand-600" />
+                                <h2 className="text-xl font-bold tracking-normal cc-text-primary">Credenciales</h2>
+                            </div>
+                            <div className="space-y-3">
+                                {provider.certifications.map((cert) => (
+                                    <div key={cert} className="flex items-start gap-3 rounded-xl border border-default bg-elevated p-4">
+                                        <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-success-fg" />
+                                        <span className="text-sm font-semibold cc-text-secondary">{cert}</span>
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </section>
                     )}
 
-                    {/* Reviews */}
-                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-blue-600" />
-                                Reseñas ({reviews.length})
-                            </h2>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsReviewDialogOpen(true)}
-                            >
-                                Dejar Reseña
+                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="h-5 w-5 text-brand-600" />
+                                <h2 className="text-xl font-bold tracking-normal cc-text-primary">Resenas ({reviews.length})</h2>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => setIsReviewDialogOpen(true)}>
+                                Dejar resena
                             </Button>
                         </div>
 
                         <div className="space-y-4">
                             {reviews.length > 0 ? (
                                 reviews.map((review) => (
-                                    <div key={review.id} className="border-b border-subtle last:border-0 pb-4 last:pb-0">
-                                        <div className="flex items-start gap-3 mb-2">
+                                    <article key={review.id} className="rounded-xl border border-default bg-elevated p-4">
+                                        <div className="flex items-start gap-3">
                                             {review.userAvatar ? (
-                                                <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                                                    <Image
+                                                <div className="relative h-11 w-11 overflow-hidden rounded-full">
+                                                    <img
                                                         src={review.userAvatar}
                                                         alt={review.userName}
-                                                        fill
-                                                        sizes="40px"
-                                                        className="object-cover"
+                                                        className="h-full w-full object-cover"
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center cc-text-secondary font-semibold">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
                                                     {review.userName.charAt(0)}
                                                 </div>
                                             )}
-                                            <div className="flex-grow">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <h4 className="font-semibold cc-text-primary">{review.userName}</h4>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <h3 className="font-bold cc-text-primary">{review.userName}</h3>
                                                     <div className="flex items-center gap-1">
                                                         {Array.from({ length: 5 }).map((_, i) => (
                                                             <Star
                                                                 key={i}
-                                                                className={`h-4 w-4 ${i < review.rating ? 'text-amber-500 fill-current' : 'cc-text-tertiary'}`}
+                                                                className={`h-4 w-4 ${i < review.rating ? "fill-amber-500 text-amber-500" : "cc-text-tertiary"}`}
                                                             />
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <p className="text-sm cc-text-secondary mb-2">
-                                                    {review.serviceType} • {new Date(review.createdAt).toLocaleDateString('es-CL')}
+                                                <p className="mt-1 text-xs font-semibold cc-text-tertiary">
+                                                    {review.serviceType} | {new Date(review.createdAt).toLocaleDateString("es-CL")}
                                                 </p>
-                                                <p className="cc-text-secondary">{review.comment}</p>
+                                                <p className="mt-3 text-sm leading-6 cc-text-secondary">{review.comment}</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </article>
                                 ))
                             ) : (
-                                <p className="text-center cc-text-secondary py-8">
-                                    Aún no hay reseñas para este proveedor
-                                </p>
+                                <div className="rounded-xl border border-dashed border-default bg-elevated p-8 text-center text-sm cc-text-secondary">
+                                    Aun no hay resenas para este proveedor.
+                                </div>
                             )}
                         </div>
-                    </div>
-                </div>
+                    </section>
+                </main>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Contact Info */}
-                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                        <h3 className="font-bold cc-text-primary mb-4">Información de Contacto</h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3 cc-text-secondary">
-                                <Phone className="h-5 w-5 text-slate-400" />
-                                <a href={`tel:${provider.contactPhone}`} className="hover:text-blue-600 dark:hover:text-blue-400">
-                                    {provider.contactPhone}
-                                </a>
-                            </div>
+                <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                    <section className="rounded-2xl border border-default bg-surface p-5 shadow-sm">
+                        <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${availability.bg} ${availability.text}`}>
+                            <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
+                            <span className="text-xs font-bold">{availability.label}</span>
+                        </div>
+                        <Button onClick={() => setIsRequestDialogOpen(true)} className="w-full bg-brand-600 hover:bg-brand-700">
+                            <Send className="mr-2 h-4 w-4" />
+                            Solicitar cotizacion
+                        </Button>
+                        <div className="mt-4 space-y-3 border-t border-default pt-4">
+                            <a href={`tel:${provider.contactPhone}`} className="flex items-center gap-3 text-sm font-semibold cc-text-secondary hover:text-brand-700">
+                                <Phone className="h-4 w-4 text-brand-500" />
+                                {provider.contactPhone}
+                            </a>
                             {provider.email && (
-                                <div className="flex items-center gap-3 cc-text-secondary">
-                                    <Mail className="h-5 w-5 text-slate-400" />
-                                    <a href={`mailto:${provider.email}`} className="hover:text-blue-600 dark:hover:text-blue-400 break-all">
-                                        {provider.email}
-                                    </a>
-                                </div>
+                                <a href={`mailto:${provider.email}`} className="flex items-center gap-3 break-all text-sm font-semibold cc-text-secondary hover:text-brand-700">
+                                    <Mail className="h-4 w-4 shrink-0 text-brand-500" />
+                                    {provider.email}
+                                </a>
                             )}
-                            <div className="flex items-center gap-3 cc-text-secondary">
-                                <Clock className="h-5 w-5 text-slate-400" />
-                                <span>Responde en {provider.responseTime}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="bg-surface rounded-lg shadow-sm border border-subtle p-6">
-                        <h3 className="font-bold cc-text-primary mb-4">Estadísticas</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm cc-text-secondary">Trabajos Completados</span>
-                                    <span className="font-bold cc-text-primary">{provider.completedJobs}</span>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm cc-text-secondary">Calificación</span>
-                                    <span className="font-bold cc-text-primary">{provider.rating}/5.0</span>
-                                </div>
-                            </div>
-                            {provider.hourlyRate && (
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm cc-text-secondary">Tarifa por Hora</span>
-                                        <span className="font-bold cc-text-primary">${provider.hourlyRate.toLocaleString('es-CL')}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Verification Badge */}
-                    {provider.verified && (
-                        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg shadow-sm p-6 text-white">
-                            <div className="flex items-center gap-3 mb-2">
-                                <BadgeCheck className="h-6 w-6" />
-                                <h3 className="font-bold">Técnico Verificado</h3>
-                            </div>
-                            <p className="text-sm text-white/90">
-                                Este profesional ha sido verificado y cuenta con las certificaciones necesarias para realizar su trabajo.
+                            <p className="flex items-center gap-3 text-sm font-semibold cc-text-secondary">
+                                <Clock className="h-4 w-4 text-brand-500" />
+                                Responde en {provider.responseTime}
                             </p>
                         </div>
+                    </section>
+
+                    {provider.verified && (
+                        <section className="rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm">
+                            <div className="mb-3 flex items-center gap-3">
+                                <BadgeCheck className="h-6 w-6 text-brand-700" />
+                                <h3 className="font-bold cc-text-primary">Proveedor verificado</h3>
+                            </div>
+                            <p className="text-sm leading-6 cc-text-secondary">
+                                Perfil revisado para operar dentro de comunidades, con reputacion y datos de contacto visibles.
+                            </p>
+                        </section>
                     )}
-                </div>
+                </aside>
             </div>
 
-            {/* Request Service Dialog */}
             <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Solicitar Servicio a {provider.name}</DialogTitle>
+                        <DialogTitle>Solicitar servicio a {provider.name}</DialogTitle>
                         <DialogDescription>
                             Completa los detalles para coordinar el servicio.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleRequestService} className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium cc-text-secondary">Fecha Preferida</label>
+                            <label className="text-sm font-medium cc-text-secondary">Fecha preferida</label>
                             <Input
                                 type="date"
                                 required
@@ -513,7 +495,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium cc-text-secondary">Hora Preferida</label>
+                            <label className="text-sm font-medium cc-text-secondary">Hora preferida</label>
                             <Input
                                 type="time"
                                 required
@@ -522,9 +504,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium cc-text-secondary">Descripción del Servicio</label>
+                            <label className="text-sm font-medium cc-text-secondary">Descripcion del servicio</label>
                             <textarea
-                                className="w-full min-h-[100px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="min-h-[100px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
                                 placeholder="Describe el servicio que necesitas..."
                                 required
                                 value={requestForm.description}
@@ -533,25 +515,24 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={isRequestSaving}>
-                                {isRequestSaving ? 'Enviando...' : 'Enviar Solicitud'}
+                                {isRequestSaving ? "Enviando..." : "Enviar solicitud"}
                             </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
-            {/* Review Dialog */}
             <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Dejar una Reseña</DialogTitle>
+                        <DialogTitle>Dejar una resena</DialogTitle>
                         <DialogDescription>
-                            Comparte tu experiencia con {provider.name}
+                            Comparte tu experiencia con {provider.name}.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmitReview} className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium cc-text-secondary">Calificación</label>
+                            <label className="text-sm font-medium cc-text-secondary">Calificacion</label>
                             <div className="flex gap-2">
                                 {Array.from({ length: 5 }).map((_, i) => (
                                     <button
@@ -561,17 +542,17 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                         className="focus:outline-none"
                                     >
                                         <Star
-                                            className={`h-8 w-8 ${i < reviewForm.rating ? 'text-amber-500 fill-current' : 'cc-text-tertiary'} hover:text-amber-400 transition-colors`}
+                                            className={`h-8 w-8 ${i < reviewForm.rating ? "fill-amber-500 text-amber-500" : "cc-text-tertiary"} transition-colors hover:text-amber-400`}
                                         />
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium cc-text-secondary">Tu Comentario</label>
+                            <label className="text-sm font-medium cc-text-secondary">Tu comentario</label>
                             <textarea
-                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                placeholder="Cuéntanos sobre tu experiencia..."
+                                className="min-h-[120px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+                                placeholder="Cuentanos sobre tu experiencia..."
                                 required
                                 value={reviewForm.comment}
                                 onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
@@ -579,7 +560,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={isReviewSaving}>
-                                {isReviewSaving ? 'Publicando...' : 'Publicar Reseña'}
+                                {isReviewSaving ? "Publicando..." : "Publicar resena"}
                             </Button>
                         </DialogFooter>
                     </form>

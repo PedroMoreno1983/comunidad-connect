@@ -1,7 +1,7 @@
 "use client";
 
 import { ExpensesService } from "@/lib/api";
-import { ChevronLeft, MoreHorizontal, ArrowRight, CreditCard, Sparkles, Check, Download, AlertCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { useState, useEffect } from "react";
@@ -19,6 +19,38 @@ interface Expense {
     dueDate: string;
     paidAt?: string | null;
     breakdown?: { label: string; amount: number }[];
+}
+
+type ExpenseItemRow = {
+    label?: string | null;
+    amount?: number | string | null;
+};
+
+type SupabaseExpenseRow = {
+    id: string;
+    unit_id?: string | null;
+    month?: string | null;
+    amount?: number | string | null;
+    status?: Expense["status"] | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    items?: ExpenseItemRow[] | null;
+};
+
+function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
+    return {
+        id: expense.id,
+        unitId: expense.unit_id || "",
+        month: expense.month || new Date().toISOString().slice(0, 7),
+        amount: Number(expense.amount || 0),
+        status: expense.status || "pending",
+        dueDate: expense.due_date || new Date().toISOString(),
+        paidAt: expense.paid_at || null,
+        breakdown: (expense.items || []).map(item => ({
+            label: item.label || "Concepto",
+            amount: Number(item.amount || 0),
+        })),
+    };
 }
 
 const DEFAULT_BREAKDOWN = [
@@ -56,19 +88,7 @@ export default function ExpensesPage() {
                 setIsLoading(true);
                 const data = await ExpensesService.getExpenses(targetUnitId);
 
-                // Map snake_case to camelCase
-                const mapped = data.map((exp: any) => ({
-                    id: exp.id,
-                    unitId: exp.unit_id,
-                    month: exp.month,
-                    amount: Number(exp.amount),
-                    status: exp.status,
-                    dueDate: exp.due_date,
-                    paidAt: exp.paid_at,
-                    breakdown: exp.items || []
-                }));
-
-                setExpenses(mapped);
+                setExpenses(((data || []) as SupabaseExpenseRow[]).map(mapExpenseRow));
             } catch (error: unknown) {
                 console.error("Error fetching expenses:", error);
                 setExpenses([]);
@@ -147,7 +167,7 @@ export default function ExpensesPage() {
                   : "La transacción se completó con éxito.",
                 variant: "success",
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo procesar el pago.",
@@ -263,7 +283,7 @@ export default function ExpensesPage() {
 
                         {/* Breakdown */}
                         <div className="mt-5 mb-6">
-                            {breakdownList.map((row, i) => (
+                            {breakdownList.map((row) => (
                                 <div
                                     key={row.label}
                                     className="flex justify-between items-center py-3"

@@ -236,8 +236,8 @@ export default function AdminOnboardingPage() {
         setLastFileName("nomina-demo.csv");
         setExtractedData(demoExtractedUsers);
         toast({
-            title: "Nómina demo cargada",
-            description: "Puedes editar filas, eliminar dudas y simular la sincronización.",
+            title: "Nómina showcase cargada",
+            description: "Puedes editar filas, resolver dudas y revisar la sincronización.",
             variant: "success",
         });
     };
@@ -287,8 +287,8 @@ export default function AdminOnboardingPage() {
                 if (browserRows.length > 0) {
                     setExtractedData(browserRows);
                     toast({
-                        title: "Archivo demo leído",
-                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado seguirá siendo simulado.`,
+                        title: "Archivo showcase leído",
+                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado quedará protegido en esta sesión.`,
                         variant: "success",
                     });
                     return;
@@ -298,8 +298,8 @@ export default function AdminOnboardingPage() {
                     const apiRows = await extractFileWithApi(uploadedFile);
                     setExtractedData(apiRows);
                     toast({
-                        title: "Archivo demo procesado",
-                        description: `Detectamos ${apiRows.length} fila(s). El guardado seguirá siendo simulado.`,
+                        title: "Archivo showcase procesado",
+                        description: `Detectamos ${apiRows.length} fila(s). El guardado quedará protegido en esta sesión.`,
                         variant: "success",
                     });
                     return;
@@ -309,8 +309,8 @@ export default function AdminOnboardingPage() {
 
                 setExtractedData(demoExtractedUsers);
                 toast({
-                    title: "Archivo recibido en modo demo",
-                    description: "No pudimos leerlo en esta demo, así que cargamos filas de prueba para que puedas revisar el flujo sin guardar datos reales.",
+                    title: "Archivo recibido en showcase",
+                    description: "No pudimos leerlo en esta sesión, así que cargamos filas de ejemplo para revisar el flujo sin guardar datos reales.",
                     variant: "success",
                 });
                 return;
@@ -387,7 +387,7 @@ export default function AdminOnboardingPage() {
                 });
                 setSyncSuccess(true);
                 setExtractedData(null);
-                toast({ title: "Nómina demo aplicada", description: "Quedó visible en Directorio y Unidades dentro de esta demo.", variant: "success" });
+                toast({ title: "Nómina showcase aplicada", description: "Quedó visible en Directorio y Unidades para esta sesión.", variant: "success" });
                 return;
             }
 
@@ -563,11 +563,11 @@ export default function AdminOnboardingPage() {
                         <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <h2 className={`mt-5 text-2xl font-semibold ${syncResult?.mode === "demo" ? "text-warning-fg" : "text-success-fg"}`}>
-                        {syncResult?.mode === "demo" ? "Carga simulada en cuenta demo" : "Nómina sincronizada"}
+                        {syncResult?.mode === "demo" ? "Carga de showcase aplicada" : "Nómina sincronizada"}
                     </h2>
                     <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${syncResult?.mode === "demo" ? "text-amber-900" : "text-emerald-800"}`}>
                         {syncResult?.mode === "demo"
-                            ? "Esta cuenta protege la demostracion: no escribe en la base real. El lote quedo guardado localmente y visible en Directorio y Unidades para validar el flujo completo."
+                            ? "Esta cuenta protege el showcase: no escribe en la base real. El lote quedó guardado localmente y visible en Directorio y Unidades para validar el flujo completo."
                             : "Los residentes quedaron guardados y preparados para invitación, asignación de unidades y operación diaria."}
                     </p>
 
@@ -578,7 +578,7 @@ export default function AdminOnboardingPage() {
                             { label: "Con errores", value: `${syncResult?.errors ?? 0}` },
                             {
                                 label: "Destino",
-                                value: syncResult?.mode === "demo" ? "Directorio y Unidades demo" : "Directorio y Unidades",
+                                value: syncResult?.mode === "demo" ? "Directorio y Unidades showcase" : "Directorio y Unidades",
                             },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-white/60 bg-white/75 p-4 shadow-sm">

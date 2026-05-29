@@ -120,7 +120,7 @@ export default function OutreachDemo() {
                     {isDemoUser && (
                         <div className="flex items-center gap-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-xs font-medium text-warning-fg">
                             <Lock className="h-4 w-4 shrink-0" />
-                            El envio de correos esta deshabilitado en esta cuenta demo por seguridad.
+                            El envío de correos está deshabilitado en esta cuenta showcase por seguridad.
                         </div>
                     )}
 

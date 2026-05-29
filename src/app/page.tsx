@@ -5,110 +5,195 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import {
-  Building2, User,
+  Building2,
   Sun, Moon, CheckCircle2, HelpCircle,
-  BellRing, CreditCard, CalendarCheck, ArrowRight,
-  MessageSquare, Package, MapPin, TrendingUp, Star,
-  Users, Home, Zap, ChevronRight, Sparkles, HeartHandshake, Heart
+  ArrowRight,
+  MessageSquare, Package, TrendingUp,
+  Users, Zap, ChevronRight, Handshake, Heart, Clock
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
 
 /* ── Animated counter hook ────────────────────────────── */
-function useCounter(target: number, duration = 2000, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration, start]);
-  return count;
-}
-
-/* ── Mini App Mockup ──────────────────────────────────── */
+/* ── Resident Home Dashboard Mockup ───────────────────── */
 function AppMockup() {
   return (
-    <div className="relative w-full max-w-[340px] h-[300px] flex items-center justify-center">
-      {/* Card 1: Gasto común pagado (slightly rotated left) */}
-      <div 
-        className="absolute w-[280px] bg-[#FAF7F1] border rounded-2xl p-5 shadow-md rotate-[-4deg] translate-x-[-15px] translate-y-[-25px] transition-transform hover:rotate-0 duration-300"
-        style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
-      >
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[rgba(110,130,104,0.1)] text-[#6E8268] flex items-center justify-center">
-              <CreditCard className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-medium" style={{ color: 'var(--cc-ink-tertiary)' }}>GASTO COMÚN</div>
-              <div className="text-xs font-semibold">Marzo 2026</div>
-            </div>
+    <div className="relative w-full max-w-[360px] bg-white dark:bg-[#25242A] border rounded-[2rem] p-5 shadow-2xl text-left transition-all duration-300 hover:shadow-[#C8705A]/5" style={{ borderColor: 'var(--cc-border-default)' }}>
+      {/* Top bar header */}
+      <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#F1EAE1] dark:border-[#3B3530]">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-[rgba(181,102,78,0.1)] text-[#B5664E] flex items-center justify-center font-bold text-xs">
+            PM
           </div>
-          <span className="inline-flex rounded-full bg-[rgba(110,130,104,0.1)] px-2.5 py-0.5 text-[10px] font-semibold text-[#6E8268]">
-            ✓ Pagado
-          </span>
+          <div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Residente</div>
+            <div className="text-xs font-bold text-[#2D2A26] dark:text-[#FBF8F3] mt-0.5">Pedro Moreno</div>
+          </div>
         </div>
-        <div className="text-xl font-bold font-display" style={{ fontFamily: 'var(--cc-font-display)' }}>$45.200 <span className="text-xs font-normal text-slate-500 font-sans">CLP</span></div>
+        <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+          🏢 Dpto 402-B
+        </span>
       </div>
 
-      {/* Card 2: Coco AI confirmando reserva (slightly rotated right, overlay) */}
-      <div 
-        className="absolute w-[280px] bg-[#FAF7F1] border rounded-2xl p-5 shadow-lg rotate-[3deg] translate-x-[15px] translate-y-[25px] transition-transform hover:rotate-0 duration-300 z-10"
-        style={{ borderColor: 'rgba(26, 22, 17, 0.08)' }}
-      >
+      {/* Gasto Común Card */}
+      <div className="bg-[#FAF7F1] dark:bg-[#302D2A] border border-[#E4D8CA] dark:border-[#3B3530] rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[rgba(181,102,78,0.08)] text-[#B5664E] flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-medium" style={{ color: 'var(--cc-ink-tertiary)' }}>COCO ASSISTANT</div>
-              <div className="text-xs font-semibold">Reserva confirmada</div>
+          <div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Gasto Común Mayo</span>
+            <div className="text-xl font-bold font-mono text-ink mt-0.5">$45.200 <span className="text-[10px] font-normal text-slate-400">CLP</span></div>
+          </div>
+          <span className="inline-flex rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
+            Pendiente
+          </span>
+        </div>
+        <button className="w-full py-2 bg-[#1A1611] hover:bg-[#2D2A26] dark:bg-white dark:hover:bg-[#FAF7F1] dark:text-black text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm">
+          Pagar con Webpay <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Fondo de Apoyo Mutuo Widget */}
+      <div className="bg-[rgba(110,130,104,0.04)] border border-[rgba(110,130,104,0.12)] rounded-2xl p-4 mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[9px] font-bold text-[#6E8268] uppercase tracking-widest flex items-center gap-1">
+            <Heart className="w-3 h-3 fill-[#6E8268]" /> Apoyo Mutuo Vecinal
+          </span>
+          <span className="text-[10px] font-bold font-mono text-[#6E8268]">$180.000</span>
+        </div>
+        <p className="text-[10px] leading-relaxed text-[#5F5A54] dark:text-[#C8BFB6] mb-3">
+          Tu redondeo mensual: <strong className="text-ink">+$800 CLP</strong> acumulado para la comunidad.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white dark:bg-[#25242A] border border-[rgba(110,130,104,0.12)] rounded-lg p-2 text-center">
+            <div className="text-[8px] font-bold text-slate-400 uppercase">Horas Devueltas</div>
+            <div className="text-xs font-bold text-[#6E8268] mt-0.5">6.5h</div>
+          </div>
+          <div className="bg-white dark:bg-[#25242A] border border-[rgba(110,130,104,0.12)] rounded-lg p-2 text-center">
+            <div className="text-[8px] font-bold text-slate-400 uppercase">Familias Apoyadas</div>
+            <div className="text-xs font-bold text-[#B5664E] mt-0.5">2</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Conserjería alerts */}
+      <div className="flex items-center justify-between p-3 bg-[#FAF7F1] dark:bg-[#302D2A] border border-[#E4D8CA] dark:border-[#3B3530] rounded-xl text-[10px]">
+        <div className="flex items-center gap-2">
+          <Package className="w-3.5 h-3.5 text-[#C8705A]" />
+          <span className="font-bold text-[#2D2A26] dark:text-[#E4D8CA]">Encomienda lista en conserjería</span>
+        </div>
+        <span className="text-slate-400 font-mono text-[9px]">Hace 15m</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── CoCo WhatsApp Mockup ─────────────────────────────── */
+function CoCoWhatsAppMockup() {
+  return (
+    <div className="w-full max-w-[340px] mx-auto bg-[#E5DDD5] dark:bg-[#0C0A08] border border-[#E4D8CA] dark:border-[#3B3530] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col h-[420px]">
+      {/* WhatsApp header */}
+      <div className="bg-[#075E54] dark:bg-[#25242A] px-4 py-3 text-white flex items-center justify-between shadow-md shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg">
+            🤖
+          </div>
+          <div>
+            <div className="text-xs font-bold">CoCo Assistant</div>
+            <div className="text-[9px] text-emerald-300 dark:text-emerald-400 font-bold flex items-center gap-1 leading-none mt-0.5">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> En línea
             </div>
           </div>
-          <span className="cc-dot text-[#B5664E] animate-pulse" />
         </div>
-        <div className="text-sm font-medium leading-relaxed text-[#1A1611]">
-          &ldquo;He reservado el <span className="text-[#B5664E] font-semibold">Quincho</span>{' '}para ti este sábado a las 14:00.&rdquo;
+        <span className="text-[9px] bg-white/10 dark:bg-white/5 px-2 py-0.5 rounded text-white/80 font-bold uppercase tracking-wider">WhatsApp</span>
+      </div>
+
+      {/* WhatsApp message area */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-3 relative flex flex-col">
+        {/* Date indicator */}
+        <div className="flex justify-center my-1">
+          <span className="bg-white/70 dark:bg-white/10 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-slate-500 dark:text-slate-300 shadow-sm uppercase tracking-wider">
+            Hoy
+          </span>
+        </div>
+
+        {/* Resident Message */}
+        <div className="flex justify-end">
+          <div className="bg-[#DCF8C6] dark:bg-[#056162] text-[#2D2A26] dark:text-[#FAF7F1] p-3 rounded-2xl rounded-tr-none max-w-[85%] text-xs shadow-sm">
+            <p className="leading-relaxed">Hola CoCo, soy Pedro del dpto 402. ¿Está disponible el Quincho para este sábado por la tarde?</p>
+            <span className="text-[8px] text-slate-400 dark:text-slate-300 block text-right mt-1 font-mono">14:02 ✓✓</span>
+          </div>
+        </div>
+
+        {/* CoCo Response */}
+        <div className="flex justify-start">
+          <div className="bg-white dark:bg-[#25242A] text-[#2D2A26] dark:text-[#FAF7F1] p-3 rounded-2xl rounded-tl-none max-w-[85%] text-xs shadow-sm">
+            <p className="leading-relaxed">¡Hola Pedro! 🏢 Sí, el <strong>Quincho A</strong> está libre el sábado 30 de mayo de 14:00 a 18:00 hrs. La tarifa de reserva es de $15.000 CLP.</p>
+            <p className="leading-relaxed mt-1">¿Te gustaría que lo reserve a tu nombre?</p>
+            <span className="text-[8px] text-slate-400 block text-right mt-1 font-mono">14:02</span>
+          </div>
+        </div>
+
+        {/* Resident Message */}
+        <div className="flex justify-end">
+          <div className="bg-[#DCF8C6] dark:bg-[#056162] text-[#2D2A26] dark:text-[#FAF7F1] p-3 rounded-2xl rounded-tr-none max-w-[85%] text-xs shadow-sm">
+            <p className="leading-relaxed">Sí, por favor confírmalo y cárgalo a mi cuenta.</p>
+            <span className="text-[8px] text-slate-400 dark:text-slate-300 block text-right mt-1 font-mono">14:03 ✓✓</span>
+          </div>
+        </div>
+
+        {/* CoCo Response */}
+        <div className="flex justify-start">
+          <div className="bg-white dark:bg-[#25242A] text-[#2D2A26] dark:text-[#FAF7F1] p-3 rounded-2xl rounded-tl-none max-w-[85%] text-xs shadow-sm">
+            <p className="leading-relaxed">¡Listo Pedro! Reserva confirmada. He enviado la orden de cobro de $15.000 CLP a tu perfil de gastos comunes.</p>
+            <p className="leading-relaxed mt-1">Puedes pagarlo directo en este link: <span className="text-blue-500 dark:text-blue-400 underline font-bold">convive.cl/p/pay_982</span> 💳</p>
+            <span className="text-[8px] text-slate-400 block text-right mt-1 font-mono">14:03</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-
-
 /* ── Trust Stats ──────────────────────────────────────── */
 function TrustStats() {
-  const units = useCounter(850, 1400, true);
-  const communities = useCounter(32, 1200, true);
-  const satisfaction = useCounter(98, 1100, true);
-
   const stats = [
-    { value: `+${units}`, label: "Unidades gestionadas", icon: <Home className="w-5 h-5" />, color: "text-[#C8705A]", bg: "bg-[#C8705A]/10" },
-    { value: communities, label: "Comunidades activas", icon: <Building2 className="w-5 h-5" />, color: "text-[#5A7D5A]", bg: "bg-[#5A7D5A]/10" },
-    { value: `${satisfaction}%`, label: "Satisfacción de usuarios", icon: <Star className="w-5 h-5" />, color: "text-amber-500", bg: "bg-amber-400/10" },
+    {
+      value: "95% de Recaudación",
+      desc: "Gastos comunes pagados dentro de las primeras 72h gracias al cobro inteligente y links rápidos.",
+      icon: <TrendingUp className="w-5 h-5" />,
+      color: "text-[#5A7D5A]",
+      bg: "bg-[#5A7D5A]/10",
+      border: "border-[#5A7D5A]/20"
+    },
+    {
+      value: "-80% Carga Operativa",
+      desc: "Reducción de consultas de copropiedad y reservas gracias al soporte automático de CoCo IA.",
+      icon: <MessageSquare className="w-5 h-5" />,
+      color: "text-[#C8705A]",
+      bg: "bg-[#C8705A]/10",
+      border: "border-[#C8705A]/20"
+    },
+    {
+      value: "100% Transparencia",
+      desc: "Libro diario e historial de apoyo mutuo automatizados y auditables en tiempo real.",
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      color: "text-amber-500",
+      bg: "bg-amber-400/10",
+      border: "border-amber-400/20"
+    },
   ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-16 md:mt-20">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 md:gap-8">
+    <div className="w-full max-w-5xl mx-auto mt-16 md:mt-20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((s, i) => (
           <div
             key={i}
-            className="flex flex-col items-center text-center gap-2"
+            className={`flex flex-col gap-3 p-6 rounded-2xl bg-white dark:bg-[#25242A] border ${s.border} shadow-sm transition-all hover:shadow-md`}
           >
-            <div className={`w-11 h-11 rounded-2xl ${s.bg} flex items-center justify-center ${s.color} mb-1`}>
+            <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}>
               {s.icon}
             </div>
-            <p className={`text-2xl md:text-4xl font-extrabold tracking-tight ${s.color}`}>{s.value}</p>
-            <p className="text-xs md:text-sm text-[#8A8580] dark:text-[#C8BFB6] font-medium leading-tight">{s.label}</p>
+            <h3 className="text-xl font-bold tracking-tight text-[#2D2A26] dark:text-[#FBF8F3]">{s.value}</h3>
+            <p className="text-xs text-[#8A8580] dark:text-[#C8BFB6] leading-relaxed font-medium">{s.desc}</p>
           </div>
         ))}
       </div>
@@ -230,33 +315,7 @@ const steps = [
   },
 ];
 
-/* ── Testimonials ─────────────────────────────────────── */
-const testimonials = [
-  {
-    name: 'Valentina Rojas',
-    role: 'Administradora · Condominio Los Pinos',
-    quote: 'Los gastos comunes que antes tardaban una semana en recaudar, ahora los tenemos el mismo día. Convive Connect cambió todo.',
-    avatar: '🧑‍💼',
-    color: '#C8705A',
-    stars: 5,
-  },
-  {
-    name: 'Sebastián Muñoz',
-    role: 'Residente · Torre Andes',
-    quote: 'Reservar la piscina, hablar con la conserjería y pagar todo desde el teléfono. Mi edificio por fin es moderno.',
-    avatar: '👨‍💻',
-    color: '#5A7D5A',
-    stars: 5,
-  },
-  {
-    name: 'María José Fernández',
-    role: 'Conserje · Edificio Bellavista',
-    quote: 'El libro de novedades digital me salvó la vida. Nada más de cuadernos perdidos ni malentendidos en los turnos.',
-    avatar: '👩‍🔧',
-    color: '#f59e0b',
-    stars: 5,
-  },
-];
+// Testimonials removed to ensure platform authenticity
 
 /* ── Main Page ────────────────────────────────────────── */
 export default function LandingPage() {
@@ -289,7 +348,7 @@ export default function LandingPage() {
           className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C8705A] to-[#B45F4B] shadow-lg shadow-[#C8705A]/30 sm:h-10 sm:w-10 sm:rounded-2xl">
-            <HeartHandshake className="h-5 w-5 text-white" />
+            <Handshake className="h-5 w-5 text-white" />
           </div>
           <BrandWordmark className="min-w-0 truncate text-base text-[#C8705A] sm:text-xl" />
         </div>
@@ -307,8 +366,8 @@ export default function LandingPage() {
             onClick={() => router.push('/login')}
             className="whitespace-nowrap rounded-xl bg-[#C8705A] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#C8705A]/30 transition-all hover:-translate-y-0.5 hover:bg-[#B45F4B] hover:shadow-[#C8705A]/50 sm:px-5 sm:py-2.5 sm:text-sm"
           >
-            <span className="sm:hidden">Gratis</span>
-            <span className="hidden sm:inline">Empezar gratis</span>
+            <span className="sm:hidden">Registrar</span>
+            <span className="hidden sm:inline">Registrar condominio</span>
           </button>
           <button
             onClick={toggleTheme}
@@ -354,17 +413,17 @@ export default function LandingPage() {
             >
               <button
                 onClick={() => router.push('/login')}
-                className="inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] text-sm"
+                className="inline-flex items-center justify-center gap-2 font-bold transition-all cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] dark:bg-white dark:text-black text-[#FAF7F1] text-sm hover:opacity-90 shadow-md"
               >
-                Probar gratis 30 días
+                Agendar onboarding (48h)
                 <ArrowRight size={15} />
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="inline-flex items-center justify-center gap-2 font-medium transition-colors cursor-pointer px-6 py-3.5 rounded-xl border text-sm"
-                style={{ borderColor: 'rgba(26, 22, 17, 0.16)', background: 'transparent' }}
+                className="inline-flex items-center justify-center gap-2 font-semibold transition-all cursor-pointer px-6 py-3.5 rounded-xl border text-sm hover:bg-slate-50 dark:hover:bg-[#302D2A]"
+                style={{ borderColor: 'var(--cc-border-default)', background: 'transparent' }}
               >
-                Demo en vivo
+                Ver demo de 2 min
               </button>
             </div>
           </div>
@@ -379,6 +438,47 @@ export default function LandingPage() {
 
         {/* ── Trust Stats ── */}
         <TrustStats />
+
+        {/* ── Section: CoCo IA (WhatsApp Integration) ── */}
+        <section className="mt-24 md:mt-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          <div className="flex-1 max-w-xl order-2 lg:order-1">
+            <CoCoWhatsAppMockup />
+          </div>
+          <div className="flex-1 max-w-xl order-1 lg:order-2">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#5A7D5A]/10 border border-[#5A7D5A]/20 text-[#5A7D5A] text-xs font-bold tracking-widest uppercase mb-5">
+              ✦ Exclusivo de Convive Connect
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-6 leading-none text-[#2D2A26] dark:text-[#FBF8F3]">
+              CoCo IA: Tu edificio conectado por <span className="text-[#25D366]">WhatsApp</span>
+            </h2>
+            <p className="text-base sm:text-lg text-[#524A40] dark:text-[#C8BFB6] mb-8 leading-relaxed">
+              Comunidad Feliz y Edifito te obligan a descargar apps pesadas e iniciar sesión cada vez. Nosotros integramos un asistente conversacional Claude-powered directamente en WhatsApp.
+            </p>
+            <ul className="space-y-4 mb-8">
+              {[
+                { title: "Cero apps que descargar", desc: "Los residentes gestionan todo enviando un simple mensaje de WhatsApp." },
+                { title: "Reservas instantáneas", desc: "CoCo verifica disponibilidad de espacios comunes (quinchos, piscinas) y agenda al instante." },
+                { title: "Pagos sin fricción", desc: "Envío inmediato de links directos de Webpay para saldar gastos comunes o arriendos." },
+                { title: "Conserjería en sincronía", desc: "Notificaciones instantáneas de visitas, encomiendas o emergencias registradas por la app." }
+              ].map((item, i) => (
+                <li key={i} className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">✓</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3]">{item.title}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => router.push('/login')}
+              className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] dark:bg-white dark:text-black text-sm hover:opacity-90 transition-all shadow-md"
+            >
+              Ver demo de 2 min
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        </section>
 
         {/* ── Divider ── */}
         <div className="my-20 md:my-28 flex items-center gap-4">
@@ -551,49 +651,67 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Testimonials ── */}
-        <section className="mt-24 md:mt-32 w-full">
-          <div className="text-center mb-14">
-            <h2
-              className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
-            >
-              Lo que dicen{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#5A7D5A]">las comunidades</span>
+        {/* ── Section: Apoyo Mutuo (Solidaridad Vecinal) ── */}
+        <section className="mt-24 md:mt-32 w-full max-w-5xl mx-auto rounded-[2.5rem] bg-[#FAF7F1] dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-14 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[rgba(110,130,104,0.06)] rounded-full blur-3xl" />
+          
+          <div className="relative z-10 max-w-3xl mx-auto text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#6E8268]/15 border border-[#6E8268]/20 text-[#6E8268] text-xs font-bold tracking-widest uppercase mb-5 animate-pulse">
+              ✦ Cohesión Comunitaria Nativa
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-4 text-[#2D2A26] dark:text-[#FBF8F3]">
+              Apoyo Mutuo: El <span className="text-[#6E8268] italic font-serif">corazón</span> de tu comunidad
             </h2>
+            <p className="text-base text-slate-500 dark:text-slate-400">
+              No somos solo un software contable. Diseñamos el primer ecosistema digital que fomenta la colaboración vecinal organizada y confidencial.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="relative flex flex-col gap-5 p-7 rounded-[2rem] bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                {/* Quote mark */}
-                <div className="text-5xl leading-none font-black opacity-10 absolute top-4 right-6" style={{ color: t.color }}>&quot;</div>
-
-                {/* Stars */}
-                <div className="flex gap-1">
-                  {Array.from({ length: t.stars }).map((_, si) => (
-                    <Star key={si} className="w-4 h-4 fill-current" style={{ color: t.color }} />
-                  ))}
-                </div>
-
-                <p className="text-[#2D2A26] dark:text-[#E4D8CA] text-sm leading-relaxed font-medium flex-1">«{t.quote}»</p>
-
-                <div className="flex items-center gap-3 pt-4 border-t border-[#F1EAE1] dark:border-[#3B3530]">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-                    style={{ background: `${t.color}15` }}
-                  >
-                    {t.avatar}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                num: "01",
+                title: "Redondeo Solidario",
+                desc: "Al pagar los gastos comunes, los residentes pueden elegir redondear su cuenta (por ejemplo, aportar $800 extra). Cada peso va directo al fondo de la comunidad.",
+                icon: <TrendingUp className="w-6 h-6 text-[#6E8268]" />,
+                bg: "bg-[#6E8268]/10"
+              },
+              {
+                num: "02",
+                title: "Fondo Confidencial",
+                desc: "Los residentes que enfrentan desempleo, jubilación o gastos de salud graves pueden solicitar el subsidio. El comité lo evalúa y abona a su cuenta sin exponer su privacidad.",
+                icon: <Heart className="w-6 h-6 text-[#C8705A]" />,
+                bg: "bg-[#C8705A]/10"
+              },
+              {
+                num: "03",
+                title: "Retribución Comunitaria",
+                desc: "Quienes reciben el subsidio aportan de vuelta realizando tareas sencillas del edificio: clasificación en punto verde, orden de encomiendas o apoyo digital a tercera edad.",
+                icon: <Clock className="w-6 h-6 text-[#C99A4A]" />,
+                bg: "bg-amber-400/10"
+              }
+            ].map((pillar, i) => (
+              <div key={i} className="flex flex-col p-6 rounded-2xl bg-white dark:bg-[#1E1E24] border border-[#E4D8CA]/60 dark:border-[#3B3530] shadow-sm hover:shadow-md transition-all">
+                <div className="flex justify-between items-center mb-4">
+                  <div className={`w-12 h-12 rounded-xl ${pillar.bg} flex items-center justify-center`}>
+                    {pillar.icon}
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#2D2A26] dark:text-[#FBF8F3]">{t.name}</p>
-                    <p className="text-[11px] text-[#8A8580] font-medium">{t.role}</p>
-                  </div>
+                  <span className="font-mono text-2xl font-black text-slate-200 dark:text-slate-700">{pillar.num}</span>
                 </div>
+                <h3 className="text-lg font-bold text-[#2D2A26] dark:text-[#FBF8F3] mb-2">{pillar.title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{pillar.desc}</p>
               </div>
             ))}
+          </div>
+          
+          <div className="relative z-10 text-center mt-10">
+            <button
+              onClick={() => router.push('/login')}
+              className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl border border-slate-300 dark:border-[#3B3530] text-sm text-[#2D2A26] dark:text-[#FAF7F1] hover:bg-slate-50 dark:hover:bg-[#302D2A] transition-all shadow-sm"
+            >
+              Hablar con un administrador
+              <ArrowRight size={15} />
+            </button>
           </div>
         </section>
 
@@ -644,7 +762,7 @@ export default function LandingPage() {
                     className="flex-1 py-4 rounded-2xl text-white font-bold hover:opacity-90 transition-all shadow-lg text-sm"
                     style={{ background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}dd)`, boxShadow: `0 8px 24px ${selectedRole.color}40` }}
                   >
-                    Empezar Ahora
+                    Agendar Demo
                   </button>
                   <button
                     onClick={() => setSelectedInfo(null)}
@@ -701,7 +819,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
-                Empezar Gratis
+                Probar Plan Básico
               </button>
             </div>
 
@@ -733,7 +851,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
-                Empezar Gratis
+                Hablar con un Asesor
               </button>
             </div>
 
@@ -758,7 +876,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button onClick={() => router.push('/admin-onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
-                Empezar Gratis
+                Agendar Onboarding (48h)
               </button>
             </div>
           </div>
@@ -821,7 +939,7 @@ export default function LandingPage() {
                 id="cta-footer-btn"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-[#B45F4B] font-extrabold text-base hover:bg-[#F4E8DF] transition-all shadow-xl shadow-black/20 hover:-translate-y-1"
               >
-                Crear mi cuenta gratis
+                Comenzar gratis hoy
                 <ArrowRight className="w-4 h-4" />
               </button>
               <p className="text-white/50 text-xs mt-4">Sin tarjeta · Onboarding en 48h · Cancela cuando quieras</p>
@@ -835,7 +953,7 @@ export default function LandingPage() {
         <div className="mx-auto box-border flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row md:px-12">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-gradient-to-br from-[#C8705A] to-[#B45F4B] rounded-lg flex items-center justify-center">
-              <HeartHandshake className="text-white w-3.5 h-3.5" />
+              <Handshake className="text-white w-3.5 h-3.5" />
             </div>
             <BrandWordmark className="text-sm text-[#C8705A]" />
             <span className="text-[#8A8580] text-sm">· © 2026</span>
@@ -843,7 +961,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-sm font-semibold text-[#8A8580]">
             <Link href="/privacy" className="hover:text-[#C8705A] transition-colors">Privacidad</Link>
             <Link href="/terms" className="hover:text-[#C8705A] transition-colors">Términos</Link>
-            <a href="mailto:soporte@convive.app" className="hover:text-[#C8705A] transition-colors">Soporte</a>
+            <a href="mailto:soporte@conviveconnect.com" className="hover:text-[#C8705A] transition-colors">Soporte</a>
           </div>
         </div>
       </footer>

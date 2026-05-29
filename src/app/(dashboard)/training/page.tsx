@@ -72,7 +72,7 @@ const ADMIN_GUIDES: Guide[] = [
             { text: "Al tope de la página verás el panel **\"Códigos de Invitación\"** con 2 códigos únicos." },
             { text: "El **código verde** es para residentes. El **código naranja** es para conserjes." },
             { text: "Comparte el código por WhatsApp, papel o email." },
-            { text: "El nuevo miembro va a **convive.app/signup**, ingresa el código y su cuenta queda asignada automáticamente a tu comunidad y rol correcto.", tip: "Los códigos son permanentes y únicos por comunidad. No los compartas públicamente." },
+            { text: "El nuevo miembro va a **conviveconnect.com/signup**, ingresa el código y su cuenta queda asignada automáticamente a tu comunidad y rol correcto.", tip: "Los códigos son permanentes y únicos por comunidad. No los compartas públicamente." },
         ],
     },
     {

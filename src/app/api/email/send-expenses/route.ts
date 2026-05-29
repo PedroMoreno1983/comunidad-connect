@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { PUBLIC_SITE_URL, SUPPORT_EMAIL } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
         }
 
         const communityName = community?.name || 'Tu Comunidad';
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app';
+        const siteUrl = PUBLIC_SITE_URL;
         const monthLabel = month
             ? new Date(month + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
             : 'Este mes';
@@ -199,7 +200,7 @@ export async function POST(request: Request) {
     <td align="center" style="padding:32px 0 0;">
       <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
         Convive Connect &mdash; Sistema de Gestión Inmobiliaria<br/>
-        Preguntas: <a href="mailto:soporte@convive.app" style="color:#974C3C;text-decoration:none;">soporte@convive.app</a>
+        Preguntas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#974C3C;text-decoration:none;">${SUPPORT_EMAIL}</a>
       </p>
     </td>
   </tr>

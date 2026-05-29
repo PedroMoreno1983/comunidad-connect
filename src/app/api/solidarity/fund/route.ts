@@ -158,7 +158,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Log to ledger
-    const displayName = profile.name || "Residente";
     const typeLabel = type === "round_up" ? "Redondeo de cuenta" : "Aporte voluntario";
     const description = `${typeLabel} de un residente de la comunidad. Aporte de $${contributionAmount.toLocaleString("es-CL")} CLP`;
 

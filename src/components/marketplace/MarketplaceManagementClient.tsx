@@ -461,7 +461,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 <DialogHeader>
                     <DialogTitle>Retirar publicacion</DialogTitle>
                     <DialogDescription>
-                        Esta accion quitara <span className="font-semibold">{pendingDeleteItem?.title}</span> del marketplace publico. En demo queda oculta para conservar trazabilidad.
+                        Esta acción quitará <span className="font-semibold">{pendingDeleteItem?.title}</span> del marketplace público. En showcase queda oculta para conservar trazabilidad.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

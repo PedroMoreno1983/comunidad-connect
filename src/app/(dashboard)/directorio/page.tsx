@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
     Users, Search, MessageSquare, MapPin,
-    Shield, Star, Loader2, Home, Wrench, Zap, Key, Sparkles, SlidersHorizontal, X
+    Loader2, Wrench, Zap, Key, Sparkles, SlidersHorizontal, X
 } from "lucide-react";
 import Image from "next/image";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -15,17 +14,10 @@ import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { providersService } from "@/lib/services/providersService";
-import { ServiceProvider } from "@/lib/types";
-
-interface Neighbor {
-    id: string;
-    name: string;
-    avatar_url?: string;
-    role: 'admin' | 'resident' | 'concierge';
-    unit_id?: string;
-    unitLabel?: string;
-    email?: string;
-}
+import { DirectoryNeighbor, ServiceProvider } from "@/lib/types";
+import { ProviderCard } from "@/components/services/ProviderCard";
+import { getInitials } from "@/lib/utils/avatar";
+import { DirectoryService } from "@/lib/api";
 
 const ROLE_LABELS: Record<string, string> = {
     admin: 'Administración',
@@ -46,97 +38,19 @@ const CATEGORIES = [
     { id: 'cleaning', name: 'Aseo / Limpieza', icon: Sparkles, tone: 'sage' as const }
 ];
 
-function isUuid(value?: string | null) {
-    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
-}
-
-function getProfileName(profile: Record<string, unknown>) {
-    const rawName = String(profile.name || profile.full_name || "").trim();
-    const email = String(profile.email || "").trim();
-    if (rawName && rawName !== email) return rawName;
-    if (email) return email.split("@")[0];
-    return "Vecino";
-}
-
-function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, unknown>) {
-    const profileDepartment = String(profile.department_number || "").trim();
-    if (profileDepartment) return profileDepartment;
-
-    const unitNumber = String(unit?.number || unit?.unit_number || unit?.department_number || "").trim();
-    const tower = String(unit?.tower || "").trim();
-    if (unitNumber && tower) return `${tower}-${unitNumber}`;
-    if (unitNumber) return unitNumber;
-
-    const rawUnitId = String(profile.unit_id || "").trim();
-    return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
-}
-
-const demoNeighbors: Neighbor[] = [
-    {
-        id: "demo-resident-marta",
-        name: "Marta Rojas",
-        role: "resident",
-        unit_id: "demo-unit-805",
-        unitLabel: "805",
-        email: "marta.rojas@demo.com",
-    },
-    {
-        id: "demo-resident-diego",
-        name: "Diego Salinas",
-        role: "resident",
-        unit_id: "demo-unit-1204",
-        unitLabel: "1204",
-        email: "diego.salinas@demo.com",
-    },
-    {
-        id: "demo-concierge-turno",
-        name: "Conserje Turno",
-        role: "concierge",
-        unitLabel: "Acceso principal",
-        email: "conserjeria@demo.com",
-    },
-    {
-        id: "demo-admin-community",
-        name: "Administración Comunidad",
-        role: "admin",
-        unitLabel: "Oficina admin",
-        email: "admin@demo.com",
-    },
+const NEIGHBOR_FILTERS: Array<{ id: 'all' | 'admin' | 'resident' | 'concierge'; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'resident', label: 'Residentes' },
+    { id: 'admin', label: 'Administración' },
+    { id: 'concierge', label: 'Conserjería' }
 ];
-
-const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
-
-function getDemoOnboardedNeighbors(): Neighbor[] {
-    if (typeof window === "undefined") return [];
-    try {
-        const rows = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as Array<{
-            id?: string;
-            name?: string;
-            unit_id?: string;
-            email?: string;
-        }>;
-
-        return rows
-            .filter(row => String(row.name || "").trim() && String(row.unit_id || "").trim())
-            .map((row, index) => ({
-                id: row.id || `demo-onboarded-neighbor-${index}`,
-                name: String(row.name || "Vecino").trim(),
-                role: "resident" as const,
-                unit_id: `demo-onboarded-unit-${String(row.unit_id || "").trim()}`,
-                unitLabel: String(row.unit_id || "").trim(),
-                email: String(row.email || "").trim() || undefined,
-            }));
-    } catch {
-        return [];
-    }
-}
 
 export default function DirectoryPage() {
     const { user } = useAuth();
     const router = useRouter();
 
     const [viewMode, setViewMode] = useState<'neighbors' | 'services'>('neighbors');
-    const [neighbors, setNeighbors] = useState<Neighbor[]>([]);
+    const [neighbors, setNeighbors] = useState<DirectoryNeighbor[]>([]);
     const [providers, setProviders] = useState<ServiceProvider[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -147,81 +61,29 @@ export default function DirectoryPage() {
     // Filters for Services
     const [activeServiceCategory, setActiveServiceCategory] = useState<string | null>(null);
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-
     const loadData = useCallback(async () => {
         if (!user) return;
         setIsLoading(true);
 
         try {
-            // Load Providers
-            const allProviders = await providersService.getAll();
+            const [allProviders, allNeighbors] = await Promise.all([
+                providersService.getAll(),
+                DirectoryService.getNeighbors(user),
+            ]);
             setProviders(allProviders);
-
-            // Load Neighbors
-            if (isDemoUser) {
-                const importedNeighbors = getDemoOnboardedNeighbors();
-                const byKey = new Map<string, Neighbor>();
-                [...importedNeighbors, ...demoNeighbors].forEach(neighbor => {
-                    const key = neighbor.email || `${neighbor.role}-${neighbor.unitLabel || neighbor.id}`;
-                    if (!byKey.has(key)) byKey.set(key, neighbor);
-                });
-                setNeighbors(Array.from(byKey.values()).filter(neighbor => neighbor.id !== user.id));
-            } else {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .neq('id', user?.id || '0')
-                    .order('name');
-
-                if (error) throw error;
-
-                const profiles = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
-                const unitIds = Array.from(new Set(
-                    profiles
-                        .map(profile => String(profile.unit_id || ""))
-                        .filter(unitId => isUuid(unitId))
-                ));
-
-                let unitById = new Map<string, Record<string, unknown>>();
-                if (unitIds.length > 0) {
-                    const { data: unitsData, error: unitsError } = await supabase
-                        .from('units')
-                        .select('*')
-                        .in('id', unitIds);
-
-                    if (!unitsError && Array.isArray(unitsData)) {
-                        unitById = new Map((unitsData as Array<Record<string, unknown>>).map(unit => [String(unit.id), unit]));
-                    }
-                }
-
-                setNeighbors(profiles.map(profile => {
-                    const unitId = String(profile.unit_id || "");
-                    const unit = unitById.get(unitId);
-
-                    return {
-                        id: String(profile.id),
-                        name: getProfileName(profile),
-                        avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : undefined,
-                        role: (profile.role === "admin" || profile.role === "concierge" ? profile.role : "resident") as Neighbor["role"],
-                        unit_id: unitId,
-                        unitLabel: getUnitLabel(profile, unit),
-                        email: typeof profile.email === "string" ? profile.email : undefined,
-                    };
-                }));
-            }
+            setNeighbors(allNeighbors);
         } catch (error) {
             console.error("Error loading directory data:", error);
         } finally {
             setIsLoading(false);
         }
-    }, [isDemoUser, user]);
+    }, [user]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
-    const handleStartDM = (neighbor: Neighbor) => {
+    const handleStartDM = (neighbor: DirectoryNeighbor) => {
         router.push(`/chat?peer=${neighbor.id}`);
     };
 
@@ -319,15 +181,10 @@ export default function DirectoryPage() {
                             >
                                 {/* Filter Chips */}
                                 <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { id: 'all', label: 'Todos' },
-                                        { id: 'resident', label: 'Residentes' },
-                                        { id: 'admin', label: 'Administración' },
-                                        { id: 'concierge', label: 'Conserjería' }
-                                    ].map(item => (
+                                    {NEIGHBOR_FILTERS.map(item => (
                                         <button
                                             key={item.id}
-                                            onClick={() => setActiveNeighborFilter(item.id as any)}
+                                            onClick={() => setActiveNeighborFilter(item.id)}
                                             className={`rounded-lg px-4 py-2 text-xs font-semibold border transition-all ${
                                                 activeNeighborFilter === item.id
                                                     ? 'bg-brand-500 text-white border-brand-500'
@@ -355,45 +212,56 @@ export default function DirectoryPage() {
                                                     initial={{ opacity: 0, y: 8 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ delay: idx * 0.03 }}
-                                                    className="overflow-hidden rounded-xl border border-subtle bg-surface shadow-sm transition-all hover:border-brand-200"
+                                                    className="group overflow-hidden rounded-xl border border-subtle bg-surface shadow-sm transition-all hover:border-brand-200"
                                                 >
-                                                    <div className="h-1 w-full" style={{ backgroundColor: `var(--cc-${tone})` }} />
-                                                    <div className="p-5 flex items-start gap-4">
-                                                        <div className="h-12 w-12 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-base"
+                                                    <div className="relative h-16 bg-[#111827]">
+                                                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(181,102,78,0.76),rgba(17,24,39,0.94))]" />
+                                                        <div className="absolute left-4 top-4">
+                                                            <Tag tone={tone} solid>{ROLE_LABELS[neighbor.role]}</Tag>
+                                                        </div>
+                                                    </div>
+                                                    <div className="relative p-5 pt-0">
+                                                        <div className="-mt-7 mb-4 h-14 w-14 rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border-4 border-surface text-sm font-bold text-white shadow-md"
                                                              style={{ backgroundColor: `var(--cc-${tone})` }}>
                                                             {neighbor.avatar_url ? (
-                                                                <Image src={neighbor.avatar_url} alt={neighbor.name} width={48} height={48} className="h-full w-full object-cover rounded-xl" />
+                                                                <Image src={neighbor.avatar_url} alt={neighbor.name} width={56} height={56} className="h-full w-full object-cover" />
                                                             ) : (
-                                                                neighbor.name.charAt(0).toUpperCase()
+                                                                getInitials(neighbor.name)
                                                             )}
                                                         </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <h3 className="font-semibold cc-text-primary text-sm truncate leading-snug">
-                                                                {neighbor.name}
-                                                            </h3>
-                                                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                                                <Tag tone={tone} solid>{ROLE_LABELS[neighbor.role]}</Tag>
-                                                                {neighbor.unitLabel && (
-                                                                    <Tag tone="neutral">
-                                                                        <MapPin className="h-3 w-3 inline mr-1" />
-                                                                        Depto {neighbor.unitLabel}
-                                                                    </Tag>
-                                                                )}
-                                                            </div>
-                                                            {neighbor.email && (
-                                                                <p className="mt-2 text-xs cc-text-tertiary truncate">
-                                                                    {neighbor.email}
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0 flex-1">
+                                                                <h3 className="truncate text-lg font-bold leading-tight cc-text-primary transition-colors group-hover:text-brand-700">
+                                                                    {neighbor.name}
+                                                                </h3>
+                                                                <p className="mt-1 truncate text-sm font-medium cc-text-secondary">
+                                                                    {neighbor.role === "resident" ? "Miembro de la comunidad" : ROLE_LABELS[neighbor.role]}
                                                                 </p>
-                                                            )}
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleStartDM(neighbor)}
+                                                                className="flex-shrink-0"
+                                                                aria-label={`Enviar mensaje a ${neighbor.name}`}
+                                                            >
+                                                                <MessageSquare className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleStartDM(neighbor)}
-                                                            className="flex-shrink-0 animate-fade-in"
-                                                        >
-                                                            <MessageSquare className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                                                            {neighbor.unitLabel && (
+                                                                <Tag tone="neutral">
+                                                                    <MapPin className="mr-1 inline h-3 w-3" />
+                                                                    Depto {neighbor.unitLabel}
+                                                                </Tag>
+                                                            )}
+                                                            <Tag tone="neutral">Directorio interno</Tag>
+                                                        </div>
+                                                        {neighbor.email && (
+                                                            <p className="mt-4 truncate border-t border-subtle pt-4 text-xs font-medium cc-text-tertiary">
+                                                                {neighbor.email}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </motion.div>
                                             );
@@ -459,69 +327,9 @@ export default function DirectoryPage() {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                                        {filteredProviders.map((provider, idx) => {
-                                            const recommendedCount = Math.max(3, Math.round((provider.completedJobs || 12) * 0.35));
-                                            return (
-                                                <motion.div
-                                                    key={provider.id}
-                                                    initial={{ opacity: 0, y: 8 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: idx * 0.03 }}
-                                                    className="rounded-xl border border-subtle bg-surface p-5 shadow-sm hover:border-brand-200 transition-all cursor-pointer flex flex-col justify-between"
-                                                    onClick={() => router.push(`/services/provider/${provider.id}`)}
-                                                >
-                                                    <div className="space-y-4">
-                                                        <div className="flex items-start gap-4">
-                                                            <div className="h-12 w-12 rounded-xl flex-shrink-0 overflow-hidden bg-slate-100 border border-subtle">
-                                                                {provider.photo ? (
-                                                                    <img src={provider.photo} alt={provider.name} className="h-full w-full object-cover" />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">
-                                                                        {provider.name.charAt(0)}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <h3 className="font-semibold cc-text-primary text-sm leading-snug truncate">
-                                                                    {provider.name}
-                                                                </h3>
-                                                                {/* Mono star rating */}
-                                                                <p className="mt-1 text-xs font-semibold flex items-center gap-1 text-amber-500">
-                                                                    ★ <span className="cc-text-primary">{provider.rating.toFixed(1)}</span>
-                                                                    <span className="cc-text-tertiary">({provider.reviewCount} reviews)</span>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Recommendation Badge in Copper Tint */}
-                                                        <div>
-                                                            <Tag tone="copper" solid>
-                                                                Recomendado por {recommendedCount} vecinos
-                                                            </Tag>
-                                                        </div>
-
-                                                        <p className="text-xs cc-text-secondary line-clamp-2 leading-relaxed">
-                                                            {provider.bio}
-                                                        </p>
-
-                                                        {provider.specialties && provider.specialties.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {provider.specialties.slice(0, 3).map((spec, sIdx) => (
-                                                                    <span key={sIdx} className="text-[10px] bg-elevated px-2 py-0.5 rounded text-slate-600 font-medium">
-                                                                        {spec}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="pt-4 border-t border-subtle mt-4 flex items-center justify-between text-xs font-semibold">
-                                                        <span className="cc-text-tertiary">Tarifa: ${provider.hourlyRate?.toLocaleString("es-CL") || "25.000"}/hr</span>
-                                                        <span className="text-brand-600 hover:underline">Ver perfil →</span>
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
+                                        {filteredProviders.map((provider) => (
+                                            <ProviderCard key={provider.id} provider={provider} showCategory compact />
+                                        ))}
                                     </div>
                                 )}
                             </motion.div>

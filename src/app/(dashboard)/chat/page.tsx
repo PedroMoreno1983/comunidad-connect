@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { Bot, Send, Sparkles, Calendar, DollarSign, Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
-import { useToast } from "@/components/ui/Toast";
 import confetti from "canvas-confetti";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -46,8 +45,7 @@ const CHIPS = [
 ];
 
 export default function CoCoChatPage() {
-    const { user, logout } = useAuth();
-    const { toast } = useToast();
+    const { user } = useAuth();
     const [msgs, setMsgs] = useState<Message[]>([
         {
             id: "welcome",
@@ -86,9 +84,9 @@ export default function CoCoChatPage() {
                     userName: user?.name || "Residente",
                     userRole: user?.role || "resident",
                     userId: user?.id,
-                    unitId: (user as any).unitId,
-                    unitName: (user as any).unitName,
-                    communityId: (user as any).communityId,
+                    unitId: user?.unitId,
+                    unitName: user?.unitName,
+                    communityId: user?.communityId,
                 }),
             });
 

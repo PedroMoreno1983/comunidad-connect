@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { PUBLIC_SITE_URL, SUPPORT_EMAIL, getPublicUrl } from '@/lib/config';
 
 let resendClient: Resend | null = null;
 
@@ -75,7 +76,7 @@ export function emailWrapper(content: string, title: string): string {
           <td style="padding:24px 40px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
               Convive Connect — Sistema de Gestión Inmobiliaria<br/>
-              Si tienes dudas, escríbenos a <a href="mailto:soporte@convive.app" style="color:#974C3C;">soporte@convive.app</a>
+              Si tienes dudas, escribenos a <a href="mailto:${SUPPORT_EMAIL}" style="color:#974C3C;">${SUPPORT_EMAIL}</a>
             </p>
           </td>
         </tr>
@@ -133,7 +134,7 @@ export async function sendExpenseAlert({
         <strong style="color:#0f172a;font-size:28px;font-weight:900;">${formattedAmount}</strong>
       </td></tr>
     </table>
-    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/resident/finances"
+    <a href="${getPublicUrl('/resident/finances')}"
        style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#ef4444,#db2777);color:#fff;font-weight:700;font-size:15px;border-radius:12px;text-decoration:none;margin-bottom:16px;">
       Pagar Ahora →
     </a>
@@ -190,7 +191,7 @@ export async function sendBookingConfirmation({
         <strong style="color:#0f172a;font-size:16px;">${startTime} → ${endTime}</strong>
       </td></tr>
     </table>
-    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/amenities"
+    <a href="${getPublicUrl('/amenities')}"
        style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#10b981,#0d9488);color:#fff;font-weight:700;font-size:15px;border-radius:12px;text-decoration:none;">
       Ver mis reservas →
     </a>
@@ -244,7 +245,7 @@ export async function sendWelcomeEmail({
         <p style="margin:8px 0 0;font-size:12px;color:#92400e;">Cámbiala al ingresar por primera vez.</p>
       </td></tr>
     </table>` : ''}
-    <a href="${process.env.NEXT_PUBLIC_SITE_URL}"
+    <a href="${PUBLIC_SITE_URL}"
        style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#C8705A,#974C3C);color:#fff;font-weight:700;font-size:15px;border-radius:12px;text-decoration:none;">
       Entrar a la plataforma →
     </a>`;

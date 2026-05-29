@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
@@ -9,25 +9,14 @@ import { Tag } from "@/components/cc/Tag";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import {
   Heart,
-  DollarSign,
   Clock,
   Users,
   CheckCircle2,
   AlertCircle,
-  Calendar,
-  Lock,
   Upload,
-  Shield,
   X,
-  ChevronRight,
-  Plus,
   Loader2,
-  TrendingUp,
-  FileText,
   BookOpen,
-  UserCheck,
-  Sparkles,
-  Award
 } from "lucide-react";
 
 interface SolidarityFund {
@@ -82,6 +71,10 @@ interface SolidarityTask {
   };
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function SolidarityHubPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -119,7 +112,7 @@ export default function SolidarityHubPage() {
   const [submittingVerification, setSubmittingVerification] = useState(false);
 
   // Fetch all data
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -155,11 +148,11 @@ export default function SolidarityHubPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // Postulate submit handler
   const handlePostulate = async (e: React.FormEvent) => {
@@ -212,10 +205,10 @@ export default function SolidarityHubPage() {
       
       // Refresh
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error al enviar",
-        description: err.message || "Ocurrió un error inesperado.",
+        description: errorMessage(err, "Ocurrió un error inesperado."),
         variant: "destructive"
       });
     } finally {
@@ -261,10 +254,10 @@ export default function SolidarityHubPage() {
 
       setResolvingApp(null);
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error al resolver",
-        description: err.message || "Ocurrió un error inesperado.",
+        description: errorMessage(err, "Ocurrió un error inesperado."),
         variant: "destructive"
       });
     } finally {
@@ -296,10 +289,10 @@ export default function SolidarityHubPage() {
 
       setBookingTask(null);
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error al agendar",
-        description: err.message || "Ocurrió un error.",
+        description: errorMessage(err, "Ocurrió un error."),
         variant: "destructive"
       });
     } finally {
@@ -344,10 +337,10 @@ export default function SolidarityHubPage() {
       setVerifyingTask(null);
       setPinCode("");
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error de verificación",
-        description: err.message || "Código PIN inválido.",
+        description: errorMessage(err, "Código PIN inválido."),
         variant: "destructive"
       });
     } finally {

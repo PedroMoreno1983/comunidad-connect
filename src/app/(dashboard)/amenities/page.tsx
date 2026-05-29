@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { AmenitiesService } from "@/lib/api";
 import {
-    Calendar, Clock, Users, Check, ChevronLeft, ArrowLeft, Sparkles,
+    Calendar, Users, Check, ArrowLeft,
     Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -11,7 +11,6 @@ import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/cc/Button";
 import { Booking, Amenity } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
 
@@ -143,7 +142,6 @@ export default function AmenitiesPage() {
     const { user } = useAuth();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [amenities, setAmenities] = useState<Amenity[]>([]);
-    const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
     
     // Booking flow state
@@ -159,11 +157,9 @@ export default function AmenitiesPage() {
     ];
 
     const loadData = useCallback(async () => {
-        setLoading(true);
         if (user && isDemoUser) {
             setAmenities(demoAmenities);
             setBookings([...getStoredDemoBookings(), ...getDemoBookings(user.id)]);
-            setLoading(false);
             return;
         }
 
@@ -180,8 +176,6 @@ export default function AmenitiesPage() {
             console.error("Error loading amenities data:", error);
             setAmenities(demoAmenities);
             setBookings([]);
-        } finally {
-            setLoading(false);
         }
     }, [isDemoUser, user]);
 

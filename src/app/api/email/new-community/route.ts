@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resend, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper } from '@/lib/email';
+import { PUBLIC_SITE_URL } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
                 <tr style="background:#fafafa;"><td style="padding:14px 20px;font-weight:600;color:#475569;">Administrador</td><td style="padding:14px 20px;color:#1e293b;">${adminName} &lt;${adminEmail}&gt;</td></tr>
             </table>
 
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://convive.app'}" style="display:inline-block;background:linear-gradient(135deg,#C8705A,#974C3C);color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;">
+            <a href="${PUBLIC_SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#C8705A,#974C3C);color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;">
                 Ver en SuperAdmin →
             </a>
         `, 'Nuevo Edificio Registrado');

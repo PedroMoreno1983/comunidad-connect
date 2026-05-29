@@ -70,7 +70,7 @@ export async function PATCH(
 
         if (actorProfile.email?.toLowerCase().endsWith('@demo.com')) {
             return NextResponse.json(
-                { error: 'Modo demo compartido: los cambios reales de estado estan deshabilitados.' },
+                { error: 'Modo showcase compartido: los cambios reales de estado estan deshabilitados.' },
                 { status: 403 }
             );
         }

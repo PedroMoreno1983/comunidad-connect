@@ -6,20 +6,26 @@ import { AnnouncementsService } from "@/lib/api";
 import { Announcement } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
-import { Input } from "@/components/ui/Input";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
-import { Bell, Info, AlertTriangle, Calendar, Check, Send, Users, Eye } from "lucide-react";
-import { createDemoAnnouncement, mergeDemoAnnouncements, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
+import { Send, Users, Eye } from "lucide-react";
+import { createDemoAnnouncement, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
 
 type Priority = 'info' | 'alert' | 'event';
+type AnnouncementRow = {
+    id: string;
+    title: string;
+    content: string;
+    author_name?: string | null;
+    priority: Priority;
+    created_at: string;
+};
 
 export default function ComunicacionesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
 
     // Form state
     const [title, setTitle] = useState("");
@@ -35,9 +41,8 @@ export default function ComunicacionesPage() {
     useEffect(() => {
         const fetch = async () => {
             try {
-                setIsLoading(true);
                 const data = await AnnouncementsService.getAnnouncements();
-                const mapped = data.map((ann: any): Announcement => ({
+                const mapped = (data as AnnouncementRow[]).map((ann): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
@@ -45,7 +50,7 @@ export default function ComunicacionesPage() {
                     priority: ann.priority,
                     createdAt: ann.created_at,
                 }));
-                // Mock default announcements if demo
+                // Showcase default announcements when running with the protected account.
                 const demoAnnouncements: Announcement[] = [
                     {
                         id: "demo-ann-1",
@@ -71,8 +76,6 @@ export default function ComunicacionesPage() {
                 } else {
                     toast({ title: "Error de conexión", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
                 }
-            } finally {
-                setIsLoading(false);
             }
         };
         fetch();
@@ -156,8 +159,7 @@ export default function ComunicacionesPage() {
         }
     };
 
-    // Calculate reading statistics dynamically
-    const mockReadingRates: Record<string, string> = {
+    const readingRateByAnnouncement: Record<string, string> = {
         'demo-ann-1': '94%',
         'demo-ann-2': '82%',
     };
@@ -188,7 +190,6 @@ export default function ComunicacionesPage() {
                             <label className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Categoría / Prioridad</label>
                             <div className="flex gap-2">
                                 {(['info', 'event', 'alert'] as Priority[]).map(p => {
-                                    const tone = getPriorityTone(p);
                                     const isSelected = priority === p;
                                     return (
                                         <button
@@ -343,7 +344,7 @@ export default function ComunicacionesPage() {
                         </thead>
                         <tbody>
                             {announcements.map((ann, index) => {
-                                const rate = mockReadingRates[ann.id] || (index % 2 === 0 ? "88%" : "74%");
+                                const rate = readingRateByAnnouncement[ann.id] || (index % 2 === 0 ? "88%" : "74%");
                                 return (
                                     <tr key={ann.id} className="border-b border-subtle/50 text-xs cc-text-secondary hover:bg-elevated/40 transition-colors">
                                         <td className="py-3.5 font-semibold cc-text-primary truncate max-w-[200px]">{ann.title}</td>

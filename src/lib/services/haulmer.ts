@@ -24,12 +24,12 @@ export const HaulmerService = {
     async createPaymentLink(payload: PaymentPayload): Promise<{ token: string; url: string }> {
         if (!this.apiKey) {
             if (process.env.NODE_ENV === 'production') {
-                throw new Error("HAULMER_API_KEY no configurada en producción. Configúrala en Vercel.");
+                throw new Error("Canal de pagos no configurado para producción.");
             }
-            console.warn("⚠️ HAULMER_API_KEY no detectada. Usando MOCK_URL para desarrollo local.");
+            console.warn("HAULMER_API_KEY no detectada. Usando checkout sandbox para desarrollo local.");
             return {
-                token: "mock_token_123",
-                url: `/mock-payment?ref=${payload.reference}&amount=${payload.amount}`
+                token: "sandbox_token_local",
+                url: `/payment-sandbox?ref=${payload.reference}&amount=${payload.amount}`
             };
         }
 

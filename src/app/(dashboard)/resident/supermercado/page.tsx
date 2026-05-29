@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { isDemoModeEnabled } from "@/lib/runtimeMode";
 
 interface CartItem {
     id: string;
@@ -30,7 +31,7 @@ interface CartItem {
     checked: boolean;
 }
 
-// Mock AI Suggestions
+// Curated AI Suggestions
 const AI_SUGGESTIONS = [
     { title: "Plan Semanal Saludable", items: ["Pechuga de pollo", "Arroz", "Paltas", "Huevos"], icon: ChefHat },
     { title: "Kit de Asado Chileno", items: ["Carne molida", "Cebolla", "Papa", "Limón", "Tomate", "Pan molde"], icon: UtensilsCrossed },
@@ -39,7 +40,7 @@ const AI_SUGGESTIONS = [
 
 export default function SupermarketPage() {
     const { toast } = useToast();
-    const router = useRouter(); // Required for redirecting to mock-payment
+    const router = useRouter();
     const [list, setList] = useState<CartItem[]>([]);
     const [newItem, setNewItem] = useState("");
     const [loading, setLoading] = useState(false);
@@ -105,8 +106,16 @@ export default function SupermarketPage() {
     const checkoutDisabled = list.length === 0;
 
     const handleCheckout = () => {
+        if (!isDemoModeEnabled()) {
+            toast({
+                title: "Pago no disponible",
+                description: "El checkout de supermercado se habilita cuando la comunidad active el canal de pagos.",
+                variant: "default",
+            });
+            return;
+        }
         const refId = `SMU-${Date.now()}`;
-        router.push(`/mock-payment?amount=${totalAmount}&ref=${refId}&callback=/resident/supermercado`);
+        router.push(`/payment-sandbox?amount=${totalAmount}&ref=${refId}&callback=/resident/supermercado`);
     };
 
     return (

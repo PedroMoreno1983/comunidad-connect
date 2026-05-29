@@ -1,4 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 @import "./tokens.css";
 
 @layer base {
@@ -9,7 +11,7 @@
 
   h1, h2, h3 {
     font-family: var(--cc-font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     font-weight: 400;
   }
 }
@@ -652,6 +654,28 @@ h2,
 .cc-dashboard textarea,
 .cc-dashboard select {
   border-radius: var(--cc-product-radius-control) !important;
+  color: var(--cc-text-primary);
+  background-color: var(--cc-bg-surface);
+  border-color: var(--cc-border-default);
+}
+
+.cc-dashboard input::placeholder,
+.cc-dashboard textarea::placeholder {
+  color: var(--cc-text-tertiary);
+  opacity: 1;
+}
+
+.cc-dashboard table {
+  color: var(--cc-text-primary);
+}
+
+.cc-dashboard th {
+  color: var(--cc-text-secondary);
+  font-weight: 600;
+}
+
+.cc-dashboard td {
+  color: inherit;
 }
 
 .cc-dashboard article,

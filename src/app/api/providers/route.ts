@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
         if (profile.email?.toLowerCase().endsWith('@demo.com')) {
             return NextResponse.json(
-                { error: 'Modo demo compartido: el registro real de proveedores esta deshabilitado.' },
+                { error: 'Modo showcase compartido: el registro real de proveedores esta deshabilitado.' },
                 { status: 403 }
             );
         }

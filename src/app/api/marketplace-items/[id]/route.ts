@@ -49,7 +49,7 @@ async function getActorAndItem(id: string) {
     if (actor.email?.toLowerCase().endsWith('@demo.com')) {
         return {
             error: NextResponse.json(
-                { error: 'Modo demo compartido: los cambios reales del marketplace estan deshabilitados.' },
+                { error: 'Modo showcase compartido: los cambios reales del marketplace estan deshabilitados.' },
                 { status: 403 }
             ),
         };

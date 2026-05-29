@@ -14,8 +14,8 @@ export function DemoProviderProfileRoute({ providerId }: { providerId: string })
         return (
             <EmptyState
                 icon={<Briefcase className="h-6 w-6" />}
-                title="Proveedor demo no encontrado"
-                description="El perfil pudo haber sido creado en otro navegador o se limpio la sesion local."
+                title="Proveedor showcase no encontrado"
+                description="El perfil pudo haber sido creado en otro navegador o se limpió la sesión local."
                 action={
                     <Link href="/services/register">
                         <Button>Registrar proveedor</Button>

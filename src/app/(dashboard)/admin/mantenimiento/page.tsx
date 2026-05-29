@@ -18,7 +18,7 @@ import {
     X,
     Zap,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { MaintenanceService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
@@ -166,22 +166,19 @@ export default function MantenimientoAdminPage() {
             return;
         }
 
-        const [serviceRes, caseRes, assetRes, logRes] = await Promise.allSettled([
-            supabase.from("service_requests").select("*").order("created_at", { ascending: false }).limit(12),
-            supabase.from("coco_cases").select("id, title, category, urgency, status, unit_label, source_message, created_at").order("created_at", { ascending: false }).limit(12),
-            supabase.from("building_assets").select("id, name, category, brand, model, location, health_status, next_maintenance").order("name", { ascending: true }),
-            supabase.from("maintenance_logs").select("id, description, cost, date, performed_by").order("date", { ascending: false }).limit(8),
-        ]);
-
-        const serviceData = serviceRes.status === "fulfilled" && !serviceRes.value.error ? serviceRes.value.data ?? [] : [];
-        const caseData = caseRes.status === "fulfilled" && !caseRes.value.error ? caseRes.value.data ?? [] : [];
-        const assetData = assetRes.status === "fulfilled" && !assetRes.value.error ? assetRes.value.data ?? [] : [];
-        const logData = logRes.status === "fulfilled" && !logRes.value.error ? logRes.value.data ?? [] : [];
-
-        setServices(serviceData.length ? serviceData : fallbackServices);
-        setCases(caseData.length ? caseData : fallbackCases);
-        setAssets(assetData.length ? assetData : fallbackAssets);
-        setLogs(logData.length ? logData : fallbackLogs);
+        try {
+            const data = await MaintenanceService.getAdminOverview();
+            setServices(data.services.length ? data.services : fallbackServices);
+            setCases(data.cases.length ? data.cases : fallbackCases);
+            setAssets(data.assets.length ? data.assets : fallbackAssets);
+            setLogs(data.logs.length ? data.logs : fallbackLogs);
+        } catch (error) {
+            console.error("[Maintenance] overview load failed:", error);
+            setServices(fallbackServices);
+            setCases(fallbackCases);
+            setAssets(fallbackAssets);
+            setLogs(fallbackLogs);
+        }
         setLoading(false);
     }
 
@@ -222,27 +219,31 @@ export default function MantenimientoAdminPage() {
             setServices(nextServices);
             saveDemoMaintenanceServices(nextServices);
             setSaving(false);
-            toast({ title: "Tarea demo creada", description: "Quedó visible en la cola operativa.", variant: "success" });
+            toast({ title: "Tarea showcase creada", description: "Quedó visible en la cola operativa.", variant: "success" });
             setShowTask(false);
             setForm({ title: "", description: "", service_type: "plomeria", scheduled_date: "" });
             return;
         }
 
-        const { error } = await supabase.from("service_requests").insert({
-            requester_id: user?.id,
-            unit_id: user?.unitId || "administracion",
-            service_type: form.service_type,
-            description: `[${form.title}] ${form.description}`,
-            status: "pending",
-            scheduled_date: form.scheduled_date || null,
-            scheduled_time: null,
-        });
-        setSaving(false);
-
-        if (error) {
-            toast({ title: "No se pudo crear", description: error.message, variant: "destructive" });
+        try {
+            await MaintenanceService.createServiceTask({
+                requesterId: user?.id,
+                unitId: user?.unitId,
+                serviceType: form.service_type,
+                title: form.title,
+                description: form.description,
+                scheduledDate: form.scheduled_date,
+            });
+        } catch (error) {
+            setSaving(false);
+            toast({
+                title: "No se pudo crear",
+                description: error instanceof Error ? error.message : "Intentalo nuevamente.",
+                variant: "destructive",
+            });
             return;
         }
+        setSaving(false);
 
         toast({ title: "Tarea creada", description: "Quedo en la cola operativa.", variant: "success" });
         setShowTask(false);
@@ -255,10 +256,15 @@ export default function MantenimientoAdminPage() {
         setServices(nextServices);
         if (isDemoUser) {
             saveDemoMaintenanceServices(nextServices);
-            toast({ title: "Tarea demo cerrada", description: "El estado quedó guardado en esta demo.", variant: "success" });
+            toast({ title: "Tarea showcase cerrada", description: "El estado quedó guardado para esta sesión.", variant: "success" });
             return;
         }
-        await supabase.from("service_requests").update({ status: "completed" }).eq("id", id);
+        try {
+            await MaintenanceService.closeService(id);
+        } catch (error) {
+            console.error("[Maintenance] close service failed:", error);
+            toast({ title: "No se pudo cerrar", description: "Revisa la conexion e intenta nuevamente.", variant: "destructive" });
+        }
     }
 
     function exportCsv() {

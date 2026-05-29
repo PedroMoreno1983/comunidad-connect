@@ -3,13 +3,15 @@ import { HaulmerService } from '@/lib/services/haulmer';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { PUBLIC_SITE_URL } from '@/lib/config';
 
 // Allowed return URL origins to prevent open redirect
 const ALLOWED_ORIGINS = [
-    process.env.NEXT_PUBLIC_SITE_URL,
+    PUBLIC_SITE_URL,
     'http://localhost:3000',
-    'https://convive.app',
-    'https://www.convive.app',
+    'http://localhost:3011',
+    'https://conviveconnect.com',
+    'https://www.conviveconnect.com',
 ].filter(Boolean) as string[];
 
 function isAllowedReturnUrl(url: string): boolean {
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
         // ─── Validate return URL (prevent open redirect) ──────────────────
         const safeReturnUrl = returnUrl && isAllowedReturnUrl(returnUrl)
             ? returnUrl
-            : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/home`;
+            : `${PUBLIC_SITE_URL}/home`;
 
         // ─── Create payment link ──────────────────────────────────────────
         const response = await HaulmerService.createPaymentLink({

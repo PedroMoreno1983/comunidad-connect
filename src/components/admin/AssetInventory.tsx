@@ -10,7 +10,6 @@ import {
     History, DollarSign, User
 } from "lucide-react";
 import { BuildingAsset, MaintenanceLog } from "@/lib/types";
-import { supabase } from "@/lib/supabase";
 import {
     Dialog,
     DialogContent,
@@ -18,6 +17,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/Dialog";
+import { MaintenanceService } from "@/lib/api";
 
 export function AssetInventory() {
     const [assets, setAssets] = useState<BuildingAsset[]>([]);
@@ -29,22 +29,7 @@ export function AssetInventory() {
     useEffect(() => {
         const fetchAssets = async () => {
             try {
-                const { data, error } = await supabase.from('building_assets').select('*');
-                if (data && !error) {
-                    const mappedAssets = data.map((dbAsset: Record<string, any>) => ({
-                        id: dbAsset.id,
-                        name: dbAsset.name,
-                        category: dbAsset.category,
-                        brand: dbAsset.brand,
-                        model: dbAsset.model,
-                        installationDate: dbAsset.installation_date || dbAsset.installationDate,
-                        location: dbAsset.location,
-                        healthStatus: dbAsset.health_status || dbAsset.healthStatus,
-                        lastMaintenance: dbAsset.last_maintenance || dbAsset.lastMaintenance,
-                        nextMaintenance: dbAsset.next_maintenance || dbAsset.nextMaintenance,
-                    }));
-                    setAssets(mappedAssets as BuildingAsset[]);
-                }
+                setAssets(await MaintenanceService.getAssets());
             } catch (err) {
                 console.error("Error fetching assets:", err);
             } finally {
@@ -58,20 +43,7 @@ export function AssetInventory() {
         setSelectedAsset(asset);
         setIsLogOpen(true);
         try {
-            const { data, error } = await supabase.from('maintenance_logs').select('*').eq('asset_id', asset.id);
-            if (data && !error) {
-                const mappedLogs = data.map((log: Record<string, any>) => ({
-                    id: log.id,
-                    assetId: log.asset_id || log.assetId,
-                    performedBy: log.performed_by || log.performedBy,
-                    description: log.description,
-                    cost: log.cost,
-                    date: log.date
-                }));
-                setAssetLogs(mappedLogs as MaintenanceLog[]);
-            } else {
-                setAssetLogs([]);
-            }
+            setAssetLogs(await MaintenanceService.getAssetLogs(asset.id));
         } catch (err) {
             console.error(err);
         }
