@@ -44,40 +44,6 @@ type HealthResponse = {
     checks?: Record<string, Record<string, boolean>>;
 };
 
-const demoEvents: OperationEvent[] = [
-    {
-        id: "demo-op-1",
-        action: "poll.created",
-        entity_type: "poll",
-        entity_id: "demo-poll",
-        severity: "success",
-        status: "success",
-        summary: "Votacion publicada: Mejoras de quincho y bicicleteros",
-        metadata: { channels: { notifications: true, chat: true, whatsapp: false }, recipients: 142 },
-        created_at: new Date(Date.now() - 18 * 60000).toISOString(),
-    },
-    {
-        id: "demo-op-2",
-        action: "onboarding.roster_synced",
-        entity_type: "resident_roster",
-        severity: "warning",
-        status: "pending",
-        summary: "Nomina sincronizada: 148 residentes preparados",
-        metadata: { processed: 151, success: 148, errors: 3 },
-        created_at: new Date(Date.now() - 96 * 60000).toISOString(),
-    },
-    {
-        id: "demo-op-3",
-        action: "service_request.status_changed",
-        entity_type: "service_request",
-        entity_id: "demo-sr",
-        severity: "success",
-        status: "success",
-        summary: "Solicitud completada",
-        metadata: { previousStatus: "accepted", nextStatus: "completed" },
-        created_at: new Date(Date.now() - 4 * 36e5).toISOString(),
-    },
-];
 
 function statusTone(status: OperationEvent["status"], severity: OperationEvent["severity"]) {
     if (status === "error" || severity === "error") return "border-danger-border bg-danger-bg text-danger-fg";
@@ -114,7 +80,6 @@ function countHealthyChecks(health: HealthResponse | null) {
 
 export default function AdminOperationsPage() {
     const { user } = useAuth();
-    const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [events, setEvents] = useState<OperationEvent[]>([]);
@@ -131,28 +96,6 @@ export default function AdminOperationsPage() {
         setLoading(true);
         setError("");
 
-        if (isDemoUser) {
-            setEvents(demoEvents);
-            setSummary({
-                total: demoEvents.length,
-                success: demoEvents.filter(event => event.status === "success").length,
-                warnings: demoEvents.filter(event => event.severity === "warning" || event.status === "blocked").length,
-                errors: demoEvents.filter(event => event.severity === "error" || event.status === "error").length,
-                pending: demoEvents.filter(event => event.status === "pending").length,
-            });
-            setHealth({
-                status: "degraded",
-                checkedAt: new Date().toISOString(),
-                checks: {
-                    core: { supabaseUrl: true, supabaseAnonKey: true, supabaseServiceRole: true },
-                    ai: { anthropic: true, gemini: false, openai: true },
-                    communications: { email: true, whatsapp: false },
-                    paidIntegrations: { payments: false, protectedWebhooks: false, monitoring: false, semanticSearch: false },
-                },
-            });
-            setLoading(false);
-            return;
-        }
 
         try {
             const [opsRes, healthRes] = await Promise.all([
@@ -182,7 +125,7 @@ export default function AdminOperationsPage() {
         if (!user) return;
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, isDemoUser]);
+    }, [user?.id]);
 
     const healthyChecks = useMemo(() => countHealthyChecks(health), [health]);
     const grouped = useMemo(() => {

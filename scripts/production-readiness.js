@@ -50,7 +50,6 @@ const groups = [
     critical: true,
     checks: [
       ...checkKeys(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"]),
-      { key: "NEXT_PUBLIC_ENABLE_DEMO=false", present: getValue("NEXT_PUBLIC_ENABLE_DEMO") !== "true" },
     ],
   },
   {
@@ -100,7 +99,7 @@ const report = {
     ? { projectName: vercelProject.projectName, projectId: vercelProject.projectId, orgId: vercelProject.orgId }
     : "not linked",
   summary,
-  readyForCommercialDemo: criticalMissing.length === 0,
+  readyForCommercial: criticalMissing.length === 0,
   readyForPaidProduction: summary.every((group) => group.ready),
   nextActions: summary.flatMap((group) => group.missing.map((key) => `${group.name}: configure ${key}`)),
   strict,
@@ -114,7 +113,7 @@ for (const group of summary) {
 }
 
 console.log(`\nVercel project: ${typeof report.vercelProject === "string" ? report.vercelProject : `${report.vercelProject.projectName} (${report.vercelProject.orgId})`}`);
-console.log(`Commercial demo readiness: ${report.readyForCommercialDemo ? "READY" : "BLOCKED"}`);
+console.log(`Commercial readiness: ${report.readyForCommercial ? "READY" : "BLOCKED"}`);
 console.log(`Paid production readiness: ${report.readyForPaidProduction ? "READY" : "NEEDS CONFIG"}`);
 
 const reportPath = path.join(root, ".tmp", "production-readiness.json");

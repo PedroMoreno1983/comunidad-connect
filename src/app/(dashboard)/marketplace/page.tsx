@@ -33,12 +33,6 @@ import { Button as CcButton } from "@/components/cc/Button";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
-    applyDemoMarketplaceStatusOverrides,
-    getDemoPublishedMarketplaceItems,
-    prependDemoPublishedMarketplaceItem,
-    saveDemoMarketplaceStatusOverride,
-} from "@/lib/services/demoMarketplaceStorage";
-import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -56,59 +50,6 @@ const categoryConfig: Record<string, {
     other: { icon: Package, gradient: 'from-[#10B981] to-[#0D9488]', bg: 'bg-success-bg' },
 };
 
-const demoMarketplaceItems: MarketplaceItem[] = [
-    {
-        id: 'demo-market-1',
-        title: 'Bicicleta plegable aro 20',
-        description: 'Uso liviano, ideal para moverse cerca del edificio. Se entrega en conserjeria con coordinacion previa.',
-        price: 85000,
-        sellerId: 'demo',
-        imageUrl: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop',
-        images: ['https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop'],
-        category: 'other',
-        createdAt: new Date().toISOString(),
-        status: 'available',
-        allowSale: true,
-        allowSwap: true,
-        swapDetails: 'Acepto scooter o silla de escritorio.',
-        allowBarter: false,
-        paymentStatus: 'none',
-    },
-    {
-        id: 'demo-market-2',
-        title: 'Silla ergonomica home office',
-        description: 'Respaldo regulable, buen estado. Perfecta para teletrabajo.',
-        price: 65000,
-        sellerId: 'demo',
-        imageUrl: 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop',
-        images: ['https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop'],
-        category: 'furniture',
-        createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
-        status: 'available',
-        allowSale: true,
-        allowSwap: false,
-        allowBarter: true,
-        barterDetails: 'Busco plantas grandes o repisa.',
-        paymentStatus: 'none',
-    },
-    {
-        id: 'demo-market-3',
-        title: 'Monitor Samsung 24 pulgadas',
-        description: 'Full HD, entrada HDMI. Probado y funcionando.',
-        price: 72000,
-        sellerId: 'demo',
-        imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop',
-        images: ['https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop'],
-        category: 'electronics',
-        createdAt: new Date(Date.now() - 4 * 864e5).toISOString(),
-        status: 'reserved',
-        allowSale: true,
-        allowSwap: false,
-        allowBarter: false,
-        paymentStatus: 'pending',
-    },
-];
-
 type PublicationSummary = {
     title: string;
     modes: string[];
@@ -116,14 +57,6 @@ type PublicationSummary = {
     createdAt: string;
 };
 
-async function fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-        reader.readAsDataURL(file);
-    });
-}
 
 export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -165,19 +98,15 @@ export default function MarketplacePage() {
     const loadItems = useCallback(async () => {
         setLoading(true);
         try {
-            if (user?.email.toLowerCase().endsWith("@demo.com")) {
-                setItems(applyDemoMarketplaceStatusOverrides([...getDemoPublishedMarketplaceItems(), ...demoMarketplaceItems]));
-                return;
-            }
             const realItems = await MarketplaceService.getItemsV2();
-            setItems(realItems?.length ? realItems : demoMarketplaceItems);
+            setItems(realItems || []);
         } catch (error: unknown) {
             console.error("Error loading items:", error);
-            setItems(demoMarketplaceItems);
+            setItems([]);
         } finally {
             setLoading(false);
         }
-    }, [user?.email]);
+    }, []);
 
     useEffect(() => {
         if (searchParams.get('status') === 'success') {
@@ -341,40 +270,6 @@ export default function MarketplacePage() {
                 return;
             }
 
-            const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-            if (isDemoUser) {
-                const imageUrls = await Promise.all(imageFiles.map(fileToDataUrl));
-                const createdItem: MarketplaceItem = {
-                    id: `demo-market-published-${Date.now()}`,
-                    title: newItem.title.trim(),
-                    price: Number(newItem.price) || 0,
-                    description: newItem.description.trim(),
-                    category: newItem.category as MarketplaceItem["category"],
-                    sellerId: user?.id || "demo",
-                    imageUrl: imageUrls[0],
-                    images: imageUrls,
-                    createdAt: new Date().toISOString(),
-                    status: "available",
-                    allowSale: newItem.allowSale,
-                    allowSwap: newItem.allowSwap,
-                    swapDetails: newItem.swapDetails,
-                    allowBarter: newItem.allowBarter,
-                    barterDetails: newItem.barterDetails,
-                    paymentStatus: "none",
-                };
-                prependDemoPublishedMarketplaceItem(createdItem);
-                setItems(current => [createdItem, ...current]);
-                showPublicationSummary({
-                    title: createdItem.title,
-                    modes: [
-                        createdItem.allowSale !== false ? "Venta" : "",
-                        createdItem.allowSwap ? "Permuta" : "",
-                        createdItem.allowBarter ? "Trueque" : "",
-                    ].filter(Boolean),
-                    imageCount: imageUrls.length,
-                    createdAt: createdItem.createdAt,
-                });
-            } else {
                 await MarketplaceService.createItem({
                     ...newItem,
                     price: Number(newItem.price)
@@ -389,7 +284,6 @@ export default function MarketplacePage() {
                     imageCount: imageFiles.length,
                     createdAt: new Date().toISOString(),
                 });
-            }
 
             toast({
                 title: "¡Artículo publicado!",
@@ -411,7 +305,7 @@ export default function MarketplacePage() {
             });
             setImageFiles([]);
             setPreviewUrls([]);
-            if (!isDemoUser) loadItems();
+            loadItems();
         } catch (error: unknown) {
             console.error("Error al publicar item:", error);
             toast({
@@ -1002,9 +896,6 @@ export default function MarketplacePage() {
                     });
                     if (selectedItem) {
                         setItems(items.map(i => i.id === selectedItem.id ? { ...i, status: 'reserved' } : i));
-                        if (user?.email.toLowerCase().endsWith("@demo.com") || selectedItem.id.startsWith("demo-")) {
-                            saveDemoMarketplaceStatusOverride(selectedItem.id, "reserved");
-                        }
                     }
                 }}
             />

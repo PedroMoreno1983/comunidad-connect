@@ -50,34 +50,6 @@ function mapVisitorRow(row: VisitorRow): VisitorLog {
     };
 }
 
-const demoVisitorLogs: VisitorLog[] = [
-    { id: "demo-v1", visitorName: "Camila Rojas", unitId: "1204", entryTime: new Date().toISOString(), isQr: true },
-    { id: "demo-v2", visitorName: "Luis Araya", unitId: "805", entryTime: new Date(Date.now() - 38 * 60000).toISOString(), isQr: false },
-    { id: "demo-v3", visitorName: "Courier Chilexpress", unitId: "1505", entryTime: new Date(Date.now() - 74 * 60000).toISOString(), isQr: false },
-];
-
-const demoVisitorsStorageKey = "cc_demo_concierge_visitors";
-
-const demoUnits: Unit[] = [
-    { id: "demo-u1", number: "805" },
-    { id: "demo-u2", number: "1204" },
-    { id: "demo-u3", number: "1505" },
-];
-
-function getDemoVisitors(): VisitorLog[] {
-    if (typeof window === "undefined") return demoVisitorLogs;
-    try {
-        const stored = JSON.parse(window.localStorage.getItem(demoVisitorsStorageKey) || "[]") as VisitorLog[];
-        return stored.length > 0 ? stored : demoVisitorLogs;
-    } catch {
-        return demoVisitorLogs;
-    }
-}
-
-function saveDemoVisitors(visitors: VisitorLog[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(demoVisitorsStorageKey, JSON.stringify(visitors));
-}
 
 export default function VisitorsPage() {
     const { user } = useAuth();
@@ -96,11 +68,6 @@ export default function VisitorsPage() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                    setVisitors(getDemoVisitors());
-                    setUnits(demoUnits);
-                    return;
-                }
 
                 const logs = await VisitorService.getAll();
                 setVisitors(((logs || []) as VisitorRow[]).map(mapVisitorRow));
@@ -113,31 +80,11 @@ export default function VisitorsPage() {
         };
 
         loadData();
-    }, [user?.email]);
+    }, [user?.id]);
 
     const handleRegisterVisitor = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                const visitor: VisitorLog = {
-                    id: `demo-v-${Date.now()}`,
-                    visitorName: newVisitor.name,
-                    unitId: newVisitor.unit,
-                    entryTime: new Date().toISOString(),
-                    isQr: false
-                };
-                const nextVisitors = [visitor, ...visitors];
-                setVisitors(nextVisitors);
-                saveDemoVisitors(nextVisitors);
-                setIsDialogOpen(false);
-                setNewVisitor({ name: "", unit: "" });
-                toast({
-                    title: "Registro demo listo",
-                    description: `Se agregó ${visitor.visitorName} a la bitácora local.`,
-                    variant: "success",
-                });
-                return;
-            }
 
             const data = await VisitorService.register({
                 visitor_name: newVisitor.name,
@@ -271,7 +218,6 @@ export default function VisitorsPage() {
                 onScanSuccess={(newLog: VisitorLog) => {
                     const nextVisitors = [newLog, ...visitors];
                     setVisitors(nextVisitors);
-                    if (user?.email?.toLowerCase().endsWith("@demo.com")) saveDemoVisitors(nextVisitors);
                 }}
             />
 

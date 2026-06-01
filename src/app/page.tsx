@@ -10,16 +10,15 @@ import {
   ArrowRight,
   MessageSquare, Package, TrendingUp,
   Users, Zap, ChevronRight, Handshake, Heart, Clock,
-  X, ShieldCheck, Mail, Send, Loader2
+  X, Send, Loader2
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
-import { useAuth } from '@/lib/authContext';
 import { useToast } from '@/components/ui/Toast';
 
 
 /* ── Animated counter hook ────────────────────────────── */
-/* ── Resident Home Dashboard Mockup ───────────────────── */
-function AppMockup() {
+/* ── Resident Home Dashboard Preview ───────────────────── */
+function AppPreview() {
   return (
     <div className="relative w-full max-w-[360px] bg-white dark:bg-[#25242A] border rounded-[2rem] p-5 shadow-2xl text-left transition-all duration-300 hover:shadow-[#C8705A]/5" style={{ borderColor: 'var(--cc-border-default)' }}>
       {/* Top bar header */}
@@ -89,8 +88,8 @@ function AppMockup() {
   );
 }
 
-/* ── CoCo WhatsApp Mockup ─────────────────────────────── */
-function CoCoWhatsAppMockup() {
+/* ── CoCo WhatsApp Preview ─────────────────────────────── */
+function CoCoWhatsAppPreview() {
   return (
     <div className="w-full max-w-[340px] mx-auto bg-[#E5DDD5] dark:bg-[#0C0A08] border border-[#E4D8CA] dark:border-[#3B3530] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col h-[420px]">
       {/* WhatsApp header */}
@@ -325,12 +324,10 @@ const steps = [
 export default function LandingPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
-  const { loginDemo } = useAuth();
   const { toast } = useToast();
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
   const [selectedInfo, setSelectedInfo] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   useEffect(() => {
@@ -420,27 +417,27 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
             >
               <button
-                onClick={() => setIsDemoModalOpen(true)}
+                onClick={() => setIsContactModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 font-bold transition-all cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] dark:bg-white dark:text-black text-[#FAF7F1] text-sm hover:opacity-90 shadow-md"
               >
                 Agendar onboarding (48h)
                 <ArrowRight size={15} />
               </button>
               <button
-                onClick={() => setIsDemoModalOpen(true)}
+                onClick={() => setIsContactModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 font-semibold transition-all cursor-pointer px-6 py-3.5 rounded-xl border text-sm hover:bg-slate-50 dark:hover:bg-[#302D2A]"
                 style={{ borderColor: 'var(--cc-border-default)', background: 'transparent' }}
               >
-                Ver demo de 2 min
+                Ver recorrido comercial
               </button>
             </div>
           </div>
 
-          {/* Right: Interactive App Mockup */}
+          {/* Right: Interactive App Preview */}
           <div
             className="flex-shrink-0 w-full max-w-[320px] lg:max-w-[360px]"
           >
-            <AppMockup />
+            <AppPreview />
           </div>
         </section>
 
@@ -450,7 +447,7 @@ export default function LandingPage() {
         {/* ── Section: CoCo IA (WhatsApp Integration) ── */}
         <section className="mt-24 md:mt-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           <div className="flex-1 max-w-xl order-2 lg:order-1">
-            <CoCoWhatsAppMockup />
+            <CoCoWhatsAppPreview />
           </div>
           <div className="flex-1 max-w-xl order-1 lg:order-2">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#5A7D5A]/10 border border-[#5A7D5A]/20 text-[#5A7D5A] text-xs font-bold tracking-widest uppercase mb-5">
@@ -479,10 +476,10 @@ export default function LandingPage() {
               ))}
             </ul>
             <button
-              onClick={() => setIsDemoModalOpen(true)}
+              onClick={() => setIsContactModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] dark:bg-white dark:text-black text-sm hover:opacity-90 transition-all shadow-md"
             >
-              Ver demo de 2 min
+              Ver recorrido comercial
               <ArrowRight size={15} />
             </button>
           </div>
@@ -766,11 +763,11 @@ export default function LandingPage() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => router.push('/signup')}
+                    onClick={() => setIsContactModalOpen(true)}
                     className="flex-1 py-4 rounded-2xl text-white font-bold hover:opacity-90 transition-all shadow-lg text-sm"
                     style={{ background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}dd)`, boxShadow: `0 8px 24px ${selectedRole.color}40` }}
                   >
-                    Agendar Demo
+                    Agendar onboarding
                   </button>
                   <button
                     onClick={() => setSelectedInfo(null)}
@@ -826,7 +823,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setIsDemoModalOpen(true)} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
+              <button onClick={() => setIsContactModalOpen(true)} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
                 Probar Plan Básico
               </button>
             </div>
@@ -883,7 +880,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setIsDemoModalOpen(true)} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
+              <button onClick={() => setIsContactModalOpen(true)} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
                 Agendar Onboarding (48h)
               </button>
             </div>
@@ -974,109 +971,6 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* ── DemoSelectorModal ── */}
-      {isDemoModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            onClick={() => setIsDemoModalOpen(false)}
-            className="absolute inset-0 bg-[#2D2A26]/60 backdrop-blur-md"
-          />
-          <div className="relative w-full max-w-xl bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-10 z-10 text-left">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <span className="text-[10px] font-semibold tracking-widest text-[#C8705A] uppercase">DEMO EN VIVO</span>
-                <h2 className="text-2xl font-extrabold tracking-tight mt-1 text-[#2D2A26] dark:text-[#FBF8F3]">Prueba la Demo de Convive Connect</h2>
-                <p className="text-xs text-[#8A8580] dark:text-[#C8BFB6] mt-1">Elige un perfil para entrar al showcase interactivo al instante.</p>
-              </div>
-              <button
-                onClick={() => setIsDemoModalOpen(false)}
-                className="p-2 rounded-full hover:bg-[#F1EAE1] dark:hover:bg-[#302D2A] transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-3.5 mb-8">
-              {[
-                {
-                  role: 'resident',
-                  title: 'Residente (Pedro Moreno)',
-                  desc: 'Paga gastos comunes ficticios, reserva el quincho, revisa avisos y el marketplace vecinal.',
-                  color: 'bg-[#5A7D5A]/10 border-[#5A7D5A]/20 hover:bg-[#5A7D5A]/15',
-                  textColor: 'text-[#5A7D5A] dark:text-[#88b088]',
-                  emoji: '🏡',
-                },
-                {
-                  role: 'admin',
-                  title: 'Administrador (Edificio Showcase)',
-                  desc: 'Gestiona finanzas, votaciones, onboarding de residentes por Excel e incidencias de mantenimiento.',
-                  color: 'bg-[#C8705A]/10 border-[#C8705A]/20 hover:bg-[#C8705A]/15',
-                  textColor: 'text-[#C8705A] dark:text-[#d38b77]',
-                  emoji: '🛡️',
-                },
-                {
-                  role: 'concierge',
-                  title: 'Conserjería (Control de Accesos)',
-                  desc: 'Registra encomiendas, controla visitas con código QR y gestiona el libro de novedades.',
-                  color: 'bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/15',
-                  textColor: 'text-amber-600 dark:text-amber-400',
-                  emoji: '🔑',
-                },
-              ].map((demo) => (
-                <button
-                  key={demo.role}
-                  onClick={() => {
-                    try {
-                      loginDemo(demo.role as any);
-                      toast({
-                        title: "Iniciando sesión demo",
-                        description: `Entrando al dashboard como ${demo.title.split(' ')[0]}`,
-                        variant: "success",
-                      });
-                      router.push(demo.role === 'resident' ? '/resident/finances' : demo.role === 'concierge' ? '/concierge/packages' : '/home');
-                    } catch (err: any) {
-                      toast({
-                        title: "Error al entrar",
-                        description: err.message || "No se pudo cargar la sesión demo",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] cursor-pointer ${demo.color}`}
-                >
-                  <span className="text-2xl mt-0.5">{demo.emoji}</span>
-                  <div>
-                    <h4 className={`font-bold text-sm ${demo.textColor}`}>{demo.title}</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{demo.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-5 border-t border-[#F1EAE1] dark:border-[#3B3530]">
-              <button
-                onClick={() => {
-                  setIsDemoModalOpen(false);
-                  router.push('/signup');
-                }}
-                className="flex-1 py-3.5 rounded-xl bg-[#1A1611] text-[#FAF7F1] dark:bg-white dark:text-black font-bold text-xs hover:opacity-90 transition-all text-center shadow-md cursor-pointer"
-              >
-                Registrar mi Condominio Real
-              </button>
-              <button
-                onClick={() => {
-                  setIsDemoModalOpen(false);
-                  setIsContactModalOpen(true);
-                }}
-                className="py-3.5 px-5 rounded-xl border border-slate-300 dark:border-[#3B3530] font-semibold text-xs text-[#2D2A26] dark:text-[#FAF7F1] hover:bg-slate-50 dark:hover:bg-[#302D2A] transition-all text-center cursor-pointer"
-              >
-                Hablar con Asesor
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── ContactAdminModal ── */}
       {isContactModalOpen && (
         <ContactAdminFormModal
@@ -1125,16 +1019,15 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
       setSuccess(true);
       toast({
         title: "Mensaje enviado",
-        description: "Te hemos enviado una propuesta de ejemplo a tu correo.",
+        description: "Te hemos enviado una propuesta inicial a tu correo.",
         variant: "success",
       });
-    } catch (err: any) {
-      console.warn("Contact send failed, simulating success:", err.message);
-      setSuccess(true);
+    } catch (err: unknown) {
+      console.warn("Contact send failed:", err instanceof Error ? err.message : err);
       toast({
-        title: "Mensaje recibido",
-        description: "¡Gracias por escribirnos! Te contactaremos a la brevedad.",
-        variant: "success",
+        title: "No se pudo enviar",
+        description: "Revisa tu conexion e intentalo nuevamente.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);

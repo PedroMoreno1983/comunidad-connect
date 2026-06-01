@@ -4,12 +4,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { isDemoEmail, isDemoModeEnabled } from '@/lib/runtimeMode';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 
 // ============================================
 // Unified Auth Context
-// Supports both demo mode (login by role) and Supabase auth
+// Supabase auth is the only production authentication path.
 // ============================================
 
 interface AuthContextType {
@@ -23,47 +22,12 @@ interface AuthContextType {
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string, userData: Record<string, unknown>) => Promise<{ error: Error | null }>;
-    loginDemo: (role: User["role"]) => void;
-    updateDemoUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const DEMO_STORAGE_KEY = 'cc-demo-user';
-
-function buildDemoUser(role: User["role"]): User {
-    const profiles: Record<User["role"], User> = {
-        admin: {
-            id: 'demo-admin',
-            name: 'Admin Showcase',
-            email: 'admin@demo.com',
-            role: 'admin',
-            communityId: 'demo-community',
-            features: {},
-        },
-        resident: {
-            id: 'demo-resident',
-            name: 'Residente Demo',
-            email: 'residente@demo.com',
-            role: 'resident',
-            unitId: 'demo-unit-1204',
-            unitName: 'Depto 1204',
-            communityId: 'demo-community',
-            features: {},
-        },
-        concierge: {
-            id: 'demo-concierge',
-            name: 'Conserje Showcase',
-            email: 'conserje@demo.com',
-            role: 'concierge',
-            communityId: 'demo-community',
-            features: {},
-        },
-    };
-    return profiles[role];
-}
+const LEGACY_DEMO_STORAGE_KEY = 'cc-demo-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    // Demo state
     const [user, setUser] = useState<User | null>(null);
 
     // Supabase state
@@ -71,27 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const getStoredDemoUser = (): User | null => {
-        if (typeof window === 'undefined') return null;
-        if (!isDemoModeEnabled()) {
-            localStorage.removeItem(DEMO_STORAGE_KEY);
-            return null;
-        }
-        try {
-            const raw = localStorage.getItem(DEMO_STORAGE_KEY);
-            return raw ? JSON.parse(raw) as User : null;
-        } catch {
-            return null;
+    const clearLegacyLocalUser = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
         }
     };
 
     // Initialize Supabase auth listener
     useEffect(() => {
-        const storedDemoUser = getStoredDemoUser();
-        if (storedDemoUser) {
-            setUser(storedDemoUser);
-            setLoading(false);
-        }
+        clearLegacyLocalUser();
 
         // Check if Supabase is configured
         const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -121,8 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (session?.user) {
                     await fetchUserProfile(session.user); // Await profile fetch
                 } else {
-                    const demoUser = getStoredDemoUser();
-                    if (demoUser) setUser(demoUser);
+                    setUser(null);
                     setLoading(false);
                 }
             } catch (err) {
@@ -161,8 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (session?.user) {
                 fetchUserProfile(session.user);
             } else {
-                const demoUser = getStoredDemoUser();
-                setUser(demoUser);
+                setUser(null);
                 setLoading(false);
             }
         });
@@ -282,40 +232,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Logout (handles both modes)
+    // Logout
     const logout = async () => {
         if (typeof window !== 'undefined') {
-            localStorage.removeItem(DEMO_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
         }
         setUser(null);
         setSupabaseUser(null);
         setSession(null);
         await supabase.auth.signOut();
-    };
-
-    const loginDemo = (role: User["role"]) => {
-        if (!isDemoModeEnabled()) {
-            throw new Error('El acceso demo no esta habilitado en este entorno.');
-        }
-        const demoUser = buildDemoUser(role);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser));
-        }
-        setUser(demoUser);
-        setSupabaseUser(null);
-        setSession(null);
-        setLoading(false);
-    };
-
-    const updateDemoUser = (updates: Partial<User>) => {
-        setUser(current => {
-            if (!isDemoModeEnabled() || !current || !isDemoEmail(current.email)) return current;
-            const next = { ...current, ...updates };
-            if (typeof window !== 'undefined') {
-                localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
-            }
-            return next;
-        });
     };
 
     return (
@@ -327,8 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             signIn,
             signUp,
-            loginDemo,
-            updateDemoUser,
         }}>
             {children}
         </AuthContext.Provider>

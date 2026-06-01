@@ -4,107 +4,6 @@ import type { ServiceProvider, Review } from '@/lib/types';
 // Standard client that works in both client and server (without cookies auto-handling on server)
 const getSupabase = () => createClient();
 
-const demoProviders: ServiceProvider[] = [
-    {
-        id: 'demo-provider-plumbing',
-        name: 'Aguas Norte SpA',
-        category: 'plumbing',
-        rating: 4.8,
-        reviewCount: 36,
-        contactPhone: '+56 9 8123 4567',
-        email: 'contacto@aguasnorte.cl',
-        photo: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
-        bio: 'Equipo certificado para filtraciones, mantencion de bombas, matrices y emergencias en comunidades residenciales.',
-        yearsExperience: 9,
-        specialties: ['Filtraciones', 'Bombas de agua', 'Mantencion preventiva'],
-        certifications: ['SEC instalaciones sanitarias', 'Emergencias 24/7'],
-        hourlyRate: 28000,
-        availability: 'available',
-        responseTime: '< 2 horas',
-        completedJobs: 184,
-        verified: true,
-    },
-    {
-        id: 'demo-provider-electrical',
-        name: 'ElectroComunidad',
-        category: 'electrical',
-        rating: 4.7,
-        reviewCount: 28,
-        contactPhone: '+56 9 7234 1188',
-        email: 'agenda@electrocomunidad.cl',
-        photo: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=800&auto=format&fit=crop',
-        bio: 'Electricistas para tableros, luminarias, citofonia, portones y diagnostico de fallas en departamentos.',
-        yearsExperience: 7,
-        specialties: ['Tableros electricos', 'Luminarias', 'Portones'],
-        certifications: ['SEC clase B'],
-        hourlyRate: 32000,
-        availability: 'available',
-        responseTime: '< 3 horas',
-        completedJobs: 141,
-        verified: true,
-    },
-    {
-        id: 'demo-provider-cleaning',
-        name: 'Brillo Urbano',
-        category: 'cleaning',
-        rating: 4.6,
-        reviewCount: 22,
-        contactPhone: '+56 9 6642 9001',
-        email: 'operaciones@brillourbano.cl',
-        photo: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-        bio: 'Limpieza profunda post obra, sanitizacion, alfombras y apoyo para eventos en espacios comunes.',
-        yearsExperience: 6,
-        specialties: ['Sanitizacion', 'Post obra', 'Eventos'],
-        certifications: ['Protocolos MINSAL'],
-        hourlyRate: 22000,
-        availability: 'busy',
-        responseTime: '< 24 horas',
-        completedJobs: 96,
-        verified: true,
-    },
-    {
-        id: 'demo-provider-general',
-        name: 'Mantenciones Pro',
-        category: 'general',
-        rating: 4.5,
-        reviewCount: 31,
-        contactPhone: '+56 9 5571 2300',
-        email: 'servicios@mantencionespro.cl',
-        photo: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=800&auto=format&fit=crop',
-        bio: 'Reparaciones generales, pintura, ajuste de puertas, quincalleria y mantencion menor para unidades.',
-        yearsExperience: 11,
-        specialties: ['Pintura', 'Quincalleria', 'Reparaciones menores'],
-        certifications: ['Prevencion de riesgos'],
-        hourlyRate: 25000,
-        availability: 'available',
-        responseTime: '< 4 horas',
-        completedJobs: 219,
-        verified: true,
-    },
-];
-
-const demoReviews: Review[] = [
-    {
-        id: 'demo-review-1',
-        providerId: 'demo-provider-plumbing',
-        userId: 'demo-resident-1',
-        userName: 'Andrea Dupre',
-        rating: 5,
-        comment: 'Llegaron a la hora, detectaron la fuga y dejaron registro claro del trabajo.',
-        createdAt: new Date(Date.now() - 9 * 864e5).toISOString(),
-        serviceType: 'Gasfiteria',
-    },
-    {
-        id: 'demo-review-2',
-        providerId: 'demo-provider-electrical',
-        userId: 'demo-resident-2',
-        userName: 'Carlos Rivas',
-        rating: 5,
-        comment: 'Muy ordenados para explicar el problema del tablero y cotizar antes de intervenir.',
-        createdAt: new Date(Date.now() - 16 * 864e5).toISOString(),
-        serviceType: 'Electricidad',
-    },
-];
 
 function mapProvider(p: any): ServiceProvider {
     return {
@@ -141,11 +40,10 @@ export const providersService = {
                 .order('rating', { ascending: false });
             if (error) throw error;
 
-            const providers = (data || []).map(mapProvider);
-            return providers.length ? providers : demoProviders;
+            return (data || []).map(mapProvider);
         } catch (error) {
-            console.warn('[providersService] Falling back to demo providers:', error);
-            return demoProviders;
+            console.warn('[providersService] Providers unavailable:', error);
+            return [];
         }
     },
 
@@ -159,18 +57,15 @@ export const providersService = {
                 .order('rating', { ascending: false });
             if (error) throw error;
 
-            const providers = (data || []).map(mapProvider);
-            return providers.length ? providers : demoProviders.filter(provider => provider.category === category);
+            return (data || []).map(mapProvider);
         } catch (error) {
-            console.warn('[providersService] Falling back to demo category providers:', error);
-            return demoProviders.filter(provider => provider.category === category);
+            console.warn('[providersService] Category providers unavailable:', error);
+            return [];
         }
     },
 
     async getById(id: string): Promise<ServiceProvider | null> {
         if (!id || id === 'undefined') return null;
-        const demoProvider = demoProviders.find(provider => provider.id === id);
-        if (demoProvider) return demoProvider;
 
         const supabase = getSupabase();
         const { data: p, error } = await supabase
@@ -356,10 +251,6 @@ export const providersService = {
  */
 export const reviewsService = {
     async getByProvider(providerId: string): Promise<Review[]> {
-        if (providerId.startsWith('demo-')) {
-            return demoReviews.filter(review => review.providerId === providerId);
-        }
-
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('reviews')

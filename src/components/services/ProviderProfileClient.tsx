@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { useAuth } from "@/lib/authContext";
 import { getInitials, getProviderAvatar } from "@/lib/utils/avatar";
 
 interface ProviderProfileClientProps {
@@ -38,7 +37,6 @@ interface ProviderProfileClientProps {
     reviews: Review[];
 }
 
-const demoServiceRequestsStorageKey = "cc_demo_service_requests";
 
 const CATEGORY_LABELS: Record<string, string> = {
     plumbing: "Gasfiteria",
@@ -48,15 +46,6 @@ const CATEGORY_LABELS: Record<string, string> = {
     general: "Multiservicios",
 };
 
-function saveDemoServiceRequest(request: Record<string, unknown>) {
-    if (typeof window === "undefined") return;
-    try {
-        const existing = JSON.parse(window.localStorage.getItem(demoServiceRequestsStorageKey) || "[]");
-        window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify([request, ...existing].slice(0, 30)));
-    } catch {
-        window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify([request]));
-    }
-}
 
 function getAvailabilityConfig(availability: string) {
     if (availability === "available") {
@@ -113,8 +102,6 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     const [requestForm, setRequestForm] = useState({ date: "", time: "", description: "" });
     const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
     const { toast } = useToast();
-    const { user } = useAuth();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const router = useRouter();
     const availability = getAvailabilityConfig(provider.availability);
     const categoryLabel = CATEGORY_LABELS[provider.category] || provider.category;
@@ -125,35 +112,6 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
         try {
             setIsRequestSaving(true);
-            if (isDemoUser || provider.id.startsWith("demo-")) {
-                saveDemoServiceRequest({
-                    id: `demo-service-request-created-${Date.now()}`,
-                    provider_id: provider.id,
-                    preferred_date: requestForm.date,
-                    preferred_time: requestForm.time,
-                    description: requestForm.description,
-                    status: "pending",
-                    created_at: new Date().toISOString(),
-                    service_providers: {
-                        name: provider.name,
-                        category: provider.category,
-                        contact_phone: provider.contactPhone,
-                    },
-                    profiles: {
-                        name: user?.name || "Admin Showcase",
-                        email: user?.email || "admin@demo.com",
-                    },
-                });
-                toast({
-                    title: "Solicitud showcase enviada",
-                    description: "Quedó registrada para seguimiento en Mis solicitudes.",
-                    variant: "success",
-                });
-                setIsRequestDialogOpen(false);
-                setRequestForm({ date: "", time: "", description: "" });
-                router.push("/services/my-requests");
-                return;
-            }
 
             const response = await fetch("/api/service-requests", {
                 method: "POST",
@@ -206,16 +164,6 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
         try {
             setIsReviewSaving(true);
-            if (isDemoUser || provider.id.startsWith("demo-")) {
-                toast({
-                    title: "Reseña showcase publicada",
-                    description: "La evaluación quedó disponible para esta sesión.",
-                    variant: "success",
-                });
-                setIsReviewDialogOpen(false);
-                setReviewForm({ rating: 5, comment: "" });
-                return;
-            }
 
             const response = await fetch("/api/reviews", {
                 method: "POST",
@@ -552,7 +500,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             <label className="text-sm font-medium cc-text-secondary">Tu comentario</label>
                             <textarea
                                 className="min-h-[120px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
-                                placeholder="Cuentanos sobre tu experiencia..."
+                                placeholder="Cuéntanos sobre tu experiencia..."
                                 required
                                 value={reviewForm.comment}
                                 onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}

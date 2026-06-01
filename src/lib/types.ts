@@ -252,6 +252,29 @@ export interface PollOption {
   votes: number;
 }
 
+export interface SupabasePollOptionRow {
+  id: string;
+  text?: string | null;
+  label?: string | null;
+}
+
+export interface SupabasePollVoteRow {
+  option_id: string;
+}
+
+export interface SupabasePollRow {
+  id: string;
+  title: string;
+  description?: string | null;
+  end_date?: string | null;
+  status?: 'active' | 'closed' | string | null;
+  category?: 'maintenance' | 'community' | 'rules' | 'other' | string | null;
+  created_at?: string | null;
+  options?: SupabasePollOptionRow[] | null;
+  poll_options?: SupabasePollOptionRow[] | null;
+  votes?: SupabasePollVoteRow[] | null;
+}
+
 export interface Poll {
   id: string;
   title: string;

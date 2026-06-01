@@ -44,6 +44,16 @@
   --cc-plum:          #5C4868;
   --cc-plum-tint:     rgba(92, 72, 104, 0.10);
 
+  /* ─── Data-viz palette (Cotton-inspired, warmed for ivory) ─ */
+  --cc-data-blue:     #2F6CB0;
+  --cc-data-green:    #3E8E57;
+  --cc-data-red:      #C24A3E;
+  --cc-data-yellow:   #E0B23C;
+  --cc-data-orange:   #D27A38;
+  --cc-data-purple:   #7C6BA6;
+  --cc-data-lime:     #93A23E;
+  --cc-data-teal:     #3E8E8E;
+
   /* ─── Semantic (alias quiet accents) ───────────────────── */
   --cc-success:       var(--cc-sage);
   --cc-success-tint:  var(--cc-sage-tint);

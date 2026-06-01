@@ -62,14 +62,14 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
 
         if (!matchesSearch) return false;
 
-        // Comprobar si ya tiene lectura guardada en ESTE mes (simulado con currentMonth/Year)
+        // Comprobar si ya tiene lectura guardada en este mes.
         const lastReading = lastReadings[unit.id];
         const isAlreadyRead = lastReading?.month === currentMonth && lastReading?.year === currentYear;
         const hasLocalEntry = readings[unit.id] !== undefined;
 
         const hasReading = isAlreadyRead || hasLocalEntry;
 
-        // Mock consumption check para alertas
+        // Calculo local de consumo para alertas operativas.
         const prevValue = isAlreadyRead ? (/* lectura anterior real */ 0) : (lastReading?.reading_value || 0);
         const currentVal = readings[unit.id] || (isAlreadyRead ? lastReading?.reading_value : 0);
         const consumption = Math.max(0, (currentVal || 0) - (prevValue || 0));

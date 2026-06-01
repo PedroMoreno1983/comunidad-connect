@@ -11,7 +11,6 @@ import { getApiUrl } from "@/lib/config";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { getDemoResidentFees, markDemoCondoFeePaid } from "@/lib/services/demoFinanceStorage";
 import type { ResidentFinanceExpense } from "@/lib/types";
 
 export default function FinancesPage() {
@@ -29,19 +28,6 @@ export default function FinancesPage() {
         }
         try {
             setLoading(true);
-            if (user.email.toLowerCase().endsWith("@demo.com")) {
-                setExpenses(getDemoResidentFees().map(fee => ({
-                    id: fee.id,
-                    unit_id: fee.unit_id,
-                    month: fee.month,
-                    amount: fee.amount,
-                    status: fee.status,
-                    due_date: fee.due_date,
-                    paid_at: fee.paid_at,
-                    units: { number: fee.units.number },
-                })));
-                return;
-            }
 
             setExpenses(await ResidentFinanceService.getExpensesForResident(user));
 
@@ -71,26 +57,6 @@ export default function FinancesPage() {
     const handlePayHaulmer = async (expense: ResidentFinanceExpense) => {
         setProcessingId(expense.id);
         try {
-            if (user?.email.toLowerCase().endsWith("@demo.com")) {
-                markDemoCondoFeePaid(expense.id, "haulmer");
-                setExpenses(getDemoResidentFees().map(fee => ({
-                    id: fee.id,
-                    unit_id: fee.unit_id,
-                    month: fee.month,
-                    amount: fee.amount,
-                    status: fee.status,
-                    due_date: fee.due_date,
-                    paid_at: fee.paid_at,
-                    units: { number: fee.units.number },
-                })));
-                toast({
-                    title: "Pago demo registrado",
-                    description: "El cobro pasó a historial y Administración lo verá como pagado.",
-                    variant: "success"
-                });
-                setProcessingId(null);
-                return;
-            }
 
             const monthLabel = safeFormatDate(expense.month, 'MMMM yyyy', true);
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {

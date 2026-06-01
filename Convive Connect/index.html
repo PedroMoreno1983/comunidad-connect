@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Convive &amp; Connect — Premium Redesign</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { height: 100%; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="screens-mobile.jsx"></script>
+<script type="text/babel" src="screens-mobile-2.jsx"></script>
+<script type="text/babel" src="screens-flows.jsx"></script>
+<script type="text/babel" src="screens-dark.jsx"></script>
+<script type="text/babel" src="screens-desktop.jsx"></script>
+<script type="text/babel" src="screens-desktop-2.jsx"></script>
+<script type="text/babel" src="screens-analytics.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+const {
+  DesignCanvas, DCSection, DCArtboard,
+  TweaksPanel, useTweaks, TweakSection, TweakColor, TweakSlider, TweakRadio,
+  // mobile 1
+  ResidentHome, ExpensesScreen, AmenitiesScreen, CocoChatScreen, MarketplaceScreen,
+  // mobile 2
+  VotacionesScreen, FeedScreen, SocialScreen, DirectorioScreen, ServiciosScreen,
+  ProfileScreen, NotificationsScreen, OnboardingScreen, LoginScreen,
+  // flows
+  PayStep1Review, PayStep2Method, PayStep3Confirm,
+  VisitStep1Identify, VisitStep2When, VisitStep3QR,
+  AsambleaStep1Read, AsambleaStep2Vote, AsambleaStep3Result,
+  // dark
+  ResidentHomeDark,
+  // desktop 1
+  AdminDashboard, LandingScreen,
+  // desktop 2
+  ConciergeDashboard, ResidentesAdminScreen, ComunicacionesAdminScreen,
+  // analytics (Cotton-inspired)
+  IndicadoresScreen, CostoScreen, DemografiaScreen,
+} = window;
+
+/* Palette presets — each defines the accent ramp */
+const PALETTES = {
+  copper: {
+    primary: '#B5664E', deep: '#8E4A35', soft: '#D9A691', bg: '#F2DDD0',
+    tint: 'rgba(181, 102, 78, 0.08)',
+  },
+  sage: {
+    primary: '#6E8268', deep: '#475238', soft: '#B7C2B1', bg: '#E2E8DC',
+    tint: 'rgba(110, 130, 104, 0.10)',
+  },
+  plum: {
+    primary: '#7A5876', deep: '#4E3A4E', soft: '#C3AEC0', bg: '#E8DCE6',
+    tint: 'rgba(122, 88, 118, 0.10)',
+  },
+  amber: {
+    primary: '#C99A4A', deep: '#946D2A', soft: '#E2C892', bg: '#F1E2C0',
+    tint: 'rgba(201, 154, 74, 0.12)',
+  },
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "copper",
+  "fontScale": 100,
+  "density": "regular"
+}/*EDITMODE-END*/;
+
+function applyTweaks(t) {
+  const p = PALETTES[t.accent] || PALETTES.copper;
+  const root = document.documentElement;
+  root.style.setProperty('--copper', p.primary);
+  root.style.setProperty('--copper-deep', p.deep);
+  root.style.setProperty('--copper-soft', p.soft);
+  root.style.setProperty('--copper-tint', p.tint);
+  root.style.setProperty('--copper-bg', p.bg);
+  // font scale
+  root.style.setProperty('--font-scale', (t.fontScale / 100).toString());
+  document.body.style.zoom = t.fontScale / 100;
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  useEffect(() => {
+    applyTweaks(t);
+  }, [t.accent, t.fontScale, t.density]);
+
+  return (
+    <>
+      <DesignCanvas
+        title="Convive & Connect — Premium Redesign"
+        subtitle="Editorial, warm-minimal — full platform. May 2026"
+      >
+        <DCSection id="public" title="Plataforma pública">
+          <DCArtboard id="landing-hero" label="Landing — hero editorial" width={1280} height={820}>
+            <LandingScreen />
+          </DCArtboard>
+          <DCArtboard id="onboarding" label="Bienvenida · onboarding" width={390} height={844}>
+            <OnboardingScreen />
+          </DCArtboard>
+          <DCArtboard id="login" label="Ingreso" width={390} height={844}>
+            <LoginScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="admin" title="Panel administrador · web">
+          <DCArtboard id="admin-dash" label="Resumen del edificio" width={1280} height={820}>
+            <AdminDashboard />
+          </DCArtboard>
+          <DCArtboard id="admin-residentes" label="Residentes · gestión" width={1280} height={820}>
+            <ResidentesAdminScreen />
+          </DCArtboard>
+          <DCArtboard id="admin-comms" label="Publicar comunicación" width={1280} height={820}>
+            <ComunicacionesAdminScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="admin-analytics" title="Admin · analítica (estilo Cotton)">
+          <DCArtboard id="indicadores" label="Indicadores — abanico de puntajes" width={1280} height={860}>
+            <IndicadoresScreen />
+          </DCArtboard>
+          <DCArtboard id="costos" label="Costos — abanico dramático" width={1280} height={860}>
+            <CostoScreen />
+          </DCArtboard>
+          <DCArtboard id="demografia" label="Residentes — dot matrix + donuts" width={1280} height={820}>
+            <DemografiaScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="concierge" title="Panel conserjería · web">
+          <DCArtboard id="concierge-dash" label="Recepción · turno activo" width={1280} height={820}>
+            <ConciergeDashboard />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="resident-core" title="Residente · core mobile">
+          <DCArtboard id="home" label="Home — Martina" width={390} height={844}>
+            <ResidentHome />
+          </DCArtboard>
+          <DCArtboard id="home-dark" label="Home · modo noche" width={390} height={844}>
+            <ResidentHomeDark />
+          </DCArtboard>
+          <DCArtboard id="expenses" label="Gasto común" width={390} height={844}>
+            <ExpensesScreen />
+          </DCArtboard>
+          <DCArtboard id="amenities" label="Reserva amenidad" width={390} height={844}>
+            <AmenitiesScreen />
+          </DCArtboard>
+          <DCArtboard id="coco" label="Coco AI · chat" width={390} height={844}>
+            <CocoChatScreen />
+          </DCArtboard>
+          <DCArtboard id="notifications" label="Bandeja de entrada" width={390} height={844}>
+            <NotificationsScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="resident-community" title="Residente · comunidad mobile">
+          <DCArtboard id="feed" label="Anuncios" width={390} height={844}>
+            <FeedScreen />
+          </DCArtboard>
+          <DCArtboard id="votaciones" label="Votación · vista activa" width={390} height={844}>
+            <VotacionesScreen />
+          </DCArtboard>
+          <DCArtboard id="social" label="Plaza social" width={390} height={844}>
+            <SocialScreen />
+          </DCArtboard>
+          <DCArtboard id="directorio" label="Directorio" width={390} height={844}>
+            <DirectorioScreen />
+          </DCArtboard>
+          <DCArtboard id="market" label="Marketplace vecinal" width={390} height={844}>
+            <MarketplaceScreen />
+          </DCArtboard>
+          <DCArtboard id="servicios" label="Solicitar servicio" width={390} height={844}>
+            <ServiciosScreen />
+          </DCArtboard>
+          <DCArtboard id="profile" label="Mi perfil" width={390} height={844}>
+            <ProfileScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="flow-pay" title="Flujo · Pago de gasto común">
+          <DCArtboard id="pay-1" label="01 · Revisar cuenta" width={390} height={844}>
+            <PayStep1Review />
+          </DCArtboard>
+          <DCArtboard id="pay-2" label="02 · Elegir método" width={390} height={844}>
+            <PayStep2Method />
+          </DCArtboard>
+          <DCArtboard id="pay-3" label="03 · Confirmación" width={390} height={844}>
+            <PayStep3Confirm />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="flow-visit" title="Flujo · Registrar visita">
+          <DCArtboard id="visit-1" label="01 · Identificar" width={390} height={844}>
+            <VisitStep1Identify />
+          </DCArtboard>
+          <DCArtboard id="visit-2" label="02 · Cuándo" width={390} height={844}>
+            <VisitStep2When />
+          </DCArtboard>
+          <DCArtboard id="visit-3" label="03 · QR de acceso" width={390} height={844}>
+            <VisitStep3QR />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="flow-asamblea" title="Flujo · Asamblea en vivo">
+          <DCArtboard id="asam-1" label="01 · Leer propuesta" width={390} height={844}>
+            <AsambleaStep1Read />
+          </DCArtboard>
+          <DCArtboard id="asam-2" label="02 · Emitir voto" width={390} height={844}>
+            <AsambleaStep2Vote />
+          </DCArtboard>
+          <DCArtboard id="asam-3" label="03 · Resultado" width={390} height={844}>
+            <AsambleaStep3Result />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Acento del sistema" />
+        <TweakRadio
+          label="Paleta"
+          value={t.accent}
+          options={['copper', 'sage', 'plum', 'amber']}
+          onChange={(v) => setTweak('accent', v)}
+        />
+
+        <TweakSection label="Tipografía" />
+        <TweakSlider
+          label="Escala"
+          value={t.fontScale}
+          min={85} max={120} step={5} unit="%"
+          onChange={(v) => setTweak('fontScale', v)}
+        />
+
+        <TweakSection label="Densidad" />
+        <TweakRadio
+          label="Densidad"
+          value={t.density}
+          options={['compact', 'regular', 'comfy']}
+          onChange={(v) => setTweak('density', v)}
+        />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

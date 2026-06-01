@@ -74,12 +74,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
-        if (profile.email?.toLowerCase().endsWith('@demo.com')) {
-            return NextResponse.json(
-                { error: 'Modo showcase compartido: el registro real de proveedores esta deshabilitado.' },
-                { status: 403 }
-            );
-        }
 
         const { data: existingProvider } = await supabaseAdmin
             .from('service_providers')

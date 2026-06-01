@@ -95,12 +95,6 @@ export async function POST(
             return NextResponse.json({ error: 'Solo administracion o conserjeria pueden comentar' }, { status: 403 });
         }
 
-        if (actorProfile.email?.toLowerCase().endsWith('@demo.com')) {
-            return NextResponse.json(
-                { error: 'Modo showcase compartido: los comentarios reales estan deshabilitados.' },
-                { status: 403 }
-            );
-        }
 
         const body = await req.json();
         const comment = typeof body.body === 'string' ? body.body.trim().slice(0, 1200) : '';

@@ -32,46 +32,14 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
     const [scanResult, setScanResult] = useState<ScanResult | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const { toast } = useToast();
-    const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
 
-    const simulateScan = async () => {
+    const validateLatestInvitation = async () => {
         setIsScanning(true);
         setScanResult(null);
         setScanError(null);
 
-        // Simulate camera focus/processing
         setTimeout(async () => {
-            // 70% chance of success, 30% error
-            const isSuccess = isDemoUser ? true : Math.random() > 0.3;
-
-            if (isSuccess) {
-                if (isDemoUser) {
-                    const demoInvitations = [
-                        { guestName: "Valentina Torres", guestDni: "18.442.991-2", unitId: "1204" },
-                        { guestName: "Mateo Fuentes", guestDni: "21.004.312-8", unitId: "805" },
-                        { guestName: "Proveedor Mantencion", guestDni: "76.221.900-5", unitId: "1505" },
-                    ];
-                    const invitation = demoInvitations[Math.floor(Math.random() * demoInvitations.length)];
-                    const newLog: VisitorLog = {
-                        id: `demo-qr-${Date.now()}`,
-                        visitorName: invitation.guestName,
-                        unitId: invitation.unitId,
-                        entryTime: new Date().toISOString(),
-                        isQr: true,
-                    };
-
-                    setScanResult(invitation);
-                    toast({
-                        title: "Escaneo showcase exitoso",
-                        description: `Acceso concedido a ${invitation.guestName}.`,
-                        variant: "success",
-                    });
-
-                    if (onScanSuccess) onScanSuccess(newLog);
-                    setIsScanning(false);
-                    return;
-                }
-
+            try {
                 const data = await VisitorService.getLatestActiveInvitationForScan();
 
                 if (data) {
@@ -81,56 +49,49 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
                         unitId: (data.units as { number?: string } | null)?.number || data.unit_id || "101",
                     };
 
-                    try {
-                        // Insert into DB
-                        const newLog = await VisitorService.register({
-                            visitor_name: data.guest_name,
-                            unit_id: data.unit_id || undefined,
-                            registered_by: user?.id || 'admin',
-                            is_qr: true,
-                        }) as VisitorRegisterResult;
+                    const newLog = await VisitorService.register({
+                        visitor_name: data.guest_name,
+                        unit_id: data.unit_id || undefined,
+                        registered_by: user?.id || "admin",
+                        is_qr: true,
+                    }) as VisitorRegisterResult;
 
-                        // Mark invitation as used (optional, depends on your business rules)
-                        // await VisitorService.cancel(data.id); 
+                    setScanResult(invitation);
+                    toast({
+                        title: "Escaneo exitoso",
+                        description: `Acceso concedido a ${invitation.guestName}.`,
+                        variant: "success",
+                    });
 
-                        setScanResult(invitation);
-                        toast({
-                            title: "Escaneo Exitoso",
-                            description: `Acceso concedido a ${invitation.guestName}.`,
-                            variant: "success"
+                    if (onScanSuccess) {
+                        onScanSuccess({
+                            id: newLog.id,
+                            visitorName: newLog.visitor_name || invitation.guestName,
+                            unitId: newLog.unit_id || invitation.unitId,
+                            entryTime: newLog.entry_time || new Date().toISOString(),
+                            isQr: true,
                         });
-
-                        if (onScanSuccess) {
-                            onScanSuccess({
-                                id: newLog.id,
-                                visitorName: newLog.visitor_name || invitation.guestName,
-                                unitId: newLog.unit_id || invitation.unitId,
-                                entryTime: newLog.entry_time || new Date().toISOString(),
-                                isQr: true
-                            });
-                        }
-                    } catch (err) {
-                        console.error("Error creating visitor log:", err);
-                        setScanError("Error al registrar la visita en la bitácora.");
                     }
                 } else {
-                    setScanError("Código QR no válido o expirado.");
+                    setScanError("Codigo QR no valido o expirado.");
                     toast({
-                        title: "Error de Validación",
-                        description: "El código no coincide con ninguna invitación activa en la base de datos.",
-                        variant: "destructive"
+                        title: "Error de validacion",
+                        description: "El codigo no coincide con ninguna invitacion activa en la base de datos.",
+                        variant: "destructive",
                     });
                 }
-            } else {
-                setScanError("Lectura fallida. Reintente.");
+            } catch (error) {
+                console.error("QR validation failed:", error);
+                setScanError("No se pudo validar la invitacion.");
                 toast({
-                    title: "Error de Lente",
-                    description: "No se pudo leer el código correctamente.",
-                    variant: "destructive"
+                    title: "Error de validacion",
+                    description: "No fue posible consultar las invitaciones activas.",
+                    variant: "destructive",
                 });
+            } finally {
+                setIsScanning(false);
             }
-            setIsScanning(false);
-        }, 1500);
+        }, 900);
     };
 
     return (
@@ -195,11 +156,11 @@ export function QRScannerSimulator({ onScanSuccess }: { onScanSuccess?: (log: Vi
 
                         <div className="absolute bottom-10 left-0 right-0 px-10">
                             <Button
-                                onClick={simulateScan}
+                                onClick={validateLatestInvitation}
                                 disabled={isScanning}
                                 className="w-full h-16 rounded-lg bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg transition-all active:scale-95 shadow-sm"
                             >
-                                {isScanning ? "Procesando..." : "Simular Escaneo"}
+                                {isScanning ? "Procesando..." : "Validar invitacion"}
                             </Button>
                         </div>
                     </div>

@@ -20,7 +20,6 @@ import { ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
-import { mergeDemoCreatedProviders } from "@/lib/services/demoProvidersStorage";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -55,7 +54,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
     const [availability, setAvailability] = useState<"all" | "available" | "verified">("all");
 
     useEffect(() => {
-        setCatalogProviders(mergeDemoCreatedProviders(providers));
+        setCatalogProviders(providers);
     }, [providers]);
 
     const categoriesWithCounts = useMemo(() => categories.map(item => ({
@@ -212,7 +211,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                     type="text"
                                     value={query}
                                     onChange={event => setQuery(event.target.value)}
-                                    placeholder="Buscar por nombre, especialidad o certificacion"
+                                    placeholder="Buscar por nombre, especialidad o certificación"
                                     className="w-full rounded-xl border border-default bg-elevated py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
                                 />
                             </div>

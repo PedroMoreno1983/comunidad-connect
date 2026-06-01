@@ -23,82 +23,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Gamepad2,
 };
 
-const demoAmenities: Amenity[] = [
-    {
-        id: "demo-amenity-quincho",
-        name: "Quincho panorámico",
-        description: "Terraza equipada para reuniones familiares con parrilla, mesones y vistas espectaculares de la ciudad.",
-        maxCapacity: 18,
-        hourlyRate: 12000,
-        iconName: "Flame",
-        gradient: "from-orange-500 to-red-600",
-    },
-    {
-        id: "demo-amenity-sala",
-        name: "Sala multiuso",
-        description: "Espacio cerrado para reuniones, cumpleaños infantiles o actividades comunitarias.",
-        maxCapacity: 24,
-        hourlyRate: 0,
-        iconName: "PartyPopper",
-        gradient: "from-[#3B82F6] to-[#6D28D9]",
-    },
-    {
-        id: "demo-amenity-gym",
-        name: "Gimnasio de residentes",
-        description: "Equipamiento funcional, pesas y máquinas cardiovasculares completas.",
-        maxCapacity: 10,
-        hourlyRate: 0,
-        iconName: "Dumbbell",
-        gradient: "from-emerald-400 to-teal-600",
-    },
-];
-
-function getDemoBookings(userId: string): Booking[] {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
-
-    return [
-        {
-            id: "demo-booking-quincho",
-            amenityId: "demo-amenity-quincho",
-            userId,
-            date: tomorrow.toISOString().slice(0, 10),
-            startTime: "19:00",
-            endTime: "21:00",
-            status: "confirmed",
-        },
-        {
-            id: "demo-booking-sala",
-            amenityId: "demo-amenity-sala",
-            userId: "demo-resident-marta",
-            date: nextWeek.toISOString().slice(0, 10),
-            startTime: "17:00",
-            endTime: "19:00",
-            status: "confirmed",
-        },
-    ];
-}
-
-const demoBookingsStorageKey = "cc_demo_amenity_bookings";
-
-function getStoredDemoBookings(): Booking[] {
-    if (typeof window === "undefined") return [];
-    try {
-        return JSON.parse(window.localStorage.getItem(demoBookingsStorageKey) || "[]") as Booking[];
-    } catch {
-        return [];
-    }
-}
-
-function saveStoredDemoBookings(bookings: Booking[]) {
-    if (typeof window === "undefined") return;
-    const createdBookings = bookings.filter(booking => booking.id.startsWith("demo-booking-created-"));
-    window.localStorage.setItem(demoBookingsStorageKey, JSON.stringify(createdBookings.slice(0, 30)));
-}
-
 type AmenityRow = Record<string, unknown>;
 type BookingRow = Record<string, unknown> & {
     amenities?: AmenityRow | AmenityRow[] | null;
@@ -150,18 +74,11 @@ export default function AmenitiesPage() {
     const [selectedTime, setSelectedTime] = useState('');
     const { toast } = useToast();
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-
     const timeSlots = [
         '08:00', '10:00', '12:00', '14:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
     ];
 
     const loadData = useCallback(async () => {
-        if (user && isDemoUser) {
-            setAmenities(demoAmenities);
-            setBookings([...getStoredDemoBookings(), ...getDemoBookings(user.id)]);
-            return;
-        }
 
         try {
             const [amenitiesData, bookingsData] = await Promise.all([
@@ -170,14 +87,14 @@ export default function AmenitiesPage() {
             ]);
             const normalizedAmenities = ((amenitiesData as AmenityRow[]) || []).map(toAmenity);
             const normalizedBookings = ((bookingsData as BookingRow[]) || []).map(toBooking);
-            setAmenities(normalizedAmenities.length ? normalizedAmenities : demoAmenities);
+            setAmenities(normalizedAmenities);
             setBookings(normalizedBookings);
         } catch (error: unknown) {
             console.error("Error loading amenities data:", error);
-            setAmenities(demoAmenities);
+            setAmenities([]);
             setBookings([]);
         }
-    }, [isDemoUser, user]);
+    }, []);
 
     useEffect(() => {
         if (user) {
@@ -251,31 +168,6 @@ export default function AmenitiesPage() {
         setBookingLoading(true);
         try {
             const endTime = `${parseInt(selectedTime) + 2}:00`;
-            if (isDemoUser) {
-                setBookings(current => {
-                    const nextBookings = [
-                        {
-                            id: `demo-booking-created-${Date.now()}`,
-                            amenityId: selectedAmenity.id,
-                            userId: user.id,
-                            date: selectedDate,
-                            startTime: selectedTime,
-                            endTime,
-                            status: "confirmed",
-                        } satisfies Booking,
-                        ...current,
-                    ];
-                    saveStoredDemoBookings(nextBookings);
-                    return nextBookings;
-                });
-                setSelectedAmenity(null);
-                toast({
-                    title: "Reserva confirmada",
-                    description: `${selectedAmenity.name} reservado exitosamente.`,
-                    variant: "success",
-                });
-                return;
-            }
 
             await AmenitiesService.createBooking({
                 amenity_id: selectedAmenity.id,

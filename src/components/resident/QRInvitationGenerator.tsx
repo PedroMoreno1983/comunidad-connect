@@ -38,6 +38,15 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
     }, [generated?.qrCode]);
 
     const handleGenerate = async () => {
+        if (!user) {
+            toast({
+                title: "Sesion requerida",
+                description: "Inicia sesion para generar pases asociados a tu unidad.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!guestName.trim() || !guestDni.trim()) {
             toast({
                 title: "Faltan datos",
@@ -52,10 +61,10 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
             const validFrom = new Date();
             const validTo = new Date(validFrom);
             validTo.setDate(validTo.getDate() + 1);
-            const qrCodeValue = `INV-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+            const qrCodeValue = `INV-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
             const invitation: GeneratedInvitation = {
                 id: `local-${qrCodeValue}`,
-                residentId: user?.id || "resident",
+                residentId: user.id,
                 guestName: guestName.trim(),
                 guestDni: guestDni.trim(),
                 status: "active",
@@ -64,16 +73,14 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                 qrCode: qrCodeValue,
             };
 
-            if (user && !user.email.toLowerCase().endsWith("@demo.com")) {
-                await InvitationService.create({
-                    resident_id: user.id,
-                    guest_name: invitation.guestName,
-                    guest_dni: invitation.guestDni,
-                    qr_code: invitation.qrCode,
-                    valid_from: invitation.validFrom,
-                    valid_to: invitation.validTo,
-                });
-            }
+            await InvitationService.create({
+                resident_id: user.id,
+                guest_name: invitation.guestName,
+                guest_dni: invitation.guestDni,
+                qr_code: invitation.qrCode,
+                valid_from: invitation.validFrom,
+                valid_to: invitation.validTo,
+            });
 
             setGenerated(invitation);
             onGenerated?.(invitation);
@@ -168,7 +175,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                             </div>
                             <div className="flex items-center gap-2">
                                 <IdCard className="h-4 w-4" />
-                                Conserjeria valida QR y documento.
+                                Conserjería valida QR y documento.
                             </div>
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="h-4 w-4" />

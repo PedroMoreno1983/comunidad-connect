@@ -80,10 +80,16 @@ export default function ExpensesPage() {
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [contributionType, setContributionType] = useState<string>("none");
 
-    const targetUnitId = user?.unitId || "demo-unit-101";
+    const targetUnitId = user?.unitId;
 
     useEffect(() => {
         const fetchExpenses = async () => {
+            if (!targetUnitId) {
+                setExpenses([]);
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 setIsLoading(true);
                 const data = await ExpensesService.getExpenses(targetUnitId);

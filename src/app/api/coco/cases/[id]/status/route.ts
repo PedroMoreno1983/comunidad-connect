@@ -24,7 +24,7 @@ async function getSupabaseUserClient() {
 function statusLabel(status: CoCoCaseStatus) {
     switch (status) {
         case 'in_progress':
-            return 'en revision';
+            return 'en revisión';
         case 'resolved':
             return 'resuelto';
         case 'closed':
@@ -68,12 +68,6 @@ export async function PATCH(
             return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
         }
 
-        if (actorProfile.email?.toLowerCase().endsWith('@demo.com')) {
-            return NextResponse.json(
-                { error: 'Modo showcase compartido: los cambios reales de estado estan deshabilitados.' },
-                { status: 403 }
-            );
-        }
 
         const { data: currentCase, error: caseError } = await supabaseAdmin
             .from('coco_cases')

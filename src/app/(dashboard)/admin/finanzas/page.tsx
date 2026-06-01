@@ -11,14 +11,11 @@ import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "luc
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 const fallbackFinances: CommunityFinance = {
-    totalRevenue: 18450000,
-    totalExpenses: 12980000,
-    reserveFund: 5470000,
-    collectionRate: 86,
-    recentActivity: [
-        { id: "demo-finance-1", type: "income", title: "Recaudacion mensual demo", amount: 18450000, date: new Date().toISOString() },
-        { id: "demo-finance-2", type: "expense", title: "Pago mantencion ascensores", amount: 2450000, date: new Date(Date.now() - 864e5).toISOString() },
-    ],
+    totalRevenue: 0,
+    totalExpenses: 0,
+    reserveFund: 0,
+    collectionRate: 0,
+    recentActivity: [],
 };
 
 export default function AdminFinanzasPage() {
@@ -37,11 +34,11 @@ export default function AdminFinanzasPage() {
                     reserveFund: Math.max(0, stats.totalRevenue - stats.totalBilled * 0.8),
                     collectionRate: Math.round(stats.collectionRate || 0),
                     recentActivity: [
-                        { id: 'a1', type: 'income', title: 'Recaudación Registrada', amount: stats.totalRevenue, date: new Date().toISOString() },
+                        { id: 'a1', type: 'income', title: 'Recaudación registrada', amount: stats.totalRevenue, date: new Date().toISOString() },
                     ]
                 });
             } catch {
-                console.warn("Finance stats unavailable; using demo fallback data.");
+                console.warn("Finance stats unavailable; showing empty operational state.");
                 setUsingFallback(true);
                 setFinances(fallbackFinances);
             } finally {
@@ -73,9 +70,9 @@ export default function AdminFinanzasPage() {
                     <div className="flex items-start gap-3 rounded-lg border border-warning-border bg-warning-bg p-4">
                         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" />
                         <div>
-                            <p className="font-semibold cc-text-primary">Mostrando datos demostrativos</p>
+                            <p className="font-semibold cc-text-primary">Sin conexión a datos financieros</p>
                             <p className="mt-1 text-sm cc-text-secondary">
-                                No se pudo conectar con las finanzas reales. La vista queda operativa para revisar el flujo y no bloquea el modulo.
+                                No se pudo cargar la cartera real. Mantuvimos la estructura del módulo sin mostrar montos estimados ni actividad ficticia.
                             </p>
                         </div>
                     </div>
@@ -85,19 +82,19 @@ export default function AdminFinanzasPage() {
                         {
                             title: "Cobranza prioritaria",
                             description: "Revisar unidades atrasadas antes del cierre del periodo.",
-                            meta: "4 unidades en riesgo",
+                            meta: "Segun cartera real",
                             icon: <BellRing className="h-4 w-4" />,
                         },
                         {
-                            title: "Reporte de comite",
+                            title: "Reporte de comité",
                             description: "Preparar resumen de ingresos, egresos y fondo de reserva.",
-                            meta: "Listo para exportar",
+                            meta: "Requiere datos cargados",
                             icon: <FileText className="h-4 w-4" />,
                         },
                         {
-                            title: "Notificacion masiva",
-                            description: "Enviar recordatorio de vencimiento con detalle del gasto comun.",
-                            meta: "Canal email habilitado",
+                            title: "Notificación masiva",
+                            description: "Enviar recordatorio de vencimiento con detalle del gasto común.",
+                            meta: "Segun configuracion real",
                             icon: <Send className="h-4 w-4" />,
                         },
                     ].map(item => (
@@ -125,10 +122,10 @@ export default function AdminFinanzasPage() {
                     steps={[
                         "Revisar pagos pendientes",
                         "Validar ingresos y egresos",
-                        "Preparar reporte de comite",
+                        "Preparar reporte de comité",
                         "Enviar recordatorios",
                     ]}
-                    outcome="Cierre esperado: la administracion sabe quien debe, cuanto se recaudo, que gastos explicar y que comunicaciones faltan."
+                    outcome="Cierre esperado: la administración sabe quién debe, cuánto se recaudó, qué gastos explicar y qué comunicaciones faltan."
                 />
                 <section id="control-financiero">
                     <FinanceDashboard data={finances} />

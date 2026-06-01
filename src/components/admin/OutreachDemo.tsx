@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, User, Building, Send, Sparkles, Lock } from "lucide-react";
+import { Mail, User, Building, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
 
 export default function OutreachDemo() {
     const { toast } = useToast();
@@ -15,7 +14,6 @@ export default function OutreachDemo() {
         adminEmail: "",
         condoName: "",
     });
-    const { isDemoUser } = useDemoRestrictions();
 
     const handleSend = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -117,14 +115,8 @@ export default function OutreachDemo() {
                         />
                     </div>
 
-                    {isDemoUser && (
-                        <div className="flex items-center gap-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-xs font-medium text-warning-fg">
-                            <Lock className="h-4 w-4 shrink-0" />
-                            El envío de correos está deshabilitado en esta cuenta showcase por seguridad.
-                        </div>
-                    )}
 
-                    <Button type="submit" disabled={loading || isDemoUser} className="w-full" trailingIcon={<Send className="h-4 w-4" />}>
+                    <Button type="submit" disabled={loading} className="w-full" trailingIcon={<Send className="h-4 w-4" />}>
                         {loading ? "Enviando..." : "Enviar invitacion comercial"}
                     </Button>
 

@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/lib/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import CoCo from "@/components/CoCo/CoCo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
-import { AlertCircle } from "lucide-react";
 import { AdminShell } from "@/components/cc/AdminShell";
 
 export default function DashboardLayout({
@@ -25,7 +23,6 @@ function DashboardShell({
     const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-    const { isDemoUser, demoMessage } = useDemoRestrictions();
     const [timeString, setTimeString] = useState("");
 
     // Hydration-safe clock
@@ -70,17 +67,17 @@ function DashboardShell({
             '/admin/users': 'Usuarios y Accesos',
             '/admin/units': 'Departamentos y Copropiedad',
             '/admin/consumo': 'Consumo de Agua e IoT',
-            '/admin/finanzas': 'Gastos Comunes y Facturación',
+            '/admin/finanzas': 'Gastos Comunes y FacturaciÃ³n',
             '/admin/mantenimiento': 'Operaciones e Incidencias',
             '/admin/votaciones': 'Votaciones y Encuestas',
-            '/admin/training': 'Capacitación y Cursos IA',
+            '/admin/training': 'CapacitaciÃ³n y Cursos IA',
             '/superadmin': 'Consola SuperAdmin',
         };
 
         const currentTitle = routeTitles[pathname] || '';
         document.title = currentTitle 
             ? `${currentTitle} | Convive Connect` 
-            : 'Convive Connect — Tu edificio, más humano que nunca';
+            : 'Convive Connect â€” Tu edificio, mÃ¡s humano que nunca';
     }, [pathname]);
 
     if (loading || !user) return null;
@@ -91,27 +88,18 @@ function DashboardShell({
 
     const roleLabels: Record<string, string> = {
         admin: "Administrador",
-        concierge: "Conserjería",
+        concierge: "ConserjerÃ­a",
         resident: "Residente",
     };
     const communityUser = user as typeof user & { condoName?: string; communityName?: string };
     const buildingName = communityUser.condoName || communityUser.communityName || "Mi Edificio";
 
-    // Demo Banner element
-    const demoBanner = isDemoUser && (
-        <div className="sticky top-0 z-40 flex min-h-10 items-center justify-center gap-2 border-b border-slate-800 bg-slate-950 px-16 py-2 text-[11px] font-semibold leading-tight text-white sm:px-20 sm:text-xs lg:px-4">
-            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-[#B5664E] sm:h-4 sm:w-4" />
-            <span className="text-center sm:hidden">Showcase protegido: envíos reales deshabilitados.</span>
-            <span className="hidden text-center sm:inline">{demoMessage}</span>
-        </div>
-    );
 
     // Admin, Concierge, & Resident wrapped in responsive AdminShell layout
     const roleMapped = user.role === "concierge" ? "conserje" : user.role === "resident" ? "resident" : "admin";
 
     return (
         <div className="min-h-screen" style={{ background: "var(--cc-ivory)" }}>
-            {demoBanner}
             <ErrorBoundary name="AdminShell Wrapper">
                 <AdminShell
                     activeHref={pathname}

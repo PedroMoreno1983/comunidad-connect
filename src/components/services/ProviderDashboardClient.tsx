@@ -19,7 +19,6 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { ServiceProvider } from "@/lib/types";
 import { providersService, serviceRequestsService } from "@/lib/services/providersService";
-import { mergeDemoCreatedProviders } from "@/lib/services/demoProvidersStorage";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -67,66 +66,6 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todas" },
 ];
 
-const demoProviders: ServiceProvider[] = [
-    {
-        id: "demo-provider-dashboard",
-        name: "Gasfiter Certificado Torres",
-        category: "plumbing",
-        bio: "Atencion de fugas, griferia y mantencion preventiva para edificios.",
-        rating: 4.8,
-        reviewCount: 36,
-        verified: true,
-        availability: "available",
-        contactPhone: "+569 5555 1212",
-        yearsExperience: 8,
-        responseTime: "< 2 horas",
-        completedJobs: 124,
-        specialties: ["Fugas", "Flexibles", "Mantencion"],
-        certifications: ["SEC"],
-    },
-];
-
-const demoProviderRequests: ProviderRequestRow[] = [
-    {
-        id: "demo-provider-request-1",
-        provider_id: "demo-provider-dashboard",
-        user_id: "demo-resident-1",
-        preferred_date: new Date(Date.now() + 864e5).toISOString().slice(0, 10),
-        preferred_time: "09:30",
-        description: "Revision de fuga bajo lavaplatos y cambio de flexible si corresponde.",
-        status: "pending",
-        created_at: new Date(Date.now() - 45 * 60000).toISOString(),
-        profiles: { name: "Andrea Dupre", email: "andrea@example.com" },
-    },
-    {
-        id: "demo-provider-request-2",
-        provider_id: "demo-provider-dashboard",
-        user_id: "demo-resident-2",
-        preferred_date: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10),
-        preferred_time: "15:00",
-        description: "Mantencion preventiva de sifon y revision de presion.",
-        status: "accepted",
-        created_at: new Date(Date.now() - 22 * 36e5).toISOString(),
-        profiles: { name: "Conserjeria Torre Norte", email: "conserjeria@example.com" },
-    },
-];
-
-const demoServiceRequestsStorageKey = "cc_demo_service_requests";
-
-function getDemoCreatedProviderRequests() {
-    if (typeof window === "undefined") return [];
-    try {
-        return JSON.parse(window.localStorage.getItem(demoServiceRequestsStorageKey) || "[]") as ProviderRequestRow[];
-    } catch {
-        return [];
-    }
-}
-
-function saveDemoCreatedProviderRequests(requests: ProviderRequestRow[]) {
-    if (typeof window === "undefined") return;
-    const created = requests.filter(request => request.id.startsWith("demo-service-request-created-"));
-    window.localStorage.setItem(demoServiceRequestsStorageKey, JSON.stringify(created.slice(0, 30)));
-}
 
 function formatDate(value: string) {
     if (!value) return "Sin fecha";
@@ -166,12 +105,6 @@ export function ProviderDashboardClient() {
 
         setLoading(true);
         try {
-            if (user.email.toLowerCase().endsWith("@demo.com")) {
-                const mergedProviders = mergeDemoCreatedProviders(demoProviders);
-                setProviders(mergedProviders);
-                setSelectedProviderId(current => current || mergedProviders[0]?.id || "demo-provider-dashboard");
-                return;
-            }
             const providerRows = await providersService.getByUser(user.id);
             setProviders(providerRows);
             setSelectedProviderId(current => current || providerRows[0]?.id || "");
@@ -194,10 +127,6 @@ export function ProviderDashboardClient() {
 
         setLoading(true);
         try {
-            if (providerId.startsWith("demo-")) {
-                setRequests([...getDemoCreatedProviderRequests(), ...demoProviderRequests]);
-                return;
-            }
             const rows = await serviceRequestsService.getByProvider(providerId);
             setRequests(rows as ProviderRequestRow[]);
         } catch (error) {
@@ -253,20 +182,6 @@ export function ProviderDashboardClient() {
     const updateStatus = async (request: ProviderRequestRow, status: RequestStatus) => {
         setSavingId(request.id);
         try {
-            if (request.id.startsWith("demo-")) {
-                setRequests(current => {
-                    const next = current.map(row => row.id === request.id ? { ...row, status } : row);
-                    saveDemoCreatedProviderRequests(next);
-                    return next;
-                });
-                toast({
-                    title: "Solicitud actualizada",
-                    description: `Quedo como ${STATUS_LABELS[status].toLowerCase()}.`,
-                    variant: "success",
-                });
-                return;
-            }
-
             const response = await fetch(`/api/service-requests/${request.id}/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },

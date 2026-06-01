@@ -29,7 +29,7 @@ src/
 ├── components/           # Componentes visuales y layouts reutilizables
 │   ├── ui/               # Componentes UI básicos (Botones, Inputs, Cards, etc.)
 │   └── training/         # Componentes dedicados al aula virtual multi-agente
-└── hooks/                # Hooks de React personalizados (useAuth, useDemoRestrictions)
+└── hooks/                # Hooks de React personalizados
 ```
 
 ---

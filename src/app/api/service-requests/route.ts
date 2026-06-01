@@ -58,12 +58,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
-        if (profile.email?.toLowerCase().endsWith('@demo.com')) {
-            return NextResponse.json(
-                { error: 'Modo showcase compartido: las solicitudes reales estan deshabilitadas.' },
-                { status: 403 }
-            );
-        }
 
         if (providerError || !provider) {
             return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });

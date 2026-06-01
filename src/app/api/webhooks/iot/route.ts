@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
         const payload = await req.json();
         
-        // Payload típico de un evento (ej. Shelly Flood o botón de demo)
+        // Payload tipico de un evento IoT (ej. Shelly Flood o boton fisico).
         const { sensor_id, type, unit_id, community_id, severity, location_detail } = payload;
 
         if (!sensor_id || !type || !unit_id) {
@@ -49,7 +49,7 @@ Instrucciones para Agente Autónomo:
 
 Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejecuta el protocolo y mitiga la alarma estructural en esta misma iteración!`;
 
-        // Contexto simulado para el Agente (Rol de Sistema / Root)
+        // Contexto de sistema para el agente autonomo.
         const sysCtx = {
             role: 'system',
             unit_id,

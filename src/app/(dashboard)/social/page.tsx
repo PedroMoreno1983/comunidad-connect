@@ -10,15 +10,6 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
-import {
-    createDemoSocialComment,
-    createDemoSocialPost,
-    fileToDataUrl,
-    getDemoSocialComments,
-    getDemoSocialPosts,
-    saveDemoSocialComment,
-    saveDemoSocialPosts,
-} from "@/lib/services/demoSocialStorage";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
     Heart, MessageCircle, MoreHorizontal,
@@ -30,7 +21,6 @@ import clsx from "clsx";
 export default function SocialFeedPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -51,18 +41,16 @@ export default function SocialFeedPage() {
 
     useEffect(() => {
         loadPosts();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isDemoUser]);
+    }, []);
 
     const loadPosts = async () => {
         setIsLoading(true);
         try {
             const data = await SocialService.getPosts();
-            if (isDemoUser) setPosts([...getDemoSocialPosts(), ...((data || []) as SocialPost[])]);
-            else if (data) setPosts(data as SocialPost[]);
+            if (data) setPosts(data as SocialPost[]);
         } catch (error) {
             console.error("Error loading social posts:", error);
-            setPosts(isDemoUser ? getDemoSocialPosts() : []);
+            setPosts([]);
         } finally {
             setIsLoading(false);
         }
@@ -82,24 +70,6 @@ export default function SocialFeedPage() {
         setIsSubmitting(true);
         let imageUrl: string | undefined;
 
-        if (isDemoUser) {
-            try {
-                imageUrl = newPostImageFile ? await fileToDataUrl(newPostImageFile) : undefined;
-                const newPost = createDemoSocialPost(user, newPostContent.trim(), imageUrl);
-                const nextPosts = [newPost, ...posts];
-                setPosts(nextPosts);
-                saveDemoSocialPosts(nextPosts);
-                setNewPostContent("");
-                setNewPostImageFile(null);
-                setNewPostImagePreview(null);
-                toast({ title: "Publicado en showcase", description: "Tu publicación con imagen quedó visible en esta sesión.", variant: "success" });
-            } catch {
-                toast({ title: "Error", description: "No se pudo leer la imagen.", variant: "destructive" });
-            } finally {
-                setIsSubmitting(false);
-            }
-            return;
-        }
 
         if (newPostImageFile) {
             setIsUploadingImage(true);
@@ -138,14 +108,6 @@ export default function SocialFeedPage() {
     };
 
     const handleLike = async (postId: string) => {
-        if (postId.startsWith("demo-social-post-")) {
-            setPosts(prev => {
-                const next = prev.map((p) => p.id === postId ? { ...p, likes_count: (p.likes_count || 0) + 1, has_liked: true } : p);
-                saveDemoSocialPosts(next);
-                return next;
-            });
-            return;
-        }
 
         try {
             setPosts(prev => prev.map((p) => {
@@ -177,10 +139,6 @@ export default function SocialFeedPage() {
         if (!comments[postId]) {
             setLoadingCommentsPostId(postId);
             try {
-                if (postId.startsWith("demo-social-post-")) {
-                    setComments(prev => ({ ...prev, [postId]: getDemoSocialComments(postId) }));
-                    return;
-                }
                 const data = await SocialService.getComments(postId);
                 setComments(prev => ({ ...prev, [postId]: data }));
             } catch (error) {
@@ -196,18 +154,6 @@ export default function SocialFeedPage() {
         if (!user || !newCommentContent.trim()) return;
 
         try {
-            if (postId.startsWith("demo-social-post-")) {
-                const comment = createDemoSocialComment(user, postId, newCommentContent.trim());
-                saveDemoSocialComment(postId, comment);
-                setComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), comment] }));
-                setPosts(prev => {
-                    const next = prev.map((p) => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p);
-                    saveDemoSocialPosts(next);
-                    return next;
-                });
-                setNewCommentContent("");
-                return;
-            }
 
             const comment = await SocialService.createComment({
                 post_id: postId,
@@ -242,37 +188,6 @@ export default function SocialFeedPage() {
                 </p>
             </div>
 
-            {/* Stories Row with avatares mono, dashed copper border for Tu avatar */}
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-none">
-                {/* Current User Story Creator */}
-                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-brand-500 flex items-center justify-center p-0.5 cursor-pointer hover:scale-105 transition-transform bg-canvas">
-                        <div className="w-full h-full rounded-full bg-elevated flex items-center justify-center text-brand-600 font-bold text-lg">
-                            +
-                        </div>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Tu historia</span>
-                </div>
-
-                {/* Mock stories */}
-                {[
-                    { name: "Andrés R.", initials: "AR", active: true },
-                    { name: "Valentina D.", initials: "VD", active: true },
-                    { name: "Claudio G.", initials: "CG", active: false },
-                    { name: "Pilar O.", initials: "PO", active: false }
-                ].map(st => (
-                    <div key={st.name} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                        <div className={`w-14 h-14 rounded-full flex items-center justify-center p-0.5 cursor-pointer hover:scale-105 transition-transform ${
-                            st.active ? 'border-2 border-brand-300' : 'border border-subtle'
-                        }`}>
-                            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs">
-                                {st.initials}
-                            </div>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">{st.name.split(" ")[0]}</span>
-                    </div>
-                ))}
-            </div>
 
             {/* Create Post Field */}
             <div className="bg-surface rounded-xl p-6 border border-subtle shadow-sm transition-all hover:border-brand-200">

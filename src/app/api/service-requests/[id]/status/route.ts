@@ -74,12 +74,6 @@ export async function PATCH(
             return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
-        if (actorProfile.email?.toLowerCase().endsWith('@demo.com')) {
-            return NextResponse.json(
-                { error: 'Modo showcase compartido: los cambios reales de estado estan deshabilitados.' },
-                { status: 403 }
-            );
-        }
 
         if (requestError || !request) {
             return NextResponse.json({ error: 'Solicitud no encontrada' }, { status: 404 });

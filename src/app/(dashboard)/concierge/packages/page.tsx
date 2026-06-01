@@ -57,34 +57,6 @@ function mapPackageRow(row: PackageRow): PackageItem {
     };
 }
 
-const demoPackages: PackageItem[] = [
-    { id: "demo-p1", recipientUnitId: "1204", description: "Caja Mercado Libre", receivedAt: new Date().toISOString(), status: "pending" },
-    { id: "demo-p2", recipientUnitId: "805", description: "Sobre Chilexpress", receivedAt: new Date(Date.now() - 54 * 60000).toISOString(), status: "pending" },
-    { id: "demo-p3", recipientUnitId: "1505", description: "Pedido farmacia", receivedAt: new Date(Date.now() - 3 * 36e5).toISOString(), status: "picked-up", pickedUpAt: new Date(Date.now() - 45 * 60000).toISOString() },
-];
-
-const demoPackagesStorageKey = "cc_demo_concierge_packages";
-
-const demoUnits: Unit[] = [
-    { id: "demo-u1", number: "805" },
-    { id: "demo-u2", number: "1204" },
-    { id: "demo-u3", number: "1505" },
-];
-
-function getDemoPackages(): PackageItem[] {
-    if (typeof window === "undefined") return demoPackages;
-    try {
-        const stored = JSON.parse(window.localStorage.getItem(demoPackagesStorageKey) || "[]") as PackageItem[];
-        return stored.length > 0 ? stored : demoPackages;
-    } catch {
-        return demoPackages;
-    }
-}
-
-function saveDemoPackages(packages: PackageItem[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(demoPackagesStorageKey, JSON.stringify(packages));
-}
 
 function receivedAgoLabel(value: string) {
     const receivedAt = new Date(value).getTime();
@@ -114,11 +86,6 @@ export default function PackagesPage() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                    setPackages(getDemoPackages());
-                    setUnits(demoUnits);
-                    return;
-                }
 
                 const pkgs = await PackageService.getAll();
                 setPackages(((pkgs || []) as PackageRow[]).map(mapPackageRow));
@@ -131,31 +98,11 @@ export default function PackagesPage() {
         };
 
         loadData();
-    }, [user?.email]);
+    }, [user?.id]);
 
     const handleReceivePackage = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                const pkg: PackageItem = {
-                    id: `demo-p-${Date.now()}`,
-                    recipientUnitId: newPackage.unit,
-                    description: newPackage.description,
-                    receivedAt: new Date().toISOString(),
-                    status: "pending",
-                };
-                const nextPackages = [pkg, ...packages];
-                setPackages(nextPackages);
-                saveDemoPackages(nextPackages);
-                setIsDialogOpen(false);
-                setNewPackage({ unit: "", description: "" });
-                toast({
-                    title: "Paquete demo registrado",
-                    description: `Se agrego a la bodega demo de la Unidad ${pkg.recipientUnitId}.`,
-                    variant: "success",
-                });
-                return;
-            }
 
             const data = await PackageService.register({
                 recipient_unit_id: newPackage.unit,
@@ -183,40 +130,19 @@ export default function PackagesPage() {
         }
     };
 
-    const simulateScan = () => {
+    const handleReadLabel = () => {
         setIsScanning(true);
         setTimeout(() => {
-            if (units.length > 0) {
-                const randomUnit = units[Math.floor(Math.random() * units.length)].number;
-                const descriptions = ["Caja Mercado Libre", "Sobre Chilexpress", "Pedido PedidosYa", "Caja Amazon Prime"];
-                const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
-
-                setNewPackage({ unit: randomUnit, description: randomDesc });
-            }
             setIsScanning(false);
             toast({
-                title: "¿Escaneo Exitoso!",
-                description: "Datos extraídos de la etiqueta correctamente.",
+                title: "Lectura OCR no configurada",
+                description: "Ingresa la unidad y descripcion manualmente para mantener la bitacora real.",
             });
-        }, 1500);
+        }, 900);
     };
 
     const handleMarkDelivered = async (id: string) => {
         try {
-            if (user?.email?.toLowerCase().endsWith("@demo.com")) {
-                const nextPackages = packages.map(pkg =>
-                    pkg.id === id
-                        ? { ...pkg, status: 'picked-up', pickedUpAt: new Date().toISOString() }
-                        : pkg
-                );
-                setPackages(nextPackages);
-                saveDemoPackages(nextPackages);
-                toast({
-                    title: "Entrega demo actualizada",
-                    description: "La bitácora local quedó al día.",
-                });
-                return;
-            }
 
             await PackageService.markPickedUp(id);
             setPackages(prev => prev.map(pkg =>
@@ -265,7 +191,7 @@ export default function PackagesPage() {
 
                                 {/* Scanner Simulation Button */}
                                 <button
-                                    onClick={simulateScan}
+                                    onClick={handleReadLabel}
                                     disabled={isScanning}
                                     className={`w-full py-8 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-4 transition-all ${isScanning
                                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-500/10'
@@ -277,9 +203,9 @@ export default function PackagesPage() {
                                     </div>
                                     <div className="text-center">
                                         <p className="font-semibold cc-text-primary">
-                                            {isScanning ? 'Escaneando Etiqueta...' : 'Simular Escaneo OCR'}
+                                            {isScanning ? 'Leyendo etiqueta...' : 'Leer etiqueta'}
                                         </p>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em] mt-1">Detección automática de Depto</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em] mt-1">Completa los datos detectados antes de guardar</p>
                                     </div>
                                 </button>
 

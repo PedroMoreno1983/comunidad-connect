@@ -3,28 +3,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProviderProfileClient } from "@/components/services/ProviderProfileClient";
-import { DemoProviderProfileRoute } from "@/components/services/DemoProviderProfileRoute";
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProviderProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
-
-    if (resolvedParams.id.startsWith("demo-provider-created-")) {
-        return (
-            <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
-                <Link
-                    href="/services"
-                    className="inline-flex items-center gap-2 text-sm font-semibold cc-text-secondary transition-colors hover:text-brand-700"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Volver a Servicios
-                </Link>
-
-                <DemoProviderProfileRoute providerId={resolvedParams.id} />
-            </div>
-        );
-    }
 
     // Fetch provider from Supabase
     const provider = await providersService.getById(resolvedParams.id);

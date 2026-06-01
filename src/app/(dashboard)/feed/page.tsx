@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Bell, AlertTriangle } from "lucide-react";
-import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
 import { Announcement } from "@/lib/types";
 import { SkeletonAnnouncement } from "@/components/ui/Skeleton";
@@ -22,8 +21,6 @@ type AnnouncementRow = {
 };
 
 export default function FeedPage() {
-    const { user } = useAuth();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -42,53 +39,22 @@ export default function FeedPage() {
                     priority: ann.priority,
                     createdAt: ann.created_at,
                 }));
-                // Showcase default announcements for protected account sessions.
-                const demoAnnouncements: Announcement[] = [
-                    {
-                        id: "demo-pinned-1",
-                        title: "Corte programado de agua por mantención",
-                        content: "Estimados vecinos, este jueves de 14:00 a 17:00 se realizará un corte programado de agua en todo el edificio por lavado de estanques. Favor tomar precauciones.",
-                        author: "Administración",
-                        priority: "alert",
-                        createdAt: new Date().toISOString(),
-                    },
-                    {
-                        id: "demo-ann-2",
-                        title: "Instalación de nuevos portones de acceso",
-                        content: "Mañana viernes se iniciará el cambio de motores del portón principal de vehículos. El acceso se mantendrá manual temporalmente.",
-                        author: "Conserjería",
-                        priority: "event",
-                        createdAt: new Date(Date.now() - 864e5).toISOString(),
-                    },
-                    {
-                        id: "demo-ann-3",
-                        title: "Reunión ordinaria de copropietarios",
-                        content: "Extendemos la invitación a participar de la asamblea comunitaria este sábado a las 10:00 en la sala multiuso. Revisaremos el presupuesto anual.",
-                        author: "Comité de Administración",
-                        priority: "info",
-                        createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
-                    }
-                ];
 
-                setAnnouncements(isDemoUser ? demoAnnouncements : mappedData);
+                setAnnouncements(mappedData);
             } catch (error) {
                 console.error("Error al cargar anuncios:", error);
-                if (isDemoUser) {
-                    setAnnouncements([]);
-                } else {
-                    toast({
-                        title: "Error de Conexión",
-                        description: "No se pudieron cargar los comunicados.",
-                        variant: "destructive",
-                    });
-                }
+                toast({
+                    title: "Error de Conexión",
+                    description: "No se pudieron cargar los comunicados.",
+                    variant: "destructive",
+                });
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchAnnouncements();
-    }, [isDemoUser, toast]);
+    }, [toast]);
 
     const getPriorityLabel = (priority: string) => {
         switch (priority) {

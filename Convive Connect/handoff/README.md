@@ -24,7 +24,12 @@ handoff/
 │   ├── Eyebrow.tsx            ← uppercase tracked label
 │   ├── Sidebar.tsx            ← sidebar admin/conserje (role-aware)
 │   ├── Topbar.tsx             ← topbar dashboard
-│   └── AdminShell.tsx         ← layout para (dashboard)/layout.tsx
+│   ├── AdminShell.tsx         ← layout para (dashboard)/layout.tsx
+│   └── viz/                   ← visualizaciones estilo Cotton
+│       ├── FoldedBar.tsx      ← barra "ribbon" con doblez 3D + fold()/DATA_PALETTE
+│       ├── BladeFan.tsx       ← abanico radial de cuchillas
+│       ├── ScoreDonut.tsx     ← donut de puntaje + BigDonut
+│       └── DotMatrix.tsx      ← unit chart de puntos
 └── examples/
     ├── HomePage.tsx           ← /home reescrito
     ├── AdminDashboardPage.tsx ← /admin reescrito
@@ -95,6 +100,32 @@ Mantén `lucide-react` — ya lo usas. El rediseño usa los siguientes con tama�
 `Home, Users, Bell, Calendar, MessageSquare, Wrench, Receipt, Coins, Store,
 ShoppingBag, MapPin, Settings, ChevronRight, ArrowRight, Plus, Search, Filter,
 Check, Sparkles, Send, Mic, Droplets, Zap, Leaf, MoreHorizontal`.
+
+---
+
+## Visualizaciones (estilo Cotton)
+
+Las viz viven en `components/viz/`. Reglas de uso:
+
+- **Úsalas solo en momentos de datos** (dashboards, analítica, histórico, consumo).
+  En listas, tablas, feed, perfil y flujos transaccionales **no** — el contraste entre
+  pantallas calmas y pantallas vibrantes es lo que las hace destacar.
+- Importa colores y el helper de doblez desde `FoldedBar`:
+  ```ts
+  import { FoldedBar, DATA_PALETTE, fold } from "@/components/cc/viz/FoldedBar";
+  import { BladeFan } from "@/components/cc/viz/BladeFan";
+  import { ScoreDonut, BigDonut } from "@/components/cc/viz/ScoreDonut";
+  import { DotMatrix } from "@/components/cc/viz/DotMatrix";
+  ```
+- **FoldedBar** reemplaza cualquier barra plana (recaudación mensual, uso de amenidades,
+  histórico de gasto común, gráfico de Coco). Vertical u horizontal.
+- **BladeFan** para los abanicos radiales (Indicadores, Costos). `tipInset={0}` = punta
+  cuadrada (default actual); súbelo para punta puntiaguda.
+- **ScoreDonut / BigDonut** para indicadores circulares.
+- **DotMatrix** para unit charts (ocupación de unidades, etc.).
+
+Pantallas analíticas de referencia en el prototipo: artboards **Indicadores**, **Costos**
+y **Residentes** (sección "Admin · analítica").
 
 ---
 

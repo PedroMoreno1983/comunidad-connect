@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { 
     Sparkles, 
     ListChecks, 
@@ -19,7 +18,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { isDemoModeEnabled } from "@/lib/runtimeMode";
 
 interface CartItem {
     id: string;
@@ -40,7 +38,6 @@ const AI_SUGGESTIONS = [
 
 export default function SupermarketPage() {
     const { toast } = useToast();
-    const router = useRouter();
     const [list, setList] = useState<CartItem[]>([]);
     const [newItem, setNewItem] = useState("");
     const [loading, setLoading] = useState(false);
@@ -106,16 +103,11 @@ export default function SupermarketPage() {
     const checkoutDisabled = list.length === 0;
 
     const handleCheckout = () => {
-        if (!isDemoModeEnabled()) {
-            toast({
-                title: "Pago no disponible",
-                description: "El checkout de supermercado se habilita cuando la comunidad active el canal de pagos.",
-                variant: "default",
-            });
-            return;
-        }
-        const refId = `SMU-${Date.now()}`;
-        router.push(`/payment-sandbox?amount=${totalAmount}&ref=${refId}&callback=/resident/supermercado`);
+        toast({
+            title: "Pago no disponible",
+            description: "El checkout de supermercado se habilita cuando la comunidad active el canal de pagos.",
+            variant: "default",
+        });
     };
 
     return (

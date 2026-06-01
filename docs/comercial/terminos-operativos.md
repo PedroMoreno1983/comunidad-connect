@@ -22,7 +22,7 @@ Para materias de copropiedad, seguridad de la informacion, reglamentos, multas, 
 
 ## Envios
 
-Los envios por correo, WhatsApp o notificaciones deben respetar consentimiento, finalidad y reglas internas del cliente. En demo, los envios reales deben permanecer deshabilitados.
+Los envios por correo, WhatsApp o notificaciones deben respetar consentimiento, finalidad y reglas internas del cliente. Los canales reales deben probarse primero con destinatarios internos autorizados.
 
 ## Seguridad
 

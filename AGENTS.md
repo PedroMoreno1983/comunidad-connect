@@ -168,12 +168,12 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 | Marketplace | `/marketplace` | ✅ Activo | Supabase real |
 | Amenities | `/amenities` | ✅ Activo | Supabase real |
 | Votaciones | `/votaciones` | ✅ Activo | Supabase real |
-| Gastos comunes | `/expenses` | ✅ Activo (pago = sandbox Haulmer hasta permisos API) | Supabase real |
+| Gastos comunes | `/expenses` | ✅ Activo \(pagos reales pendientes de permisos Haulmer\) | Supabase real |
 | Feed/Anuncios | `/feed` | ✅ Activo | Supabase real |
 | Chat (CoCo AI) | `/chat` | ✅ Activo | Agente local + Anthropic |
 | Social | `/social` | ✅ Activo | Supabase real |
 | Directorio | `/directorio` | ✅ Activo | Datos mixtos |
-| Servicios | `/services` | ✅ Activo comercial | Supabase real + fallback showcase |
+| Servicios | `/services` | ✅ Activo comercial | Supabase real |
 | Admin Panel | `/admin` | ✅ Activo | Supabase real |
 | Concierge Panel | `/concierge` | ✅ Activo | Supabase real |
 | SuperAdmin | `/superadmin` | ✅ Activo | Supabase real |
@@ -199,7 +199,7 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 2. **TypeScript:** No introducir errores de compilación. Verificar con `npx tsc --noEmit`.
 3. **Lint:** Usar `npm run lint` para verificar. El archivo `eslint.config.mjs` contiene las reglas.
 4. **Supabase schema:** Los cambios de schema van en `schema.sql` en la raíz. Siempre documentar migraciones.
-5. **No hardcodear IDs:** El `condo_id` por defecto para demo es `11111111-1111-1111-1111-111111111111` — usar la constante, no el string suelto.
+5. **No hardcodear IDs:** El `condo_id` de desarrollo local es `11111111-1111-1111-1111-111111111111` - usar la constante, no el string suelto.
 6. **Vercel:** Los headers de seguridad están en `vercel.json`. No eliminarlos.
 7. **Mobile:** `capacitor.config.ts` apunta al directorio `out` del build estático. No cambiar sin coordinar.
 
