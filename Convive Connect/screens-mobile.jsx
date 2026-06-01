@@ -293,7 +293,8 @@ function ExpensesScreen() {
         <div style={{ background: 'var(--paper-warm)', borderRadius: 18, padding: '20px 18px 14px', border: '1px solid var(--line)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, height: 100, marginBottom: 10 }}>
             {months.map((m, i) => {
-              const c = m.paid ? '#B5664E' : '#E0B23C';
+              const rampColors = ['#E0B23C', '#D9A04A', '#D27A38', '#CB7146', '#B5664E'];
+              const c = rampColors[i];
               const fold = (hex, f) => {
                 const n = parseInt(hex.slice(1), 16);
                 const rr = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
@@ -525,7 +526,7 @@ function CocoChatScreen() {
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 56 }}>
                 {[10.8, 8.6, 8.4].map((v, i) => {
-                  const c = '#5B97D6';
+                  const c = '#2F6CB0';
                   const fold = (hex, f) => {
                     const n = parseInt(hex.slice(1), 16);
                     const rr = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);

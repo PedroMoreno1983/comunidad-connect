@@ -261,11 +261,11 @@ function AdminDashboard() {
             <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 16, padding: 24 }}>
               <div className="uppercase-eyebrow" style={{ marginBottom: 18 }}>Uso de amenidades</div>
               {[
-                { l: 'Piscina', pct: 86, c: '#2F6CB0' },
-                { l: 'Quincho', pct: 72, c: '#D27A38' },
-                { l: 'Gimnasio', pct: 58, c: '#3E8E57' },
-                { l: 'Sala multiuso', pct: 41, c: '#E0B23C' },
-                { l: 'Cowork', pct: 35, c: '#7C6BA6' },
+                { l: 'Piscina', pct: 86, c: '#B5664E' },
+                { l: 'Quincho', pct: 72, c: '#6E8268' },
+                { l: 'Gimnasio', pct: 58, c: '#7A5876' },
+                { l: 'Sala multiuso', pct: 41, c: '#C99A4A' },
+                { l: 'Cowork', pct: 35, c: '#3E8E8E' },
               ].map((r, i) => {
                 const fold = (hex, f) => {
                   const n = parseInt(hex.slice(1), 16);
@@ -278,8 +278,8 @@ function AdminDashboard() {
                       <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{r.l}</span>
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink)' }}>{r.pct}%</span>
                     </div>
-                    <div style={{ height: 8, background: 'var(--paper-warm)', borderRadius: 999, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${r.pct}%`, display: 'flex', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: 8, background: 'var(--paper-warm)', borderRadius: '0 3px 3px 0', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${r.pct}%`, display: 'flex', borderRadius: '0 3px 3px 0', overflow: 'hidden' }}>
                         <div style={{ width: '50%', height: '100%', background: r.c }} />
                         <div style={{ width: '50%', height: '100%', background: fold(r.c, 0.66) }} />
                       </div>
