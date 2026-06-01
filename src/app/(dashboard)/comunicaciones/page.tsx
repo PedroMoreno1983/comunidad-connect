@@ -9,7 +9,6 @@ import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { Send, Users, Eye } from "lucide-react";
-import { createDemoAnnouncement, saveDemoAnnouncements } from "@/lib/services/demoAnnouncementsStorage";
 
 type Priority = 'info' | 'alert' | 'event';
 type AnnouncementRow = {
@@ -24,7 +23,6 @@ type AnnouncementRow = {
 export default function ComunicacionesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
     // Form state
@@ -50,36 +48,13 @@ export default function ComunicacionesPage() {
                     priority: ann.priority,
                     createdAt: ann.created_at,
                 }));
-                // Showcase default announcements when running with the protected account.
-                const demoAnnouncements: Announcement[] = [
-                    {
-                        id: "demo-ann-1",
-                        title: "Corte programado de agua por mantención",
-                        content: "Estimados vecinos, este jueves de 14:00 a 17:00 se realizará un corte programado de agua en todo el edificio por lavado de estanques. Favor tomar precauciones.",
-                        author: "Administración",
-                        priority: "alert",
-                        createdAt: new Date(Date.now() - 2 * 36e5).toISOString(),
-                    },
-                    {
-                        id: "demo-ann-2",
-                        title: "Instalación de nuevos portones de acceso",
-                        content: "Mañana viernes se iniciará el cambio de motores del portón principal de vehículos. El acceso se mantendrá manual temporalmente.",
-                        author: "Conserjería",
-                        priority: "event",
-                        createdAt: new Date(Date.now() - 24 * 36e5).toISOString(),
-                    }
-                ];
-                setAnnouncements(isDemoUser ? demoAnnouncements : mapped);
+                setAnnouncements(mapped);
             } catch {
-                if (isDemoUser) {
-                    setAnnouncements([]);
-                } else {
-                    toast({ title: "Error de conexión", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
-                }
+                toast({ title: "Error de conexión", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
             }
         };
         fetch();
-    }, [isDemoUser, toast]);
+    }, [toast]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,18 +69,6 @@ export default function ComunicacionesPage() {
 
         setIsSubmitting(true);
         try {
-            if (isDemoUser) {
-                const demoAnnouncement = createDemoAnnouncement(user, { title: title.trim(), content: content.trim(), priority });
-                const nextAnnouncements = [demoAnnouncement, ...announcements];
-                setAnnouncements(nextAnnouncements);
-                saveDemoAnnouncements(nextAnnouncements);
-                setTitle("");
-                setContent("");
-                setPriority("info");
-                toast({ title: "Aviso publicado", description: "El comunicado ya se encuentra visible para los residentes.", variant: "success" });
-                return;
-            }
-
             const data = await AnnouncementsService.createAnnouncement({
                 title: title.trim(),
                 content: content.trim(),
@@ -159,10 +122,6 @@ export default function ComunicacionesPage() {
         }
     };
 
-    const readingRateByAnnouncement: Record<string, string> = {
-        'demo-ann-1': '94%',
-        'demo-ann-2': '82%',
-    };
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">
@@ -344,7 +303,7 @@ export default function ComunicacionesPage() {
                         </thead>
                         <tbody>
                             {announcements.map((ann, index) => {
-                                const rate = readingRateByAnnouncement[ann.id] || (index % 2 === 0 ? "88%" : "74%");
+                                const rate = index % 2 === 0 ? "88%" : "74%";
                                 return (
                                     <tr key={ann.id} className="border-b border-subtle/50 text-xs cc-text-secondary hover:bg-elevated/40 transition-colors">
                                         <td className="py-3.5 font-semibold cc-text-primary truncate max-w-[200px]">{ann.title}</td>

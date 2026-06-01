@@ -1,4 +1,4 @@
-interface PaymentPayload {
+﻿interface PaymentPayload {
     amount: number;
     description: string;
     reference: string; // ID interno nuestro (e.g., deudo ID o carrito ID)
@@ -6,12 +6,12 @@ interface PaymentPayload {
         email: string;
         name: string;
     };
-    returnUrl: string; // URL a donde vuelve el usuario despues de pagar
+    returnUrl: string; // URL a donde vuelve el usuario despuÃ©s de pagar
 }
 
 /**
  * Servicio para integrar el Gateway de Pagos de Haulmer.
- * Documentación Base: Endpoint POST /v1/checkout/payment
+ * DocumentaciÃ³n Base: Endpoint POST /v1/checkout/payment
  */
 export const HaulmerService = {
     apiKey: process.env.HAULMER_API_KEY || '',
@@ -23,14 +23,7 @@ export const HaulmerService = {
      */
     async createPaymentLink(payload: PaymentPayload): Promise<{ token: string; url: string }> {
         if (!this.apiKey) {
-            if (process.env.NODE_ENV === 'production') {
-                throw new Error("Canal de pagos no configurado para producción.");
-            }
-            console.warn("HAULMER_API_KEY no detectada. Usando checkout sandbox para desarrollo local.");
-            return {
-                token: "sandbox_token_local",
-                url: `/payment-sandbox?ref=${payload.reference}&amount=${payload.amount}`
-            };
+            throw new Error("Canal de pagos no configurado. Falta HAULMER_API_KEY.");
         }
 
         const body = {
@@ -65,8 +58,8 @@ export const HaulmerService = {
 
             const data = await response.json();
 
-            // Haulmer retorna tipícamente el redireccionamiento (ej. data.token, data.payment_url)
-            // Ajustar los campos exactos según la documentación V1 de Haulmer en producción real
+            // Haulmer retorna tipÃ­camente el redireccionamiento (ej. data.token, data.payment_url)
+            // Ajustar los campos exactos segÃºn la documentaciÃ³n V1 de Haulmer en producciÃ³n real
             return {
                 token: data.token || data.id,
                 url: data.url || `https://pay.haulmer.com/checkout?token=${data.token}`

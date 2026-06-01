@@ -7,8 +7,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { useDemoRestrictions } from "@/hooks/useDemoRestrictions";
-import { isShowcaseUser } from "@/lib/showcase";
 import { clsx } from "clsx";
 import {
   Activity,
@@ -35,8 +33,7 @@ import {
   BookOpen,
   Upload,
   Bot,
-  Briefcase,
-  Compass
+  Briefcase
 } from "lucide-react";
 import { Brand } from "./Brand";
 
@@ -80,7 +77,6 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
   const { user: authUser, logout } = useAuth();
   const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const { isDemoUser } = useDemoRestrictions();
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -190,15 +186,6 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     });
   }
 
-  if (isShowcaseUser(activeUser)) {
-    menuSections.unshift({
-      title: "RECORRIDO COMERCIAL",
-      links: [
-        { href: "/showcase", label: "Como venderlo", icon: Compass, roles: ["admin", "resident", "concierge"] }
-      ]
-    });
-  }
-
   const canShowLink = (link: { roles: string[]; feature?: string }) => {
     if (!link.roles.includes(activeUser.role || "resident")) return false;
     if (link.feature && activeUser.features) {
@@ -301,7 +288,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         aria-label={isMobileOpen ? "Cerrar menú" : "Abrir menú"}
         className="fixed left-3 z-50 rounded-lg border border-subtle bg-surface p-2.5 shadow-sm cc-text-primary lg:hidden"
-        style={{ top: isDemoUser ? "48px" : "12px" }}
+        style={{ top: "12px" }}
       >
         {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -330,8 +317,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         className="sticky z-10 hidden lg:flex w-[240px] flex-col border-r border-subtle bg-surface shrink-0"
         style={{
           background: "var(--cc-paper-warm)",
-          top: isDemoUser ? "40px" : "0px",
-          height: isDemoUser ? "calc(100vh - 40px)" : "100vh",
+          top: "0px",
+          height: "100vh",
         }}
       >
         {sidebarContent}

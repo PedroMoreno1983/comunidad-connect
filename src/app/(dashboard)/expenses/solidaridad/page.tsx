@@ -75,6 +75,19 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 2500): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json() as T;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+
 export default function SolidarityHubPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -115,35 +128,25 @@ export default function SolidarityHubPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Fetch Fund & Ledger
-      const fundRes = await fetch("/api/solidarity/fund");
-      if (fundRes.ok) {
-        const fundData = await fundRes.json();
-        setFund(fundData.fund);
-        setLedger(fundData.ledger);
-      }
+      const [fundData, appData, tasksData] = await Promise.all([
+        fetchJsonWithTimeout<{ fund: SolidarityFund; ledger: LedgerEntry[] }>("/api/solidarity/fund"),
+        fetchJsonWithTimeout<SolidarityApplication[]>("/api/solidarity/apply"),
+        fetchJsonWithTimeout<SolidarityTask[]>("/api/solidarity/tasks"),
+      ]);
 
-      // Fetch Applications
-      const appRes = await fetch("/api/solidarity/apply");
-      if (appRes.ok) {
-        const appData = await appRes.json();
-        setApplications(appData);
-      }
-
-      // Fetch Tasks
-      const tasksRes = await fetch("/api/solidarity/tasks");
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        setTasks(tasksData);
-      }
-
-    } catch (error) {
-      console.error("Error fetching solidarity data:", error);
+      setFund(fundData.fund);
+      setLedger(fundData.ledger);
+      setApplications(appData);
+      setTasks(tasksData);
+    } catch {
+      setFund(null);
+      setLedger([]);
+      setApplications([]);
+      setTasks([]);
       toast({
-        title: "Error",
-        description: "No se pudieron cargar los datos del fondo solidario.",
-        variant: "destructive"
+        title: "No se pudo cargar el fondo",
+        description: "Mostramos el modulo sin datos inventados hasta recuperar la conexion real.",
+        variant: "default",
       });
     } finally {
       setLoading(false);
@@ -633,33 +636,36 @@ export default function SolidarityHubPage() {
                       required
                     />
                   </div>
-
-                  {/* Document upload simulation */}
+                  {/* Document upload */}
                   <div>
                     <label className="text-xs font-semibold block text-slate-500 mb-1.5">
-                      Documentos de Respaldo (Finiquito, Liquidación, Receta)
+                      Documentos de Respaldo (Finiquito, Liquidacion, Receta)
                     </label>
-                    <div
-                      onClick={() => {
-                        // Simulate file picker
-                        const simulatedFiles = ["finiquito_laboral.pdf", "certificado_afc.pdf", "receta_urgencias.pdf", "certificado_jubilacion.pdf"];
-                        const randomFile = simulatedFiles[Math.floor(Math.random() * simulatedFiles.length)];
-                        setAttachedFileName(randomFile);
-                        toast({
-                          title: "Documento Adjunto",
-                          description: `Se cargó "${randomFile}" como respaldo de la postulación.`,
-                          variant: "default"
-                        });
-                      }}
+                    <label
                       className="border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                     >
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          setAttachedFileName(file.name);
+                          toast({
+                            title: "Documento seleccionado",
+                            description: `${file.name} quedo asociado a la postulacion.`,
+                            variant: "default"
+                          });
+                        }}
+                      />
                       <Upload className="h-5 w-5 text-slate-400" />
                       <span className="text-xs font-semibold">
                         {attachedFileName ? attachedFileName : "Hacer clic para adjuntar respaldo (.pdf, .jpg)"}
                       </span>
-                      <span className="text-[10px] text-slate-400 block">Máximo 10 MB</span>
-                    </div>
+                      <span className="text-[10px] text-slate-400 block">Maximo 10 MB</span>
+                    </label>
                   </div>
 
                   <Button variant="primary" size="lg" block disabled={submittingApp}>

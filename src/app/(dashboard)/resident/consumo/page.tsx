@@ -22,14 +22,6 @@ import { useToast } from "@/components/ui/Toast";
 
 const BUILDING_AVERAGE_M3 = 15.5;
 
-const demoWaterReadings: WaterReading[] = [
-    { id: "demo-water-1", unit_id: "demo", reading_value: 102.4, reading_date: "2026-01-15", month: "Enero", year: 2026, created_at: "2026-01-15T12:00:00.000Z" },
-    { id: "demo-water-2", unit_id: "demo", reading_value: 116.8, reading_date: "2026-02-15", month: "Febrero", year: 2026, created_at: "2026-02-15T12:00:00.000Z" },
-    { id: "demo-water-3", unit_id: "demo", reading_value: 132.1, reading_date: "2026-03-15", month: "Marzo", year: 2026, created_at: "2026-03-15T12:00:00.000Z" },
-    { id: "demo-water-4", unit_id: "demo", reading_value: 151.9, reading_date: "2026-04-15", month: "Abril", year: 2026, created_at: "2026-04-15T12:00:00.000Z" },
-    { id: "demo-water-5", unit_id: "demo", reading_value: 174.7, reading_date: "2026-05-15", month: "Mayo", year: 2026, created_at: "2026-05-15T12:00:00.000Z" },
-];
-
 function calculateConsumption(current: WaterReading, allReadings: WaterReading[]) {
     const index = allReadings.findIndex(reading => reading.id === current.id);
     if (index <= 0) return 0;
@@ -64,9 +56,8 @@ export default function WaterConsumptionPage() {
     useEffect(() => {
         async function loadData() {
             try {
-                const data = user?.unitId ? await WaterService.getReadingsByUnit(user.unitId) : demoWaterReadings;
-                const sourceData = data.length ? data : demoWaterReadings;
-                const sortedData = [...sourceData].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
+                const data = user?.unitId ? await WaterService.getReadingsByUnit(user.unitId) : [];
+                const sortedData = [...data].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
                 const enrichedData = sortedData.map(reading => ({
                     ...reading,
                     consumption: calculateConsumption(reading, sortedData),
@@ -75,11 +66,7 @@ export default function WaterConsumptionPage() {
                 setReadings(enrichedData);
             } catch (error: unknown) {
                 console.error("Error fetching water data:", error);
-                const sortedData = [...demoWaterReadings].sort((a, b) => new Date(a.reading_date).getTime() - new Date(b.reading_date).getTime());
-                setReadings(sortedData.map(reading => ({
-                    ...reading,
-                    consumption: calculateConsumption(reading, sortedData),
-                })));
+                setReadings([]);
                 const err = error as { code?: string };
                 if (err.code !== "PGRST116" && err.code !== "42P01") {
                     toast({
@@ -120,12 +107,16 @@ export default function WaterConsumptionPage() {
         );
     }
 
-    if (readings.length === 0 && !user?.unitId) {
+    if (readings.length === 0) {
         return (
             <div className="flex h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
                 <Waves className="h-12 w-12 text-slate-300" />
-                <h2 className="text-xl font-bold cc-text-secondary">Sin unidad asignada</h2>
-                <p className="text-slate-500">Contacta a la administración para vincular tu usuario a un departamento.</p>
+                <h2 className="text-xl font-bold cc-text-secondary">{user?.unitId ? "Sin lecturas cargadas" : "Sin unidad asignada"}</h2>
+                <p className="max-w-md text-slate-500">
+                    {user?.unitId
+                        ? "Aun no existen lecturas reales para tu unidad. Cuando administracion cargue el periodo, veras tendencia, alertas y estimacion de costo."
+                        : "Contacta a la administracion para vincular tu usuario a un departamento."}
+                </p>
             </div>
         );
     }
@@ -212,25 +203,6 @@ export default function WaterConsumptionPage() {
                 </section>
             )}
 
-            {!user?.unitId && (
-                <section className="rounded-lg border border-blue-100 bg-blue-50 p-5 dark:border-blue-500/20 dark:bg-blue-500/10">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <h2 className="font-semibold text-blue-900 dark:text-blue-200">Vista demo con datos inteligentes</h2>
-                            <p className="text-sm font-medium text-blue-800/80 dark:text-blue-100/80">
-                                Este usuario no tiene unidad vinculada, asi que mostramos una serie realista para demostrar alertas, tendencia y estimacion.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => openLeakReport(user?.unitName)}
-                            className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800"
-                        >
-                            Crear caso CoCo
-                        </button>
-                    </div>
-                </section>
-            )}
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                 <div className="space-y-8 lg:col-span-2">

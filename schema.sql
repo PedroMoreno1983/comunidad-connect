@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS public.poll_votes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   poll_id UUID REFERENCES public.polls(id) ON DELETE CASCADE NOT NULL,
   option_id UUID REFERENCES public.poll_options(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID NOT NULL, -- Referencia relajada (UUID o ID de sesión) para compatibilidad con modo demo
+  user_id UUID NOT NULL, -- Referencia relajada para compatibilidad historica de sesiones
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(poll_id, user_id)
@@ -537,7 +537,7 @@ CREATE POLICY "tenant_announcements_insert" ON public.announcements FOR INSERT W
 CREATE POLICY "tenant_polls_select" ON public.polls FOR SELECT USING (true);
 CREATE POLICY "tenant_poll_options_select" ON public.poll_options FOR SELECT USING (true);
 CREATE POLICY "tenant_poll_votes_select" ON public.poll_votes FOR SELECT USING (true);
-CREATE POLICY "tenant_poll_votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (true); -- Habilitado para modo demo en cliente
+CREATE POLICY "tenant_poll_votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (true); -- Habilitado para insercion controlada desde cliente
 
 -- Políticas de Seguridad para Proveedores de Servicios
 CREATE POLICY "tenant_service_providers_select" ON public.service_providers FOR SELECT USING (true);

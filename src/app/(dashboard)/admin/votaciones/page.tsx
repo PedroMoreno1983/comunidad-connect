@@ -56,7 +56,7 @@ export default function AdminVotacionesPage() {
                             Validacion de poderes
                         </div>
                         <p className="text-3xl font-semibold cc-text-primary">12</p>
-                        <p className="mt-2 text-xs font-semibold text-warning-fg">Pendientes de revision</p>
+                        <p className="mt-2 text-xs font-semibold text-warning-fg">Pendientes de revisión</p>
                     </div>
                 </div>
             </section>

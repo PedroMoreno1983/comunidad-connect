@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { isDemoModeEnabled, isDemoModeRequested } from '@/lib/runtimeMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,23 +36,18 @@ export async function GET() {
     const appReady = coreReady && aiReady;
     const commercialChannelsReady = Object.values(communications).every(Boolean);
     const paidProductionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean);
-    const demoRequested = isDemoModeRequested();
-    const demoEnabled = isDemoModeEnabled();
     const missingProduction = [
         ...Object.entries(communications).filter(([, value]) => !value).map(([key]) => `communications.${key}`),
         ...Object.entries(paidIntegrations).filter(([, value]) => !value).map(([key]) => `paidIntegrations.${key}`),
-        ...(demoEnabled ? ['runtime.demoModeEnabled'] : []),
     ];
 
     return NextResponse.json({
         ok: appReady,
-        status: paidProductionReady && !demoEnabled ? 'ready' : appReady ? 'operational_needs_production_config' : 'not_ready',
+        status: paidProductionReady ? 'ready' : appReady ? 'operational_needs_production_config' : 'not_ready',
         service: 'convive-connect',
         checkedAt: new Date().toISOString(),
         runtime: {
-            demoRequested,
-            demoEnabled,
-            productionReady: paidProductionReady && !demoEnabled,
+            productionReady: paidProductionReady,
             missingProduction,
         },
         checks: {

@@ -24,7 +24,7 @@ Vercel dashboard deployment flow instead.
 
 ## Required Environment Variables
 
-Commercial demo requires:
+Commercial production requires:
 
 ```txt
 NEXT_PUBLIC_SUPABASE_URL
@@ -57,7 +57,7 @@ WHATSAPP_WEBHOOK_SECRET
 VOYAGE_API_KEY
 ```
 
-## QA Before Demo
+## QA Before Production Review
 
 Run local checks:
 
@@ -72,13 +72,14 @@ Run QA against production:
 
 ```powershell
 $env:QA_BASE_URL='https://comunidad-connect-eight.vercel.app'
-npm run qa:functional
-npm run qa:visual
+npm run qa:production-mode
+npm run qa:production-hardening
+npm run qa:security-headers
 ```
 
 Expected current status:
 
-- Commercial demo readiness: `READY`
+- Commercial readiness: `READY`
 - Paid production readiness: `NEEDS CONFIG` until payment, superadmin, and monitoring secrets are added.
 
 ## Public Health Check

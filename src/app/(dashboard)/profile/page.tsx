@@ -13,9 +13,8 @@ import { Tag as CcTag } from "@/components/cc/Tag";
 import { ProfileService } from "@/lib/api";
 
 export default function ProfilePage() {
-    const { user, updateDemoUser } = useAuth();
+    const { user } = useAuth();
     const { toast } = useToast();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const [fullName, setFullName] = useState(user?.name || "");
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
@@ -46,14 +45,6 @@ export default function ProfilePage() {
 
     const loadProfile = async () => {
         if (!user) return;
-        if (isDemoUser) {
-            setAvatarUrl(user.photo || user.avatarUrl);
-            setPhoneNumber("912345678");
-            setWhatsappEnabled(true);
-            setUnitNumber(user.unitName?.replace(/[^0-9]/g, "") || (user.role === "resident" ? "1204" : ""));
-            setUnitTower(user.role === "resident" ? "A" : "");
-            return;
-        }
 
         const profile = await ProfileService.getSettings(user.id);
         setAvatarUrl(profile.avatarUrl);
@@ -69,18 +60,6 @@ export default function ProfilePage() {
 
         setIsUploadingAvatar(true);
         try {
-            if (isDemoUser) {
-                const dataUrl = await new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(String(reader.result || ""));
-                    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-                    reader.readAsDataURL(file);
-                });
-                setAvatarUrl(dataUrl);
-                updateDemoUser({ photo: dataUrl, avatarUrl: dataUrl });
-                toast({ title: "Foto actualizada", description: "Vista previa guardada para esta demo.", variant: "success" });
-                return;
-            }
 
             const publicUrl = await ProfileService.uploadAvatar(user.id, file);
             setAvatarUrl(publicUrl);
@@ -97,16 +76,6 @@ export default function ProfilePage() {
         if (!user || !fullName.trim()) return;
         setIsSaving(true);
         try {
-            if (isDemoUser) {
-                const normalizedUnit = unitNumber.trim();
-                updateDemoUser({
-                    name: fullName.trim(),
-                    unitName: normalizedUnit ? `Depto ${normalizedUnit}` : user.unitName,
-                });
-                toast({ title: "Perfil actualizado", description: "Tus cambios quedaron guardados para esta sesión.", variant: "success" });
-                return;
-            }
-
             await ProfileService.saveProfile(user.id, { fullName, unitNumber, unitTower });
             toast({ title: "Perfil actualizado", description: "Tus cambios fueron guardados.", variant: "success" });
         } catch (error) {
@@ -121,12 +90,6 @@ export default function ProfilePage() {
         if (!user?.email) return;
         setIsSendingReset(true);
         try {
-            if (isDemoUser) {
-                setShowEmailConfirm(true);
-                toast({ title: "Email preparado", description: "En showcase no enviamos correos reales.", variant: "success" });
-                return;
-            }
-
             await ProfileService.sendPasswordReset(user.email, `${window.location.origin}/reset-password`);
             setShowEmailConfirm(true);
             toast({ title: "Email enviado", description: "Revisa tu correo para cambiar la contraseña.", variant: "success" });
@@ -325,11 +288,6 @@ export default function ProfilePage() {
                                         return;
                                     }
                                     setIsSavingWa(true);
-                                    if (isDemoUser) {
-                                        toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones demo en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
-                                        setIsSavingWa(false);
-                                        return;
-                                    }
                                     try {
                                         await ProfileService.saveWhatsapp(user.id, phoneNumber, whatsappEnabled);
                                         toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });

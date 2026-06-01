@@ -1,6 +1,6 @@
 # Cierre de produccion
 
-Checklist para pasar de showcase a cliente pagado.
+Checklist para dejar el entorno listo para un cliente pagado.
 
 ## Variables obligatorias en Vercel
 
@@ -9,7 +9,6 @@ Configurar en Production y Preview cuando corresponda:
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_ENABLE_DEMO=false`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY`
 - `GEMINI_API_KEY`
@@ -107,7 +106,7 @@ npm run build
 
 ## Criterio de cierre
 
-- `Commercial demo readiness: READY`.
+- `Commercial readiness: READY`.
 - `Paid production readiness: READY`.
 - Dominio final apuntado.
 - Envios reales probados con destinatarios internos.

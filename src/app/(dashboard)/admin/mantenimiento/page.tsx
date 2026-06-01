@@ -66,46 +66,13 @@ type LogRow = {
     performed_by?: string | null;
 };
 
-const fallbackServices: ServiceRow[] = [
-    { id: "demo-s1", service_type: "plomeria", description: "Revision preventiva sala de bombas torre A", status: "pending", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
-    { id: "demo-s2", service_type: "ascensor", description: "Mantencion mensual ascensor B y prueba de rescate", status: "completed", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
-    { id: "demo-s3", service_type: "seguridad", description: "Ajuste de camaras en estacionamiento subterraneo", status: "in-progress", scheduled_date: new Date().toISOString(), created_at: new Date().toISOString() },
-];
-
-const demoMaintenanceStorageKey = "cc_demo_maintenance_services";
-
-const fallbackCases: CaseRow[] = [
-    { id: "demo-c1", title: "Filtracion reportada en 1204", category: "plomeria", urgency: "alta", status: "open", unit_label: "1204", source_message: "Agua cayendo desde el cielo del bano", created_at: new Date().toISOString() },
-    { id: "demo-c2", title: "Ruidos recurrentes fuera de horario", category: "ruido", urgency: "media", status: "in_progress", unit_label: "1505", source_message: "Cuarto reporte del mes", created_at: new Date(Date.now() - 5 * 36e5).toISOString() },
-];
-
-const fallbackAssets: AssetRow[] = [
-    { id: "demo-a1", name: "Bomba presurizadora A", category: "pump", brand: "Grundfos", model: "CME 10", location: "Sala bombas -1", health_status: "warning", next_maintenance: new Date(Date.now() + 2 * 864e5).toISOString() },
-    { id: "demo-a2", name: "Ascensor torre B", category: "elevator", brand: "Otis", model: "Gen2", location: "Torre B", health_status: "optimal", next_maintenance: new Date(Date.now() + 9 * 864e5).toISOString() },
-    { id: "demo-a3", name: "Tablero emergencia", category: "electrical", brand: "Schneider", model: "Prisma", location: "Sala electrica", health_status: "critical", next_maintenance: new Date(Date.now() + 864e5).toISOString() },
-];
-
-const fallbackLogs: LogRow[] = [
-    { id: "demo-l1", description: "Cambio de sello y prueba de presion", cost: 180000, date: new Date().toISOString(), performed_by: "Mantencion interna" },
-    { id: "demo-l2", description: "Limpieza de sensores y ajuste de puertas", cost: 95000, date: new Date(Date.now() - 4 * 864e5).toISOString(), performed_by: "Proveedor ascensores" },
-];
+const emptyServices: ServiceRow[] = [];
+const emptyCases: CaseRow[] = [];
+const emptyAssets: AssetRow[] = [];
+const emptyLogs: LogRow[] = [];
 
 const categories = ["plomeria", "electrico", "ascensor", "seguridad", "limpieza", "otro"] as const;
 
-function getDemoMaintenanceServices(): ServiceRow[] {
-    if (typeof window === "undefined") return fallbackServices;
-    try {
-        const stored = JSON.parse(window.localStorage.getItem(demoMaintenanceStorageKey) || "[]") as ServiceRow[];
-        return stored.length > 0 ? stored : fallbackServices;
-    } catch {
-        return fallbackServices;
-    }
-}
-
-function saveDemoMaintenanceServices(services: ServiceRow[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(demoMaintenanceStorageKey, JSON.stringify(services));
-}
 
 function dateLabel(value?: string | null) {
     if (!value) return "Sin fecha";
@@ -139,7 +106,6 @@ function serviceDateOf(item: ServiceRow) {
 export default function MantenimientoAdminPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const isDemoUser = user?.email?.toLowerCase().endsWith("@demo.com") ?? false;
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"operacion" | "activos" | "sensores">("operacion");
     const [services, setServices] = useState<ServiceRow[]>([]);
@@ -157,36 +123,28 @@ export default function MantenimientoAdminPage() {
 
     async function loadData() {
         setLoading(true);
-        if (isDemoUser) {
-            setServices(getDemoMaintenanceServices());
-            setCases(fallbackCases);
-            setAssets(fallbackAssets);
-            setLogs(fallbackLogs);
-            setLoading(false);
-            return;
-        }
 
         try {
             const data = await MaintenanceService.getAdminOverview();
-            setServices(data.services.length ? data.services : fallbackServices);
-            setCases(data.cases.length ? data.cases : fallbackCases);
-            setAssets(data.assets.length ? data.assets : fallbackAssets);
-            setLogs(data.logs.length ? data.logs : fallbackLogs);
+            setServices(data.services);
+            setCases(data.cases);
+            setAssets(data.assets);
+            setLogs(data.logs);
         } catch (error) {
             console.error("[Maintenance] overview load failed:", error);
-            setServices(fallbackServices);
-            setCases(fallbackCases);
-            setAssets(fallbackAssets);
-            setLogs(fallbackLogs);
+            setServices(emptyServices);
+            setCases(emptyCases);
+            setAssets(emptyAssets);
+            setLogs(emptyLogs);
         }
         setLoading(false);
     }
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadData();
-        // Mantencion recarga solo cuando cambia entre demo/produccion.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isDemoUser]);
+        // Mantencion recarga cuando cambia el usuario activo.
+    }, []);
 
     const metrics = useMemo(() => {
         const activeCases = cases.filter(item => !["resolved", "closed", "cancelled"].includes(item.status || ""));
@@ -206,25 +164,6 @@ export default function MantenimientoAdminPage() {
         }
 
         setSaving(true);
-        if (isDemoUser) {
-            const task: ServiceRow = {
-                id: `demo-maintenance-${Date.now()}`,
-                service_type: form.service_type,
-                description: `[${form.title}] ${form.description}`,
-                status: "pending",
-                scheduled_date: form.scheduled_date || new Date().toISOString(),
-                created_at: new Date().toISOString(),
-            };
-            const nextServices = [task, ...services];
-            setServices(nextServices);
-            saveDemoMaintenanceServices(nextServices);
-            setSaving(false);
-            toast({ title: "Tarea showcase creada", description: "Quedó visible en la cola operativa.", variant: "success" });
-            setShowTask(false);
-            setForm({ title: "", description: "", service_type: "plomeria", scheduled_date: "" });
-            return;
-        }
-
         try {
             await MaintenanceService.createServiceTask({
                 requesterId: user?.id,
@@ -254,11 +193,6 @@ export default function MantenimientoAdminPage() {
     async function closeService(id: string) {
         const nextServices = services.map(item => item.id === id ? { ...item, status: "completed" } : item);
         setServices(nextServices);
-        if (isDemoUser) {
-            saveDemoMaintenanceServices(nextServices);
-            toast({ title: "Tarea showcase cerrada", description: "El estado quedó guardado para esta sesión.", variant: "success" });
-            return;
-        }
         try {
             await MaintenanceService.closeService(id);
         } catch (error) {

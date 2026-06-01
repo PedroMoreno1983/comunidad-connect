@@ -36,7 +36,6 @@ type PollFormState = {
 };
 
 type DeliverySummary = {
-    mode: "demo" | "real";
     title: string;
     publishedAt: string;
     chatSent: boolean;
@@ -69,40 +68,14 @@ type PollRecord = {
     created_at?: string | null;
 };
 
-const demoPolls: Poll[] = [
-    {
-        id: "demo-admin-poll-1",
-        title: "Renovacion de ascensores Torre B",
-        description: "Consulta formal para aprobar presupuesto y calendario de obra.",
-        options: [{ id: "yes", text: "A favor", votes: 74 }, { id: "no", text: "En contra", votes: 18 }],
-        endDate: "2026-05-18",
-        totalVotes: 92,
-        status: "active",
-        category: "maintenance",
-        createdAt: "2026-05-01",
-    },
-    {
-        id: "demo-admin-poll-2",
-        title: "Actualizacion reglamento de mascotas",
-        description: "Ajustes de horarios y zonas de circulacion.",
-        options: [{ id: "yes", text: "A favor", votes: 58 }, { id: "no", text: "En contra", votes: 21 }],
-        endDate: "2026-05-12",
-        totalVotes: 79,
-        status: "active",
-        category: "rules",
-        createdAt: "2026-04-28",
-    },
-];
 
 const categoryLabels: Record<Poll["category"], string> = {
     community: "Comunidad",
-    maintenance: "Mantencion",
+    maintenance: "Mantención",
     rules: "Reglamento",
     other: "Otro",
 };
 
-const demoStorageKey = "cc_demo_admin_polls";
-const demoChatStorageKey = "cc_demo_global_chat_messages";
 
 function getDefaultEndDate() {
     return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -141,41 +114,6 @@ function mapPollRecord(record: PollRecord): Poll {
     };
 }
 
-function loadDemoPolls() {
-    if (typeof window === "undefined") return demoPolls;
-    try {
-        const saved = JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as Poll[];
-        return [...saved, ...demoPolls];
-    } catch {
-        return demoPolls;
-    }
-}
-
-function saveDemoPoll(poll: Poll) {
-    if (typeof window === "undefined") return;
-    const existing = JSON.parse(window.localStorage.getItem(demoStorageKey) || "[]") as Poll[];
-    window.localStorage.setItem(demoStorageKey, JSON.stringify([poll, ...existing].slice(0, 20)));
-}
-
-function saveDemoChatPollAnnouncement(poll: Poll) {
-    if (typeof window === "undefined") return;
-    const existing = JSON.parse(window.localStorage.getItem(demoChatStorageKey) || "[]");
-    const message = {
-        id: `demo-poll-chat-${poll.id}`,
-        sender_id: "demo-admin",
-        content: [
-            `Nueva votacion: ${poll.title}`,
-            "",
-            poll.description,
-            "",
-            `Cierre: ${new Date(poll.endDate).toLocaleDateString("es-CL")}`,
-            "Vota en Convive Connect > Votaciones.",
-        ].join("\n"),
-        created_at: new Date().toISOString(),
-        profiles: { name: "Admin Showcase" },
-    };
-    window.localStorage.setItem(demoChatStorageKey, JSON.stringify([message, ...existing].slice(0, 20)));
-}
 
 export function PollManager() {
     const { user } = useAuth();
@@ -187,16 +125,11 @@ export function PollManager() {
     const [deliverySummary, setDeliverySummary] = useState<DeliverySummary | null>(null);
     const deliverySummaryRef = useRef<HTMLDivElement | null>(null);
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         const loadPolls = async () => {
             setIsLoading(true);
             try {
-                if (isDemoUser) {
-                    setPolls(loadDemoPolls());
-                    return;
-                }
 
                 const data = await PollService.getAll();
                 setPolls(((data || []) as PollRecord[]).map(mapPollRecord));
@@ -208,7 +141,7 @@ export function PollManager() {
             }
         };
         loadPolls();
-    }, [isDemoUser]);
+    }, []);
 
     const stats = useMemo(() => {
         const active = polls.filter(poll => poll.status === "active");
@@ -275,36 +208,6 @@ export function PollManager() {
         setDeliverySummary(null);
 
         try {
-            if (isDemoUser) {
-                const createdPoll: Poll = {
-                    id: `demo-admin-poll-${Date.now()}`,
-                    title: form.title.trim(),
-                    description: form.description.trim(),
-                    category: form.category,
-                    endDate: new Date(form.endDate).toISOString(),
-                    totalVotes: 0,
-                    status: "active",
-                    options: options.map((text, index) => ({ id: `demo-option-${Date.now()}-${index}`, text, votes: 0 })),
-                    createdAt: new Date().toISOString(),
-                };
-                saveDemoPoll(createdPoll);
-                if (form.sendChat) saveDemoChatPollAnnouncement(createdPoll);
-                setPolls([createdPoll, ...polls]);
-                showDeliverySummary({
-                    mode: "demo",
-                    title: createdPoll.title,
-                    publishedAt: new Date().toISOString(),
-                    chatSent: form.sendChat,
-                    notificationsSent: form.sendNotifications ? 18 : 0,
-                    whatsappSent: form.sendWhatsapp ? 12 : 0,
-                    whatsappSkipped: form.sendWhatsapp ? 6 : 0,
-                    whatsappFailed: 0,
-                    whatsappConfigured: true,
-                });
-                resetForm();
-                toast({ title: "Votación showcase publicada", description: "Quedó visible en el gestor y el envío fue preparado.", variant: "success" });
-                return;
-            }
 
             const response = await fetch("/api/polls", {
                 method: "POST",
@@ -331,7 +234,6 @@ export function PollManager() {
             const createdPoll = mapPollRecord({ ...result.poll, options: result.options });
             setPolls([createdPoll, ...polls]);
             showDeliverySummary({
-                mode: "real",
                 title: createdPoll.title,
                 publishedAt: new Date().toISOString(),
                 chatSent: Boolean(result.delivery?.chat?.sent),
@@ -404,7 +306,7 @@ export function PollManager() {
                                     className="h-11 w-full rounded-md border border-subtle bg-surface px-3 text-sm font-medium cc-text-primary outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                                 >
                                     <option value="community">Comunidad</option>
-                                    <option value="maintenance">Mantencion</option>
+                                    <option value="maintenance">Mantención</option>
                                     <option value="rules">Reglamento</option>
                                     <option value="other">Otro</option>
                                 </select>
@@ -678,7 +580,7 @@ function DeliverySummaryCard({ summary }: { summary: DeliverySummary }) {
                     </div>
                     <div>
                         <h3 className="font-semibold text-success-fg">
-                            {summary.mode === "demo" ? "Envio simulado" : "Votacion enviada"}
+                            Votacion enviada
                         </h3>
                         <p className="mt-1 text-sm leading-6 text-emerald-900">{summary.title}</p>
                         <p className="mt-1 text-xs font-semibold text-emerald-900/70">

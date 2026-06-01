@@ -283,7 +283,7 @@ export default function SignUpPage() {
                             </p>
                         </div>
 
-                        {/* Floating Card Mockup */}
+                        {/* Floating Card Preview */}
                         <div 
                           className="rounded-2xl border p-5 shadow-xl bg-[#1A1611]/90 backdrop-blur-md relative transform rotate-[1deg] translate-y-2 text-left"
                           style={{ borderColor: "rgba(250, 247, 241, 0.1)" }}

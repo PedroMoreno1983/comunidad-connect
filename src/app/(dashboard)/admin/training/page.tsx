@@ -5,10 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/authContext';
 import {
     GraduationCap, Plus, Trash2,
-    Users, Save, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft, Lock
+    Users, Save, AlertCircle, UploadCloud, Play, FileText, Wand2, ChevronLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useDemoRestrictions } from '@/hooks/useDemoRestrictions';
 import { useToast } from '@/components/ui/Toast';
 
 export interface Slide {
@@ -53,7 +52,6 @@ function friendlyTrainingError(message?: string) {
 export default function AdminTrainingPage() {
     const { user } = useAuth();
     const router = useRouter();
-    const { isDemoUser, demoMessage } = useDemoRestrictions();
     const { toast } = useToast();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -195,10 +193,6 @@ export default function AdminTrainingPage() {
     };
 
     const handleCreate = async () => {
-        if (isDemoUser) {
-            toast({ title: "Cuenta showcase", description: demoMessage, variant: "destructive" });
-            return;
-        }
         setIsSaving(true);
         try {
             // Guardamos el JSON de las diapositivas
@@ -230,10 +224,6 @@ export default function AdminTrainingPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (isDemoUser) {
-            toast({ title: "Cuenta showcase", description: demoMessage, variant: "destructive" });
-            return;
-        }
         if (deletingId !== id) {
             setDeletingId(id);
             return;
@@ -514,9 +504,9 @@ export default function AdminTrainingPage() {
                                     <button
                                         onClick={() => handleDelete(course.id)}
                                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                                        title={isDemoUser ? "Bloqueado en Demo" : "Eliminar curso"}
+                                        title="Eliminar curso"
                                     >
-                                        {isDemoUser ? <Lock className="h-4 w-4 text-slate-300" /> : <Trash2 className="h-4 w-4" />}
+                                        <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                                 <h3 className="text-xl font-bold cc-text-primary line-clamp-2 mb-2">

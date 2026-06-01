@@ -19,12 +19,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/Dialog";
-import {
-    applyDemoMarketplaceStatusOverrides,
-    getDemoPublishedMarketplaceItems,
-    saveDemoMarketplaceStatusOverride,
-    saveDemoPublishedMarketplaceItems,
-} from "@/lib/services/demoMarketplaceStorage";
 
 type Mode = "mine" | "admin";
 type MarketplaceStatus = MarketplaceItem["status"];
@@ -51,60 +45,6 @@ function getPrimaryImage(item: MarketplaceItem) {
     return item.imageUrl || item.images?.[0] || null;
 }
 
-function getDemoManagementItems(userId: string): MarketplaceItem[] {
-    const now = new Date().toISOString();
-
-    return [
-        {
-            id: "demo-market-1",
-            title: "Bicicleta plegable aro 20",
-            description: "Uso liviano, ideal para moverse cerca del edificio. Se entrega en conserjeria con coordinacion previa.",
-            price: 85000,
-            sellerId: userId || "demo",
-            imageUrl: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop",
-            images: ["https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=1200&auto=format&fit=crop"],
-            category: "other",
-            createdAt: now,
-            status: "available",
-            allowSale: true,
-            allowSwap: true,
-            allowBarter: false,
-            paymentStatus: "none",
-        },
-        {
-            id: "demo-market-2",
-            title: "Silla ergonomica home office",
-            description: "Respaldo regulable, buen estado. Perfecta para teletrabajo.",
-            price: 65000,
-            sellerId: userId || "demo",
-            imageUrl: "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop",
-            images: ["https://images.unsplash.com/photo-1580480055273-228ff5388ef8?q=80&w=1200&auto=format&fit=crop"],
-            category: "furniture",
-            createdAt: now,
-            status: "available",
-            allowSale: true,
-            allowSwap: false,
-            allowBarter: true,
-            paymentStatus: "none",
-        },
-        {
-            id: "demo-market-3",
-            title: "Monitor Samsung 24 pulgadas",
-            description: "Full HD, entrada HDMI. Probado y funcionando.",
-            price: 72000,
-            sellerId: userId || "demo",
-            imageUrl: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop",
-            images: ["https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop"],
-            category: "electronics",
-            createdAt: now,
-            status: "reserved",
-            allowSale: true,
-            allowSwap: false,
-            allowBarter: false,
-            paymentStatus: "pending",
-        },
-    ];
-}
 
 interface MarketplaceManagementClientProps {
     mode: Mode;
@@ -120,17 +60,11 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const [pendingDeleteItem, setPendingDeleteItem] = useState<MarketplaceItem | null>(null);
 
     const isAdminMode = mode === "admin";
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const loadItems = useCallback(async () => {
         if (!user) return;
 
         setLoading(true);
-        if (isDemoUser) {
-            setItems(applyDemoMarketplaceStatusOverrides([...getDemoPublishedMarketplaceItems(), ...getDemoManagementItems(user.id)]));
-            setLoading(false);
-            return;
-        }
 
         try {
             const rows = isAdminMode
@@ -147,7 +81,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
         } finally {
             setLoading(false);
         }
-    }, [isAdminMode, isDemoUser, toast, user]);
+    }, [isAdminMode, toast, user]);
 
     useEffect(() => {
         loadItems();
@@ -169,20 +103,6 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const updateStatus = async (item: MarketplaceItem, status: MarketplaceStatus) => {
         setSavingId(item.id);
         try {
-            if (isDemoUser || item.id.startsWith("demo-")) {
-                setItems(current => {
-                    const next = current.map(row => row.id === item.id ? { ...row, status } : row);
-                    saveDemoMarketplaceStatusOverride(item.id, status);
-                    saveDemoPublishedMarketplaceItems(next);
-                    return next;
-                });
-                toast({
-                    title: "Publicación actualizada",
-                    description: `${item.title} quedó como ${STATUS_LABELS[status].toLowerCase()}.`,
-                    variant: "success",
-                });
-                return;
-            }
 
             const response = await fetch(`/api/marketplace-items/${item.id}`, {
                 method: "PATCH",
@@ -216,20 +136,6 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
     const deleteItem = async (item: MarketplaceItem) => {
         setSavingId(item.id);
         try {
-            if (isDemoUser || item.id.startsWith("demo-")) {
-                setItems(current => {
-                    const next = current.filter(row => row.id !== item.id);
-                    saveDemoMarketplaceStatusOverride(item.id, "hidden");
-                    saveDemoPublishedMarketplaceItems(next);
-                    return next;
-                });
-                toast({
-                    title: "Publicación eliminada",
-                    description: "Ya no aparecerá en el marketplace.",
-                    variant: "success",
-                });
-                return;
-            }
 
             const response = await fetch(`/api/marketplace-items/${item.id}`, {
                 method: "DELETE",
@@ -461,7 +367,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 <DialogHeader>
                     <DialogTitle>Retirar publicacion</DialogTitle>
                     <DialogDescription>
-                        Esta acción quitará <span className="font-semibold">{pendingDeleteItem?.title}</span> del marketplace público. En showcase queda oculta para conservar trazabilidad.
+                        Esta acción quitará <span className="font-semibold">{pendingDeleteItem?.title}</span> del marketplace público.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

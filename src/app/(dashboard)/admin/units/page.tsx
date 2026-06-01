@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 import { useToast } from "@/components/ui/Toast";
-import { useAuth } from "@/lib/authContext";
 import { WaterService } from "@/lib/api";
 import { Unit } from "@/lib/types";
 
@@ -24,86 +23,11 @@ type UnitRow = Unit & {
     profiles?: { name: string; email: string } | null;
 };
 
-const demoProfiles: Profile[] = [
-    { id: "demo-resident-1", name: "Andrea Dupre", email: "andrea@example.com", role: "resident" },
-    { id: "demo-resident-2", name: "Carlos Rivas", email: "carlos@example.com", role: "resident" },
-    { id: "demo-resident-3", name: "Marta Rojas", email: "marta@example.com", role: "resident" },
-];
-
-const demoUnits: UnitRow[] = [
-    { id: "demo-unit-805", number: "805", floor: 8, tower: "A", ownerId: "demo-resident-2", profiles: { name: "Carlos Rivas", email: "carlos@example.com" } },
-    { id: "demo-unit-1204", number: "1204", floor: 12, tower: "A", ownerId: "demo-resident-1", profiles: { name: "Andrea Dupre", email: "andrea@example.com" } },
-    { id: "demo-unit-1505", number: "1505", floor: 15, tower: "B", profiles: null },
-    { id: "demo-unit-1802", number: "1802", floor: 18, tower: "B", profiles: null },
-];
-
-const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
-
-type DemoOnboardedResident = {
-    id?: string;
-    name?: string;
-    unit_id?: string;
-    email?: string;
-};
-
-function floorFromUnit(unitNumber: string) {
-    const number = parseInt(unitNumber, 10);
-    if (!Number.isFinite(number)) return 1;
-    return unitNumber.length >= 3 ? Math.max(1, Math.floor(number / 100)) : 1;
-}
-
-function getDemoOnboardedResidents(): DemoOnboardedResident[] {
-    if (typeof window === "undefined") return [];
-    try {
-        return JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as DemoOnboardedResident[];
-    } catch {
-        return [];
-    }
-}
-
-function getDemoOnboardedProfiles(): Profile[] {
-    return getDemoOnboardedResidents()
-        .filter(row => String(row.name || "").trim())
-        .map((row, index) => ({
-            id: row.id || `demo-onboarded-profile-${index}`,
-            name: String(row.name || "").trim(),
-            email: String(row.email || "").trim() || `${String(row.unit_id || index).trim()}@demo.local`,
-            role: "resident",
-        }));
-}
-
-function mergeDemoOnboardedUnits() {
-    const byNumber = new Map<string, UnitRow>();
-    demoUnits.forEach(unit => byNumber.set(unit.number, unit));
-
-    getDemoOnboardedResidents()
-        .filter(row => String(row.unit_id || "").trim())
-        .forEach((row, index) => {
-            const number = String(row.unit_id || "").trim();
-            const existing = byNumber.get(number);
-            const profile = String(row.name || "").trim()
-                ? { name: String(row.name || "").trim(), email: String(row.email || "").trim() }
-                : existing?.profiles || null;
-
-            byNumber.set(number, {
-                id: existing?.id || `demo-onboarded-unit-${index}-${number}`,
-                number,
-                tower: existing?.tower || "A",
-                floor: existing?.floor || floorFromUnit(number),
-                ownerId: row.id || existing?.ownerId,
-                profiles: profile,
-            });
-        });
-
-    return Array.from(byNumber.values()).sort((a, b) => a.tower.localeCompare(b.tower) || a.number.localeCompare(b.number, "es", { numeric: true }));
-}
-
 function getResidentName(unit: UnitRow) {
     return unit.profiles?.name || unit.profiles?.email || "";
 }
 
 export default function UnitsPage() {
-    const { user } = useAuth();
     const { toast } = useToast();
     const [units, setUnits] = useState<UnitRow[]>([]);
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -119,17 +43,9 @@ export default function UnitsPage() {
     const [selectedResident, setSelectedResident] = useState("");
     const [assigning, setAssigning] = useState(false);
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            if (isDemoUser) {
-                setUnits(mergeDemoOnboardedUnits());
-                setProfiles([...getDemoOnboardedProfiles(), ...demoProfiles]);
-                return;
-            }
-
             const [unitsData, profilesData] = await Promise.all([
                 WaterService.getUnits(),
                 WaterService.getProfiles(),
@@ -146,7 +62,7 @@ export default function UnitsPage() {
         } finally {
             setLoading(false);
         }
-    }, [isDemoUser, toast]);
+    }, [toast]);
 
     useEffect(() => {
         loadData();
@@ -179,23 +95,19 @@ export default function UnitsPage() {
         setCreating(true);
         try {
             const createdUnit: UnitRow = {
-                id: isDemoUser ? `demo-unit-${Date.now()}` : "",
+                id: "",
                 tower: newUnit.tower.trim(),
                 number: newUnit.number.trim(),
                 floor: parseInt(newUnit.floor, 10),
                 profiles: null,
             };
 
-            if (isDemoUser) {
-                setUnits(current => [...current, createdUnit].sort((a, b) => a.tower.localeCompare(b.tower) || a.number.localeCompare(b.number, "es", { numeric: true })));
-            } else {
-                await WaterService.createUnit({
-                    tower: createdUnit.tower,
-                    number: createdUnit.number,
-                    floor: createdUnit.floor,
-                });
-                await loadData();
-            }
+            await WaterService.createUnit({
+                tower: createdUnit.tower,
+                number: createdUnit.number,
+                floor: createdUnit.floor,
+            });
+            await loadData();
 
             toast({ title: "Unidad creada", description: `Depto ${createdUnit.number} quedo registrado.`, variant: "success" });
             setIsCreateOpen(false);
@@ -212,18 +124,8 @@ export default function UnitsPage() {
         if (!selectedUnit) return;
         setAssigning(true);
         try {
-            const resident = profiles.find(profile => profile.id === selectedResident);
-
-            if (isDemoUser) {
-                setUnits(current => current.map(unit =>
-                    unit.id === selectedUnit.id
-                        ? { ...unit, ownerId: resident?.id, profiles: resident ? { name: resident.name, email: resident.email } : null }
-                        : unit
-                ));
-            } else {
-                await WaterService.assignResident(selectedUnit.id, selectedResident || null);
-                await loadData();
-            }
+            await WaterService.assignResident(selectedUnit.id, selectedResident || null);
+            await loadData();
 
             toast({
                 title: selectedResident ? "Residente asignado" : "Unidad liberada",
@@ -251,7 +153,7 @@ export default function UnitsPage() {
     return (
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
             <ModuleHeader
-                eyebrow="Administracion"
+                eyebrow="Administración"
                 title="Gestion de unidades"
                 description="Administra departamentos, torres y asignaciones de residentes desde una vista operacional."
                 icon={<Building2 className="h-5 w-5" />}

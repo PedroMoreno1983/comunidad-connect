@@ -17,7 +17,6 @@ import {
     User,
     WaterReading,
 } from './types';
-import { isDemoEmail } from './runtimeMode';
 
 async function sendBookingConfirmation(payload: {
     to: string;
@@ -59,82 +58,12 @@ function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, un
     return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
 }
 
-const demoDirectoryNeighbors: DirectoryNeighbor[] = [
-    {
-        id: "demo-resident-marta",
-        name: "Marta Rojas",
-        role: "resident",
-        unit_id: "demo-unit-805",
-        unitLabel: "805",
-        email: "marta.rojas@demo.com",
-    },
-    {
-        id: "demo-resident-diego",
-        name: "Diego Salinas",
-        role: "resident",
-        unit_id: "demo-unit-1204",
-        unitLabel: "1204",
-        email: "diego.salinas@demo.com",
-    },
-    {
-        id: "demo-concierge-turno",
-        name: "Conserje Turno",
-        role: "concierge",
-        unitLabel: "Acceso principal",
-        email: "conserjeria@demo.com",
-    },
-    {
-        id: "demo-admin-community",
-        name: "Administración Comunidad",
-        role: "admin",
-        unitLabel: "Oficina admin",
-        email: "admin@demo.com",
-    },
-];
-
-const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
-
-function getDemoOnboardedNeighbors(): DirectoryNeighbor[] {
-    if (typeof window === "undefined") return [];
-    try {
-        const rows = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as Array<{
-            id?: string;
-            name?: string;
-            unit_id?: string;
-            email?: string;
-        }>;
-
-        return rows
-            .filter(row => String(row.name || "").trim() && String(row.unit_id || "").trim())
-            .map((row, index) => ({
-                id: row.id || `demo-onboarded-neighbor-${index}`,
-                name: String(row.name || "Vecino").trim(),
-                role: "resident",
-                unit_id: `demo-onboarded-unit-${String(row.unit_id || "").trim()}`,
-                unitLabel: String(row.unit_id || "").trim(),
-                email: String(row.email || "").trim() || undefined,
-            }));
-    } catch {
-        return [];
-    }
-}
-
 // ==========================================
 // Directory API
 // ==========================================
 
 export const DirectoryService = {
     async getNeighbors(user: Pick<User, "id" | "email">): Promise<DirectoryNeighbor[]> {
-        const isDemoUser = user.email.toLowerCase().endsWith("@demo.com");
-
-        if (isDemoUser) {
-            const byKey = new Map<string, DirectoryNeighbor>();
-            [...getDemoOnboardedNeighbors(), ...demoDirectoryNeighbors].forEach(neighbor => {
-                const key = neighbor.email || `${neighbor.role}-${neighbor.unitLabel || neighbor.id}`;
-                if (!byKey.has(key)) byKey.set(key, neighbor);
-            });
-            return Array.from(byKey.values()).filter(neighbor => neighbor.id !== user.id);
-        }
 
         const { data, error } = await supabase
             .from('profiles')
@@ -320,17 +249,6 @@ export const ProfileService = {
 // Resident Home API
 // ==========================================
 
-const demoResidentHomeSummary: ResidentHomeSummary = {
-    pendingExpensesCount: 1,
-    pendingExpensesAmount: 187420,
-    bookingsCount: 1,
-    recentAnnouncement: {
-        title: "Asamblea ordinaria de copropietarios",
-        content: "Sabado 30 de mayo, 19:00 - Salon comunitario.",
-        category: "Asamblea",
-        time: "hace 2h",
-    },
-};
 
 function getAnnouncementCategory(priority: unknown): string {
     return priority === "alert" ? "Urgente" : "Aviso";
@@ -338,7 +256,6 @@ function getAnnouncementCategory(priority: unknown): string {
 
 export const HomeService = {
     async getResidentSummary(user: Pick<User, "id" | "email" | "unitId" | "communityId">): Promise<ResidentHomeSummary> {
-        if (isDemoEmail(user.email)) return demoResidentHomeSummary;
 
         let expensesQuery = supabase
             .from('expenses')
@@ -435,7 +352,7 @@ function mapMaintenanceLog(row: DbRow): MaintenanceLog {
         id: textValue(row.id),
         assetId: textValue(row.asset_id || row.assetId),
         taskId: nullableText(row.task_id || row.taskId) || undefined,
-        performedBy: textValue(row.performed_by || row.performedBy, "Administracion"),
+        performedBy: textValue(row.performed_by || row.performedBy, "Administración"),
         description: textValue(row.description, "Registro de mantenimiento"),
         cost: Number(row.cost || 0),
         date: textValue(row.date, new Date().toISOString()),

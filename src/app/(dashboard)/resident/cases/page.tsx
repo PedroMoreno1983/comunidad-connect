@@ -48,7 +48,7 @@ const statusCopy: Record<CoCoCase["status"], { label: string; icon: typeof Clock
         className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
     },
     in_progress: {
-        label: "En revision",
+        label: "En revisión",
         icon: Wrench,
         className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
     },
@@ -81,59 +81,6 @@ function uniqueCases(cases: CoCoCase[]) {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
-function getDemoCases(): { cases: CoCoCase[]; events: Record<string, CoCoCaseEvent[]> } {
-    const now = new Date();
-    const caseId = "demo-coco-case-1";
-    return {
-        cases: [
-            {
-                id: caseId,
-                title: "Filtracion bajo lavaplatos",
-                type: "incidencia",
-                category: "plomeria",
-                urgency: "alta",
-                action: "crear_ticket",
-                status: "in_progress",
-                reason: "Riesgo de dano a mueble y unidad inferior si no se revisa hoy.",
-                source_message: "CoCo, tengo agua goteando bajo el lavaplatos y el mueble se esta mojando.",
-                assistant_reply: "Registre el caso y lo escale a Administracion para coordinar revision.",
-                unit_label: "Depto 1204",
-                created_at: new Date(now.getTime() - 2 * 36e5).toISOString(),
-                updated_at: new Date(now.getTime() - 35 * 60000).toISOString(),
-            },
-            {
-                id: "demo-coco-case-2",
-                title: "Ruidos fuera de horario",
-                type: "reclamo",
-                category: "convivencia",
-                urgency: "media",
-                action: "escalar_admin",
-                status: "open",
-                reason: "Caso recurrente que requiere revision de reglamento.",
-                source_message: "Otra vez hay ruido fuerte despues de medianoche en el piso 15.",
-                assistant_reply: "Deje registro y notifique a Administracion con el contexto.",
-                unit_label: "Torre B",
-                created_at: new Date(now.getTime() - 25 * 36e5).toISOString(),
-                updated_at: new Date(now.getTime() - 25 * 36e5).toISOString(),
-            },
-        ],
-        events: {
-            [caseId]: [
-                {
-                    id: "demo-event-1",
-                    case_id: caseId,
-                    event_type: "status_changed",
-                    from_status: "open",
-                    to_status: "in_progress",
-                    body: "Administracion tomo el caso y esta coordinando visita tecnica.",
-                    actor_role: "admin",
-                    created_at: new Date(now.getTime() - 35 * 60000).toISOString(),
-                },
-            ],
-        },
-    };
-}
-
 export default function ResidentCasesPage() {
     const { user } = useAuth();
     const [cases, setCases] = useState<CoCoCase[]>([]);
@@ -144,14 +91,6 @@ export default function ResidentCasesPage() {
         const fetchCases = async () => {
             if (!user) return;
             setLoading(true);
-
-            if (user.email.toLowerCase().endsWith("@demo.com")) {
-                const demo = getDemoCases();
-                setCases(demo.cases);
-                setEventsByCase(demo.events);
-                setLoading(false);
-                return;
-            }
 
             const select = "id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at, updated_at";
             const queries = [
@@ -221,7 +160,7 @@ export default function ResidentCasesPage() {
                     </p>
                     <h1 className="text-3xl font-semibold cc-text-primary md:text-4xl">Mis Casos CoCo</h1>
                     <p className="max-w-2xl text-sm font-medium cc-text-secondary">
-                        Revisa los reportes que CoCo registro desde tus conversaciones y el avance de Administracion o Conserjeria.
+                        Revisa los reportes que CoCo registró desde tus conversaciones y el avance de Administración o Conserjería.
                     </p>
                 </div>
                 <Link

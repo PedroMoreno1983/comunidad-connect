@@ -31,13 +31,6 @@ interface AdminProfile {
     units?: { number: string }[] | { number: string } | null;
 }
 
-const demoUsers: AdminProfile[] = [
-    { id: "demo-admin", name: "Admin Showcase", email: "admin@demo.com", role: "admin", units: null },
-    { id: "demo-resident-1", name: "Andrea Dupre", email: "andrea@example.com", role: "resident", units: { number: "1204" } },
-    { id: "demo-resident-2", name: "Carlos Rivas", email: "carlos@example.com", role: "resident", units: { number: "805" } },
-    { id: "demo-concierge", name: "Conserje Showcase", email: "conserjeria@example.com", role: "concierge", units: null },
-];
-
 const roleLabels: Record<string, string> = {
     admin: "Administración",
     resident: "Residente",
@@ -75,20 +68,10 @@ export default function UsersPage() {
     const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
     const [query, setQuery] = useState("");
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
-
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                if (isDemoUser) {
-                    setCommunityName("Comunidad Showcase");
-                    setResidentCode("RES-SHOW");
-                    setConciergeCode("CON-SHOW");
-                    setUsers(demoUsers);
-                    return;
-                }
-
                 if (user) {
                     const { data: profile } = await supabase
                         .from("profiles")
@@ -120,17 +103,14 @@ export default function UsersPage() {
                 setUsers((data || []) as AdminProfile[]);
             } catch (err) {
                 console.error("Error fetching users:", err);
-                setCommunityName("Comunidad Showcase");
-                setResidentCode("RES-SHOW");
-                setConciergeCode("CON-SHOW");
-                setUsers(demoUsers);
+                setUsers([]);
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchData();
-    }, [isDemoUser, user]);
+    }, [user]);
 
     const stats = useMemo(() => {
         const residents = users.filter(item => item.role === "resident").length;
@@ -167,7 +147,7 @@ export default function UsersPage() {
     return (
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
             <ModuleHeader
-                eyebrow="Administracion"
+                eyebrow="Administración"
                 title="Usuarios y accesos"
                 description="Controla roles, unidades asignadas y codigos de invitacion desde una vista operativa."
                 icon={<Users className="h-5 w-5" />}
@@ -183,8 +163,8 @@ export default function UsersPage() {
             <section className="grid gap-3 md:grid-cols-5">
                 <ModuleStat label="Total" value={stats.total} icon={<Users className="h-4 w-4" />} active={roleFilter === "all"} onClick={() => setRoleFilter("all")} />
                 <ModuleStat label="Residentes" value={stats.residents} icon={<User className="h-4 w-4" />} active={roleFilter === "resident"} onClick={() => setRoleFilter("resident")} />
-                <ModuleStat label="Administracion" value={stats.admins} icon={<Shield className="h-4 w-4" />} active={roleFilter === "admin"} onClick={() => setRoleFilter("admin")} />
-                <ModuleStat label="Conserjeria" value={stats.concierge} icon={<HardHat className="h-4 w-4" />} active={roleFilter === "concierge"} onClick={() => setRoleFilter("concierge")} />
+                <ModuleStat label="Administración" value={stats.admins} icon={<Shield className="h-4 w-4" />} active={roleFilter === "admin"} onClick={() => setRoleFilter("admin")} />
+                <ModuleStat label="Conserjería" value={stats.concierge} icon={<HardHat className="h-4 w-4" />} active={roleFilter === "concierge"} onClick={() => setRoleFilter("concierge")} />
                 <ModuleStat label="Pendientes" value={stats.missingUnit} icon={<Key className="h-4 w-4" />} />
             </section>
 
@@ -211,7 +191,7 @@ export default function UsersPage() {
                         )}
                         {conciergeCode && (
                             <InviteCodeCard
-                                title="Conserjeria"
+                                title="Conserjería"
                                 description="Personal de turno, accesos, visitas y paqueteria."
                                 code={conciergeCode}
                                 copied={copiedCode === "concierge"}

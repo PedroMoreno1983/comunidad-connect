@@ -8,7 +8,6 @@ import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2, Search } f
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { getDemoCondoFees, saveDemoCondoFees } from "@/lib/services/demoFinanceStorage";
 
 interface CondoFee {
     id: string;
@@ -33,15 +32,10 @@ export function CondoFeesTable() {
     const [statusFilter, setStatusFilter] = useState<"all" | CondoFee["status"]>("all");
     const { user } = useAuth();
     const { toast } = useToast();
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     const loadFees = useCallback(async () => {
         try {
             setLoading(true);
-            if (isDemoUser) {
-                setFees(getDemoCondoFees());
-                return;
-            }
 
             const data = await CondoFeeService.getAll();
             setFees(data || []);
@@ -50,26 +44,13 @@ export function CondoFeesTable() {
         } finally {
             setLoading(false);
         }
-    }, [isDemoUser]);
+    }, []);
 
     useEffect(() => {
         loadFees();
     }, [loadFees]);
 
     const handleSendEmails = async () => {
-        if (isDemoUser) {
-            setSending(true);
-            setTimeout(() => {
-                saveDemoCondoFees(fees);
-                setSending(false);
-                toast({
-                    title: "Envío showcase preparado",
-                    description: "Se simuló la notificación de cobros pendientes.",
-                    variant: "success",
-                });
-            }, 500);
-            return;
-        }
 
         if (!user?.communityId) {
             toast({ title: "Error", description: "No se encontró tu comunidad.", variant: "destructive" });

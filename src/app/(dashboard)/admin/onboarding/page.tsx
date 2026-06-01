@@ -28,150 +28,14 @@ interface ExtractedUser {
 }
 
 interface SyncResult {
-    mode: "demo" | "real";
     fileName: string;
     rows: number;
     success: number;
     errors: number;
 }
 
-const demoExtractedUsers: ExtractedUser[] = [
-    { id: "demo-row-1", name: "Andrea Dupre", unit_id: "1204", email: "andrea@example.com", phone: "+56 9 5555 1204" },
-    { id: "demo-row-2", name: "Carlos Rivas", unit_id: "805", email: "carlos@example.com", phone: "+56 9 5555 0805" },
-    { id: "demo-row-3", name: "Marta Rojas", unit_id: "1505", email: "marta@example.com", phone: "" },
-    { id: "demo-row-4", name: "", unit_id: "1802", email: "pendiente@example.com", phone: "+56 9 5555 1802" },
-];
 
-const demoOnboardingStorageKey = "cc_demo_onboarding_residents";
 
-const fieldAliases = {
-    name: ["nombre", "name", "residente", "resident", "full_name", "fullname", "nombrecompleto", "propietario", "arrendatario"],
-    unit_id: ["unidad", "unit", "depto", "departamento", "nrodepartamento", "numerodepartamento", "unitnumber", "unitid", "numero", "casa"],
-    email: ["correo", "email", "mail", "correoelectronico", "e-mail"],
-    phone: ["teléfono", "phone", "celular", "móvil", "whatsapp", "contacto"],
-};
-
-function normalizeHeader(value: string) {
-    return value
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, "");
-}
-
-function pickField(row: Record<string, unknown>, aliases: string[]) {
-    const normalizedEntries = Object.entries(row).map(([key, value]) => ({
-        key: normalizeHeader(key),
-        value,
-    }));
-    const match = normalizedEntries.find(entry => aliases.includes(entry.key));
-    return match?.value === undefined || match.value === null ? "" : String(match.value).trim();
-}
-
-function mapRowsFromObjectSheet(rows: Record<string, unknown>[]) {
-    return rows
-        .map((row, index) => ({
-            id: `file-${index}`,
-            name: pickField(row, fieldAliases.name),
-            unit_id: pickField(row, fieldAliases.unit_id),
-            email: pickField(row, fieldAliases.email),
-            phone: pickField(row, fieldAliases.phone),
-        }))
-        .filter(row => row.name || row.unit_id || row.email || row.phone);
-}
-
-function mapRowsFromMatrix(rows: unknown[][]) {
-    return rows
-        .filter(row => row.some(cell => String(cell ?? "").trim()))
-        .map((row, index) => ({
-            id: `file-row-${index}`,
-            name: String(row[0] ?? "").trim(),
-            unit_id: String(row[1] ?? "").trim(),
-            email: String(row[2] ?? "").trim(),
-            phone: String(row[3] ?? "").trim(),
-        }))
-        .filter(row => row.name || row.unit_id || row.email || row.phone);
-}
-
-function mapRowsFromCells(rows: unknown[][]) {
-    const cleanRows = rows
-        .map(row => row.map(cell => String(cell ?? "").trim()))
-        .filter(row => row.some(Boolean));
-    if (cleanRows.length === 0) return [];
-
-    const [firstRow, ...restRows] = cleanRows;
-    const hasHeaders = firstRow.some(cell => Object.values(fieldAliases).flat().includes(normalizeHeader(cell)));
-
-    if (hasHeaders) {
-        const rowsAsObjects = restRows.map(row => Object.fromEntries(firstRow.map((header, index) => [header, row[index] || ""])));
-        const mappedRows = mapRowsFromObjectSheet(rowsAsObjects);
-        if (mappedRows.length > 0) return mappedRows;
-    }
-
-    return mapRowsFromMatrix(cleanRows);
-}
-
-async function parseFileInBrowser(file: File): Promise<ExtractedUser[]> {
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!extension || !["csv", "txt", "xlsx", "xls"].includes(extension)) return [];
-
-    if (extension === "xlsx") {
-        const ExcelJS = await import("exceljs");
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(await file.arrayBuffer());
-        const rows: unknown[][] = [];
-        workbook.eachSheet((worksheet) => {
-            worksheet.eachRow({ includeEmpty: false }, (row) => {
-                const values: unknown[] = [];
-                row.eachCell({ includeEmpty: true }, (cell, columnIndex) => {
-                    values[columnIndex - 1] = cell.text || String(cell.value ?? "");
-                });
-                if (values.some(value => String(value ?? "").trim())) rows.push(values);
-            });
-        });
-        return mapRowsFromCells(rows);
-    }
-
-    if (extension === "xls") {
-        return [];
-    }
-
-    const lines = (await file.text())
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(Boolean);
-    if (lines.length === 0) return [];
-
-    const delimiter = lines[0].includes(";") ? ";" : ",";
-    const cells = lines.map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, "")));
-    const [firstRow, ...restRows] = cells;
-    const hasHeaders = firstRow.some(cell => Object.values(fieldAliases).flat().includes(normalizeHeader(cell)));
-
-    if (hasHeaders) {
-        const rows = restRows.map(row => Object.fromEntries(firstRow.map((header, index) => [header, row[index] || ""])));
-        const mappedRows = mapRowsFromObjectSheet(rows);
-        if (mappedRows.length > 0) return mappedRows;
-    }
-
-    return mapRowsFromCells(cells);
-}
-
-function saveDemoOnboardedResidents(rows: ExtractedUser[], fileName: string) {
-    if (typeof window === "undefined") return;
-    const storedRows = rows.map((row, index) => ({
-        ...row,
-        id: `demo-onboarding-${Date.now()}-${index}`,
-        sourceFile: fileName,
-        syncedAt: new Date().toISOString(),
-    }));
-
-    try {
-        const existing = JSON.parse(window.localStorage.getItem(demoOnboardingStorageKey) || "[]") as ExtractedUser[];
-        window.localStorage.setItem(demoOnboardingStorageKey, JSON.stringify([...storedRows, ...existing].slice(0, 100)));
-    } catch {
-        window.localStorage.setItem(demoOnboardingStorageKey, JSON.stringify(storedRows));
-    }
-}
 
 function friendlyError(message?: string) {
     const text = (message || "").toLowerCase();
@@ -203,7 +67,6 @@ export default function AdminOnboardingPage() {
     const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
     const activeSectionRef = useRef<HTMLElement | null>(null);
 
-    const isDemoUser = user?.email.toLowerCase().endsWith("@demo.com") ?? false;
 
     useEffect(() => {
         if (user && user.role !== "admin") router.push("/home");
@@ -228,19 +91,6 @@ export default function AdminOnboardingPage() {
         return { totalRows, validRows, missingNameRows, missingUnitRows, missingContactRows, score };
     }, [extractedData]);
 
-    const setDemoNomina = () => {
-        setSyncSuccess(false);
-        setConfirmingSync(false);
-        setSyncResult(null);
-        setSyncedPreview([]);
-        setLastFileName("nomina-demo.csv");
-        setExtractedData(demoExtractedUsers);
-        toast({
-            title: "Nómina showcase cargada",
-            description: "Puedes editar filas, resolver dudas y revisar la sincronización.",
-            variant: "success",
-        });
-    };
 
     const extractFileWithApi = async (uploadedFile: File) => {
         const formData = new FormData();
@@ -281,41 +131,6 @@ export default function AdminOnboardingPage() {
         setLastFileName(uploadedFile.name);
 
         try {
-            if (isDemoUser) {
-                await new Promise(resolve => setTimeout(resolve, 650));
-                const browserRows = await parseFileInBrowser(uploadedFile);
-                if (browserRows.length > 0) {
-                    setExtractedData(browserRows);
-                    toast({
-                        title: "Archivo showcase leído",
-                        description: `Detectamos ${browserRows.length} fila(s) desde tu archivo. El guardado quedará protegido en esta sesión.`,
-                        variant: "success",
-                    });
-                    return;
-                }
-
-                try {
-                    const apiRows = await extractFileWithApi(uploadedFile);
-                    setExtractedData(apiRows);
-                    toast({
-                        title: "Archivo showcase procesado",
-                        description: `Detectamos ${apiRows.length} fila(s). El guardado quedará protegido en esta sesión.`,
-                        variant: "success",
-                    });
-                    return;
-                } catch (apiError) {
-                    console.warn("[AdminOnboarding] demo API extract failed:", apiError);
-                }
-
-                setExtractedData(demoExtractedUsers);
-                toast({
-                    title: "Archivo recibido en showcase",
-                    description: "No pudimos leerlo en esta sesión, así que cargamos filas de ejemplo para revisar el flujo sin guardar datos reales.",
-                    variant: "success",
-                });
-                return;
-            }
-
             const mappedData = await extractFileWithApi(uploadedFile);
             setExtractedData(mappedData);
             toast({
@@ -374,23 +189,6 @@ export default function AdminOnboardingPage() {
         setConfirmingSync(false);
         setIsSyncing(true);
         try {
-            if (isDemoUser) {
-                await new Promise(resolve => setTimeout(resolve, 700));
-                saveDemoOnboardedResidents(rowsToSync, lastFileName || "nomina-demo.csv");
-                setSyncedPreview(rowsToSync);
-                setSyncResult({
-                    mode: "demo",
-                    fileName: lastFileName || "nomina-demo.csv",
-                    rows: rowsToSync.length,
-                    success: rowsToSync.length,
-                    errors: 0,
-                });
-                setSyncSuccess(true);
-                setExtractedData(null);
-                toast({ title: "Nómina showcase aplicada", description: "Quedó visible en Directorio y Unidades para esta sesión.", variant: "success" });
-                return;
-            }
-
             const res = await fetch("/api/onboarding/upsert", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -403,7 +201,6 @@ export default function AdminOnboardingPage() {
                 const errors = typeof result.errors === "number" ? result.errors : 0;
                 setSyncedPreview(rowsToSync);
                 setSyncResult({
-                    mode: "real",
                     fileName: lastFileName || "archivo importado",
                     rows: rowsToSync.length,
                     success,
@@ -543,9 +340,6 @@ export default function AdminOnboardingPage() {
                                         className="hidden"
                                     />
                                 </label>
-                                <Button type="button" variant="outline" onClick={setDemoNomina}>
-                                    Cargar ejemplo
-                                </Button>
                             </div>
                         )}
                     </div>
@@ -557,18 +351,16 @@ export default function AdminOnboardingPage() {
                     ref={activeSectionRef}
                     initial={{ scale: 0.98, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className={`rounded-lg border p-8 shadow-sm ${syncResult?.mode === "demo" ? "border-warning-border bg-warning-bg" : "border-success-border bg-success-bg"}`}
+                    className="rounded-lg border border-success-border bg-success-bg p-8 shadow-sm"
                 >
-                    <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-lg text-white ${syncResult?.mode === "demo" ? "bg-amber-600" : "bg-emerald-600"}`}>
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-600 text-white">
                         <CheckCircle2 className="h-8 w-8" />
                     </div>
-                    <h2 className={`mt-5 text-2xl font-semibold ${syncResult?.mode === "demo" ? "text-warning-fg" : "text-success-fg"}`}>
-                        {syncResult?.mode === "demo" ? "Carga de showcase aplicada" : "Nómina sincronizada"}
+                    <h2 className="mt-5 text-2xl font-semibold text-success-fg">
+                        Nómina sincronizada
                     </h2>
-                    <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 ${syncResult?.mode === "demo" ? "text-amber-900" : "text-emerald-800"}`}>
-                        {syncResult?.mode === "demo"
-                            ? "Esta cuenta protege el showcase: no escribe en la base real. El lote quedó guardado localmente y visible en Directorio y Unidades para validar el flujo completo."
-                            : "Los residentes quedaron guardados y preparados para invitación, asignación de unidades y operación diaria."}
+                    <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-emerald-800">
+                        Los residentes quedaron guardados y preparados para invitación, asignación de unidades y operación diaria.
                     </p>
 
                     <div className="mx-auto mt-6 grid max-w-4xl gap-3 text-left md:grid-cols-4">
@@ -578,7 +370,7 @@ export default function AdminOnboardingPage() {
                             { label: "Con errores", value: `${syncResult?.errors ?? 0}` },
                             {
                                 label: "Destino",
-                                value: syncResult?.mode === "demo" ? "Directorio y Unidades showcase" : "Directorio y Unidades",
+                                value: "Directorio y Unidades",
                             },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-white/60 bg-white/75 p-4 shadow-sm">
@@ -592,7 +384,7 @@ export default function AdminOnboardingPage() {
                         <div className="mx-auto mt-5 max-w-4xl overflow-hidden rounded-lg border border-white/70 bg-white/80 text-left shadow-sm">
                             <div className="border-b border-subtle px-4 py-3">
                                 <p className="text-sm font-semibold cc-text-primary">
-                                    Resumen de filas {syncResult?.mode === "demo" ? "simuladas" : "sincronizadas"}
+                                    Resumen de filas sincronizadas
                                 </p>
                             </div>
                             <div className="overflow-x-auto">

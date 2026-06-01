@@ -46,14 +46,6 @@ async function getActorAndItem(id: string) {
         return { error: NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 }) };
     }
 
-    if (actor.email?.toLowerCase().endsWith('@demo.com')) {
-        return {
-            error: NextResponse.json(
-                { error: 'Modo showcase compartido: los cambios reales del marketplace estan deshabilitados.' },
-                { status: 403 }
-            ),
-        };
-    }
 
     if (itemError || !item) {
         return { error: NextResponse.json({ error: 'Publicacion no encontrada' }, { status: 404 }) };

@@ -15,7 +15,7 @@ export const SUPPORT_EMAIL = 'soporte@conviveconnect.com';
 export const isNative = typeof window !== 'undefined' &&
   window.location.protocol === 'capacitor:';
 
-// En el celular no podemos usar "/api/..." relativo, necesitamos la URL absoluta de produccion.
+// En el celular no podemos usar "/api/..." relativo, necesitamos la URL absoluta de producción.
 export const API_BASE_URL = PUBLIC_SITE_URL;
 
 export const getPublicUrl = (path = ''): string => {
