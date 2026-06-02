@@ -56,6 +56,7 @@ export default function VisitorsPage() {
     const [visitors, setVisitors] = useState<VisitorLog[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedVisitor, setSelectedVisitor] = useState<VisitorLog | null>(null);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
     const [query, setQuery] = useState("");
     const { toast } = useToast();
@@ -282,7 +283,12 @@ export default function VisitorsPage() {
                                             </div>
                                         </td>
                                         <td className="px-10 py-8 text-right">
-                                            <button className="p-3 hover:bg-elevated rounded-xl transition-colors">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedVisitor(visitor)}
+                                                className="p-3 hover:bg-elevated rounded-xl transition-colors"
+                                                aria-label={`Ver detalle de ${visitor.visitorName}`}
+                                            >
                                                 <MoreHorizontal className="h-5 w-5 text-slate-400" />
                                             </button>
                                         </td>
@@ -302,6 +308,46 @@ export default function VisitorsPage() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={Boolean(selectedVisitor)} onOpenChange={(open) => !open && setSelectedVisitor(null)}>
+                <DialogContent className="sm:max-w-[460px] bg-surface border-subtle rounded-lg p-8 shadow-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-semibold">Detalle de ingreso</DialogTitle>
+                        <DialogDescription>
+                            Registro operacional disponible para auditoria y cambio de turno.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedVisitor && (
+                        <div className="space-y-4 py-4 text-sm">
+                            <div className="rounded-lg border border-subtle bg-elevated p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Visitante</p>
+                                <p className="mt-1 font-semibold cc-text-primary">{selectedVisitor.visitorName}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg border border-subtle bg-elevated p-4">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Destino</p>
+                                    <p className="mt-1 font-semibold cc-text-primary">Unidad {selectedVisitor.unitId}</p>
+                                </div>
+                                <div className="rounded-lg border border-subtle bg-elevated p-4">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Tipo</p>
+                                    <p className="mt-1 font-semibold cc-text-primary">{selectedVisitor.isQr ? "Codigo QR" : "Manual"}</p>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-subtle bg-elevated p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Hora registrada</p>
+                                <p className="mt-1 font-semibold cc-text-primary">
+                                    {new Date(selectedVisitor.entryTime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button type="button" onClick={() => setSelectedVisitor(null)}>
+                            Cerrar detalle
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

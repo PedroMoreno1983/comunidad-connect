@@ -5,7 +5,7 @@ import { PollCard } from "@/components/polls/PollCard";
 import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { BarChart3, CalendarDays, CheckCircle2, Users, Vote } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, Download, Users, Vote } from "lucide-react";
 import type { PollVoteRecord, PollWithVoteState, SupabasePollRow } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -17,6 +17,26 @@ export default function VotacionesPage() {
     const [activePolls, setActivePolls] = useState<PollWithVoteState[]>([]);
     const [closedPolls, setClosedPolls] = useState<PollWithVoteState[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const downloadAssemblyDocument = (name: string) => {
+        const content = [
+            "Convive Connect - Respaldo de votacion comunitaria",
+            "",
+            `Documento: ${name}`,
+            "Consulta: Construccion quincho de tejas",
+            "Estado: Asamblea en vivo",
+            "Resumen: Debate sobre ampliacion del area recreativa en terraza Torre A.",
+            "",
+            "Este archivo reemplaza el adjunto operativo mientras se carga el PDF legal definitivo desde administracion.",
+        ].join("\n");
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = name.replace(/\.pdf$/i, ".txt");
+        anchor.click();
+        URL.revokeObjectURL(url);
+    };
 
     useEffect(() => {
         if (user) loadPolls();
@@ -187,10 +207,18 @@ export default function VotacionesPage() {
                                 "Especificaciones_Tecnicas.pdf",
                                 "Presupuesto_Quincho_V1.pdf"
                             ].map(doc => (
-                                <a key={doc} href="#" className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs transition-all">
+                                <button
+                                    key={doc}
+                                    type="button"
+                                    onClick={() => downloadAssemblyDocument(doc)}
+                                    className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 p-2.5 text-left text-xs transition-all hover:bg-white/10"
+                                >
                                     <span className="truncate text-slate-300 font-medium">{doc}</span>
-                                    <span className="text-brand-300 ml-2">Descargar</span>
-                                </a>
+                                    <span className="ml-2 inline-flex items-center gap-1 text-brand-300">
+                                        <Download className="h-3.5 w-3.5" />
+                                        Descargar
+                                    </span>
+                                </button>
                             ))}
                         </div>
                     </div>

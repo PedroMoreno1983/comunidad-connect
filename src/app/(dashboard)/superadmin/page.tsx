@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { Building2, Shield, Check, Search } from "lucide-react";
+import { Building2, Shield, Check, Copy, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import OutreachDemo from "@/components/admin/OutreachDemo";
 
@@ -37,6 +37,7 @@ export default function SuperAdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [accessDenied, setAccessDenied] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -84,6 +85,13 @@ export default function SuperAdminDashboard() {
             const errorMessage = error instanceof Error ? error.message : "Error al actualizar el plan";
             toast({ title: "Error", description: errorMessage, variant: "destructive" });
         }
+    };
+
+    const copyToClipboard = async (value: string, label: string) => {
+        await navigator.clipboard.writeText(value);
+        setCopiedValue(value);
+        window.setTimeout(() => setCopiedValue(null), 1800);
+        toast({ title: "Copiado", description: `${label} listo para compartir.`, variant: "success" });
     };
 
     if (authLoading || loading) {
@@ -213,8 +221,19 @@ export default function SuperAdminDashboard() {
                                                 {community.subscription_status || 'desconocido'}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-center cc-text-secondary font-mono font-bold tracking-widest bg-canvas rounded-lg">
-                                            {community.admin_code || '---'}
+                                        <td className="p-4 text-center">
+                                            {community.admin_code ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(community.admin_code, "Codigo admin")}
+                                                    className="inline-flex items-center gap-2 rounded-lg bg-canvas px-3 py-2 font-mono font-bold tracking-widest cc-text-secondary transition-colors hover:bg-elevated"
+                                                >
+                                                    {community.admin_code}
+                                                    {copiedValue === community.admin_code ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                                                </button>
+                                            ) : (
+                                                <span className="font-mono font-bold cc-text-secondary">---</span>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -236,9 +255,14 @@ export default function SuperAdminDashboard() {
                 <p className="text-sm text-blue-800 dark:text-blue-400 leading-relaxed">
                     Para registrar un nuevo administrador y su condominio, envíales este link:
                     <br/><br/>
-                    <code className="bg-surface px-3 py-2 rounded-lg font-mono font-bold select-all tracking-wider text-blue-600 dark:text-blue-400 shadow-sm">
+                    <button
+                        type="button"
+                        onClick={() => copyToClipboard("https://conviveconnect.com/admin-onboarding", "Link de onboarding")}
+                        className="inline-flex items-center gap-2 rounded-lg bg-surface px-3 py-2 font-mono font-bold tracking-wider text-blue-600 shadow-sm transition-colors hover:bg-elevated dark:text-blue-400"
+                    >
                         https://conviveconnect.com/admin-onboarding
-                    </code>
+                        {copiedValue === "https://conviveconnect.com/admin-onboarding" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    </button>
                     <br/><br/>
                     Una vez que se registren allí, aparecerán en esta lista y podrás asignarles un plan.
                 </p>
