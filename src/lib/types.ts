@@ -71,6 +71,61 @@ export interface DirectoryNeighbor {
   email?: string;
 }
 
+export interface NeighborMediationCase {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  targetUnit: string;
+  observation: string;
+  feeling: string;
+  need: string;
+  request: string;
+  draftedMessage: string;
+  status: 'drafted' | 'sent' | 'agreement' | 'escalated';
+  createdAt: string;
+}
+
+export interface TimeBankOffer {
+  id: string;
+  neighborName: string;
+  unitLabel: string;
+  skill: string;
+  description: string;
+  availability: string;
+  credits: number;
+  requestsCount: number;
+  category: 'tools' | 'care' | 'digital' | 'home' | 'learning' | 'other';
+  createdAt: string;
+}
+
+export interface CollectivePurchaseCampaign {
+  id: string;
+  title: string;
+  supplier: string;
+  category: 'water' | 'gas' | 'cleaning' | 'food' | 'eco' | 'other';
+  unitPrice: number;
+  retailPrice: number;
+  minimumParticipants: number;
+  participants: number;
+  deadline: string;
+  status: 'open' | 'ready' | 'ordered';
+  organizer: string;
+  createdAt: string;
+}
+
+export interface CommunityProject {
+  id: string;
+  title: string;
+  area: 'huerto' | 'reciclaje' | 'cuidados' | 'mascotas' | 'cultura' | 'otro';
+  description: string;
+  impact: string;
+  participants: number;
+  needed: string;
+  cocoInsight: string;
+  status: 'active' | 'forming' | 'completed';
+  createdAt: string;
+}
+
 export interface ProfileSettings {
   avatarUrl?: string;
   phoneNumber: string;
