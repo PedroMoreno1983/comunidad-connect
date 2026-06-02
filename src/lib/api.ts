@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import {
     BuildingAsset,
     CocoCase,
+    CollectivePurchaseCampaign,
+    CommunityProject,
     MaintenanceAdminOverview,
     MaintenanceDashboardData,
     MaintenanceLog,
@@ -9,10 +11,12 @@ import {
     MaintenanceTask,
     DirectoryNeighbor,
     MarketplaceItem,
+    NeighborMediationCase,
     ProfileSettings,
     ResidentHomeSummary,
     ResidentFinanceExpense,
     ServiceRequestQueueItem,
+    TimeBankOffer,
     Unit,
     User,
     WaterReading,
@@ -106,6 +110,270 @@ export const DirectoryService = {
                 email: typeof profile.email === "string" ? profile.email : undefined,
             };
         });
+    },
+};
+
+// ==========================================
+// Community Collaboration API
+// ==========================================
+
+const COLLAB_STORAGE_KEYS = {
+    mediations: 'convive-community-mediations',
+    timeBank: 'convive-time-bank-offers',
+    collectivePurchases: 'convive-collective-purchases',
+    projects: 'convive-community-projects',
+};
+
+function canUseLocalStorage() {
+    return typeof window !== 'undefined' && Boolean(window.localStorage);
+}
+
+function createLocalId(prefix: string) {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+        return `${prefix}-${crypto.randomUUID()}`;
+    }
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function readStoredList<T>(key: string, fallback: T[]): T[] {
+    if (!canUseLocalStorage()) return fallback;
+    const raw = window.localStorage.getItem(key);
+    if (!raw) {
+        window.localStorage.setItem(key, JSON.stringify(fallback));
+        return fallback;
+    }
+    try {
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed as T[] : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function writeStoredList<T>(key: string, values: T[]) {
+    if (!canUseLocalStorage()) return;
+    window.localStorage.setItem(key, JSON.stringify(values));
+}
+
+const DEFAULT_TIME_BANK_OFFERS: TimeBankOffer[] = [
+    {
+        id: 'tb-router',
+        neighborName: 'Martina Rojas',
+        unitLabel: '1204',
+        skill: 'Configurar router y WiFi',
+        description: 'Puedo ayudar a mejorar la senal, ordenar cables y configurar claves seguras.',
+        availability: 'Martes y jueves despues de las 19:00',
+        credits: 2,
+        requestsCount: 3,
+        category: 'digital',
+        createdAt: '2026-06-01T12:00:00.000Z',
+    },
+    {
+        id: 'tb-taladro',
+        neighborName: 'Nicolas Herrera',
+        unitLabel: '804',
+        skill: 'Prestamo de taladro',
+        description: 'Taladro percutor, brocas basicas y ayuda para perforaciones simples.',
+        availability: 'Fines de semana',
+        credits: 1,
+        requestsCount: 6,
+        category: 'tools',
+        createdAt: '2026-06-01T12:05:00.000Z',
+    },
+    {
+        id: 'tb-paquetes',
+        neighborName: 'Ana Valdes',
+        unitLabel: '302',
+        skill: 'Recibir paquetes',
+        description: 'Si viajas o llegas tarde, puedo recibir paquetes pequenos y avisarte por chat interno.',
+        availability: 'Lunes a viernes hasta las 18:30',
+        credits: 1,
+        requestsCount: 4,
+        category: 'care',
+        createdAt: '2026-06-01T12:10:00.000Z',
+    },
+];
+
+const DEFAULT_COLLECTIVE_PURCHASES: CollectivePurchaseCampaign[] = [
+    {
+        id: 'cp-agua',
+        title: 'Bidones de agua purificada 20L',
+        supplier: 'Distribuidora local Quilicura',
+        category: 'water',
+        unitPrice: 3200,
+        retailPrice: 4900,
+        minimumParticipants: 24,
+        participants: 17,
+        deadline: '2026-06-12',
+        status: 'open',
+        organizer: 'Comite de abasto',
+        createdAt: '2026-06-01T13:00:00.000Z',
+    },
+    {
+        id: 'cp-limpieza',
+        title: 'Kit limpieza ecologica para areas comunes',
+        supplier: 'Cooperativa BioLimpio',
+        category: 'eco',
+        unitPrice: 8900,
+        retailPrice: 13900,
+        minimumParticipants: 18,
+        participants: 18,
+        deadline: '2026-06-08',
+        status: 'ready',
+        organizer: 'Administracion',
+        createdAt: '2026-06-01T13:05:00.000Z',
+    },
+];
+
+const DEFAULT_COMMUNITY_PROJECTS: CommunityProject[] = [
+    {
+        id: 'project-huerto',
+        title: 'Huerto comunitario en terraza norte',
+        area: 'huerto',
+        description: 'Organizar turnos de riego, compostaje y cosecha compartida con vecinos voluntarios.',
+        impact: '12 familias inscritas, 3 adultos mayores participando y 18 kg de compost recuperados.',
+        participants: 12,
+        needed: 'Semillas, compostera y 2 turnos semanales de riego',
+        cocoInsight: 'CoCo detecto que varias publicaciones mencionan plantas y compostaje; conviene abrir una cuadrilla estable.',
+        status: 'active',
+        createdAt: '2026-06-01T14:00:00.000Z',
+    },
+    {
+        id: 'project-mascotas',
+        title: 'Red de cuidado mutuo para mascotas pequenas',
+        area: 'mascotas',
+        description: 'Grupo de vecinos que se cubren paseos y alimentacion cuando alguien viaja o se enferma.',
+        impact: '5 vecinos del piso 8 ya tienen mascotas pequenas y horarios compatibles.',
+        participants: 5,
+        needed: 'Calendario de turnos, reglas sanitarias y contacto de emergencia',
+        cocoInsight: 'Martina, he notado que 5 vecinos en tu piso tienen mascotas pequenas. Podrias armar un grupo de cuidado mutuo.',
+        status: 'forming',
+        createdAt: '2026-06-01T14:05:00.000Z',
+    },
+];
+
+function getDraftedCnvMessage(input: {
+    reporterName: string;
+    targetUnit: string;
+    observation: string;
+    feeling: string;
+    need: string;
+    request: string;
+}) {
+    return [
+        `Hola, soy ${input.reporterName || 'un vecino de la comunidad'}. Te escribo con buena intencion para resolver algo sin escalarlo.`,
+        `Observacion: ${input.observation}.`,
+        `Me siento ${input.feeling} y necesito ${input.need}.`,
+        `¿Podrias ${input.request}?`,
+        `Gracias por recibir este mensaje. La idea es cuidarnos entre vecinos antes de llegar a multas o denuncias.`,
+    ].join('\n\n');
+}
+
+export const CommunityCollaborationService = {
+    getMediationCases(): Promise<NeighborMediationCase[]> {
+        return Promise.resolve(readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []));
+    },
+
+    createMediationCase(input: Omit<NeighborMediationCase, 'id' | 'draftedMessage' | 'status' | 'createdAt'>): Promise<NeighborMediationCase> {
+        const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
+        const mediation: NeighborMediationCase = {
+            ...input,
+            id: createLocalId('mediation'),
+            draftedMessage: getDraftedCnvMessage(input),
+            status: 'drafted',
+            createdAt: new Date().toISOString(),
+        };
+        writeStoredList(COLLAB_STORAGE_KEYS.mediations, [mediation, ...current]);
+        return Promise.resolve(mediation);
+    },
+
+    updateMediationStatus(id: string, status: NeighborMediationCase['status']): Promise<NeighborMediationCase[]> {
+        const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
+        const updated = current.map(item => item.id === id ? { ...item, status } : item);
+        writeStoredList(COLLAB_STORAGE_KEYS.mediations, updated);
+        return Promise.resolve(updated);
+    },
+
+    getTimeBankOffers(): Promise<TimeBankOffer[]> {
+        return Promise.resolve(readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS));
+    },
+
+    createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt'>): Promise<TimeBankOffer[]> {
+        const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
+        const offer: TimeBankOffer = {
+            ...input,
+            id: createLocalId('timebank'),
+            requestsCount: 0,
+            createdAt: new Date().toISOString(),
+        };
+        const updated = [offer, ...current];
+        writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
+        return Promise.resolve(updated);
+    },
+
+    requestTimeBankOffer(id: string): Promise<TimeBankOffer[]> {
+        const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
+        const updated = current.map(item => item.id === id ? { ...item, requestsCount: item.requestsCount + 1 } : item);
+        writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
+        return Promise.resolve(updated);
+    },
+
+    getCollectivePurchases(): Promise<CollectivePurchaseCampaign[]> {
+        return Promise.resolve(readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES));
+    },
+
+    createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CollectivePurchaseCampaign[]> {
+        const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
+        const campaign: CollectivePurchaseCampaign = {
+            ...input,
+            id: createLocalId('purchase'),
+            participants: 1,
+            status: input.minimumParticipants <= 1 ? 'ready' : 'open',
+            createdAt: new Date().toISOString(),
+        };
+        const updated = [campaign, ...current];
+        writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
+        return Promise.resolve(updated);
+    },
+
+    joinCollectivePurchase(id: string): Promise<CollectivePurchaseCampaign[]> {
+        const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
+        const updated = current.map(item => {
+            if (item.id !== id) return item;
+            const participants = item.participants + 1;
+            return {
+                ...item,
+                participants,
+                status: participants >= item.minimumParticipants ? 'ready' : item.status,
+            };
+        });
+        writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
+        return Promise.resolve(updated);
+    },
+
+    getCommunityProjects(): Promise<CommunityProject[]> {
+        return Promise.resolve(readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS));
+    },
+
+    createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CommunityProject[]> {
+        const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
+        const project: CommunityProject = {
+            ...input,
+            id: createLocalId('project'),
+            participants: 1,
+            status: 'forming',
+            createdAt: new Date().toISOString(),
+        };
+        const updated = [project, ...current];
+        writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
+        return Promise.resolve(updated);
+    },
+
+    joinCommunityProject(id: string): Promise<CommunityProject[]> {
+        const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
+        const updated: CommunityProject[] = current.map(item => item.id === id ? { ...item, participants: item.participants + 1, status: 'active' } : item);
+        writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
+        return Promise.resolve(updated);
     },
 };
 

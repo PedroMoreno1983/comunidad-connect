@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { 
     Sparkles, 
     ListChecks, 
@@ -13,7 +14,8 @@ import {
     ChefHat,
     UtensilsCrossed,
     ArrowRight,
-    Download
+    Download,
+    PackageCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
@@ -292,6 +294,23 @@ export default function SupermarketPage() {
                                     </button>
                                 );
                             })}
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border border-brand-100 bg-brand-50/60 p-6 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white">
+                                <PackageCheck className="h-6 w-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="text-lg font-semibold cc-text-primary">Abasto comunitario</h3>
+                                <p className="mt-2 text-sm leading-6 cc-text-secondary">
+                                    Coordina compras al por mayor de agua, gas, alimentos o limpieza con ahorro real por escala.
+                                </p>
+                                <Link href="/convivencia" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-700 hover:text-brand-800">
+                                    Ver compras colectivas <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
 

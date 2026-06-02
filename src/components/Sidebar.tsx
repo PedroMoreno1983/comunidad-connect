@@ -35,7 +35,8 @@ import {
     BookOpen,
     Upload,
     Bot,
-    Briefcase
+    Briefcase,
+    HeartHandshake
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -85,6 +86,7 @@ export function Sidebar() {
             links: [
                 { href: '/home', label: 'Inicio', icon: Home, roles: ['admin', 'resident', 'concierge'] },
                 { href: '/comunicaciones', label: 'Comunicaciones', icon: MessageSquare, roles: ['admin', 'resident', 'concierge'] },
+                { href: '/convivencia', label: 'Convivencia', icon: HeartHandshake, roles: ['resident', 'admin', 'concierge'] },
                 { href: '/directorio', label: 'Directorio', icon: Users, roles: ['resident', 'admin'] },
             ]
         },

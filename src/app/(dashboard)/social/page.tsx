@@ -4,7 +4,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
 import { SocialService } from "@/lib/services/supabaseServices";
-import { SocialPost, SocialComment } from "@/lib/types";
+import { CommunityCollaborationService } from "@/lib/api";
+import { CommunityProject, SocialPost, SocialComment } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
@@ -14,7 +15,7 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
     Heart, MessageCircle, MoreHorizontal,
     Image as ImageIcon, Send, Smile, MapPin,
-    Loader2, X as XIcon, ArrowRight
+    Loader2, X as XIcon, ArrowRight, Leaf, Users
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -23,6 +24,7 @@ export default function SocialFeedPage() {
     const { toast } = useToast();
 
     const [posts, setPosts] = useState<SocialPost[]>([]);
+    const [projects, setProjects] = useState<CommunityProject[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,6 +43,7 @@ export default function SocialFeedPage() {
 
     useEffect(() => {
         loadPosts();
+        loadProjects();
     }, []);
 
     const loadPosts = async () => {
@@ -54,6 +57,21 @@ export default function SocialFeedPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const loadProjects = async () => {
+        const data = await CommunityCollaborationService.getCommunityProjects();
+        setProjects(data);
+    };
+
+    const joinProject = async (projectId: string) => {
+        const data = await CommunityCollaborationService.joinCommunityProject(projectId);
+        setProjects(data);
+        toast({
+            title: "Te sumaste al proyecto",
+            description: "CoCo registro tu interes en esta iniciativa comunitaria.",
+            variant: "success",
+        });
     };
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,10 +202,50 @@ export default function SocialFeedPage() {
                     Plaza <em className="text-italic-serif text-brand-600">social</em>
                 </DisplayHeading>
                 <p className="mt-2 text-sm cc-text-secondary">
-                    Comparte novedades, datos, fotos y conversa informalmente con tus vecinos de copropiedad.
+                    Organiza proyectos comunitarios, visibiliza impacto colectivo y conversa con tus vecinos de copropiedad.
                 </p>
             </div>
 
+            {projects.length > 0 && (
+                <section className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
+                    <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <Eyebrow>Bien comun</Eyebrow>
+                            <h2 className="mt-1 text-xl font-semibold cc-text-primary">Proyectos comunitarios activos</h2>
+                        </div>
+                        <a href="/convivencia" className="inline-flex items-center gap-2 text-xs font-semibold text-brand-700 hover:text-brand-800">
+                            Ver plaza completa <ArrowRight className="h-4 w-4" />
+                        </a>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {projects.slice(0, 2).map(project => (
+                            <div key={project.id} className="rounded-lg border border-subtle bg-elevated/30 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <Tag tone="sage">{project.area}</Tag>
+                                        <h3 className="mt-3 text-base font-semibold cc-text-primary">{project.title}</h3>
+                                    </div>
+                                    <div className="flex items-center gap-1 rounded-lg bg-brand-50 px-3 py-2 text-xs font-bold text-brand-700">
+                                        <Users className="h-4 w-4" />
+                                        {project.participants}
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-sm leading-6 cc-text-secondary">{project.description}</p>
+                                <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/60 p-3">
+                                    <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-700">
+                                        <Leaf className="h-3.5 w-3.5" />
+                                        Facilitacion CoCo
+                                    </p>
+                                    <p className="mt-2 text-xs leading-5 cc-text-secondary">{project.cocoInsight}</p>
+                                </div>
+                                <Button type="button" variant="ghost" size="sm" className="mt-4" onClick={() => joinProject(project.id)}>
+                                    Participar <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Create Post Field */}
             <div className="bg-surface rounded-xl p-6 border border-subtle shadow-sm transition-all hover:border-brand-200">
