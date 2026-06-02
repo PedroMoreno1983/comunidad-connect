@@ -9,6 +9,7 @@ import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 
 interface Expense {
     id: string;
@@ -398,19 +399,18 @@ export default function ExpensesPage() {
                             style={{ borderColor: "var(--cc-line)", padding: "20px 18px 14px", borderRadius: 18 }}
                         >
                             <div className="flex items-end gap-3.5 mb-2.5" style={{ height: 100 }}>
-                                {historyChartData.map((m, idx) => (
+                                {historyChartData.map((m, idx) => {
+                                    const colors = [DATA_PALETTE.yellow, "#D9A04A", DATA_PALETTE.orange, "#CB7146", DATA_PALETTE.copper];
+                                    const color = colors[idx % colors.length];
+                                    return (
                                     <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
-                                        <div
-                                            className="w-full"
-                                            style={{
-                                                height: `${Math.max(10, (m.v / 200) * 100)}%`,
-                                                background: m.paid ? "var(--cc-ink)" : "var(--cc-copper)",
-                                                borderRadius: 6,
-                                            }}
-                                        />
+                                        <div className="flex h-full w-full items-end">
+                                            <FoldedBar pct={Math.max(10, (m.v / 200) * 100)} color={m.paid ? color : DATA_PALETTE.copper} orientation="vertical" rounded={4} />
+                                        </div>
                                         <div className="font-mono" style={{ fontSize: 10, color: "var(--cc-ink-tertiary)" }}>{m.m}</div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="flex justify-between items-center pt-2.5" style={{ borderTop: "1px solid var(--cc-line)" }}>
                                 <div style={{ fontSize: 12, color: "var(--cc-ink-muted)" }}>Promedio</div>
