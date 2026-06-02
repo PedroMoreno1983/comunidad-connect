@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import {
     CheckCheck,
     Copy,
@@ -17,7 +18,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 
@@ -153,10 +153,13 @@ export default function UsersPage() {
                 icon={<Users className="h-5 w-5" />}
                 meta={`${communityName} · ${stats.total} usuarios registrados`}
                 actions={
-                    <Button>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Nuevo usuario
-                    </Button>
+                    <Link
+                        href="/admin/onboarding"
+                        className="inline-flex items-center justify-center gap-2 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-medium leading-none text-white shadow-sm transition-colors hover:bg-brand-600"
+                    >
+                        <UserPlus className="h-4 w-4" />
+                            Nuevo usuario
+                    </Link>
                 }
             />
 
@@ -295,9 +298,12 @@ export default function UsersPage() {
                                                 <Badge variant={status.variant}>{status.label}</Badge>
                                             </td>
                                             <td className="px-5 py-4 text-right">
-                                                <Button variant="outline" size="sm">
-                                                    {status.variant === "warning" ? "Completar ficha" : "Ver detalle"}
-                                                </Button>
+                                                <Link
+                                                    href={status.variant === "warning" ? "/admin/units" : "/admin/onboarding"}
+                                                    className="inline-flex items-center justify-center rounded-md border border-subtle bg-elevated px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-surface"
+                                                >
+                                                    {status.variant === "warning" ? "Asignar unidad" : "Ver onboarding"}
+                                                </Link>
                                             </td>
                                         </tr>
                                     );

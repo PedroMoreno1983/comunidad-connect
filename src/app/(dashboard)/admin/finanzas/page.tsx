@@ -118,7 +118,7 @@ export default function AdminFinanzasPage() {
                     completedSteps={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 2 : 0}
                     currentStep={finances.collectionRate >= 95 ? 4 : finances.collectionRate >= 85 ? 3 : 1}
                     primaryActionLabel={finances.collectionRate >= 85 ? "Preparar reporte" : "Gestionar cobranza"}
-                    primaryActionHref="#control-financiero"
+                    primaryActionHref={finances.collectionRate >= 85 ? "#control-financiero" : "#cobranzas"}
                     steps={[
                         "Revisar pagos pendientes",
                         "Validar ingresos y egresos",

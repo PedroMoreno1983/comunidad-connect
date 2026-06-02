@@ -7,7 +7,6 @@ import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
-import { useToast } from "@/components/ui/Toast";
 
 const SHIFT_LOG = [
     { time: "09:14", type: "Visita", desc: "Juan Gómez ingresó a Depto 102", status: "Registrado" },
@@ -23,16 +22,6 @@ const PENDING_PACKAGES = [
 ];
 
 export default function ConciergeDashboardPage() {
-    const { toast } = useToast();
-
-    const handleNotify = (unit: string, carrier: string) => {
-        toast({
-            title: "Aviso preparado",
-            description: `Notificación lista para el propietario de ${unit} por encomienda ${carrier}.`,
-            variant: "success",
-        });
-    };
-
     return (
         <div className="space-y-8">
             <div className="flex flex-col gap-4 border-b border-[var(--cc-line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
@@ -130,12 +119,12 @@ export default function ConciergeDashboardPage() {
                                         <p className="text-xs font-semibold text-[var(--cc-ink)]">{pkg.unit}</p>
                                         <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.carrier} · {pkg.time}</p>
                                     </div>
-                                    <button
-                                        onClick={() => handleNotify(pkg.unit, pkg.carrier)}
+                                    <Link
+                                        href="/concierge/packages"
                                         className="cursor-pointer rounded-lg bg-[var(--cc-copper-tint)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-copper)] transition-all hover:bg-[var(--cc-copper-tint)]/80 active:scale-95"
                                     >
-                                        Avisar
-                                    </button>
+                                        Gestionar
+                                    </Link>
                                 </div>
                             ))}
                         </div>

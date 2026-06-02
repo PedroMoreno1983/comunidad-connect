@@ -27,6 +27,15 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
     const totalUnits = 192;
     const paidUnits = Math.round((collectionRate / 100) * totalUnits);
     const recentActivity = data.recentActivity ?? [];
+    const currentPeriod = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date());
+
+    const scrollToSection = (id: string) => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const printFinancialReport = () => {
+        window.print();
+    };
 
     const stats = [
         {
@@ -110,10 +119,10 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     <p className="cc-text-secondary">Recaudación, egresos, cobranza y movimientos de la comunidad.</p>
                 </div>
 
-                <button className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated">
+                <div className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm">
                     <Calendar className="h-4 w-4 cc-text-secondary" />
-                    Marzo 2026
-                </button>
+                    <span className="capitalize">{currentPeriod}</span>
+                </div>
             </header>
 
             <section className="rounded-lg border border-subtle bg-surface shadow-sm">
@@ -223,8 +232,12 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                 <p className="text-sm cc-text-secondary">Histórico de 6 meses operativos</p>
                             </div>
                         </div>
-                        <button className="rounded-lg border border-subtle px-3 py-2 text-xs font-semibold cc-text-primary transition-colors hover:bg-elevated">
-                            Descargar PDF
+                        <button
+                            type="button"
+                            onClick={printFinancialReport}
+                            className="rounded-lg border border-subtle px-3 py-2 text-xs font-semibold cc-text-primary transition-colors hover:bg-elevated"
+                        >
+                            Imprimir PDF
                         </button>
                     </div>
                     <div className="h-80 w-full">
@@ -264,7 +277,13 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                             <Activity className="h-5 w-5 text-slate-500" />
                             <h2 className="text-lg font-semibold cc-text-primary">Movimientos recientes</h2>
                         </div>
-                        <button className="text-sm font-semibold text-brand-600">Ver todo</button>
+                        <button
+                            type="button"
+                            onClick={() => scrollToSection("cobranzas")}
+                            className="text-sm font-semibold text-brand-600"
+                        >
+                            Ver registros
+                        </button>
                     </div>
                     <div className="divide-y divide-subtle">
                         {recentActivity.map(activity => (
@@ -316,7 +335,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                 <span className="text-sm font-semibold cc-text-secondary">Avisos de corte enviados</span>
                                 <span className="font-semibold text-warning-fg">2</span>
                             </div>
-                            <button className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                            <button
+                                type="button"
+                                onClick={() => scrollToSection("cobranzas")}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
+                            >
                                 <Users className="h-4 w-4" />
                                 Gestionar cobranza
                             </button>

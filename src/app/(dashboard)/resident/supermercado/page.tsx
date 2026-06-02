@@ -292,7 +292,9 @@ export default function SupermarketPage() {
                                 <span className="text-sm font-bold cc-text-secondary">Líder App</span>
                             </div>
                         </div>
-                        <p className="mt-6 text-[10px] uppercase font-semibold tracking-widest text-slate-400 text-center">Próximamente Integración API Directa</p>
+                        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                            Canal de supermercado operado por CoCo; checkout habilitable por comunidad
+                        </p>
                     </div>
                 </div>
             </div>

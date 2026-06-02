@@ -458,7 +458,11 @@ export default function AmenitiesPage() {
                                             onClick={handleBook}
                                             disabled={bookingLoading}
                                         >
-                                            {bookingLoading ? "Confirmando..." : `Confirmar y pagar`}
+                                            {bookingLoading
+                                                ? "Confirmando..."
+                                                : selectedAmenity.hourlyRate > 0
+                                                    ? "Confirmar reserva"
+                                                    : "Confirmar reserva gratis"}
                                         </Button>
                                     </div>
                                 </div>

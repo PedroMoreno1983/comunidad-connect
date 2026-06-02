@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PollManager } from "@/components/admin/PollManager";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Activity, Calendar, ShieldCheck, Users } from "lucide-react";
@@ -16,10 +17,13 @@ export default function AdminVotacionesPage() {
                     </p>
                 </div>
 
-                <button className="inline-flex items-center gap-2 rounded-md border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated">
+                <Link
+                    href="#votaciones-publicadas"
+                    className="inline-flex items-center gap-2 rounded-md border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated"
+                >
                     <Calendar className="h-4 w-4 cc-text-secondary" />
                     Historial legal
-                </button>
+                </Link>
             </header>
 
             <section className="rounded-lg border border-subtle bg-surface shadow-sm">
