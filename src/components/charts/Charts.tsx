@@ -29,35 +29,36 @@ export function ExpenseAreaChart({ data }: { data: ExpenseData[] }) {
 
   return (
     <div className="flex h-full min-h-[280px] flex-col rounded-xl border border-subtle bg-canvas p-5">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] cc-text-tertiary">Historico operativo</p>
-          <p className="mt-1 text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-            {currencyFormatter.format(average)}
-          </p>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] cc-text-tertiary">Histórico operativo</p>
+          <p className="mt-1 text-sm font-semibold cc-text-secondary">Promedio mensual</p>
         </div>
-        <p className="text-xs font-semibold cc-text-secondary">Promedio mensual</p>
+        <div className="rounded-lg border border-subtle bg-surface px-3 py-2 text-right">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] cc-text-tertiary">Media</p>
+          <p className="font-mono text-sm font-semibold cc-text-primary">{currencyFormatter.format(average)}</p>
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 items-end gap-4 border-b border-subtle px-1 pb-3">
+      <div className="grid min-h-0 flex-1 grid-cols-6 items-end gap-4 border-b border-subtle px-1 pb-4">
         {data.map((item, index) => (
-          <div key={item.month} className="flex h-full min-h-[170px] flex-1 flex-col items-center justify-end gap-2">
-            <div className="flex h-full w-full max-w-[46px] items-end">
+          <div key={item.month} className="flex h-full min-h-[180px] flex-col items-center justify-end gap-2">
+            <p className="font-mono text-[11px] font-semibold cc-text-primary">
+              ${(item.monto / 1000000).toFixed(1)}M
+            </p>
+            <div className="flex h-full w-full max-w-[42px] items-end">
               <FoldedBar pct={(item.monto / max) * 100} color={BAR_COLORS[index % BAR_COLORS.length]} orientation="vertical" rounded={4} />
             </div>
-            <p className="font-mono text-[10px] font-semibold cc-text-tertiary">{item.month}</p>
+            <p className="text-xs font-semibold cc-text-secondary">{item.month}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-        {data.slice(-3).map((item, index) => (
-          <div key={`${item.month}-summary`} className="rounded-lg border border-subtle bg-surface px-3 py-2">
-            <p className="font-bold cc-text-primary">{item.month}</p>
-            <p className="mt-1 font-mono cc-text-secondary">{currencyFormatter.format(item.monto)}</p>
-            <span className="mt-2 block h-1.5 rounded-full" style={{ background: BAR_COLORS[(data.length - 3 + index) % BAR_COLORS.length] }} />
-          </div>
-        ))}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs font-semibold cc-text-secondary">Últimos 6 meses operativos</p>
+        <p className="font-mono text-xs font-semibold cc-text-tertiary">
+          Máximo {currencyFormatter.format(max)}
+        </p>
       </div>
     </div>
   );
@@ -88,7 +89,7 @@ export function ExpensePieChart({
   const leadPct = total > 0 && lead ? Math.round((lead.value / total) * 100) : 0;
 
   return (
-    <div className="grid min-w-0 gap-5 md:grid-cols-[210px_1fr] md:items-center">
+    <div className="flex min-w-0 flex-col gap-4">
       <div className="rounded-xl border border-subtle bg-canvas p-4">
         <BigDonut
           label={centerLabel}
@@ -99,19 +100,19 @@ export function ExpensePieChart({
         />
       </div>
 
-      <div className="min-w-0 space-y-3">
+      <div className="min-w-0 space-y-2.5">
         {sortedData.slice(0, 6).map((item, index) => {
           const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
           const color = item.color || BAR_COLORS[index % BAR_COLORS.length];
 
           return (
-            <div key={item.name} className="rounded-lg border border-subtle bg-canvas px-3 py-2.5">
+            <div key={item.name} className="rounded-lg border border-subtle bg-surface px-3 py-2.5">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                   <span className="truncate text-sm font-semibold cc-text-primary">{item.name}</span>
                 </div>
-                <span className="font-mono text-xs font-semibold cc-text-secondary">{percentage}%</span>
+                <span className="shrink-0 font-mono text-xs font-semibold cc-text-secondary">{percentage}%</span>
               </div>
               <FoldedBar pct={percentage} color={color} orientation="horizontal" thickness={8} />
               <p className="mt-2 text-right text-[11px] font-semibold cc-text-tertiary">{valueFormatter(item.value)}</p>

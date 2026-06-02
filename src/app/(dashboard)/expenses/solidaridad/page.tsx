@@ -373,99 +373,99 @@ export default function SolidarityHubPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando Solidaridad Vecinal…</span>
+        <span className="text-sm font-semibold uppercase tracking-widest text-slate-500">Cargando Solidaridad Vecinal…</span>
       </div>
     );
   }
 
   return (
     <ErrorBoundary name="Solidarity Resident Page">
-      <div className="max-w-4xl mx-auto px-5 py-3.5 flex flex-col min-h-screen pb-20">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-6 pb-20 lg:px-8">
         
         {/* Header */}
-        <div className="mb-6 pt-1.5">
+        <div className="mb-8 pt-2">
           <Eyebrow className="mb-2">Apoyo Mutuo</Eyebrow>
-          <DisplayHeading size={42}>
+          <DisplayHeading size={58}>
             Solidaridad <em className="text-[#B5664E] font-serif italic">vecinal</em>.
           </DisplayHeading>
         </div>
 
         {/* Info Banner */}
         <div 
-          className="mb-6 rounded-xl border p-4 bg-paper"
+          className="mb-7 rounded-2xl border bg-paper p-5 md:p-6"
           style={{ borderColor: "rgba(110, 130, 104, 0.2)", background: "rgba(110, 130, 104, 0.03)" }}
         >
-          <div className="flex gap-3">
-            <Heart className="h-5 w-5 text-[#6E8268] shrink-0 mt-0.5" />
-            <div className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-soft)" }}>
+          <div className="flex gap-4">
+            <Heart className="mt-0.5 h-6 w-6 shrink-0 text-[#6E8268]" />
+            <div className="text-sm leading-7" style={{ color: "var(--cc-ink-soft)" }}>
               <strong className="text-ink">Fondo de Apoyo Mutuo:</strong> Nos organizamos en comunidad para ayudarnos en momentos difíciles. Cuando un residente no puede cubrir su gasto común debido a cesantía o jubilación, el fondo solidario lo apoya de forma confidencial. A cambio, el residente retribuye colaborando con tareas útiles para la convivencia en el edificio.
             </div>
           </div>
         </div>
 
         {/* Solidarity Cycle Diagram */}
-        <div className="mb-6 bg-[#FAF7F1] border rounded-2xl p-5" style={{ borderColor: "var(--cc-line)" }}>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">El Círculo de Apoyo Mutuo</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-7 rounded-2xl border bg-[#FAF7F1] p-6 md:p-8" style={{ borderColor: "var(--cc-line)" }}>
+          <h4 className="mb-6 text-center text-sm font-bold uppercase tracking-[0.16em] text-slate-400">El Círculo de Apoyo Mutuo</h4>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             
             {/* Step 1 */}
-            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#6E8268]/20 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-[rgba(110,130,104,0.1)] text-[#6E8268] flex items-center justify-center font-bold font-mono text-xs mb-2">1</div>
-              <span className="font-semibold text-xs mb-1 text-ink">1. Aporte Colectivo</span>
-              <p className="text-[11px] leading-relaxed text-slate-500">Los vecinos redondean opcionalmente sus gastos comunes para financiar el fondo.</p>
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#6E8268]/20 bg-white p-5 text-center shadow-sm">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(110,130,104,0.1)] font-mono text-sm font-bold text-[#6E8268]">1</div>
+              <span className="mb-2 text-sm font-semibold text-ink">1. Aporte Colectivo</span>
+              <p className="text-sm leading-6 text-slate-500">Los vecinos redondean opcionalmente sus gastos comunes para financiar el fondo.</p>
             </div>
 
             {/* Step 2 */}
-            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#C99A4A]/20 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-[rgba(201,154,74,0.1)] text-[#C99A4A] flex items-center justify-center font-bold font-mono text-xs mb-2">2</div>
-              <span className="font-semibold text-xs mb-1 text-ink">2. Apoyo Confidencial</span>
-              <p className="text-[11px] leading-relaxed text-slate-500">Familias en situación vulnerable reciben subsidios directos aplicados a sus cuentas.</p>
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#C99A4A]/20 bg-white p-5 text-center shadow-sm">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(201,154,74,0.1)] font-mono text-sm font-bold text-[#C99A4A]">2</div>
+              <span className="mb-2 text-sm font-semibold text-ink">2. Apoyo Confidencial</span>
+              <p className="text-sm leading-6 text-slate-500">Familias en situación vulnerable reciben subsidios directos aplicados a sus cuentas.</p>
             </div>
 
             {/* Step 3 */}
-            <div className="flex flex-col items-center text-center p-3.5 rounded-xl bg-white border border-dashed border-[#B5664E]/20 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-[rgba(181,102,78,0.1)] text-[#B5664E] flex items-center justify-center font-bold font-mono text-xs mb-2">3</div>
-              <span className="font-semibold text-xs mb-1 text-ink">3. Retribución Activa</span>
-              <p className="text-[11px] leading-relaxed text-slate-500">Los beneficiados devuelven la ayuda colaborando en horas de servicio comunitario.</p>
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#B5664E]/20 bg-white p-5 text-center shadow-sm">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(181,102,78,0.1)] font-mono text-sm font-bold text-[#B5664E]">3</div>
+              <span className="mb-2 text-sm font-semibold text-ink">3. Retribución Activa</span>
+              <p className="text-sm leading-6 text-slate-500">Los beneficiados devuelven la ayuda colaborando en horas de servicio comunitario.</p>
             </div>
 
           </div>
         </div>
 
         {/* KPIs Grid */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          <div className="bg-[#FAF7F1] border rounded-xl p-3 flex flex-col justify-between" style={{ borderColor: "var(--cc-line)" }}>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Fondo Activo</span>
-            <div className="font-mono text-sm font-bold mt-1 text-ink">
+        <div className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border bg-[#FAF7F1] p-5" style={{ borderColor: "var(--cc-line)" }}>
+            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Fondo Activo</span>
+            <div className="mt-2 font-mono text-2xl font-bold text-ink">
               ${fundBalance.toLocaleString("es-CL")}
             </div>
-            <span className="text-[8px] text-slate-400 mt-1 block">Pesos CLP</span>
+            <span className="mt-2 block text-xs text-slate-400">Pesos CLP</span>
           </div>
 
-          <div className="bg-[#FAF7F1] border rounded-xl p-3 flex flex-col justify-between" style={{ borderColor: "var(--cc-line)" }}>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Familias</span>
-            <div className="font-mono text-sm font-bold mt-1 text-ink flex items-center gap-1">
-              <Users className="h-3 w-3 text-[#B5664E]" /> {familiesAssisted}
+          <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border bg-[#FAF7F1] p-5" style={{ borderColor: "var(--cc-line)" }}>
+            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Familias</span>
+            <div className="mt-2 flex items-center gap-2 font-mono text-2xl font-bold text-ink">
+              <Users className="h-5 w-5 text-[#B5664E]" /> {familiesAssisted}
             </div>
-            <span className="text-[8px] text-slate-400 mt-1 block">Apoyadas</span>
+            <span className="mt-2 block text-xs text-slate-400">Apoyadas</span>
           </div>
 
-          <div className="bg-[#FAF7F1] border rounded-xl p-3 flex flex-col justify-between" style={{ borderColor: "var(--cc-line)" }}>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Horas devueltas</span>
-            <div className="font-mono text-sm font-bold mt-1 text-ink flex items-center gap-1">
-              <Clock className="h-3 w-3 text-[#6E8268]" /> {totalHoursRetributed}h
+          <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border bg-[#FAF7F1] p-5" style={{ borderColor: "var(--cc-line)" }}>
+            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Horas devueltas</span>
+            <div className="mt-2 flex items-center gap-2 font-mono text-2xl font-bold text-ink">
+              <Clock className="h-5 w-5 text-[#6E8268]" /> {totalHoursRetributed}h
             </div>
-            <span className="text-[8px] text-slate-400 mt-1 block">Retribuido</span>
+            <span className="mt-2 block text-xs text-slate-400">Retribuido</span>
           </div>
         </div>
 
         {/* Tab system navigation */}
-        <div className="flex border-b mb-6" style={{ borderColor: "var(--cc-line)" }}>
+        <div className="mb-7 flex border-b" style={{ borderColor: "var(--cc-line)" }}>
           <button
             onClick={() => setActiveTab("transparency")}
-            className={`flex-1 pb-3 text-xs font-semibold text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "transparency" 
                 ? "border-[#B5664E] text-[#B5664E]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -475,7 +475,7 @@ export default function SolidarityHubPage() {
           </button>
           <button
             onClick={() => setActiveTab("apply")}
-            className={`flex-1 pb-3 text-xs font-semibold text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "apply" 
                 ? "border-[#B5664E] text-[#B5664E]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -485,7 +485,7 @@ export default function SolidarityHubPage() {
           </button>
           <button
             onClick={() => setActiveTab("tasks")}
-            className={`flex-1 pb-3 text-xs font-semibold text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "tasks" 
                 ? "border-[#B5664E] text-[#B5664E]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -501,18 +501,18 @@ export default function SolidarityHubPage() {
             
             {/* Libro Diario Ledger (Libro Diario de Solidaridad) */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-[#B5664E]" /> Libro Diario de Solidaridad
+              <div className="mb-5 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-base font-semibold uppercase tracking-wider text-ink">
+                  <BookOpen className="h-5 w-5 text-[#B5664E]" /> Libro Diario de Solidaridad
                 </h3>
-                <span className="text-[10px] text-slate-400 italic">Actualizado en tiempo real</span>
+                <span className="text-xs italic text-slate-400">Actualizado en tiempo real</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {ledger.length === 0 ? (
-                  <div className="text-center py-8 border border-dashed rounded-xl" style={{ borderColor: "var(--cc-line)" }}>
-                    <AlertCircle className="h-6 w-6 text-slate-300 mx-auto mb-2" />
-                    <span className="text-xs text-slate-400">Sin movimientos registrados aún.</span>
+                  <div className="rounded-2xl border border-dashed py-12 text-center" style={{ borderColor: "var(--cc-line)" }}>
+                    <AlertCircle className="mx-auto mb-3 h-7 w-7 text-slate-300" />
+                    <span className="text-sm text-slate-400">Sin movimientos registrados aún.</span>
                   </div>
                 ) : (
                   ledger.map((entry) => {
@@ -521,7 +521,7 @@ export default function SolidarityHubPage() {
                     return (
                       <div
                         key={entry.id}
-                        className="bg-paper border rounded-xl p-4 flex flex-col gap-1.5 text-xs transition-all hover:border-slate-300"
+                        className="flex flex-col gap-3 rounded-2xl border bg-paper p-5 text-sm transition-all hover:border-slate-300"
                         style={{ borderColor: "var(--cc-line)" }}
                       >
                         <div className="flex justify-between items-center">
@@ -541,7 +541,7 @@ export default function SolidarityHubPage() {
                                 ? "Subsidio" 
                                 : "Retribución"}
                           </Tag>
-                          <span className="font-mono text-[10px] text-slate-400">
+                          <span className="font-mono text-xs text-slate-400">
                             {new Date(entry.created_at).toLocaleDateString("es-CL", {
                               day: "2-digit",
                               month: "short",
@@ -554,7 +554,7 @@ export default function SolidarityHubPage() {
                         <p style={{ color: "var(--cc-ink-soft)" }}>{entry.description}</p>
                         
                         <div className="flex justify-between items-center pt-1.5 border-t border-dashed" style={{ borderColor: "var(--cc-line)" }}>
-                          <span className="text-slate-400 text-[10px]">Impacto registrado:</span>
+                          <span className="text-xs text-slate-400">Impacto registrado:</span>
                           <span className="font-mono font-bold text-ink">
                             {amountNum > 0 && `+$${amountNum.toLocaleString("es-CL")} CLP`}
                             {hoursNum > 0 && `+${hoursNum} Horas Vecinales`}
@@ -576,24 +576,24 @@ export default function SolidarityHubPage() {
               // Resident Form
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-ink mb-2">
+                  <h3 className="mb-2 text-base font-semibold uppercase tracking-wider text-ink">
                     Postular al Fondo de Apoyo
                   </h3>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+                  <p className="text-sm leading-7" style={{ color: "var(--cc-ink-muted)" }}>
                     El fondo está regulado de forma estricta. Las solicitudes son confidenciales y solo revisadas por el comité administrador. Si tu postulación es aprobada, se aplicará como abono a tu cuenta de gastos comunes.
                   </p>
                 </div>
 
-                <form onSubmit={handlePostulate} className="space-y-4">
+                <form onSubmit={handlePostulate} className="space-y-5">
                   {/* Category selection */}
                   <div>
-                    <label className="text-xs font-semibold block text-slate-500 mb-1.5">
+                    <label className="mb-2 block text-sm font-semibold text-slate-500">
                       Categoría de Emergencia
                     </label>
                     <select
                       value={postulateCategory}
                       onChange={(e) => setPostulateCategory(e.target.value)}
-                      className="w-full text-sm border rounded-xl p-3 bg-paper focus:outline-none focus:border-[#B5664E]"
+                      className="w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#B5664E] focus:outline-none"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                     >
                       <option value="unemployment">Cesantía / Reducción Laboral</option>
@@ -605,17 +605,17 @@ export default function SolidarityHubPage() {
 
                   {/* Amount requested */}
                   <div>
-                    <label className="text-xs font-semibold block text-slate-500 mb-1.5">
+                    <label className="mb-2 block text-sm font-semibold text-slate-500">
                       Monto Solicitado (CLP)
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-3.5 text-xs text-slate-400 font-mono">$</span>
+                      <span className="absolute left-4 top-4 font-mono text-sm text-slate-400">$</span>
                       <input
                         type="number"
                         placeholder="Ej. 120000"
                         value={postulateAmount}
                         onChange={(e) => setPostulateAmount(e.target.value)}
-                        className="w-full text-sm border rounded-xl p-3 pl-7 bg-paper font-mono focus:outline-none focus:border-[#B5664E]"
+                        className="w-full rounded-xl border bg-paper p-4 pl-8 font-mono text-sm focus:border-[#B5664E] focus:outline-none"
                         style={{ borderColor: "var(--cc-line-strong)" }}
                         required
                       />
@@ -624,25 +624,25 @@ export default function SolidarityHubPage() {
 
                   {/* Description */}
                   <div>
-                    <label className="text-xs font-semibold block text-slate-500 mb-1.5">
+                    <label className="mb-2 block text-sm font-semibold text-slate-500">
                       Descripción de la situación
                     </label>
                     <textarea
                       placeholder="Describe brevemente el contexto y cómo el fondo te ayudará temporalmente…"
                       value={postulateDesc}
                       onChange={(e) => setPostulateDesc(e.target.value)}
-                      className="w-full text-sm border rounded-xl p-3 h-24 bg-paper focus:outline-none focus:border-[#B5664E]"
+                      className="h-32 w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#B5664E] focus:outline-none"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                       required
                     />
                   </div>
                   {/* Document upload */}
                   <div>
-                    <label className="text-xs font-semibold block text-slate-500 mb-1.5">
+                    <label className="mb-2 block text-sm font-semibold text-slate-500">
                       Documentos de Respaldo (Finiquito, Liquidacion, Receta)
                     </label>
                     <label
-                      className="border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5"
+                      className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-7 text-center transition-all hover:bg-slate-50"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                     >
                       <input
@@ -660,11 +660,11 @@ export default function SolidarityHubPage() {
                           });
                         }}
                       />
-                      <Upload className="h-5 w-5 text-slate-400" />
-                      <span className="text-xs font-semibold">
+                      <Upload className="h-6 w-6 text-slate-400" />
+                      <span className="text-sm font-semibold">
                         {attachedFileName ? attachedFileName : "Hacer clic para adjuntar respaldo (.pdf, .jpg)"}
                       </span>
-                      <span className="text-[10px] text-slate-400 block">Maximo 10 MB</span>
+                      <span className="block text-xs text-slate-400">Maximo 10 MB</span>
                     </label>
                   </div>
 
@@ -679,15 +679,15 @@ export default function SolidarityHubPage() {
 
                 {/* Own applications history */}
                 <div className="pt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Mis Solicitudes de Apoyo</h4>
+                  <h4 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-400">Mis Solicitudes de Apoyo</h4>
                   <div className="space-y-2">
                     {applications.length === 0 ? (
-                      <span className="text-xs text-slate-400 italic block py-2">No has ingresado solicitudes aún.</span>
+                      <span className="block py-2 text-sm italic text-slate-400">No has ingresado solicitudes aún.</span>
                     ) : (
                       applications.map((app) => (
                         <div
                           key={app.id}
-                          className="bg-paper border rounded-xl p-4 text-xs flex justify-between items-center"
+                          className="flex items-center justify-between rounded-2xl border bg-paper p-5 text-sm"
                           style={{ borderColor: "var(--cc-line)" }}
                         >
                           <div>
@@ -701,7 +701,7 @@ export default function SolidarityHubPage() {
                                       ? "Salud" 
                                       : "Emergencia"}
                               </span>
-                              <span className="font-mono text-slate-400 text-[10px]">
+                              <span className="font-mono text-xs text-slate-400">
                                 ${Number(app.amount_requested).toLocaleString("es-CL")} solicitado
                               </span>
                             </div>
@@ -734,33 +734,33 @@ export default function SolidarityHubPage() {
               // Admin Review View
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-ink mb-2">
+                  <h3 className="mb-2 text-base font-semibold uppercase tracking-wider text-ink">
                     Control de Solicitudes (Comité de Administración)
                   </h3>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+                  <p className="text-sm leading-7" style={{ color: "var(--cc-ink-muted)" }}>
                     Como administrador, puedes revisar, aprobar o rechazar postulaciones solidarias. Los montos aprobados se descuentan del pozo y se notifican al residente para abonarse automáticamente a sus gastos comunes.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   {applications.length === 0 ? (
-                    <div className="text-center py-10 border border-dashed rounded-xl" style={{ borderColor: "var(--cc-line)" }}>
-                      <CheckCircle2 className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                      <span className="text-xs text-slate-400">No hay postulaciones registradas en esta comunidad.</span>
+                    <div className="rounded-2xl border border-dashed py-12 text-center" style={{ borderColor: "var(--cc-line)" }}>
+                      <CheckCircle2 className="mx-auto mb-3 h-9 w-9 text-slate-300" />
+                      <span className="text-sm text-slate-400">No hay postulaciones registradas en esta comunidad.</span>
                     </div>
                   ) : (
                     applications.map((app) => (
                       <div
                         key={app.id}
-                        className="bg-paper border rounded-xl p-4 flex flex-col gap-2.5 text-xs transition-all hover:border-slate-300"
+                        className="flex flex-col gap-3 rounded-2xl border bg-paper p-5 text-sm transition-all hover:border-slate-300"
                         style={{ borderColor: "var(--cc-line)" }}
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-bold text-ink block text-sm">
+                            <span className="block text-base font-bold text-ink">
                               Vecino / Solicitante: {app.profiles?.name || "Cargando..."}
                             </span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                            <span className="mt-1 block text-xs text-slate-400">
                               Email: {app.profiles?.email || "Sin email"}
                             </span>
                           </div>
@@ -782,8 +782,8 @@ export default function SolidarityHubPage() {
                           </Tag>
                         </div>
 
-                        <div className="bg-[#FAF7F1] border rounded-lg p-3" style={{ borderColor: "var(--cc-line)" }}>
-                          <div className="flex justify-between font-semibold mb-1 text-[11px]">
+                        <div className="rounded-xl border bg-[#FAF7F1] p-4" style={{ borderColor: "var(--cc-line)" }}>
+                          <div className="mb-1 flex justify-between text-sm font-semibold">
                             <span className="text-slate-400">Categoría:</span>
                             <span className="text-ink">
                               {app.category === "unemployment" 
@@ -795,7 +795,7 @@ export default function SolidarityHubPage() {
                                     : "Emergencia"}
                             </span>
                           </div>
-                          <div className="flex justify-between font-semibold text-[11px] mb-2">
+                          <div className="mb-2 flex justify-between text-sm font-semibold">
                             <span className="text-slate-400">Monto Solicitado:</span>
                             <span className="text-ink font-mono">${Number(app.amount_requested).toLocaleString("es-CL")} CLP</span>
                           </div>
@@ -812,7 +812,7 @@ export default function SolidarityHubPage() {
                                 setResolvedStatus("approved");
                                 setApprovedAmountInput(String(app.amount_requested));
                               }}
-                              className="flex-1 py-2 text-center rounded-lg font-semibold text-xs border border-transparent bg-[#6E8268] text-white cursor-pointer hover:bg-[#5b6c56]"
+                              className="flex-1 cursor-pointer rounded-lg border border-transparent bg-[#6E8268] py-3 text-center text-sm font-semibold text-white hover:bg-[#5b6c56]"
                             >
                               Resolver Solicitud
                             </button>
@@ -832,10 +832,10 @@ export default function SolidarityHubPage() {
             
             {/* Hour Retribution Description */}
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-ink mb-2">
+              <h3 className="mb-2 text-base font-semibold uppercase tracking-wider text-ink">
                 Banco de Retribución Vecinal
               </h3>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+              <p className="text-sm leading-7" style={{ color: "var(--cc-ink-muted)" }}>
                 Para cuidar que el fondo no sea abusado y promover el apoyo mutuo, quienes reciben subsidios devuelven horas comunitarias al edificio en tareas de mantención, punto verde o asistencia digital.
               </p>
             </div>
@@ -843,20 +843,20 @@ export default function SolidarityHubPage() {
             {/* Tasks list */}
             <div className="space-y-3">
               {tasks.length === 0 ? (
-                <span className="text-xs text-slate-400 italic block py-4 text-center">No hay tareas creadas aún.</span>
+                <span className="block py-8 text-center text-sm italic text-slate-400">No hay tareas creadas aún.</span>
               ) : (
                 tasks.map((task) => {
                   const hoursNum = Number(task.hours);
                   return (
                     <div
                       key={task.id}
-                      className="bg-paper border rounded-xl p-4 flex flex-col gap-2.5 text-xs transition-all hover:border-slate-300"
+                      className="flex flex-col gap-3 rounded-2xl border bg-paper p-5 text-sm transition-all hover:border-slate-300"
                       style={{ borderColor: "var(--cc-line)" }}
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="font-semibold text-ink text-sm block">{task.title}</span>
-                          <span className="font-mono text-slate-400 text-[10px] block mt-0.5">
+                          <span className="block text-base font-semibold text-ink">{task.title}</span>
+                          <span className="mt-1 block font-mono text-xs text-slate-400">
                             Categoría: {
                               task.category === "gardening" 
                                 ? "Huerto / Jardín" 
@@ -868,7 +868,7 @@ export default function SolidarityHubPage() {
                             }
                           </span>
                         </div>
-                        <span className="font-mono font-bold text-ink shrink-0 bg-slate-100 px-2 py-1 rounded text-[10px]">
+                        <span className="shrink-0 rounded bg-slate-100 px-3 py-1.5 font-mono text-xs font-bold text-ink">
                           {hoursNum} hrs
                         </span>
                       </div>
@@ -882,7 +882,7 @@ export default function SolidarityHubPage() {
                           {task.status === "reserved" && (
                             <div className="flex flex-col gap-0.5">
                               <Tag tone="amber" solid>Reservado</Tag>
-                              <span className="text-[9px] text-slate-400 mt-0.5">
+                              <span className="mt-1 text-xs text-slate-400">
                                 Por: {task.profiles?.name || "Vecino"}
                               </span>
                             </div>
@@ -896,7 +896,7 @@ export default function SolidarityHubPage() {
                           {task.status === "free" && !isAdmin && !isConcierge && (
                             <button
                               onClick={() => setBookingTask(task)}
-                              className="py-1.5 px-3 rounded-lg border border-[#B5664E] text-[#B5664E] bg-transparent font-semibold text-xs cursor-pointer hover:bg-[rgba(181,102,78,0.05)]"
+                              className="cursor-pointer rounded-lg border border-[#B5664E] bg-transparent px-4 py-2 text-sm font-semibold text-[#B5664E] hover:bg-[rgba(181,102,78,0.05)]"
                             >
                               Agendar
                             </button>
@@ -905,14 +905,14 @@ export default function SolidarityHubPage() {
                           {task.status === "reserved" && (isAdmin || isConcierge) && (
                             <button
                               onClick={() => setVerifyingTask(task)}
-                              className="py-1.5 px-3 rounded-lg bg-[#B5664E] text-white border border-transparent font-semibold text-xs cursor-pointer hover:bg-[#a05641]"
+                              className="cursor-pointer rounded-lg border border-transparent bg-[#B5664E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a05641]"
                             >
                               Verificar PIN
                             </button>
                           )}
                           
                           {task.status === "completed" && (
-                            <div className="flex items-center gap-1 text-[#6E8268] font-semibold text-[11px]">
+                            <div className="flex items-center gap-1 text-sm font-semibold text-[#6E8268]">
                               <CheckCircle2 className="h-4 w-4" /> Validada
                             </div>
                           )}
