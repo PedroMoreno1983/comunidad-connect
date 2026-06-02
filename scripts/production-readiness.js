@@ -4,6 +4,7 @@ const path = require("path");
 const root = process.cwd();
 const envPath = path.join(root, ".env.local");
 const strict = process.env.READINESS_STRICT === "1";
+const requirePaidProduction = process.env.READINESS_REQUIRE_PAID === "1";
 
 function readLocalEnv(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -25,7 +26,10 @@ const localEnv = readLocalEnv(envPath);
 
 function hasValue(key) {
   const value = process.env[key] || localEnv[key];
-  return typeof value === "string" && value.trim().length > 0 && !value.toLowerCase().includes("placeholder");
+  return typeof value === "string"
+    && value.trim().length > 0
+    && !/^(TU_|your_|placeholder|changeme|xxx)/i.test(value.trim())
+    && !/(placeholder|sandbox|sk_test|test_|demo_|example)/i.test(value.trim());
 }
 
 function getValue(key) {
@@ -103,6 +107,7 @@ const report = {
   readyForPaidProduction: summary.every((group) => group.ready),
   nextActions: summary.flatMap((group) => group.missing.map((key) => `${group.name}: configure ${key}`)),
   strict,
+  requirePaidProduction,
 };
 
 for (const group of summary) {
@@ -121,6 +126,6 @@ fs.mkdirSync(path.dirname(reportPath), { recursive: true });
 fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 console.log(`Report: ${reportPath}`);
 
-if (strict && criticalMissing.length > 0) {
+if ((strict && criticalMissing.length > 0) || (requirePaidProduction && !report.readyForPaidProduction)) {
   process.exitCode = 1;
 }

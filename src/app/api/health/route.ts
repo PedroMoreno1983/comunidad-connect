@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 function hasEnv(name: string) {
-    return Boolean(process.env[name]?.trim());
+    const value = process.env[name]?.trim();
+    if (!value) return false;
+    return !/^(TU_|your_|placeholder|changeme|xxx)/i.test(value);
 }
 
 export async function GET() {
