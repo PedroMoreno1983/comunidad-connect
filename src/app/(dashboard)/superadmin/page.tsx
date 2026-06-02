@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { Building2, Shield, Check, Copy, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
-import OutreachDemo from "@/components/admin/OutreachDemo";
+import CommercialOutreach from "@/components/admin/CommercialOutreach";
 
 interface PricingTier {
     id: string;
@@ -156,7 +156,7 @@ export default function SuperAdminDashboard() {
             </div>
 
             {/* Outreach Campaign Section */}
-            <OutreachDemo />
+            <CommercialOutreach />
 
             {/* Communities List */}
             <div className="bg-surface rounded-lg shadow-sm overflow-hidden border border-subtle">

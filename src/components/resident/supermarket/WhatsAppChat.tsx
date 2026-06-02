@@ -45,7 +45,6 @@ export function WhatsAppChat() {
             status: 'read'
         }
     ]);
-    const [isRecording, setIsRecording] = useState(false);
     const [inputValue, setInputValue] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -59,18 +58,11 @@ export function WhatsAppChat() {
     }, [messages, isProcessing]);
 
     const handleSendAudio = () => {
-        setIsRecording(true);
-        // Simular grabación de audio
-        setTimeout(() => {
-            setIsRecording(false);
-            addMessage({
-                type: 'audio',
-                audioDuration: '0:12',
-                isSender: true
-            });
-            // DEMO: Simular flujo de cocina por voz
-            processAgentResponse("tengo harina, levadura y salsa de tomate, qué puedo cocinar?");
-        }, 2000);
+        addMessage({
+            type: 'system',
+            content: 'El canal de voz se activa con permisos de audio de la comunidad. Mientras tanto, escribe tu solicitud y CoCo la procesa al instante.',
+            isSender: false,
+        });
     };
 
     const handleSendText = () => {
@@ -281,27 +273,15 @@ export function WhatsAppChat() {
                         )}
                     </motion.div>
                 ))}
-                {isRecording && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex justify-center"
-                    >
-                        <div className="bg-red-500 text-white px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
-                            <div className="h-2 w-2 bg-white rounded-full"></div>
-                            <span className="text-xs font-bold">Escuchando...</span>
-                        </div>
-                    </motion.div>
-                )}
                 <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
             <div className="bg-[#f0f2f5] dark:bg-[#202c33] p-2 flex items-center gap-2">
-                <button className="p-2 text-slate-500 hover:bg-elevated/50 rounded-full">
+                <button type="button" disabled title="Reacciones disponibles al activar mensajeria avanzada" className="cursor-not-allowed rounded-full p-2 text-slate-400 opacity-55">
                     <Smile className="h-6 w-6" />
                 </button>
-                <button className="p-2 text-slate-500 hover:bg-elevated/50 rounded-full">
+                <button type="button" disabled title="Adjuntos disponibles al activar mensajeria avanzada" className="cursor-not-allowed rounded-full p-2 text-slate-400 opacity-55">
                     <Plus className="h-6 w-6" />
                 </button>
 
@@ -320,6 +300,7 @@ export function WhatsAppChat() {
 
                 {inputValue.trim() ? (
                     <button
+                        type="button"
                         onClick={handleSendText}
                         className="p-3 bg-[#008069] text-white rounded-full shadow-md"
                     >
@@ -327,10 +308,9 @@ export function WhatsAppChat() {
                     </button>
                 ) : (
                     <button
+                        type="button"
                         onClick={handleSendAudio}
-                        disabled={isRecording}
-                        className={`p-3 rounded-full shadow-md transition-all ${isRecording ? 'bg-red-500 scale-110' : 'bg-[#008069] hover:bg-[#006e5a]'
-                            } text-white`}
+                        className="p-3 rounded-full bg-[#008069] text-white shadow-md transition-all hover:bg-[#006e5a]"
                     >
                         <Mic className="h-5 w-5" />
                     </button>

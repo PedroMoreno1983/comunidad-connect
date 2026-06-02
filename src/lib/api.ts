@@ -986,7 +986,7 @@ export const PollsService = {
     },
 
     async submitVote(pollId: string, optionId: string, userId: string) {
-        // En modo Demo, el userId es un UUID quemado (ej. Pedro Dueño)
+        // Compatibilidad legacy: algunos votos antiguos llegan con UUID local.
         const { data, error } = await supabase
             .from('poll_votes')
             .insert({

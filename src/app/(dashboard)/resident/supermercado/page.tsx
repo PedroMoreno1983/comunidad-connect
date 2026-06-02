@@ -12,7 +12,8 @@ import {
     Loader2, 
     ChefHat,
     UtensilsCrossed,
-    ArrowRight
+    ArrowRight,
+    Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
@@ -98,15 +99,41 @@ export default function SupermarketPage() {
     const removeItem = (id: string) => setList(list.filter(i => i.id !== id));
     const toggleItem = (id: string) => setList(list.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
     
-    // Calculate total
     const totalAmount = list.reduce((sum, item) => sum + (item.price || 0), 0);
-    const checkoutDisabled = list.length === 0;
+    const exportDisabled = list.length === 0;
 
-    const handleCheckout = () => {
+    const handleExportList = () => {
+        if (list.length === 0) return;
+
+        const lines = [
+            "Lista de compras Convive Connect",
+            `Generada: ${new Date().toLocaleString("es-CL")}`,
+            "",
+            ...list.map((item, index) => {
+                const status = item.checked ? "[x]" : "[ ]";
+                const price = item.price ? ` - $${item.price.toLocaleString("es-CL")}` : "";
+                const store = item.store ? ` (${item.store})` : "";
+                return `${index + 1}. ${status} ${item.name}${price}${store}`;
+            }),
+            "",
+            `Total referencial: $${totalAmount.toLocaleString("es-CL")}`,
+            "Nota: la compra se coordina con los canales habilitados por la comunidad.",
+        ];
+
+        const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `lista-compras-convive-${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+
         toast({
-            title: "Pago no disponible",
-            description: "El checkout de supermercado se habilita cuando la comunidad active el canal de pagos.",
-            variant: "default",
+            title: "Lista exportada",
+            description: "Descargue una lista editable para coordinar la compra por el canal de su comunidad.",
+            variant: "success",
         });
     };
 
@@ -194,7 +221,8 @@ export default function SupermarketPage() {
                                         }`}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <button 
+                                            <button
+                                                type="button"
                                                 onClick={() => toggleItem(item.id)}
                                                 className={`h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${
                                                     item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-subtle'
@@ -222,7 +250,7 @@ export default function SupermarketPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <button onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                        <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
                                             <Trash2 className="h-5 w-5" />
                                         </button>
                                     </motion.div>
@@ -267,33 +295,33 @@ export default function SupermarketPage() {
                         </div>
                     </div>
 
-                    {/* Checkout Card - Target: Lider/Jumbo Chile */}
+                    {/* Coordination card for enabled supermarket channels */}
                     <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                                 <ShoppingCart className="h-6 w-6 text-emerald-600" />
                             </div>
                             <Button 
-                                onClick={handleCheckout}
-                                disabled={checkoutDisabled || loading}
+                                onClick={handleExportList}
+                                disabled={exportDisabled || loading}
                                 className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl h-12 px-6 font-bold flex items-center gap-2 group"
                             >
-                                Checkout {totalAmount > 0 ? `($${totalAmount.toLocaleString('es-CL')})` : ''}
-                                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                Exportar lista {totalAmount > 0 ? `($${totalAmount.toLocaleString('es-CL')})` : ''}
+                                <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
                             </Button>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3 rounded-lg bg-elevated/50 p-3">
                                 <div className="h-8 w-8 rounded-md border border-blue-200 bg-blue-100" />
-                                <span className="text-sm font-bold cc-text-secondary">Jumbo Delivery</span>
+                                <span className="text-sm font-bold cc-text-secondary">Canal supermercado comunidad</span>
                             </div>
                             <div className="flex items-center gap-3 rounded-lg border border-subtle p-3 opacity-40">
                                 <div className="h-8 w-8 rounded-md border border-orange-200 bg-orange-100" />
-                                <span className="text-sm font-bold cc-text-secondary">Líder App</span>
+                                <span className="text-sm font-bold cc-text-secondary">Integracion de pago bajo contrato</span>
                             </div>
                         </div>
                         <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                            Canal de supermercado operado por CoCo; checkout habilitable por comunidad
+                            Lista operativa hoy; pago directo disponible al activar convenio de pagos
                         </p>
                     </div>
                 </div>

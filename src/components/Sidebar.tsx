@@ -216,7 +216,7 @@ export function Sidebar() {
                     <div className="flex items-center">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sm font-bold text-white" style={avatarSrc ? undefined : getAvatarStyle()}>
                             {avatarSrc ? (
-                                // eslint-disable-next-line @next/next/no-img-element -- Demo avatars may be local data URLs.
+                                // eslint-disable-next-line @next/next/no-img-element -- Legacy avatars may be local data URLs.
                                 <img src={avatarSrc} alt={displayName} className="h-full w-full object-cover" />
                             ) : (
                                 displayName.charAt(0)
