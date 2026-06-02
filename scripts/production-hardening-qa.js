@@ -61,7 +61,9 @@ try {
   assert(superadminPage.includes('/api/superadmin/communities'), 'Superadmin page uses server-side API');
 
   const outreach = read('src/components/admin/CommercialOutreach.tsx');
-  assert(!outreach.includes('Enviar InvitaciÃ³n Demo'), 'Outreach copy no longer uses demo CTA');
+  const mojibakeDemoCta = 'Enviar Invitaci' + '\u00c3\u00b3n Demo';
+  assert(!outreach.includes('Enviar Invitación Demo'), 'Outreach copy no longer uses demo CTA');
+  assert(!outreach.includes(mojibakeDemoCta), 'Outreach copy no longer uses mojibake demo CTA');
   assert(!outreach.includes('Directo a Demo'), 'Outreach copy no longer points to demo');
 
   report.passed = true;

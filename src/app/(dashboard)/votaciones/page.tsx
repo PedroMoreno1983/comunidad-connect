@@ -133,7 +133,7 @@ export default function VotacionesPage() {
             if (errorCode === "23505") {
                 toast({ title: "Ya has votado", description: "Solo puedes emitir un voto por consulta.", variant: "destructive" });
             } else {
-                const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexiÃ³n.";
+                const errorMessage = error instanceof Error ? error.message : "Hubo un problema de conexión.";
                 toast({ title: "Error al registrar el voto", description: errorMessage, variant: "destructive" });
             }
             throw error;
@@ -148,19 +148,19 @@ export default function VotacionesPage() {
         <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
             <header className="flex flex-col justify-between gap-5 border-b border-subtle pb-6 lg:flex-row lg:items-end">
                 <div>
-                    <Eyebrow>ParticipaciÃ³n comunitaria</Eyebrow>
+                    <Eyebrow>Participación comunitaria</Eyebrow>
                     <DisplayHeading size={36} className="mt-2">
-                        Centro de <em className="text-italic-serif text-brand-600">votaciÃ³n</em>
+                        Centro de <em className="text-italic-serif text-brand-600">votación</em>
                     </DisplayHeading>
                     <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">
-                        Revisa las consultas abiertas de tu comunidad, emite tu voto y consulta resultados histÃ³ricos de forma ordenada.
+                        Revisa las consultas abiertas de tu comunidad, emite tu voto y consulta resultados históricos de forma ordenada.
                     </p>
                 </div>
                 <div className="rounded-xl border border-subtle bg-surface p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Estado actual</p>
                     <div className="mt-2 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-brand-600 animate-pulse" />
-                        <span className="text-sm font-semibold cc-text-primary">{stats.pendingVotes} votaciÃ³n(es) pendientes</span>
+                        <span className="text-sm font-semibold cc-text-primary">{stats.pendingVotes} votación(es) pendientes</span>
                     </div>
                 </div>
             </header>
@@ -175,10 +175,10 @@ export default function VotacionesPage() {
                             <span className="font-mono text-sm tracking-wider text-rose-300 animate-pulse">04:32</span>
                         </div>
                         <h2 className="text-2xl font-semibold leading-tight">
-                            Propuesta activa: <em className="text-italic-serif text-brand-300">ConstrucciÃ³n quincho de tejas</em>
+                            Propuesta activa: <em className="text-italic-serif text-brand-300">Construcción quincho de tejas</em>
                         </h2>
                         <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                            Debate en curso sobre la ampliaciÃ³n del Ã¡rea recreativa en la terraza de la Torre A. Por favor revise el quÃ³rum y los adjuntos.
+                            Debate en curso sobre la ampliación del área recreativa en la terraza de la Torre A. Por favor revise el quórum y los adjuntos.
                         </p>
                         
                         {/* Pros & Cons layout */}
@@ -186,15 +186,15 @@ export default function VotacionesPage() {
                             <div className="bg-emerald-950/40 border border-emerald-500/20 rounded-lg p-3 text-xs text-emerald-300">
                                 <p className="font-bold mb-1">Pros:</p>
                                 <ul className="list-disc list-inside space-y-1">
-                                    <li>Incrementa plusvalÃ­a del edificio</li>
+                                    <li>Incrementa plusvalía del edificio</li>
                                     <li>Sombra garantizada en temporada alta</li>
                                 </ul>
                             </div>
                             <div className="bg-rose-950/40 border border-rose-500/20 rounded-lg p-3 text-xs text-rose-300">
                                 <p className="font-bold mb-1">Contras:</p>
                                 <ul className="list-disc list-inside space-y-1">
-                                    <li>Costo de mantenciÃ³n del techo de tejas</li>
-                                    <li>Ruido acÃºstico leve para departamentos superiores</li>
+                                    <li>Costo de mantención del techo de tejas</li>
+                                    <li>Ruido acústico leve para departamentos superiores</li>
                                 </ul>
                             </div>
                         </div>
@@ -227,15 +227,15 @@ export default function VotacionesPage() {
 
             <section className="grid gap-4 md:grid-cols-3">
                 <MetricCard icon={<Vote className="h-5 w-5" />} label="Consultas activas" value={activePolls.length} helper="Disponibles para votar" />
-                <MetricCard icon={<Users className="h-5 w-5" />} label="Votos activos" value={stats.totalActiveVotes} helper="ParticipaciÃ³n registrada" />
-                <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los prÃ³ximos 3 dÃ­as" dark />
+                <MetricCard icon={<Users className="h-5 w-5" />} label="Votos activos" value={stats.totalActiveVotes} helper="Participación registrada" />
+                <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los próximos 3 días" dark />
             </section>
 
             <section className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-bold cc-text-primary">Consultas activas</h2>
-                        <p className="mt-1 text-sm cc-text-secondary">Selecciona una opciÃ³n y confirma tu voto.</p>
+                        <p className="mt-1 text-sm cc-text-secondary">Selecciona una opción y confirma tu voto.</p>
                     </div>
                 </div>
 
@@ -266,9 +266,9 @@ export default function VotacionesPage() {
                     <div>
                         <h2 className="flex items-center gap-2 text-xl font-bold cc-text-primary">
                             <BarChart3 className="h-5 w-5 cc-text-secondary" />
-                            Resultados histÃ³ricos
+                            Resultados históricos
                         </h2>
-                        <p className="mt-1 text-sm cc-text-secondary">Consultas cerradas y participaciÃ³n agregada.</p>
+                        <p className="mt-1 text-sm cc-text-secondary">Consultas cerradas y participación agregada.</p>
                     </div>
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                         {closedPolls.map((poll) => (

@@ -4,7 +4,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { AmenitiesService } from "@/lib/api";
 import {
     Calendar, Users, Check, ArrowLeft,
-    Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2
+    Flame, Waves, PartyPopper, Dumbbell, Monitor, Gamepad2, Plus, Settings2
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
@@ -15,6 +15,7 @@ import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    Calendar,
     Flame,
     Waves,
     PartyPopper,
@@ -72,7 +73,18 @@ export default function AmenitiesPage() {
     const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
+    const [showAmenityForm, setShowAmenityForm] = useState(false);
+    const [creatingAmenity, setCreatingAmenity] = useState(false);
+    const [amenityForm, setAmenityForm] = useState({
+        name: "",
+        description: "",
+        maxCapacity: 12,
+        hourlyRate: 0,
+        iconName: "Calendar",
+        gradient: "from-[#B45F4B] to-[#8E3F31]",
+    });
     const { toast } = useToast();
+    const isAdmin = user?.role === "admin";
 
     const timeSlots = [
         '08:00', '10:00', '12:00', '14:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
@@ -196,6 +208,51 @@ export default function AmenitiesPage() {
         }
     };
 
+    const handleCreateAmenity = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!user || user.role !== "admin") {
+            toast({ title: "Acceso restringido", description: "Solo administración puede crear espacios comunes.", variant: "destructive" });
+            return;
+        }
+        if (!user.communityId) {
+            toast({ title: "Comunidad no configurada", description: "Tu usuario no tiene comunidad asociada para crear el espacio.", variant: "destructive" });
+            return;
+        }
+        if (!amenityForm.name.trim() || !amenityForm.description.trim()) {
+            toast({ title: "Faltan datos", description: "Ingresa nombre y descripción del espacio.", variant: "destructive" });
+            return;
+        }
+
+        setCreatingAmenity(true);
+        try {
+            await AmenitiesService.createAmenity({
+                name: amenityForm.name.trim(),
+                description: amenityForm.description.trim(),
+                maxCapacity: Number(amenityForm.maxCapacity) || 0,
+                hourlyRate: Number(amenityForm.hourlyRate) || 0,
+                iconName: amenityForm.iconName,
+                gradient: amenityForm.gradient,
+                communityId: user.communityId,
+            });
+            await loadData();
+            setAmenityForm({
+                name: "",
+                description: "",
+                maxCapacity: 12,
+                hourlyRate: 0,
+                iconName: "Calendar",
+                gradient: "from-[#B45F4B] to-[#8E3F31]",
+            });
+            setShowAmenityForm(false);
+            toast({ title: "Espacio creado", description: "El nuevo espacio común ya está disponible para reservas.", variant: "success" });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "No se pudo crear el espacio.";
+            toast({ title: "Error al crear espacio", description: errorMessage, variant: "destructive" });
+        } finally {
+            setCreatingAmenity(false);
+        }
+    };
+
     const userBookings = bookings.filter(b => b.userId === user?.id);
 
     const getIcon = (iconName: string) => {
@@ -224,18 +281,112 @@ export default function AmenitiesPage() {
                         Volver a espacios comunes
                     </button>
                 ) : (
-                    <ModuleHeader
-                        eyebrow="Reservas"
-                        title="Espacios Comunes"
-                        description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
-                        icon={<Calendar className="h-5 w-5" />}
-                        meta={`${amenities.length} espacios activos · ${userBookings.length} reservas activas`}
-                    />
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <ModuleHeader
+                            eyebrow="Reservas"
+                            title="Espacios Comunes"
+                            description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
+                            icon={<Calendar className="h-5 w-5" />}
+                            meta={`${amenities.length} espacios activos · ${userBookings.length} reservas activas`}
+                        />
+                        {isAdmin && (
+                            <Button type="button" variant="copper" onClick={() => setShowAmenityForm(value => !value)}>
+                                {showAmenityForm ? <Settings2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                {showAmenityForm ? "Cerrar configuración" : "Nuevo espacio"}
+                            </Button>
+                        )}
+                    </div>
                 )}
 
                 {/* Vista 1: Lista General de Espacios */}
                 {!selectedAmenity ? (
                     <>
+                        {isAdmin && showAmenityForm && (
+                            <form onSubmit={handleCreateAmenity} className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
+                                <div className="mb-5 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.14em] cc-text-tertiary">Administración</p>
+                                        <h2 className="mt-1 text-xl font-semibold cc-text-primary">Crear tipo de espacio común</h2>
+                                    </div>
+                                    <Tag tone="sage" solid>Disponible al guardar</Tag>
+                                </div>
+
+                                <div className="grid gap-4 lg:grid-cols-2">
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Nombre</span>
+                                        <input
+                                            value={amenityForm.name}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, name: event.target.value }))}
+                                            placeholder="Sala cowork, lavandería, azotea..."
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Descripción</span>
+                                        <input
+                                            value={amenityForm.description}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, description: event.target.value }))}
+                                            placeholder="Condiciones, uso recomendado y reglas principales"
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Aforo máximo</span>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={amenityForm.maxCapacity}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, maxCapacity: Number(event.target.value) }))}
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Tarifa por hora</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            step={500}
+                                            value={amenityForm.hourlyRate}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, hourlyRate: Number(event.target.value) }))}
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Icono</span>
+                                        <select
+                                            value={amenityForm.iconName}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, iconName: event.target.value }))}
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        >
+                                            {Object.keys(iconMap).map(icon => <option key={icon} value={icon}>{icon}</option>)}
+                                        </select>
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-secondary">Color</span>
+                                        <select
+                                            value={amenityForm.gradient}
+                                            onChange={(event) => setAmenityForm(form => ({ ...form, gradient: event.target.value }))}
+                                            className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
+                                        >
+                                            <option value="from-[#B45F4B] to-[#8E3F31]">Cobre</option>
+                                            <option value="from-[#3F8F6B] to-[#1F5F4A]">Sage</option>
+                                            <option value="from-[#6D5BD0] to-[#3B2F84]">Plum</option>
+                                            <option value="from-[#D8A83A] to-[#9B6B16]">Ámbar</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                    <Button type="button" variant="ghost" onClick={() => setShowAmenityForm(false)}>
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" variant="copper" disabled={creatingAmenity}>
+                                        {creatingAmenity ? "Creando..." : "Crear espacio"}
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
+
                         {/* Stats Summary Panel */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             {[

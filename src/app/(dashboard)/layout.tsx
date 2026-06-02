@@ -67,17 +67,17 @@ function DashboardShell({
             '/admin/users': 'Usuarios y Accesos',
             '/admin/units': 'Departamentos y Copropiedad',
             '/admin/consumo': 'Consumo de Agua e IoT',
-            '/admin/finanzas': 'Gastos Comunes y FacturaciÃ³n',
+            '/admin/finanzas': 'Gastos Comunes y Facturación',
             '/admin/mantenimiento': 'Operaciones e Incidencias',
             '/admin/votaciones': 'Votaciones y Encuestas',
-            '/admin/training': 'CapacitaciÃ³n y Cursos IA',
+            '/admin/training': 'Capacitación y Cursos IA',
             '/superadmin': 'Consola SuperAdmin',
         };
 
         const currentTitle = routeTitles[pathname] || '';
         document.title = currentTitle 
             ? `${currentTitle} | Convive Connect` 
-            : 'Convive Connect â€” Tu edificio, mÃ¡s humano que nunca';
+            : 'Convive Connect - Tu edificio, más humano que nunca';
     }, [pathname]);
 
     if (loading || !user) return null;
@@ -88,7 +88,7 @@ function DashboardShell({
 
     const roleLabels: Record<string, string> = {
         admin: "Administrador",
-        concierge: "ConserjerÃ­a",
+        concierge: "Conserjería",
         resident: "Residente",
     };
     const communityUser = user as typeof user & { condoName?: string; communityName?: string };
