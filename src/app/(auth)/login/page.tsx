@@ -207,10 +207,9 @@ export default function LoginPage() {
                                 <button
                                     key={provider}
                                     type="button"
-                                    onClick={() => {
-                                        toast({ title: `Acceso con ${provider}`, description: "Este proveedor se habilita por comunidad.", variant: "default" });
-                                    }}
-                                    className="rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold transition-colors hover:bg-paper-warm"
+                                    disabled
+                                    title={`${provider} se activa por contrato del condominio`}
+                                    className="cursor-not-allowed rounded-xl border bg-paper px-2 py-2.5 text-center text-xs font-semibold opacity-55"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 >
                                     {provider}

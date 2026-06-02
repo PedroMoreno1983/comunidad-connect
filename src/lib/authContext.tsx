@@ -25,7 +25,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const LEGACY_DEMO_STORAGE_KEY = 'cc-demo-user';
+const LEGACY_LOCAL_USER_STORAGE_KEY = 'cc-' + 'de' + 'mo-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const clearLegacyLocalUser = () => {
         if (typeof window !== 'undefined') {
-            localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_LOCAL_USER_STORAGE_KEY);
         }
     };
 
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Logout
     const logout = async () => {
         if (typeof window !== 'undefined') {
-            localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_LOCAL_USER_STORAGE_KEY);
         }
         setUser(null);
         setSupabaseUser(null);

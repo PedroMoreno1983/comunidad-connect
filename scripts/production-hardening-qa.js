@@ -60,7 +60,7 @@ try {
   assert(!superadminPage.includes("email?.includes('convive')"), 'Superadmin page has no domain substring authorization');
   assert(superadminPage.includes('/api/superadmin/communities'), 'Superadmin page uses server-side API');
 
-  const outreach = read('src/components/admin/OutreachDemo.tsx');
+  const outreach = read('src/components/admin/CommercialOutreach.tsx');
   assert(!outreach.includes('Enviar InvitaciÃ³n Demo'), 'Outreach copy no longer uses demo CTA');
   assert(!outreach.includes('Directo a Demo'), 'Outreach copy no longer points to demo');
 

@@ -99,7 +99,6 @@ export async function POST(req: NextRequest) {
             throw updateError;
         }
 
-        console.log(`[Embed Pipeline] Successfully generated and stored embedding for item: ${id}`);
         return NextResponse.json({ success: true, id });
 
     } catch (err: unknown) {

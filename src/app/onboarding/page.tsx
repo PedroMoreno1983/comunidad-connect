@@ -130,7 +130,7 @@ export default function OnboardingPage() {
                 Activa Convive con un plan de puesta en marcha real.
               </h1>
               <p className="max-w-2xl text-base leading-8 text-[#524A40] md:text-lg">
-                Este flujo no es una demo: agenda la activacion, define el alcance del condominio y deja encaminada la carga inicial para operar con administracion, residentes y conserjeria.
+                Este flujo agenda la activacion, define el alcance del condominio y deja encaminada la carga inicial para operar con administracion, residentes y conserjeria.
               </p>
             </div>
 
