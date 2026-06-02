@@ -269,36 +269,166 @@ function getDraftedCnvMessage(input: {
     ].join('\n\n');
 }
 
+type CollaborationRow = Record<string, unknown>;
+
+function asString(value: unknown, fallback = '') {
+    return typeof value === 'string' ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function mapMediationRow(row: CollaborationRow): NeighborMediationCase {
+    return {
+        id: asString(row.id),
+        reporterId: asString(row.reporter_id),
+        reporterName: asString(row.reporter_name, 'Vecino'),
+        communityId: asString(row.community_id) || undefined,
+        targetUnit: asString(row.target_unit),
+        observation: asString(row.observation),
+        feeling: asString(row.feeling),
+        need: asString(row.need),
+        request: asString(row.request),
+        draftedMessage: asString(row.drafted_message),
+        status: (asString(row.status, 'drafted') as NeighborMediationCase['status']),
+        createdAt: asString(row.created_at, new Date().toISOString()),
+    };
+}
+
+function mapTimeBankRow(row: CollaborationRow): TimeBankOffer {
+    return {
+        id: asString(row.id),
+        profileId: asString(row.profile_id) || undefined,
+        communityId: asString(row.community_id) || undefined,
+        neighborName: asString(row.neighbor_name, 'Vecino'),
+        unitLabel: asString(row.unit_label, 'Depto'),
+        skill: asString(row.skill),
+        description: asString(row.description),
+        availability: asString(row.availability),
+        credits: asNumber(row.credits, 1),
+        requestsCount: asNumber(row.requests_count),
+        category: (asString(row.category, 'other') as TimeBankOffer['category']),
+        createdAt: asString(row.created_at, new Date().toISOString()),
+    };
+}
+
+function mapCollectivePurchaseRow(row: CollaborationRow): CollectivePurchaseCampaign {
+    return {
+        id: asString(row.id),
+        communityId: asString(row.community_id) || undefined,
+        title: asString(row.title),
+        supplier: asString(row.supplier),
+        category: (asString(row.category, 'other') as CollectivePurchaseCampaign['category']),
+        unitPrice: asNumber(row.unit_price),
+        retailPrice: asNumber(row.retail_price),
+        minimumParticipants: asNumber(row.minimum_participants, 1),
+        participants: asNumber(row.participants, 1),
+        deadline: asString(row.deadline),
+        status: (asString(row.status, 'open') as CollectivePurchaseCampaign['status']),
+        organizer: asString(row.organizer, 'Comite vecinal'),
+        createdAt: asString(row.created_at, new Date().toISOString()),
+    };
+}
+
+function mapCommunityProjectRow(row: CollaborationRow): CommunityProject {
+    return {
+        id: asString(row.id),
+        communityId: asString(row.community_id) || undefined,
+        title: asString(row.title),
+        area: (asString(row.area, 'otro') as CommunityProject['area']),
+        description: asString(row.description),
+        impact: asString(row.impact),
+        participants: asNumber(row.participants, 1),
+        needed: asString(row.needed),
+        cocoInsight: asString(row.coco_insight),
+        status: (asString(row.status, 'forming') as CommunityProject['status']),
+        createdAt: asString(row.created_at, new Date().toISOString()),
+    };
+}
+
+function shouldUseLocalCollaborationFallback(error: unknown) {
+    const message = error instanceof Error ? error.message : String((error as { message?: string })?.message || error || '');
+    return Boolean(message);
+}
+
 export const CommunityCollaborationService = {
-    getMediationCases(): Promise<NeighborMediationCase[]> {
-        return Promise.resolve(readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []));
+    async getMediationCases(): Promise<NeighborMediationCase[]> {
+        const { data, error } = await supabase
+            .from('neighbor_mediations')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapMediationRow);
+        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
+        return [];
     },
 
-    createMediationCase(input: Omit<NeighborMediationCase, 'id' | 'draftedMessage' | 'status' | 'createdAt'>): Promise<NeighborMediationCase> {
+    async createMediationCase(input: Omit<NeighborMediationCase, 'id' | 'draftedMessage' | 'status' | 'createdAt'>): Promise<NeighborMediationCase> {
+        const draftedMessage = getDraftedCnvMessage(input);
+        const { data, error } = await supabase
+            .from('neighbor_mediations')
+            .insert({
+                reporter_id: input.reporterId,
+                reporter_name: input.reporterName,
+                community_id: input.communityId,
+                target_unit: input.targetUnit,
+                observation: input.observation,
+                feeling: input.feeling,
+                need: input.need,
+                request: input.request,
+                drafted_message: draftedMessage,
+                status: 'drafted',
+            })
+            .select('*')
+            .single();
+        if (!error && data) return mapMediationRow(data as CollaborationRow);
+
         const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
         const mediation: NeighborMediationCase = {
             ...input,
             id: createLocalId('mediation'),
-            draftedMessage: getDraftedCnvMessage(input),
+            draftedMessage,
             status: 'drafted',
             createdAt: new Date().toISOString(),
         };
         writeStoredList(COLLAB_STORAGE_KEYS.mediations, [mediation, ...current]);
-        return Promise.resolve(mediation);
+        return mediation;
     },
 
-    updateMediationStatus(id: string, status: NeighborMediationCase['status']): Promise<NeighborMediationCase[]> {
+    async updateMediationStatus(id: string, status: NeighborMediationCase['status']): Promise<NeighborMediationCase[]> {
+        const { error } = await supabase.from('neighbor_mediations').update({ status }).eq('id', id);
+        if (!error) return this.getMediationCases();
+
         const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
         const updated = current.map(item => item.id === id ? { ...item, status } : item);
         writeStoredList(COLLAB_STORAGE_KEYS.mediations, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    getTimeBankOffers(): Promise<TimeBankOffer[]> {
-        return Promise.resolve(readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS));
+    async getTimeBankOffers(): Promise<TimeBankOffer[]> {
+        const { data, error } = await supabase
+            .from('time_bank_offers')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapTimeBankRow);
+        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
+        return DEFAULT_TIME_BANK_OFFERS;
     },
 
-    createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt'>): Promise<TimeBankOffer[]> {
+    async createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt'>): Promise<TimeBankOffer[]> {
+        const { error } = await supabase.from('time_bank_offers').insert({
+            profile_id: input.profileId,
+            community_id: input.communityId,
+            neighbor_name: input.neighborName,
+            unit_label: input.unitLabel,
+            skill: input.skill,
+            description: input.description,
+            availability: input.availability,
+            credits: input.credits,
+            category: input.category,
+        });
+        if (!error) return this.getTimeBankOffers();
+
         const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
         const offer: TimeBankOffer = {
             ...input,
@@ -308,21 +438,49 @@ export const CommunityCollaborationService = {
         };
         const updated = [offer, ...current];
         writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    requestTimeBankOffer(id: string): Promise<TimeBankOffer[]> {
+    async requestTimeBankOffer(id: string): Promise<TimeBankOffer[]> {
+        const { data } = await supabase.from('time_bank_offers').select('requests_count').eq('id', id).maybeSingle();
+        if (data) {
+            const requestsCount = Number((data as { requests_count?: number }).requests_count || 0) + 1;
+            const { error } = await supabase.from('time_bank_offers').update({ requests_count: requestsCount }).eq('id', id);
+            if (!error) return this.getTimeBankOffers();
+        }
+
         const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
         const updated = current.map(item => item.id === id ? { ...item, requestsCount: item.requestsCount + 1 } : item);
         writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    getCollectivePurchases(): Promise<CollectivePurchaseCampaign[]> {
-        return Promise.resolve(readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES));
+    async getCollectivePurchases(): Promise<CollectivePurchaseCampaign[]> {
+        const { data, error } = await supabase
+            .from('collective_purchase_campaigns')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapCollectivePurchaseRow);
+        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
+        return DEFAULT_COLLECTIVE_PURCHASES;
     },
 
-    createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CollectivePurchaseCampaign[]> {
+    async createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CollectivePurchaseCampaign[]> {
+        const { error } = await supabase.from('collective_purchase_campaigns').insert({
+            community_id: input.communityId,
+            title: input.title,
+            supplier: input.supplier,
+            category: input.category,
+            unit_price: input.unitPrice,
+            retail_price: input.retailPrice,
+            minimum_participants: input.minimumParticipants,
+            participants: 1,
+            deadline: input.deadline,
+            status: input.minimumParticipants <= 1 ? 'ready' : 'open',
+            organizer: input.organizer,
+        });
+        if (!error) return this.getCollectivePurchases();
+
         const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
         const campaign: CollectivePurchaseCampaign = {
             ...input,
@@ -333,10 +491,19 @@ export const CommunityCollaborationService = {
         };
         const updated = [campaign, ...current];
         writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    joinCollectivePurchase(id: string): Promise<CollectivePurchaseCampaign[]> {
+    async joinCollectivePurchase(id: string): Promise<CollectivePurchaseCampaign[]> {
+        const { data } = await supabase.from('collective_purchase_campaigns').select('participants, minimum_participants, status').eq('id', id).maybeSingle();
+        if (data) {
+            const row = data as { participants?: number; minimum_participants?: number; status?: CollectivePurchaseCampaign['status'] };
+            const participants = Number(row.participants || 0) + 1;
+            const status = participants >= Number(row.minimum_participants || 1) ? 'ready' : row.status || 'open';
+            const { error } = await supabase.from('collective_purchase_campaigns').update({ participants, status }).eq('id', id);
+            if (!error) return this.getCollectivePurchases();
+        }
+
         const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
         const updated = current.map(item => {
             if (item.id !== id) return item;
@@ -348,14 +515,33 @@ export const CommunityCollaborationService = {
             };
         });
         writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    getCommunityProjects(): Promise<CommunityProject[]> {
-        return Promise.resolve(readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS));
+    async getCommunityProjects(): Promise<CommunityProject[]> {
+        const { data, error } = await supabase
+            .from('community_projects')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapCommunityProjectRow);
+        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
+        return DEFAULT_COMMUNITY_PROJECTS;
     },
 
-    createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CommunityProject[]> {
+    async createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CommunityProject[]> {
+        const { error } = await supabase.from('community_projects').insert({
+            community_id: input.communityId,
+            title: input.title,
+            area: input.area,
+            description: input.description,
+            impact: input.impact,
+            needed: input.needed,
+            coco_insight: input.cocoInsight,
+            participants: 1,
+            status: 'forming',
+        });
+        if (!error) return this.getCommunityProjects();
+
         const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
         const project: CommunityProject = {
             ...input,
@@ -366,14 +552,21 @@ export const CommunityCollaborationService = {
         };
         const updated = [project, ...current];
         writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 
-    joinCommunityProject(id: string): Promise<CommunityProject[]> {
+    async joinCommunityProject(id: string): Promise<CommunityProject[]> {
+        const { data } = await supabase.from('community_projects').select('participants').eq('id', id).maybeSingle();
+        if (data) {
+            const participants = Number((data as { participants?: number }).participants || 0) + 1;
+            const { error } = await supabase.from('community_projects').update({ participants, status: 'active' }).eq('id', id);
+            if (!error) return this.getCommunityProjects();
+        }
+
         const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
         const updated: CommunityProject[] = current.map(item => item.id === id ? { ...item, participants: item.participants + 1, status: 'active' } : item);
         writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
-        return Promise.resolve(updated);
+        return updated;
     },
 };
 

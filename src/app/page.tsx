@@ -966,7 +966,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-sm font-semibold text-[#8A8580]">
             <Link href="/privacy" className="hover:text-[#C8705A] transition-colors">Privacidad</Link>
             <Link href="/terms" className="hover:text-[#C8705A] transition-colors">Términos</Link>
-            <a href="mailto:soporte@conviveconnect.com" className="hover:text-[#C8705A] transition-colors">Soporte</a>
+            <Link href="/support" className="hover:text-[#C8705A] transition-colors">Soporte</Link>
           </div>
         </div>
       </footer>

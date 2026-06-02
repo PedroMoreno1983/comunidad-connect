@@ -36,7 +36,8 @@ import {
     Upload,
     Bot,
     Briefcase,
-    HeartHandshake
+    HeartHandshake,
+    MessageCircle
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -136,6 +137,7 @@ export function Sidebar() {
                 { href: '/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench, roles: ['admin'], feature: 'maintenance' },
                 { href: '/admin/votaciones', label: 'Gestión Votos', icon: BarChart3, roles: ['admin'], feature: 'voting' },
                 { href: '/admin/operations', label: 'Centro Operativo', icon: Activity, roles: ['admin'] },
+                { href: '/admin/whatsapp', label: 'WhatsApp CoCo', icon: MessageCircle, roles: ['admin'], feature: 'coco_ai' },
                 { href: '/admin/users', label: 'Usuarios', icon: Users, roles: ['admin'] },
                 { href: '/admin/onboarding', label: 'Carga Masiva de Datos', icon: Upload, roles: ['admin'], feature: 'coco_ai' },
             ]

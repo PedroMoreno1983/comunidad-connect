@@ -9,7 +9,12 @@ export const PUBLIC_SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL?.trim() || DEFAULT_SITE_URL
 ).replace(/\/$/, '');
 
+export const CANONICAL_SITE_URL = (
+  process.env.NEXT_PUBLIC_CANONICAL_SITE_URL?.trim() || DEFAULT_SITE_URL
+).replace(/\/$/, '');
+
 export const SUPPORT_EMAIL = 'soporte@conviveconnect.com';
+export const WHATSAPP_WEBHOOK_PATH = '/api/coco/whatsapp';
 
 // Detectar si estamos corriendo en un dispositivo movil (Capacitor).
 export const isNative = typeof window !== 'undefined' &&

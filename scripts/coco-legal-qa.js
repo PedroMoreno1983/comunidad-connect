@@ -7,6 +7,10 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
 }
 
+function normalize(value) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 const checks = [
   {
     name: "legal knowledge covers Ley 21.442 core articles",
@@ -34,9 +38,9 @@ const checks = [
     mustInclude: ["OPEN_PRIVACY_CONTEXT", "Ley 21.719", "finalidad", "No conviene exponer RUT"],
   },
   {
-    name: "local fallback handles noise and coexistence",
+    name: "local fallback handles noise through CNV mediation",
     file: "src/app/api/coco/route.ts",
-    mustInclude: ["OPEN_CLAIMS_CONTEXT", "Ley 21.442 art. 27", "ruidos en horas de descanso"],
+    mustInclude: ["OPEN_MEDIATION_CNV", "Ley 21.442 art. 27", "Comunicación No Violenta", "navigate: '/convivencia'"],
   },
   {
     name: "local fallback handles morosity and common expenses",
@@ -48,8 +52,8 @@ const checks = [
 const failures = [];
 
 for (const check of checks) {
-  const text = read(check.file);
-  const missing = check.mustInclude.filter((needle) => !text.includes(needle));
+  const text = normalize(read(check.file));
+  const missing = check.mustInclude.filter((needle) => !text.includes(normalize(needle)));
   if (missing.length) {
     failures.push({
       name: check.name,

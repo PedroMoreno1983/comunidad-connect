@@ -11,22 +11,35 @@ import {
     saveSession,
     checkRateLimit,
 } from '@/lib/coco/session-store';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
 
 function twiml(text: string): NextResponse {
     const safe = text
-        .replace(/&/g, '&')
+        .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
     return new NextResponse(
         `<Response><Message>${safe}</Message></Response>`,
         { headers: { 'Content-Type': 'text/xml' } }
     );
+}
+
+function getUnitDisplay(unit: unknown) {
+    const record = Array.isArray(unit) ? unit[0] : unit;
+    if (!record || typeof record !== 'object') return "";
+    const data = record as Record<string, unknown>;
+    return String(data.unit_number || data.number || "").trim();
+}
+
+function unitMatches(input: string, unitLabel: string) {
+    const cleanInput = input.toLowerCase().replace(/\s+/g, "");
+    const cleanUnit = unitLabel.toLowerCase().replace(/\s+/g, "");
+    return Boolean(cleanInput && cleanUnit && (cleanUnit === cleanInput || cleanUnit.includes(cleanInput) || cleanInput.includes(cleanUnit)));
+}
+
+export async function GET() {
+    return NextResponse.json(getWhatsAppConfigStatus());
 }
 
 export async function POST(req: NextRequest) {
@@ -75,30 +88,36 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Verificar residente en Supabase
-        const { data: resident } = await supabase
-            .from('residents')
-            .select('id, name, role, unit_id, units(community_id, unit_number), communities(name)')
-            .eq('phone', `+${waId}`)
-            .ilike('units.unit_number', `%${message}%`)
+        // Verificar residente en Supabase usando profiles + units reales del schema actual.
+        const formattedPhone = formatWhatsAppPhone(waId);
+        const { data: profile } = await getSupabaseAdmin()
+            .from('profiles')
+            .select('id, name, full_name, role, unit_id, community_id, phone_number, whatsapp_enabled, units:unit_id(id, number, unit_number, tower, community_id)')
+            .in('phone_number', [formattedPhone, `+${waId}`, waId])
+            .eq('whatsapp_enabled', true)
             .maybeSingle();
 
+        const profileRecord = profile as Record<string, unknown> | null;
+        const unitLabel = getUnitDisplay(profileRecord?.units);
+        const resident = profileRecord && unitMatches(message, unitLabel) ? profileRecord : null;
+
         if (resident) {
+            const name = String(resident.name || resident.full_name || 'vecino/a');
             await saveSession(sessionKey, {
                 conversation: [],
                 user_context: {
-                    user_id:      resident.id,
-                    unit_id:      resident.unit_id,
-                    role:         resident.role || 'resident',
-                    community_id: (resident.units as any)?.[0]?.community_id || (resident.units as any)?.community_id,
-                    name:         resident.name,
+                    user_id:      String(resident.id),
+                    unit_id:      String(resident.unit_id || unitLabel),
+                    role:         String(resident.role || 'resident'),
+                    community_id: String(resident.community_id || ''),
+                    name,
                     channel:      'whatsapp',
                 },
                 auth_state:   'verified',
                 auth_attempts: 0,
             });
             return twiml(
-                `¡Listo, ${resident.name}! ✅\n` +
+                `¡Listo, ${name}! ✅\n` +
                 `Soy CoCo, tu asistente en tu comunidad. ¿En qué te ayudo?`
             );
         }

@@ -75,6 +75,7 @@ export interface NeighborMediationCase {
   id: string;
   reporterId: string;
   reporterName: string;
+  communityId?: string;
   targetUnit: string;
   observation: string;
   feeling: string;
@@ -87,6 +88,8 @@ export interface NeighborMediationCase {
 
 export interface TimeBankOffer {
   id: string;
+  profileId?: string;
+  communityId?: string;
   neighborName: string;
   unitLabel: string;
   skill: string;
@@ -100,6 +103,7 @@ export interface TimeBankOffer {
 
 export interface CollectivePurchaseCampaign {
   id: string;
+  communityId?: string;
   title: string;
   supplier: string;
   category: 'water' | 'gas' | 'cleaning' | 'food' | 'eco' | 'other';
@@ -115,6 +119,7 @@ export interface CollectivePurchaseCampaign {
 
 export interface CommunityProject {
   id: string;
+  communityId?: string;
   title: string;
   area: 'huerto' | 'reciclaje' | 'cuidados' | 'mascotas' | 'cultura' | 'otro';
   description: string;
