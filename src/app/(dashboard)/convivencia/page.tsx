@@ -151,6 +151,7 @@ export default function ConvivenciaPage() {
         const draft = await CommunityCollaborationService.createMediationCase({
             reporterId: user?.id || "anonymous",
             reporterName: user?.name || "Vecino",
+            communityId: user?.communityId,
             targetUnit: mediationForm.targetUnit || "Unidad por confirmar",
             observation: mediationForm.observation,
             feeling: mediationForm.feeling,
@@ -178,6 +179,8 @@ export default function ConvivenciaPage() {
         event.preventDefault();
         if (!timeBankForm.skill.trim() || !timeBankForm.description.trim()) return;
         const updated = await CommunityCollaborationService.createTimeBankOffer({
+            profileId: user?.id,
+            communityId: user?.communityId,
             neighborName: user?.name || "Vecino",
             unitLabel: user?.unitName || user?.unitId || "Depto",
             skill: timeBankForm.skill.trim(),
@@ -201,6 +204,7 @@ export default function ConvivenciaPage() {
         event.preventDefault();
         if (!purchaseForm.title.trim() || !purchaseForm.supplier.trim()) return;
         const updated = await CommunityCollaborationService.createCollectivePurchase({
+            communityId: user?.communityId,
             title: purchaseForm.title.trim(),
             supplier: purchaseForm.supplier.trim(),
             category: purchaseForm.category,
@@ -225,6 +229,7 @@ export default function ConvivenciaPage() {
         event.preventDefault();
         if (!projectForm.title.trim() || !projectForm.description.trim()) return;
         const updated = await CommunityCollaborationService.createCommunityProject({
+            communityId: user?.communityId,
             title: projectForm.title.trim(),
             area: projectForm.area,
             description: projectForm.description.trim(),

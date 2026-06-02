@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { formatWhatsAppPhone } from "@/lib/whatsapp";
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -9,19 +10,11 @@ const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
 // Shared secret for internal/webhook calls — set WHATSAPP_WEBHOOK_SECRET in Vercel env vars
 const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET;
 
-function formatPhoneNumber(raw: string): string {
-    const digits = raw.replace(/\D/g, "");
-    if (digits.startsWith("569")) return `+${digits}`;
-    if (digits.startsWith("9") && digits.length === 9) return `+56${digits}`;
-    if (digits.startsWith("56")) return `+${digits}`;
-    return `+${digits}`;
-}
-
 async function sendWhatsApp(to: string, message: string) {
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
         throw new Error("Twilio credentials not configured");
     }
-    const formattedTo = `whatsapp:${formatPhoneNumber(to)}`;
+    const formattedTo = `whatsapp:${formatWhatsAppPhone(to)}`;
     const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
     const params = new URLSearchParams({ From: TWILIO_FROM, To: formattedTo, Body: message });
 
