@@ -362,7 +362,7 @@ export default function LandingPage() {
           className="flex shrink-0 items-center gap-2 sm:gap-3"
         >
           <button
-            onClick={() => router.push('/login')}
+            onClick={() => router.push('/admin-onboarding')}
             className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-[#5F5A54] dark:text-[#C8BFB6] hover:text-[#C8705A] dark:hover:text-[#C8705A] transition-colors"
           >
             Iniciar sesión
@@ -417,7 +417,7 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
             >
               <button
-                onClick={() => setIsContactModalOpen(true)}
+                onClick={() => router.push('/onboarding')}
                 className="inline-flex items-center justify-center gap-2 font-bold transition-all cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] dark:bg-white dark:text-black text-[#FAF7F1] text-sm hover:opacity-90 shadow-md"
               >
                 Agendar onboarding (48h)
@@ -763,7 +763,7 @@ export default function LandingPage() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setIsContactModalOpen(true)}
+                    onClick={() => router.push('/onboarding')}
                     className="flex-1 py-4 rounded-2xl text-white font-bold hover:opacity-90 transition-all shadow-lg text-sm"
                     style={{ background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}dd)`, boxShadow: `0 8px 24px ${selectedRole.color}40` }}
                   >
@@ -823,7 +823,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setIsContactModalOpen(true)} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
+              <button onClick={() => router.push('/onboarding')} id="pricing-basic-cta" className="w-full py-3.5 rounded-xl bg-[#FBF8F3] dark:bg-[#302D2A] hover:bg-[#F1EAE1] dark:hover:bg-[#3B3530] font-bold transition-colors text-sm">
                 Probar Plan Básico
               </button>
             </div>
@@ -855,7 +855,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setIsContactModalOpen(true)} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
+              <button onClick={() => router.push('/onboarding')} id="pricing-advanced-cta" className="w-full py-3.5 rounded-xl bg-white text-[#B45F4B] hover:bg-[#F4E8DF] font-extrabold transition-colors shadow-lg text-sm">
                 Hablar con un Asesor
               </button>
             </div>
@@ -880,7 +880,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setIsContactModalOpen(true)} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
+              <button onClick={() => router.push('/onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
                 Agendar Onboarding (48h)
               </button>
             </div>
@@ -940,7 +940,7 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tighter mb-3">¿Listo para transformar tu comunidad?</h2>
               <p className="text-white/75 text-lg mb-8 max-w-md mx-auto">Únete a las comunidades que ya viven diferente. Empieza gratis hoy.</p>
               <button
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/onboarding')}
                 id="cta-footer-btn"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-[#B45F4B] font-extrabold text-base hover:bg-[#F4E8DF] transition-all shadow-xl shadow-black/20 hover:-translate-y-1"
               >

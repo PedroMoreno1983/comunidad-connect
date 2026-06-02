@@ -1,238 +1,175 @@
 "use client";
 
-import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
-
-interface CustomTooltipProps {
-    active?: boolean;
-    payload?: Array<{
-        name: string;
-        value: number;
-        color?: string;
-    }>;
-    label?: string;
-}
+import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
+import { BigDonut } from "@/components/cc/viz/ScoreDonut";
 
 const currencyFormatter = new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
+  style: "currency",
+  currency: "CLP",
+  maximumFractionDigits: 0,
 });
 
-const COLORS = ["#C8705A", "#5A7D5A", "#D4A574", "#8A8580", "#974C3C", "#2D2A26"];
-
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-    if (!active || !payload?.length) return null;
-
-    return (
-        <div className="rounded-lg border border-subtle bg-surface p-3 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{label}</p>
-            {payload.map((entry, index) => (
-                <p key={`${entry.name}-${index}`} className="mt-1 text-sm cc-text-secondary">
-                    {entry.name}: <span className="font-semibold cc-text-primary">{currencyFormatter.format(entry.value)}</span>
-                </p>
-            ))}
-        </div>
-    );
-}
-
 interface ExpenseData {
-    month: string;
-    monto: number;
+  month: string;
+  monto: number;
 }
+
+const BAR_COLORS = [
+  DATA_PALETTE.yellow,
+  "#D9A04A",
+  DATA_PALETTE.orange,
+  "#CB7146",
+  DATA_PALETTE.copper,
+  DATA_PALETTE.teal,
+];
 
 export function ExpenseAreaChart({ data }: { data: ExpenseData[] }) {
-    return (
-        <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
-                <defs>
-                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#C8705A" stopOpacity={0.26} />
-                        <stop offset="95%" stopColor="#C8705A" stopOpacity={0.02} />
-                    </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="#e7e2dd" className="dark:stroke-slate-700" />
-                <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "#8a8178", fontWeight: 600 }}
-                />
-                <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "#8a8178", fontWeight: 600 }}
-                    tickFormatter={(value) => `$${(Number(value) / 1000000).toFixed(0)}M`}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                    type="monotone"
-                    dataKey="monto"
-                    stroke="#C8705A"
-                    strokeWidth={3}
-                    fill="url(#colorExpense)"
-                    name="Gasto"
-                    activeDot={{ r: 5, strokeWidth: 0, fill: "#0f172a" }}
-                />
-            </AreaChart>
-        </ResponsiveContainer>
-    );
+  const max = Math.max(...data.map((item) => item.monto), 1);
+  const average = data.length ? data.reduce((sum, item) => sum + item.monto, 0) / data.length : 0;
+
+  return (
+    <div className="flex h-full min-h-[280px] flex-col rounded-xl border border-subtle bg-canvas p-5">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] cc-text-tertiary">Historico operativo</p>
+          <p className="mt-1 text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+            {currencyFormatter.format(average)}
+          </p>
+        </div>
+        <p className="text-xs font-semibold cc-text-secondary">Promedio mensual</p>
+      </div>
+
+      <div className="flex min-h-0 flex-1 items-end gap-4 border-b border-subtle px-1 pb-3">
+        {data.map((item, index) => (
+          <div key={item.month} className="flex h-full min-h-[170px] flex-1 flex-col items-center justify-end gap-2">
+            <div className="flex h-full w-full max-w-[46px] items-end">
+              <FoldedBar pct={(item.monto / max) * 100} color={BAR_COLORS[index % BAR_COLORS.length]} orientation="vertical" rounded={4} />
+            </div>
+            <p className="font-mono text-[10px] font-semibold cc-text-tertiary">{item.month}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
+        {data.slice(-3).map((item, index) => (
+          <div key={`${item.month}-summary`} className="rounded-lg border border-subtle bg-surface px-3 py-2">
+            <p className="font-bold cc-text-primary">{item.month}</p>
+            <p className="mt-1 font-mono cc-text-secondary">{currencyFormatter.format(item.monto)}</p>
+            <span className="mt-2 block h-1.5 rounded-full" style={{ background: BAR_COLORS[(data.length - 3 + index) % BAR_COLORS.length] }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 interface CategoryData {
-    name: string;
-    value: number;
-    color: string;
+  name: string;
+  value: number;
+  color: string;
 }
 
 interface ExpensePieChartProps {
-    data: CategoryData[];
-    valueFormatter?: (value: number) => string;
-    totalFormatter?: (value: number) => string;
-    centerLabel?: string;
+  data: CategoryData[];
+  valueFormatter?: (value: number) => string;
+  totalFormatter?: (value: number) => string;
+  centerLabel?: string;
 }
 
 export function ExpensePieChart({
-    data,
-    valueFormatter = (value) => currencyFormatter.format(value),
-    totalFormatter = (value) => `$${(value / 1000000).toFixed(1)}M`,
-    centerLabel = "Total",
+  data,
+  valueFormatter = (value) => currencyFormatter.format(value),
+  totalFormatter = (value) => `$${(value / 1000000).toFixed(1)}M`,
+  centerLabel = "Total",
 }: ExpensePieChartProps) {
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    const sortedData = [...data].sort((a, b) => b.value - a.value);
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
+  const total = sortedData.reduce((sum, item) => sum + item.value, 0);
+  const lead = sortedData[0];
+  const leadPct = total > 0 && lead ? Math.round((lead.value / total) * 100) : 0;
 
-    return (
-        <div className="grid min-w-0 gap-4 md:grid-cols-[180px_1fr] md:items-center">
-            <div className="relative h-48 min-w-0">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={sortedData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={56}
-                            outerRadius={82}
-                            paddingAngle={2}
-                            dataKey="value"
-                            stroke="var(--cc-bg-surface)"
-                            strokeWidth={3}
-                        >
-                            {sortedData.map((entry, index) => (
-                                <Cell key={`cell-${entry.name}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            formatter={(value) => [valueFormatter(Number(value)), "Valor"]}
-                            contentStyle={{
-                                backgroundColor: "var(--cc-bg-surface)",
-                                border: "1px solid var(--cc-border-subtle)",
-                                borderRadius: "8px",
-                                boxShadow: "0 8px 24px rgba(17, 24, 39, 0.10)",
-                            }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] cc-text-tertiary">{centerLabel}</span>
-                    <span className="text-base font-semibold cc-text-primary">{totalFormatter(total)}</span>
+  return (
+    <div className="grid min-w-0 gap-5 md:grid-cols-[210px_1fr] md:items-center">
+      <div className="rounded-xl border border-subtle bg-canvas p-4">
+        <BigDonut
+          label={centerLabel}
+          value={totalFormatter(total)}
+          sub={lead ? `${lead.name} concentra ${leadPct}%` : "Sin movimientos"}
+          color={lead?.color || DATA_PALETTE.copper}
+          pct={leadPct || 1}
+        />
+      </div>
+
+      <div className="min-w-0 space-y-3">
+        {sortedData.slice(0, 6).map((item, index) => {
+          const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+          const color = item.color || BAR_COLORS[index % BAR_COLORS.length];
+
+          return (
+            <div key={item.name} className="rounded-lg border border-subtle bg-canvas px-3 py-2.5">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="truncate text-sm font-semibold cc-text-primary">{item.name}</span>
                 </div>
+                <span className="font-mono text-xs font-semibold cc-text-secondary">{percentage}%</span>
+              </div>
+              <FoldedBar pct={percentage} color={color} orientation="horizontal" thickness={8} />
+              <p className="mt-2 text-right text-[11px] font-semibold cc-text-tertiary">{valueFormatter(item.value)}</p>
             </div>
-
-            <div className="min-w-0 space-y-2">
-                {sortedData.slice(0, 6).map((item, index) => {
-                    const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
-                    const color = item.color || COLORS[index % COLORS.length];
-
-                    return (
-                        <div key={item.name} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-subtle bg-canvas px-3 py-2">
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-                                    <span className="truncate text-sm font-semibold cc-text-primary">{item.name}</span>
-                                </div>
-                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated">
-                                    <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: color }} />
-                                </div>
-                            </div>
-                            <span className="text-sm font-semibold cc-text-secondary">{percentage}%</span>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface UsageData {
-    name: string;
-    reservas: number;
+  name: string;
+  reservas: number;
 }
 
 export function AmenityUsageChart({ data }: { data: UsageData[] }) {
-    const sortedData = [...data].sort((a, b) => b.reservas - a.reservas);
-    const chartHeight = Math.max(220, sortedData.length * 46);
+  const sortedData = [...data].sort((a, b) => b.reservas - a.reservas);
+  const max = Math.max(...sortedData.map((item) => item.reservas), 1);
 
-    return (
-        <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={sortedData} layout="vertical" margin={{ top: 8, right: 14, left: 8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="4 8" horizontal={false} stroke="#e7e2dd" className="dark:stroke-slate-700" />
-                <XAxis
-                    type="number"
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                    tick={{ fontSize: 11, fill: "#8a8178", fontWeight: 600 }}
-                />
-                <YAxis
-                    type="category"
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    width={108}
-                    tick={{ fontSize: 11, fill: "#4b5563", fontWeight: 700 }}
-                />
-                <Tooltip
-                    formatter={(value) => [value as number, "Reservas"]}
-                    contentStyle={{
-                        backgroundColor: "var(--cc-bg-surface)",
-                        border: "1px solid var(--cc-border-subtle)",
-                        borderRadius: "8px",
-                        boxShadow: "0 8px 24px rgba(17, 24, 39, 0.10)",
-                    }}
-                />
-                <Bar dataKey="reservas" fill="#0bc9a1" radius={[0, 8, 8, 0]} barSize={18} />
-            </BarChart>
-        </ResponsiveContainer>
-    );
+  return (
+    <div className="space-y-4">
+      {sortedData.map((item, index) => {
+        const pct = (item.reservas / max) * 100;
+        const color = BAR_COLORS[index % BAR_COLORS.length];
+
+        return (
+          <div key={item.name}>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <p className="truncate text-sm font-semibold cc-text-primary">{item.name}</p>
+              <p className="font-mono text-xs font-semibold cc-text-secondary">{item.reservas} reservas</p>
+            </div>
+            <FoldedBar pct={pct} color={color} orientation="horizontal" thickness={10} />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface SparklineProps {
-    data: number[];
-    color: string;
+  data: number[];
+  color: string;
 }
 
 export function Sparkline({ data, color }: SparklineProps) {
-    const chartData = data.map((value, index) => ({ value, index }));
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = Math.max(max - min, 1);
+  const points = data.map((value, index) => {
+    const x = data.length <= 1 ? 0 : (index / (data.length - 1)) * 100;
+    const y = 36 - ((value - min) / range) * 32;
+    return `${x},${y}`;
+  });
 
-    return (
-        <ResponsiveContainer width="100%" height={40}>
-            <LineChart data={chartData}>
-                <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
-            </LineChart>
-        </ResponsiveContainer>
-    );
+  return (
+    <svg viewBox="0 0 100 40" className="h-10 w-full" preserveAspectRatio="none">
+      <polyline fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={points.join(" ")} />
+    </svg>
+  );
 }
