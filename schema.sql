@@ -592,6 +592,17 @@ CREATE POLICY "tenant_marketplace_insert" ON public.marketplace_items FOR INSERT
 CREATE POLICY "tenant_marketplace_update" ON public.marketplace_items FOR UPDATE USING (auth.uid() = seller_id);
 
 CREATE POLICY "tenant_amenities_select" ON public.amenities FOR SELECT USING (true);
+CREATE POLICY "tenant_amenities_insert" ON public.amenities FOR INSERT WITH CHECK (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "tenant_amenities_update" ON public.amenities FOR UPDATE USING (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+) WITH CHECK (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
 CREATE POLICY "tenant_bookings_select" ON public.bookings FOR SELECT USING (
   auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
 );

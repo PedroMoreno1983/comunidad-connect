@@ -105,13 +105,13 @@ export default function AdminConsumoPage() {
     const coverage = stats.totalUnits > 0 ? Math.round((stats.readUnits / stats.totalUnits) * 100) : 0;
     const pendingUnits = Math.max(0, stats.totalUnits - stats.readUnits);
     const periodLabel = `${currentPeriod.month} ${currentPeriod.year}`;
-    const healthLabel = stats.alertCount > 0 ? "Requiere revisiÃ³n" : pendingUnits > 0 ? "En captura" : "Periodo al dÃ­a";
+    const healthLabel = stats.alertCount > 0 ? "Requiere revisión" : pendingUnits > 0 ? "En captura" : "Periodo al día";
 
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
-                    <h1 className="text-3xl font-bold cc-text-primary">Control hÃ­drico</h1>
+                    <h1 className="text-3xl font-bold cc-text-primary">Control hídrico</h1>
                     <p className="cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}</p>
                 </div>
 
@@ -209,7 +209,7 @@ export default function AdminConsumoPage() {
                 <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
                     <div className="mb-5 flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">OperaciÃ³n del periodo</h2>
+                            <h2 className="text-lg font-semibold cc-text-primary">Operación del periodo</h2>
                             <p className="mt-1 text-sm cc-text-secondary">Prioridades para cerrar lecturas y anticipar reclamos por consumo.</p>
                         </div>
                         <span className={`rounded-md px-3 py-1 text-xs font-semibold ${stats.alertCount > 0 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
@@ -220,7 +220,7 @@ export default function AdminConsumoPage() {
                         {[
                             { label: "Lecturas pendientes", value: pendingUnits, detail: "Unidades por capturar", icon: <Activity className="h-4 w-4" /> },
                             { label: "Alertas activas", value: stats.alertCount, detail: "Sobreconsumo a revisar", icon: <AlertCircle className="h-4 w-4" /> },
-                            { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparaciÃ³n", icon: <Waves className="h-4 w-4" /> },
+                            { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparación", icon: <Waves className="h-4 w-4" /> },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-subtle bg-elevated/40 p-4">
                                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-surface cc-text-secondary">
@@ -240,7 +240,7 @@ export default function AdminConsumoPage() {
                         {[
                             { label: "Capturar lecturas faltantes", done: pendingUnits === 0 },
                             { label: "Revisar unidades con sobreconsumo", done: stats.alertCount === 0 },
-                            { label: "Preparar reporte para administraciÃ³n", done: coverage >= 90 },
+                            { label: "Preparar reporte para administración", done: coverage >= 90 },
                         ].map(item => (
                             <div key={item.label} className="flex items-center gap-3 text-sm">
                                 <CheckCircle2 className={`h-5 w-5 ${item.done ? "text-success-fg" : "cc-text-tertiary"}`} />

@@ -6,12 +6,12 @@
         email: string;
         name: string;
     };
-    returnUrl: string; // URL a donde vuelve el usuario despuÃ©s de pagar
+    returnUrl: string; // URL a donde vuelve el usuario después de pagar
 }
 
 /**
  * Servicio para integrar el Gateway de Pagos de Haulmer.
- * DocumentaciÃ³n Base: Endpoint POST /v1/checkout/payment
+ * Documentación Base: Endpoint POST /v1/checkout/payment
  */
 export const HaulmerService = {
     apiKey: process.env.HAULMER_API_KEY || '',
@@ -58,8 +58,8 @@ export const HaulmerService = {
 
             const data = await response.json();
 
-            // Haulmer retorna tipÃ­camente el redireccionamiento (ej. data.token, data.payment_url)
-            // Ajustar los campos exactos segÃºn la documentaciÃ³n V1 de Haulmer en producciÃ³n real
+            // Haulmer retorna típicamente el redireccionamiento (ej. data.token, data.payment_url)
+            // Ajustar los campos exactos según la documentación V1 de Haulmer en producción real
             return {
                 token: data.token || data.id,
                 url: data.url || `https://pay.haulmer.com/checkout?token=${data.token}`

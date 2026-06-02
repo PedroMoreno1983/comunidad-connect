@@ -228,6 +228,17 @@ export interface Amenity {
   hourlyRate: number; // 0 if free
   iconName: string; // Lucide icon name
   gradient: string; // Tailwind gradient classes
+  communityId?: string;
+}
+
+export interface CreateAmenityInput {
+  name: string;
+  description: string;
+  maxCapacity: number;
+  hourlyRate: number;
+  iconName: string;
+  gradient: string;
+  communityId?: string;
 }
 
 export interface Booking {

@@ -3,6 +3,7 @@ import {
     BuildingAsset,
     CocoCase,
     CollectivePurchaseCampaign,
+    CreateAmenityInput,
     CommunityProject,
     MaintenanceAdminOverview,
     MaintenanceDashboardData,
@@ -1325,6 +1326,32 @@ export const AmenitiesService = {
             throw error;
         }
         return (data || []).filter((amenity: Record<string, unknown>) => amenity.is_active !== false);
+    },
+
+    async createAmenity(input: CreateAmenityInput) {
+        const payload: Record<string, unknown> = {
+            name: input.name,
+            description: input.description,
+            max_capacity: input.maxCapacity,
+            hourly_rate: input.hourlyRate,
+            icon_name: input.iconName,
+            gradient: input.gradient,
+            is_active: true,
+        };
+        if (input.communityId) payload.community_id = input.communityId;
+
+        const { data, error } = await supabase
+            .from('amenities')
+            .insert(payload)
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error("Error creating amenity:", error);
+            throw error;
+        }
+
+        return data;
     },
 
     async getAllBookings() {
