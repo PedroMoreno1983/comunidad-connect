@@ -651,14 +651,16 @@ export const ProfileService = {
     },
 
     async saveProfile(userId: string, values: { fullName: string; unitNumber: string; unitTower: string }) {
+        const unitNumber = values.unitNumber.trim();
+        const unitTower = values.unitTower.trim();
+        const departmentNumber = unitNumber || unitTower;
         const { error: profileError } = await supabase
             .from('profiles')
-            .update({ name: values.fullName.trim() })
+            .update({ name: values.fullName.trim(), department_number: departmentNumber || null })
             .eq('id', userId);
 
         if (profileError) throw profileError;
 
-        const unitNumber = values.unitNumber.trim();
         if (!unitNumber) return;
 
         const { data: existingUnit } = await supabase
@@ -668,7 +670,7 @@ export const ProfileService = {
             .maybeSingle();
 
         if (existingUnit) {
-            await updateUnitSafely(existingUnit.id, { number: unitNumber, tower: values.unitTower.trim() });
+            await updateUnitSafely(existingUnit.id, { number: unitNumber, tower: unitTower });
             return;
         }
 
@@ -680,13 +682,13 @@ export const ProfileService = {
             .maybeSingle();
 
         if (foundUnit) {
-            await updateUnitSafely(foundUnit.id, { owner_id: userId, tower: values.unitTower.trim() });
+            await updateUnitSafely(foundUnit.id, { owner_id: userId, tower: unitTower });
             return;
         }
 
         await insertUnitSafely({
             number: unitNumber,
-            tower: values.unitTower.trim(),
+            tower: unitTower,
             owner_id: userId,
             floor: parseInt(unitNumber.substring(0, 1)) || 1,
         });
