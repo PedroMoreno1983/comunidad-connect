@@ -52,6 +52,7 @@ function DashboardShell({
     useEffect(() => {
         const routeTitles: Record<string, string> = {
             '/home': 'Inicio',
+            '/agent-center': 'Agent Center',
             '/marketplace': 'Marketplace',
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',

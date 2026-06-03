@@ -33,7 +33,8 @@ import {
   BookOpen,
   Upload,
   Bot,
-  Briefcase
+  Briefcase,
+  Sparkles
 } from "lucide-react";
 import { Brand } from "./Brand";
 
@@ -112,6 +113,12 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
 
   const menuSections = [
     {
+      title: "GaaS OPERATIVO",
+      links: [
+        { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
+      ]
+    },
+    {
       title: "COMUNIDAD",
       links: [
         { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident", "concierge"] },
@@ -186,7 +193,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     });
   }
 
-  const canShowLink = (link: { roles: string[]; feature?: string }) => {
+  const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean }) => {
     if (!link.roles.includes(activeUser.role || "resident")) return false;
     if (link.feature && activeUser.features) {
       if (activeUser.features[link.feature] === false) return false;
@@ -229,22 +236,37 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
               {validLinks.map((n) => {
                 const Active = n.href === activeHref || (n.href !== "/home" && activeHref.startsWith(`${n.href}/`));
                 const Icon = n.icon;
+                const isPremium = "premium" in n && n.premium;
                 return (
                   <Link
                     key={n.href}
                     href={n.href}
-                    className="flex items-center gap-2.5 text-[13px] mb-0.5"
+                    className={clsx(
+                      "flex items-center gap-2.5 text-[13px] mb-0.5 transition-colors",
+                      isPremium && "relative overflow-hidden"
+                    )}
                     style={{
                       padding: "9px 12px",
                       borderRadius: 10,
-                      background: Active ? "var(--cc-paper)" : "transparent",
-                      border: `1px solid ${Active ? "var(--cc-line)" : "transparent"}`,
-                      color: Active ? "var(--cc-ink)" : "var(--cc-ink-muted)",
+                      background: isPremium
+                        ? Active
+                          ? "linear-gradient(135deg, var(--cc-ink), var(--cc-copper))"
+                          : "linear-gradient(135deg, rgba(26,22,18,0.08), rgba(181,102,78,0.15))"
+                        : Active
+                          ? "var(--cc-paper)"
+                          : "transparent",
+                      border: `1px solid ${Active || isPremium ? "var(--cc-line)" : "transparent"}`,
+                      color: isPremium && Active ? "white" : Active ? "var(--cc-ink)" : "var(--cc-ink-muted)",
                       fontWeight: Active ? 500 : 400,
                     }}
                   >
-                    <Icon size={15} color={Active ? accent : "var(--cc-ink-muted)"} strokeWidth={Active ? 1.8 : 1.5} />
+                    <Icon size={15} color={isPremium && Active ? "white" : Active ? accent : isPremium ? "var(--cc-copper)" : "var(--cc-ink-muted)"} strokeWidth={Active ? 1.8 : 1.5} />
                     <span className="flex-1 truncate">{n.label}</span>
+                    {isPremium && (
+                      <span className={clsx("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider", Active ? "bg-white/15 text-white" : "bg-[var(--cc-paper)] text-[var(--cc-copper)]")}>
+                        GaaS
+                      </span>
+                    )}
                   </Link>
                 );
               })}
