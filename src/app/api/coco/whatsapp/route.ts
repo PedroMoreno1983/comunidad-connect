@@ -65,6 +65,26 @@ function cleanUnitValue(value: string) {
         .replace(/[^a-z0-9]/g, '');
 }
 
+function phoneDigits(value: unknown) {
+    return typeof value === 'string' ? value.replace(/\D/g, '') : '';
+}
+
+function phoneMatches(savedPhone: unknown, waId: string) {
+    const saved = phoneDigits(savedPhone);
+    const incoming = phoneDigits(formatWhatsAppPhone(waId));
+    const localIncoming = incoming.startsWith('56') ? incoming.slice(2) : incoming;
+    const localSaved = saved.startsWith('56') ? saved.slice(2) : saved;
+
+    return Boolean(
+        saved &&
+        incoming &&
+        (saved === incoming ||
+            localSaved === localIncoming ||
+            saved.endsWith(localIncoming) ||
+            incoming.endsWith(localSaved))
+    );
+}
+
 function unitMatches(input: string, candidates: string[]) {
     const cleanInput = cleanUnitValue(input);
     return candidates.some(candidate => {
@@ -128,23 +148,36 @@ export async function POST(req: NextRequest) {
         }
 
         // Verificar residente en Supabase usando profiles + units reales del schema actual.
-        const formattedPhone = formatWhatsAppPhone(waId);
-        const { data: profile } = await getSupabaseAdmin()
+        const admin = getSupabaseAdmin();
+        const { data: enabledProfiles } = await admin
             .from('profiles')
-            .select('id, name, full_name, role, unit_id, community_id, phone_number, whatsapp_enabled, department_number, units:unit_id(id, number, unit_number, tower, community_id)')
-            .in('phone_number', [formattedPhone, `+${waId}`, waId])
+            .select('id, name, full_name, role, unit_id, community_id, phone_number, whatsapp_enabled, department_number')
             .eq('whatsapp_enabled', true)
-            .maybeSingle();
+            .limit(500);
 
-        const profileRecord = profile as Record<string, unknown> | null;
+        const profileRecord = (enabledProfiles || [])
+            .find(profile => phoneMatches((profile as Record<string, unknown>).phone_number, waId)) as Record<string, unknown> | undefined;
         let unitRecord = profileRecord ? getUnitRecord(profileRecord.units) : null;
         if (profileRecord && !unitRecord) {
-            const { data: ownedUnit } = await getSupabaseAdmin()
+            const linkedUnitId = typeof profileRecord.unit_id === 'string' ? profileRecord.unit_id : '';
+            const unitQuery = admin
                 .from('units')
-                .select('id, number, unit_number, tower, community_id')
-                .eq('owner_id', String(profileRecord.id))
-                .maybeSingle();
-            unitRecord = (ownedUnit as Record<string, unknown> | null) || null;
+                .select('id, number, unit_number, tower, community_id');
+
+            const { data: linkedUnit } = linkedUnitId
+                ? await unitQuery.eq('id', linkedUnitId).maybeSingle()
+                : { data: null };
+
+            if (linkedUnit) {
+                unitRecord = linkedUnit as Record<string, unknown>;
+            } else {
+                const { data: ownedUnit } = await admin
+                    .from('units')
+                    .select('id, number, unit_number, tower, community_id')
+                    .eq('owner_id', String(profileRecord.id))
+                    .maybeSingle();
+                unitRecord = (ownedUnit as Record<string, unknown> | null) || null;
+            }
         }
         const candidates = profileRecord ? unitCandidates(unitRecord, profileRecord) : [];
         const resident = profileRecord && unitMatches(message, candidates) ? profileRecord : null;
