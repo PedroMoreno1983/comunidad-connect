@@ -631,23 +631,25 @@ export const ProfileService = {
     },
 
     async uploadAvatar(userId: string, file: File): Promise<string> {
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const path = `${userId}/avatar.${ext}`;
+        const formData = new FormData();
+        formData.append('avatar', file);
+        formData.append('userId', userId);
 
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(path, file, { upsert: true });
+        const response = await fetch('/api/profile/avatar', {
+            method: 'POST',
+            body: formData,
+        });
 
-        if (uploadError) throw uploadError;
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo subir la foto.');
+        }
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(path);
+        if (typeof data.avatarUrl !== 'string' || !data.avatarUrl) {
+            throw new Error('La foto se subio, pero no se recibio la URL publica.');
+        }
 
-        const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
-        if (error) throw error;
-
-        return publicUrl;
+        return data.avatarUrl;
     },
 
     async saveProfile(userId: string, values: { fullName: string; unitNumber: string; unitTower: string }) {
