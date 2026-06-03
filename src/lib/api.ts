@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { formatWhatsAppPhone } from './whatsapp';
 import {
     BuildingAsset,
     CocoCase,
@@ -703,7 +704,7 @@ export const ProfileService = {
 
     async saveWhatsapp(userId: string, phoneNumber: string, whatsappEnabled: boolean) {
         const { error } = await supabase.from('profiles').update({
-            phone_number: `+56${phoneNumber}`,
+            phone_number: formatWhatsAppPhone(phoneNumber),
             whatsapp_enabled: whatsappEnabled,
         }).eq('id', userId);
 
