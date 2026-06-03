@@ -37,7 +37,8 @@ import {
     Bot,
     Briefcase,
     HeartHandshake,
-    MessageCircle
+    MessageCircle,
+    Sparkles
 } from 'lucide-react';
 
 // Mobile menu button component for external use
@@ -82,6 +83,12 @@ export function Sidebar() {
     if (!user) return null;
 
     const menuSections = [
+        {
+            title: 'GAAS OPERATIVO',
+            links: [
+                { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
+            ]
+        },
         {
             title: 'COMUNIDAD',
             links: [
@@ -182,7 +189,7 @@ export function Sidebar() {
         }
     };
 
-    const canShowLink = (link: { roles: string[]; feature?: string }) => {
+    const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean }) => {
         if (!link.roles.includes(user.role)) return false;
 
         if (link.feature && user.features) {
@@ -253,6 +260,7 @@ export function Sidebar() {
                             {validLinks.map((link) => {
                                 const Icon = link.icon;
                                 const isActive = link.href === activeHref;
+                                const isPremium = "premium" in link && link.premium;
 
                                 return (
                                     <div
@@ -265,16 +273,25 @@ export function Sidebar() {
                                             data-active={isActive ? "true" : "false"}
                                             className={clsx(
                                                 "group relative flex items-center rounded-md border px-3 py-2 text-sm transition-colors duration-150",
-                                                isActive
+                                                isPremium && isActive
+                                                    ? "border-brand-200 bg-[var(--cc-ink)] font-semibold text-white"
+                                                    : isPremium
+                                                        ? "border-brand-100 bg-brand-50 font-semibold text-brand-700 hover:border-brand-200"
+                                                        : isActive
                                                     ? "border-brand-200 bg-brand-50 font-semibold text-brand-700"
                                                     : "border-transparent cc-text-secondary hover:border-subtle hover:bg-elevated"
                                             )}
                                         >
                                             <Icon className={clsx(
                                                 "relative z-10 mr-3 h-4 w-4",
-                                                isActive ? "text-brand-600" : "cc-text-tertiary group-hover:text-brand-500"
+                                                isPremium && isActive ? "text-white" : isActive ? "text-brand-600" : isPremium ? "text-brand-600" : "cc-text-tertiary group-hover:text-brand-500"
                                             )} />
                                             <span className="flex-1">{link.label}</span>
+                                            {isPremium && (
+                                                <span className={clsx("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider", isActive ? "bg-white/15 text-white" : "bg-white text-brand-700")}>
+                                                    GaaS
+                                                </span>
+                                            )}
                                         </Link>
                                     </div>
                                 );
