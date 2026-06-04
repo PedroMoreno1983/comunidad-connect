@@ -118,7 +118,7 @@ function pickAgent(message: string): AgentKey {
     return 'maintenance';
 }
 
-function inferAction(message: string): AgentAction {
+function inferActionHeuristic(message: string): AgentAction {
     const lower = message.toLowerCase();
     const agentKey = pickAgent(message);
     const date = dateFromText(message);
@@ -244,7 +244,132 @@ async function bestEffortInsert(table: string, payload: Record<string, unknown>)
     }
 }
 
-async function logActivity(profile: AgentProfile, action: AgentAction, status: 'preview' | 'executed' | 'failed', result?: Record<string, unknown>) {
+const GEMINI_SYSTEM_PROMPT = `
+Eres el motor de inferencia de intenciones del Agent Center de Convive Connect.
+Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acción de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
+
+Definición de agentes y herramientas:
+1. Agente 'finance':
+   - Herramienta 'get_my_expenses': Para consultar cobros, deudas o estado de pago de gastos comunes del residente.
+     Argumentos: {}
+     requiresConfirmation: false
+     targetHref: '/resident/finances'
+     title: 'Consultar gastos de la unidad'
+     summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
+
+2. Agente 'maintenance':
+   - Herramienta 'create_booking': Para reservar un espacio común (ej: quincho, sala multiuso, piscina).
+     Argumentos: { "amenityHint": "nombre del espacio", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM" } (Si no se especifica hora, asume 2 horas a partir de las 10:00 o la hora sugerida).
+     requiresConfirmation: true
+     targetHref: '/amenities'
+     title: 'Reservar espacio común'
+     summary: 'CoCo buscará el espacio por nombre y creará una reserva.'
+   - Herramienta 'create_service_request': Para reportar fallas, luces parpadeando, mantenciones o problemas de infraestructura.
+     Argumentos: { "description": "detalle de la falla", "preferredDate": "YYYY-MM-DD", "preferredTime": "HH:MM" }
+     requiresConfirmation: true
+     targetHref: '/services/my-requests'
+     title: 'Crear ticket de mantenimiento'
+     summary: 'CoCo registrará una solicitud operacional para que quede trazabilidad.'
+
+3. Agente 'concierge':
+   - Herramienta 'register_visitor': Para autorizar e ingresar visitas, amigos, repartidores o familiares.
+     Argumentos: { "visitorName": "nombre de la visita", "purpose": "motivo de la visita" }
+     requiresConfirmation: true
+     targetHref: '/concierge/visitors'
+     title: 'Registrar visita'
+     summary: 'Se creará una entrada en la bitácora de visitas de la comunidad.'
+
+4. Agente 'community':
+   - Herramienta 'create_marketplace_item': Para vender, permutar o publicar un objeto en el mercado de vecinos.
+     Argumentos: { "title": "nombre breve del producto", "description": "descripción", "price": número, "category": "electronics" | "furniture" | "clothing" | "other" }
+     requiresConfirmation: true
+     targetHref: '/marketplace/my-listings'
+     title: 'Publicar en Marketplace'
+     summary: 'El artículo quedará publicado en el marketplace vecinal.'
+   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administración. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
+     Argumentos: { "title": "título del aviso", "content": "contenido completo", "priority": "info" | "alert" }
+     requiresConfirmation: true
+     targetHref: '/comunicaciones'
+     title: 'Publicar comunicado oficial'
+     summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
+
+Instrucciones de formato:
+- Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
+- No incluyas bloques de código markdown (\`\`\`json).
+- La interfaz de retorno debe ser:
+  {
+    "agentKey": "finance" | "maintenance" | "concierge" | "community",
+    "toolName": "get_my_expenses" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request",
+    "args": { ... },
+    "requiresConfirmation": boolean,
+    "title": "Título descriptivo breve de la acción",
+    "summary": "Resumen en una frase de lo que ocurrirá",
+    "targetHref": "href correspondiente"
+  }
+`;
+
+async function callGeminiInference(message: string, profile: AgentProfile): Promise<AgentAction | null> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return null;
+    
+    const model = "gemini-2.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const systemInstruction = `${GEMINI_SYSTEM_PROMPT}\n\n**Fecha actual del servidor (hoy)**: ${todayISO}\n**Contexto del usuario**: Nombre: ${profile.name || ''} | Rol: ${profile.role || ''} | Unidad ID: ${profile.unit_id || ''}`;
+    
+    const body = {
+        systemInstruction: {
+            role: "system",
+            parts: [{ text: systemInstruction }]
+        },
+        contents: [
+            { role: "user", parts: [{ text: message }] }
+        ],
+        generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
+        },
+    };
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        if (!res.ok) return null;
+        const data = await res.json();
+        const output = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!output) return null;
+
+        const parsed = JSON.parse(output) as AgentAction;
+        if (parsed && parsed.agentKey && parsed.toolName) {
+            return parsed;
+        }
+        return null;
+    } catch (err) {
+        console.warn("[Gemini Inference Fallback triggered]", err);
+        return null;
+    }
+}
+
+async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
+    const geminiResult = await callGeminiInference(message, profile);
+    if (geminiResult) {
+        return geminiResult;
+    }
+    return inferActionHeuristic(message);
+}
+
+const autonomyMapping: Record<AgentKey, 'manual' | 'semi_autonomous' | 'autonomous'> = {
+    finance: 'semi_autonomous',
+    community: 'semi_autonomous',
+    maintenance: 'manual',
+    concierge: 'manual'
+};
+
+async function logActivity(profile: AgentProfile, action: AgentAction, status: 'preview' | 'executed' | 'failed' | 'rejected', result?: Record<string, unknown>) {
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
     const runId = await bestEffortInsert('agent_runs', {
         user_id: profile.id,
@@ -252,6 +377,7 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         agent_key: action.agentKey,
         intent: action.toolName,
         user_message: action.summary,
+        autonomy_level: autonomyMapping[action.agentKey] || 'manual',
         status: status === 'preview' ? 'awaiting_confirmation' : status,
         summary: action.title,
         metadata: { targetHref: action.targetHref },
@@ -266,7 +392,7 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         args: action.args,
         result: result || {},
         requires_confirmation: action.requiresConfirmation,
-        status: status === 'executed' ? 'executed' : 'proposed',
+        status: status === 'executed' ? 'executed' : status === 'rejected' ? 'rejected' : 'proposed',
         executed_at: status === 'executed' ? new Date().toISOString() : null,
     });
 
@@ -277,8 +403,8 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         action: action.toolName,
         entity_type: result?.entityType,
         entity_id: result?.entityId,
-        severity: status === 'failed' ? 'error' : status === 'executed' ? 'success' : 'info',
-        summary: status === 'executed' ? `Ejecutado: ${action.title}` : action.title,
+        severity: status === 'failed' ? 'error' : status === 'executed' ? 'success' : status === 'rejected' ? 'warning' : 'info',
+        summary: status === 'executed' ? `Ejecutado: ${action.title}` : status === 'rejected' ? `Rechazado: ${action.title}` : action.title,
         metadata: { runId, toolCallId, ...result },
     });
 
@@ -481,8 +607,38 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const message = cleanText(body.message, 1200);
         const incomingAction = body.action && typeof body.action === 'object' ? body.action as AgentAction : null;
-        const action = incomingAction || inferAction(message);
+        const action = incomingAction || await inferAction(message, profile);
+
+        // Apply autonomy override if provided
+        const autonomyOverrides = body.autonomyOverrides as Record<AgentKey, string> | undefined;
+        if (autonomyOverrides && autonomyOverrides[action.agentKey] === 'autonomous') {
+            action.requiresConfirmation = false;
+        }
+
         const confirmed = Boolean(body.confirmed);
+        const rejected = Boolean(body.rejected);
+
+        if (rejected) {
+            await logActivity(profile, action, 'rejected');
+            const steps: AgentStep[] = [
+                {
+                    kind: 'reasoning',
+                    title: 'Accion cancelada',
+                    detail: `El usuario rechazo la ejecucion de la herramienta "${action.toolName}".`,
+                },
+                {
+                    kind: 'warning',
+                    title: 'Ejecucion cancelada',
+                    detail: 'La accion propuesta fue descartada y no se guardaron cambios en la base de datos.',
+                }
+            ];
+            return NextResponse.json({
+                status: 'rejected',
+                reply: 'Entendido. He cancelado la propuesta de accion y registrado el descarte en la bitacora de auditoria.',
+                action,
+                steps,
+            });
+        }
 
         const steps: AgentStep[] = [
             {

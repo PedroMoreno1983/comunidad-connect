@@ -53,7 +53,7 @@ export default function SignUpPage() {
 
         const { data: communities, error: codeError } = await supabase
             .from("communities")
-            .select("id, resident_code, concierge_code, admin_code")
+            .select("id, name, resident_code, concierge_code, admin_code")
             .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode},admin_code.eq.${cleanCode}`);
 
         if (codeError || !communities || communities.length === 0) {
@@ -87,6 +87,20 @@ export default function SignUpPage() {
             setLoading(false);
             return;
         }
+
+        // Send transactional welcome email asynchronously
+        fetch("/api/email/welcome", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                to: email,
+                residentName: fullName,
+                unitName: departmentNumber ? `Depto ${departmentNumber.trim()}` : "Unidad",
+                condoName: community.name || "Convive Connect",
+            }),
+        }).catch((e) => console.error("[Welcome Email] Failed to send:", e));
 
         toast({
             title: "Cuenta creada",

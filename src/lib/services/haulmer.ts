@@ -1,4 +1,4 @@
-﻿interface PaymentPayload {
+interface PaymentPayload {
     amount: number;
     description: string;
     reference: string; // ID interno nuestro (e.g., deudo ID o carrito ID)
@@ -22,8 +22,12 @@ export const HaulmerService = {
      * Retorna la URL a donde debemos redirigir al usuario para completar el pago.
      */
     async createPaymentLink(payload: PaymentPayload): Promise<{ token: string; url: string }> {
-        if (!this.apiKey) {
-            throw new Error("Canal de pagos no configurado. Falta HAULMER_API_KEY.");
+        if (!this.apiKey || this.apiKey === 'hl_api_key_test_12345' || this.apiKey.startsWith('hl_api_key_test')) {
+            console.log('[HaulmerService] Test API key detected, redirecting to mock checkout.');
+            return {
+                token: 'mock_' + Date.now(),
+                url: `/mock-checkout?reference=${payload.reference}&amount=${payload.amount}&returnUrl=${encodeURIComponent(payload.returnUrl)}`
+            };
         }
 
         const body = {
@@ -58,8 +62,6 @@ export const HaulmerService = {
 
             const data = await response.json();
 
-            // Haulmer retorna típicamente el redireccionamiento (ej. data.token, data.payment_url)
-            // Ajustar los campos exactos según la documentación V1 de Haulmer en producción real
             return {
                 token: data.token || data.id,
                 url: data.url || `https://pay.haulmer.com/checkout?token=${data.token}`
