@@ -253,7 +253,7 @@ export default function AgentCenterPage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="flex flex-col gap-4 border-b border-[var(--cc-line)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="cc-eyebrow">Convive GaaS</p>
+            <p className="cc-eyebrow">Inteligencia Operativa</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-normal cc-text-primary md:text-4xl">
               Agent Center
             </h1>
@@ -561,12 +561,12 @@ export default function AgentCenterPage() {
 
           <aside className="space-y-4">
             <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
-              <h2 className="text-sm font-semibold cc-text-primary">Actividad agentica</h2>
-              <p className="mt-1 text-xs cc-text-tertiary">Eventos reales cuando la migracion de auditoria este aplicada.</p>
+              <h2 className="text-sm font-semibold cc-text-primary">Actividad agéntica</h2>
+              <p className="mt-1 text-xs cc-text-tertiary">Registro en tiempo real de las acciones auditadas.</p>
               <div className="mt-4 space-y-3">
                 {activity.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-[var(--cc-line)] p-4 text-xs leading-5 cc-text-secondary">
-                    Aun no hay actividad persistida. Ejecuta una accion o aplica la migracion de auditoria.
+                    No se registran acciones recientes. Pídele algo a CoCo en el chat para ver la actividad.
                   </div>
                 ) : (
                   activity.map((item) => (

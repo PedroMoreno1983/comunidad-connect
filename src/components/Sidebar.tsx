@@ -84,7 +84,7 @@ export function Sidebar() {
 
     const menuSections = [
         {
-            title: 'GAAS OPERATIVO',
+            title: 'INTELIGENCIA OPERATIVA',
             links: [
                 { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
             ]
@@ -289,7 +289,7 @@ export function Sidebar() {
                                             <span className="flex-1">{link.label}</span>
                                             {isPremium && (
                                                 <span className={clsx("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider", isActive ? "bg-white/15 text-white" : "bg-white text-brand-700")}>
-                                                    GaaS
+                                                    IA
                                                 </span>
                                             )}
                                         </Link>
