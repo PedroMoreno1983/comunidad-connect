@@ -113,7 +113,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
 
   const menuSections = [
     {
-      title: "GaaS OPERATIVO",
+      title: "INTELIGENCIA OPERATIVA",
       links: [
         { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
       ]
@@ -264,7 +264,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
                     <span className="flex-1 truncate">{n.label}</span>
                     {isPremium && (
                       <span className={clsx("rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider", Active ? "bg-white/15 text-white" : "bg-[var(--cc-paper)] text-[var(--cc-copper)]")}>
-                        GaaS
+                        IA
                       </span>
                     )}
                   </Link>
