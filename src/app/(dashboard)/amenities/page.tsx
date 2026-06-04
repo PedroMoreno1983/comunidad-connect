@@ -405,53 +405,63 @@ export default function AmenitiesPage() {
 
                         {/* List of Amenities */}
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {amenities.map(amenity => {
-                                const Icon = getIcon(amenity.iconName);
-                                const tone = getAmenityTone(amenity.name);
-                                const isFree = amenity.hourlyRate === 0;
+                            {amenities.length === 0 ? (
+                                <div className="col-span-full text-center py-16 border border-dashed border-slate-200 rounded-2xl bg-surface/50 shadow-inner max-w-sm mx-auto my-6">
+                                    <div className="p-3 bg-brand-50 text-brand-500 rounded-full w-fit mx-auto mb-4 border border-brand-100 shadow-sm">
+                                        <Calendar className="h-6 w-6" />
+                                    </div>
+                                    <h3 className="text-sm font-bold cc-text-primary">No hay espacios comunes</h3>
+                                    <p className="text-xs cc-text-secondary mt-1 px-6 leading-relaxed">Aún no se han configurado espacios comunes para tu condominio.</p>
+                                </div>
+                            ) : (
+                                amenities.map(amenity => {
+                                    const Icon = getIcon(amenity.iconName);
+                                    const tone = getAmenityTone(amenity.name);
+                                    const isFree = amenity.hourlyRate === 0;
 
-                                return (
-                                    <article
-                                        key={amenity.id}
-                                        className="group rounded-xl border border-subtle bg-surface overflow-hidden shadow-sm hover:border-brand-200 transition-all flex flex-col justify-between"
-                                    >
-                                        {/* Dynamic color block banner */}
-                                        <div className="h-2 w-full" style={{ backgroundColor: `var(--cc-${tone})` }} />
-                                        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-elevated text-slate-700">
-                                                        <Icon className="h-5 w-5" />
+                                    return (
+                                        <article
+                                            key={amenity.id}
+                                            className="group rounded-xl border border-subtle bg-surface overflow-hidden shadow-sm hover:border-brand-200 transition-all flex flex-col justify-between"
+                                        >
+                                            {/* Dynamic color block banner */}
+                                            <div className="h-2 w-full" style={{ backgroundColor: `var(--cc-${tone})` }} />
+                                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-elevated text-slate-700">
+                                                            <Icon className="h-5 w-5" />
+                                                        </div>
+                                                        <Tag tone={tone} solid>
+                                                            {isFree ? "Gratuito" : `$${amenity.hourlyRate.toLocaleString("es-CL")}/hr`}
+                                                        </Tag>
                                                     </div>
-                                                    <Tag tone={tone} solid>
-                                                        {isFree ? "Gratuito" : `$${amenity.hourlyRate.toLocaleString("es-CL")}/hr`}
-                                                    </Tag>
+                                                    <h3 className="text-lg font-bold cc-text-primary">{amenity.name}</h3>
+                                                    <p className="text-xs cc-text-secondary leading-relaxed line-clamp-3">
+                                                        {amenity.description}
+                                                    </p>
                                                 </div>
-                                                <h3 className="text-lg font-bold cc-text-primary">{amenity.name}</h3>
-                                                <p className="text-xs cc-text-secondary leading-relaxed line-clamp-3">
-                                                    {amenity.description}
-                                                </p>
-                                            </div>
 
-                                            <div className="pt-4 border-t border-subtle space-y-3">
-                                                <div className="flex items-center justify-between text-xs cc-text-tertiary font-semibold">
-                                                    <span className="flex items-center gap-1">
-                                                        <Users className="h-3.5 w-3.5" /> Máx {amenity.maxCapacity} pers
-                                                    </span>
+                                                <div className="pt-4 border-t border-subtle space-y-3">
+                                                    <div className="flex items-center justify-between text-xs cc-text-tertiary font-semibold">
+                                                        <span className="flex items-center gap-1">
+                                                            <Users className="h-3.5 w-3.5" /> Máx {amenity.maxCapacity} pers
+                                                        </span>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        block
+                                                        onClick={() => handleSelectAmenity(amenity)}
+                                                    >
+                                                        Reservar ahora
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    block
-                                                    onClick={() => handleSelectAmenity(amenity)}
-                                                >
-                                                    Reservar ahora
-                                                </Button>
                                             </div>
-                                        </div>
-                                    </article>
-                                );
-                            })}
+                                        </article>
+                                    );
+                                })
+                            )}
                         </div>
 
                         {/* Stored Bookings list */}

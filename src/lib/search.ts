@@ -36,6 +36,7 @@ export interface SearchResultProfile {
   role: string;
   avatar_url?: string;
   score: number;
+  source?: 'lexical' | 'semantic' | 'hybrid';
 }
 
 export interface SearchResults {
@@ -142,19 +143,42 @@ export const SearchService = {
   async searchProfiles(query: string): Promise<SearchResultProfile[]> {
     if (!query.trim()) return [];
 
-    const { data, error } = await supabase.rpc('search_profiles_lexical', {
-      query: query.trim(),
-    });
+    const [lexicalResults, embedding] = await Promise.all([
+      SearchService._lexicalProfiles(query),
+      generateEmbedding(query),
+    ]);
 
-    if (error) {
-      console.error('[Search] Profiles lexical error:', error);
-      return [];
+    const semanticResults = embedding
+      ? await SearchService._semanticProfiles(embedding)
+      : [];
+
+    if (semanticResults.length === 0) {
+      return lexicalResults.map((item) => ({
+        ...item,
+        score: item.rank ?? 0,
+        source: 'lexical' as const,
+      }));
     }
 
-    return (data ?? []).map((item: SearchResultProfile & { rank: number }) => ({
-      ...item,
-      score: item.rank ?? 0,
-    }));
+    const fusedScores = reciprocalRankFusion([
+      lexicalResults,
+      semanticResults,
+    ] as Array<Array<{ id: string }>>);
+
+    const allProfiles = new Map<string, SearchResultProfile>();
+    [...lexicalResults, ...semanticResults].forEach((item) => {
+      if (!allProfiles.has(item.id)) {
+        allProfiles.set(item.id, { ...item, score: 0, source: 'hybrid' });
+      }
+    });
+
+    const results: SearchResultProfile[] = [];
+    fusedScores.forEach((score, id) => {
+      const profile = allProfiles.get(id);
+      if (profile) results.push({ ...profile, score, source: 'hybrid' });
+    });
+
+    return results.sort((a, b) => b.score - a.score).slice(0, 20);
   },
 
   async searchAll(query: string): Promise<SearchResults> {
@@ -198,6 +222,37 @@ export const SearchService = {
     }
 
     return (data ?? []).map((item: SearchResultItem & { similarity: number }) => ({
+      ...item,
+      score: item.similarity ?? 0,
+      source: 'semantic' as const,
+    }));
+  },
+
+  async _lexicalProfiles(query: string): Promise<(SearchResultProfile & { rank: number })[]> {
+    const { data, error } = await supabase.rpc('search_profiles_lexical', {
+      query: query.trim(),
+    });
+
+    if (error) {
+      console.error('[Search] Profiles lexical error:', error);
+      return [];
+    }
+
+    return (data ?? []) as (SearchResultProfile & { rank: number })[];
+  },
+
+  async _semanticProfiles(embedding: number[]): Promise<SearchResultProfile[]> {
+    const { data, error } = await supabase.rpc('search_profiles_semantic', {
+      query_embedding: embedding,
+      match_count: 10,
+    });
+
+    if (error) {
+      console.error('[Search] Profiles semantic error:', error);
+      return [];
+    }
+
+    return (data ?? []).map((item: SearchResultProfile & { similarity: number }) => ({
       ...item,
       score: item.similarity ?? 0,
       source: 'semantic' as const,

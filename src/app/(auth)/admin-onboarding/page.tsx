@@ -130,6 +130,18 @@ export default function AdminOnboardingPage() {
                 }),
             }).catch(console.error);
 
+            // Send transactional welcome email to the administrator
+            fetch("/api/email/welcome", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    to: email,
+                    residentName: fullName,
+                    unitName: "Administración",
+                    condoName: communityName.trim(),
+                }),
+            }).catch(console.error);
+
             toast({
                 title: "Comunidad creada",
                 description: `Bienvenido a la administración de ${communityName}`,

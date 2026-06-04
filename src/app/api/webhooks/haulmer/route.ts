@@ -41,11 +41,15 @@ export async function POST(req: Request) {
 
             if (type === 'FEE') {
                 const { error } = await supabaseAdmin
-                    .from('condo_fees')
+                    .from('expenses')
                     .update({
                         status: 'paid',
                         paid_at: new Date().toISOString(),
-                        payment_method: 'haulmer'
+                        payment_metadata: {
+                            processor: 'haulmer',
+                            issued_tax_doc: true,
+                            paid_via_webhook: true
+                        }
                     })
                     .eq('id', recordId);
 
