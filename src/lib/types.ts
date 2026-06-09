@@ -153,6 +153,42 @@ export interface ResidentHomeSummary {
   recentAnnouncement: ResidentHomeAnnouncement | null;
 }
 
+export interface AdminDashboardMetricPoint {
+  label: string;
+  collected: number;
+  target: number;
+}
+
+export interface AdminDashboardCategory {
+  label: string;
+  amount: number;
+  color: string;
+}
+
+export interface AdminDashboardListItem {
+  title: string;
+  detail: string;
+  status: string;
+  tone: 'copper' | 'sage' | 'amber' | 'rose' | 'plum' | 'ink';
+}
+
+export interface AdminDashboardSummary {
+  residentsActive: number;
+  unitsTotal: number;
+  collectionRate: number;
+  collectionCollected: number;
+  collectionTarget: number;
+  openRequests: number;
+  criticalRequests: number;
+  quorumPct: number;
+  assetsOptimalPct: number;
+  cocoCasesOpen: number;
+  monthlyCollection: AdminDashboardMetricPoint[];
+  expenseCategories: AdminDashboardCategory[];
+  amenityUsage: AdminDashboardMetricPoint[];
+  activeRequests: AdminDashboardListItem[];
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;
