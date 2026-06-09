@@ -147,12 +147,6 @@ export default function CoCo() {
                     imageBase64: imageStr,
                     history: history,
                     currentPage: pathname,
-                    userName: user?.email || "Residente",
-                    userRole: user?.role || "resident",
-                    userId: user?.id,
-                    unitId: user?.unitId,
-                    unitName: user?.unitName,
-                    communityId: user?.communityId,
                 }),
             });
 

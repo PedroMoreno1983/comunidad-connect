@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Lock, Mail, Star, User, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Star, User, Zap } from "lucide-react";
 
 const PLANS = [
     {
@@ -38,13 +38,24 @@ const PLANS = [
     },
 ];
 
-const STEP_LABELS = ["Plan", "Condominio", "Cuenta"];
+const STEP_LABELS = ["Plan", "Edificio", "Cuenta admin"];
+
+type GeocodeSuggestion = {
+    label: string;
+    latitude: number;
+    longitude: number;
+    placeId: string;
+    source: string;
+};
 
 export default function AdminOnboardingPage() {
     const [step, setStep] = useState(0);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(PLANS[1].id);
     const [communityName, setCommunityName] = useState("");
     const [address, setAddress] = useState("");
+    const [addressSuggestions, setAddressSuggestions] = useState<GeocodeSuggestion[]>([]);
+    const [selectedAddress, setSelectedAddress] = useState<GeocodeSuggestion | null>(null);
+    const [geocoding, setGeocoding] = useState(false);
     const [units, setUnits] = useState("");
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
@@ -54,6 +65,40 @@ export default function AdminOnboardingPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
+
+    useEffect(() => {
+        const query = address.trim();
+        if (query.length < 5 || selectedAddress?.label === query) {
+            setAddressSuggestions([]);
+            setGeocoding(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = window.setTimeout(async () => {
+            setGeocoding(true);
+            try {
+                const response = await fetch(`/api/geocode/address?q=${encodeURIComponent(query)}`, {
+                    signal: controller.signal,
+                    cache: "no-store",
+                });
+                const data = await response.json().catch(() => ({})) as { suggestions?: GeocodeSuggestion[] };
+                setAddressSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    console.warn("[AdminOnboarding] geocode failed:", error);
+                    setAddressSuggestions([]);
+                }
+            } finally {
+                if (!controller.signal.aborted) setGeocoding(false);
+            }
+        }, 450);
+
+        return () => {
+            controller.abort();
+            window.clearTimeout(timer);
+        };
+    }, [address, selectedAddress]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,13 +145,35 @@ export default function AdminOnboardingPage() {
                 subscription_status: "trialing",
             };
             if (address) communityPayload.address = address;
+            if (selectedAddress) {
+                communityPayload.address_latitude = selectedAddress.latitude;
+                communityPayload.address_longitude = selectedAddress.longitude;
+                communityPayload.address_place_id = selectedAddress.placeId;
+                communityPayload.address_geocoding_source = selectedAddress.source;
+            }
             if (selectedPlan) communityPayload.tier_id = selectedPlan;
 
-            const { data: communityData, error: commError } = await supabase
+            let { data: communityData, error: commError } = await supabase
                 .from("communities")
                 .insert(communityPayload)
                 .select("id")
                 .single();
+
+            const canRetryWithoutGeocode = commError?.message
+                && ["address_latitude", "address_longitude", "address_place_id", "address_geocoding_source"].some(column => commError.message.includes(column));
+            if (canRetryWithoutGeocode) {
+                delete communityPayload.address_latitude;
+                delete communityPayload.address_longitude;
+                delete communityPayload.address_place_id;
+                delete communityPayload.address_geocoding_source;
+                const retry = await supabase
+                    .from("communities")
+                    .insert(communityPayload)
+                    .select("id")
+                    .single();
+                communityData = retry.data;
+                commError = retry.error;
+            }
 
             if (commError) throw commError;
 
@@ -183,8 +250,8 @@ export default function AdminOnboardingPage() {
                     <div className="mb-8 flex items-start justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Registro</p>
-                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Registra tu condominio</h2>
-                            <p className="mt-2 text-sm cc-text-secondary">Completa los datos mínimos para crear el espacio administrativo.</p>
+                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Configura tu comunidad</h2>
+                            <p className="mt-2 text-sm cc-text-secondary">Elige el plan y crea el espacio administrativo del edificio.</p>
                         </div>
                         <Link href="/login" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al login">
                             <ArrowLeft className="h-5 w-5" />
@@ -195,7 +262,7 @@ export default function AdminOnboardingPage() {
                         {STEP_LABELS.map((label, index) => (
                             <div key={label} className={`rounded-lg border px-3 py-2 ${index === step ? "border-brand-500 bg-brand-50" : index < step ? "border-emerald-200 bg-emerald-50" : "border-subtle bg-canvas"}`}>
                                 <div className="flex items-center gap-2">
-                                    {index < step ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-xs font-semibold cc-text-tertiary">{index + 1}</span>}
+                                    {index < step && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                                     <span className="text-xs font-semibold cc-text-primary">{label}</span>
                                 </div>
                             </div>
@@ -250,11 +317,54 @@ export default function AdminOnboardingPage() {
 
                     {step === 1 && (
                         <div className="space-y-5">
-                            <Field label="Nombre del condominio" required>
+                            <Field label="Nombre del edificio o condominio" required>
                                 <Input type="text" value={communityName} onChange={(e) => setCommunityName(e.target.value)} placeholder="Edificio Los Pinos" required />
                             </Field>
                             <Field label="Dirección">
-                                <Input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Av. Providencia 1234, Santiago" />
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        value={address}
+                                        onChange={(e) => {
+                                            setAddress(e.target.value);
+                                            setSelectedAddress(null);
+                                        }}
+                                        placeholder="Av. Providencia 1234, Santiago"
+                                        className="pr-10"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                                    </span>
+                                    {addressSuggestions.length > 0 && (
+                                        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-lg border border-subtle bg-surface p-1 shadow-lg">
+                                            {addressSuggestions.map((suggestion) => (
+                                                <button
+                                                    key={`${suggestion.source}-${suggestion.placeId}`}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAddress(suggestion.label);
+                                                        setSelectedAddress(suggestion);
+                                                        setAddressSuggestions([]);
+                                                    }}
+                                                    className="flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-elevated"
+                                                >
+                                                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                                                    <span className="leading-5 cc-text-primary">{suggestion.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {selectedAddress ? (
+                                    <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Dirección georreferenciada
+                                    </p>
+                                ) : address.trim().length >= 5 ? (
+                                    <p className="mt-2 text-xs cc-text-secondary">
+                                        Selecciona una sugerencia para guardar coordenadas del edificio.
+                                    </p>
+                                ) : null}
                             </Field>
                             <Field label="Número de unidades">
                                 <Input type="number" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="80" min="1" />

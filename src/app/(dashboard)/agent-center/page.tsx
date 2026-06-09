@@ -22,6 +22,7 @@ import {
 import { clsx } from "clsx";
 
 type AgentKey = "finance" | "maintenance" | "concierge" | "community";
+type AutonomyLevel = "manual" | "semi_autonomous" | "autonomous";
 
 type AgentStep = {
   kind: "reasoning" | "tool" | "confirmation" | "result" | "warning";
@@ -38,6 +39,8 @@ type AgentAction = {
   title: string;
   summary: string;
   targetHref: string;
+  proposalId?: string | null;
+  runId?: string | null;
 };
 
 type AgentMessage = {
@@ -61,6 +64,40 @@ type ActivityRow = {
   severity: "info" | "success" | "warning" | "error";
   summary: string;
   created_at: string;
+};
+
+type AgentPolicy = {
+  agentKey: AgentKey;
+  autonomyLevel: AutonomyLevel;
+  active: boolean;
+  maxDailyActions: number;
+  updatedAt?: string | null;
+};
+
+type AgentSummary = {
+  totalRuns: number;
+  executedRuns: number;
+  pendingProposals: number;
+  failedRuns: number;
+  successRate: number;
+  estimatedMinutesSaved: number;
+};
+
+type AgentPlaybook = {
+  key: string;
+  agentKey: AgentKey;
+  name: string;
+  description: string;
+  targetHref: string;
+  requiresAdmin: boolean;
+  steps: string[];
+};
+
+type AgentCenterGetResponse = {
+  activity?: ActivityRow[];
+  policies?: AgentPolicy[];
+  summary?: AgentSummary;
+  playbooks?: AgentPlaybook[];
 };
 
 const AGENTS = [
@@ -121,6 +158,82 @@ function formatDate(value: string) {
   }
 }
 
+const DEFAULT_SUMMARY: AgentSummary = {
+  totalRuns: 0,
+  executedRuns: 0,
+  pendingProposals: 0,
+  failedRuns: 0,
+  successRate: 0,
+  estimatedMinutesSaved: 0,
+};
+
+const DEFAULT_POLICIES: Record<AgentKey, AgentPolicy> = {
+  finance: { agentKey: "finance", autonomyLevel: "semi_autonomous", active: true, maxDailyActions: 120 },
+  community: { agentKey: "community", autonomyLevel: "semi_autonomous", active: true, maxDailyActions: 80 },
+  maintenance: { agentKey: "maintenance", autonomyLevel: "manual", active: true, maxDailyActions: 80 },
+  concierge: { agentKey: "concierge", autonomyLevel: "manual", active: true, maxDailyActions: 100 },
+};
+
+const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
+  {
+    key: "finance_collection_review",
+    agentKey: "finance",
+    name: "Cobranza controlada",
+    description: "Detecta gastos impagos y notifica de forma privada.",
+    targetHref: "/admin/finanzas",
+    requiresAdmin: true,
+    steps: ["Detectar impagos", "Notificar residentes", "Auditar gestion"],
+  },
+  {
+    key: "onboarding_import_review",
+    agentKey: "community",
+    name: "Onboarding de edificio",
+    description: "Guia carga masiva, revision de calidad y sincronizacion.",
+    targetHref: "/admin/onboarding",
+    requiresAdmin: true,
+    steps: ["Subir archivo", "Revisar calidad", "Sincronizar"],
+  },
+  {
+    key: "iot_emergency_readiness",
+    agentKey: "maintenance",
+    name: "Emergencia IoT",
+    description: "Verifica staff y proveedores para alertas criticas.",
+    targetHref: "/admin/mantenimiento",
+    requiresAdmin: true,
+    steps: ["Revisar staff", "Revisar proveedores", "Registrar brechas"],
+  },
+  {
+    key: "community_broadcast",
+    agentKey: "community",
+    name: "Comunicado comunitario",
+    description: "Prepara difusion oficial con control editorial.",
+    targetHref: "/comunicaciones",
+    requiresAdmin: false,
+    steps: ["Redactar", "Confirmar", "Auditar"],
+  },
+];
+
+function policyListToMap(policies?: AgentPolicy[]) {
+  const output = { ...DEFAULT_POLICIES };
+  for (const policy of policies || []) {
+    output[policy.agentKey] = policy;
+  }
+  return output;
+}
+
+function editableValue(value: unknown): string | number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return "";
+}
+
+function editableArgs(args: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(args).map(([key, value]) => [key, editableValue(value)])
+  ) as Record<string, string | number>;
+}
+
 export default function AgentCenterPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([
@@ -136,63 +249,74 @@ export default function AgentCenterPage() {
     },
   ]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
+  const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
+  const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [loading, setLoading] = useState(false);
-
-  // Autonomy state config with LocalStorage persistence
-  const [autonomy, setAutonomy] = useState<Record<AgentKey, 'manual' | 'semi_autonomous' | 'autonomous'>>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("coco_agent_autonomy");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          // fallback
-        }
-      }
-    }
-    return {
-      finance: 'semi_autonomous',
-      community: 'semi_autonomous',
-      maintenance: 'manual',
-      concierge: 'manual'
-    };
-  });
 
   // Action inline editing states
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
-  const [editingArgs, setEditingArgs] = useState<Record<string, any>>({});
+  const [editingArgs, setEditingArgs] = useState<Record<string, string | number>>({});
 
-  const handleAutonomyChange = (agentKey: AgentKey, value: 'manual' | 'semi_autonomous' | 'autonomous') => {
-    const updated = { ...autonomy, [agentKey]: value };
-    setAutonomy(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("coco_agent_autonomy", JSON.stringify(updated));
+  async function handleAutonomyChange(agentKey: AgentKey, value: AutonomyLevel) {
+    const previous = policies[agentKey];
+    const updatedPolicy = { ...previous, autonomyLevel: value };
+    setPolicies(current => ({ ...current, [agentKey]: updatedPolicy }));
+
+    const response = await fetch("/api/agent-center", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "policy_update",
+        agentKey,
+        autonomyLevel: value,
+        active: updatedPolicy.active,
+        maxDailyActions: updatedPolicy.maxDailyActions,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & { error?: string };
+    if (!response.ok) {
+      setPolicies(current => ({ ...current, [agentKey]: previous }));
+      throw new Error(data.error || "No se pudo actualizar la politica del agente.");
     }
-  };
+
+    setPolicies(policyListToMap(data.policies));
+    if (data.summary) setSummary(data.summary);
+    if (data.playbooks) setPlaybooks(data.playbooks);
+    await loadActivity();
+  }
 
   async function loadActivity() {
     const response = await fetch("/api/agent-center", { cache: "no-store" });
     if (!response.ok) return;
-    const data = await response.json();
+    const data = await response.json() as AgentCenterGetResponse;
     setActivity(Array.isArray(data.activity) ? data.activity : []);
+    setPolicies(policyListToMap(data.policies));
+    setSummary(data.summary || DEFAULT_SUMMARY);
+    setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
   }
 
   useEffect(() => {
     loadActivity();
   }, []);
 
-  async function sendAgentRequest(payload: { message: string; confirmed?: boolean; action?: AgentAction; rejected?: boolean }) {
+  async function sendAgentRequest(payload: { message: string; confirmed?: boolean; action?: AgentAction; rejected?: boolean; type?: string; playbookKey?: string }) {
     setLoading(true);
     try {
       const response = await fetch("/api/agent-center", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          autonomyOverrides: autonomy, // Send dynamic autonomy configurations
-        }),
+        body: JSON.stringify(payload),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & {
+        error?: string;
+        reply?: string;
+        status?: AgentMessage["status"];
+        steps?: AgentStep[];
+        action?: AgentAction;
+        result?: AgentMessage["result"];
+      };
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "No se pudo ejecutar CoCo.");
 
       setMessages((current) => [
@@ -207,6 +331,9 @@ export default function AgentCenterPage() {
           result: data.result,
         },
       ]);
+      if (data.policies) setPolicies(policyListToMap(data.policies));
+      if (data.summary) setSummary(data.summary);
+      if (data.playbooks) setPlaybooks(data.playbooks);
       await loadActivity();
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo ejecutar la accion.";
@@ -248,6 +375,13 @@ export default function AgentCenterPage() {
     await sendAgentRequest({ message: action.summary, rejected: true, action });
   }
 
+  async function requestPlaybook(playbook: AgentPlaybook) {
+    if (loading) return;
+    const message = `Ejecuta el playbook ${playbook.name}`;
+    setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
+    await sendAgentRequest({ message, type: "playbook_request", playbookKey: playbook.key });
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -276,7 +410,7 @@ export default function AgentCenterPage() {
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Eficiencia Operacional</p>
-              <h3 className="text-xl font-bold cc-text-primary">94.8%</h3>
+              <h3 className="text-xl font-bold cc-text-primary">{summary.successRate}%</h3>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
@@ -285,7 +419,7 @@ export default function AgentCenterPage() {
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Tiempo Ahorrado</p>
-              <h3 className="text-xl font-bold cc-text-primary">12.5 hrs</h3>
+              <h3 className="text-xl font-bold cc-text-primary">{Math.round(summary.estimatedMinutesSaved / 60 * 10) / 10} hrs</h3>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
@@ -293,8 +427,8 @@ export default function AgentCenterPage() {
               <Play className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Ejecuciones Totales</p>
-              <h3 className="text-xl font-bold cc-text-primary">{activity.length + 15}</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Ejecuciones Reales</p>
+              <h3 className="text-xl font-bold cc-text-primary">{summary.executedRuns}</h3>
             </div>
           </div>
         </section>
@@ -303,18 +437,25 @@ export default function AgentCenterPage() {
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {AGENTS.map((agent) => {
             const Icon = agent.icon;
+            const policy = policies[agent.key];
             return (
               <article key={agent.key} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className={clsx("grid h-10 w-10 place-items-center rounded-lg", agent.bg)}>
                     <Icon className={clsx("h-5 w-5", agent.accent)} />
                   </div>
-                  <span className="rounded-full border border-[var(--cc-line)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">
-                    Activo
+                  <span className={clsx(
+                    "rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                    policy.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+                  )}>
+                    {policy.active ? "Activo" : "Pausado"}
                   </span>
                 </div>
                 <h2 className="mt-4 text-base font-semibold cc-text-primary">{agent.name}</h2>
                 <p className="mt-1 min-h-10 text-sm leading-5 cc-text-secondary">{agent.label}</p>
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">
+                  Limite diario: {policy.maxDailyActions} acciones
+                </p>
                 
                 <div className="mt-4 flex items-center justify-between text-xs cc-text-tertiary">
                   <span className="flex items-center gap-1">
@@ -322,8 +463,16 @@ export default function AgentCenterPage() {
                     Autonomía:
                   </span>
                   <select
-                    value={autonomy[agent.key]}
-                    onChange={(e) => handleAutonomyChange(agent.key, e.target.value as any)}
+                    value={policy.autonomyLevel}
+                    onChange={(e) => {
+                      handleAutonomyChange(agent.key, e.target.value as AutonomyLevel).catch(error => {
+                        const detail = error instanceof Error ? error.message : "No se pudo actualizar la politica.";
+                        setMessages(current => [
+                          ...current,
+                          { id: nowId(), role: "agent", content: detail, status: "error", steps: [{ kind: "warning", title: "Politica no actualizada", detail }] },
+                        ]);
+                      });
+                    }}
                     className="rounded border border-[var(--cc-line)] bg-white px-2 py-1 text-xs font-semibold cc-text-secondary outline-none transition focus:border-[var(--cc-copper)]"
                   >
                     <option value="manual">Manual</option>
@@ -334,6 +483,45 @@ export default function AgentCenterPage() {
               </article>
             );
           })}
+        </section>
+
+        <section className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-[var(--cc-line)] pb-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold cc-text-primary">Playbooks operativos</h2>
+              <p className="mt-1 text-xs cc-text-tertiary">Flujos multi-paso con confirmacion, permisos y auditoria.</p>
+            </div>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">
+              {summary.pendingProposals} propuesta(s) pendiente(s)
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {playbooks.map((playbook) => (
+              <article key={playbook.key} className="flex min-h-44 flex-col justify-between rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4">
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold cc-text-primary">{playbook.name}</h3>
+                    <span className="rounded-full border border-[var(--cc-line)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] cc-text-tertiary">
+                      {playbook.agentKey}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 cc-text-secondary">{playbook.description}</p>
+                  <p className="mt-3 text-[11px] cc-text-tertiary">
+                    {playbook.steps.slice(0, 3).join(" / ")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => requestPlaybook(playbook)}
+                  disabled={loading || !policies[playbook.agentKey]?.active}
+                  className="mt-4 inline-flex items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  Preparar
+                </button>
+              </article>
+            ))}
+          </div>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -371,22 +559,22 @@ export default function AgentCenterPage() {
 
                       {/* Premium Unix/IA Terminal style for reasoning logs */}
                       {message.steps && message.steps.length > 0 && (
-                        <div className="mt-4 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ink)] p-3 text-brand-100 shadow-inner font-mono text-xs">
-                          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-                            <span className="text-[10px] uppercase tracking-wider text-white/50 flex items-center gap-1.5 font-sans">
+                        <div className="mt-4 rounded-lg border border-[var(--cc-line)] bg-white/75 p-3 text-xs shadow-sm">
+                          <div className="flex items-center justify-between border-b border-[var(--cc-line)] pb-2 mb-2">
+                            <span className="text-[10px] uppercase tracking-wider cc-text-tertiary flex items-center gap-1.5">
                               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                              Logs de razonamiento agéntico
+                              Trazabilidad de CoCo
                             </span>
-                            <span className="text-[9px] text-white/30 font-sans">v1.2-core</span>
+                            <span className="text-[9px] cc-text-tertiary">{message.steps.length} paso(s)</span>
                           </div>
-                          <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                          <div className="space-y-2">
                             {message.steps.map((step, index) => {
-                              const kindColor = step.kind === 'reasoning' ? 'text-cyan-400' : step.kind === 'tool' ? 'text-amber-400' : step.kind === 'result' ? 'text-emerald-400' : 'text-rose-400';
+                              const kindColor = step.kind === 'result' ? 'text-emerald-700' : step.kind === 'warning' ? 'text-rose-700' : step.kind === 'confirmation' ? 'text-amber-700' : 'text-brand-700';
                               return (
-                                <div key={`${message.id}-${index}`} className="leading-5">
-                                  <span className="text-white/40 mr-1.5">[{index + 1}]</span>
+                                <div key={`${message.id}-${index}`} className="rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 leading-5">
+                                  <span className="mr-1.5 cc-text-tertiary">{index + 1}.</span>
                                   <span className={clsx("font-semibold mr-2", kindColor)}>{step.title} &gt;</span>
-                                  <span className="text-white/90 break-words">{step.detail}</span>
+                                  <span className="break-words cc-text-secondary">{step.detail}</span>
                                 </div>
                               );
                             })}
@@ -412,7 +600,7 @@ export default function AgentCenterPage() {
                                         <div key={key}>
                                           <label className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Categoría</label>
                                           <select
-                                            value={editingArgs[key] ?? message.action?.args[key] ?? ""}
+                                            value={editingArgs[key] ?? editableValue(message.action?.args[key])}
                                             onChange={(e) => setEditingArgs(prev => ({ ...prev, [key]: e.target.value }))}
                                             className="mt-1 w-full rounded border border-[var(--cc-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--cc-copper)]"
                                           >
@@ -431,7 +619,7 @@ export default function AgentCenterPage() {
                                         </label>
                                         <input
                                           type={key === 'price' ? 'number' : 'text'}
-                                          value={editingArgs[key] ?? message.action?.args[key] ?? ""}
+                                          value={editingArgs[key] ?? editableValue(message.action?.args[key])}
                                           onChange={(e) => setEditingArgs(prev => ({ ...prev, [key]: e.target.value }))}
                                           className="mt-1 w-full rounded border border-[var(--cc-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--cc-copper)]"
                                         />
@@ -471,7 +659,7 @@ export default function AgentCenterPage() {
                                     type="button"
                                     onClick={() => {
                                       setEditingActionId(message.id);
-                                      setEditingArgs(message.action?.args || {});
+                                      setEditingArgs(editableArgs(message.action?.args || {}));
                                     }}
                                     disabled={loading}
                                     className="inline-flex items-center gap-2 rounded-md border border-[var(--cc-line)] px-3 py-2 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]"

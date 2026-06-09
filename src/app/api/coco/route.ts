@@ -4,12 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo } from '@/lib/coco/agent';
+import { askCoCo, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -21,6 +22,26 @@ const GEMINI_MODELS = [
 function sanitize(value: unknown, max: number): string {
     if (typeof value !== 'string') return '';
     return value.trim().slice(0, max);
+}
+
+const SUPPORTED_IMAGE_MEDIA_TYPES: CoCoImageMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_BASE64_CHARS = 7_000_000;
+
+function parseImageAttachment(value: unknown): CoCoImageAttachment | null {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    const match = value.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) {
+        throw new Error('INVALID_IMAGE_ATTACHMENT');
+    }
+
+    const mediaType = match[1] as CoCoImageMediaType;
+    const data = match[2];
+
+    if (!SUPPORTED_IMAGE_MEDIA_TYPES.includes(mediaType) || data.length > MAX_IMAGE_BASE64_CHARS) {
+        throw new Error('INVALID_IMAGE_ATTACHMENT');
+    }
+
+    return { mediaType, data };
 }
 
 async function askGeminiFallback(
@@ -286,13 +307,16 @@ export async function POST(req: NextRequest) {
 
         // ── 2. Validar entrada ───────────────────────────────────────────────
         const message     = sanitize(body.message, 1000);
-        const userName    = sanitize(body.userName, 80);
-        const userRole    = sanitize(body.userRole, 20);
-        const userId      = sanitize(body.userId, 100);
-        const unitId      = sanitize(body.unitId, 50);
-        const unitName    = sanitize(body.unitName, 80);
-        const communityId = sanitize(body.communityId, 50);
         const currentPage = sanitize(body.currentPage, 100);
+        let imageAttachment: CoCoImageAttachment | null = null;
+        try {
+            imageAttachment = parseImageAttachment(body.imageBase64);
+        } catch {
+            return NextResponse.json(
+                { reply: 'La imagen no tiene un formato válido. Usa JPG, PNG, GIF o WebP de hasta 5MB.' },
+                { status: 400 }
+            );
+        }
 
         if (!message) {
             return NextResponse.json(
@@ -301,12 +325,23 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const validRoles = ['admin', 'resident', 'concierge'];
-        const safeRole = validRoles.includes(userRole) ? userRole : 'resident';
+        const profile = await getAuthenticatedAgentProfile();
+        if (!profile) {
+            return NextResponse.json(
+                { reply: 'Necesitas iniciar sesión para usar CoCo en la plataforma.' },
+                { status: 401 }
+            );
+        }
+
+        const userName = profile.name || profile.email || 'Usuario';
+        const safeRole = profile.role;
+        const userId = profile.id;
+        const unitId = profile.unit_id || '';
+        const communityId = profile.community_id || '';
         const caseContext = {
             userId,
             unitId,
-            unitName,
+            unitName: unitId,
             communityId,
             role: safeRole,
             currentPage,
@@ -314,6 +349,12 @@ export async function POST(req: NextRequest) {
         };
 
         if (!process.env.ANTHROPIC_API_KEY) {
+            if (imageAttachment) {
+                return NextResponse.json(
+                    { reply: 'El análisis de imágenes de CoCo requiere ANTHROPIC_API_KEY activo. Puedes describirme la imagen y gestiono el caso por texto.' },
+                    { status: 200 }
+                );
+            }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = process.env.GEMINI_API_KEY
                 ? await askGeminiFallback(message, fallbackContext).catch(error => {
@@ -346,7 +387,8 @@ export async function POST(req: NextRequest) {
                     community_id: communityId || session?.user_context?.community_id,
                     currentPage,
                     channel:     'web',
-                }
+                },
+                imageAttachment ? { image: imageAttachment } : undefined
             );
         } catch (agentError) {
             if (isAiBudgetExceededError(agentError)) {
@@ -357,6 +399,12 @@ export async function POST(req: NextRequest) {
             }
 
             console.error('[CoCo Anthropic Error]', agentError);
+            if (imageAttachment) {
+                return NextResponse.json(
+                    { reply: 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y dejo el caso registrado por texto.' },
+                    { status: 200 }
+                );
+            }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = process.env.GEMINI_API_KEY
                 ? await askGeminiFallback(message, fallbackContext).catch(error => {

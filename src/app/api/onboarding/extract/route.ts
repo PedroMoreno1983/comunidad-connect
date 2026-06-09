@@ -1,13 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
-import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Extender el Timeout de Vercel a 60 segundos (Máximo plan Hobby) para procesamiento IA prolongado.
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+type ExtractedResident = {
+    name: string;
+    unit_id: string;
+    email: string;
+    phone: string;
+};
+
+type OnboardingAssessment = {
+    totalRows: number;
+    validRows: number;
+    missingNameRows: number;
+    missingUnitRows: number;
+    missingContactRows: number;
+    duplicateUnits: string[];
+    confidenceScore: number;
+    warnings: string[];
+};
 
 const GEMINI_JSON_PROMPT = `
 Eres un Extractor de Datos experto.
@@ -116,33 +135,102 @@ async function callGeminiExtractor(
     return output;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function cleanText(value: unknown) {
+    return typeof value === 'string' || typeof value === 'number'
+        ? String(value).replace(/\s+/g, ' ').trim()
+        : '';
+}
+
+function cleanUnit(value: unknown) {
+    const text = cleanText(value);
+    return /^desconocid[oa]$/i.test(text) ? '' : text;
+}
+
+function normalizeExtractedRows(raw: unknown): ExtractedResident[] {
+    const rows = Array.isArray(raw) ? raw : [raw];
+
+    return rows
+        .map((row) => {
+            const record = asRecord(row);
+            return {
+                name: cleanText(record?.name),
+                unit_id: cleanUnit(record?.unit_id ?? record?.unit ?? record?.department_number),
+                email: cleanText(record?.email).toLowerCase(),
+                phone: cleanText(record?.phone ?? record?.phone_number),
+            };
+        })
+        .filter((row) => row.name || row.unit_id || row.email || row.phone);
+}
+
+function buildAssessment(rows: ExtractedResident[]): OnboardingAssessment {
+    const totalRows = rows.length;
+    const validRows = rows.filter(row => row.name && row.unit_id).length;
+    const missingNameRows = rows.filter(row => !row.name).length;
+    const missingUnitRows = rows.filter(row => !row.unit_id).length;
+    const missingContactRows = rows.filter(row => !row.email && !row.phone).length;
+    const unitCounts = new Map<string, number>();
+
+    for (const row of rows) {
+        const key = row.unit_id.trim().toLowerCase();
+        if (!key) continue;
+        unitCounts.set(key, (unitCounts.get(key) || 0) + 1);
+    }
+
+    const duplicateUnits = Array.from(unitCounts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([unit]) => unit)
+        .slice(0, 20);
+
+    const warnings: string[] = [];
+    if (missingNameRows) warnings.push(`${missingNameRows} fila(s) sin nombre.`);
+    if (missingUnitRows) warnings.push(`${missingUnitRows} fila(s) sin unidad.`);
+    if (missingContactRows) warnings.push(`${missingContactRows} fila(s) sin email ni telefono.`);
+    if (duplicateUnits.length) warnings.push(`${duplicateUnits.length} unidad(es) aparecen repetidas.`);
+
+    const completeness = totalRows > 0 ? validRows / totalRows : 0;
+    const contactCoverage = totalRows > 0 ? (totalRows - missingContactRows) / totalRows : 0;
+    const duplicatePenalty = totalRows > 0 ? Math.min(0.2, duplicateUnits.length / totalRows) : 0;
+    const confidenceScore = Math.max(0, Math.min(100, Math.round(((completeness * 0.75) + (contactCoverage * 0.25) - duplicatePenalty) * 100)));
+
+    return {
+        totalRows,
+        validRows,
+        missingNameRows,
+        missingUnitRows,
+        missingContactRows,
+        duplicateUnits,
+        confidenceScore,
+        warnings,
+    };
+}
+
 export async function POST(request: Request) {
     const limited = enforceRateLimit(request, 'onboarding.extract', { limit: 12, windowMs: 60_000 });
     if (limited) return limited;
 
     try {
-        const cookieStore = await cookies();
-        const supabaseUser = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-        );
-        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-        if (authError || !user) {
+        const profile = await getAuthenticatedAgentProfile();
+        if (!profile) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
-        const { data: profile } = await getSupabaseAdmin()
-            .from('profiles')
-            .select('id, role, community_id')
-            .eq('id', user.id)
-            .maybeSingle();
+        if (profile.role !== 'admin') {
+            return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+        }
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
         if (!file) {
             return NextResponse.json({ error: 'No se adjuntó ningún archivo.' }, { status: 400 });
+        }
+
+        if (file.size > MAX_UPLOAD_BYTES) {
+            return NextResponse.json({ error: 'Archivo demasiado grande. Sube un archivo de hasta 10 MB o divide la nomina.' }, { status: 413 });
         }
 
         const arrayBuffer = await file.arrayBuffer();
@@ -189,13 +277,13 @@ export async function POST(request: Request) {
         const safeText = extractedText.trim() ? extractedText.substring(0, 100000) : "";
 
         const jsonString = await callGeminiExtractor(apiKey, safeText, extractedInlineData, {
-            userId: user.id,
+            userId: profile.id,
             communityId: profile?.community_id,
             role: profile?.role,
         });
 
         // 3. VALIDACIÓN FINAL: Parseamos el JSON para asegurarnos que la IA obedeció
-        let parsedJson = [];
+        let parsedJson: unknown = [];
         try {
             parsedJson = JSON.parse(jsonString);
             if (!Array.isArray(parsedJson)) {
@@ -206,7 +294,29 @@ export async function POST(request: Request) {
             throw new Error("La Inteligencia Artificial no pudo estructurar los datos correctamente. Intenta subir un archivo más limpio.");
         }
 
-        return NextResponse.json({ data: parsedJson });
+        const rows = normalizeExtractedRows(parsedJson);
+        const assessment = buildAssessment(rows);
+
+        await recordOperationEvent({
+            communityId: profile.community_id,
+            actorId: profile.id,
+            actorRole: profile.role,
+            action: 'onboarding.roster_extracted',
+            entityType: 'resident_roster',
+            severity: assessment.warnings.length ? 'warning' : 'success',
+            status: assessment.warnings.length ? 'pending' : 'success',
+            summary: `Nomina analizada: ${assessment.validRows}/${assessment.totalRows} filas listas`,
+            metadata: {
+                fileName: file.name,
+                fileSize: file.size,
+                confidenceScore: assessment.confidenceScore,
+                warnings: assessment.warnings,
+                duplicateUnits: assessment.duplicateUnits,
+            },
+            requestId: getRequestId(request),
+        });
+
+        return NextResponse.json({ data: rows, assessment });
 
     } catch (error: unknown) {
         if (isAiBudgetExceededError(error)) {

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { getAuthenticatedAgentProfile, type ServerAgentProfile } from '@/lib/server/agentIdentity';
+import { recordOperationEvent } from '@/lib/operations/audit';
 
 type AgentKey = 'finance' | 'maintenance' | 'concierge' | 'community';
+type AutonomyLevel = 'manual' | 'semi_autonomous' | 'autonomous';
 type ToolName =
     | 'get_amenities'
     | 'create_booking'
@@ -12,16 +13,16 @@ type ToolName =
     | 'create_announcement'
     | 'create_service_request'
     | 'register_visitor'
-    | 'get_my_expenses';
+    | 'get_my_expenses'
+    | 'run_playbook';
 
-type AgentProfile = {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    role?: string | null;
-    unit_id?: string | null;
-    community_id?: string | null;
-};
+type PlaybookKey =
+    | 'finance_collection_review'
+    | 'onboarding_import_review'
+    | 'iot_emergency_readiness'
+    | 'community_broadcast';
+
+type AgentProfile = ServerAgentProfile;
 
 type AgentAction = {
     agentKey: AgentKey;
@@ -31,6 +32,8 @@ type AgentAction = {
     title: string;
     summary: string;
     targetHref: string;
+    proposalId?: string | null;
+    runId?: string | null;
 };
 
 type AgentStep = {
@@ -42,22 +45,126 @@ type AgentStep = {
 
 const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
+type AgentPolicy = {
+    agentKey: AgentKey;
+    autonomyLevel: AutonomyLevel;
+    active: boolean;
+    maxDailyActions: number;
+    updatedAt?: string | null;
+};
+
+type AgentSummary = {
+    totalRuns: number;
+    executedRuns: number;
+    pendingProposals: number;
+    failedRuns: number;
+    successRate: number;
+    estimatedMinutesSaved: number;
+};
+
+type AgentPlaybook = {
+    key: PlaybookKey;
+    agentKey: AgentKey;
+    name: string;
+    description: string;
+    targetHref: string;
+    requiresAdmin: boolean;
+    steps: string[];
+};
+
+const DEFAULT_AGENT_POLICIES: Record<AgentKey, Omit<AgentPolicy, 'agentKey' | 'updatedAt'>> = {
+    finance: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 120 },
+    community: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 80 },
+    maintenance: { autonomyLevel: 'manual', active: true, maxDailyActions: 80 },
+    concierge: { autonomyLevel: 'manual', active: true, maxDailyActions: 100 },
+};
+
+const AGENT_PLAYBOOKS: AgentPlaybook[] = [
+    {
+        key: 'finance_collection_review',
+        agentKey: 'finance',
+        name: 'Cobranza controlada',
+        description: 'Detecta gastos impagos, prepara notificaciones internas y deja auditoria sin exponer deudas a vecinos.',
+        targetHref: '/admin/finanzas',
+        requiresAdmin: true,
+        steps: ['Detectar gastos impagos', 'Resolver unidades y residentes', 'Notificar residentes vinculados', 'Registrar evento operativo'],
+    },
+    {
+        key: 'onboarding_import_review',
+        agentKey: 'community',
+        name: 'Onboarding de edificio',
+        description: 'Abre el flujo correcto para cargar nominas, revisar calidad y sincronizar residentes con confirmacion.',
+        targetHref: '/admin/onboarding',
+        requiresAdmin: true,
+        steps: ['Subir archivo', 'Extraer residentes', 'Revisar advertencias', 'Sincronizar perfiles y unidades'],
+    },
+    {
+        key: 'iot_emergency_readiness',
+        agentKey: 'maintenance',
+        name: 'Emergencia IoT',
+        description: 'Verifica que el edificio tenga responsables y proveedores listos para responder a alertas criticas.',
+        targetHref: '/admin/mantenimiento',
+        requiresAdmin: true,
+        steps: ['Revisar staff disponible', 'Revisar proveedores verificados', 'Crear checklist operativo', 'Registrar brechas'],
+    },
+    {
+        key: 'community_broadcast',
+        agentKey: 'community',
+        name: 'Comunicado comunitario',
+        description: 'Prepara un comunicado trazable para administracion o conserjeria con confirmacion antes de publicar.',
+        targetHref: '/comunicaciones',
+        requiresAdmin: false,
+        steps: ['Definir titulo', 'Redactar contenido', 'Confirmar publicacion', 'Auditar difusion'],
+    },
+];
 
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function normalizeText(value: string) {
+    return value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+function isSmallTalk(message: string) {
+    const normalized = normalizeText(message).replace(/[!?.\s]+$/g, '');
+    return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|gracias|ok|oka|dale)$/.test(normalized);
+}
+
+function isTooAmbiguousForAction(message: string) {
+    const normalized = normalizeText(message);
+    if (normalized.length > 18) return false;
+    const actionHints = [
+        'gasto',
+        'pago',
+        'deuda',
+        'moros',
+        'visita',
+        'visitante',
+        'paquete',
+        'ingreso',
+        'marketplace',
+        'vender',
+        'publica',
+        'aviso',
+        'comunicado',
+        'reserva',
+        'quincho',
+        'sala',
+        'ticket',
+        'reclamo',
+        'falla',
+        'mantencion',
+        'ascensor',
+        'luz',
+        'filtracion',
+        'playbook',
+    ];
+    return !actionHints.some(hint => normalized.includes(hint));
 }
 
 function moneyFromText(text: string) {
@@ -118,11 +225,49 @@ function pickAgent(message: string): AgentKey {
     return 'maintenance';
 }
 
+function getPlaybook(key: unknown) {
+    return AGENT_PLAYBOOKS.find(playbook => playbook.key === key) || null;
+}
+
+function playbookAction(playbook: AgentPlaybook, message: string): AgentAction {
+    return {
+        agentKey: playbook.agentKey,
+        toolName: 'run_playbook',
+        args: {
+            playbookKey: playbook.key,
+            requestedText: cleanText(message, 600),
+        },
+        requiresConfirmation: true,
+        title: `Ejecutar playbook: ${playbook.name}`,
+        summary: playbook.description,
+        targetHref: playbook.targetHref,
+    };
+}
+
 function inferActionHeuristic(message: string): AgentAction {
     const lower = message.toLowerCase();
     const agentKey = pickAgent(message);
     const date = dateFromText(message);
     const { start, end } = timeFromText(message);
+
+    if (lower.includes('playbook') || lower.includes('flujo') || lower.includes('proceso')) {
+        if (lower.includes('moros') || lower.includes('cobran') || lower.includes('gasto')) {
+            const playbook = getPlaybook('finance_collection_review');
+            if (playbook) return playbookAction(playbook, message);
+        }
+        if (lower.includes('onboarding') || lower.includes('excel') || lower.includes('nomina') || lower.includes('nómina')) {
+            const playbook = getPlaybook('onboarding_import_review');
+            if (playbook) return playbookAction(playbook, message);
+        }
+        if (lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion') || lower.includes('filtración')) {
+            const playbook = getPlaybook('iot_emergency_readiness');
+            if (playbook) return playbookAction(playbook, message);
+        }
+        if (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('difusion') || lower.includes('difusión')) {
+            const playbook = getPlaybook('community_broadcast');
+            if (playbook) return playbookAction(playbook, message);
+        }
+    }
 
     if (lower.includes('gasto') || lower.includes('pago') || lower.includes('deuda')) {
         return {
@@ -208,15 +353,6 @@ function inferActionHeuristic(message: string): AgentAction {
     };
 }
 
-async function getProfile(userId: string): Promise<AgentProfile | null> {
-    const { data } = await getSupabaseAdmin()
-        .from('profiles')
-        .select('id, name, email, role, unit_id, community_id')
-        .eq('id', userId)
-        .maybeSingle();
-    return (data as AgentProfile | null) || null;
-}
-
 async function getUserUnit(profile: AgentProfile) {
     if (profile.unit_id) {
         const { data } = await getSupabaseAdmin()
@@ -242,6 +378,139 @@ async function bestEffortInsert(table: string, payload: Record<string, unknown>)
     } catch {
         return null;
     }
+}
+
+function normalizeAutonomyLevel(value: unknown): AutonomyLevel {
+    return value === 'semi_autonomous' || value === 'autonomous' ? value : 'manual';
+}
+
+function normalizeAgentPolicy(row: Record<string, unknown>): AgentPolicy | null {
+    const agentKey = row.agent_key;
+    if (!['finance', 'maintenance', 'concierge', 'community'].includes(String(agentKey))) return null;
+
+    return {
+        agentKey: agentKey as AgentKey,
+        autonomyLevel: normalizeAutonomyLevel(row.autonomy_level),
+        active: row.active !== false,
+        maxDailyActions: Number(row.max_daily_actions || DEFAULT_AGENT_POLICIES[agentKey as AgentKey].maxDailyActions),
+        updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,
+    };
+}
+
+async function getAgentPolicies(profile: AgentProfile): Promise<Record<AgentKey, AgentPolicy>> {
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const admin = getSupabaseAdmin();
+    const defaults = Object.fromEntries(
+        (Object.keys(DEFAULT_AGENT_POLICIES) as AgentKey[]).map(agentKey => [
+            agentKey,
+            { agentKey, ...DEFAULT_AGENT_POLICIES[agentKey], updatedAt: null },
+        ])
+    ) as Record<AgentKey, AgentPolicy>;
+
+    const { data } = await admin
+        .from('agent_policies')
+        .select('agent_key, autonomy_level, active, max_daily_actions, updated_at')
+        .eq('community_id', communityId);
+
+    const existing = new Set<string>();
+    for (const row of (data || []) as Record<string, unknown>[]) {
+        const policy = normalizeAgentPolicy(row);
+        if (!policy) continue;
+        defaults[policy.agentKey] = policy;
+        existing.add(policy.agentKey);
+    }
+
+    const missing = (Object.keys(DEFAULT_AGENT_POLICIES) as AgentKey[])
+        .filter(agentKey => !existing.has(agentKey))
+        .map(agentKey => ({
+            community_id: communityId,
+            agent_key: agentKey,
+            autonomy_level: DEFAULT_AGENT_POLICIES[agentKey].autonomyLevel,
+            active: DEFAULT_AGENT_POLICIES[agentKey].active,
+            max_daily_actions: DEFAULT_AGENT_POLICIES[agentKey].maxDailyActions,
+            updated_by: profile.id,
+        }));
+
+    if (missing.length > 0 && profile.community_id) {
+        await admin
+            .from('agent_policies')
+            .upsert(missing, { onConflict: 'community_id,agent_key', ignoreDuplicates: true });
+    }
+
+    return defaults;
+}
+
+async function getAgentSummary(profile: AgentProfile): Promise<AgentSummary> {
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const admin = getSupabaseAdmin();
+
+    const [
+        totalRuns,
+        executedRuns,
+        failedRuns,
+        pendingProposals,
+    ] = await Promise.all([
+        admin.from('agent_runs').select('id', { count: 'exact', head: true }).eq('community_id', communityId),
+        admin.from('agent_runs').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('status', 'executed'),
+        admin.from('agent_runs').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('status', 'failed'),
+        admin.from('agent_tool_calls').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('status', 'proposed'),
+    ]);
+
+    const total = totalRuns.count || 0;
+    const executed = executedRuns.count || 0;
+    const failed = failedRuns.count || 0;
+    const successRate = total > 0 ? Math.round((executed / total) * 1000) / 10 : 0;
+
+    return {
+        totalRuns: total,
+        executedRuns: executed,
+        failedRuns: failed,
+        pendingProposals: pendingProposals.count || 0,
+        successRate,
+        estimatedMinutesSaved: executed * 8,
+    };
+}
+
+async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unknown>) {
+    if (profile.role !== 'admin') {
+        throw new Error('Solo administracion puede cambiar politicas de agentes.');
+    }
+    if (!profile.community_id) {
+        throw new Error('El administrador no tiene comunidad asignada.');
+    }
+
+    const agentKey = body.agentKey;
+    if (!['finance', 'maintenance', 'concierge', 'community'].includes(String(agentKey))) {
+        throw new Error('Agente no soportado.');
+    }
+
+    const autonomyLevel = normalizeAutonomyLevel(body.autonomyLevel);
+    const active = typeof body.active === 'boolean' ? body.active : true;
+    const maxDailyActions = Math.max(1, Math.min(500, Number(body.maxDailyActions || DEFAULT_AGENT_POLICIES[agentKey as AgentKey].maxDailyActions)));
+
+    const { error } = await getSupabaseAdmin()
+        .from('agent_policies')
+        .upsert({
+            community_id: profile.community_id,
+            agent_key: agentKey,
+            autonomy_level: autonomyLevel,
+            active,
+            max_daily_actions: maxDailyActions,
+            updated_by: profile.id,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'community_id,agent_key' });
+
+    if (error) throw error;
+
+    await bestEffortInsert('agent_activity_log', {
+        community_id: profile.community_id,
+        user_id: profile.id,
+        agent_key: String(agentKey),
+        action: 'policy_update',
+        severity: 'info',
+        summary: `Politica actualizada: ${agentKey} ahora esta ${active ? 'activo' : 'inactivo'} en modo ${autonomyLevel}.`,
+        metadata: { autonomyLevel, active, maxDailyActions },
+    });
 }
 
 const GEMINI_SYSTEM_PROMPT = `
@@ -293,13 +562,21 @@ Definición de agentes y herramientas:
      title: 'Publicar comunicado oficial'
      summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
+5. Playbooks operativos:
+   - Herramienta 'run_playbook': Para ejecutar un flujo multi-paso gobernado.
+     Argumentos: { "playbookKey": "finance_collection_review" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
+     requiresConfirmation: true
+     targetHref: usa el targetHref del playbook.
+     title: 'Ejecutar playbook'
+     summary: 'CoCo ejecutara un proceso guiado con auditoria.'
+
 Instrucciones de formato:
 - Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
 - No incluyas bloques de código markdown (\`\`\`json).
 - La interfaz de retorno debe ser:
   {
     "agentKey": "finance" | "maintenance" | "concierge" | "community",
-    "toolName": "get_my_expenses" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request",
+    "toolName": "get_my_expenses" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
     "args": { ... },
     "requiresConfirmation": boolean,
     "title": "Título descriptivo breve de la acción",
@@ -357,30 +634,85 @@ async function callGeminiInference(message: string, profile: AgentProfile): Prom
 async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
     const geminiResult = await callGeminiInference(message, profile);
     if (geminiResult) {
-        return geminiResult;
+        return normalizeAction(geminiResult);
     }
-    return inferActionHeuristic(message);
+    return normalizeAction(inferActionHeuristic(message));
 }
 
-const autonomyMapping: Record<AgentKey, 'manual' | 'semi_autonomous' | 'autonomous'> = {
-    finance: 'semi_autonomous',
-    community: 'semi_autonomous',
-    maintenance: 'manual',
-    concierge: 'manual'
-};
+const TOOL_NAMES: ToolName[] = [
+    'get_amenities',
+    'create_booking',
+    'create_marketplace_item',
+    'create_announcement',
+    'create_service_request',
+    'register_visitor',
+    'get_my_expenses',
+    'run_playbook',
+];
+
+function isToolName(value: unknown): value is ToolName {
+    return typeof value === 'string' && TOOL_NAMES.includes(value as ToolName);
+}
+
+function normalizeAction(action: AgentAction): AgentAction {
+    if (!['finance', 'maintenance', 'concierge', 'community'].includes(action.agentKey)) {
+        throw new Error('Agente no soportado.');
+    }
+    if (!isToolName(action.toolName)) {
+        throw new Error('Herramienta no soportada.');
+    }
+
+    const safeArgs = action.args && typeof action.args === 'object' ? action.args : {};
+    const playbook = action.toolName === 'run_playbook' ? getPlaybook(safeArgs.playbookKey) : null;
+    const writesRequireConfirmation = action.toolName !== 'get_my_expenses';
+
+    return {
+        agentKey: playbook?.agentKey || action.agentKey,
+        toolName: action.toolName,
+        args: safeArgs,
+        requiresConfirmation: writesRequireConfirmation ? true : Boolean(action.requiresConfirmation),
+        title: playbook ? `Ejecutar playbook: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
+        summary: playbook?.description || cleanText(action.summary, 280) || 'CoCo preparo una accion operacional.',
+        targetHref: playbook?.targetHref || cleanText(action.targetHref, 120) || '/agent-center',
+        proposalId: action.proposalId || null,
+        runId: action.runId || null,
+    };
+}
+
+function mergeEditableArgs(storedArgs: Record<string, unknown>, incomingArgs?: Record<string, unknown>) {
+    if (!incomingArgs || typeof incomingArgs !== 'object') return storedArgs;
+
+    const merged: Record<string, unknown> = { ...storedArgs };
+    for (const key of Object.keys(storedArgs)) {
+        if (Object.prototype.hasOwnProperty.call(incomingArgs, key)) {
+            merged[key] = incomingArgs[key];
+        }
+    }
+    return merged;
+}
 
 async function logActivity(profile: AgentProfile, action: AgentAction, status: 'preview' | 'executed' | 'failed' | 'rejected', result?: Record<string, unknown>) {
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const policies = await getAgentPolicies(profile);
     const runId = await bestEffortInsert('agent_runs', {
         user_id: profile.id,
         community_id: communityId,
         agent_key: action.agentKey,
         intent: action.toolName,
         user_message: action.summary,
-        autonomy_level: autonomyMapping[action.agentKey] || 'manual',
+        autonomy_level: policies[action.agentKey]?.autonomyLevel || 'manual',
         status: status === 'preview' ? 'awaiting_confirmation' : status,
         summary: action.title,
-        metadata: { targetHref: action.targetHref },
+        metadata: {
+            targetHref: action.targetHref,
+            proposedAction: {
+                agentKey: action.agentKey,
+                toolName: action.toolName,
+                title: action.title,
+                summary: action.summary,
+                targetHref: action.targetHref,
+            },
+        },
         completed_at: status === 'preview' ? null : new Date().toISOString(),
     });
 
@@ -411,9 +743,302 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
     return { runId, toolCallId };
 }
 
+async function recordApproval(profile: AgentProfile, action: AgentAction, decision: 'approved' | 'rejected', reason?: string) {
+    if (!action.proposalId || !action.runId) return;
+    await bestEffortInsert('agent_action_approvals', {
+        run_id: action.runId,
+        tool_call_id: action.proposalId,
+        user_id: profile.id,
+        community_id: profile.community_id || DEFAULT_COMMUNITY_ID,
+        decision,
+        reason: reason || null,
+    });
+}
+
+async function markPersistedProposal(action: AgentAction, status: 'executed' | 'rejected' | 'failed', result?: Record<string, unknown>) {
+    if (!action.proposalId || !action.runId) return;
+    const admin = getSupabaseAdmin();
+    await admin
+        .from('agent_tool_calls')
+        .update({
+            status,
+            result: result || {},
+            executed_at: status === 'executed' ? new Date().toISOString() : null,
+        })
+        .eq('id', action.proposalId);
+
+    await admin
+        .from('agent_runs')
+        .update({
+            status,
+            completed_at: new Date().toISOString(),
+        })
+        .eq('id', action.runId);
+}
+
+async function loadPersistedProposal(incomingAction: AgentAction | null, profile: AgentProfile) {
+    const proposalId = cleanText(incomingAction?.proposalId, 80);
+    if (!proposalId) throw new Error('La propuesta ya no tiene identificador auditable. Vuelve a generar la accion.');
+
+    const admin = getSupabaseAdmin();
+    const { data: toolCall, error: toolError } = await admin
+        .from('agent_tool_calls')
+        .select('id, run_id, user_id, community_id, tool_name, args, requires_confirmation, status')
+        .eq('id', proposalId)
+        .maybeSingle();
+
+    if (toolError || !toolCall) throw new Error('No encontre la propuesta auditada.');
+    if (toolCall.user_id !== profile.id) throw new Error('La propuesta no pertenece a tu usuario.');
+    if ((toolCall.community_id || DEFAULT_COMMUNITY_ID) !== (profile.community_id || DEFAULT_COMMUNITY_ID)) {
+        throw new Error('La propuesta pertenece a otra comunidad.');
+    }
+    if (toolCall.status !== 'proposed') throw new Error('La propuesta ya fue procesada.');
+    if (!isToolName(toolCall.tool_name)) throw new Error('Herramienta no soportada.');
+
+    const { data: run, error: runError } = await admin
+        .from('agent_runs')
+        .select('id, agent_key, user_message, summary, metadata')
+        .eq('id', toolCall.run_id)
+        .maybeSingle();
+
+    if (runError || !run) throw new Error('No encontre la corrida asociada.');
+    if (!['finance', 'maintenance', 'concierge', 'community'].includes(String(run.agent_key))) {
+        throw new Error('Agente no soportado.');
+    }
+
+    const metadata = run.metadata && typeof run.metadata === 'object'
+        ? run.metadata as Record<string, unknown>
+        : {};
+    const storedArgs = toolCall.args && typeof toolCall.args === 'object'
+        ? toolCall.args as Record<string, unknown>
+        : {};
+    const incomingArgs = incomingAction?.args && typeof incomingAction.args === 'object'
+        ? incomingAction.args
+        : undefined;
+
+    const action = normalizeAction({
+        agentKey: run.agent_key as AgentKey,
+        toolName: toolCall.tool_name,
+        args: mergeEditableArgs(storedArgs, incomingArgs),
+        requiresConfirmation: Boolean(toolCall.requires_confirmation),
+        title: cleanText(run.summary, 140) || incomingAction?.title || 'Accion preparada',
+        summary: cleanText(run.user_message, 280) || incomingAction?.summary || 'CoCo preparo una accion operacional.',
+        targetHref: cleanText(metadata.targetHref, 120) || incomingAction?.targetHref || '/agent-center',
+        proposalId: String(toolCall.id),
+        runId: String(run.id),
+    });
+
+    await admin
+        .from('agent_tool_calls')
+        .update({ args: action.args })
+        .eq('id', action.proposalId);
+
+    return action;
+}
+
+function requireAdmin(profile: AgentProfile, message = 'Solo administracion puede ejecutar este playbook.') {
+    if (profile.role !== 'admin') throw new Error(message);
+}
+
+async function runFinanceCollectionPlaybook(profile: AgentProfile) {
+    requireAdmin(profile);
+    const admin = getSupabaseAdmin();
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const { data: expenses, error } = await admin
+        .from('expenses')
+        .select('id, unit_id, month, total_amount, status, due_date')
+        .eq('community_id', communityId)
+        .in('status', ['pending', 'overdue'])
+        .order('due_date', { ascending: true })
+        .limit(100);
+
+    if (error) throw error;
+
+    const rows = (expenses || []) as Array<{
+        id: string;
+        unit_id: string;
+        month?: string | null;
+        total_amount?: string | number | null;
+        status?: string | null;
+        due_date?: string | null;
+    }>;
+    const unitIds = Array.from(new Set(rows.map(row => row.unit_id).filter(Boolean)));
+    const { data: units } = unitIds.length
+        ? await admin
+            .from('units')
+            .select('id, number, unit_number, owner_id, resident_profile_id')
+            .in('id', unitIds)
+        : { data: [] };
+
+    const unitById = new Map((units || []).map(unit => [String(unit.id), unit as Record<string, unknown>]));
+    const notifications = rows.flatMap(row => {
+        const unit = unitById.get(row.unit_id);
+        const profileId = String(unit?.owner_id || unit?.resident_profile_id || '');
+        if (!profileId) return [];
+        const unitLabel = String(unit?.unit_number || unit?.number || row.unit_id);
+        return [{
+            user_id: profileId,
+            type: row.status === 'overdue' ? 'alert' : 'warning',
+            category: 'finance_collection',
+            title: 'Gasto comun pendiente',
+            body: `Tu unidad ${unitLabel} registra un gasto comun pendiente de $${Number(row.total_amount || 0).toLocaleString('es-CL')} (${row.month || 'periodo actual'}).`,
+            link: '/resident/finances',
+            community_id: communityId,
+        }];
+    });
+
+    if (notifications.length > 0) {
+        const { error: notificationError } = await admin.from('notifications').insert(notifications);
+        if (notificationError) throw notificationError;
+    }
+
+    await recordOperationEvent({
+        communityId,
+        actorId: profile.id,
+        actorRole: profile.role,
+        action: 'agent.playbook.finance_collection_review',
+        entityType: 'agent_playbook',
+        severity: notifications.length === rows.length ? 'success' : 'warning',
+        status: notifications.length === rows.length ? 'success' : 'pending',
+        summary: `Playbook cobranza: ${rows.length} cobro(s) impago(s), ${notifications.length} notificacion(es) creadas`,
+        metadata: {
+            pendingExpenses: rows.length,
+            notifications: notifications.length,
+            missingResidents: Math.max(0, rows.length - notifications.length),
+        },
+    });
+
+    return {
+        entityType: 'agent_playbook',
+        entityId: null,
+        title: 'Cobranza controlada ejecutada',
+        message: `Detecte ${rows.length} gasto(s) impago(s) y cree ${notifications.length} notificacion(es) privadas a residentes vinculados.`,
+        data: {
+            pendingExpenses: rows.length,
+            notifications: notifications.length,
+            missingResidents: Math.max(0, rows.length - notifications.length),
+        },
+    };
+}
+
+async function runOnboardingReviewPlaybook(profile: AgentProfile) {
+    requireAdmin(profile);
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    await recordOperationEvent({
+        communityId,
+        actorId: profile.id,
+        actorRole: profile.role,
+        action: 'agent.playbook.onboarding_import_review',
+        entityType: 'agent_playbook',
+        severity: 'info',
+        status: 'pending',
+        summary: 'Playbook onboarding preparado: cargar archivo, revisar calidad y sincronizar residentes',
+        metadata: { targetHref: '/admin/onboarding' },
+    });
+
+    return {
+        entityType: 'agent_playbook',
+        entityId: null,
+        title: 'Onboarding listo para ejecutar',
+        message: 'Abre Carga Masiva para subir Excel/PDF, revisar advertencias del agente y sincronizar perfiles con confirmacion.',
+        targetHref: '/admin/onboarding',
+        data: { checklist: getPlaybook('onboarding_import_review')?.steps || [] },
+    };
+}
+
+async function runIotReadinessPlaybook(profile: AgentProfile) {
+    requireAdmin(profile);
+    const admin = getSupabaseAdmin();
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const [{ count: staffCount }, { count: providerCount }] = await Promise.all([
+        admin
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .in('role', ['admin', 'concierge']),
+        admin
+            .from('service_providers')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .eq('verified', true),
+    ]);
+
+    const warnings = [
+        ...(staffCount ? [] : ['No hay staff administrativo/conserjeria disponible.']),
+        ...(providerCount ? [] : ['No hay proveedores verificados para despacho.']),
+    ];
+
+    await recordOperationEvent({
+        communityId,
+        actorId: profile.id,
+        actorRole: profile.role,
+        action: 'agent.playbook.iot_emergency_readiness',
+        entityType: 'agent_playbook',
+        severity: warnings.length ? 'warning' : 'success',
+        status: warnings.length ? 'pending' : 'success',
+        summary: warnings.length ? 'Playbook IoT detecto brechas de preparacion' : 'Playbook IoT listo para emergencia',
+        metadata: { staffCount: staffCount || 0, providerCount: providerCount || 0, warnings },
+    });
+
+    return {
+        entityType: 'agent_playbook',
+        entityId: null,
+        title: warnings.length ? 'Emergencia IoT con brechas' : 'Emergencia IoT preparada',
+        message: warnings.length
+            ? `Detecte ${warnings.length} brecha(s): ${warnings.join(' ')}`
+            : 'Hay staff y proveedores verificados para responder a alertas IoT criticas.',
+        targetHref: '/admin/mantenimiento',
+        data: { staffCount: staffCount || 0, providerCount: providerCount || 0, warnings },
+    };
+}
+
+async function runCommunityBroadcastPlaybook(profile: AgentProfile, requestedText: string) {
+    if (!['admin', 'concierge'].includes(profile.role)) {
+        throw new Error('Solo administracion o conserjeria pueden preparar comunicados oficiales.');
+    }
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    await recordOperationEvent({
+        communityId,
+        actorId: profile.id,
+        actorRole: profile.role,
+        action: 'agent.playbook.community_broadcast',
+        entityType: 'agent_playbook',
+        severity: 'info',
+        status: 'pending',
+        summary: 'Playbook comunicado preparado para revision humana',
+        metadata: { requestedText: cleanText(requestedText, 700), targetHref: '/comunicaciones' },
+    });
+
+    return {
+        entityType: 'agent_playbook',
+        entityId: null,
+        title: 'Comunicado preparado',
+        message: 'Deje el flujo de comunicado preparado. Revisa el contenido y publica desde Comunicaciones para mantener control editorial.',
+        targetHref: '/comunicaciones',
+        data: { requestedText: cleanText(requestedText, 700), checklist: getPlaybook('community_broadcast')?.steps || [] },
+    };
+}
+
+async function runPlaybook(action: AgentAction, profile: AgentProfile) {
+    const playbookKey = cleanText(action.args.playbookKey, 80) as PlaybookKey;
+    const playbook = getPlaybook(playbookKey);
+    if (!playbook) throw new Error('Playbook no soportado.');
+    if (playbook.requiresAdmin) requireAdmin(profile);
+
+    if (playbook.key === 'finance_collection_review') return runFinanceCollectionPlaybook(profile);
+    if (playbook.key === 'onboarding_import_review') return runOnboardingReviewPlaybook(profile);
+    if (playbook.key === 'iot_emergency_readiness') return runIotReadinessPlaybook(profile);
+    if (playbook.key === 'community_broadcast') return runCommunityBroadcastPlaybook(profile, cleanText(action.args.requestedText, 700));
+    throw new Error('Playbook no soportado.');
+}
+
 async function executeAction(action: AgentAction, profile: AgentProfile) {
     const admin = getSupabaseAdmin();
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+
+    if (action.toolName === 'run_playbook') {
+        return runPlaybook(action, profile);
+    }
 
     if (action.toolName === 'get_my_expenses') {
         const unit = await getUserUnit(profile);
@@ -575,11 +1200,7 @@ export async function GET(req: NextRequest) {
     const limited = enforceRateLimit(req, 'agent_center.read', { limit: 80, windowMs: 60_000 });
     if (limited) return limited;
 
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-    const profile = await getProfile(user.id);
+    const profile = await getAuthenticatedAgentProfile();
     if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
 
     const { data } = await getSupabaseAdmin()
@@ -589,7 +1210,12 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(12);
 
-    return NextResponse.json({ activity: data || [] });
+    const [policies, summary] = await Promise.all([
+        getAgentPolicies(profile),
+        getAgentSummary(profile),
+    ]);
+
+    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, playbooks: AGENT_PLAYBOOKS });
 }
 
 export async function POST(req: NextRequest) {
@@ -597,28 +1223,64 @@ export async function POST(req: NextRequest) {
     if (limited) return limited;
 
     try {
-        const supabaseUser = await getSupabaseUserClient();
-        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-        if (authError || !user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-        const profile = await getProfile(user.id);
+        const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
 
-        const body = await req.json();
-        const message = cleanText(body.message, 1200);
-        const incomingAction = body.action && typeof body.action === 'object' ? body.action as AgentAction : null;
-        const action = incomingAction || await inferAction(message, profile);
+        const rawBody = await req.json();
+        const body = rawBody && typeof rawBody === 'object' ? rawBody as Record<string, unknown> : {};
 
-        // Apply autonomy override if provided
-        const autonomyOverrides = body.autonomyOverrides as Record<AgentKey, string> | undefined;
-        if (autonomyOverrides && autonomyOverrides[action.agentKey] === 'autonomous') {
-            action.requiresConfirmation = false;
+        if (body.type === 'policy_update') {
+            await updateAgentPolicy(profile, body);
+            const [policies, summary] = await Promise.all([
+                getAgentPolicies(profile),
+                getAgentSummary(profile),
+            ]);
+            return NextResponse.json({
+                status: 'policy_updated',
+                reply: 'Politica del agente actualizada y registrada en auditoria.',
+                policies: Object.values(policies),
+                summary,
+                playbooks: AGENT_PLAYBOOKS,
+            });
         }
 
+        const message = cleanText(body.message, 1200);
+        const incomingAction = body.action && typeof body.action === 'object' ? body.action as AgentAction : null;
         const confirmed = Boolean(body.confirmed);
         const rejected = Boolean(body.rejected);
+        const requestedPlaybook = body.type === 'playbook_request' ? getPlaybook(body.playbookKey) : null;
+        if (body.type === 'playbook_request' && !requestedPlaybook) {
+            throw new Error('Playbook no soportado.');
+        }
+
+        if (!confirmed && !rejected && !requestedPlaybook && (isSmallTalk(message) || isTooAmbiguousForAction(message))) {
+            return NextResponse.json({
+                status: 'executed',
+                reply: 'Hola. Puedo ayudarte a preparar acciones reales como reservas, tickets, comunicados, visitas, cobranza u onboarding. Dime que necesitas hacer y te muestro una propuesta antes de ejecutarla.',
+                steps: [
+                    {
+                        kind: 'reasoning',
+                        title: 'Sin accion detectada',
+                        detail: 'El mensaje no incluye una instruccion operativa suficiente, por lo que no se ejecuto ninguna herramienta.',
+                    },
+                ],
+            });
+        }
+
+        const action = confirmed || rejected
+            ? await loadPersistedProposal(incomingAction, profile)
+            : requestedPlaybook
+                ? normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description))
+            : await inferAction(message, profile);
+        const policies = await getAgentPolicies(profile);
+        const policy = policies[action.agentKey];
+        if (!policy.active) {
+            throw new Error(`El agente ${action.agentKey} esta desactivado para esta comunidad.`);
+        }
 
         if (rejected) {
+            await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
+            await markPersistedProposal(action, 'rejected');
             await logActivity(profile, action, 'rejected');
             const steps: AgentStep[] = [
                 {
@@ -655,7 +1317,12 @@ export async function POST(req: NextRequest) {
         ];
 
         if (action.requiresConfirmation && !confirmed) {
-            await logActivity(profile, action, 'preview');
+            const audit = await logActivity(profile, action, 'preview');
+            const persistedAction = {
+                ...action,
+                proposalId: audit.toolCallId,
+                runId: audit.runId,
+            };
             steps.push({
                 kind: 'confirmation',
                 title: 'Confirmacion requerida',
@@ -664,12 +1331,25 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 status: 'awaiting_confirmation',
                 reply: 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla con trazabilidad.',
-                action,
+                action: persistedAction,
                 steps,
             });
         }
 
-        const result = await executeAction(action, profile);
+        let result: Awaited<ReturnType<typeof executeAction>>;
+        try {
+            result = await executeAction(action, profile);
+        } catch (error) {
+            await markPersistedProposal(action, 'failed', {
+                error: error instanceof Error ? error.message : 'No se pudo ejecutar la accion.',
+            });
+            await logActivity(profile, action, 'failed', {
+                error: error instanceof Error ? error.message : 'No se pudo ejecutar la accion.',
+            });
+            throw error;
+        }
+        await recordApproval(profile, action, 'approved', 'Usuario confirmo desde Agent Center');
+        await markPersistedProposal(action, 'executed', result);
         await logActivity(profile, action, 'executed', result);
         steps.push({
             kind: 'result',

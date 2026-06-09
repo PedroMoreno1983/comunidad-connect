@@ -58,19 +58,17 @@ Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejec
         };
 
 
-        // Disparamos la IA sin bloquear el webhook indefinidamente (Fire-and-Forget).
-        // Next.js (fuera de serverless functions estrictas o usando waitUntil en Vercel) continuará ejecutando.
-        // Como no tenemos waitUntil nativo importado, lo dejamos como Promesa flotante
-        askCoCo(systemInterventionPrompt, null, sysCtx).catch(err => {
-            console.error('[IoT Webhook Async Error]', err);
-        });
+        const agentResponse = await askCoCo(systemInterventionPrompt, null, sysCtx);
 
-        // Respondemos HTTP 202 ACCEPTED de inmediato
         return NextResponse.json({
             success: true,
-            status: 'MITIGATION_STARTED',
-            message: 'IoT event received, AI agent dispatched in background.'
-        }, { status: 202 });
+            status: 'MITIGATION_PROCESSED',
+            message: 'IoT event received and processed by CoCo.',
+            reply: agentResponse.reply,
+            action: agentResponse.action,
+            navigate: agentResponse.navigate,
+            processed_at: new Date().toISOString(),
+        }, { status: 200 });
 
     } catch (e: unknown) {
         console.error('[IoT Webhook Error]', e);
