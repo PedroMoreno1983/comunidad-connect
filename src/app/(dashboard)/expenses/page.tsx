@@ -10,6 +10,7 @@ import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
+import { getApiUrl } from "@/lib/config";
 
 interface Expense {
     id: string;
@@ -54,23 +55,6 @@ function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
     };
 }
 
-const DEFAULT_BREAKDOWN = [
-    { label: "Administración",                amount: 42500 },
-    { label: "Agua caliente comunitaria",     amount: 38900 },
-    { label: "Electricidad espacios comunes", amount: 28200 },
-    { label: "Ascensores y mantención",       amount: 31700 },
-    { label: "Conserjería 24/7",              amount: 38900 },
-    { label: "Fondo de reserva",              amount: 7220  },
-];
-
-const DEFAULT_HISTORY = [
-    { m: "Ene", v: 142, paid: true },
-    { m: "Feb", v: 168, paid: true },
-    { m: "Mar", v: 155, paid: true },
-    { m: "Abr", v: 178, paid: true },
-    { m: "May", v: 187, paid: false },
-];
-
 export default function ExpensesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -107,7 +91,7 @@ export default function ExpensesPage() {
         fetchExpenses();
     }, [targetUnitId]);
 
-    const activeExpense = expenses.find(e => e.status !== 'paid') || expenses[0];
+    const activeExpense = expenses.find(e => e.status !== 'paid');
 
     const getContributionAmount = (type: string, base: number) => {
         switch (type) {
@@ -127,53 +111,58 @@ export default function ExpensesPage() {
     };
 
     const handlePay = async () => {
-        if (!activeExpense) return;
+        if (!activeExpense) {
+            toast({
+                title: "Sin cobros pendientes",
+                description: "No hay un gasto comun abierto para iniciar pago.",
+                variant: "default",
+            });
+            return;
+        }
         
-        // Determine breakdown list (real or default fallback)
+        // Determine breakdown list from real billing items only.
         const breakdownList = activeExpense?.breakdown && activeExpense.breakdown.length > 0
             ? activeExpense.breakdown
-            : DEFAULT_BREAKDOWN;
+            : [];
 
-        const baseAmount = activeExpense
-            ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
-            : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+        const baseAmount = activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0);
 
         const extraContribution = getContributionAmount(contributionType, baseAmount);
+        const amountToPay = baseAmount + extraContribution;
+        if (amountToPay <= 0) {
+            toast({
+                title: "Monto no disponible",
+                description: "El cobro no tiene un monto valido para enviar a la pasarela.",
+                variant: "destructive",
+            });
+            return;
+        }
 
         try {
             setIsPaying(activeExpense.id);
-            await ExpensesService.payExpense(activeExpense.id);
-
-            // Record solidarity contribution if selected
-            if (extraContribution > 0) {
-                try {
-                    await fetch("/api/solidarity/fund", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            amount: extraContribution,
-                            type: contributionType.startsWith("round") ? "round_up" : "donation",
-                            expenseId: activeExpense.id
-                        })
-                    });
-                } catch (err) {
-                    console.error("Failed to record solidarity contribution:", err);
-                }
+            const response = await fetch(getApiUrl("/api/payments/create-haulmer-link"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: amountToPay,
+                    description: `Gastos comunes ${activeExpense.month} - Unidad ${activeExpense.unitId}`,
+                    reference: `EXP_${activeExpense.id}`,
+                    client: {
+                        name: user?.name || "Residente",
+                        email: user?.email || "",
+                    },
+                    returnUrl: `${window.location.origin}/expenses?status=success`,
+                }),
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({})) as { error?: string };
+                throw new Error(data.error || "No se pudo generar el enlace de pago.");
             }
 
-            // Optimistic update
-            setExpenses(prev => prev.map(exp =>
-                exp.id === activeExpense.id ? { ...exp, status: 'paid' } : exp
-            ));
-
-            setStep("success");
-            toast({
-                title: "Pago Procesado",
-                description: extraContribution > 0 
-                  ? `Pago y aporte de $${extraContribution.toLocaleString("es-CL")} CLP procesados con éxito.`
-                  : "La transacción se completó con éxito.",
-                variant: "success",
-            });
+            const data = await response.json() as { url?: string };
+            if (!data.url) throw new Error("La pasarela no devolvio URL de pago.");
+            window.location.href = data.url;
+            return;
         } catch {
             toast({
                 title: "Error",
@@ -189,19 +178,19 @@ export default function ExpensesPage() {
         return (
             <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
                 <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentas…</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentasâ€¦</span>
             </div>
         );
     }
 
-    // Determine breakdown list (real or default fallback)
+    // Determine breakdown list from real billing items only.
     const breakdownList = activeExpense?.breakdown && activeExpense.breakdown.length > 0
         ? activeExpense.breakdown
-        : DEFAULT_BREAKDOWN;
+        : [];
 
     const baseAmount = activeExpense
         ? (activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0))
-        : breakdownList.reduce((sum, item) => sum + item.amount, 0);
+        : 0;
 
     const extraContribution = getContributionAmount(contributionType, baseAmount);
     const totalAmount = baseAmount + extraContribution;
@@ -209,16 +198,16 @@ export default function ExpensesPage() {
     // Format current period
     const periodName = activeExpense
         ? new Date(activeExpense.month + "-02").toLocaleDateString("es-CL", { month: "long", year: "numeric" })
-        : "Mayo 2026";
+        : "Sin cobro vigente";
     const formattedPeriod = periodName.charAt(0).toUpperCase() + periodName.slice(1);
 
     // Format due date
     const formattedDueDate = activeExpense
         ? new Date(activeExpense.dueDate).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
-        : "02 Jun";
+        : "--";
 
     // History calculation
-    let historyChartData = DEFAULT_HISTORY;
+    let historyChartData: Array<{ m: string; v: number; paid: boolean }> = [];
     if (expenses.length > 0) {
         const sorted = [...expenses].sort((a, b) => a.month.localeCompare(b.month)).slice(-5);
         if (sorted.length > 0) {
@@ -235,7 +224,7 @@ export default function ExpensesPage() {
 
     const averageHistory = historyChartData.length > 0
         ? Math.round(historyChartData.reduce((sum, item) => sum + item.v, 0) / historyChartData.length) * 1000
-        : 166000;
+        : 0;
 
     return (
         <ErrorBoundary name="Expenses Resident Page">
@@ -277,7 +266,7 @@ export default function ExpensesPage() {
                             <div className="text-[12px] flex justify-between items-center" style={{ color: "var(--cc-ink-tertiary)", marginBottom: 8 }}>
                                 <span>Total a pagar antes del {formattedDueDate}</span>
                                 {activeExpense?.status === "paid" && (
-                                    <Tag tone="sage" solid dot>Al día</Tag>
+                                    <Tag tone="sage" solid dot>Al dÃ­a</Tag>
                                 )}
                             </div>
                             <div className="flex items-baseline gap-1.5">
@@ -314,7 +303,7 @@ export default function ExpensesPage() {
                         </div>
 
                         {/* Solidarity Option Card */}
-                        {activeExpense?.status !== "paid" && (
+                        {activeExpense && activeExpense.status !== "paid" && (
                             <div 
                                 className="mb-6 rounded-xl border p-4 bg-paper"
                                 style={{ 
@@ -330,7 +319,7 @@ export default function ExpensesPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--cc-ink-soft)" }}>
-                                    Apoya a familias del edificio con dificultades para cubrir su gasto común debido a cesantía o jubilación. 100% regulado y anónimo.
+                                    Apoya a familias del edificio con dificultades para cubrir su gasto comÃºn debido a cesantÃ­a o jubilaciÃ³n. 100% regulado y anÃ³nimo.
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -393,7 +382,7 @@ export default function ExpensesPage() {
                         )}
 
                         {/* History chart */}
-                        <Eyebrow className="mb-3">Histórico · últimos 5 meses</Eyebrow>
+                        <Eyebrow className="mb-3">HistÃ³rico Â· Ãºltimos 5 meses</Eyebrow>
                         <div
                             className="rounded-xl border bg-paper-warm mb-6"
                             style={{ borderColor: "var(--cc-line)", padding: "20px 18px 14px", borderRadius: 18 }}
@@ -419,19 +408,19 @@ export default function ExpensesPage() {
                         </div>
 
                         {/* CTA */}
-                        {activeExpense?.status !== "paid" ? (
+                        {activeExpense && activeExpense.status !== "paid" ? (
                             <div className="mt-auto pt-4 pb-3">
                                 <Button variant="primary" size="lg" block onClick={() => setStep("method")}>
                                     <span className="flex-1 text-left">Pagar ${totalAmount.toLocaleString("es-CL")}</span>
                                     <ArrowRight size={16} />
                                 </Button>
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                    Webpay · transferencia · cuotas con Klap
+                                    Webpay via Tuu/Haulmer
                                 </div>
                             </div>
                         ) : (
                             <div className="mt-auto pt-4 pb-3 text-center text-sm font-semibold text-success flex items-center justify-center gap-2">
-                                <Check size={16} /> Estás al día con tus gastos comunes.
+                                <Check size={16} /> EstÃ¡s al dÃ­a con tus gastos comunes.
                             </div>
                         )}
                     </>
@@ -439,17 +428,15 @@ export default function ExpensesPage() {
 
                 {step === "method" && (
                     <>
-                        <Eyebrow className="mb-2">MÉTODO DE PAGO</Eyebrow>
+                        <Eyebrow className="mb-2">MÃ‰TODO DE PAGO</Eyebrow>
                         <DisplayHeading size={36} className="mb-6">
-                            Elige cómo <em>pagar</em>
+                            Elige cÃ³mo <em>pagar</em>
                         </DisplayHeading>
 
                         {/* Payment methods list */}
                         <div className="space-y-3 mb-8">
                             {[
-                                { id: "webpay", name: "Webpay Plus", desc: "Débito, crédito o prepago", icon: "💳" },
-                                { id: "transfer", name: "Transferencia bancaria", desc: "Transfiere directo de tu banco", icon: "🏦" },
-                                { id: "klap", name: "Klap (Cuotas)", desc: "Paga en cuotas mensuales", icon: "⚡" },
+                                { id: "webpay", name: "Webpay Plus", desc: "Debito, credito o prepago via Tuu/Haulmer", icon: "WP" },
                             ].map((m) => {
                                 const selected = selectedMethod === m.id;
                                 return (
@@ -507,7 +494,7 @@ export default function ExpensesPage() {
                         </div>
                         
                         <DisplayHeading size={38} className="mb-4">
-                            ¡Pago <em>exitoso!</em>
+                            Â¡Pago <em>exitoso!</em>
                         </DisplayHeading>
                         
                         <p className="text-sm leading-relaxed max-w-xs mb-8" style={{ color: "var(--cc-ink-muted)" }}>
