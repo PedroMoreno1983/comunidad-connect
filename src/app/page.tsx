@@ -362,14 +362,14 @@ export default function LandingPage() {
           className="flex shrink-0 items-center gap-2 sm:gap-3"
         >
           <button
-            onClick={() => router.push('/admin-onboarding')}
-            className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-[#5F5A54] dark:text-[#C8BFB6] hover:text-[#C8705A] dark:hover:text-[#C8705A] transition-colors"
+            onClick={() => router.push('/login')}
+            className="whitespace-nowrap rounded-xl bg-[#C8705A] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#C8705A]/30 transition-all hover:-translate-y-0.5 hover:bg-[#B45F4B] hover:shadow-[#C8705A]/50 sm:px-5 sm:py-2.5 sm:text-sm"
           >
             Iniciar sesión
           </button>
           <button
-            onClick={() => router.push('/login')}
-            className="whitespace-nowrap rounded-xl bg-[#C8705A] px-3 py-2 text-xs font-bold text-white shadow-md shadow-[#C8705A]/30 transition-all hover:-translate-y-0.5 hover:bg-[#B45F4B] hover:shadow-[#C8705A]/50 sm:px-5 sm:py-2.5 sm:text-sm"
+            onClick={() => router.push('/admin-onboarding')}
+            className="hidden items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-[#5F5A54] transition-colors hover:text-[#C8705A] dark:text-[#C8BFB6] dark:hover:text-[#C8705A] sm:inline-flex"
           >
             <span className="sm:hidden">Registrar</span>
             <span className="hidden sm:inline">Registrar condominio</span>
