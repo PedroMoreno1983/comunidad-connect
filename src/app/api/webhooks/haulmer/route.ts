@@ -44,6 +44,19 @@ function buildPaymentMetadata(params: CallbackParams) {
     };
 }
 
+export async function GET() {
+    return NextResponse.json({
+        ok: true,
+        service: 'haulmer-tuu-webhook',
+        accepts: 'POST application/x-www-form-urlencoded',
+        message: 'Webhook activo. Los pagos reales se procesan solo por POST firmado desde Haulmer/Tuu.',
+    }, {
+        headers: {
+            'Cache-Control': 'no-store',
+        },
+    });
+}
+
 async function processExpensePayment(recordId: string, params: CallbackParams, completed: boolean) {
     const { data: expense, error: readError } = await supabaseAdmin
         .from('expenses')
