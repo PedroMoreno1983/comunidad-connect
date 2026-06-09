@@ -64,7 +64,7 @@ const groups = [
   {
     name: "Commercial channels",
     critical: false,
-    checks: checkKeys(["RESEND_API_KEY", "HAULMER_API_KEY", "HAULMER_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM"]),
+    checks: checkKeys(["RESEND_API_KEY", "HAULMER_ACCOUNT_ID", "HAULMER_SECRET_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM"]),
   },
   {
     name: "Admin operations and monitoring",

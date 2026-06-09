@@ -35,8 +35,8 @@ Content type esperado: `application/x-www-form-urlencoded`
 
 ### Pagos / Haulmer
 
-- `HAULMER_API_KEY`
-- `HAULMER_WEBHOOK_SECRET`
+- `HAULMER_ACCOUNT_ID`
+- `HAULMER_SECRET_KEY`
 
 Despues de configurar, probar creacion de link de pago y retorno controlado.
 

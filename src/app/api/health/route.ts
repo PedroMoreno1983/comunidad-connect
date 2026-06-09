@@ -27,7 +27,7 @@ export async function GET() {
     };
 
     const paidIntegrations = {
-        payments: hasEnv('HAULMER_API_KEY') && hasEnv('HAULMER_WEBHOOK_SECRET'),
+        payments: hasEnv('HAULMER_ACCOUNT_ID') && hasEnv('HAULMER_SECRET_KEY'),
         protectedWebhooks: hasEnv('WHATSAPP_WEBHOOK_SECRET') && hasEnv('IOT_WEBHOOK_SECRET'),
         monitoring: hasEnv('AI_HEALTH_TOKEN'),
         semanticSearch: hasEnv('VOYAGE_API_KEY'),

@@ -56,8 +56,10 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
 
-# Pagos (pendiente permisos Haulmer)
-# HAULMER_API_KEY=       # No configurado aún
+# Pagos (pendiente credenciales Haulmer/Tuu)
+HAULMER_ACCOUNT_ID=
+HAULMER_SECRET_KEY=
+HAULMER_ENVIRONMENT=production
 
 # Deploy
 NEXT_PUBLIC_SITE_URL=    # https://conviveconnect.com
