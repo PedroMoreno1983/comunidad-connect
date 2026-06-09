@@ -32,6 +32,18 @@ interface SyncResult {
     rows: number;
     success: number;
     errors: number;
+    unitOnly: number;
+}
+
+interface OnboardingAssessment {
+    totalRows: number;
+    validRows: number;
+    missingNameRows: number;
+    missingUnitRows: number;
+    missingContactRows: number;
+    duplicateUnits: string[];
+    confidenceScore: number;
+    warnings: string[];
 }
 
 
@@ -65,6 +77,7 @@ export default function AdminOnboardingPage() {
     const [lastFileName, setLastFileName] = useState("");
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
     const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
+    const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
 
 
@@ -101,7 +114,7 @@ export default function AdminOnboardingPage() {
         });
 
         const textResponse = await res.text();
-        let result: { data?: Partial<ExtractedUser>[]; error?: string } | null = null;
+        let result: { data?: Partial<ExtractedUser>[]; assessment?: OnboardingAssessment; error?: string } | null = null;
         try {
             result = JSON.parse(textResponse);
         } catch {
@@ -112,13 +125,16 @@ export default function AdminOnboardingPage() {
             throw new Error(result?.error || "extract-failed");
         }
 
-        return result.data.map((row, index) => ({
-            id: `temp-${index}`,
-            name: row.name || "",
-            unit_id: row.unit_id || "",
-            email: row.email || "",
-            phone: row.phone || "",
-        }));
+        return {
+            rows: result.data.map((row, index) => ({
+                id: `temp-${index}`,
+                name: row.name || "",
+                unit_id: row.unit_id || "",
+                email: row.email || "",
+                phone: row.phone || "",
+            })),
+            assessment: result.assessment || null,
+        };
     };
 
     const processFile = async (uploadedFile: File) => {
@@ -128,14 +144,16 @@ export default function AdminOnboardingPage() {
         setConfirmingSync(false);
         setSyncResult(null);
         setSyncedPreview([]);
+        setAgentAssessment(null);
         setLastFileName(uploadedFile.name);
 
         try {
-            const mappedData = await extractFileWithApi(uploadedFile);
-            setExtractedData(mappedData);
+            const extraction = await extractFileWithApi(uploadedFile);
+            setExtractedData(extraction.rows);
+            setAgentAssessment(extraction.assessment);
             toast({
                 title: "Archivo procesado",
-                description: `Detectamos ${mappedData.length} registros para revisión.`,
+                description: `Detectamos ${extraction.rows.length} registros para revision.`,
                 variant: "success",
             });
         } catch (err: unknown) {
@@ -199,12 +217,14 @@ export default function AdminOnboardingPage() {
                 const result = await res.json().catch(() => ({}));
                 const success = typeof result.success === "number" ? result.success : rowsToSync.length;
                 const errors = typeof result.errors === "number" ? result.errors : 0;
+                const unitOnly = typeof result.unitOnly === "number" ? result.unitOnly : 0;
                 setSyncedPreview(rowsToSync);
                 setSyncResult({
                     fileName: lastFileName || "archivo importado",
                     rows: rowsToSync.length,
                     success,
                     errors,
+                    unitOnly,
                 });
                 setSyncSuccess(true);
                 setExtractedData(null);
@@ -232,6 +252,7 @@ export default function AdminOnboardingPage() {
         setConfirmingSync(false);
         setSyncResult(null);
         setSyncedPreview([]);
+        setAgentAssessment(null);
         setLastFileName("");
     };
 
@@ -366,12 +387,9 @@ export default function AdminOnboardingPage() {
                     <div className="mx-auto mt-6 grid max-w-4xl gap-3 text-left md:grid-cols-4">
                         {[
                             { label: "Archivo", value: syncResult?.fileName || "Sin nombre" },
-                            { label: "Filas aceptadas", value: `${syncResult?.success ?? 0}/${syncResult?.rows ?? 0}` },
+                            { label: "Perfiles activos", value: `${syncResult?.success ?? 0}/${syncResult?.rows ?? 0}` },
+                            { label: "Pendientes invitacion", value: `${syncResult?.unitOnly ?? 0}` },
                             { label: "Con errores", value: `${syncResult?.errors ?? 0}` },
-                            {
-                                label: "Destino",
-                                value: "Directorio y Unidades",
-                            },
                         ].map(item => (
                             <div key={item.label} className="rounded-lg border border-white/60 bg-white/75 p-4 shadow-sm">
                                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
@@ -496,6 +514,35 @@ export default function AdminOnboardingPage() {
                                     <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
                                 </div>
                             ))}
+                            {agentAssessment && (
+                                <div className="rounded-lg border border-subtle bg-canvas p-4 md:col-span-4">
+                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div>
+                                            <p className="text-sm font-semibold cc-text-primary">
+                                                Revision del agente: {agentAssessment.confidenceScore}% de confianza
+                                            </p>
+                                            <p className="mt-1 text-xs cc-text-secondary">
+                                                El puntaje combina filas validas, cobertura de contacto y unidades repetidas.
+                                            </p>
+                                        </div>
+                                        {agentAssessment.duplicateUnits.length > 0 && (
+                                            <p className="rounded-md bg-warning-bg px-3 py-2 text-xs font-semibold text-warning-fg">
+                                                Duplicadas: {agentAssessment.duplicateUnits.slice(0, 6).join(", ")}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {agentAssessment.warnings.length > 0 && (
+                                        <ul className="mt-3 grid gap-2 text-sm cc-text-secondary md:grid-cols-2">
+                                            {agentAssessment.warnings.map(warning => (
+                                                <li key={warning} className="flex items-start gap-2">
+                                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" />
+                                                    <span>{warning}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
                             {quality.missingUnitRows > 0 && (
                                 <div className="rounded-lg border border-warning-border bg-warning-bg p-4 md:col-span-4">
                                     <div className="flex items-start gap-3">

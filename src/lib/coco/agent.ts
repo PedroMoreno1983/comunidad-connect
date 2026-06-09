@@ -14,14 +14,37 @@ const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const MODEL = 'claude-opus-4-5'; // Cambiar a claude-3-5-haiku-20241022 para reducir costo
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-5';
 const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
+
+export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+export interface CoCoImageAttachment {
+    mediaType: CoCoImageMediaType;
+    data: string;
+}
 
 export interface CoCoResponse {
     reply: string;
     navigate?: string;
     action?: string;
     updatedHistory: ConversationMessage[];
+}
+
+function buildUserContent(message: string, image?: CoCoImageAttachment): Anthropic.MessageParam['content'] {
+    if (!image) return message;
+
+    return [
+        { type: 'text', text: message },
+        {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: image.mediaType,
+                data: image.data,
+            },
+        },
+    ];
 }
 
 export async function askCoCo(
@@ -35,7 +58,10 @@ export async function askCoCo(
         name?: string;
         currentPage?: string;
         channel?: string;
-    }
+    },
+    options: {
+        image?: CoCoImageAttachment;
+    } = {}
 ): Promise<CoCoResponse> {
     // 1. Construir historial de mensajes
     const history: Anthropic.MessageParam[] = (session?.conversation ?? []).map(msg => ({
@@ -56,7 +82,7 @@ export async function askCoCo(
         : COCO_SYSTEM_PROMPT;
 
     // 3. Agregar mensaje del usuario al historial
-    history.push({ role: 'user', content: message });
+    history.push({ role: 'user', content: buildUserContent(message, options.image) });
 
     // 4. Loop agéntico
     let rounds = 0;

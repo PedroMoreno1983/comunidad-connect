@@ -4,15 +4,9 @@
  * El executor llama directamente a Supabase (Convive Connect DB).
  */
 
-import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { maybeCreateCoCoCase } from './caseService';
 import { PUBLIC_SITE_URL } from '@/lib/config';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -309,7 +303,7 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'dispatch_provider',
-        description: 'Simula el contacto con un proveedor externo (ej. gasfíter de turno) y le asigna la tarea de emergencia, enviándole los detalles preliminares.',
+        description: 'Identifica un proveedor externo disponible (ej. gasfíter de turno) y notifica al staff para confirmar el despacho de emergencia.',
         input_schema: {
             type: 'object' as const,
             properties: {
@@ -330,6 +324,27 @@ interface UserContext {
     unit_id?: string;
     role?: string;
     community_id?: string;
+    channel?: string;
+}
+
+function isStaff(userCtx: UserContext) {
+    return userCtx.role === 'admin' || userCtx.role === 'concierge' || userCtx.role === 'system';
+}
+
+function isAdmin(userCtx: UserContext) {
+    return userCtx.role === 'admin' || userCtx.role === 'system';
+}
+
+function scopedUnit(userCtx: UserContext, requestedUnitId?: string) {
+    return isStaff(userCtx) ? requestedUnitId || userCtx.unit_id : userCtx.unit_id;
+}
+
+function scopedCommunity(userCtx: UserContext, requestedCommunityId?: string) {
+    return isStaff(userCtx) ? requestedCommunityId || userCtx.community_id : userCtx.community_id;
+}
+
+function forbidden(message = 'No tienes permiso para ejecutar esta herramienta.') {
+    return { error: message };
 }
 
 export async function executeTool(
@@ -342,20 +357,24 @@ export async function executeTool(
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────
             case 'get_resident_info': {
-                const { data } = await supabase
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar tu unidad.');
+                const { data } = await supabaseAdmin
                     .from('units')
                     .select('unit_number, residents(name, email, phone), communities(name)')
-                    .eq('id', input.unit_id)
+                    .eq('id', unitId)
                     .maybeSingle();
                 return data ?? { error: 'Unidad no encontrada' };
             }
 
             case 'get_payment_status': {
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar tu unidad.');
                 const month = input.month || new Date().toISOString().slice(0, 7);
-                const { data } = await supabase
+                const { data } = await supabaseAdmin
                     .from('fees')
                     .select('amount, status, due_date, paid_at')
-                    .eq('unit_id', input.unit_id)
+                    .eq('unit_id', unitId)
                     .like('period', `${month}%`)
                     .order('due_date', { ascending: false })
                     .limit(3);
@@ -363,11 +382,13 @@ export async function executeTool(
             }
 
             case 'get_water_consumption': {
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar tu unidad.');
                 const month = input.month || new Date().toISOString().slice(0, 7);
-                const { data } = await supabase
+                const { data } = await supabaseAdmin
                     .from('water_readings')
                     .select('period, m3_consumed, amount_charged, reading_date')
-                    .eq('unit_id', input.unit_id)
+                    .eq('unit_id', unitId)
                     .like('period', `${month}%`)
                     .order('reading_date', { ascending: false })
                     .limit(3);
@@ -375,10 +396,11 @@ export async function executeTool(
             }
 
             case 'list_services': {
-                const query = supabase
+                const query = supabaseAdmin
                     .from('service_providers')
                     .select('id, name, category, rating, contact_phone')
                     .order('rating', { ascending: false });
+                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
                 
                 if (input.category) {
                     query.eq('category', input.category);
@@ -390,21 +412,25 @@ export async function executeTool(
             }
 
             case 'search_marketplace': {
-                const { data } = await supabase
+                const query = supabaseAdmin
                     .from('marketplace_items')
                     .select('id, title, description, price, category, status')
                     .ilike('title', `%${input.query}%`)
                     .eq('status', 'available')
                     .limit(5);
+                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
+                const { data } = await query;
                 return data ?? [];
             }
 
             // ── RECLAMOS ────────────────────────────────────────────────────
             case 'create_claim': {
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad asociada al reclamo.');
                 const result = await maybeCreateCoCoCase(
                     input.description,
                     {
-                        unitId: input.unit_id || userCtx.unit_id,
+                        unitId,
                         communityId: userCtx.community_id,
                         role: userCtx.role || 'resident',
                         channel: 'coco_tool',
@@ -423,33 +449,45 @@ export async function executeTool(
             }
 
             case 'get_claim_status': {
-                const { data } = await supabaseAdmin
+                const query = supabaseAdmin
                     .from('coco_cases')
                     .select('id, category, description, status, urgency, created_at, updated_at')
-                    .eq('id', input.claim_id)
-                    .maybeSingle();
+                    .eq('id', input.claim_id);
+                if (!isStaff(userCtx)) {
+                    if (!userCtx.unit_id) return forbidden('No pude determinar tu unidad.');
+                    query.eq('unit_id', userCtx.unit_id);
+                } else if (userCtx.community_id) {
+                    query.eq('community_id', userCtx.community_id);
+                }
+                const { data } = await query.maybeSingle();
                 return data ?? { error: 'Reclamo no encontrado' };
             }
 
             case 'list_my_claims': {
-                const { data } = await supabaseAdmin
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad.');
+                const query = supabaseAdmin
                     .from('coco_cases')
                     .select('id, category, description, status, urgency, created_at')
-                    .eq('unit_id', input.unit_id)
+                    .eq('unit_id', unitId)
                     .neq('status', 'closed')
                     .order('created_at', { ascending: false })
                     .limit(10);
+                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
+                const { data } = await query;
                 return data ?? [];
             }
 
             // ── RESERVAS ────────────────────────────────────────────────────
             case 'check_availability': {
-                const { data } = await supabase
+                const query = supabaseAdmin
                     .from('bookings')
                     .select('start_time, end_time, amenities(name)')
                     .eq('date', input.date)
                     .ilike('amenities.name', `%${input.space_name}%`)
                     .eq('status', 'confirmed');
+                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
+                const { data } = await query;
                 return {
                     space: input.space_name,
                     date: input.date,
@@ -459,14 +497,14 @@ export async function executeTool(
             }
 
             case 'create_reservation': {
-                const { data: amenity } = await supabase
+                const { data: amenity } = await supabaseAdmin
                     .from('amenities')
                     .select('id, name')
                     .ilike('name', `%${input.space_name}%`)
                     .maybeSingle();
                 if (!amenity) return { error: `No se encontró el espacio "${input.space_name}"` };
                 if (!userCtx.user_id) return { error: 'No se pudo identificar al residente para crear la reserva.' };
-                const { data, error } = await supabase
+                const { data, error } = await supabaseAdmin
                     .from('bookings')
                     .insert({
                         user_id: userCtx.user_id,
@@ -475,6 +513,7 @@ export async function executeTool(
                         start_time: input.start_time,
                         end_time: input.end_time,
                         status: 'confirmed',
+                        community_id: userCtx.community_id,
                     })
                     .select('id')
                     .single();
@@ -484,11 +523,13 @@ export async function executeTool(
 
             // ── COMUNICACIÓN ─────────────────────────────────────────────────
             case 'create_circular': {
-                if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden enviar circulares.' };
-                const { data, error } = await supabase
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden enviar circulares.' };
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data, error } = await supabaseAdmin
                     .from('announcements')
                     .insert({
-                        community_id: input.community_id || userCtx.community_id,
+                        community_id: communityId,
                         title: input.title,
                         content: input.body,
                         audience: input.audience || 'TODOS',
@@ -502,12 +543,16 @@ export async function executeTool(
             }
 
             case 'create_social_post': {
-                const { data, error } = await supabase
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = scopedUnit(userCtx, input.author_unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad autora.');
+                const { data, error } = await supabaseAdmin
                     .from('social_posts')
                     .insert({
-                        community_id: input.community_id || userCtx.community_id,
+                        community_id: communityId,
                         content: input.content,
-                        unit_id: input.author_unit_id || userCtx.unit_id,
+                        unit_id: unitId,
                         source: 'COCO_IA',
                         created_at: new Date().toISOString(),
                     })
@@ -519,22 +564,26 @@ export async function executeTool(
 
             // ── VOTACIONES ──────────────────────────────────────────────────
             case 'list_active_polls': {
-                const { data } = await supabase
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data } = await supabaseAdmin
                     .from('polls')
                     .select('id, title, description, closes_at, options:poll_options(id, text)')
-                    .eq('community_id', input.community_id || userCtx.community_id)
+                    .eq('community_id', communityId)
                     .gte('closes_at', new Date().toISOString())
                     .order('closes_at', { ascending: true });
                 return data ?? [];
             }
 
             case 'vote_in_poll': {
-                const { error } = await supabase
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad votante.');
+                const { error } = await supabaseAdmin
                     .from('poll_votes')
                     .insert({
                         poll_id: input.poll_id,
                         option_id: input.option_id,
-                        unit_id: input.unit_id || userCtx.unit_id,
+                        unit_id: unitId,
                         voted_at: new Date().toISOString(),
                     });
                 if (error) return { error: 'No se pudo registrar el voto. ¿Ya votaste en esta encuesta?' };
@@ -543,10 +592,15 @@ export async function executeTool(
 
             // ── CONSERJERÍA ──────────────────────────────────────────────────
             case 'register_visitor': {
-                const { data, error } = await supabase
+                if (!isStaff(userCtx) && input.host_unit_id !== userCtx.unit_id) {
+                    return forbidden('Solo puedes registrar visitas para tu propia unidad.');
+                }
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data, error } = await supabaseAdmin
                     .from('visitors')
                     .insert({
-                        community_id: input.community_id || userCtx.community_id,
+                        community_id: communityId,
                         visitor_name: input.visitor_name,
                         visitor_rut: input.visitor_rut || null,
                         host_unit_id: input.host_unit_id,
@@ -562,10 +616,13 @@ export async function executeTool(
             }
 
             case 'register_package': {
-                const { data, error } = await supabase
+                if (!isStaff(userCtx)) return forbidden('Solo conserjería o administración pueden registrar encomiendas.');
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data, error } = await supabaseAdmin
                     .from('packages')
                     .insert({
-                        community_id: input.community_id || userCtx.community_id,
+                        community_id: communityId,
                         unit_id: input.unit_id,
                         courier: input.courier || 'Sin especificar',
                         description: input.description || null,
@@ -580,10 +637,12 @@ export async function executeTool(
             }
 
             case 'get_pending_packages': {
-                const { data } = await supabase
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad.');
+                const { data } = await supabaseAdmin
                     .from('packages')
                     .select('id, courier, description, received_at')
-                    .eq('unit_id', input.unit_id)
+                    .eq('unit_id', unitId)
                     .eq('status', 'PENDIENTE_RETIRO')
                     .order('received_at', { ascending: false });
                 return data ?? [];
@@ -600,10 +659,13 @@ export async function executeTool(
                 }
 
                 // Find all profiles for this unit
-                const { data: profiles } = await supabase
+                if (!isStaff(userCtx)) return forbidden('Solo conserjería o administración pueden enviar WhatsApp a una unidad.');
+                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad destino.');
+                const { data: profiles } = await supabaseAdmin
                     .from('profiles')
                     .select('id, name')
-                    .eq('unit_id', input.unit_id);
+                    .eq('unit_id', unitId);
                 
                 if (!profiles || profiles.length === 0) {
                     return { error: 'No se encontraron residentes registrados con WhatsApp para ese departamento.' };
@@ -637,11 +699,13 @@ export async function executeTool(
 
             // ── ADMINISTRADOR ────────────────────────────────────────────────
             case 'get_defaulters_list': {
-                if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden acceder a esta información.' };
-                const query = supabase
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden acceder a esta información.' };
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const query = supabaseAdmin
                     .from('fees')
                     .select('unit_id, amount, due_date, period, units(unit_number)')
-                    .eq('community_id', input.community_id || userCtx.community_id)
+                    .eq('community_id', communityId)
                     .eq('status', 'PENDIENTE')
                     .order('due_date', { ascending: true });
                 if (input.month) query.like('period', `${input.month}%`);
@@ -650,12 +714,14 @@ export async function executeTool(
             }
 
             case 'create_poll': {
-                if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden crear votaciones.' };
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden crear votaciones.' };
+                const communityId = scopedCommunity(userCtx, input.community_id);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const options = input.options.split(',').map(o => o.trim()).filter(Boolean);
-                const { data: poll, error: pollErr } = await supabase
+                const { data: poll, error: pollErr } = await supabaseAdmin
                     .from('polls')
                     .insert({
-                        community_id: input.community_id || userCtx.community_id,
+                        community_id: communityId,
                         title: input.title,
                         description: input.description || null,
                         closes_at: input.closes_at || null,
@@ -664,14 +730,14 @@ export async function executeTool(
                     .select('id')
                     .single();
                 if (pollErr) return { error: 'No se pudo crear la votación.' };
-                await supabase.from('poll_options').insert(
+                await supabaseAdmin.from('poll_options').insert(
                     options.map(text => ({ poll_id: poll.id, text }))
                 );
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
             }
 
             case 'update_unit_data': {
-                if (userCtx.role !== 'admin') return { error: 'Solo los administradores pueden modificar información de departamentos.' };
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden modificar información de departamentos.' };
                 
                 const updates: Record<string, string | number> = {};
                 if (input.number !== undefined) updates.number = input.number;
@@ -679,10 +745,12 @@ export async function executeTool(
 
                 if (Object.keys(updates).length === 0) return { error: 'No se enviaron datos para actualizar' };
 
-                const { error } = await supabase
+                const update = supabaseAdmin
                     .from('units')
                     .update(updates)
                     .eq('id', input.unit_id);
+                if (userCtx.community_id) update.eq('community_id', userCtx.community_id);
+                const { error } = await update;
                 
                 if (error) return { error: 'No se pudo actualizar el departamento', detail: error.message };
                 return { success: true, message: `Información de la unidad actualizada correctamente.` };
@@ -690,23 +758,77 @@ export async function executeTool(
 
             // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
             case 'request_urgent_access_approval': {
-                // Simula envío de aprobación a residente o escalamiento a conserje
-                // En un entorno de producción, aquí invocaríamos Resend/Twilio con un magic link.
+                const { data: residents } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('unit_id', input.unit_id);
+
+                const notifications = (residents || []).map(resident => ({
+                    user_id: resident.id,
+                    type: 'alert',
+                    category: 'iot_access_approval',
+                    title: 'Solicitud urgente de acceso',
+                    body: input.reason,
+                    link: '/resident/cases',
+                    community_id: userCtx.community_id,
+                }));
+
+                if (notifications.length > 0) {
+                    await supabaseAdmin.from('notifications').insert(notifications);
+                }
+
                 return {
                     success: true,
                     status: 'APPROVAL_PENDING',
-                    message: `Se ha notificado vía WhatsApp al residente de la unidad ${input.unit_id}. A la espera de autorización para abrir la puerta inteligente.`
+                    notified_residents: notifications.length,
+                    message: notifications.length > 0
+                        ? `Se notificó a ${notifications.length} residente(s) de la unidad ${input.unit_id} para autorizar acceso urgente.`
+                        : `No encontré residentes asociados a la unidad ${input.unit_id}; escalar a conserjería.`
                 };
             }
 
             case 'dispatch_provider': {
-                // Simula despachar a un técnico externo
-                // En un entorno de producción, esto buscaría en 'service_providers' y haría un POST a su API.
+                const providerQuery = supabaseAdmin
+                    .from('service_providers')
+                    .select('id, name, contact_phone, category, response_time')
+                    .eq('availability', 'available')
+                    .order('verified', { ascending: false })
+                    .order('rating', { ascending: false })
+                    .limit(1);
+                if (userCtx.community_id) providerQuery.eq('community_id', userCtx.community_id);
+                if (input.category) providerQuery.eq('category', input.category);
+
+                const { data: providers } = await providerQuery;
+                const provider = providers?.[0];
+
+                const { data: staff } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('community_id', userCtx.community_id)
+                    .in('role', ['admin', 'concierge']);
+
+                if (staff?.length) {
+                    await supabaseAdmin.from('notifications').insert(staff.map(member => ({
+                        user_id: member.id,
+                        type: input.urgency === 'URGENTE' ? 'alert' : 'warning',
+                        category: 'iot_provider_dispatch',
+                        title: provider ? 'Proveedor sugerido por CoCo' : 'Proveedor requerido por CoCo',
+                        body: provider
+                            ? `${provider.name} (${provider.contact_phone}) calza con ${input.category}. Detalle: ${input.details}`
+                            : `No hay proveedor disponible para ${input.category}. Detalle: ${input.details}`,
+                        link: '/admin/mantenimiento',
+                        community_id: userCtx.community_id,
+                    })));
+                }
+
                 return {
-                    success: true,
-                    status: 'PROVIDER_DISPATCHED',
-                    provider_contacted: 'Proveedor de Turno Asociado',
-                    message: `Proveedor de categoría ${input.category} contactado con estado ${input.urgency}. Tiempo estimado de llegada: 30 minutos.`
+                    success: Boolean(provider),
+                    status: provider ? 'PROVIDER_IDENTIFIED' : 'NO_PROVIDER_AVAILABLE',
+                    provider,
+                    notified_staff: staff?.length || 0,
+                    message: provider
+                        ? `Proveedor disponible sugerido: ${provider.name} (${provider.contact_phone}). Staff notificado para confirmar despacho.`
+                        : `No encontré proveedor disponible para ${input.category}; staff notificado para gestión manual.`
                 };
             }
 
