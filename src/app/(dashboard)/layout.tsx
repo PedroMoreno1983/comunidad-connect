@@ -45,9 +45,10 @@ function DashboardShell({
 
     useEffect(() => {
         if (!loading && !user) {
-            router.push('/');
+            const next = pathname && pathname !== "/" ? `?next=${encodeURIComponent(pathname)}` : "";
+            router.replace(`/login${next}`);
         }
-    }, [loading, user, router]);
+    }, [loading, pathname, user, router]);
 
     useEffect(() => {
         const routeTitles: Record<string, string> = {

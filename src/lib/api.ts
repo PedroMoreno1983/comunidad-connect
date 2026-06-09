@@ -127,35 +127,19 @@ const COLLAB_STORAGE_KEYS = {
     projects: 'convive-community-projects',
 };
 
-function canUseLocalStorage() {
-    return typeof window !== 'undefined' && Boolean(window.localStorage);
+function createLocalId(prefix: string): string {
+    throw new Error(`El modulo de convivencia requiere tablas Supabase reales antes de crear registros (${prefix}).`);
 }
 
-function createLocalId(prefix: string) {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-        return `${prefix}-${crypto.randomUUID()}`;
-    }
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function readStoredList<T>(key: string, fallback: T[]): T[] {
-    if (!canUseLocalStorage()) return fallback;
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-        window.localStorage.setItem(key, JSON.stringify(fallback));
-        return fallback;
-    }
-    try {
-        const parsed: unknown = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed as T[] : fallback;
-    } catch {
-        return fallback;
-    }
+function readStoredList<T>(key: string, _fallback: T[]): T[] {
+    void _fallback;
+    console.warn(`[CommunityCollaborationService] ${key} unavailable; returning empty real-data state.`);
+    return [];
 }
 
 function writeStoredList<T>(key: string, values: T[]) {
-    if (!canUseLocalStorage()) return;
-    window.localStorage.setItem(key, JSON.stringify(values));
+    void values;
+    throw new Error(`El modulo de convivencia requiere tablas Supabase reales antes de escribir ${key}.`);
 }
 
 const DEFAULT_TIME_BANK_OFFERS: TimeBankOffer[] = [

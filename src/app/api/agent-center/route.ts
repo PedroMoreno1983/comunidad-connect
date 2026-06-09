@@ -1318,6 +1318,9 @@ export async function POST(req: NextRequest) {
 
         if (action.requiresConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
+            if (!audit.runId || !audit.toolCallId) {
+                throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
+            }
             const persistedAction = {
                 ...action,
                 proposalId: audit.toolCallId,

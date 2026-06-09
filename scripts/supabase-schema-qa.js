@@ -18,6 +18,11 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || localEnv.SUPABASE_S
 
 const requiredTables = [
   'amenities',
+  'expense_items',
+  'agent_runs',
+  'agent_tool_calls',
+  'agent_action_approvals',
+  'agent_activity_log',
   'neighbor_mediations',
   'time_bank_offers',
   'collective_purchase_campaigns',

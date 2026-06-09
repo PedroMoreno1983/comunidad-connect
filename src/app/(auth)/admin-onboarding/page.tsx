@@ -7,7 +7,6 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BrandWordmark } from "@/components/BrandWordmark";
-import { supabase } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Star, User, Zap } from "lucide-react";
 
 const PLANS = [
@@ -119,70 +118,25 @@ export default function AdminOnboardingPage() {
         setLoading(true);
 
         try {
-            const { data: authData, error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: { name: fullName, role: "admin" },
-                },
+            const response = await fetch("/api/admin-onboarding/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planId: selectedPlan,
+                    communityName,
+                    address,
+                    selectedAddress,
+                    units,
+                    fullName,
+                    email,
+                    password,
+                }),
             });
 
-            if (signUpError) throw signUpError;
-            if (!authData.user) throw new Error("No se pudo crear el usuario");
-
-            if (!authData.session) {
-                toast({
-                    title: "Cuenta creada",
-                    description: "Revisa tu correo para confirmar la cuenta y luego inicia sesión.",
-                    variant: "success",
-                });
-                router.push("/login");
-                return;
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({})) as { error?: string };
+                throw new Error(data.error || "No se pudo registrar el edificio.");
             }
-
-            const communityPayload: Record<string, unknown> = {
-                name: communityName.trim(),
-                subscription_status: "trialing",
-            };
-            if (address) communityPayload.address = address;
-            if (selectedAddress) {
-                communityPayload.address_latitude = selectedAddress.latitude;
-                communityPayload.address_longitude = selectedAddress.longitude;
-                communityPayload.address_place_id = selectedAddress.placeId;
-                communityPayload.address_geocoding_source = selectedAddress.source;
-            }
-            if (selectedPlan) communityPayload.tier_id = selectedPlan;
-
-            let { data: communityData, error: commError } = await supabase
-                .from("communities")
-                .insert(communityPayload)
-                .select("id")
-                .single();
-
-            const canRetryWithoutGeocode = commError?.message
-                && ["address_latitude", "address_longitude", "address_place_id", "address_geocoding_source"].some(column => commError.message.includes(column));
-            if (canRetryWithoutGeocode) {
-                delete communityPayload.address_latitude;
-                delete communityPayload.address_longitude;
-                delete communityPayload.address_place_id;
-                delete communityPayload.address_geocoding_source;
-                const retry = await supabase
-                    .from("communities")
-                    .insert(communityPayload)
-                    .select("id")
-                    .single();
-                communityData = retry.data;
-                commError = retry.error;
-            }
-
-            if (commError) throw commError;
-
-            const { error: profileError } = await supabase
-                .from("profiles")
-                .update({ community_id: communityData.id, role: "admin" })
-                .eq("id", authData.user.id);
-
-            if (profileError) throw profileError;
 
             const selectedPlanName = PLANS.find(p => p.id === selectedPlan)?.name || "Por definir";
             fetch("/api/email/new-community", {
@@ -211,10 +165,10 @@ export default function AdminOnboardingPage() {
 
             toast({
                 title: "Comunidad creada",
-                description: `Bienvenido a la administración de ${communityName}`,
+                description: `Ahora inicia sesion para administrar ${communityName}.`,
                 variant: "success",
             });
-            router.push("/home");
+            router.push("/login?next=%2Fhome");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Ocurrió un error inesperado";
             toast({ title: "Error en el registro", description: message, variant: "destructive" });

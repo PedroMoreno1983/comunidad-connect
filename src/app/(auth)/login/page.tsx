@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -10,6 +10,14 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 
 export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
+    );
+}
+
+function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -17,7 +25,10 @@ export default function LoginPage() {
     const [activeTab, setActiveTab] = useState<"mail" | "rut">("mail");
     const { signIn } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
+    const nextParam = searchParams.get("next");
+    const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -40,7 +51,7 @@ export default function LoginPage() {
             description: "Has iniciado sesión correctamente",
             variant: "success",
         });
-        router.push("/home");
+        router.push(safeNext);
     };
 
     return (
@@ -119,7 +130,7 @@ export default function LoginPage() {
                             </Link>
                         </div>
 
-                        <div className="flex rounded-xl bg-[#EDE6D9] p-1" style={{ border: "1px solid var(--cc-line)" }}>
+                        <div className="hidden rounded-xl bg-[#EDE6D9] p-1" style={{ border: "1px solid var(--cc-line)" }}>
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("mail")}

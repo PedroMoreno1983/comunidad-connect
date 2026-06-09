@@ -122,19 +122,37 @@ export default function ConvivenciaPage() {
 
     useEffect(() => {
         async function load() {
-            const [mediationData, timeBankData, purchaseData, projectData] = await Promise.all([
-                CommunityCollaborationService.getMediationCases(),
-                CommunityCollaborationService.getTimeBankOffers(),
-                CommunityCollaborationService.getCollectivePurchases(),
-                CommunityCollaborationService.getCommunityProjects(),
-            ]);
-            setMediations(mediationData);
-            setTimeBankOffers(timeBankData);
-            setPurchases(purchaseData);
-            setProjects(projectData);
+            try {
+                const [mediationData, timeBankData, purchaseData, projectData] = await Promise.all([
+                    CommunityCollaborationService.getMediationCases(),
+                    CommunityCollaborationService.getTimeBankOffers(),
+                    CommunityCollaborationService.getCollectivePurchases(),
+                    CommunityCollaborationService.getCommunityProjects(),
+                ]);
+                setMediations(mediationData);
+                setTimeBankOffers(timeBankData);
+                setPurchases(purchaseData);
+                setProjects(projectData);
+            } catch (error) {
+                console.error("[Convivencia] load failed:", error);
+                toast({
+                    title: "Modulo no disponible",
+                    description: "Falta configurar las tablas reales de convivencia en Supabase.",
+                    variant: "destructive",
+                });
+            }
         }
         load();
-    }, []);
+    }, [toast]);
+
+    const showCollaborationError = (error: unknown) => {
+        console.error("[Convivencia] action failed:", error);
+        toast({
+            title: "Accion no registrada",
+            description: error instanceof Error ? error.message : "No se pudo guardar en Supabase.",
+            variant: "destructive",
+        });
+    };
 
     const communityCredits = useMemo(
         () => timeBankOffers.reduce((sum, item) => sum + item.credits + item.requestsCount, 0),
@@ -148,25 +166,33 @@ export default function ConvivenciaPage() {
 
     const handleCreateMediation = async (event: React.FormEvent) => {
         event.preventDefault();
-        const draft = await CommunityCollaborationService.createMediationCase({
-            reporterId: user?.id || "anonymous",
-            reporterName: user?.name || "Vecino",
-            communityId: user?.communityId,
-            targetUnit: mediationForm.targetUnit || "Unidad por confirmar",
-            observation: mediationForm.observation,
-            feeling: mediationForm.feeling,
-            need: mediationForm.need,
-            request: mediationForm.request,
-        });
-        setLastDraft(draft);
-        setMediations([draft, ...mediations]);
-        toast({ title: "Mensaje CNV preparado", description: "CoCo redacto una peticion privada sin tono punitivo.", variant: "success" });
+        try {
+            const draft = await CommunityCollaborationService.createMediationCase({
+                reporterId: user?.id || "anonymous",
+                reporterName: user?.name || "Vecino",
+                communityId: user?.communityId,
+                targetUnit: mediationForm.targetUnit || "Unidad por confirmar",
+                observation: mediationForm.observation,
+                feeling: mediationForm.feeling,
+                need: mediationForm.need,
+                request: mediationForm.request,
+            });
+            setLastDraft(draft);
+            setMediations([draft, ...mediations]);
+            toast({ title: "Mensaje CNV preparado", description: "CoCo redacto una peticion privada sin tono punitivo.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const updateMediation = async (id: string, status: NeighborMediationCase["status"]) => {
-        const updated = await CommunityCollaborationService.updateMediationStatus(id, status);
-        setMediations(updated);
-        toast({ title: status === "sent" ? "Mensaje enviado" : "Estado actualizado", description: "El caso quedo registrado en mediacion activa.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.updateMediationStatus(id, status);
+            setMediations(updated);
+            toast({ title: status === "sent" ? "Mensaje enviado" : "Estado actualizado", description: "El caso quedo registrado en mediacion activa.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const copyDraft = async () => {
@@ -178,74 +204,98 @@ export default function ConvivenciaPage() {
     const handleCreateTimeBankOffer = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!timeBankForm.skill.trim() || !timeBankForm.description.trim()) return;
-        const updated = await CommunityCollaborationService.createTimeBankOffer({
-            profileId: user?.id,
-            communityId: user?.communityId,
-            neighborName: user?.name || "Vecino",
-            unitLabel: user?.unitName || user?.unitId || "Depto",
-            skill: timeBankForm.skill.trim(),
-            description: timeBankForm.description.trim(),
-            availability: timeBankForm.availability.trim() || "Coordinar por chat interno",
-            category: timeBankForm.category,
-            credits: Number(timeBankForm.credits) || 1,
-        });
-        setTimeBankOffers(updated);
-        setTimeBankForm({ skill: "", description: "", availability: "", category: "tools", credits: 1 });
-        toast({ title: "Oferta publicada", description: "Tu apoyo quedo visible en el banco de tiempo.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.createTimeBankOffer({
+                profileId: user?.id,
+                communityId: user?.communityId,
+                neighborName: user?.name || "Vecino",
+                unitLabel: user?.unitName || user?.unitId || "Depto",
+                skill: timeBankForm.skill.trim(),
+                description: timeBankForm.description.trim(),
+                availability: timeBankForm.availability.trim() || "Coordinar por chat interno",
+                category: timeBankForm.category,
+                credits: Number(timeBankForm.credits) || 1,
+            });
+            setTimeBankOffers(updated);
+            setTimeBankForm({ skill: "", description: "", availability: "", category: "tools", credits: 1 });
+            toast({ title: "Oferta publicada", description: "Tu apoyo quedo visible en el banco de tiempo.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const requestOffer = async (id: string) => {
-        const updated = await CommunityCollaborationService.requestTimeBankOffer(id);
-        setTimeBankOffers(updated);
-        toast({ title: "Solicitud registrada", description: "CoCo recomienda coordinar por mensaje interno antes de confirmar.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.requestTimeBankOffer(id);
+            setTimeBankOffers(updated);
+            toast({ title: "Solicitud registrada", description: "CoCo recomienda coordinar por mensaje interno antes de confirmar.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const handleCreatePurchase = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!purchaseForm.title.trim() || !purchaseForm.supplier.trim()) return;
-        const updated = await CommunityCollaborationService.createCollectivePurchase({
-            communityId: user?.communityId,
-            title: purchaseForm.title.trim(),
-            supplier: purchaseForm.supplier.trim(),
-            category: purchaseForm.category,
-            unitPrice: Number(purchaseForm.unitPrice) || 0,
-            retailPrice: Number(purchaseForm.retailPrice) || 0,
-            minimumParticipants: Number(purchaseForm.minimumParticipants) || 1,
-            deadline: purchaseForm.deadline,
-            organizer: user?.name || "Comite vecinal",
-        });
-        setPurchases(updated);
-        setPurchaseForm({ title: "", supplier: "", category: "water", unitPrice: 0, retailPrice: 0, minimumParticipants: 10, deadline: todayPlus(10) });
-        toast({ title: "Compra colectiva abierta", description: "La campana ya puede sumar unidades interesadas.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.createCollectivePurchase({
+                communityId: user?.communityId,
+                title: purchaseForm.title.trim(),
+                supplier: purchaseForm.supplier.trim(),
+                category: purchaseForm.category,
+                unitPrice: Number(purchaseForm.unitPrice) || 0,
+                retailPrice: Number(purchaseForm.retailPrice) || 0,
+                minimumParticipants: Number(purchaseForm.minimumParticipants) || 1,
+                deadline: purchaseForm.deadline,
+                organizer: user?.name || "Comite vecinal",
+            });
+            setPurchases(updated);
+            setPurchaseForm({ title: "", supplier: "", category: "water", unitPrice: 0, retailPrice: 0, minimumParticipants: 10, deadline: todayPlus(10) });
+            toast({ title: "Compra colectiva abierta", description: "La campana ya puede sumar unidades interesadas.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const joinPurchase = async (id: string) => {
-        const updated = await CommunityCollaborationService.joinCollectivePurchase(id);
-        setPurchases(updated);
-        toast({ title: "Te sumaste al abasto", description: "Tu unidad cuenta para llegar al minimo mayorista.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.joinCollectivePurchase(id);
+            setPurchases(updated);
+            toast({ title: "Te sumaste al abasto", description: "Tu unidad cuenta para llegar al minimo mayorista.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const handleCreateProject = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!projectForm.title.trim() || !projectForm.description.trim()) return;
-        const updated = await CommunityCollaborationService.createCommunityProject({
-            communityId: user?.communityId,
-            title: projectForm.title.trim(),
-            area: projectForm.area,
-            description: projectForm.description.trim(),
-            impact: projectForm.impact.trim() || "Impacto por medir con vecinos inscritos.",
-            needed: projectForm.needed.trim() || "Voluntarios y primer acuerdo de coordinacion.",
-            cocoInsight: projectForm.cocoInsight.trim() || "CoCo puede detectar vecinos con intereses similares y sugerir el primer grupo de trabajo.",
-        });
-        setProjects(updated);
-        setProjectForm({ title: "", area: "huerto", description: "", impact: "", needed: "", cocoInsight: "" });
-        toast({ title: "Proyecto creado", description: "La plaza social ahora muestra esta iniciativa colectiva.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.createCommunityProject({
+                communityId: user?.communityId,
+                title: projectForm.title.trim(),
+                area: projectForm.area,
+                description: projectForm.description.trim(),
+                impact: projectForm.impact.trim() || "Impacto por medir con vecinos inscritos.",
+                needed: projectForm.needed.trim() || "Voluntarios y primer acuerdo de coordinacion.",
+                cocoInsight: projectForm.cocoInsight.trim() || "CoCo puede detectar vecinos con intereses similares y sugerir el primer grupo de trabajo.",
+            });
+            setProjects(updated);
+            setProjectForm({ title: "", area: "huerto", description: "", impact: "", needed: "", cocoInsight: "" });
+            toast({ title: "Proyecto creado", description: "La plaza social ahora muestra esta iniciativa colectiva.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     const joinProject = async (id: string) => {
-        const updated = await CommunityCollaborationService.joinCommunityProject(id);
-        setProjects(updated);
-        toast({ title: "Participacion registrada", description: "CoCo sumo tu interes al proyecto comunitario.", variant: "success" });
+        try {
+            const updated = await CommunityCollaborationService.joinCommunityProject(id);
+            setProjects(updated);
+            toast({ title: "Participacion registrada", description: "CoCo sumo tu interes al proyecto comunitario.", variant: "success" });
+        } catch (error) {
+            showCollaborationError(error);
+        }
     };
 
     return (
