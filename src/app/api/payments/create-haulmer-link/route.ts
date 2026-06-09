@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HaulmerService } from '@/lib/services/haulmer';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { HaulmerService } from '@/lib/services/haulmer';
+import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { PUBLIC_SITE_URL } from '@/lib/config';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
-// Allowed return URL origins to prevent open redirect
 const ALLOWED_ORIGINS = [
     PUBLIC_SITE_URL,
     'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
     'http://localhost:3011',
+    'http://localhost:3018',
     'https://conviveconnect.com',
     'https://www.conviveconnect.com',
 ].filter(Boolean) as string[];
@@ -17,10 +20,7 @@ const ALLOWED_ORIGINS = [
 function isAllowedReturnUrl(url: string): boolean {
     try {
         const parsed = new URL(url);
-        return ALLOWED_ORIGINS.some(origin => {
-            const o = new URL(origin);
-            return parsed.origin === o.origin;
-        });
+        return ALLOWED_ORIGINS.some(origin => parsed.origin === new URL(origin).origin);
     } catch {
         return false;
     }
@@ -29,6 +29,37 @@ function isAllowedReturnUrl(url: string): boolean {
 function sanitize(value: unknown, maxLen: number): string {
     if (typeof value !== 'string') return '';
     return value.trim().slice(0, maxLen);
+}
+
+async function markPaymentAttempt(reference: string, amount: number, token: string) {
+    const [type, recordId] = reference.split('_');
+    const metadata = {
+        processor: 'haulmer_tuu',
+        payment_reference: reference,
+        payment_token: token,
+        amount,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+    };
+
+    if ((type === 'EXP' || type === 'FEE') && recordId) {
+        const { error } = await supabaseAdmin
+            .from('expenses')
+            .update({ payment_metadata: metadata })
+            .eq('id', recordId);
+
+        if (error) console.warn('[payments/create-haulmer-link] Could not mark expense payment attempt:', error.message);
+        return;
+    }
+
+    if (type === 'MARKET' && recordId) {
+        const { error } = await supabaseAdmin
+            .from('marketplace_items')
+            .update({ payment_status: 'pending' })
+            .eq('id', recordId);
+
+        if (error) console.warn('[payments/create-haulmer-link] Could not mark marketplace payment attempt:', error.message);
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -42,61 +73,66 @@ export async function POST(req: NextRequest) {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
         );
+
         const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
         if (authError || !user) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
-        const body = await req.json();
+        const body = await req.json() as Record<string, unknown>;
+        const client = body.client && typeof body.client === 'object'
+            ? body.client as Record<string, unknown>
+            : null;
 
-        // ─── Validate required fields ─────────────────────────────────────
         const amount = typeof body.amount === 'number' ? body.amount : Number(body.amount);
         const description = sanitize(body.description, 200);
         const reference = sanitize(body.reference, 100);
         const returnUrl = sanitize(body.returnUrl, 300);
 
-        if (!amount || isNaN(amount) || amount <= 0 || amount > 100_000_000) {
-            return NextResponse.json({ error: 'Monto inválido o fuera de rango.' }, { status: 400 });
+        if (!amount || Number.isNaN(amount) || amount <= 0 || amount > 100_000_000) {
+            return NextResponse.json({ error: 'Monto invalido o fuera de rango.' }, { status: 400 });
         }
         if (!description) {
-            return NextResponse.json({ error: 'Se requiere una descripción del pago.' }, { status: 400 });
+            return NextResponse.json({ error: 'Se requiere una descripcion del pago.' }, { status: 400 });
         }
         if (!reference) {
             return NextResponse.json({ error: 'Se requiere una referencia de pago.' }, { status: 400 });
         }
-        if (!body.client || typeof body.client.name !== 'string' || typeof body.client.email !== 'string') {
-            return NextResponse.json({ error: 'Datos del cliente inválidos.' }, { status: 400 });
+        if (!client || typeof client.name !== 'string' || typeof client.email !== 'string') {
+            return NextResponse.json({ error: 'Datos del cliente invalidos.' }, { status: 400 });
         }
 
-        // ─── Sanitize client data ─────────────────────────────────────────
-        const clientName = sanitize(body.client.name, 100);
-        const clientEmail = sanitize(body.client.email, 150);
-
-        // Strict email format check to prevent injection
+        const clientName = sanitize(client.name, 100);
+        const clientEmail = sanitize(client.email, 150);
+        const clientPhone = sanitize(client.phone, 30);
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
         if (!emailRegex.test(clientEmail)) {
-            return NextResponse.json({ error: 'Email del cliente inválido.' }, { status: 400 });
+            return NextResponse.json({ error: 'Email del cliente invalido.' }, { status: 400 });
         }
 
-        // ─── Validate return URL (prevent open redirect) ──────────────────
         const safeReturnUrl = returnUrl && isAllowedReturnUrl(returnUrl)
             ? returnUrl
             : `${PUBLIC_SITE_URL}/home`;
 
-        // ─── Create payment link ──────────────────────────────────────────
         const response = await HaulmerService.createPaymentLink({
             amount,
             description,
             reference,
-            client: { name: clientName, email: clientEmail },
+            client: { name: clientName, email: clientEmail, phone: clientPhone || undefined },
             returnUrl: safeReturnUrl,
         });
 
-        return NextResponse.json({ url: response.url });
+        await markPaymentAttempt(reference, amount, response.token);
 
+        return NextResponse.json({
+            url: response.url,
+            reference: response.reference,
+            token: response.token,
+        });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error generating Haulmer link';
-        console.error("Haulmer Gateway Error:", error);
+        console.error('[payments/create-haulmer-link] Haulmer Gateway Error:', error);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
