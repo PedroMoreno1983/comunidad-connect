@@ -375,8 +375,8 @@ export default function MarketplacePage() {
                                             ))}
                                             {previewUrls.length < 4 && (
                                                 <label className="group flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-subtle transition-colors hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/10">
-                                                    <Plus className="h-6 w-6 text-slate-400 group-hover:text-blue-500 mb-1" />
-                                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-500">Añadir</span>
+                                                    <Plus className="h-6 w-6 text-slate-400 group-hover:text-copper mb-1" />
+                                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-copper">Añadir</span>
                                                     <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
                                                 </label>
                                             )}
@@ -432,12 +432,12 @@ export default function MarketplacePage() {
                                                 onClick={() => setNewItem({ ...newItem, allowSale: !newItem.allowSale })}>
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="flex items-center gap-4">
-                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 text-white' : 'bg-elevated text-slate-400'}`}>
+                                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${newItem.allowSale ? 'bg-copper text-white' : 'bg-elevated text-slate-400'}`}>
                                                             <Tag className="h-5 w-5" />
                                                         </div>
                                                         <span className="font-semibold cc-text-primary">Venta Directa</span>
                                                     </div>
-                                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-blue-600 border-blue-600' : 'border-subtle'}`}>
+                                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${newItem.allowSale ? 'bg-copper border-copper' : 'border-subtle'}`}>
                                                         {newItem.allowSale && <div className="h-2 w-2 rounded-full bg-white" />}
                                                     </div>
                                                 </div>
@@ -628,22 +628,22 @@ export default function MarketplacePage() {
 
 
             <ModuleFlow
-                title="Publicacion segura entre vecinos"
-                description="El flujo debe terminar con un articulo publicado, moderado y con conversacion trazable antes de reservar o vender."
+                title="Publicación segura entre vecinos"
+                description="El flujo debe terminar con un artículo publicado, moderado y con conversación trazable antes de reservar o vender."
                 statusLabel={`${marketplaceStats.available} disponibles`}
                 completedSteps={items.length > 0 ? 2 : 0}
                 currentStep={items.length > 0 ? 3 : 1}
-                primaryActionLabel={items.length > 0 ? "Explorar articulos" : "Publicar articulo"}
+                primaryActionLabel={items.length > 0 ? "Explorar artículos" : "Publicar artículo"}
                 primaryActionHref={items.length > 0 ? "#vitrina-marketplace" : "#publicar-articulo"}
                 secondaryActionLabel="Mis publicaciones"
                 secondaryActionHref="/marketplace/my-listings"
                 steps={[
                     "Publicar con fotos y modalidad",
-                    "Moderacion revisa visibilidad",
+                    "Moderación revisa visibilidad",
                     "Vecino contacta desde la ficha",
                     "Marcar reservado, vendido u oculto",
                 ]}
-                outcome="Cierre esperado: el articulo queda con estado claro en la vitrina y en Mis Publicaciones, evitando contactos perdidos o anuncios desactualizados."
+                outcome="Cierre esperado: el artículo queda con estado claro en la vitrina y en Mis Publicaciones, evitando contactos perdidos o anuncios desactualizados."
             />
 
             {publicationSummary && (
@@ -654,7 +654,7 @@ export default function MarketplacePage() {
                                 <CheckCircle2 className="h-5 w-5" />
                             </div>
                             <div>
-                                <p className="font-semibold text-success-fg">Publicacion lista</p>
+                                <p className="font-semibold text-success-fg">Publicación lista</p>
                                 <h2 className="mt-1 text-lg font-semibold cc-text-primary">{publicationSummary.title}</h2>
                                 <p className="mt-1 text-sm leading-6 text-emerald-900">
                                     Visible en la vitrina comunitaria con {publicationSummary.imageCount || "sin"} foto{publicationSummary.imageCount === 1 ? "" : "s"} y modalidad {publicationSummary.modes.join(", ") || "por definir"}.
@@ -673,7 +673,7 @@ export default function MarketplacePage() {
                                 <ExternalLink className="h-4 w-4" />
                             </a>
                             <Link href="/marketplace/my-listings">
-                                <Button variant="outline">Gestionar publicacion</Button>
+                                <Button variant="outline">Gestionar publicación</Button>
                             </Link>
                         </div>
                     </div>
@@ -727,8 +727,8 @@ export default function MarketplacePage() {
                                 onClick={() => setModeFilter(option.key as typeof modeFilter)}
                                 className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     modeFilter === option.key
-                                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-                                        : 'bg-elevated cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800'
+                                        ? 'bg-ink text-paper shadow-sm'
+                                        : 'bg-paper-warm cc-text-secondary hover:text-copper'
                                 }`}
                             >
                                 {option.label}
@@ -740,7 +740,7 @@ export default function MarketplacePage() {
                         <select
                             value={sortMode}
                             onChange={event => setSortMode(event.target.value as typeof sortMode)}
-                            className="h-10 rounded-xl border border-subtle bg-elevated px-3 text-xs font-semibold cc-text-secondary outline-none focus:ring-2 focus:ring-blue-500/20"
+                            className="h-10 rounded-xl border border-subtle bg-paper-warm px-3 text-xs font-semibold cc-text-secondary outline-none focus:border-copper focus:ring-2 focus:ring-[rgba(181,102,78,0.16)]"
                         >
                             <option value="recent">Más recientes</option>
                             <option value="price_asc">Menor precio</option>
@@ -769,8 +769,8 @@ export default function MarketplacePage() {
                 )}
                 {!isSearching && searchResults !== null && (
                     <div className="flex items-center gap-2 mt-3 px-1">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                            🔍 Búsqueda híbrida
+                        <span className="rounded-full px-2 py-0.5 text-xs font-bold text-copper" style={{ background: "var(--cc-copper-tint)" }}>
+                            Búsqueda híbrida
                         </span>
                         <span className="text-xs text-slate-400">
                             {filteredItems.length} resultado{filteredItems.length !== 1 ? 's' : ''} para &quot;{searchTerm}&quot;
@@ -812,8 +812,8 @@ export default function MarketplacePage() {
                             <div className="flex items-center gap-4 shrink-0">
                                 <div className="hidden md:flex flex-col items-center gap-2">
                                     <div className="flex gap-2">
-                                        <div className="w-9 h-9 rounded-full bg-blue-100 border-2 border-white/20 flex items-center justify-center">
-                                            <ShoppingCart className="h-4 w-4 text-blue-700" />
+                                        <div className="w-9 h-9 rounded-full border-2 border-white/20 flex items-center justify-center" style={{ background: "var(--cc-copper-tint)" }}>
+                                            <ShoppingCart className="h-4 w-4 text-copper" />
                                         </div>
                                         <div className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white/20 flex items-center justify-center">
                                             <ChefHat className="h-4 w-4 text-orange-700" />
@@ -834,7 +834,7 @@ export default function MarketplacePage() {
             {/* Items Grid */}
             {loading && (
                 <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                    <Loader2 className="h-5 w-5 animate-spin text-copper" />
                     Cargando publicaciones...
                 </div>
             )}
@@ -905,12 +905,12 @@ export default function MarketplacePage() {
                 <EmptyState
                     icon={<Search className="h-6 w-6" />}
                     title="No hay resultados"
-                    description="No encontramos publicaciones que coincidan con tu busqueda. Ajusta los filtros o revisa las categorias disponibles."
+                    description="No encontramos publicaciones que coincidan con tu búsqueda. Ajusta los filtros o revisa las categorías disponibles."
                     action={
                         <Button
                             variant="primary"
                             onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
-                            className="shadow-sm shadow-blue-500/20 px-8 py-3"
+                            className="px-8 py-3 shadow-sm"
                         >
                             Ver todo el Catálogo
                         </Button>
@@ -922,8 +922,8 @@ export default function MarketplacePage() {
             <Dialog open={isRulesOpen} onOpenChange={setIsRulesOpen}>
                 <DialogContent className="rounded-lg bg-surface p-8 sm:max-w-[600px]">
                     <DialogHeader>
-                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                            <Info className="h-6 w-6 text-blue-600" />
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: "var(--cc-copper-tint)" }}>
+                            <Info className="h-6 w-6 text-copper" />
                         </div>
                         <DialogTitle className="text-2xl font-semibold">Reglamento del Marketplace</DialogTitle>
                         <DialogDescription className="text-slate-500 font-medium">
