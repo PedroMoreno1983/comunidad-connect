@@ -14,9 +14,9 @@ interface ProviderCardProps {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-    plumbing: "Gasfiteria",
+    plumbing: "Gasfitería",
     electrical: "Electricidad",
-    locksmith: "Cerrajeria",
+    locksmith: "Cerrajería",
     cleaning: "Limpieza",
     general: "Multiservicios",
 };
@@ -76,15 +76,15 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
 
     return (
         <Link href={`/services/provider/${provider.id}`} className="group block h-full">
-            <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-default bg-surface shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg">
-                <div className="relative h-20 bg-[#111827]">
-                    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(181,102,78,0.82),rgba(17,24,39,0.94))]" />
+            <article className="flex h-full flex-col overflow-hidden rounded-xl border bg-paper shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ borderColor: "var(--cc-line)" }}>
+                <div className="relative h-20 bg-ink">
+                    <div className="absolute inset-0 opacity-90" style={{ background: "radial-gradient(circle at 18% 20%, rgba(217,166,145,0.36), transparent 34%), linear-gradient(135deg, var(--cc-ink), var(--cc-ink-soft))" }} />
                     <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/86">
                         <BriefcaseBusiness className="h-3.5 w-3.5" />
                         Red CoCo
                     </div>
                     {provider.verified && (
-                        <div className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-brand-700 shadow-sm">
+                        <div className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-copper shadow-sm">
                             <BadgeCheck className="h-3.5 w-3.5" />
                             Verificado
                         </div>
@@ -97,7 +97,7 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
 
                 <div className="flex flex-1 flex-col p-5 pt-3">
                     <div className="min-w-0">
-                        <h3 className="text-xl font-bold leading-tight tracking-normal cc-text-primary transition-colors group-hover:text-brand-700">
+                        <h3 className="text-xl font-bold leading-tight tracking-normal cc-text-primary transition-colors group-hover:text-copper">
                             {provider.name}
                         </h3>
                         {showCategory && (
@@ -119,7 +119,7 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
 
                     <div className="mt-4 flex flex-wrap gap-2">
                         {topSpecialties.map(specialty => (
-                            <span key={specialty} className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+                            <span key={specialty} className="rounded-full border px-3 py-1 text-xs font-semibold text-copper" style={{ borderColor: "rgba(181,102,78,0.22)", background: "var(--cc-copper-tint)" }}>
                                 {specialty}
                             </span>
                         ))}
@@ -131,14 +131,14 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
                                 <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
                                 {provider.rating}
                             </p>
-                            <p className="mt-1 text-[11px] font-medium cc-text-tertiary">{provider.reviewCount} resenas</p>
+                            <p className="mt-1 text-[11px] font-medium cc-text-tertiary">{provider.reviewCount} reseñas</p>
                         </div>
                         <div>
                             <p className="flex items-center gap-1 text-sm font-bold cc-text-primary">
                                 <TrendingUp className="h-4 w-4 text-brand-500" />
                                 {provider.yearsExperience}
                             </p>
-                            <p className="mt-1 text-[11px] font-medium cc-text-tertiary">anos exp.</p>
+                            <p className="mt-1 text-[11px] font-medium cc-text-tertiary">años exp.</p>
                         </div>
                         <div>
                             <p className="text-sm font-bold cc-text-primary">{provider.completedJobs}</p>
@@ -153,7 +153,7 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
                                 {provider.responseTime}
                             </p>
                             <p className="text-sm font-semibold cc-text-primary">
-                                {provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotizacion"}
+                                {provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotización"}
                             </p>
                         </div>
 
@@ -162,7 +162,7 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
                                 <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
                                 <span className="text-xs font-bold">{availability.label}</span>
                             </div>
-                            <div className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand-700">
+                            <div className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-copper">
                                 Ver perfil
                                 <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
                             </div>

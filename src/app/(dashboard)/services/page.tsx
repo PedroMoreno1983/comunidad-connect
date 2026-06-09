@@ -5,10 +5,10 @@ import { ServicesCatalogClient } from "@/components/services/ServicesCatalogClie
 const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wrench' | 'zap' | 'key' | 'cleaning' | 'toolbox'; gradient: string; description: string }[] = [
     {
         id: 'plumbing',
-        name: 'Gasfiteria',
+        name: 'Gasfitería',
         iconName: 'wrench',
         gradient: 'from-blue-500 to-cyan-600',
-        description: 'Fugas, griferia, flexibles y mantencion preventiva'
+        description: 'Fugas, grifería, flexibles y mantención preventiva'
     },
     {
         id: 'electrical',
@@ -19,7 +19,7 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
     },
     {
         id: 'locksmith',
-        name: 'Cerrajeria',
+        name: 'Cerrajería',
         iconName: 'key',
         gradient: 'from-purple-500 to-pink-600',
         description: 'Aperturas, cambios de chapa y control de accesos'
@@ -36,7 +36,7 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
         name: 'Multiservicios',
         iconName: 'toolbox',
         gradient: 'from-orange-500 to-red-600',
-        description: 'Reparaciones menores y mantencion del hogar'
+        description: 'Reparaciones menores y mantención del hogar'
     }
 ];
 

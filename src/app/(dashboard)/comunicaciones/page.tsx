@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
-import { Send, Users, Eye } from "lucide-react";
+import { CheckCircle2, Send, Users } from "lucide-react";
 
 type Priority = 'info' | 'alert' | 'event';
 type AnnouncementRow = {
@@ -90,7 +90,7 @@ export default function ComunicacionesPage() {
             setTitle("");
             setContent("");
             setPriority("info");
-            toast({ title: "Aviso publicado", description: "La notificación ha sido enviada a todos los residentes.", variant: "success" });
+            toast({ title: "Aviso publicado", description: "La comunicación quedó registrada para la comunidad.", variant: "success" });
         } catch {
             toast({ title: "Error", description: "Hubo un problema al publicar el aviso.", variant: "destructive" });
         } finally {
@@ -126,7 +126,7 @@ export default function ComunicacionesPage() {
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">
             {/* Header */}
-            <div className="border-b border-subtle pb-6">
+            <div className="border-b pb-6" style={{ borderColor: "var(--cc-line)" }}>
                 <Eyebrow>Operaciones</Eyebrow>
                 <DisplayHeading size={36} className="mt-2">
                     Publicar <em className="text-italic-serif text-brand-600">comunicación</em>
@@ -137,10 +137,10 @@ export default function ComunicacionesPage() {
             </div>
 
             {/* 2-Column Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
                 
                 {/* Left Column: Form */}
-                <section className="bg-surface border border-subtle rounded-xl p-6 shadow-sm space-y-6">
+                <section className="rounded-xl border bg-paper p-6 shadow-sm space-y-6" style={{ borderColor: "var(--cc-line)" }}>
                     <h3 className="text-lg font-bold cc-text-primary">Detalles del Comunicado</h3>
                     
                     <form onSubmit={handleSubmit} className="space-y-5">
@@ -157,8 +157,8 @@ export default function ComunicacionesPage() {
                                             onClick={() => setPriority(p)}
                                             className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${
                                                 isSelected 
-                                                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                                                    : 'bg-canvas text-slate-600 border-subtle hover:border-brand-200'
+                                                    ? 'bg-ink text-paper border-ink shadow-sm'
+                                                    : 'bg-paper-warm text-slate-600 border-subtle hover:border-copper'
                                             }`}
                                         >
                                             {getPriorityLabel(p)}
@@ -177,7 +177,8 @@ export default function ComunicacionesPage() {
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Ej: Corte de agua programado"
-                                className="w-full h-11 px-4 rounded-xl border border-subtle bg-surface text-sm font-medium cc-text-primary outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                                className="w-full h-11 px-4 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                style={{ borderColor: "var(--cc-line)" }}
                             />
                         </div>
 
@@ -189,7 +190,8 @@ export default function ComunicacionesPage() {
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 placeholder="Escribe el cuerpo del aviso..."
-                                className="w-full min-h-[140px] px-4 py-3 rounded-xl border border-subtle bg-surface text-sm font-medium cc-text-primary outline-none transition-all focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                                className="w-full min-h-[140px] px-4 py-3 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                style={{ borderColor: "var(--cc-line)" }}
                             />
                         </div>
 
@@ -202,7 +204,7 @@ export default function ComunicacionesPage() {
                                     { label: "Email", checked: sendMail, onChange: setSendMail },
                                     { label: "WhatsApp", checked: sendWhatsApp, onChange: setSendWhatsApp }
                                 ].map(ch => (
-                                    <label key={ch.label} className="flex items-center gap-2 p-3 rounded-lg border border-subtle bg-canvas cursor-pointer hover:bg-elevated transition-colors text-xs font-semibold cc-text-secondary select-none">
+                                    <label key={ch.label} className="flex items-center gap-2 p-3 rounded-lg border bg-paper-warm cursor-pointer hover:bg-paper transition-colors text-xs font-semibold cc-text-secondary select-none" style={{ borderColor: "var(--cc-line)" }}>
                                         <input
                                             type="checkbox"
                                             checked={ch.checked}
@@ -233,14 +235,14 @@ export default function ComunicacionesPage() {
                 {/* Right Column: Live Preview & Reach */}
                 <section className="space-y-6">
                     {/* Live Preview Card */}
-                    <div className="bg-surface border border-subtle rounded-xl p-6 shadow-sm space-y-4">
+                    <div className="rounded-xl border bg-paper p-6 shadow-sm space-y-4" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center justify-between border-b border-subtle pb-3">
                             <h3 className="text-sm font-bold uppercase tracking-wider cc-text-tertiary">Vista Previa</h3>
-                            <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">Tiempo Real</span>
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-sage" style={{ background: "var(--cc-sage-tint)" }}>Tiempo real</span>
                         </div>
                         
                         <article 
-                            className="rounded-xl border border-subtle bg-canvas p-5 relative overflow-hidden transition-all duration-300"
+                            className="rounded-xl border bg-paper-warm p-5 relative overflow-hidden transition-all duration-300"
                             style={{ borderLeft: `4px solid ${getPriorityLeftColor(priority)}` }}
                         >
                             <div className="flex items-start justify-between gap-4">
@@ -263,22 +265,22 @@ export default function ComunicacionesPage() {
                     </div>
 
                     {/* Reach Card */}
-                    <div className="bg-slate-950 text-white rounded-xl p-6 shadow-sm space-y-4">
+                    <div className="bg-ink text-paper rounded-xl p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Alcance Estimado</h3>
-                            <Users className="h-4 w-4 text-brand-300" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-white/55">Canales seleccionados</h3>
+                            <Users className="h-4 w-4 text-copper-soft" />
                         </div>
                         <div className="space-y-3">
                             {[
-                                { name: "App Push", pct: sendApp ? "100%" : "0%", reach: sendApp ? "142 residentes" : "Deshabilitado", enabled: sendApp },
-                                { name: "Email", pct: sendMail ? "95%" : "0%", reach: sendMail ? "135 residentes" : "Deshabilitado", enabled: sendMail },
-                                { name: "WhatsApp", pct: sendWhatsApp ? "80%" : "0%", reach: sendWhatsApp ? "114 residentes" : "Deshabilitado", enabled: sendWhatsApp }
+                                { name: "App Push", status: sendApp ? "Activo" : "Deshabilitado", detail: sendApp ? "Se registrará para notificación interna" : "No se usará este canal", enabled: sendApp },
+                                { name: "Email", status: sendMail ? "Activo" : "Deshabilitado", detail: sendMail ? "Listo para envío transaccional" : "No se usará este canal", enabled: sendMail },
+                                { name: "WhatsApp", status: sendWhatsApp ? "Pendiente" : "Deshabilitado", detail: sendWhatsApp ? "Requiere Twilio configurado" : "No se usará este canal", enabled: sendWhatsApp }
                             ].map(channel => (
                                 <div key={channel.name} className={`flex items-center justify-between p-3 rounded-lg border ${channel.enabled ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-55'}`}>
                                     <div className="text-xs font-semibold text-slate-200">{channel.name}</div>
                                     <div className="text-right">
-                                        <p className="text-sm font-bold text-white">{channel.pct}</p>
-                                        <p className="text-[10px] text-slate-400">{channel.reach}</p>
+                                        <p className="text-sm font-bold text-white">{channel.status}</p>
+                                        <p className="text-[10px] text-slate-400">{channel.detail}</p>
                                     </div>
                                 </div>
                             ))}
@@ -288,7 +290,7 @@ export default function ComunicacionesPage() {
             </div>
 
             {/* Bottom Section: Enviadas esta semana */}
-            <section className="bg-surface border border-subtle rounded-xl p-6 shadow-sm space-y-4">
+            <section className="rounded-xl border bg-paper p-6 shadow-sm space-y-4" style={{ borderColor: "var(--cc-line)" }}>
                 <h3 className="text-lg font-bold cc-text-primary">Enviadas esta semana</h3>
                 
                 <div className="overflow-x-auto">
@@ -298,12 +300,11 @@ export default function ComunicacionesPage() {
                                 <th className="pb-3">Título</th>
                                 <th className="pb-3">Fecha</th>
                                 <th className="pb-3">Categoría</th>
-                                <th className="pb-3 text-right">Lectura</th>
+                                <th className="pb-3 text-right">Estado</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {announcements.map((ann, index) => {
-                                const rate = index % 2 === 0 ? "88%" : "74%";
+                            {announcements.map((ann) => {
                                 return (
                                     <tr key={ann.id} className="border-b border-subtle/50 text-xs cc-text-secondary hover:bg-elevated/40 transition-colors">
                                         <td className="py-3.5 font-semibold cc-text-primary truncate max-w-[200px]">{ann.title}</td>
@@ -311,9 +312,11 @@ export default function ComunicacionesPage() {
                                         <td className="py-3.5">
                                             <Tag tone={getPriorityTone(ann.priority)}>{getPriorityLabel(ann.priority)}</Tag>
                                         </td>
-                                        <td className="py-3.5 text-right font-mono font-semibold flex items-center justify-end gap-1.5 text-brand-600">
-                                            <Eye className="h-3.5 w-3.5" />
-                                            {rate}
+                                        <td className="py-3.5 text-right font-mono font-semibold">
+                                            <span className="inline-flex items-center justify-end gap-1.5 text-sage">
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                Registrado
+                                            </span>
                                         </td>
                                     </tr>
                                 );

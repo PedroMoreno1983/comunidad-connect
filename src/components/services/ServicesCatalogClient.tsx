@@ -19,7 +19,8 @@ import {
 import { ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/cc/Button";
+import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -36,9 +37,9 @@ interface ServicesCatalogClientProps {
 }
 
 const CATEGORY_LABELS: Record<ServiceProvider["category"], string> = {
-    plumbing: "Gasfiteria",
+    plumbing: "Gasfitería",
     electrical: "Electricidad",
-    locksmith: "Cerrajeria",
+    locksmith: "Cerrajería",
     cleaning: "Limpieza",
     general: "Multiservicios",
 };
@@ -103,19 +104,24 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
 
     return (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-            <section className="overflow-hidden rounded-[2rem] border border-strong bg-[#111827] text-white shadow-xl">
+            <section className="relative overflow-hidden rounded-xl border bg-ink text-paper shadow-xl" style={{ borderColor: "rgba(250,247,241,0.08)" }}>
+                <div
+                    aria-hidden
+                    className="absolute -right-20 -top-24 h-80 w-80 rounded-full"
+                    style={{ background: "radial-gradient(circle, rgba(181,102,78,0.35), transparent 64%)" }}
+                />
                 <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.2fr_0.8fr] lg:p-10">
-                    <div className="flex flex-col justify-between gap-8">
+                    <div className="relative flex flex-col justify-between gap-8">
                         <div>
                             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/82">
                                 <ShieldCheck className="h-3.5 w-3.5 text-[#D9A691]" />
                                 Red profesional verificada
                             </div>
-                            <h1 className="max-w-3xl text-3xl font-semibold tracking-normal text-white md:text-5xl">
-                                Encuentra proveedores como revisarias un perfil profesional.
-                            </h1>
+                            <DisplayHeading size={52} style={{ color: "var(--cc-paper)" }}>
+                                Solicita servicios <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>con contexto</em>.
+                            </DisplayHeading>
                             <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72 md:text-base">
-                                Perfiles con reputacion, especialidades, disponibilidad y solicitudes trazables para que la comunidad contrate con mas contexto.
+                                Perfiles con reputación, especialidades, disponibilidad y solicitudes trazables para que la comunidad contrate con más confianza.
                             </p>
                         </div>
 
@@ -136,14 +142,14 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="relative grid gap-3 sm:grid-cols-2">
                         {[
                             { label: "Disponibles hoy", value: availableCount, icon: <Clock3 className="h-5 w-5" /> },
                             { label: "Verificados", value: verifiedCount, icon: <BadgeCheck className="h-5 w-5" /> },
                             { label: "Calificacion media", value: averageRating, icon: <Star className="h-5 w-5" /> },
                             { label: "Trabajos cerrados", value: completedJobs, icon: <BriefcaseBusiness className="h-5 w-5" /> },
                         ].map(stat => (
-                            <div key={stat.label} className="rounded-2xl border border-white/12 bg-white/[0.07] p-4 shadow-sm">
+                            <div key={stat.label} className="rounded-xl border border-white/12 bg-white/[0.07] p-4 shadow-sm">
                                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#D9A691]">
                                     {stat.icon}
                                 </div>
@@ -157,9 +163,9 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[290px_1fr]">
                 <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-                    <section className="rounded-2xl border border-default bg-surface p-4 shadow-sm">
+                    <section className="rounded-xl border bg-paper p-4 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="mb-4 flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-brand-600" />
+                            <Filter className="h-4 w-4 text-copper" />
                             <h2 className="text-sm font-bold cc-text-primary">Especialidades</h2>
                         </div>
                         <div className="space-y-2">
@@ -167,7 +173,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                 type="button"
                                 onClick={() => setCategory("all")}
                                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-                                    category === "all" ? "bg-brand-50 text-brand-700" : "cc-text-secondary hover:bg-elevated"
+                                    category === "all" ? "bg-ink text-paper" : "cc-text-secondary hover:bg-paper-warm"
                                 }`}
                             >
                                 Toda la red
@@ -179,7 +185,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                     type="button"
                                     onClick={() => setCategory(item.id)}
                                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-                                        category === item.id ? "bg-brand-50 text-brand-700" : "cc-text-secondary hover:bg-elevated"
+                                        category === item.id ? "bg-ink text-paper" : "cc-text-secondary hover:bg-paper-warm"
                                     }`}
                                 >
                                     <span>{item.name}</span>
@@ -189,34 +195,35 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         </div>
                     </section>
 
-                    <section className="rounded-2xl border border-default bg-surface p-4 shadow-sm">
+                    <section className="rounded-xl border bg-paper p-4 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="mb-3 flex items-center gap-2">
-                            <UsersRound className="h-4 w-4 text-brand-600" />
-                            <h2 className="text-sm font-bold cc-text-primary">Como opera</h2>
+                            <UsersRound className="h-4 w-4 text-copper" />
+                            <h2 className="text-sm font-bold cc-text-primary">Cómo opera</h2>
                         </div>
                         <div className="space-y-3 text-sm cc-text-secondary">
-                            <p>1. Revisa reputacion y habilidades.</p>
-                            <p>2. Envia una solicitud trazable.</p>
-                            <p>3. Cierra el trabajo y deja evaluacion.</p>
+                            <p>1. Revisa reputación y habilidades.</p>
+                            <p>2. Envía una solicitud trazable.</p>
+                            <p>3. Cierra el trabajo y deja evaluación.</p>
                         </div>
                     </section>
                 </aside>
 
                 <main className="space-y-6">
-                    <section id="catalogo-servicios" className="scroll-mt-24 rounded-2xl border border-default bg-surface p-4 shadow-sm sm:p-5">
+                    <section id="catalogo-servicios" className="scroll-mt-24 rounded-xl border bg-paper p-4 shadow-sm sm:p-5" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
                             <div className="relative">
-                                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500" />
+                                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-copper" />
                                 <input
                                     type="text"
                                     value={query}
                                     onChange={event => setQuery(event.target.value)}
                                     placeholder="Buscar por nombre, especialidad o certificación"
-                                    className="w-full rounded-xl border border-default bg-elevated py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
+                                    className="w-full rounded-xl border bg-paper-warm py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                    style={{ borderColor: "var(--cc-line)" }}
                                 />
                             </div>
 
-                            <div className="flex flex-wrap gap-2 rounded-xl border border-default bg-elevated p-1">
+                            <div className="flex flex-wrap gap-2 rounded-xl border bg-paper-warm p-1" style={{ borderColor: "var(--cc-line)" }}>
                                 {[
                                     { key: "all", label: "Todos" },
                                     { key: "available", label: "Disponibles" },
@@ -228,8 +235,8 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                         onClick={() => setAvailability(option.key as typeof availability)}
                                         className={`rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
                                             availability === option.key
-                                                ? "bg-brand-500 text-white shadow-sm"
-                                                : "cc-text-secondary hover:bg-surface"
+                                                ? "bg-ink text-paper shadow-sm"
+                                                : "cc-text-secondary hover:bg-paper"
                                         }`}
                                     >
                                         {option.label}
@@ -247,7 +254,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                 <button
                                     type="button"
                                     onClick={clearFilters}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-xs font-semibold cc-text-secondary hover:bg-brand-50 hover:text-brand-700"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-paper-warm px-3 py-2 text-xs font-semibold cc-text-secondary hover:text-copper"
                                 >
                                     <X className="h-3.5 w-3.5" />
                                     Limpiar filtros
@@ -257,13 +264,13 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                     </section>
 
                     {!hasFilters && featuredProviders.length > 0 && (
-                        <section className="rounded-2xl border border-default bg-surface p-5 shadow-sm">
+                        <section className="rounded-xl border bg-paper p-5 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">Recomendados</p>
+                                    <Eyebrow>Recomendados</Eyebrow>
                                     <h2 className="mt-1 text-xl font-semibold tracking-normal cc-text-primary">Perfiles destacados de la red</h2>
                                 </div>
-                                <Link href="/services/register" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">
+                                <Link href="/services/register" className="inline-flex items-center gap-2 text-sm font-bold text-copper">
                                     Postular proveedor
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
@@ -279,10 +286,10 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                     <section>
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">Directorio</p>
+                                <Eyebrow>Directorio</Eyebrow>
                                 <h2 className="mt-1 text-2xl font-semibold tracking-normal cc-text-primary">Profesionales y empresas</h2>
                             </div>
-                            <Wrench className="hidden h-7 w-7 text-brand-500 sm:block" />
+                            <Wrench className="hidden h-7 w-7 text-copper sm:block" />
                         </div>
 
                         {filteredProviders.length > 0 ? (
@@ -295,8 +302,8 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                             <EmptyState
                                 icon={<Search className="h-6 w-6" />}
                                 title="No encontramos perfiles con esos filtros"
-                                description="Prueba con otro rubro, amplia la busqueda o vuelve a ver toda la red disponible."
-                                action={<Button variant="outline" onClick={clearFilters}>Limpiar filtros</Button>}
+                                description="Prueba con otro rubro, amplía la búsqueda o vuelve a ver toda la red disponible."
+                                action={<Button variant="ghost" onClick={clearFilters}>Limpiar filtros</Button>}
                             />
                         )}
                     </section>
