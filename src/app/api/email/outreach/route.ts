@@ -1,85 +1,120 @@
 import { NextResponse } from 'next/server';
-import { resend, FROM_EMAIL, emailWrapper } from '@/lib/email';
+import { FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper, resend } from '@/lib/email';
 import { getPublicUrl } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
+function asText(value: unknown, maxLength = 400): string {
+    return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 export async function POST(request: Request) {
     try {
-        const { adminName, adminEmail, condoName } = await request.json();
+        const body = await request.json() as Record<string, unknown>;
+        const adminName = asText(body.adminName, 120);
+        const adminEmail = asText(body.adminEmail, 180);
+        const condoName = asText(body.condoName, 160);
+        const message = asText(body.message, 1200);
 
         if (!adminName || !adminEmail) {
             return NextResponse.json({ error: 'Faltan datos obligatorios (nombre o email)' }, { status: 400 });
         }
 
-        const condoLabel = condoName?.trim() || 'tu comunidad';
-        const subject = `Propuesta de Software para la gestión de ${condoLabel} 🏢`;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(adminEmail)) {
+            return NextResponse.json({ error: 'Email invalido' }, { status: 400 });
+        }
+
+        const condoLabel = condoName || 'tu comunidad';
+        const safeAdminName = escapeHtml(adminName);
+        const safeCondoLabel = escapeHtml(condoLabel);
+        const safeMessage = escapeHtml(message || 'Sin detalle adicional.');
+        const subject = `Activacion inteligente Convive Connect - ${condoLabel}`;
 
         const html = emailWrapper(`
-            <h1 style="color: #1a1a1a;">Hola Estimado Administrador, 👋</h1>
+            <h1 style="color:#1a1a1a;">Hola ${safeAdminName},</h1>
             <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
-                Preparamos esta propuesta pensando en <strong>${condoLabel}</strong>.
+                Recibimos la solicitud de activacion inteligente para <strong>${safeCondoLabel}</strong>.
             </p>
             <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">
-                Te escribo para presentarte <strong>Convive Connect</strong>, la plataforma SaaS diseñada específicamente para modernizar la administración de condominios y edificios.
+                El siguiente paso es crear la comunidad y subir los archivos disponibles para que CoCo prepare unidades, residentes, brechas y modulos iniciales antes de guardar datos reales.
             </p>
+
+            <div style="background:#fff7ed;border-radius:12px;padding:18px;margin-bottom:24px;border:1px solid #fed7aa;">
+                <p style="margin:0 0 8px;font-weight:700;color:#974C3C;">Detalle recibido</p>
+                <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">${safeMessage}</p>
+            </div>
 
             <div style="background:#f8fafc;border-radius:12px;padding:24px;margin-bottom:32px;border:1px solid #e2e8f0;">
-                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#974C3C;">¿Por qué elegir Convive Connect?</h2>
-                
+                <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#974C3C;">Que prepara CoCo</h2>
                 <div style="margin-bottom:16px;">
-                    <p style="margin:0;font-weight:700;color:#1e293b;">🤖 IA Onboarding</p>
-                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Nuestra Inteligencia Artificial extrae datos de residentes y gastos históricos de cualquier PDF/Excel en minutos, eliminando meses de trabajo manual.</p>
+                    <p style="margin:0;font-weight:700;color:#1e293b;">IA Onboarding</p>
+                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Extrae datos de residentes, unidades y contactos desde Excel, PDF, CSV o documentos desordenados.</p>
                 </div>
-
                 <div style="margin-bottom:16px;">
-                    <p style="margin:0;font-weight:700;color:#1e293b;">📊 Gestión Financiera de Élite</p>
-                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Automatiza el cálculo de gastos comunes, conciliación bancaria con Haulmer y reportes detallados en un solo clic.</p>
+                    <p style="margin:0;font-weight:700;color:#1e293b;">Control de brechas</p>
+                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Marca filas incompletas, unidades repetidas, contactos faltantes y datos que requieren aprobacion.</p>
                 </div>
-
-                <div style="margin-bottom:16px;">
-                    <p style="margin:0;font-weight:700;color:#1e293b;">📱 Experiencia Digital 100%</p>
-                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Muro de noticias interactivo, reservas de amenities, votaciones digitales y botón de pánico para residentes.</p>
-                </div>
-
                 <div>
-                    <p style="margin:0;font-weight:700;color:#1e293b;">🚛 Marketplace de Servicios</p>
-                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">Acceso directo a proveedores certificados y servicios para la comunidad desde la misma aplicación.</p>
+                    <p style="margin:0;font-weight:700;color:#1e293b;">Activacion segura</p>
+                    <p style="margin:4px 0 0;font-size:14px;color:#64748b;">No crea usuarios ni invita residentes hasta que la administracion revise y confirme.</p>
                 </div>
             </div>
 
-            <p style="margin:0 0 32px;color:#475569;font-size:15px;line-height:1.6;">
-                Estamos convencidos de que podemos ahorrarte mucho tiempo operativo.
-            </p>
-            <div style="margin-top: 30px; margin-bottom: 30px;">
-                <a href="${getPublicUrl('/login')}" style="display: inline-block; padding: 12px 24px; background-color: #C8705A; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                    Ver Convive Connect
+            <div style="margin-top:30px;margin-bottom:30px;">
+                <a href="${getPublicUrl('/admin-onboarding')}" style="display:inline-block;padding:12px 24px;background-color:#C8705A;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">
+                    Crear comunidad
                 </a>
             </div>
-            <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; color: #666;">
+            <p style="margin-top:30px;border-top:1px solid #eee;padding-top:20px;color:#666;">
                 Atentamente,<br>
                 <strong>Equipo Convive Connect</strong>
             </p>
+        `, 'Activacion inteligente Convive Connect');
 
-            <p style="margin:32px 0 0;color:#94a3b8;font-size:13px;font-style:italic;">
-                Este es un correo de invitación directa de parte del equipo de Convive Connect.
-                Si deseas agendar una reunión personalizada, solo responde a este email.
-            </p>
-        `, 'Invitación a Convive Connect');
+        const recipients = Array.from(new Set([adminEmail, SUPERADMIN_EMAIL].filter(Boolean)));
+        let deliveryError: string | null = null;
 
-        const { error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [adminEmail],
-            subject,
-            html,
-        });
+        try {
+            const { error } = await resend.emails.send({
+                from: FROM_EMAIL,
+                to: recipients,
+                subject,
+                html,
+            });
 
-        if (error) throw new Error(error.message);
+            deliveryError = error?.message || null;
+        } catch (error) {
+            deliveryError = error instanceof Error ? error.message : 'No se pudo enviar el email de respaldo.';
+        }
 
-        return NextResponse.json({ ok: true, message: 'Correo enviado con éxito' });
+        if (deliveryError) {
+            console.warn('[email/outreach] Lead accepted but email delivery failed:', {
+                adminEmail,
+                condoName,
+                reason: deliveryError,
+            });
+            return NextResponse.json({
+                ok: true,
+                emailSent: false,
+                warning: deliveryError,
+                message: 'Solicitud recibida. El email de respaldo quedo pendiente.',
+            });
+        }
+
+        return NextResponse.json({ ok: true, emailSent: true, message: 'Solicitud recibida' });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Error desconocido';
-        console.error('Error sending outreach email:', message);
+        console.error('[email/outreach] Unexpected error:', message);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
