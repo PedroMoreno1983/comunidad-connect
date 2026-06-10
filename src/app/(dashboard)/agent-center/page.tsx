@@ -93,10 +93,26 @@ type AgentPlaybook = {
   steps: string[];
 };
 
+type AgentWorkflow = {
+  key: string;
+  agentKey: AgentKey;
+  name: string;
+  status: "ready" | "needs_review" | "blocked";
+  priority: "high" | "medium" | "low";
+  nextAction: string;
+  pendingActions: number;
+  completedActions: number;
+  estimatedMinutesSaved: number;
+  targetHref: string;
+  summary: string;
+  metrics: Array<{ label: string; value: string; tone: "success" | "warning" | "neutral" }>;
+};
+
 type AgentCenterGetResponse = {
   activity?: ActivityRow[];
   policies?: AgentPolicy[];
   summary?: AgentSummary;
+  workflows?: AgentWorkflow[];
   playbooks?: AgentPlaybook[];
 };
 
@@ -185,6 +201,15 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
     steps: ["Detectar impagos", "Notificar residentes", "Auditar gestion"],
   },
   {
+    key: "maintenance_ticket_triage",
+    agentKey: "maintenance",
+    name: "Triage de mantenimiento",
+    description: "Ordena tickets abiertos, proveedores y seguimiento operativo.",
+    targetHref: "/admin/mantenimiento",
+    requiresAdmin: true,
+    steps: ["Detectar tickets", "Revisar proveedores", "Registrar brechas"],
+  },
+  {
     key: "onboarding_import_review",
     agentKey: "community",
     name: "Onboarding de edificio",
@@ -213,6 +238,43 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
   },
 ];
 
+const DEFAULT_WORKFLOWS: AgentWorkflow[] = [
+  {
+    key: "maintenance_ticket_triage",
+    agentKey: "maintenance",
+    name: "Mantenimiento y tickets",
+    status: "ready",
+    priority: "high",
+    nextAction: "Preparar triage de tickets abiertos",
+    pendingActions: 0,
+    completedActions: 0,
+    estimatedMinutesSaved: 0,
+    targetHref: "/admin/mantenimiento",
+    summary: "Ordena incidencias, proveedores y seguimiento operativo.",
+    metrics: [
+      { label: "Tickets abiertos", value: "0", tone: "success" },
+      { label: "Ahorro potencial", value: "0 min", tone: "neutral" },
+    ],
+  },
+  {
+    key: "finance_collection_review",
+    agentKey: "finance",
+    name: "Cobranza mensual",
+    status: "ready",
+    priority: "medium",
+    nextAction: "Revisar gastos pendientes",
+    pendingActions: 0,
+    completedActions: 0,
+    estimatedMinutesSaved: 0,
+    targetHref: "/admin/finanzas",
+    summary: "Prepara cobranza privada y auditable.",
+    metrics: [
+      { label: "Cobros pendientes", value: "0", tone: "success" },
+      { label: "Ahorro potencial", value: "0 min", tone: "neutral" },
+    ],
+  },
+];
+
 function policyListToMap(policies?: AgentPolicy[]) {
   const output = { ...DEFAULT_POLICIES };
   for (const policy of policies || []) {
@@ -234,6 +296,24 @@ function editableArgs(args: Record<string, unknown>) {
   ) as Record<string, string | number>;
 }
 
+function workflowStatusLabel(status: AgentWorkflow["status"]) {
+  if (status === "blocked") return "Bloqueado";
+  if (status === "needs_review") return "Revisar";
+  return "Listo";
+}
+
+function workflowStatusClass(status: AgentWorkflow["status"]) {
+  if (status === "blocked") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (status === "needs_review") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
+}
+
+function metricToneClass(tone: "success" | "warning" | "neutral") {
+  if (tone === "success") return "text-emerald-700";
+  if (tone === "warning") return "text-amber-700";
+  return "cc-text-primary";
+}
+
 export default function AgentCenterPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([
@@ -250,6 +330,7 @@ export default function AgentCenterPage() {
   ]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
+  const [workflows, setWorkflows] = useState<AgentWorkflow[]>(DEFAULT_WORKFLOWS);
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [loading, setLoading] = useState(false);
@@ -283,6 +364,7 @@ export default function AgentCenterPage() {
 
     setPolicies(policyListToMap(data.policies));
     if (data.summary) setSummary(data.summary);
+    if (data.workflows?.length) setWorkflows(data.workflows);
     if (data.playbooks) setPlaybooks(data.playbooks);
     await loadActivity();
   }
@@ -294,6 +376,7 @@ export default function AgentCenterPage() {
     setActivity(Array.isArray(data.activity) ? data.activity : []);
     setPolicies(policyListToMap(data.policies));
     setSummary(data.summary || DEFAULT_SUMMARY);
+    setWorkflows(data.workflows?.length ? data.workflows : DEFAULT_WORKFLOWS);
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
   }
 
@@ -333,6 +416,7 @@ export default function AgentCenterPage() {
       ]);
       if (data.policies) setPolicies(policyListToMap(data.policies));
       if (data.summary) setSummary(data.summary);
+      if (data.workflows?.length) setWorkflows(data.workflows);
       if (data.playbooks) setPlaybooks(data.playbooks);
       await loadActivity();
     } catch (error) {
@@ -382,6 +466,13 @@ export default function AgentCenterPage() {
     await sendAgentRequest({ message, type: "playbook_request", playbookKey: playbook.key });
   }
 
+  async function requestWorkflow(workflow: AgentWorkflow) {
+    if (loading) return;
+    const message = `Prepara workflow ${workflow.name}: ${workflow.nextAction}`;
+    setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
+    await sendAgentRequest({ message, type: "playbook_request", playbookKey: workflow.key });
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -399,6 +490,79 @@ export default function AgentCenterPage() {
           <div className="flex items-center gap-2 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 py-2 text-xs font-semibold cc-text-secondary">
             <ShieldCheck className="h-4 w-4 text-[var(--cc-sage)]" />
             Manual first, audit ready
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-[var(--cc-line)] pb-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--cc-copper)]">Workflow Center</p>
+              <h2 className="mt-1 text-lg font-semibold cc-text-primary">Operaciones listas para que CoCo las avance</h2>
+              <p className="mt-1 text-xs cc-text-tertiary">
+                Cada flujo muestra estado, siguiente accion, ROI estimado y permiso humano antes de ejecutar.
+              </p>
+            </div>
+            <div className="rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 text-xs font-semibold cc-text-secondary">
+              {workflows.reduce((sum, item) => sum + item.pendingActions, 0)} acciones por revisar
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {workflows.map((workflow) => {
+              const blocked = workflow.status === "blocked";
+              return (
+                <article key={workflow.key} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-semibold cc-text-primary">{workflow.name}</h3>
+                        <span className={clsx("rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]", workflowStatusClass(workflow.status))}>
+                          {workflowStatusLabel(workflow.status)}
+                        </span>
+                        {workflow.priority === "high" && (
+                          <span className="rounded-full border border-rose-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-rose-700">
+                            Prioridad alta
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm leading-6 cc-text-secondary">{workflow.summary}</p>
+                      <p className="mt-3 text-xs font-semibold cc-text-primary">Proxima accion: {workflow.nextAction}</p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-white px-3 py-2 text-right">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Ahorro</p>
+                      <p className="mt-1 text-lg font-bold cc-text-primary">{workflow.estimatedMinutesSaved} min</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {workflow.metrics.map((metric) => (
+                      <div key={`${workflow.key}-${metric.label}`} className="rounded-md border border-[var(--cc-line)] bg-white px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{metric.label}</p>
+                        <p className={clsx("mt-1 text-sm font-bold", metricToneClass(metric.tone))}>{metric.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => requestWorkflow(workflow)}
+                      disabled={loading || blocked || !policies[workflow.agentKey]?.active}
+                      className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                      Preparar workflow
+                    </button>
+                    <Link
+                      href={workflow.targetHref}
+                      className="inline-flex items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 py-2 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-paper)]"
+                    >
+                      Abrir modulo
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 
