@@ -334,6 +334,7 @@ export default function AgentCenterPage() {
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [loading, setLoading] = useState(false);
+  const [workflowLoadingKey, setWorkflowLoadingKey] = useState<string | null>(null);
 
   // Action inline editing states
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
@@ -467,10 +468,15 @@ export default function AgentCenterPage() {
   }
 
   async function requestWorkflow(workflow: AgentWorkflow) {
-    if (loading) return;
+    if (loading || workflowLoadingKey) return;
     const message = `Prepara workflow ${workflow.name}: ${workflow.nextAction}`;
+    setWorkflowLoadingKey(workflow.key);
     setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
-    await sendAgentRequest({ message, type: "playbook_request", playbookKey: workflow.key });
+    try {
+      await sendAgentRequest({ message, type: "playbook_request", playbookKey: workflow.key });
+    } finally {
+      setWorkflowLoadingKey(null);
+    }
   }
 
   return (
@@ -510,6 +516,7 @@ export default function AgentCenterPage() {
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {workflows.map((workflow) => {
               const blocked = workflow.status === "blocked";
+              const isPreparing = workflowLoadingKey === workflow.key;
               return (
                 <article key={workflow.key} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -547,11 +554,11 @@ export default function AgentCenterPage() {
                     <button
                       type="button"
                       onClick={() => requestWorkflow(workflow)}
-                      disabled={loading || blocked || !policies[workflow.agentKey]?.active}
+                      disabled={isPreparing || blocked || !policies[workflow.agentKey]?.active}
                       className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                      Preparar workflow
+                      {isPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                      {isPreparing ? "Preparando..." : "Preparar workflow"}
                     </button>
                     <Link
                       href={workflow.targetHref}
@@ -737,7 +744,7 @@ export default function AgentCenterPage() {
                               return (
                                 <div key={`${message.id}-${index}`} className="rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 leading-5">
                                   <span className="mr-1.5 cc-text-tertiary">{index + 1}.</span>
-                                  <span className={clsx("font-semibold mr-2", kindColor)}>{step.title} &gt;</span>
+                                  <span className={clsx("font-semibold mr-2", kindColor)}>{step.title}:</span>
                                   <span className="break-words cc-text-secondary">{step.detail}</span>
                                 </div>
                               );
