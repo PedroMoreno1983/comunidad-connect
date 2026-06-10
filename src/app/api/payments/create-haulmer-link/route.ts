@@ -5,6 +5,8 @@ import { HaulmerService } from '@/lib/services/haulmer';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { calculateHaulmerServiceFee } from '@/lib/payments/haulmerFees';
+import type { HaulmerFeeCalculation } from '@/lib/types';
 
 const ALLOWED_ORIGINS = [
     PUBLIC_SITE_URL,
@@ -31,13 +33,24 @@ function sanitize(value: unknown, maxLen: number): string {
     return value.trim().slice(0, maxLen);
 }
 
-async function markPaymentAttempt(reference: string, amount: number, token: string) {
+async function markPaymentAttempt(
+    reference: string,
+    amount: number,
+    token: string,
+    feeCalculation?: HaulmerFeeCalculation | null,
+) {
     const [type, recordId] = reference.split('_');
     const metadata = {
         processor: 'haulmer_tuu',
         payment_reference: reference,
         payment_token: token,
         amount,
+        base_amount: feeCalculation?.baseAmount ?? amount,
+        service_fee: feeCalculation?.totalFee ?? 0,
+        service_fee_net: feeCalculation?.netFee ?? 0,
+        service_fee_vat: feeCalculation?.vat ?? 0,
+        service_fee_mode: feeCalculation?.feeMode ?? null,
+        service_fee_range: feeCalculation?.range.label ?? null,
         status: 'pending',
         created_at: new Date().toISOString(),
     };
@@ -85,6 +98,7 @@ export async function POST(req: NextRequest) {
             : null;
 
         const amount = typeof body.amount === 'number' ? body.amount : Number(body.amount);
+        const includeServiceFee = body.includeServiceFee === true;
         const description = sanitize(body.description, 200);
         const reference = sanitize(body.reference, 100);
         const returnUrl = sanitize(body.returnUrl, 300);
@@ -115,20 +129,30 @@ export async function POST(req: NextRequest) {
             ? returnUrl
             : `${PUBLIC_SITE_URL}/home`;
 
+        const feeCalculation = includeServiceFee ? calculateHaulmerServiceFee(amount) : null;
+        const payableAmount = feeCalculation?.totalWithFee ?? Math.round(amount);
+
+        if (payableAmount <= 0 || payableAmount > 100_000_000) {
+            return NextResponse.json({ error: 'Monto final invalido o fuera de rango.' }, { status: 400 });
+        }
+
         const response = await HaulmerService.createPaymentLink({
-            amount,
+            amount: payableAmount,
             description,
             reference,
             client: { name: clientName, email: clientEmail, phone: clientPhone || undefined },
             returnUrl: safeReturnUrl,
         });
 
-        await markPaymentAttempt(reference, amount, response.token);
+        await markPaymentAttempt(reference, payableAmount, response.token, feeCalculation);
 
         return NextResponse.json({
             url: response.url,
             reference: response.reference,
             token: response.token,
+            amount: payableAmount,
+            baseAmount: feeCalculation?.baseAmount ?? payableAmount,
+            serviceFee: feeCalculation?.totalFee ?? 0,
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error generating Haulmer link';

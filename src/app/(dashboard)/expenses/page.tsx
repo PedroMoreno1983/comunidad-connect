@@ -11,6 +11,7 @@ import { Tag } from "@/components/cc/Tag";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { getApiUrl } from "@/lib/config";
+import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 
 interface Expense {
     id: string;
@@ -128,8 +129,8 @@ export default function ExpensesPage() {
         const baseAmount = activeExpense.amount > 0 ? activeExpense.amount : breakdownList.reduce((sum, item) => sum + item.amount, 0);
 
         const extraContribution = getContributionAmount(contributionType, baseAmount);
-        const amountToPay = baseAmount + extraContribution;
-        if (amountToPay <= 0) {
+        const paymentBaseAmount = baseAmount + extraContribution;
+        if (paymentBaseAmount <= 0) {
             toast({
                 title: "Monto no disponible",
                 description: "El cobro no tiene un monto valido para enviar a la pasarela.",
@@ -144,7 +145,8 @@ export default function ExpensesPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    amount: amountToPay,
+                    amount: paymentBaseAmount,
+                    includeServiceFee: true,
                     description: `Gastos comunes ${activeExpense.month} - Unidad ${activeExpense.unitId}`,
                     reference: `EXP_${activeExpense.id}`,
                     client: {
@@ -193,7 +195,11 @@ export default function ExpensesPage() {
         : 0;
 
     const extraContribution = getContributionAmount(contributionType, baseAmount);
-    const totalAmount = baseAmount + extraContribution;
+    const paymentBaseAmount = baseAmount + extraContribution;
+    const serviceFee = activeExpense && activeExpense.status !== "paid"
+        ? calculateHaulmerServiceFee(paymentBaseAmount).totalFee
+        : 0;
+    const totalAmount = paymentBaseAmount + serviceFee;
 
     // Format current period
     const periodName = activeExpense
@@ -292,12 +298,21 @@ export default function ExpensesPage() {
                             {extraContribution > 0 && (
                                 <div
                                     className="flex justify-between items-center py-3"
-                                    style={{ borderBottom: "none", color: "var(--cc-copper)" }}
+                                    style={{ borderBottom: "1px solid var(--cc-line)", color: "var(--cc-copper)" }}
                                 >
                                     <div className="text-[13px] font-semibold flex items-center gap-1">
                                         <Sparkles size={12} /> Aporte Solidario Vecinal
                                     </div>
                                     <div className="font-mono text-[13px] font-semibold">+${extraContribution.toLocaleString("es-CL")}</div>
+                                </div>
+                            )}
+                            {serviceFee > 0 && (
+                                <div
+                                    className="flex justify-between items-center py-3"
+                                    style={{ borderBottom: "none" }}
+                                >
+                                    <div className="text-[13px]" style={{ color: "var(--cc-ink-soft)" }}>Cargo servicio pago online</div>
+                                    <div className="font-mono text-[13px]">+${serviceFee.toLocaleString("es-CL")}</div>
                                 </div>
                             )}
                         </div>
@@ -415,7 +430,7 @@ export default function ExpensesPage() {
                                     <ArrowRight size={16} />
                                 </Button>
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                    Webpay via Tuu/Haulmer
+                                    Webpay via Tuu/Haulmer, comision e IVA incluidos
                                 </div>
                             </div>
                         ) : (
@@ -453,7 +468,9 @@ export default function ExpensesPage() {
                                         <span className="text-2xl">{m.icon}</span>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-semibold">{m.name}</div>
-                                            <div className="text-xs" style={{ color: selected ? "rgba(250,247,241,0.6)" : "var(--cc-ink-muted)" }}>{m.desc}</div>
+                                            <div className="text-xs" style={{ color: selected ? "rgba(250,247,241,0.6)" : "var(--cc-ink-muted)" }}>
+                                                {m.desc}. Cargo servicio: ${serviceFee.toLocaleString("es-CL")}
+                                            </div>
                                         </div>
                                         <div 
                                           className="w-5 h-5 rounded-full border grid place-items-center shrink-0"

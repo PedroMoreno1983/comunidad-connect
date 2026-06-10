@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, History, Home } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { getApiUrl } from "@/lib/config";
+import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -64,6 +65,7 @@ export default function FinancesPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: expense.amount,
+                    includeServiceFee: true,
                     description: `Gastos Comunes ${monthLabel} - Depto ${expense.units?.number ?? ''}`,
                     reference: `EXP_${expense.id}`,
                     client: {
@@ -148,7 +150,10 @@ export default function FinancesPage() {
                         </div>
                     ) : (
                         <div className="divide-y divide-subtle">
-                            {pendingExpenses.map((expense) => (
+                            {pendingExpenses.map((expense) => {
+                                const fee = calculateHaulmerServiceFee(expense.amount);
+
+                                return (
                                 <div key={expense.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-elevated/50 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
@@ -164,9 +169,14 @@ export default function FinancesPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between gap-4 sm:justify-end">
-                                        <span className="text-lg font-semibold cc-text-primary">
-                                            {formatCurrency(expense.amount)}
-                                        </span>
+                                        <div className="text-right">
+                                            <span className="text-lg font-semibold cc-text-primary">
+                                                {formatCurrency(fee.totalWithFee)}
+                                            </span>
+                                            <p className="text-xs cc-text-secondary">
+                                                Incluye cargo servicio {formatCurrency(fee.totalFee)}
+                                            </p>
+                                        </div>
                                         <Button
                                             onClick={() => handlePayHaulmer(expense)}
                                             className="min-w-[150px] rounded-lg bg-slate-950 text-white hover:bg-slate-800"
@@ -176,7 +186,8 @@ export default function FinancesPage() {
                                         </Button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </section>

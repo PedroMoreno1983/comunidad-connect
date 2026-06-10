@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { HomeService } from "@/lib/api";
 import type { ResidentHomeSummary } from "@/lib/types";
-import { Bell, ChevronRight, ArrowRight, Mic, Sparkles, Droplets, Waves, BellRing } from "lucide-react";
+import { Bell, ChevronRight, ArrowRight, Mic, Sparkles, Droplets, Waves, BellRing, Bot, CalendarCheck, CreditCard, Wrench } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
@@ -154,6 +154,35 @@ export default function HomePage() {
                     </Link>
                 </div>
 
+                <Link
+                    href="/chat"
+                    className="block border bg-paper mb-5"
+                    style={{ borderColor: "var(--cc-line-strong)", borderRadius: 18, padding: 16 }}
+                >
+                    <div className="flex items-start gap-3">
+                        <div
+                            className="grid place-items-center shrink-0"
+                            style={{ width: 38, height: 38, borderRadius: 12, background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}
+                        >
+                            <Bot size={17} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-[13px] font-semibold cc-text-primary">CoCo puede ejecutarlo contigo</div>
+                                <ChevronRight size={15} color="var(--cc-ink-faint)" className="shrink-0" />
+                            </div>
+                            <p className="mt-1.5 text-[12px] leading-5 cc-text-secondary">
+                                Pide pagar tu cuenta, reservar un espacio, registrar una visita o abrir una solicitud con trazabilidad.
+                            </p>
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                <AgentChip icon={<CreditCard size={12} />} label="Pagar" />
+                                <AgentChip icon={<CalendarCheck size={12} />} label="Reservar" />
+                                <AgentChip icon={<Wrench size={12} />} label="Ticket" />
+                            </div>
+                        </div>
+                    </div>
+                </Link>
+
                 {/* For today — grid */}
                 <Eyebrow className="mt-5 mb-3">Para hoy</Eyebrow>
                 <div className="grid grid-cols-2 gap-3.5 mb-5">
@@ -242,5 +271,17 @@ function QuickCard({
       <div style={{ fontFamily: "var(--cc-font-display)", fontSize: 20, lineHeight: 1.05, marginBottom: 4, color: "var(--cc-ink)" }}>{title}</div>
       <div className="font-mono" style={{ fontSize: 11, color: subColor ?? "var(--cc-ink-muted)" }}>{sub}</div>
     </div>
+  );
+}
+
+function AgentChip({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <span
+      className="flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-semibold"
+      style={{ borderColor: "var(--cc-line)", color: "var(--cc-ink-muted)" }}
+    >
+      {icon}
+      {label}
+    </span>
   );
 }
