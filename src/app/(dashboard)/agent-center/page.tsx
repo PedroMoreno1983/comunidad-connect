@@ -174,6 +174,58 @@ function formatDate(value: string) {
   }
 }
 
+const ACTIVITY_AGENT_LABELS: Record<AgentKey, string> = {
+  finance: "Finanzas",
+  maintenance: "Mantenimiento",
+  concierge: "Conserjeria",
+  community: "Comunidad",
+};
+
+const ACTIVITY_TOOL_LABELS: Record<string, string> = {
+  create_announcement: "Comunicado preparado",
+  create_booking: "Reserva preparada",
+  create_marketplace_item: "Publicacion marketplace",
+  create_service_request: "Solicitud de mantencion",
+  get_my_expenses: "Consulta de gastos",
+  policy_update: "Politica actualizada",
+  register_visitor: "Visita registrada",
+  run_playbook: "Workflow preparado",
+};
+
+const ACTIVITY_PLAYBOOK_LABELS: Record<string, string> = {
+  community_broadcast: "Workflow: Comunicado comunitario",
+  finance_collection_review: "Workflow: Cobranza controlada",
+  iot_emergency_readiness: "Workflow: Emergencia IoT",
+  maintenance_ticket_triage: "Workflow: Triage de mantenimiento",
+  onboarding_import_review: "Workflow: Onboarding de edificio",
+};
+
+function cleanActivityText(value: string) {
+  return value
+    .replace(/Ejecutar playbook:/gi, "Preparar workflow:")
+    .replace(/Ejecutado:\s*Ejecutar playbook:/gi, "Ejecutado: Preparar workflow:")
+    .replace(/\brun_playbook\b/gi, "workflow operativo")
+    .replace(/\bagent\.playbook\./gi, "workflow ");
+}
+
+function humanizeActivityAction(item: ActivityRow) {
+  const action = item.action || "";
+  const summary = item.summary || "";
+  const combined = `${action} ${summary}`.toLowerCase();
+
+  for (const [key, label] of Object.entries(ACTIVITY_PLAYBOOK_LABELS)) {
+    if (combined.includes(key) || combined.includes(label.toLowerCase().replace("workflow: ", ""))) {
+      return label;
+    }
+  }
+
+  return ACTIVITY_TOOL_LABELS[action] || ACTIVITY_AGENT_LABELS[item.agent_key] || "Actividad CoCo";
+}
+
+function humanizeActivitySummary(summary: string) {
+  return cleanActivityText(summary || "Accion registrada con trazabilidad operacional.");
+}
+
 const DEFAULT_SUMMARY: AgentSummary = {
   totalRuns: 0,
   executedRuns: 0,
@@ -931,10 +983,15 @@ export default function AgentCenterPage() {
                   activity.map((item) => (
                     <div key={item.id} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{item.agent_key}</span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">
+                          {ACTIVITY_AGENT_LABELS[item.agent_key]}
+                        </span>
                         <span className="text-[10px] cc-text-tertiary">{formatDate(item.created_at)}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-5 cc-text-primary">{item.summary}</p>
+                      <p className="mt-2 text-[11px] font-semibold uppercase text-[var(--cc-copper)]">
+                        {humanizeActivityAction(item)}
+                      </p>
+                      <p className="mt-1 text-sm leading-5 cc-text-primary">{humanizeActivitySummary(item.summary)}</p>
                     </div>
                   ))
                 )}
