@@ -263,10 +263,90 @@ function playbookAction(playbook: AgentPlaybook, message: string): AgentAction {
             requestedText: cleanText(message, 600),
         },
         requiresConfirmation: true,
-        title: `Ejecutar playbook: ${playbook.name}`,
+        title: `Preparar workflow: ${playbook.name}`,
         summary: playbook.description,
         targetHref: playbook.targetHref,
     };
+}
+
+const AGENT_LABELS: Record<AgentKey, string> = {
+    finance: 'Finanzas',
+    maintenance: 'Mantenimiento',
+    concierge: 'Conserjeria',
+    community: 'Comunidad',
+};
+
+const TOOL_LABELS: Record<ToolName, string> = {
+    get_amenities: 'Consultar espacios comunes',
+    create_booking: 'Preparar reserva',
+    create_marketplace_item: 'Preparar publicacion',
+    create_announcement: 'Preparar comunicado',
+    create_service_request: 'Preparar solicitud de servicio',
+    register_visitor: 'Registrar visita',
+    get_my_expenses: 'Consultar gastos comunes',
+    run_playbook: 'Preparar workflow',
+};
+
+function humanizeArgKey(key: string) {
+    const labels: Record<string, string> = {
+        amenityHint: 'Espacio',
+        category: 'Categoria',
+        date: 'Fecha',
+        description: 'Descripcion',
+        endTime: 'Termino',
+        playbookKey: 'Workflow',
+        preferredDate: 'Fecha preferida',
+        preferredTime: 'Hora preferida',
+        price: 'Precio',
+        requestedText: 'Solicitud original',
+        startTime: 'Inicio',
+        title: 'Titulo',
+        visitorName: 'Visitante',
+    };
+    return labels[key] || key;
+}
+
+function summarizeArgs(args: Record<string, unknown>) {
+    const summary = Object.entries(args)
+        .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+        .map(([key, value]) => `${humanizeArgKey(key)}: ${String(value).slice(0, 90)}`)
+        .join(' · ');
+
+    return summary || 'Sin parametros adicionales.';
+}
+
+function traceStepsForAction(action: AgentAction): AgentStep[] {
+    const playbook = action.toolName === 'run_playbook' ? getPlaybook(action.args.playbookKey) : null;
+
+    if (playbook) {
+        return [
+            {
+                kind: 'reasoning',
+                title: 'Workflow seleccionado',
+                detail: `${playbook.name}. ${playbook.description}`,
+            },
+            {
+                kind: 'tool',
+                title: 'Pasos preparados',
+                detail: playbook.steps.join(' -> '),
+                metadata: action.args,
+            },
+        ];
+    }
+
+    return [
+        {
+            kind: 'reasoning',
+            title: 'Accion preparada',
+            detail: `${AGENT_LABELS[action.agentKey]} preparo: ${TOOL_LABELS[action.toolName]}.`,
+        },
+        {
+            kind: 'tool',
+            title: 'Datos a revisar',
+            detail: summarizeArgs(action.args),
+            metadata: action.args,
+        },
+    ];
 }
 
 function inferActionHeuristic(message: string): AgentAction {
@@ -1558,19 +1638,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        const steps: AgentStep[] = [
-            {
-                kind: 'reasoning',
-                title: 'Intencion detectada',
-                detail: `${action.agentKey} agent preparo la accion "${action.toolName}".`,
-            },
-            {
-                kind: 'tool',
-                title: `Herramienta: ${action.toolName}`,
-                detail: JSON.stringify(action.args),
-                metadata: action.args,
-            },
-        ];
+        const steps: AgentStep[] = traceStepsForAction(action);
 
         if (action.requiresConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
@@ -1584,7 +1652,7 @@ export async function POST(req: NextRequest) {
             };
             steps.push({
                 kind: 'confirmation',
-                title: 'Confirmacion requerida',
+                title: 'Revision humana requerida',
                 detail: action.summary,
             });
             return NextResponse.json({
