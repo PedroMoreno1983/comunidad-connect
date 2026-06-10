@@ -812,12 +812,12 @@ Definición de agentes y herramientas:
      summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
 5. Playbooks operativos:
-   - Herramienta 'run_playbook': Para ejecutar un flujo multi-paso gobernado.
+   - Herramienta 'run_playbook': Para preparar un flujo multi-paso gobernado con aprobacion humana.
      Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
      requiresConfirmation: true
      targetHref: usa el targetHref del playbook.
-     title: 'Ejecutar playbook'
-     summary: 'CoCo ejecutara un proceso guiado con auditoria.'
+     title: 'Preparar workflow'
+     summary: 'CoCo preparara un proceso guiado con auditoria y confirmacion humana.'
 
 Instrucciones de formato:
 - Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
@@ -920,7 +920,7 @@ function normalizeAction(action: AgentAction): AgentAction {
         toolName: action.toolName,
         args: safeArgs,
         requiresConfirmation: writesRequireConfirmation ? true : Boolean(action.requiresConfirmation),
-        title: playbook ? `Ejecutar playbook: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
+        title: playbook ? `Preparar workflow: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
         summary: playbook?.description || cleanText(action.summary, 280) || 'CoCo preparo una accion operacional.',
         targetHref: playbook?.targetHref || cleanText(action.targetHref, 120) || '/agent-center',
         proposalId: action.proposalId || null,
