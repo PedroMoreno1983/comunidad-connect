@@ -75,6 +75,11 @@ TWILIO_WHATSAPP_FROM=
 
 # Entorno de Despliegue
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Pagos Haulmer/Tuu (produccion)
+HAULMER_ACCOUNT_ID=
+HAULMER_SECRET_KEY=
+HAULMER_ENVIRONMENT=production
 ```
 
 ---

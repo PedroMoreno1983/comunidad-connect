@@ -326,6 +326,29 @@ export interface ResidentFinanceExpense {
   };
 }
 
+export type HaulmerFeeMode = 'base_percent' | 'mixed';
+
+export interface HaulmerTariffRange {
+  id: string;
+  label: string;
+  minInclusive: number;
+  maxInclusive: number | null;
+  basePercent: number;
+  mixedPercent: number;
+  mixedFixedFee: number;
+}
+
+export interface HaulmerFeeCalculation {
+  baseAmount: number;
+  feeMode: HaulmerFeeMode;
+  range: HaulmerTariffRange;
+  netFee: number;
+  vat: number;
+  vatRate: number;
+  totalFee: number;
+  totalWithFee: number;
+}
+
 export interface CommunityFinance {
   totalRevenue: number;
   totalExpenses: number;

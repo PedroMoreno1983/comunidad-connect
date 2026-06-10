@@ -4,7 +4,7 @@
 
 - Vercel workspace: `pedropedrofelipemoreno-7255`
 - Vercel project: `comunidad-connect`
-- Production URL: `https://comunidad-connect-eight.vercel.app`
+- Production URL: `https://conviveconnect.com`
 - GitHub repository: `PedroMoreno1983/comunidad-connect`
 - Production branch: `master`
 
@@ -34,7 +34,7 @@ ANTHROPIC_API_KEY
 GEMINI_API_KEY
 OPENAI_API_KEY
 RESEND_API_KEY
-NEXT_PUBLIC_SITE_URL=https://comunidad-connect-eight.vercel.app
+NEXT_PUBLIC_SITE_URL=https://conviveconnect.com
 ```
 
 WhatsApp production delivery requires:
@@ -71,7 +71,7 @@ npm run qa:readiness
 Run QA against production:
 
 ```powershell
-$env:QA_BASE_URL='https://comunidad-connect-eight.vercel.app'
+$env:QA_BASE_URL='https://conviveconnect.com'
 npm run qa:production-mode
 npm run qa:production-hardening
 npm run qa:security-headers
@@ -85,7 +85,7 @@ Expected current status:
 ## Public Health Check
 
 ```powershell
-Invoke-WebRequest -Uri "https://comunidad-connect-eight.vercel.app/api/ai/health" -UseBasicParsing
+Invoke-WebRequest -Uri "https://conviveconnect.com/api/ai/health" -UseBasicParsing
 ```
 
 Healthy production should report `gemini`, `openai`, `anthropic`, and `supabase`

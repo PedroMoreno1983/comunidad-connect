@@ -10,7 +10,7 @@ Lee este archivo completo antes de modificar cualquier cosa.
 **ComunidadConnect** (CoCo) es una plataforma SaaS multi-tenant para gestión de condominios en Chile.
 Combina gestión de residentes, pagos, amenidades, IoT, marketplace vecinal y un agente de IA conversacional.
 
-- **URL producción:** https://comunidadconnect.vercel.app
+- **URL producción:** https://conviveconnect.com
 - **Repositorio:** `c:\Users\pedro.moreno\Documents\GitHub\comunidad-connect`
 - **Deploy:** Vercel (automático desde main)
 
@@ -62,7 +62,7 @@ HAULMER_SECRET_KEY=
 HAULMER_ENVIRONMENT=production
 
 # Deploy
-NEXT_PUBLIC_SITE_URL=    # https://comunidadconnect.vercel.app
+NEXT_PUBLIC_SITE_URL=    # https://conviveconnect.com
 ```
 
 ---
@@ -170,7 +170,7 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 | Marketplace | `/marketplace` | ✅ Activo | Supabase real |
 | Amenities | `/amenities` | ✅ Activo | Supabase real |
 | Votaciones | `/votaciones` | ✅ Activo | Supabase real |
-| Gastos comunes | `/expenses` | ✅ Activo (pago = mock) | Supabase real |
+| Gastos comunes | `/expenses` | ✅ Activo (pagos reales pendientes de credenciales Haulmer) | Supabase real |
 | Feed/Anuncios | `/feed` | ✅ Activo | Supabase real |
 | Chat (CoCo AI) | `/chat` | ✅ Activo | Agente local + Anthropic |
 | Social | `/social` | ✅ Activo | Supabase real |
