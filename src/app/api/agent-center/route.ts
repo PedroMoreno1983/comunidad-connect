@@ -18,6 +18,7 @@ type ToolName =
 
 type PlaybookKey =
     | 'finance_collection_review'
+    | 'maintenance_ticket_triage'
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
     | 'community_broadcast';
@@ -72,6 +73,21 @@ type AgentPlaybook = {
     steps: string[];
 };
 
+type AgentWorkflow = {
+    key: PlaybookKey;
+    agentKey: AgentKey;
+    name: string;
+    status: 'ready' | 'needs_review' | 'blocked';
+    priority: 'high' | 'medium' | 'low';
+    nextAction: string;
+    pendingActions: number;
+    completedActions: number;
+    estimatedMinutesSaved: number;
+    targetHref: string;
+    summary: string;
+    metrics: Array<{ label: string; value: string; tone: 'success' | 'warning' | 'neutral' }>;
+};
+
 const DEFAULT_AGENT_POLICIES: Record<AgentKey, Omit<AgentPolicy, 'agentKey' | 'updatedAt'>> = {
     finance: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 120 },
     community: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 80 },
@@ -88,6 +104,15 @@ const AGENT_PLAYBOOKS: AgentPlaybook[] = [
         targetHref: '/admin/finanzas',
         requiresAdmin: true,
         steps: ['Detectar gastos impagos', 'Resolver unidades y residentes', 'Notificar residentes vinculados', 'Registrar evento operativo'],
+    },
+    {
+        key: 'maintenance_ticket_triage',
+        agentKey: 'maintenance',
+        name: 'Triage de mantenimiento',
+        description: 'Ordena tickets abiertos, revisa proveedores disponibles y deja seguimiento operativo trazable.',
+        targetHref: '/admin/mantenimiento',
+        requiresAdmin: true,
+        steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],
     },
     {
         key: 'onboarding_import_review',
@@ -261,6 +286,10 @@ function inferActionHeuristic(message: string): AgentAction {
         }
         if (lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion') || lower.includes('filtración')) {
             const playbook = getPlaybook('iot_emergency_readiness');
+            if (playbook) return playbookAction(playbook, message);
+        }
+        if (lower.includes('ticket') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor')) {
+            const playbook = getPlaybook('maintenance_ticket_triage');
             if (playbook) return playbookAction(playbook, message);
         }
         if (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('difusion') || lower.includes('difusión')) {
@@ -471,6 +500,146 @@ async function getAgentSummary(profile: AgentProfile): Promise<AgentSummary> {
     };
 }
 
+function workflowStatus(pending: number, blockers: number): AgentWorkflow['status'] {
+    if (blockers > 0) return 'blocked';
+    if (pending > 0) return 'needs_review';
+    return 'ready';
+}
+
+function workflowPriority(pending: number, blockers: number): AgentWorkflow['priority'] {
+    if (blockers > 0 || pending >= 5) return 'high';
+    if (pending > 0) return 'medium';
+    return 'low';
+}
+
+async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]> {
+    const admin = getSupabaseAdmin();
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+
+    const [
+        pendingExpenses,
+        openServiceRequests,
+        verifiedProviders,
+        unitCount,
+        profileCount,
+        pendingProposals,
+    ] = await Promise.all([
+        admin
+            .from('expenses')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .in('status', ['pending', 'overdue']),
+        admin
+            .from('service_requests')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .in('status', ['pending', 'accepted', 'in-progress']),
+        admin
+            .from('service_providers')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .eq('verified', true),
+        admin
+            .from('units')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId),
+        admin
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId),
+        admin
+            .from('agent_tool_calls')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .eq('status', 'proposed'),
+    ]);
+
+    const expenseCount = pendingExpenses.count || 0;
+    const requestCount = openServiceRequests.count || 0;
+    const providerCount = verifiedProviders.count || 0;
+    const units = unitCount.count || 0;
+    const profiles = profileCount.count || 0;
+    const pendingAuditActions = pendingProposals.count || 0;
+    const onboardingGap = Math.max(0, units - profiles);
+
+    return [
+        {
+            key: 'maintenance_ticket_triage',
+            agentKey: 'maintenance',
+            name: 'Mantenimiento y tickets',
+            status: workflowStatus(requestCount, providerCount > 0 ? 0 : 1),
+            priority: workflowPriority(requestCount, providerCount > 0 ? 0 : 1),
+            nextAction: providerCount > 0
+                ? 'Preparar priorizacion y seguimiento de tickets abiertos'
+                : 'Registrar o verificar proveedores antes de automatizar despacho',
+            pendingActions: requestCount,
+            completedActions: 0,
+            estimatedMinutesSaved: requestCount * 18,
+            targetHref: '/admin/mantenimiento',
+            summary: 'CoCo puede ordenar incidencias, detectar falta de proveedor y dejar seguimiento auditable.',
+            metrics: [
+                { label: 'Tickets abiertos', value: String(requestCount), tone: requestCount > 0 ? 'warning' : 'success' },
+                { label: 'Proveedores verificados', value: String(providerCount), tone: providerCount > 0 ? 'success' : 'warning' },
+                { label: 'Ahorro potencial', value: `${requestCount * 18} min`, tone: 'neutral' },
+            ],
+        },
+        {
+            key: 'finance_collection_review',
+            agentKey: 'finance',
+            name: 'Cobranza mensual',
+            status: workflowStatus(expenseCount, 0),
+            priority: workflowPriority(expenseCount, 0),
+            nextAction: expenseCount > 0 ? 'Preparar cobranza privada para gastos pendientes' : 'Sin cobros pendientes por gestionar',
+            pendingActions: expenseCount,
+            completedActions: 0,
+            estimatedMinutesSaved: expenseCount * 5,
+            targetHref: '/admin/finanzas',
+            summary: 'Segmenta gastos pendientes, notifica sin exponer deudas y registra auditoria.',
+            metrics: [
+                { label: 'Cobros pendientes', value: String(expenseCount), tone: expenseCount > 0 ? 'warning' : 'success' },
+                { label: 'Propuestas por aprobar', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'neutral' },
+                { label: 'Ahorro potencial', value: `${expenseCount * 5} min`, tone: 'neutral' },
+            ],
+        },
+        {
+            key: 'onboarding_import_review',
+            agentKey: 'community',
+            name: 'Onboarding de edificio',
+            status: workflowStatus(onboardingGap, units > 0 ? 0 : 1),
+            priority: workflowPriority(onboardingGap, units > 0 ? 0 : 1),
+            nextAction: units > 0 ? 'Revisar residentes faltantes y sincronizacion de perfiles' : 'Cargar unidades base del edificio',
+            pendingActions: onboardingGap,
+            completedActions: profiles,
+            estimatedMinutesSaved: Math.max(1, onboardingGap) * 3,
+            targetHref: '/admin/onboarding',
+            summary: 'Revisa nominas, detecta brechas de datos y sincroniza unidades con confirmacion.',
+            metrics: [
+                { label: 'Unidades', value: String(units), tone: units > 0 ? 'success' : 'warning' },
+                { label: 'Perfiles comunidad', value: String(profiles), tone: profiles > 0 ? 'success' : 'neutral' },
+                { label: 'Brecha estimada', value: String(onboardingGap), tone: onboardingGap > 0 ? 'warning' : 'success' },
+            ],
+        },
+        {
+            key: 'community_broadcast',
+            agentKey: 'community',
+            name: 'Comunicaciones oficiales',
+            status: workflowStatus(pendingAuditActions, 0),
+            priority: workflowPriority(pendingAuditActions, 0),
+            nextAction: pendingAuditActions > 0 ? 'Revisar propuestas pendientes antes de publicar' : 'Preparar comunicado cuando administracion lo solicite',
+            pendingActions: pendingAuditActions,
+            completedActions: 0,
+            estimatedMinutesSaved: pendingAuditActions * 3,
+            targetHref: '/comunicaciones',
+            summary: 'Redacta comunicados con control editorial, permiso humano y bitacora.',
+            metrics: [
+                { label: 'Propuestas pendientes', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'success' },
+                { label: 'Modo', value: 'Aprobacion', tone: 'neutral' },
+                { label: 'Ahorro potencial', value: `${pendingAuditActions * 3} min`, tone: 'neutral' },
+            ],
+        },
+    ];
+}
+
 async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unknown>) {
     if (profile.role !== 'admin') {
         throw new Error('Solo administracion puede cambiar politicas de agentes.');
@@ -564,7 +733,7 @@ Definición de agentes y herramientas:
 
 5. Playbooks operativos:
    - Herramienta 'run_playbook': Para ejecutar un flujo multi-paso gobernado.
-     Argumentos: { "playbookKey": "finance_collection_review" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
+     Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
      requiresConfirmation: true
      targetHref: usa el targetHref del playbook.
      title: 'Ejecutar playbook'
@@ -921,6 +1090,89 @@ async function runFinanceCollectionPlaybook(profile: AgentProfile) {
     };
 }
 
+async function runMaintenanceTicketTriagePlaybook(profile: AgentProfile) {
+    requireAdmin(profile);
+    const admin = getSupabaseAdmin();
+    const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    const [{ data: requests, error: requestsError }, { count: providerCount }] = await Promise.all([
+        admin
+            .from('service_requests')
+            .select('id, description, status, preferred_date, preferred_time, provider_id, created_at')
+            .eq('community_id', communityId)
+            .in('status', ['pending', 'accepted', 'in-progress'])
+            .order('created_at', { ascending: true })
+            .limit(25),
+        admin
+            .from('service_providers')
+            .select('id', { count: 'exact', head: true })
+            .eq('community_id', communityId)
+            .eq('verified', true),
+    ]);
+
+    if (requestsError) throw requestsError;
+
+    const rows = (requests || []) as Array<{
+        id: string;
+        description?: string | null;
+        status?: string | null;
+        preferred_date?: string | null;
+        preferred_time?: string | null;
+        provider_id?: string | null;
+    }>;
+    const unassigned = rows.filter(row => !row.provider_id).length;
+    const oldOpen = rows.filter(row => {
+        if (!row.preferred_date) return false;
+        const due = new Date(row.preferred_date);
+        return Number.isFinite(due.getTime()) && due < new Date();
+    }).length;
+    const warnings = [
+        ...(providerCount ? [] : ['No hay proveedores verificados para derivar tickets.']),
+        ...(unassigned ? [`${unassigned} ticket(s) no tienen proveedor asociado.`] : []),
+        ...(oldOpen ? [`${oldOpen} ticket(s) tienen fecha preferida vencida.`] : []),
+    ];
+
+    await recordOperationEvent({
+        communityId,
+        actorId: profile.id,
+        actorRole: profile.role,
+        action: 'agent.playbook.maintenance_ticket_triage',
+        entityType: 'agent_playbook',
+        severity: warnings.length ? 'warning' : 'success',
+        status: warnings.length ? 'pending' : 'success',
+        summary: warnings.length ? 'Triage de mantenimiento detecto brechas operativas' : 'Triage de mantenimiento sin brechas criticas',
+        metadata: {
+            openRequests: rows.length,
+            verifiedProviders: providerCount || 0,
+            unassigned,
+            oldOpen,
+            warnings,
+            sample: rows.slice(0, 5).map(row => ({
+                id: row.id,
+                status: row.status,
+                preferredDate: row.preferred_date,
+                description: cleanText(row.description, 160),
+            })),
+        },
+    });
+
+    return {
+        entityType: 'agent_playbook',
+        entityId: null,
+        title: warnings.length ? 'Triage con acciones pendientes' : 'Mantenimiento ordenado',
+        message: warnings.length
+            ? `Revise ${rows.length} ticket(s) abiertos y detecte ${warnings.length} brecha(s): ${warnings.join(' ')}`
+            : `Revise ${rows.length} ticket(s) abiertos. Hay proveedores verificados y no detecte atrasos criticos.`,
+        targetHref: '/admin/mantenimiento',
+        data: {
+            openRequests: rows.length,
+            verifiedProviders: providerCount || 0,
+            unassigned,
+            oldOpen,
+            warnings,
+        },
+    };
+}
+
 async function runOnboardingReviewPlaybook(profile: AgentProfile) {
     requireAdmin(profile);
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
@@ -1026,6 +1278,7 @@ async function runPlaybook(action: AgentAction, profile: AgentProfile) {
     if (playbook.requiresAdmin) requireAdmin(profile);
 
     if (playbook.key === 'finance_collection_review') return runFinanceCollectionPlaybook(profile);
+    if (playbook.key === 'maintenance_ticket_triage') return runMaintenanceTicketTriagePlaybook(profile);
     if (playbook.key === 'onboarding_import_review') return runOnboardingReviewPlaybook(profile);
     if (playbook.key === 'iot_emergency_readiness') return runIotReadinessPlaybook(profile);
     if (playbook.key === 'community_broadcast') return runCommunityBroadcastPlaybook(profile, cleanText(action.args.requestedText, 700));
@@ -1210,12 +1463,13 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(12);
 
-    const [policies, summary] = await Promise.all([
+    const [policies, summary, workflows] = await Promise.all([
         getAgentPolicies(profile),
         getAgentSummary(profile),
+        getAgentWorkflows(profile),
     ]);
 
-    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, playbooks: AGENT_PLAYBOOKS });
+    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, workflows, playbooks: AGENT_PLAYBOOKS });
 }
 
 export async function POST(req: NextRequest) {
@@ -1231,15 +1485,17 @@ export async function POST(req: NextRequest) {
 
         if (body.type === 'policy_update') {
             await updateAgentPolicy(profile, body);
-            const [policies, summary] = await Promise.all([
+            const [policies, summary, workflows] = await Promise.all([
                 getAgentPolicies(profile),
                 getAgentSummary(profile),
+                getAgentWorkflows(profile),
             ]);
             return NextResponse.json({
                 status: 'policy_updated',
                 reply: 'Politica del agente actualizada y registrada en auditoria.',
                 policies: Object.values(policies),
                 summary,
+                workflows,
                 playbooks: AGENT_PLAYBOOKS,
             });
         }
