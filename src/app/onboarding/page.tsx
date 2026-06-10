@@ -13,6 +13,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Settings2,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -23,28 +24,36 @@ import { useToast } from "@/components/ui/Toast";
 
 const steps = [
   {
-    title: "Diagnostico inicial",
-    description: "Revisamos unidades, roles, canales actuales, gastos comunes y datos disponibles.",
+    title: "Sube los archivos",
+    description: "Residentes, gastos, reglamento, espacios y proveedores en el formato que ya tienes.",
     icon: ClipboardList,
   },
   {
-    title: "Carga operativa",
-    description: "Configuramos comunidad, usuarios, permisos y modulos prioritarios con datos reales.",
+    title: "CoCo interpreta",
+    description: "Detecta unidades, contactos, brechas, reglas relevantes y modulos recomendados.",
     icon: UploadCloud,
   },
   {
-    title: "Salida controlada",
-    description: "Activamos administracion, residentes y conserjeria con soporte de arranque.",
+    title: "Apruebas y activa",
+    description: "La administracion revisa el resumen, corrige dudas y confirma la creacion.",
     icon: ShieldCheck,
   },
 ];
 
 const checklist = [
-  "Tenant propio para el condominio",
-  "Usuarios por rol y unidades asociadas",
-  "Carga inicial de residentes o propietarios",
-  "Gastos comunes, reservas y comunicaciones base",
-  "Plan de activacion para pagos, WhatsApp y CoCo IA",
+  "Tenant propio con direccion georreferenciada",
+  "Unidades, residentes y roles propuestos",
+  "Gastos comunes iniciales y brechas visibles",
+  "Reglamento resumido para CoCo y aula virtual",
+  "Checklist de pagos, WhatsApp y comunicaciones",
+];
+
+const documentOptions = [
+  "Nomina residentes/unidades",
+  "Gastos comunes",
+  "Reglamento PDF",
+  "Espacios comunes",
+  "Proveedores y conserjeria",
 ];
 
 export default function OnboardingPage() {
@@ -54,7 +63,8 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [condoName, setCondoName] = useState("");
   const [units, setUnits] = useState("");
-  const [priority, setPriority] = useState("Activar administracion y residentes");
+  const [priority, setPriority] = useState("Activacion completa con CoCo");
+  const [documents, setDocuments] = useState<string[]>(["Nomina residentes/unidades"]);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -63,7 +73,7 @@ export default function OnboardingPage() {
     if (!adminName.trim() || !adminEmail.trim() || !condoName.trim()) {
       toast({
         title: "Faltan datos",
-        description: "Completa nombre, correo y condominio para agendar el onboarding.",
+        description: "Completa nombre, correo y condominio para preparar la activacion.",
         variant: "destructive",
       });
       return;
@@ -78,7 +88,7 @@ export default function OnboardingPage() {
           adminName,
           adminEmail,
           condoName,
-          message: `Solicitud onboarding 48h. Telefono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}.`,
+          message: `Solicitud activacion inteligente. Telefono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}. Documentos disponibles: ${documents.join(", ") || "No informado"}.`,
         }),
       });
 
@@ -86,8 +96,8 @@ export default function OnboardingPage() {
 
       setSent(true);
       toast({
-        title: "Onboarding solicitado",
-        description: "Registramos la solicitud y dejamos listo el siguiente paso comercial.",
+        title: "Activacion solicitada",
+        description: "Registramos el edificio y los documentos disponibles para preparar la carga inteligente.",
         variant: "success",
       });
     } catch (error) {
@@ -122,15 +132,15 @@ export default function OnboardingPage() {
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6E8268]/20 bg-[#6E8268]/8 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#6E8268]">
               <CalendarClock className="h-4 w-4" />
-              Onboarding comercial en 48h
+              Activacion inteligente con CoCo
             </div>
 
             <div className="space-y-5">
               <h1 className="max-w-3xl text-4xl font-normal leading-[1.04] tracking-tight md:text-6xl" style={{ fontFamily: "var(--cc-font-display)" }}>
-                Activa Convive con un plan de puesta en marcha real.
+                Sube tus datos y CoCo arma el edificio operativo.
               </h1>
               <p className="max-w-2xl text-base leading-8 text-[#524A40] md:text-lg">
-                Este flujo agenda la activacion, define el alcance del condominio y deja encaminada la carga inicial para operar con administracion, residentes y conserjeria.
+                La experiencia premium parte con documentos reales, interpretacion asistida y aprobacion antes de crear usuarios, gastos o invitaciones.
               </p>
             </div>
 
@@ -173,7 +183,7 @@ export default function OnboardingPage() {
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight">Solicitud recibida</h2>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#6F665D]">
-                  Dejamos registrado el onboarding para {condoName}. El siguiente paso es revisar alcance, datos disponibles y fecha de activacion.
+                  Dejamos registrada la activacion para {condoName}. El siguiente paso es crear el condominio y entrar al centro de carga asistida.
                 </p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2">
                   <Link href="/admin-onboarding" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1611] px-4 py-3 text-sm font-bold text-white">
@@ -188,10 +198,10 @@ export default function OnboardingPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6E8268]">Agenda de activacion</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-tight">Cuéntanos qué hay que activar</h2>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6E8268]">Preactivacion IA</p>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-tight">Cuéntanos qué puede leer CoCo</h2>
                   <p className="mt-2 text-sm leading-6 text-[#6F665D]">
-                    Con estos datos podemos preparar el onboarding y evitar una llamada sin contexto.
+                    Con estos datos el flujo queda preparado para crear comunidad, cargar archivos y revisar brechas sin partir desde cero.
                   </p>
                 </div>
 
@@ -224,12 +234,36 @@ export default function OnboardingPage() {
                     onChange={(event) => setPriority(event.target.value)}
                     className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12"
                   >
-                    <option>Activar administracion y residentes</option>
+                    <option>Activacion completa con CoCo</option>
+                    <option>Crear comunidad y cargar residentes</option>
                     <option>Cargar gastos comunes y pagos</option>
                     <option>Ordenar conserjeria y visitas</option>
                     <option>Implementar servicios y proveedores</option>
                     <option>Activar CoCo IA y WhatsApp</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[#8A8580]">
+                    <Settings2 className="h-4 w-4" />
+                    Documentos disponibles
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {documentOptions.map((item) => {
+                      const checked = documents.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => setDocuments(prev => checked ? prev.filter(doc => doc !== item) : [...prev, item])}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition ${checked ? "border-[#6E8268] bg-[#6E8268]/10 text-[#516A4F]" : "border-[#E4D8CA] bg-[#FAF7F1] text-[#6F665D]"}`}
+                        >
+                          <CheckCircle2 className={`h-4 w-4 ${checked ? "text-[#6E8268]" : "text-[#A39A91]"}`} />
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button
@@ -238,13 +272,13 @@ export default function OnboardingPage() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A1611] px-5 py-4 text-sm font-bold text-white shadow-lg transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
-                  Agendar onboarding
+                  Solicitar activacion inteligente
                 </button>
 
                 <div className="rounded-2xl border border-[#E4D8CA] bg-[#FAF7F1] p-4 text-sm leading-6 text-[#6F665D]">
-                  ¿Ya quieres crear la cuenta ahora?{" "}
+                  ¿Ya quieres crear la cuenta y subir archivos ahora?{" "}
                   <Link href="/admin-onboarding" className="font-bold text-[#B45F4B] underline underline-offset-4">
-                    Registrar condominio directamente
+                    Ir a Activacion Inteligente
                   </Link>
                 </div>
               </form>

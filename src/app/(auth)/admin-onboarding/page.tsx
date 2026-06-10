@@ -37,7 +37,7 @@ const PLANS = [
     },
 ];
 
-const STEP_LABELS = ["Plan", "Edificio", "Cuenta admin"];
+const STEP_LABELS = ["Plan", "Edificio", "Activador"];
 
 type GeocodeSuggestion = {
     label: string;
@@ -168,7 +168,7 @@ export default function AdminOnboardingPage() {
                 description: `Ahora inicia sesion para administrar ${communityName}.`,
                 variant: "success",
             });
-            router.push("/login?next=%2Fhome");
+            router.push("/login?next=%2Fadmin%2Fonboarding");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Ocurrió un error inesperado";
             toast({ title: "Error en el registro", description: message, variant: "destructive" });
@@ -188,15 +188,15 @@ export default function AdminOnboardingPage() {
                         <BrandWordmark className="text-xl text-brand-600" />
                     </Link>
                     <div className="space-y-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Alta administradores</p>
-                        <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Configura tu comunidad sin improvisar.</h1>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Activacion Inteligente</p>
+                        <h1 className="text-5xl font-semibold leading-tight cc-text-primary">Crea el edificio y deja a CoCo listo para cargarlo.</h1>
                         <p className="text-lg leading-8 cc-text-secondary">
-                            El onboarding crea la comunidad, vincula el perfil admin y deja listo el plan inicial para operar con datos reales.
+                            Primero creamos la comunidad y el administrador. Luego CoCo interpreta archivos, detecta brechas y prepara la sincronizacion con aprobacion.
                         </p>
                     </div>
                     <div className="rounded-lg border border-subtle bg-surface p-5">
-                        <p className="text-sm font-semibold cc-text-primary">Incluye 30 días de prueba</p>
-                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Puedes partir con datos base y activar cobros, reservas o CoCo IA cuando el edificio esté listo.</p>
+                        <p className="text-sm font-semibold cc-text-primary">Activacion premium desde el primer dia</p>
+                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Sube nominas, gastos o reglamentos despues de crear la cuenta. CoCo los convierte en datos revisables antes de tocar produccion.</p>
                     </div>
                 </aside>
 
@@ -204,8 +204,8 @@ export default function AdminOnboardingPage() {
                     <div className="mb-8 flex items-start justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Registro</p>
-                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Configura tu comunidad</h2>
-                            <p className="mt-2 text-sm cc-text-secondary">Elige el plan y crea el espacio administrativo del edificio.</p>
+                            <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Activa tu edificio</h2>
+                            <p className="mt-2 text-sm cc-text-secondary">Elige plan, georreferencia la direccion y crea la cuenta que aprobara la carga inteligente.</p>
                         </div>
                         <Link href="/login" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al login">
                             <ArrowLeft className="h-5 w-5" />
@@ -357,7 +357,7 @@ export default function AdminOnboardingPage() {
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(1)}>Volver</Button>
                                 <Button type="submit" disabled={loading} trailingIcon={<ArrowRight className="h-4 w-4" />}>
-                                    {loading ? "Creando..." : "Registrar condominio"}
+                                    {loading ? "Creando..." : "Crear y continuar a carga IA"}
                                 </Button>
                             </div>
                         </form>
