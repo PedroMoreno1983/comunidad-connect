@@ -28,6 +28,22 @@ function isEmail(value: string) {
     return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
 }
 
+function isExistingAuthUserError(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+    const row = error as { message?: unknown; status?: unknown; code?: unknown };
+    const message = typeof row.message === "string" ? row.message.toLowerCase() : "";
+    const status = typeof row.status === "number" ? row.status : Number(row.status);
+    const code = typeof row.code === "string" ? row.code.toLowerCase() : "";
+
+    return (
+        status === 422
+        || code.includes("user_already")
+        || message.includes("already been registered")
+        || message.includes("already registered")
+        || message.includes("already exists")
+    );
+}
+
 function selectedAddressFrom(value: unknown): GeocodeSelection | null {
     if (!value || typeof value !== "object") return null;
     const row = value as Record<string, unknown>;
@@ -121,6 +137,14 @@ export async function POST(req: NextRequest) {
             email_confirm: true,
             user_metadata: { name: fullName, role: "admin" },
         });
+        if (isExistingAuthUserError(userError)) {
+            const loginUrl = `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`;
+            return NextResponse.json({
+                code: "EMAIL_ALREADY_REGISTERED",
+                error: "Este correo ya tiene una cuenta. Inicia sesion para continuar con la carga inteligente del edificio.",
+                loginUrl,
+            }, { status: 409 });
+        }
         if (userError) throw userError;
         const userId = userData.user?.id;
         if (!userId) throw new Error("No se pudo crear el usuario administrador.");

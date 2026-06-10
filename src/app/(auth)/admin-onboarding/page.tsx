@@ -47,6 +47,12 @@ type GeocodeSuggestion = {
     source: string;
 };
 
+type RegisterResponse = {
+    error?: string;
+    code?: string;
+    loginUrl?: string;
+};
+
 export default function AdminOnboardingPage() {
     const [step, setStep] = useState(0);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(PLANS[1].id);
@@ -134,7 +140,16 @@ export default function AdminOnboardingPage() {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as { error?: string };
+                const data = await response.json().catch(() => ({})) as RegisterResponse;
+                if (response.status === 409 && data.code === "EMAIL_ALREADY_REGISTERED") {
+                    toast({
+                        title: "Cuenta existente",
+                        description: data.error || "Este correo ya tiene cuenta. Inicia sesion para continuar.",
+                        variant: "default",
+                    });
+                    router.push(data.loginUrl || `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`);
+                    return;
+                }
                 throw new Error(data.error || "No se pudo registrar el edificio.");
             }
 
