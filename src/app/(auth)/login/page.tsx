@@ -18,14 +18,14 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-    const [email, setEmail] = useState("");
+    const searchParams = useSearchParams();
+    const [email, setEmail] = useState(searchParams.get("email") || "");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"mail" | "rut">("mail");
     const { signIn } = useAuth();
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { toast } = useToast();
     const nextParam = searchParams.get("next");
     const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
