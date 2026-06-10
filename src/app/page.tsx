@@ -294,24 +294,24 @@ const roles = [
 const steps = [
   {
     num: '01',
-    title: 'Registra tu comunidad',
-    desc: 'Sube tu lista de departamentos en Excel. En 48 horas tenemos todo configurado y listo.',
+    title: 'Sube la informacion',
+    desc: 'Carga nominas, gastos, reglamentos o proveedores. CoCo interpreta la estructura y detecta brechas.',
     icon: <Building2 className="w-6 h-6" />,
     color: '#C8705A',
     bg: 'bg-[#C8705A]/10',
   },
   {
     num: '02',
-    title: 'Invita a tus vecinos',
-    desc: 'Enviamos el link de registro a cada residente. Se unen en segundos desde su celular.',
+    title: 'Revisa y aprueba',
+    desc: 'La administracion valida unidades, contactos, roles y cobros antes de tocar datos reales.',
     icon: <Users className="w-6 h-6" />,
     color: '#5A7D5A',
     bg: 'bg-[#5A7D5A]/10',
   },
   {
     num: '03',
-    title: 'Tu comunidad conectada',
-    desc: 'Pagos, reservas, circulares y más. Todo en una app que la gente de verdad quiere usar.',
+    title: 'Activa la comunidad',
+    desc: 'Invitaciones, pagos, reservas, circulares y acciones de CoCo quedan listas para operar.',
     icon: <Zap className="w-6 h-6" />,
     color: '#f59e0b',
     bg: 'bg-amber-400/10',
@@ -420,7 +420,7 @@ export default function LandingPage() {
                 onClick={() => router.push('/onboarding')}
                 className="inline-flex items-center justify-center gap-2 font-bold transition-all cursor-pointer px-6 py-3.5 rounded-xl bg-[#1A1611] dark:bg-white dark:text-black text-[#FAF7F1] text-sm hover:opacity-90 shadow-md"
               >
-                Agendar onboarding (48h)
+                Activar con CoCo
                 <ArrowRight size={15} />
               </button>
               <button
@@ -614,13 +614,13 @@ export default function LandingPage() {
             <h2
               className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
             >
-              Listo en{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5A7D5A] to-[#C8705A]">48 horas</span>
+              Activo con{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5A7D5A] to-[#C8705A]">IA guiada</span>
             </h2>
             <p
               className="text-[#8A8580] dark:text-[#C8BFB6] text-lg max-w-lg mx-auto"
             >
-              Sin instalaciones complicadas. Sin cursos. Solo una comunidad más conectada.
+              Sin configuracion manual interminable. CoCo interpreta, el admin aprueba y la comunidad queda lista para operar.
             </p>
           </div>
 
@@ -767,7 +767,7 @@ export default function LandingPage() {
                     className="flex-1 py-4 rounded-2xl text-white font-bold hover:opacity-90 transition-all shadow-lg text-sm"
                     style={{ background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}dd)`, boxShadow: `0 8px 24px ${selectedRole.color}40` }}
                   >
-                    Agendar onboarding
+                    Ver activacion IA
                   </button>
                   <button
                     onClick={() => setSelectedInfo(null)}
@@ -881,7 +881,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button onClick={() => router.push('/onboarding')} id="pricing-premium-cta" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#5A7D5A] to-[#466746] hover:from-[#466746] hover:to-[#3F5E3F] text-white font-bold transition-colors shadow-lg shadow-[#5A7D5A]/20 text-sm">
-                Agendar Onboarding (48h)
+                Activar con CoCo
               </button>
             </div>
           </div>
@@ -907,7 +907,7 @@ export default function LandingPage() {
               { q: "¿En qué países está disponible Convive Connect?", a: "Actualmente operamos en Chile, pero nuestra plataforma ha sido diseñada para ser 100% adaptable a cualquier país de Latinoamérica, soportando su respectiva moneda y formatos locales." },
               { q: "¿Es seguro el manejo del dinero y los pagos en la app?", a: "Absolutamente. No almacenamos ni procesamos tarjetas directamente. Usamos pasarelas con certificación PCI Compliance que aseguran máxima protección bancaria." },
               { q: "¿Qué pasa si un residente no tiene smartphone?", a: "No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web." },
-              { q: "¿Cuánto tiempo toma instalar el sistema en el edificio?", a: "Muy poco. Una vez que nos envías la lista de departamentos y residentes en Excel, dejamos todo funcionando en menos de 48 horas hábiles." }
+              { q: "¿Cuánto tiempo toma activar el edificio?", a: "Depende de la calidad de los datos, pero el flujo esta pensado para que la administracion suba archivos, CoCo detecte brechas y solo se guarde informacion aprobada." }
             ].map((faq, i) => (
               <div
                 key={i}
@@ -947,7 +947,7 @@ export default function LandingPage() {
                 Comenzar gratis hoy
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <p className="text-white/50 text-xs mt-4">Sin tarjeta · Onboarding en 48h · Cancela cuando quieras</p>
+              <p className="text-white/50 text-xs mt-4">Sin tarjeta · Activacion asistida por IA · Cancela cuando quieras</p>
             </div>
           </div>
         </section>

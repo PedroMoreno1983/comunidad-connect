@@ -36,7 +36,7 @@ export default function Image() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 14, fontSize: 22, color: "#B45F4B", fontWeight: 700 }}>
-          <span>Onboarding 48h</span>
+          <span>Activacion IA</span>
           <span>|</span>
           <span>Ley 21.442</span>
           <span>|</span>

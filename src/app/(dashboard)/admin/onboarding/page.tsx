@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
     AlertCircle,
+    Bot,
     CheckCircle2,
     FileSpreadsheet,
     ListChecks,
@@ -12,7 +13,6 @@ import {
     ShieldCheck,
     Trash2,
     UploadCloud,
-    UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -269,19 +269,19 @@ export default function AdminOnboardingPage() {
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
             <header className="flex flex-col gap-5 border-b border-subtle pb-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Carga masiva</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Activacion Inteligente</p>
                     <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold cc-text-primary">
-                        <UsersRound className="h-8 w-8 text-brand-600" />
-                        Onboarding de residentes
+                        <Bot className="h-8 w-8 text-brand-600" />
+                        CoCo prepara tu edificio
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 cc-text-secondary">
-                        Importa nóminas antiguas, revisa la extracción y sincroniza residentes con sus unidades sin exponer datos incompletos al resto de la comunidad.
+                        Sube nominas antiguas, revisa la extraccion y sincroniza residentes con sus unidades solo cuando el lote este claro. Este es el primer paso para dejar pagos, comunicaciones y CoCo listos.
                     </p>
                 </div>
                 <div className="rounded-lg border border-subtle bg-surface p-4 text-sm shadow-sm">
-                    <p className="font-semibold cc-text-primary">Flujo recomendado</p>
+                    <p className="font-semibold cc-text-primary">Flujo de activacion</p>
                     <div className="mt-3 grid gap-2">
-                        {["Subir archivo", "Revisar filas", "Sincronizar"].map((step, index) => (
+                        {["Subir archivo", "CoCo revisa", "Aprobar y sincronizar"].map((step, index) => (
                             <div key={step} className="flex items-center gap-2 cc-text-secondary">
                                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[11px] font-bold">{index + 1}</span>
                                 {step}
@@ -293,9 +293,9 @@ export default function AdminOnboardingPage() {
 
             <section className="grid gap-4 md:grid-cols-3">
                 {[
-                    { title: "Extracción asistida", description: "Lee nóminas antiguas y las convierte en filas editables.", icon: <FileSpreadsheet className="h-4 w-4" /> },
-                    { title: "Control de calidad", description: "Detecta campos críticos antes de guardar datos en la comunidad.", icon: <ListChecks className="h-4 w-4" /> },
-                    { title: "Carga segura", description: "Sincroniza solo después de revisar y confirmar la nómina.", icon: <ShieldCheck className="h-4 w-4" /> },
+                    { title: "Extraccion asistida", description: "Lee nominas antiguas y las convierte en filas editables.", icon: <FileSpreadsheet className="h-4 w-4" /> },
+                    { title: "Control de brechas", description: "Detecta contactos faltantes, unidades repetidas y filas criticas.", icon: <ListChecks className="h-4 w-4" /> },
+                    { title: "Carga con aprobacion", description: "Sincroniza solo despues de revisar y confirmar la nomina.", icon: <ShieldCheck className="h-4 w-4" /> },
                 ].map(item => (
                     <article key={item.title} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
                         <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
@@ -308,15 +308,15 @@ export default function AdminOnboardingPage() {
             </section>
 
             <ModuleFlow
-                title="De nómina a comunidad operativa"
-                description="La administración sube un archivo, revisa la extracción, corrige filas incompletas y sincroniza residentes solo cuando el lote está limpio."
+                title="De archivo sucio a comunidad operativa"
+                description="La administracion sube un archivo, CoCo propone la estructura, marca brechas y deja al admin aprobar antes de guardar datos reales."
                 steps={[
                     "Subir archivo",
-                    "Revisar extracción",
+                    "CoCo interpreta",
                     "Confirmar calidad",
                     "Sincronizar residentes",
                 ]}
-                outcome="Cierre esperado: residentes disponibles en Directorio y Unidades, con filas dudosas corregidas antes de guardar."
+                outcome="Cierre esperado: unidades y residentes listos para invitaciones, gastos comunes y acciones de CoCo."
                 currentStep={extractedData ? 2 : syncSuccess ? 4 : 1}
                 completedSteps={syncSuccess ? 4 : extractedData ? 1 : 0}
                 statusLabel={syncSuccess ? "Sincronizado" : extractedData ? "En revisión" : "Listo para carga"}
