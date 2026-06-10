@@ -102,7 +102,7 @@ export default function OnboardingPage() {
       });
     } catch (error) {
       toast({
-        title: "No se pudo agendar",
+        title: "No se pudo registrar",
         description: error instanceof Error ? error.message : "Intenta nuevamente en unos segundos.",
         variant: "destructive",
       });
