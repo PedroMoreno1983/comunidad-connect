@@ -5,6 +5,7 @@ const report = {
   baseUrl,
   passed: false,
   checks: [],
+  warnings: [],
   failures: [],
 };
 
@@ -14,6 +15,10 @@ function pass(message, details = {}) {
 
 function fail(message, details = {}) {
   report.failures.push({ message, details });
+}
+
+function warn(message, details = {}) {
+  report.warnings.push({ message, details });
 }
 
 async function readJson(path) {
@@ -37,10 +42,18 @@ async function main() {
   }
 
   if (health.data?.runtime?.productionReady) {
-    pass('Production integrations are ready');
+    pass('Production launch integrations are ready', {
+      deferredProduction: health.data?.runtime?.deferredProduction || [],
+    });
+    if (!health.data?.runtime?.fullPaidProductionReady) {
+      warn('Full paid production is not complete yet', {
+        deferredProduction: health.data?.runtime?.deferredProduction || [],
+      });
+    }
   } else {
-    fail('Production integrations are incomplete', {
+    fail('Production launch integrations are incomplete', {
       missingProduction: health.data?.runtime?.missingProduction || [],
+      deferredProduction: health.data?.runtime?.deferredProduction || [],
     });
   }
 

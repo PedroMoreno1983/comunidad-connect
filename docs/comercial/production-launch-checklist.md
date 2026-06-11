@@ -4,7 +4,9 @@ Ultima actualizacion: 2026-06-02
 
 ## Estado actual
 
-La app esta operativa, pero `https://conviveconnect.com/api/health` debe quedar en `status: "ready"` antes de vender como produccion completa.
+La app esta operativa. Antes de vender un plan con pago online real, `https://conviveconnect.com/api/health` debe quedar en `runtime.fullPaidProductionReady: true`.
+
+Mientras Haulmer/Tuu no entregue credenciales, el health puede quedar en `status: "ready_with_deferred_integrations"` con `runtime.productionReady: true` y `runtime.deferredProduction` incluyendo `paidIntegrations.payments`. Eso permite vender/operar sin pago online embebido, sin fingir que Haulmer ya esta activo.
 
 Comando de verificacion:
 
@@ -37,6 +39,7 @@ Content type esperado: `application/x-www-form-urlencoded`
 
 - `HAULMER_ACCOUNT_ID`
 - `HAULMER_SECRET_KEY`
+- `HAULMER_PAYMENTS_REQUIRED=1` solo cuando el cliente contratado exige pago online real.
 
 Despues de configurar, probar creacion de link de pago y retorno controlado.
 
@@ -44,6 +47,8 @@ Despues de configurar, probar creacion de link de pago y retorno controlado.
 
 - `IOT_WEBHOOK_SECRET`
 - `AI_HEALTH_TOKEN`
+- `IOT_WEBHOOKS_REQUIRED=1` solo cuando el cliente tenga sensores/gateway IoT operativo.
+- `AI_HEALTH_TOKEN_REQUIRED=1` para cierre estricto de monitoreo en produccion pagada completa.
 
 ### SEO / dominio
 
@@ -91,13 +96,15 @@ sale con `passed: true` y el endpoint:
 https://conviveconnect.com/api/health
 ```
 
-devuelve:
+devuelve al menos:
 
 ```json
 {
-  "status": "ready",
+  "status": "ready_with_deferred_integrations",
   "runtime": {
     "productionReady": true
   }
 }
 ```
+
+Para cerrar produccion pagada completa, debe devolver `status: "ready"` y `runtime.fullPaidProductionReady: true`.

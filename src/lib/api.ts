@@ -2,8 +2,12 @@ import { supabase } from './supabase';
 import { formatWhatsAppPhone } from './whatsapp';
 import {
     AdminDashboardSummary,
+    AdminBooking,
+    AdminProfile,
+    AdminUsersDirectory,
     BuildingAsset,
     CocoCase,
+    CocoCaseEvent,
     CollectivePurchaseCampaign,
     CreateAmenityInput,
     CommunityProject,
@@ -16,6 +20,7 @@ import {
     MarketplaceItem,
     NeighborMediationCase,
     ProfileSettings,
+    ResidentCasesSummary,
     ResidentHomeSummary,
     ResidentFinanceExpense,
     ServiceRequestQueueItem,
@@ -64,6 +69,99 @@ function getUnitLabel(profile: Record<string, unknown>, unit?: Record<string, un
     const rawUnitId = String(profile.unit_id || "").trim();
     return rawUnitId && !isUuid(rawUnitId) ? rawUnitId : "";
 }
+
+// ==========================================
+// Access / Signup API
+// ==========================================
+
+export const CommunityAccessService = {
+    async validateInviteCode(code: string, role: User["role"]): Promise<{ id: string; name: string | null }> {
+        const cleanCode = code.trim().toUpperCase();
+        const { data, error } = await supabase
+            .from("communities")
+            .select("id, name, resident_code, concierge_code, admin_code")
+            .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode},admin_code.eq.${cleanCode}`)
+            .limit(1);
+
+        if (error) throw error;
+        const community = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+
+        if (!community) {
+            throw new Error("El codigo de invitacion no existe o es incorrecto.");
+        }
+
+        const validForRole =
+            (role === "resident" && community.resident_code === cleanCode) ||
+            (role === "concierge" && community.concierge_code === cleanCode) ||
+            (role === "admin" && community.admin_code === cleanCode);
+
+        if (!validForRole) {
+            const roleLabel = role === "resident" ? "Residente" : role === "admin" ? "Administrador" : "Conserje";
+            throw new Error(`El codigo ingresado no corresponde al perfil ${roleLabel}.`);
+        }
+
+        return {
+            id: String(community.id),
+            name: typeof community.name === "string" ? community.name : null,
+        };
+    },
+};
+
+// ==========================================
+// Admin Users API
+// ==========================================
+
+export const AdminUsersService = {
+    async getDirectory(currentUserId?: string): Promise<AdminUsersDirectory> {
+        let communityId: string | null = null;
+        let communityName = "Comunidad";
+        let residentCode: string | null = null;
+        let conciergeCode: string | null = null;
+
+        if (currentUserId) {
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("community_id")
+                .eq("id", currentUserId)
+                .maybeSingle();
+
+            if (profileError) throw profileError;
+            communityId = typeof profile?.community_id === "string" ? profile.community_id : null;
+
+            if (communityId) {
+                const { data: community, error: communityError } = await supabase
+                    .from("communities")
+                    .select("name, resident_code, concierge_code")
+                    .eq("id", communityId)
+                    .maybeSingle();
+
+                if (communityError) throw communityError;
+                if (community) {
+                    communityName = String(community.name || "Comunidad");
+                    residentCode = typeof community.resident_code === "string" ? community.resident_code : null;
+                    conciergeCode = typeof community.concierge_code === "string" ? community.concierge_code : null;
+                }
+            }
+        }
+
+        let query = supabase
+            .from("profiles")
+            .select("id, name, email, role, units(number)")
+            .order("name");
+
+        if (communityId) query = query.eq("community_id", communityId);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        return {
+            users: (data || []) as AdminProfile[],
+            communityName,
+            residentCode,
+            conciergeCode,
+        };
+    },
+};
 
 // ==========================================
 // Directory API
@@ -1028,7 +1126,26 @@ function mapCocoCase(row: DbRow): CocoCase {
         assistant_reply: nullableText(row.assistant_reply),
         unit_label: nullableText(row.unit_label),
         created_at: textValue(row.created_at, new Date().toISOString()),
+        updated_at: typeof row.updated_at === "string" ? row.updated_at : undefined,
     };
+}
+
+function mapCocoCaseEvent(row: DbRow): CocoCaseEvent {
+    return {
+        id: textValue(row.id),
+        case_id: textValue(row.case_id),
+        event_type: (textValue(row.event_type, "system") as CocoCaseEvent["event_type"]),
+        from_status: nullableText(row.from_status),
+        to_status: nullableText(row.to_status),
+        body: nullableText(row.body),
+        actor_role: nullableText(row.actor_role),
+        created_at: textValue(row.created_at, new Date().toISOString()),
+    };
+}
+
+function uniqueCocoCases(cases: CocoCase[]) {
+    return Array.from(new Map(cases.map(item => [item.id, item])).values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 function mapServiceRequestQueueItem(row: DbRow): ServiceRequestQueueItem {
@@ -1160,6 +1277,55 @@ export const MaintenanceService = {
     },
 };
 
+export const CocoCasesService = {
+    async getResidentCases(user: Pick<User, "id" | "unitId">): Promise<ResidentCasesSummary> {
+        const select = "id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at, updated_at";
+        const queries = [
+            supabase
+                .from("coco_cases")
+                .select(select)
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false })
+                .limit(30),
+        ];
+
+        if (user.unitId) {
+            queries.push(
+                supabase
+                    .from("coco_cases")
+                    .select(select)
+                    .eq("unit_id", user.unitId)
+                    .order("created_at", { ascending: false })
+                    .limit(30)
+            );
+        }
+
+        const results = await Promise.all(queries);
+        for (const result of results) {
+            if (result.error) throw result.error;
+        }
+
+        const cases = uniqueCocoCases(results.flatMap(result => ((result.data || []) as DbRow[]).map(mapCocoCase)));
+        if (cases.length === 0) return { cases, eventsByCase: {} };
+
+        const { data: events, error } = await supabase
+            .from("coco_case_events")
+            .select("id, case_id, event_type, from_status, to_status, body, actor_role, created_at")
+            .in("case_id", cases.map(item => item.id))
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const eventsByCase = ((events || []) as DbRow[]).map(mapCocoCaseEvent).reduce<Record<string, CocoCaseEvent[]>>((acc, event) => {
+            acc[event.case_id] ||= [];
+            acc[event.case_id].push(event);
+            return acc;
+        }, {});
+
+        return { cases, eventsByCase };
+    },
+};
+
 // ==========================================
 // Water Consumption API
 // ==========================================
@@ -1250,6 +1416,30 @@ export const WaterService = {
     },
 
     // Obtener el promedio de consumo del edificio (para comparación)
+    async getUnitResident(unit: Unit): Promise<User | null> {
+        const rawUnit = unit as Unit & { owner_id?: string; tenant_id?: string };
+        const userId = unit.ownerId || unit.tenantId || rawUnit.owner_id || rawUnit.tenant_id;
+        if (!userId) return null;
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, name, email, role, avatar_url')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return null;
+
+        const row = data as Record<string, unknown>;
+        return {
+            id: String(row.id),
+            name: String(row.name || row.email || "Residente"),
+            email: String(row.email || ""),
+            role: (row.role === "admin" || row.role === "concierge" ? row.role : "resident") as User["role"],
+            photo: typeof row.avatar_url === "string" ? row.avatar_url : undefined,
+        };
+    },
+
     async getBuildingAverage(month: string, year: number) {
         type AverageReadingRow = { unit_id: string | number | null; reading_value: string | number | null };
         const monthNames = [
@@ -1533,6 +1723,29 @@ export const AmenitiesService = {
             throw error;
         }
         return data;
+    },
+
+    async getAdminBookings(): Promise<AdminBooking[]> {
+        const { data, error } = await supabase
+            .from('bookings')
+            .select(`
+                id, date, start_time, end_time, status, created_at,
+                profiles:user_id (name, email),
+                amenities:amenity_id (name, icon_name, gradient)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []) as unknown as AdminBooking[];
+    },
+
+    async updateBookingStatus(id: string, status: AdminBooking["status"]) {
+        const { error } = await supabase
+            .from('bookings')
+            .update({ status })
+            .eq('id', id);
+
+        if (error) throw error;
     },
 
     async getBookings(userId: string) {

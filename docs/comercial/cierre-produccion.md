@@ -37,6 +37,9 @@ Segun modulos contratados:
 - `TWILIO_WHATSAPP_FROM`
 - `HAULMER_ACCOUNT_ID`
 - `HAULMER_SECRET_KEY`
+- `HAULMER_PAYMENTS_REQUIRED=1` cuando el plan vendido incluye pago online real.
+- `IOT_WEBHOOKS_REQUIRED=1` cuando la comunidad tiene sensores/gateway IoT operativo.
+- `AI_HEALTH_TOKEN_REQUIRED=1` cuando el cierre exige monitoreo de IA con token.
 
 ## Token de monitoreo
 
@@ -104,10 +107,13 @@ npm run lint
 npm run build
 ```
 
+Los comandos `qa:workflows`, `qa:functional`, `qa:human-flows` y `qa:visual` son aliases de los checks existentes para mantener el cierre operativo en un solo bloque.
+
 ## Criterio de cierre
 
 - `Commercial readiness: READY`.
-- `Paid production readiness: READY`.
+- `Launch readiness: READY`.
+- `Full paid production readiness: READY` solo cuando Haulmer/Tuu e IoT requerido tengan credenciales reales. Si Haulmer sigue pendiente, debe quedar documentado como integracion diferida en `runtime.deferredProduction`.
 - Dominio final apuntado.
 - Envios reales probados con destinatarios internos.
 - Contrato, terminos y precios aprobados.

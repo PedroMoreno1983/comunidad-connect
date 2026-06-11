@@ -287,6 +287,17 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'cancelled';
 }
 
+export interface AdminBooking {
+  id: string;
+  date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at?: string | null;
+  profiles?: { name?: string | null; email?: string | null } | { name?: string | null; email?: string | null }[] | null;
+  amenities?: { name?: string | null; icon_name?: string | null; gradient?: string | null } | { name?: string | null; icon_name?: string | null; gradient?: string | null }[] | null;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -494,6 +505,7 @@ export interface CocoCase {
   assistant_reply?: string | null;
   unit_label?: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface CocoCaseEvent {
@@ -505,6 +517,26 @@ export interface CocoCaseEvent {
   body: string | null;
   actor_role: string | null;
   created_at: string;
+}
+
+export interface ResidentCasesSummary {
+  cases: CocoCase[];
+  eventsByCase: Record<string, CocoCaseEvent[]>;
+}
+
+export interface AdminProfile {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string | null;
+  units?: { number: string }[] | { number: string } | null;
+}
+
+export interface AdminUsersDirectory {
+  users: AdminProfile[];
+  communityName: string;
+  residentCode: string | null;
+  conciergeCode: string | null;
 }
 
 export interface ServiceRequestQueueItem {

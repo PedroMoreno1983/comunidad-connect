@@ -15,21 +15,14 @@ import {
     UserPlus,
     Users,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { AdminUsersService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
+import type { AdminProfile } from "@/lib/types";
 
 type RoleFilter = "all" | "admin" | "resident" | "concierge";
-
-interface AdminProfile {
-    id: string;
-    name: string | null;
-    email: string | null;
-    role: string | null;
-    units?: { number: string }[] | { number: string } | null;
-}
 
 const roleLabels: Record<string, string> = {
     admin: "Administración",
@@ -72,35 +65,11 @@ export default function UsersPage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                if (user) {
-                    const { data: profile } = await supabase
-                        .from("profiles")
-                        .select("community_id")
-                        .eq("id", user.id)
-                        .single();
-
-                    if (profile?.community_id) {
-                        const { data: community } = await supabase
-                            .from("communities")
-                            .select("name, resident_code, concierge_code")
-                            .eq("id", profile.community_id)
-                            .single();
-
-                        if (community) {
-                            setCommunityName(community.name || "Comunidad");
-                            setResidentCode(community.resident_code);
-                            setConciergeCode(community.concierge_code);
-                        }
-                    }
-                }
-
-                const { data, error } = await supabase
-                    .from("profiles")
-                    .select("id, name, email, role, units(number)")
-                    .order("name");
-
-                if (error) throw error;
-                setUsers((data || []) as AdminProfile[]);
+                const directory = await AdminUsersService.getDirectory(user?.id);
+                setCommunityName(directory.communityName);
+                setResidentCode(directory.residentCode);
+                setConciergeCode(directory.conciergeCode);
+                setUsers(directory.users);
             } catch (err) {
                 console.error("Error fetching users:", err);
                 setUsers([]);
