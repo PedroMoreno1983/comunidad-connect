@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/authContext";
-import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
 import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, ShieldCheck, Users } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
+import { useToast } from "@/components/ui/Toast";
+import { CommunityAccessService } from "@/lib/api";
+import { useAuth } from "@/lib/authContext";
+import type { UserRole } from "@/lib/types";
 
 const ROLES = [
-    { id: "resident", label: "Residente", description: "Unidad y gastos personales", icon: Home },
-    { id: "concierge", label: "Conserje", description: "Turno, visitas y paquetes", icon: ShieldCheck },
-    { id: "admin", label: "Admin", description: "Gestión completa", icon: Building2 },
+    { id: "resident", label: "Residente", icon: Home },
+    { id: "concierge", label: "Conserje", icon: ShieldCheck },
+    { id: "admin", label: "Admin", icon: Building2 },
 ] as const;
 
 export default function SignUpPage() {
@@ -25,52 +27,39 @@ export default function SignUpPage() {
     const [departmentNumber, setDepartmentNumber] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [selectedRole, setSelectedRole] = useState<UserRole>("resident");
     const { signUp } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const [selectedRole, setSelectedRole] = useState<"resident" | "concierge" | "admin">("resident");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast({ title: "Error", description: "Las contraseñas no coinciden", variant: "destructive" });
+            toast({ title: "Error", description: "Las contrasenas no coinciden", variant: "destructive" });
             return;
         }
 
         if (password.length < 6) {
-            toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
+            toast({ title: "Error", description: "La contrasena debe tener al menos 6 caracteres", variant: "destructive" });
             return;
         }
 
         if (!accessCode.trim()) {
-            toast({ title: "Error", description: "Debes ingresar un código de invitación", variant: "destructive" });
+            toast({ title: "Error", description: "Debes ingresar un codigo de invitacion", variant: "destructive" });
             return;
         }
 
         setLoading(true);
         const cleanCode = accessCode.trim().toUpperCase();
 
-        const { data: communities, error: codeError } = await supabase
-            .from("communities")
-            .select("id, name, resident_code, concierge_code, admin_code")
-            .or(`resident_code.eq.${cleanCode},concierge_code.eq.${cleanCode},admin_code.eq.${cleanCode}`);
-
-        if (codeError || !communities || communities.length === 0) {
-            toast({ title: "Código inválido", description: "El código de invitación no existe o es incorrecto.", variant: "destructive" });
-            setLoading(false);
-            return;
-        }
-
-        const community = communities[0];
-        const isCodeValidForRole =
-            (selectedRole === "resident" && community.resident_code === cleanCode) ||
-            (selectedRole === "concierge" && community.concierge_code === cleanCode) ||
-            (selectedRole === "admin" && community.admin_code === cleanCode);
-
-        if (!isCodeValidForRole) {
-            const roleLabel = selectedRole === "resident" ? "Residente" : selectedRole === "admin" ? "Administrador" : "Conserje";
-            toast({ title: "Rol no coincide", description: `El código ingresado no corresponde al perfil ${roleLabel}.`, variant: "destructive" });
+        let community: { id: string; name: string | null };
+        try {
+            community = await CommunityAccessService.validateInviteCode(cleanCode, selectedRole);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "El codigo de invitacion no existe o es incorrecto.";
+            const title = message.includes("perfil") ? "Rol no coincide" : "Codigo invalido";
+            toast({ title, description: message, variant: "destructive" });
             setLoading(false);
             return;
         }
@@ -88,23 +77,20 @@ export default function SignUpPage() {
             return;
         }
 
-        // Send transactional welcome email asynchronously
         fetch("/api/email/welcome", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 to: email,
                 residentName: fullName,
                 unitName: departmentNumber ? `Depto ${departmentNumber.trim()}` : "Unidad",
                 condoName: community.name || "Convive Connect",
             }),
-        }).catch((e) => console.error("[Welcome Email] Failed to send:", e));
+        }).catch((err) => console.error("[Welcome Email] Failed to send:", err));
 
         toast({
             title: "Cuenta creada",
-            description: `Enviamos un correo a ${email}. Confírmalo para iniciar sesión.`,
+            description: `Enviamos un correo a ${email}. Confirmalo para iniciar sesion.`,
             variant: "success",
         });
         router.push("/login");
@@ -113,12 +99,11 @@ export default function SignUpPage() {
     return (
         <main className="min-h-screen flex" style={{ background: "var(--cc-ivory)" }}>
             <div className="grid w-full lg:grid-cols-[440px_1fr]">
-                {/* Left side: Signup Form */}
                 <section className="flex items-center justify-center p-6 sm:p-12 overflow-y-auto w-full">
                     <div className="w-full max-w-[360px] space-y-7">
                         <div className="flex justify-between items-start">
                             <div>
-                                <Eyebrow className="mb-2">INVITACIÓN</Eyebrow>
+                                <Eyebrow className="mb-2">INVITACION</Eyebrow>
                                 <DisplayHeading size={36}>
                                     Crear <br />
                                     <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>cuenta.</em>
@@ -130,7 +115,6 @@ export default function SignUpPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Role selectors inside segmented grid */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">PERFIL DE ACCESO</label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -146,7 +130,7 @@ export default function SignUpPage() {
                                                     background: active ? "var(--cc-ink)" : "var(--cc-paper)",
                                                     color: active ? "var(--cc-paper)" : "var(--cc-ink-muted)",
                                                     borderColor: active ? "transparent" : "var(--cc-line-strong)",
-                                                    boxShadow: active ? "var(--cc-shadow-sm)" : "none"
+                                                    boxShadow: active ? "var(--cc-shadow-sm)" : "none",
                                                 }}
                                             >
                                                 {label}
@@ -156,21 +140,19 @@ export default function SignUpPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">NOMBRE COMPLETO</label>
+                            <Field label="NOMBRE COMPLETO">
                                 <input
                                     type="text"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
-                                    placeholder="Juan Pérez"
+                                    placeholder="Juan Perez"
                                     required
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
-                            </div>
+                            </Field>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CORREO ELECTRÓNICO</label>
+                            <Field label="CORREO ELECTRONICO">
                                 <input
                                     type="email"
                                     value={email}
@@ -180,15 +162,16 @@ export default function SignUpPage() {
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
-                            </div>
+                            </Field>
 
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONTRASEÑA</label>
-                                    <button 
-                                      type="button" 
-                                      onClick={() => setShowPassword(!showPassword)}
-                                      className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONTRASENA</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                                        aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
                                     >
                                         {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                     </button>
@@ -197,28 +180,26 @@ export default function SignUpPage() {
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Mínimo 6 caracteres"
+                                    placeholder="Minimo 6 caracteres"
                                     required
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONFIRMAR CONTRASEÑA</label>
+                            <Field label="CONFIRMAR CONTRASENA">
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="Repite tu contraseña"
+                                    placeholder="Repite tu contrasena"
                                     required
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
-                            </div>
+                            </Field>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CÓDIGO DE INVITACIÓN</label>
+                            <Field label="CODIGO DE INVITACION">
                                 <input
                                     type="text"
                                     value={accessCode}
@@ -228,11 +209,10 @@ export default function SignUpPage() {
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all font-mono uppercase tracking-[0.16em]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
-                            </div>
+                            </Field>
 
                             {selectedRole === "resident" && (
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">DEPARTAMENTO / UNIDAD</label>
+                                <Field label="DEPARTAMENTO / UNIDAD">
                                     <input
                                         type="text"
                                         value={departmentNumber}
@@ -242,7 +222,7 @@ export default function SignUpPage() {
                                         className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
                                         style={{ borderColor: "var(--cc-line-strong)" }}
                                     />
-                                </div>
+                                </Field>
                             )}
 
                             <button
@@ -258,25 +238,23 @@ export default function SignUpPage() {
 
                         <div className="pt-2 text-center">
                             <Link href="/login" className="text-xs font-semibold text-slate-500 hover:text-slate-700">
-                                ¿Ya tienes cuenta? <span className="text-copper underline">Iniciar sesión</span>
+                                Ya tienes cuenta? <span className="text-copper underline">Iniciar sesion</span>
                             </Link>
                         </div>
                     </div>
                 </section>
 
-                {/* Right side: Onboarding Hero (hidden on mobile) */}
-                <section 
-                  className="hidden lg:flex flex-col relative overflow-hidden p-12 justify-between"
-                  style={{
-                    background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
-                    color: "var(--cc-paper)"
-                  }}
+                <section
+                    className="hidden lg:flex flex-col relative overflow-hidden p-12 justify-between"
+                    style={{
+                        background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
+                        color: "var(--cc-paper)",
+                    }}
                 >
-                    {/* Warm ambient light */}
-                    <div 
-                      aria-hidden 
-                      className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
-                      style={{ background: "radial-gradient(circle, rgba(181,102,78,0.2) 0%, transparent 70%)" }}
+                    <div
+                        aria-hidden
+                        className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
+                        style={{ background: "radial-gradient(circle, rgba(181,102,78,0.2) 0%, transparent 70%)" }}
                     />
 
                     <div className="relative z-10 flex justify-end">
@@ -293,24 +271,22 @@ export default function SignUpPage() {
                                 el <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>rol correcto.</em>
                             </DisplayHeading>
                             <p className="text-sm leading-relaxed" style={{ color: "var(--cc-ink-faint)" }}>
-                                Los códigos separan los accesos de residentes, conserjería y administración para garantizar que tus datos y acciones se mantengan seguros.
+                                Los codigos separan los accesos de residentes, conserjeria y administracion para garantizar que tus datos y acciones se mantengan seguros.
                             </p>
                         </div>
 
-                        {/* Floating Card Preview */}
-                        <div 
-                          className="rounded-2xl border p-5 shadow-xl bg-[#1A1611]/90 backdrop-blur-md relative transform rotate-[1deg] translate-y-2 text-left"
-                          style={{ borderColor: "rgba(250, 247, 241, 0.1)" }}
+                        <div
+                            className="rounded-2xl border p-5 shadow-xl bg-[#1A1611]/90 backdrop-blur-md relative transform rotate-[1deg] translate-y-2 text-left"
+                            style={{ borderColor: "rgba(250, 247, 241, 0.1)" }}
                         >
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl bg-[rgba(250,247,241,0.08)]">
                                     <Users className="h-5 w-5 text-white" />
                                 </div>
-                                <div className="text-xs font-semibold">Seguridad y Privacidad garantizadas</div>
+                                <div className="text-xs font-semibold">Seguridad y privacidad garantizadas</div>
                             </div>
                         </div>
 
-                        {/* Pagination Dots */}
                         <div className="flex gap-1.5 justify-end pt-4">
                             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(250,247,241,0.2)" }} />
                             <span className="w-6 h-1.5 rounded-full" style={{ background: "var(--cc-copper)" }} />
@@ -319,10 +295,19 @@ export default function SignUpPage() {
                     </div>
 
                     <div className="relative z-10 text-xs text-right" style={{ color: "var(--cc-ink-tertiary)" }}>
-                        © 2026 Convive Connect. Todos los derechos reservados.
+                        2026 Convive Connect. Todos los derechos reservados.
                     </div>
                 </section>
             </div>
         </main>
+    );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">{label}</label>
+            {children}
+        </div>
     );
 }

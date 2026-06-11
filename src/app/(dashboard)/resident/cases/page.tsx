@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
-import { supabase } from "@/lib/supabase";
+import { CocoCasesService } from "@/lib/api";
+import type { CocoCase, CocoCaseEvent } from "@/lib/types";
 import {
     AlertTriangle,
     Bot,
@@ -14,34 +15,7 @@ import {
     Wrench
 } from "lucide-react";
 
-type CoCoCase = {
-    id: string;
-    title: string;
-    type: string;
-    category: string;
-    urgency: "baja" | "media" | "alta" | "emergencia";
-    action: string;
-    status: "open" | "in_progress" | "resolved" | "closed" | "cancelled";
-    reason: string | null;
-    source_message: string;
-    assistant_reply: string | null;
-    unit_label: string | null;
-    created_at: string;
-    updated_at: string;
-};
-
-type CoCoCaseEvent = {
-    id: string;
-    case_id: string;
-    event_type: "created" | "status_changed" | "comment" | "system";
-    from_status: string | null;
-    to_status: string | null;
-    body: string | null;
-    actor_role: string | null;
-    created_at: string;
-};
-
-const statusCopy: Record<CoCoCase["status"], { label: string; icon: typeof Clock; className: string }> = {
+const statusCopy: Record<CocoCase["status"], { label: string; icon: typeof Clock; className: string }> = {
     open: {
         label: "Recibido",
         icon: Clock,
@@ -69,71 +43,26 @@ const statusCopy: Record<CoCoCase["status"], { label: string; icon: typeof Clock
     },
 };
 
-const urgencyClass: Record<CoCoCase["urgency"], string> = {
+const urgencyClass: Record<CocoCase["urgency"], string> = {
     baja: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
     media: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
     alta: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300",
     emergencia: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300",
 };
 
-function uniqueCases(cases: CoCoCase[]) {
-    return Array.from(new Map(cases.map(item => [item.id, item])).values())
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-}
-
 export default function ResidentCasesPage() {
     const { user } = useAuth();
-    const [cases, setCases] = useState<CoCoCase[]>([]);
-    const [eventsByCase, setEventsByCase] = useState<Record<string, CoCoCaseEvent[]>>({});
+    const [cases, setCases] = useState<CocoCase[]>([]);
+    const [eventsByCase, setEventsByCase] = useState<Record<string, CocoCaseEvent[]>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchCases = async () => {
             if (!user) return;
             setLoading(true);
-
-            const select = "id, title, type, category, urgency, action, status, reason, source_message, assistant_reply, unit_label, created_at, updated_at";
-            const queries = [
-                supabase
-                    .from("coco_cases")
-                    .select(select)
-                    .eq("user_id", user.id)
-                    .order("created_at", { ascending: false })
-                    .limit(30),
-            ];
-
-            if (user.unitId) {
-                queries.push(
-                    supabase
-                        .from("coco_cases")
-                        .select(select)
-                        .eq("unit_id", user.unitId)
-                        .order("created_at", { ascending: false })
-                        .limit(30)
-                );
-            }
-
-            const results = await Promise.all(queries);
-            const rows = results.flatMap(result => (result.data || []) as CoCoCase[]);
-            const uniqueRows = uniqueCases(rows);
-            setCases(uniqueRows);
-
-            if (uniqueRows.length > 0) {
-                const { data: events } = await supabase
-                    .from("coco_case_events")
-                    .select("id, case_id, event_type, from_status, to_status, body, actor_role, created_at")
-                    .in("case_id", uniqueRows.map(item => item.id))
-                    .order("created_at", { ascending: false });
-
-                const grouped = ((events || []) as CoCoCaseEvent[]).reduce<Record<string, CoCoCaseEvent[]>>((acc, event) => {
-                    acc[event.case_id] ||= [];
-                    acc[event.case_id].push(event);
-                    return acc;
-                }, {});
-                setEventsByCase(grouped);
-            } else {
-                setEventsByCase({});
-            }
+            const summary = await CocoCasesService.getResidentCases(user);
+            setCases(summary.cases);
+            setEventsByCase(summary.eventsByCase);
             setLoading(false);
         };
 
@@ -255,7 +184,7 @@ export default function ResidentCasesPage() {
                                                 <p className="mt-2 text-[10px] font-bold cc-text-tertiary">
                                                     {latestEvent
                                                         ? new Date(latestEvent.created_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })
-                                                        : new Date(item.updated_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
+                                                        : new Date(item.updated_at || item.created_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
                                                 </p>
                                             </div>
                                         </div>

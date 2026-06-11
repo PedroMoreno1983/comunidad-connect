@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback } from "react";
 import { Unit, WaterReading, User as Profile } from "@/lib/types";
 import { WaterService } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/Toast";
 import { getCurrentWaterPeriod } from "@/lib/waterPeriod";
 
@@ -57,33 +56,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                 setReadingValue("");
             }
 
-            // Cargar residente real
-            // Primero intentamos buscar el perfil asignado a la unidad
-            if (unit.ownerId || unit.tenantId) {
-                const userId = unit.ownerId || unit.tenantId;
-                const { data: profile, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
-
-                if (error) {
-                    console.error("Error fetching profile:", error);
-                    setResident(null);
-                } else if (profile) {
-                    setResident({
-                        id: profile.id,
-                        name: profile.name,
-                        email: profile.email || '',
-                        role: profile.role || 'resident',
-                        photo: profile.avatar_url
-                    });
-                } else {
-                    setResident(null);
-                }
-            } else {
-                setResident(null);
-            }
+            setResident(await WaterService.getUnitResident(unit));
         } catch (error) {
             console.error("Error loading unit details:", error);
             toast({

@@ -36,6 +36,10 @@ function getValue(key) {
   return process.env[key] || localEnv[key] || "";
 }
 
+function isEnabled(key) {
+  return /^(1|true|yes|on)$/i.test(getValue(key).trim());
+}
+
 function checkKeys(keys) {
   return keys.map((key) => ({ key, present: hasValue(key) }));
 }
@@ -64,14 +68,30 @@ const groups = [
   {
     name: "Commercial channels",
     critical: false,
-    checks: checkKeys(["RESEND_API_KEY", "HAULMER_ACCOUNT_ID", "HAULMER_SECRET_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM"]),
+    checks: checkKeys(["RESEND_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM"]),
+  },
+  {
+    name: "Payments (Haulmer/Tuu)",
+    critical: false,
+    deferred: !isEnabled("HAULMER_PAYMENTS_REQUIRED") && !(hasValue("HAULMER_ACCOUNT_ID") && hasValue("HAULMER_SECRET_KEY")),
+    checks: checkKeys(["HAULMER_ACCOUNT_ID", "HAULMER_SECRET_KEY"]),
   },
   {
     name: "Admin operations and monitoring",
     critical: false,
     checks: [
       checkOneOf("SUPERADMIN_EMAIL(S)", ["SUPERADMIN_EMAIL", "SUPERADMIN_EMAILS"]),
-      ...checkKeys(["AI_HEALTH_TOKEN", "NEXT_PUBLIC_SITE_URL", "IOT_WEBHOOK_SECRET", "WHATSAPP_WEBHOOK_SECRET", "VOYAGE_API_KEY", "VOYAGE_EMBEDDING_MODEL", "AI_BUDGET_ENFORCEMENT"]),
+      ...checkKeys(["NEXT_PUBLIC_SITE_URL", "WHATSAPP_WEBHOOK_SECRET", "VOYAGE_API_KEY", "VOYAGE_EMBEDDING_MODEL", "AI_BUDGET_ENFORCEMENT"]),
+      ...(
+        isEnabled("AI_HEALTH_TOKEN_REQUIRED")
+          ? checkKeys(["AI_HEALTH_TOKEN"])
+          : [{ key: "AI_HEALTH_TOKEN", present: hasValue("AI_HEALTH_TOKEN"), deferred: !hasValue("AI_HEALTH_TOKEN") }]
+      ),
+      ...(
+        isEnabled("IOT_WEBHOOKS_REQUIRED")
+          ? checkKeys(["IOT_WEBHOOK_SECRET"])
+          : [{ key: "IOT_WEBHOOK_SECRET", present: hasValue("IOT_WEBHOOK_SECRET"), deferred: !hasValue("IOT_WEBHOOK_SECRET") }]
+      ),
     ],
   },
 ];
@@ -86,9 +106,11 @@ const summary = groups.map((group) => {
   return {
     name: group.name,
     critical: group.critical,
-    ready: missing.length === 0,
+    deferred: Boolean(group.deferred) || (missing.length > 0 && missing.every((check) => check.deferred)),
+    ready: missing.length === 0 || Boolean(group.deferred) || (missing.length > 0 && missing.every((check) => check.deferred)),
     present: group.checks.filter((check) => check.present).map((check) => check.key),
     missing: missing.map((check) => check.key),
+    deferredMissing: missing.filter((check) => check.deferred || group.deferred).map((check) => check.key),
   };
 });
 
@@ -104,22 +126,28 @@ const report = {
     : "not linked",
   summary,
   readyForCommercial: criticalMissing.length === 0,
-  readyForPaidProduction: summary.every((group) => group.ready),
-  nextActions: summary.flatMap((group) => group.missing.map((key) => `${group.name}: configure ${key}`)),
+  readyForLaunch: summary.every((group) => group.ready),
+  readyForPaidProduction: summary.every((group) => group.ready && !group.deferred),
+  nextActions: summary.flatMap((group) => group.missing
+    .filter((key) => !group.deferredMissing.includes(key))
+    .map((key) => `${group.name}: configure ${key}`)),
+  deferredActions: summary.flatMap((group) => group.deferredMissing.map((key) => `${group.name}: deferred ${key}`)),
   strict,
   requirePaidProduction,
 };
 
 for (const group of summary) {
-  const icon = group.ready ? "OK" : group.critical ? "MISSING" : "OPTIONAL";
+  const icon = group.ready ? group.deferred ? "DEFERRED" : "OK" : group.critical ? "MISSING" : "OPTIONAL";
   console.log(`${icon} ${group.name}`);
   if (group.present.length) console.log(`  present: ${group.present.join(", ")}`);
   if (group.missing.length) console.log(`  missing: ${group.missing.join(", ")}`);
+  if (group.deferredMissing.length) console.log(`  deferred: ${group.deferredMissing.join(", ")}`);
 }
 
 console.log(`\nVercel project: ${typeof report.vercelProject === "string" ? report.vercelProject : `${report.vercelProject.projectName} (${report.vercelProject.orgId})`}`);
 console.log(`Commercial readiness: ${report.readyForCommercial ? "READY" : "BLOCKED"}`);
-console.log(`Paid production readiness: ${report.readyForPaidProduction ? "READY" : "NEEDS CONFIG"}`);
+console.log(`Launch readiness: ${report.readyForLaunch ? "READY" : "NEEDS CONFIG"}`);
+console.log(`Full paid production readiness: ${report.readyForPaidProduction ? "READY" : "DEFERRED OR NEEDS CONFIG"}`);
 
 const reportPath = path.join(root, ".tmp", "production-readiness.json");
 fs.mkdirSync(path.dirname(reportPath), { recursive: true });

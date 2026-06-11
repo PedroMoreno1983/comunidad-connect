@@ -2,19 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Clock, Users, Check, X, Building } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { AmenitiesService } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-
-interface Booking {
-    id: string;
-    date: string;
-    start_time?: string | null;
-    end_time?: string | null;
-    status: 'pending' | 'confirmed' | 'cancelled';
-    created_at?: string | null;
-    profiles?: Relation<{ name?: string | null; email?: string | null }>;
-    amenities?: Relation<{ name?: string | null; icon_name?: string | null; gradient?: string | null }>;
-}
+import type { AdminBooking } from "@/lib/types";
 
 type Relation<T> = T | T[] | null | undefined;
 
@@ -34,25 +24,14 @@ function formatDate(value?: string | null) {
 }
 
 export function AdminReservations() {
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [bookings, setBookings] = useState<AdminBooking[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
     const fetchBookings = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('bookings')
-                .select(`
-                    id, date, start_time, end_time, status, created_at,
-                    profiles:user_id (name, email),
-                    amenities:amenity_id (name, icon_name, gradient)
-                `)
-                .order('created_at', { ascending: false });
-
-            if (data && !error) {
-                setBookings(data as unknown as Booking[]);
-            }
+            setBookings(await AmenitiesService.getAdminBookings());
         } catch (err) {
             console.error("Error fetching bookings:", err);
         } finally {
@@ -66,12 +45,7 @@ export function AdminReservations() {
 
     const handleUpdateStatus = async (id: string, newStatus: 'confirmed' | 'cancelled') => {
         try {
-            const { error } = await supabase
-                .from('bookings')
-                .update({ status: newStatus })
-                .eq('id', id);
-
-            if (error) throw error;
+            await AmenitiesService.updateBookingStatus(id, newStatus);
 
             toast({
                 title: newStatus === 'confirmed' ? "Reserva Aprobada" : "Reserva Rechazada",
@@ -80,7 +54,7 @@ export function AdminReservations() {
             });
 
             // Update local state without fetching again
-            setBookings(prev => prev.map((b: Booking) => b.id === id ? { ...b, status: newStatus } : b));
+            setBookings(prev => prev.map((b: AdminBooking) => b.id === id ? { ...b, status: newStatus } : b));
 
         } catch (err: unknown) {
             console.error("Error updating booking status", err);
@@ -92,7 +66,7 @@ export function AdminReservations() {
         }
     };
 
-    const pendingCount = bookings.filter((b: Booking) => b.status === 'pending').length;
+    const pendingCount = bookings.filter((b: AdminBooking) => b.status === 'pending').length;
 
     return (
         <div className="space-y-8">
@@ -127,7 +101,7 @@ export function AdminReservations() {
                         </div>
                     )}
 
-                    {!isLoading && bookings.map((booking: Booking) => {
+                    {!isLoading && bookings.map((booking: AdminBooking) => {
                         const amenity = firstRelation(booking.amenities);
                         const resident = firstRelation(booking.profiles);
 
