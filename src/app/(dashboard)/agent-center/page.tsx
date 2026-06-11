@@ -64,6 +64,15 @@ type ActivityRow = {
   severity: "info" | "success" | "warning" | "error";
   summary: string;
   created_at: string;
+  metadata?: {
+    displayAction?: string;
+    displaySummary?: string;
+    proposedAction?: {
+      title?: string;
+      summary?: string;
+      args?: Record<string, unknown>;
+    };
+  } | null;
 };
 
 type AgentPolicy = {
@@ -202,28 +211,53 @@ const ACTIVITY_PLAYBOOK_LABELS: Record<string, string> = {
 
 function cleanActivityText(value: string) {
   return value
-    .replace(/Ejecutar playbook:/gi, "Preparar workflow:")
-    .replace(/Ejecutado:\s*Ejecutar playbook:/gi, "Ejecutado: Preparar workflow:")
+    .replace(/Ejecutado:\s*Ejecutar playbook\b:?/gi, "Ejecutado: Preparar workflow:")
+    .replace(/Rechazado:\s*Ejecutar playbook\b:?/gi, "Rechazado: Preparar workflow:")
+    .replace(/Ejecutar playbook\b:?/gi, "Preparar workflow:")
     .replace(/\brun_playbook\b/gi, "workflow operativo")
     .replace(/\bagent\.playbook\./gi, "workflow ");
 }
 
-function humanizeActivityAction(item: ActivityRow) {
-  const action = item.action || "";
-  const summary = item.summary || "";
-  const combined = `${action} ${summary}`.toLowerCase();
-
+function playbookLabelFromText(value: string) {
+  const lower = value.toLowerCase();
   for (const [key, label] of Object.entries(ACTIVITY_PLAYBOOK_LABELS)) {
-    if (combined.includes(key) || combined.includes(label.toLowerCase().replace("workflow: ", ""))) {
+    if (lower.includes(key) || lower.includes(label.toLowerCase().replace("workflow: ", ""))) {
       return label;
     }
   }
+  return null;
+}
+
+function humanizeActivityAction(item: ActivityRow) {
+  if (item.metadata?.displayAction) return cleanActivityText(item.metadata.displayAction);
+
+  const action = item.action || "";
+  const summary = item.summary || "";
+  const metadataText = JSON.stringify(item.metadata || {});
+  const combined = `${action} ${summary} ${metadataText}`.toLowerCase();
+  const playbookLabel = playbookLabelFromText(combined);
+  if (playbookLabel) return playbookLabel;
+  if (item.metadata?.proposedAction?.title) return cleanActivityText(item.metadata.proposedAction.title);
 
   return ACTIVITY_TOOL_LABELS[action] || ACTIVITY_AGENT_LABELS[item.agent_key] || "Actividad CoCo";
 }
 
-function humanizeActivitySummary(summary: string) {
-  return cleanActivityText(summary || "Accion registrada con trazabilidad operacional.");
+function humanizeActivitySummary(item: ActivityRow) {
+  if (item.metadata?.displaySummary) return cleanActivityText(item.metadata.displaySummary);
+
+  const rawSummary = item.summary || item.metadata?.proposedAction?.summary || "Accion registrada con trazabilidad operacional.";
+  const summary = cleanActivityText(rawSummary);
+  const metadataText = JSON.stringify(item.metadata || {});
+  const playbookLabel = playbookLabelFromText(`${item.action} ${rawSummary} ${metadataText}`);
+
+  if (playbookLabel) {
+    const playbookName = playbookLabel.replace("Workflow: ", "");
+    if (/^ejecutado:/i.test(summary)) return `Ejecutado: ${playbookName}`;
+    if (/^rechazado:/i.test(summary)) return `Rechazado: ${playbookName}`;
+    if (/preparar workflow|workflow operativo/i.test(summary)) return `Preparado para revision: ${playbookName}`;
+  }
+
+  return summary;
 }
 
 const DEFAULT_SUMMARY: AgentSummary = {
@@ -991,7 +1025,7 @@ export default function AgentCenterPage() {
                       <p className="mt-2 text-[11px] font-semibold uppercase text-[var(--cc-copper)]">
                         {humanizeActivityAction(item)}
                       </p>
-                      <p className="mt-1 text-sm leading-5 cc-text-primary">{humanizeActivitySummary(item.summary)}</p>
+                      <p className="mt-1 text-sm leading-5 cc-text-primary">{humanizeActivitySummary(item)}</p>
                     </div>
                   ))
                 )}

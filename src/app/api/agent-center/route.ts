@@ -349,6 +349,21 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
     ];
 }
 
+function activityDisplayForAction(action: AgentAction) {
+    const playbook = action.toolName === 'run_playbook' ? getPlaybook(action.args.playbookKey) : null;
+    if (playbook) return `Workflow: ${playbook.name}`;
+    return TOOL_LABELS[action.toolName] || 'Actividad CoCo';
+}
+
+function activitySummaryForStatus(action: AgentAction, status: 'preview' | 'executed' | 'failed' | 'rejected') {
+    const displayName = activityDisplayForAction(action).replace(/^Workflow: /, '');
+
+    if (status === 'executed') return `Ejecutado: ${displayName}`;
+    if (status === 'rejected') return `Rechazado: ${displayName}`;
+    if (status === 'failed') return `Error al procesar: ${displayName}`;
+    return `Preparado para revision: ${displayName}`;
+}
+
 function inferActionHeuristic(message: string): AgentAction {
     const lower = message.toLowerCase();
     const agentKey = pickAgent(message);
@@ -943,6 +958,8 @@ function mergeEditableArgs(storedArgs: Record<string, unknown>, incomingArgs?: R
 async function logActivity(profile: AgentProfile, action: AgentAction, status: 'preview' | 'executed' | 'failed' | 'rejected', result?: Record<string, unknown>) {
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
     const policies = await getAgentPolicies(profile);
+    const displayAction = activityDisplayForAction(action);
+    const displaySummary = activitySummaryForStatus(action, status);
     const runId = await bestEffortInsert('agent_runs', {
         user_id: profile.id,
         community_id: communityId,
@@ -951,14 +968,17 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         user_message: action.summary,
         autonomy_level: policies[action.agentKey]?.autonomyLevel || 'manual',
         status: status === 'preview' ? 'awaiting_confirmation' : status,
-        summary: action.title,
+        summary: displaySummary,
         metadata: {
+            displayAction,
+            displaySummary,
             targetHref: action.targetHref,
             proposedAction: {
                 agentKey: action.agentKey,
                 toolName: action.toolName,
                 title: action.title,
                 summary: action.summary,
+                args: action.args,
                 targetHref: action.targetHref,
             },
         },
@@ -985,8 +1005,22 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         entity_type: result?.entityType,
         entity_id: result?.entityId,
         severity: status === 'failed' ? 'error' : status === 'executed' ? 'success' : status === 'rejected' ? 'warning' : 'info',
-        summary: status === 'executed' ? `Ejecutado: ${action.title}` : status === 'rejected' ? `Rechazado: ${action.title}` : action.title,
-        metadata: { runId, toolCallId, ...result },
+        summary: displaySummary,
+        metadata: {
+            runId,
+            toolCallId,
+            displayAction,
+            displaySummary,
+            proposedAction: {
+                agentKey: action.agentKey,
+                toolName: action.toolName,
+                title: action.title,
+                summary: action.summary,
+                args: action.args,
+                targetHref: action.targetHref,
+            },
+            ...result,
+        },
     });
 
     return { runId, toolCallId };
