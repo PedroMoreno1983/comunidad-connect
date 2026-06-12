@@ -1,0 +1,188 @@
+/* Convive Connect — Premium Redesign Tokens */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
+
+:root {
+  /* Surfaces — warm ivory & deep ink */
+  --ivory:        #F4EFE6;
+  --ivory-soft:   #EDE6D9;
+  --paper:        #FAF7F1;
+  --paper-warm:   #F8F2E7;
+  --ink:          #1A1611;
+  --ink-soft:     #2A241D;
+  --ink-muted:    #524A40;
+  --ink-tertiary: #8B8278;
+  --ink-faint:    #B8B0A3;
+  --line:         rgba(26, 22, 17, 0.08);
+  --line-strong:  rgba(26, 22, 17, 0.16);
+
+  /* Brand — refined copper, narrower & more pigmented */
+  --copper:       #B5664E;
+  --copper-deep:  #8E4A35;
+  --copper-soft:  #D9A691;
+  --copper-tint:  rgba(181, 102, 78, 0.08);
+  --copper-bg:    #F2DDD0;
+
+  /* Quiet accents */
+  --sage:         #6E8268;
+  --sage-soft:    #B7C2B1;
+  --sage-tint:    rgba(110, 130, 104, 0.10);
+  --amber:        #C99A4A;
+  --amber-tint:   rgba(201, 154, 74, 0.10);
+  --rose:         #B5524E;
+  --rose-tint:    rgba(181, 82, 78, 0.10);
+  --plum:         #5C4868;
+  --plum-tint:    rgba(92, 72, 104, 0.10);
+
+  /* Type */
+  --display: 'Instrument Serif', 'Times New Roman', serif;
+  --sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --mono:    'Geist Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  background: var(--ivory);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reusable surface */
+.surface {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+/* Mono numbers */
+.mono { font-family: var(--mono); font-feature-settings: 'tnum' 1, 'zero' 1; letter-spacing: -0.01em; }
+.serif { font-family: var(--display); }
+.italic-serif { font-family: var(--display); font-style: italic; }
+
+/* Tiny utilities */
+.uppercase-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+/* Dot indicator */
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* Subtle warm grid bg pattern */
+.grid-bg {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Status bar (mobile) */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 22px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.status-bar .notch {
+  width: 90px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+/* Scrollbar hidden */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Focus-shadow */
+.lift {
+  box-shadow: 0 1px 0 rgba(26,22,17,0.04), 0 24px 48px -28px rgba(26,22,17,0.18);
+}
+
+/* Convive wordmark */
+.wordmark {
+  font-family: var(--display);
+  letter-spacing: -0.01em;
+  font-size: 22px;
+  line-height: 1;
+}
+.wordmark .amp { font-style: italic; color: var(--copper); }
+
+/* Buttons base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn-primary:hover { background: var(--ink-soft); }
+.btn-copper {
+  background: var(--copper);
+  color: #fff;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.btn-ghost:hover { background: var(--paper-warm); }
+
+/* ============================================================
+   Data-viz palette (Cotton-inspired, warmed to fit ivory)
+   ============================================================ */
+:root {
+  --data-blue:   #2F6CB0;
+  --data-green:  #3E8E57;
+  --data-red:    #C24A3E;
+  --data-yellow: #E0B23C;
+  --data-orange: #D27A38;
+  --data-purple: #7C6BA6;
+  --data-lime:   #93A23E;
+  --data-teal:   #3E8E8E;
+}
+
+/* Tag pill */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  line-height: 1;
+}
+.tag-filled {
+  border: none;
+}

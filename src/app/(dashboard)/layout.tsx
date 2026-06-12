@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuth } from "@/lib/authContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -63,6 +63,7 @@ function DashboardShell({
             '/social': 'Red Social',
             '/directorio': 'Directorio de Vecinos',
             '/profile': 'Mi Perfil',
+            '/showcase': 'Lienzo de Diseño',
             '/services': 'Solicitudes de Servicio',
             '/concierge/visitors': 'Registro de Visitas',
             '/concierge/packages': 'Encomiendas y Paquetes',
