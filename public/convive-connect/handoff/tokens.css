@@ -1,0 +1,156 @@
+/* ============================================================
+   Convive & Connect — Design Tokens v2 (Premium)
+   Tailwind v4 ready: variables under :root + @theme block
+   Drop this at: src/app/tokens.css
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');
+
+:root {
+  /* ─── Surfaces — warm ivory & deep ink ──────────────────── */
+  --cc-ivory:         #F4EFE6;
+  --cc-ivory-soft:    #EDE6D9;
+  --cc-paper:         #FAF7F1;
+  --cc-paper-warm:    #F8F2E7;
+  --cc-ink:           #1A1611;
+  --cc-ink-soft:      #2A241D;
+  --cc-ink-muted:     #524A40;
+  --cc-ink-tertiary:  #8B8278;
+  --cc-ink-faint:     #B8B0A3;
+
+  /* ─── Borders & lines ──────────────────────────────────── */
+  --cc-line:          rgba(26, 22, 17, 0.08);
+  --cc-line-strong:   rgba(26, 22, 17, 0.16);
+
+  /* ─── Brand — copper (default accent) ──────────────────── */
+  --cc-copper:        #B5664E;
+  --cc-copper-deep:   #8E4A35;
+  --cc-copper-soft:   #D9A691;
+  --cc-copper-tint:   rgba(181, 102, 78, 0.08);
+  --cc-copper-bg:     #F2DDD0;
+
+  /* ─── Role accents — quiet ──────────────────────────────── */
+  --cc-sage:          #6E8268;
+  --cc-sage-soft:     #B7C2B1;
+  --cc-sage-tint:     rgba(110, 130, 104, 0.10);
+
+  --cc-amber:         #C99A4A;
+  --cc-amber-soft:    #E2C892;
+  --cc-amber-tint:    rgba(201, 154, 74, 0.10);
+
+  --cc-rose:          #B5524E;
+  --cc-rose-tint:     rgba(181, 82, 78, 0.10);
+
+  --cc-plum:          #5C4868;
+  --cc-plum-tint:     rgba(92, 72, 104, 0.10);
+
+  /* ─── Data-viz palette (Cotton-inspired, warmed for ivory) ─ */
+  --cc-data-blue:     #2F6CB0;
+  --cc-data-green:    #3E8E57;
+  --cc-data-red:      #C24A3E;
+  --cc-data-yellow:   #E0B23C;
+  --cc-data-orange:   #D27A38;
+  --cc-data-purple:   #7C6BA6;
+  --cc-data-lime:     #93A23E;
+  --cc-data-teal:     #3E8E8E;
+
+  /* ─── Semantic (alias quiet accents) ───────────────────── */
+  --cc-success:       var(--cc-sage);
+  --cc-success-tint:  var(--cc-sage-tint);
+  --cc-warning:       var(--cc-amber);
+  --cc-warning-tint:  var(--cc-amber-tint);
+  --cc-danger:        var(--cc-rose);
+  --cc-danger-tint:   var(--cc-rose-tint);
+
+  /* ─── Type families ─────────────────────────────────────── */
+  --cc-font-display:  'Instrument Serif', 'Times New Roman', serif;
+  --cc-font-sans:     'Geist', ui-sans-serif, system-ui, sans-serif;
+  --cc-font-mono:     'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ─── Radii ─────────────────────────────────────────────── */
+  --cc-radius-sm:     6px;
+  --cc-radius-md:     10px;
+  --cc-radius-lg:     14px;
+  --cc-radius-xl:     18px;
+  --cc-radius-2xl:    22px;
+  --cc-radius-pill:   9999px;
+
+  /* ─── Shadows / lifts (subtle, premium) ────────────────── */
+  --cc-shadow-sm:   0 1px 0 rgba(26,22,17,0.04);
+  --cc-shadow-md:   0 1px 0 rgba(26,22,17,0.04), 0 8px 24px -10px rgba(26,22,17,0.12);
+  --cc-shadow-lg:   0 1px 0 rgba(26,22,17,0.04), 0 24px 48px -28px rgba(26,22,17,0.18);
+  --cc-shadow-xl:   0 1px 0 rgba(26,22,17,0.04), 0 40px 80px -32px rgba(26,22,17,0.30);
+
+  /* ─── Motion ────────────────────────────────────────────── */
+  --cc-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --cc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================================================
+   Tailwind v4 — @theme block
+   Generates utilities like:  bg-ink, text-copper, font-display, rounded-xl, etc.
+   ============================================================ */
+@theme {
+  --color-ivory:         var(--cc-ivory);
+  --color-ivory-soft:    var(--cc-ivory-soft);
+  --color-paper:         var(--cc-paper);
+  --color-paper-warm:    var(--cc-paper-warm);
+  --color-ink:           var(--cc-ink);
+  --color-ink-soft:      var(--cc-ink-soft);
+  --color-ink-muted:     var(--cc-ink-muted);
+  --color-ink-tertiary:  var(--cc-ink-tertiary);
+  --color-ink-faint:     var(--cc-ink-faint);
+
+  --color-copper:        var(--cc-copper);
+  --color-copper-deep:   var(--cc-copper-deep);
+  --color-copper-soft:   var(--cc-copper-soft);
+  --color-copper-bg:     var(--cc-copper-bg);
+
+  --color-sage:          var(--cc-sage);
+  --color-sage-soft:     var(--cc-sage-soft);
+  --color-amber-quiet:   var(--cc-amber);
+  --color-rose-quiet:    var(--cc-rose);
+  --color-plum-quiet:    var(--cc-plum);
+
+  --font-display:  var(--cc-font-display);
+  --font-sans:     var(--cc-font-sans);
+  --font-mono:     var(--cc-font-mono);
+
+  --radius-sm:     var(--cc-radius-sm);
+  --radius-md:     var(--cc-radius-md);
+  --radius-lg:     var(--cc-radius-lg);
+  --radius-xl:     var(--cc-radius-xl);
+  --radius-2xl:    var(--cc-radius-2xl);
+}
+
+/* ============================================================
+   Body defaults
+   ============================================================ */
+html, body {
+  background: var(--cc-ivory);
+  color: var(--cc-ink);
+  font-family: var(--cc-font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* mono numbers everywhere we mark them */
+.font-mono { font-feature-settings: 'tnum' 1, 'zero' 1; letter-spacing: -0.01em; }
+
+/* uppercase eyebrow */
+.cc-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cc-ink-tertiary);
+}
+
+/* status dot */
+.cc-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+}

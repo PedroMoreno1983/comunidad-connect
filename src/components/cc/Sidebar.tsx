@@ -180,6 +180,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "AJUSTES",
       links: [
         { href: "/profile", label: "Mi Perfil", icon: UserCircle, roles: ["admin", "resident", "concierge"] },
+        { href: "/showcase", label: "Lienzo de Diseño", icon: Sparkles, roles: ["admin", "resident", "concierge"] },
       ]
     }
   ];
