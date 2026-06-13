@@ -64,21 +64,25 @@ ALTER TABLE public.agent_tool_calls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_action_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_activity_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "agent_runs_tenant_select" ON public.agent_runs;
 CREATE POLICY "agent_runs_tenant_select" ON public.agent_runs FOR SELECT USING (
   user_id = auth.uid()
   OR community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
 
+DROP POLICY IF EXISTS "agent_tool_calls_tenant_select" ON public.agent_tool_calls;
 CREATE POLICY "agent_tool_calls_tenant_select" ON public.agent_tool_calls FOR SELECT USING (
   user_id = auth.uid()
   OR community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
 
+DROP POLICY IF EXISTS "agent_action_approvals_tenant_select" ON public.agent_action_approvals;
 CREATE POLICY "agent_action_approvals_tenant_select" ON public.agent_action_approvals FOR SELECT USING (
   user_id = auth.uid()
   OR community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
 
+DROP POLICY IF EXISTS "agent_activity_log_tenant_select" ON public.agent_activity_log;
 CREATE POLICY "agent_activity_log_tenant_select" ON public.agent_activity_log FOR SELECT USING (
   community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );

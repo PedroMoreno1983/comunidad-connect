@@ -3,7 +3,7 @@
 -- como migracion incremental en algunos entornos de produccion.
 
 CREATE TABLE IF NOT EXISTS public.expense_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   expense_id UUID REFERENCES public.expenses(id) ON DELETE CASCADE NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('water', 'electricity', 'salaries', 'maintenance', 'security', 'other')),
   label TEXT NOT NULL,
