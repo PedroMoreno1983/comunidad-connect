@@ -3,6 +3,7 @@ import type {
     ReelAgentInput,
     ReelAudience,
     ReelCreativePackage,
+    ReelRenderSpec,
     ReelScene,
     ReelTone,
 } from '@/lib/types';
@@ -158,6 +159,24 @@ function fallbackPackage(input: ReelAgentInput): ReelCreativePackage {
         editingPrompt: `Crea un video vertical 9:16 para Instagram Reels sobre ConviveConnect. Estilo SaaS chileno premium, cortes rapidos, interfaz real, textos grandes, ritmo moderno. Hook: "${hook}". CTA: "${input.callToAction || 'Agenda una demo en conviveconnect.com'}".`,
         createdAt: new Date().toISOString(),
         modelSource: 'template',
+    };
+}
+
+export function buildReelRenderSpec(reel: ReelCreativePackage): ReelRenderSpec {
+    return {
+        format: 'vertical_9_16',
+        width: 1080,
+        height: 1920,
+        durationSeconds: reel.durationSeconds,
+        brand: {
+            name: 'ConviveConnect',
+            domain: 'conviveconnect.com',
+            primaryColor: '#B5664E',
+            backgroundColor: '#FBF8F3',
+        },
+        scenes: reel.scenes.map((scene, index) => ({ ...scene, index })),
+        caption: reel.caption,
+        hashtags: reel.hashtags,
     };
 }
 
