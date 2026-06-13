@@ -614,3 +614,43 @@ export interface SocialComment {
     avatar_url?: string;
   };
 }
+
+export type ReelAudience = 'administrators' | 'committee' | 'residents' | 'property_managers';
+export type ReelTone = 'premium' | 'urgent' | 'warm' | 'educational';
+
+export interface ReelAgentInput {
+  objective: string;
+  audience: ReelAudience;
+  tone: ReelTone;
+  durationSeconds: number;
+  featureFocus: string;
+  proofPoint?: string;
+  offer?: string;
+  callToAction?: string;
+}
+
+export interface ReelScene {
+  time: string;
+  visual: string;
+  onScreenText: string;
+  voiceOver: string;
+  productionNote: string;
+}
+
+export interface ReelCreativePackage {
+  id: string;
+  title: string;
+  angle: string;
+  hook: string;
+  audienceLabel: string;
+  durationSeconds: number;
+  coverText: string;
+  scenes: ReelScene[];
+  caption: string;
+  hashtags: string[];
+  audioDirection: string;
+  productionChecklist: string[];
+  editingPrompt: string;
+  createdAt: string;
+  modelSource: 'anthropic' | 'template';
+}

@@ -35,6 +35,7 @@ import {
     BookOpen,
     Upload,
     Bot,
+    Clapperboard,
     Briefcase,
     HeartHandshake,
     MessageCircle,
@@ -87,6 +88,7 @@ export function Sidebar() {
             title: 'INTELIGENCIA OPERATIVA',
             links: [
                 { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
+                { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true },
             ]
         },
         {

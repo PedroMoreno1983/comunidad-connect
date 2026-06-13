@@ -34,6 +34,7 @@ import {
   Upload,
   Bot,
   Briefcase,
+  Clapperboard,
   Sparkles
 } from "lucide-react";
 import { Brand } from "./Brand";
@@ -116,6 +117,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "INTELIGENCIA OPERATIVA",
       links: [
         { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
+        { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true },
       ]
     },
     {
