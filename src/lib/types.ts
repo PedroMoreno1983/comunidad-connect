@@ -654,3 +654,78 @@ export interface ReelCreativePackage {
   createdAt: string;
   modelSource: 'anthropic' | 'template';
 }
+
+export type MarketingReelStatus =
+  | 'draft'
+  | 'generated'
+  | 'rendering'
+  | 'rendered'
+  | 'approved'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'blocked'
+  | 'failed';
+
+export type MarketingCampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
+export type InstagramConnectionStatus = 'not_connected' | 'connected' | 'needs_reauth' | 'disabled';
+
+export interface ReelRenderSpec {
+  format: 'vertical_9_16';
+  width: number;
+  height: number;
+  durationSeconds: number;
+  brand: {
+    name: string;
+    domain: string;
+    primaryColor: string;
+    backgroundColor: string;
+  };
+  scenes: Array<ReelScene & { index: number }>;
+  caption: string;
+  hashtags: string[];
+}
+
+export interface MarketingCampaign {
+  id: string;
+  title: string;
+  objective: string;
+  audience: ReelAudience;
+  tone: ReelTone;
+  status: MarketingCampaignStatus;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface InstagramConnectionSummary {
+  status: InstagramConnectionStatus;
+  username?: string | null;
+  instagramUserId?: string | null;
+  pageId?: string | null;
+  connectedAt?: string | null;
+  lastError?: string | null;
+}
+
+export interface MarketingReelRecord {
+  id: string;
+  campaignId?: string | null;
+  title: string;
+  objective: string;
+  audience: ReelAudience;
+  tone: ReelTone;
+  durationSeconds: number;
+  featureFocus: string;
+  status: MarketingReelStatus;
+  creativePackage: ReelCreativePackage;
+  renderSpec: ReelRenderSpec;
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
+  caption: string;
+  hashtags: string[];
+  scheduledAt?: string | null;
+  publishedAt?: string | null;
+  instagramMediaId?: string | null;
+  failureReason?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
