@@ -2,7 +2,7 @@
 -- These settings replace client-only autonomy toggles and make the agent layer auditable.
 
 CREATE TABLE IF NOT EXISTS public.agent_policies (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
   agent_key TEXT NOT NULL CHECK (agent_key IN ('finance', 'maintenance', 'concierge', 'community')),
   autonomy_level TEXT NOT NULL DEFAULT 'manual'
