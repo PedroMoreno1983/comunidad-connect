@@ -54,6 +54,7 @@ function DashboardShell({
         const routeTitles: Record<string, string> = {
             '/home': 'Inicio',
             '/agent-center': 'Agent Center',
+            '/marketing/reels': 'Reels Agent',
             '/marketplace': 'Marketplace',
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',
