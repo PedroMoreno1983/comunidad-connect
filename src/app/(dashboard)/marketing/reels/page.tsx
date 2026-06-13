@@ -163,6 +163,17 @@ function CapabilityPill({ ready, label }: { ready: boolean; label: string }) {
   );
 }
 
+function SceneDetail({ label, children, strong = false }: { label: string; children: ReactNode; strong?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{label}</p>
+      <p className={clsx("mt-1 break-words leading-6", strong ? "text-sm font-semibold cc-text-primary" : "text-sm cc-text-secondary")}>
+        {children}
+      </p>
+    </div>
+  );
+}
+
 export default function MarketingReelsPage() {
   const [form, setForm] = useState<ReelAgentInput>(DEFAULT_FORM);
   const [reels, setReels] = useState<MarketingReelRecord[]>([]);
@@ -433,9 +444,13 @@ export default function MarketingReelsPage() {
                             <span className="rounded-md bg-[var(--cc-ink)] px-2 py-1 text-xs font-semibold text-white">{scene.time}</span>
                             <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Escena {index + 1}</span>
                           </div>
-                          <p className="mt-3 text-sm font-semibold leading-6 cc-text-primary">{scene.onScreenText}</p>
-                          <p className="mt-1 text-sm leading-6 cc-text-secondary">{scene.voiceOver}</p>
-                          <p className="mt-2 text-xs leading-5 cc-text-tertiary">{scene.visual}</p>
+                          <div className="mt-3 grid min-w-0 gap-3 2xl:grid-cols-2">
+                            <SceneDetail label="Texto en pantalla" strong>{scene.onScreenText}</SceneDetail>
+                            <SceneDetail label="Voz en off">{scene.voiceOver}</SceneDetail>
+                          </div>
+                          <div className="mt-3">
+                            <SceneDetail label="Visual">{scene.visual}</SceneDetail>
+                          </div>
                         </article>
                       ))}
                     </div>
