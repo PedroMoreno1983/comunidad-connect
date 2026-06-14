@@ -40,6 +40,7 @@ type DashboardResponse = {
     aiScriptGeneration: boolean;
     videoRendering: boolean;
     instagramPublishing: boolean;
+    instagramOAuth: boolean;
     cronSecretConfigured: boolean;
   };
   error?: string;
@@ -346,6 +347,7 @@ export default function MarketingReelsPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const selectedReel = useMemo(
     () => reels.find(reel => reel.id === selectedReelId) || reels[0] || null,
@@ -372,6 +374,25 @@ export default function MarketingReelsPage() {
   useEffect(() => {
     loadDashboard().catch(err => setError(err instanceof Error ? err.message : "No se pudo cargar Reels Agent."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const instagramStatus = params.get("instagram");
+    const detail = params.get("detail");
+    if (instagramStatus === "connected") {
+      setError("");
+      setNotice("Instagram quedo conectado. Ya puedes publicar reels con video MP4 listo.");
+    } else if (instagramStatus === "error") {
+      setNotice("");
+      setError(detail || "No se pudo conectar Instagram.");
+    } else if (instagramStatus === "forbidden") {
+      setNotice("");
+      setError("Solo administracion puede conectar Instagram.");
+    } else if (instagramStatus === "login_required") {
+      setNotice("");
+      setError("Inicia sesion nuevamente para terminar la conexion con Instagram.");
+    }
   }, []);
 
   function updateForm<K extends keyof ReelAgentInput>(key: K, value: ReelAgentInput[K]) {
@@ -558,9 +579,21 @@ export default function MarketingReelsPage() {
                   {instagram.status === "connected" ? `Conectado: @${instagram.username || "instagram"}` : "Pendiente de conexion Meta"}
                 </p>
                 <p className="mt-1 text-xs leading-5 cc-text-secondary">
-                  Cuenta profesional detectada por tu confirmacion. Falta OAuth/token Meta para publicar automaticamente sin contrasenas.
+                  Conecta una cuenta profesional de Instagram asociada a una Pagina de Facebook para publicar desde el agente.
                 </p>
                 {instagram.lastError && <p className="mt-2 text-xs text-rose-700">{instagram.lastError}</p>}
+                <a
+                  href="/api/marketing/instagram/connect"
+                  className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-white transition hover:opacity-90"
+                >
+                  <Instagram className="h-3.5 w-3.5" />
+                  {instagram.status === "connected" ? "Reconectar Instagram" : "Conectar Instagram"}
+                </a>
+                {!capabilities?.instagramOAuth && (
+                  <p className="mt-2 text-xs leading-5 text-amber-800">
+                    Falta configurar META_APP_ID y META_APP_SECRET en Vercel.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -569,6 +602,11 @@ export default function MarketingReelsPage() {
             {error && (
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {error}
+              </div>
+            )}
+            {notice && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {notice}
               </div>
             )}
 
