@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { decryptMetaToken, isInstagramOAuthConfigured } from '@/lib/marketing/instagramOAuth';
 import { buildReelRenderSpec, generateReelPackage, normalizeReelInput } from '@/lib/marketing/reelAgent';
 import type {
     InstagramConnectionSummary,
@@ -177,6 +178,7 @@ export function getMarketingCapabilities() {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
         videoRendering: Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
+        instagramOAuth: isInstagramOAuthConfigured(),
         cronSecretConfigured: Boolean(process.env.CRON_SECRET),
     };
 }
@@ -359,7 +361,8 @@ type InstagramPublishResult = {
 
 async function publishToInstagram(reel: MarketingReelRecord, connection?: ConnectionRow | null): Promise<InstagramPublishResult> {
     const instagramUserId = process.env.INSTAGRAM_USER_ID || asString(connection?.instagram_user_id);
-    const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN || asString(connection?.encrypted_access_token);
+    const storedToken = asString(connection?.encrypted_access_token);
+    const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN || (storedToken ? decryptMetaToken(storedToken) : '');
 
     if (!instagramUserId || !accessToken) {
         throw new Error('Instagram no esta conectado. Configura OAuth/Meta token antes de publicar automaticamente.');
