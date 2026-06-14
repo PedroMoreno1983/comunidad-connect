@@ -133,6 +133,167 @@ function downloadJson(reel: MarketingReelRecord) {
   URL.revokeObjectURL(url);
 }
 
+function getSupportedVideoType() {
+  const types = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  return types.find(type => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) || "";
+}
+
+async function generateBrowserVideo(reel: MarketingReelRecord) {
+  if (typeof document === "undefined" || typeof MediaRecorder === "undefined") {
+    throw new Error("Este navegador no permite renderizar video automaticamente.");
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext("2d")!;
+  if (!ctx) throw new Error("No se pudo iniciar el lienzo de video.");
+
+  const stream = canvas.captureStream(30);
+  const mimeType = getSupportedVideoType();
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = event => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
+
+  const scenes = reel.renderSpec.scenes.length > 0
+    ? reel.renderSpec.scenes
+    : reel.creativePackage.scenes.map((scene, index) => ({ ...scene, index }));
+  const durationMs = Math.max(10, reel.durationSeconds) * 1000;
+  const sceneMs = durationMs / Math.max(1, scenes.length);
+  const startedAt = performance.now();
+
+  function wrapText(text: string, maxWidth: number, font: string) {
+    ctx.font = font;
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines.slice(0, 8);
+  }
+
+  function drawRoundRect(x: number, y: number, width: number, height: number, radius: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawFrame(now: number) {
+    const elapsed = Math.min(durationMs, now - startedAt);
+    const sceneIndex = Math.min(scenes.length - 1, Math.floor(elapsed / sceneMs));
+    const scene = scenes[Math.max(0, sceneIndex)];
+    const progress = elapsed / durationMs;
+    const localProgress = (elapsed - sceneIndex * sceneMs) / sceneMs;
+
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "#fbf8f3");
+    gradient.addColorStop(0.48 + Math.sin(progress * Math.PI) * 0.05, "#f1e6d8");
+    gradient.addColorStop(1, "#1f1713");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "rgba(181, 102, 78, 0.22)";
+    ctx.beginPath();
+    ctx.arc(860, 240 + Math.sin(progress * Math.PI * 2) * 40, 220, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(31, 23, 19, 0.08)";
+    ctx.beginPath();
+    ctx.arc(180, 1480 + Math.cos(progress * Math.PI * 2) * 40, 260, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    drawRoundRect(76, 128, 928, 1664, 42);
+
+    ctx.fillStyle = "#1f1713";
+    ctx.font = "700 44px Arial";
+    ctx.fillText("ConviveConnect", 120, 210);
+    ctx.fillStyle = "#b5664e";
+    ctx.font = "700 24px Arial";
+    ctx.fillText("OPERACION DE CONDOMINIOS", 120, 250);
+
+    ctx.fillStyle = "#b5664e";
+    drawRoundRect(120, 328, 190, 58, 29);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 26px Arial";
+    ctx.fillText(`${sceneIndex + 1}/${scenes.length}`, 170, 366);
+
+    ctx.fillStyle = "#1f1713";
+    const headlineFont = "700 68px Arial";
+    const headlineLines = wrapText(scene?.onScreenText || reel.title, 820, headlineFont);
+    ctx.font = headlineFont;
+    headlineLines.forEach((line, index) => {
+      ctx.fillText(line, 120, 510 + index * 82);
+    });
+
+    ctx.fillStyle = "#4f4038";
+    const voiceFont = "400 38px Arial";
+    const voiceLines = wrapText(scene?.voiceOver || reel.caption, 820, voiceFont);
+    ctx.font = voiceFont;
+    voiceLines.slice(0, 5).forEach((line, index) => {
+      ctx.fillText(line, 120, 980 + index * 54);
+    });
+
+    ctx.fillStyle = "#fbf8f3";
+    drawRoundRect(120, 1370, 820, 236, 28);
+    ctx.fillStyle = "#75584c";
+    ctx.font = "700 24px Arial";
+    ctx.fillText("VISUAL", 160, 1430);
+    ctx.fillStyle = "#1f1713";
+    const visualLines = wrapText(scene?.visual || reel.featureFocus, 740, "400 31px Arial");
+    ctx.font = "400 31px Arial";
+    visualLines.slice(0, 3).forEach((line, index) => {
+      ctx.fillText(line, 160, 1492 + index * 43);
+    });
+
+    ctx.fillStyle = "#b5664e";
+    ctx.fillRect(120, 1692, 820 * progress, 12);
+    ctx.fillStyle = "#1f1713";
+    ctx.font = "700 34px Arial";
+    ctx.fillText(reel.creativePackage.coverText || "Agenda una demo en conviveconnect.com", 120, 1756);
+
+    ctx.globalAlpha = Math.min(1, Math.max(0.35, localProgress < 0.12 ? localProgress / 0.12 : 1));
+    ctx.globalAlpha = 1;
+
+    if (elapsed < durationMs) requestAnimationFrame(drawFrame);
+    else recorder.stop();
+  }
+
+  const finished = new Promise<Blob>((resolve, reject) => {
+    recorder.onerror = () => reject(new Error("No se pudo grabar el video."));
+    recorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
+    };
+  });
+
+  recorder.start();
+  requestAnimationFrame(drawFrame);
+  return finished;
+}
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return <label className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{children}</label>;
 }
@@ -229,6 +390,20 @@ export default function MarketingReelsPage() {
     return data.reel || null;
   }
 
+  async function uploadBrowserRender(reel: MarketingReelRecord, video: Blob) {
+    const formData = new FormData();
+    formData.append("reelId", reel.id);
+    formData.append("video", video, `${reel.id}.webm`);
+
+    const response = await fetch("/api/marketing/reels/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({})) as DashboardResponse;
+    if (!response.ok) throw new Error(data.error || "No se pudo guardar el video renderizado.");
+    await loadDashboard();
+  }
+
   async function generate(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (loading) return;
@@ -247,7 +422,13 @@ export default function MarketingReelsPage() {
     setActionLoading(`${action}:${reelId}`);
     setError("");
     try {
-      await postAction({ action, reelId });
+      const updated = await postAction({ action, reelId });
+      if (action === "render" && updated?.status === "blocked" && updated.failureReason?.includes("MARKETING_VIDEO_RENDER_WEBHOOK_URL")) {
+        setActionLoading(`browser-render:${reelId}`);
+        const video = await generateBrowserVideo(updated);
+        setActionLoading(`upload:${reelId}`);
+        await uploadBrowserRender(updated, video);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo procesar la accion.");
     } finally {
@@ -428,9 +609,9 @@ export default function MarketingReelsPage() {
                       ) : (
                         <div className="mt-3 grid aspect-[9/16] max-h-[520px] place-items-center rounded-lg border border-dashed border-[var(--cc-line)] bg-white p-5 text-center">
                           <div>
-                            <p className="text-sm font-semibold cc-text-primary">MP4 pendiente</p>
+                            <p className="text-sm font-semibold cc-text-primary">Video pendiente</p>
                             <p className="mt-2 text-xs leading-5 cc-text-secondary">
-                              Usa Renderizar video cuando este conectado MARKETING_VIDEO_RENDER_WEBHOOK_URL.
+                              Usa Renderizar video. Si no hay proveedor MP4 conectado, el navegador crea un video base con las escenas aprobadas.
                             </p>
                           </div>
                         </div>
@@ -465,8 +646,8 @@ export default function MarketingReelsPage() {
                           Aprobar
                         </button>
                         <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
-                          {actionLoading === `render:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          Renderizar video
+                          {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando video" : actionLoading === `upload:${selectedReel.id}` ? "Guardando video" : "Renderizar video"}
                         </button>
                         <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

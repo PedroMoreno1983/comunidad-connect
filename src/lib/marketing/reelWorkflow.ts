@@ -367,6 +367,9 @@ async function publishToInstagram(reel: MarketingReelRecord, connection?: Connec
     if (!reel.videoUrl) {
         throw new Error('El reel aun no tiene video final. Genera el MP4 antes de publicar.');
     }
+    if (reel.videoUrl.toLowerCase().split('?')[0].endsWith('.webm')) {
+        throw new Error('El video automatico del navegador sirve como vista previa. Para publicar en Instagram automaticamente, conecta un renderizador MP4.');
+    }
 
     const mediaEndpoint = `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media`;
     const mediaBody = new URLSearchParams({
