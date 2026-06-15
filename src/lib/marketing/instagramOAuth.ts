@@ -3,7 +3,10 @@ import { PUBLIC_SITE_URL } from '@/lib/config';
 
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
 const GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
-const FACEBOOK_DIALOG_URL = `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`;
+const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
+const INSTAGRAM_DIALOG_URL = 'https://www.instagram.com/oauth/authorize';
+const INSTAGRAM_TOKEN_URL = 'https://api.instagram.com/oauth/access_token';
+const INSTAGRAM_LONG_TOKEN_URL = 'https://graph.instagram.com/access_token';
 const STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 type InstagramOAuthState = {
@@ -102,15 +105,15 @@ export function buildInstagramConnectUrl(state: string) {
         redirect_uri: getInstagramRedirectUri(),
         state,
         response_type: 'code',
+        enable_fb_login: '0',
+        force_authentication: '1',
         scope: [
             'instagram_business_basic',
             'instagram_business_content_publish',
-            'pages_show_list',
-            'pages_read_engagement',
         ].join(','),
     });
 
-    return `${FACEBOOK_DIALOG_URL}?${params.toString()}`;
+    return `${INSTAGRAM_DIALOG_URL}?${params.toString()}`;
 }
 
 async function getGraphJson<T>(url: string) {
@@ -125,24 +128,32 @@ export async function exchangeInstagramCodeForLongLivedToken(code: string) {
     const appSecret = getMetaAppSecret();
     if (!appId || !appSecret) throw new Error('Falta configurar META_APP_ID y META_APP_SECRET en Vercel.');
 
-    const shortTokenUrl = new URL(`${GRAPH_BASE_URL}/oauth/access_token`);
-    shortTokenUrl.searchParams.set('client_id', appId);
-    shortTokenUrl.searchParams.set('client_secret', appSecret);
-    shortTokenUrl.searchParams.set('redirect_uri', getInstagramRedirectUri());
-    shortTokenUrl.searchParams.set('code', code);
-    const shortToken = await getGraphJson<{ access_token?: string }>(shortTokenUrl.toString());
+    const body = new URLSearchParams({
+        client_id: appId,
+        client_secret: appSecret,
+        grant_type: 'authorization_code',
+        redirect_uri: getInstagramRedirectUri(),
+        code,
+    });
+    const response = await fetch(INSTAGRAM_TOKEN_URL, {
+        method: 'POST',
+        body,
+        cache: 'no-store',
+    });
+    const shortToken = await response.json().catch(() => ({})) as { access_token?: string; user_id?: string; error_message?: string; error?: { message?: string } };
+    if (!response.ok) throw new Error(shortToken.error?.message || shortToken.error_message || 'Instagram rechazo el codigo de autorizacion.');
     if (!shortToken.access_token) throw new Error('Meta no devolvio access_token.');
 
-    const longTokenUrl = new URL(`${GRAPH_BASE_URL}/oauth/access_token`);
-    longTokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
-    longTokenUrl.searchParams.set('client_id', appId);
+    const longTokenUrl = new URL(INSTAGRAM_LONG_TOKEN_URL);
+    longTokenUrl.searchParams.set('grant_type', 'ig_exchange_token');
     longTokenUrl.searchParams.set('client_secret', appSecret);
-    longTokenUrl.searchParams.set('fb_exchange_token', shortToken.access_token);
+    longTokenUrl.searchParams.set('access_token', shortToken.access_token);
     const longToken = await getGraphJson<{ access_token?: string; expires_in?: number }>(longTokenUrl.toString());
 
     return {
         accessToken: longToken.access_token || shortToken.access_token,
         expiresIn: longToken.expires_in || null,
+        instagramUserId: shortToken.user_id ? String(shortToken.user_id) : '',
     };
 }
 
@@ -165,6 +176,22 @@ type AccountsResponse = {
 };
 
 export async function findInstagramPageCandidate(userAccessToken: string): Promise<InstagramPageCandidate> {
+    const instagramUrl = new URL(`${INSTAGRAM_GRAPH_BASE_URL}/me`);
+    instagramUrl.searchParams.set('fields', 'user_id,username');
+    instagramUrl.searchParams.set('access_token', userAccessToken);
+
+    const instagramProfile = await getGraphJson<{ id?: string; user_id?: string; username?: string }>(instagramUrl.toString());
+    const instagramUserId = instagramProfile.user_id || instagramProfile.id;
+    if (instagramUserId) {
+        return {
+            pageId: 'instagram_login',
+            pageName: 'Instagram Login',
+            pageAccessToken: userAccessToken,
+            instagramUserId: String(instagramUserId),
+            instagramUsername: instagramProfile.username || 'instagram',
+        };
+    }
+
     const accountsUrl = new URL(`${GRAPH_BASE_URL}/me/accounts`);
     accountsUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account{id,username,name},connected_instagram_account{id,username,name}');
     accountsUrl.searchParams.set('access_token', userAccessToken);
@@ -175,15 +202,15 @@ export async function findInstagramPageCandidate(userAccessToken: string): Promi
         throw new Error('No encontre una Pagina de Facebook conectada a una cuenta profesional de Instagram.');
     }
 
-    const instagram = candidate.instagram_business_account || candidate.connected_instagram_account;
-    if (!instagram?.id) throw new Error('La Pagina no tiene una cuenta profesional de Instagram conectada.');
+    const pageInstagram = candidate.instagram_business_account || candidate.connected_instagram_account;
+    if (!pageInstagram?.id) throw new Error('La Pagina no tiene una cuenta profesional de Instagram conectada.');
 
     return {
         pageId: candidate.id,
         pageName: candidate.name || 'Pagina Meta',
         pageAccessToken: candidate.access_token,
-        instagramUserId: instagram.id,
-        instagramUsername: instagram.username || instagram.name || 'instagram',
+        instagramUserId: pageInstagram.id,
+        instagramUsername: pageInstagram.username || pageInstagram.name || 'instagram',
     };
 }
 
