@@ -26,6 +26,8 @@ type ConnectionRow = Record<string, unknown>;
 
 const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
+const FACEBOOK_GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
+const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
 
 function requireAdmin(profile: MarketingProfile) {
     if (profile.role !== 'admin') {
@@ -374,7 +376,8 @@ async function publishToInstagram(reel: MarketingReelRecord, connection?: Connec
         throw new Error('El video automatico del navegador sirve como vista previa. Para publicar en Instagram automaticamente, conecta un renderizador MP4.');
     }
 
-    const mediaEndpoint = `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media`;
+    const graphBaseUrl = asString(connection?.page_id) === 'instagram_login' ? INSTAGRAM_GRAPH_BASE_URL : FACEBOOK_GRAPH_BASE_URL;
+    const mediaEndpoint = `${graphBaseUrl}/${instagramUserId}/media`;
     const mediaBody = new URLSearchParams({
         media_type: 'REELS',
         video_url: reel.videoUrl,
@@ -389,7 +392,7 @@ async function publishToInstagram(reel: MarketingReelRecord, connection?: Connec
         throw new Error(asString(createData.error && typeof createData.error === 'object' ? (createData.error as Record<string, unknown>).message : createData.error, 'Instagram rechazo la creacion del contenedor del reel.'));
     }
 
-    const publishEndpoint = `https://graph.facebook.com/${GRAPH_VERSION}/${instagramUserId}/media_publish`;
+    const publishEndpoint = `${graphBaseUrl}/${instagramUserId}/media_publish`;
     const publishBody = new URLSearchParams({
         creation_id: creationId,
         access_token: accessToken,
