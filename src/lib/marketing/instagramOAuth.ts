@@ -103,8 +103,8 @@ export function buildInstagramConnectUrl(state: string) {
         state,
         response_type: 'code',
         scope: [
-            'instagram_basic',
-            'instagram_content_publish',
+            'instagram_business_basic',
+            'instagram_business_content_publish',
             'pages_show_list',
             'pages_read_engagement',
         ].join(','),
