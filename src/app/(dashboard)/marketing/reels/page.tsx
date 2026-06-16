@@ -136,11 +136,19 @@ function downloadJson(reel: MarketingReelRecord) {
 
 function getSupportedVideoType() {
   const types = [
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4;codecs=avc1.4D401E",
+    "video/mp4;codecs=h264",
+    "video/mp4",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
   ];
   return types.find(type => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function getVideoExtension(type: string) {
+  return type.toLowerCase().includes("mp4") ? "mp4" : "webm";
 }
 
 async function generateBrowserVideo(reel: MarketingReelRecord) {
@@ -413,8 +421,9 @@ export default function MarketingReelsPage() {
 
   async function uploadBrowserRender(reel: MarketingReelRecord, video: Blob) {
     const formData = new FormData();
+    const extension = getVideoExtension(video.type);
     formData.append("reelId", reel.id);
-    formData.append("video", video, `${reel.id}.webm`);
+    formData.append("video", video, `${reel.id}.${extension}`);
 
     const response = await fetch("/api/marketing/reels/upload", {
       method: "POST",
@@ -649,7 +658,7 @@ export default function MarketingReelsPage() {
                           <div>
                             <p className="text-sm font-semibold cc-text-primary">Video pendiente</p>
                             <p className="mt-2 text-xs leading-5 cc-text-secondary">
-                              Usa Renderizar video. Si no hay proveedor MP4 conectado, el navegador crea un video base con las escenas aprobadas.
+                              Usa Renderizar video. Si no hay proveedor conectado, Chrome intentara crear un MP4 base con las escenas aprobadas.
                             </p>
                           </div>
                         </div>
