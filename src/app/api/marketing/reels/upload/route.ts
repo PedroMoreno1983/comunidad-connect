@@ -15,6 +15,18 @@ function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
+function getVideoType(file: File) {
+    const baseType = file.type.toLowerCase().split(';')[0].trim();
+    if (ALLOWED_VIDEO_TYPES.has(baseType)) {
+        return { contentType: baseType, ext: ALLOWED_VIDEO_TYPES.get(baseType)! };
+    }
+
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith('.mp4')) return { contentType: 'video/mp4', ext: 'mp4' };
+    if (lowerName.endsWith('.webm')) return { contentType: 'video/webm', ext: 'webm' };
+    return null;
+}
+
 export async function POST(req: NextRequest) {
     const limited = enforceRateLimit(req, 'marketing.reels.upload', { limit: 8, windowMs: 60_000 });
     if (limited) return limited;
@@ -36,8 +48,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'El video no puede superar 100 MB.' }, { status: 400 });
         }
 
-        const ext = ALLOWED_VIDEO_TYPES.get(file.type);
-        if (!ext) {
+        const videoType = getVideoType(file);
+        if (!videoType) {
             return NextResponse.json({ error: 'Formato no soportado. Usa MP4 o WEBM.' }, { status: 400 });
         }
 
@@ -54,11 +66,11 @@ export async function POST(req: NextRequest) {
         if (!reel) return NextResponse.json({ error: 'Reel no encontrado.' }, { status: 404 });
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const path = `${communityId}/${reelId}/render-${Date.now()}.${ext}`;
+        const path = `${communityId}/${reelId}/render-${Date.now()}.${videoType.ext}`;
         const { error: uploadError } = await admin.storage
             .from('marketing-reels')
             .upload(path, buffer, {
-                contentType: file.type,
+                contentType: videoType.contentType,
                 upsert: true,
             });
 
@@ -94,7 +106,7 @@ export async function POST(req: NextRequest) {
             status: 'success',
             summary: `Video guardado: ${cleanText(reel.title, 160)}`,
             metadata: {
-                mimeType: file.type,
+                mimeType: videoType.contentType,
                 size: file.size,
                 videoUrl: publicUrl,
             },
