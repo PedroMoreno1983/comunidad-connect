@@ -105,7 +105,7 @@ function statusClass(status: MarketingReelStatus) {
 function getFriendlyFailure(message?: string | null) {
   if (!message) return "";
   if (message.includes("MARKETING_VIDEO_RENDER_WEBHOOK_URL")) {
-    return "Render profesional pendiente. Hoy puedes usar el render rapido del navegador; para voz, musica y edicion final hay que conectar un proveedor MP4.";
+    return "Render profesional pendiente. El preview del navegador solo sirve para revisar estructura; voz, musica, ritmo y MP4 final requieren un proveedor conectado.";
   }
   return message;
 }
@@ -120,7 +120,7 @@ function getNextStep(reel: MarketingReelRecord, instagram: InstagramConnectionSu
   if (instagram.status !== "connected") return "Conecta Instagram para publicar desde el agente.";
   if (reel.status === "published") return "Publicado. Puedes generar una nueva variante.";
   if (reel.status === "scheduled") return `Agendado para ${formatDate(reel.scheduledAt)}.`;
-  return "Revisa el video, sube volumen y publica cuando este listo.";
+  return "Revisa el preview visual. Para audio y acabado profesional conecta MP4 pro.";
 }
 
 function formatDate(value?: string | null) {
@@ -177,62 +177,6 @@ function getVideoExtension(type: string) {
   return type.toLowerCase().includes("mp4") ? "mp4" : "webm";
 }
 
-async function attachBrowserAudioTrack(stream: MediaStream, durationMs: number) {
-  if (typeof window === "undefined") return () => undefined;
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) return () => undefined;
-
-  const audioContext = new AudioContextCtor();
-  const destination = audioContext.createMediaStreamDestination();
-  const master = audioContext.createGain();
-  const filter = audioContext.createBiquadFilter();
-  const nodes: AudioScheduledSourceNode[] = [];
-  const startAt = audioContext.currentTime + 0.08;
-  const endAt = startAt + durationMs / 1000;
-
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(680, startAt);
-  master.gain.setValueAtTime(0.0001, startAt);
-  master.gain.exponentialRampToValueAtTime(0.055, startAt + 1.2);
-  master.gain.setValueAtTime(0.055, Math.max(startAt + 1.2, endAt - 1.4));
-  master.gain.exponentialRampToValueAtTime(0.0001, endAt);
-  master.connect(filter);
-  filter.connect(destination);
-
-  [
-    { frequency: 110, gain: 0.055 },
-    { frequency: 164.81, gain: 0.035 },
-    { frequency: 220, gain: 0.025 },
-  ].forEach(({ frequency, gain }) => {
-    const pad = audioContext.createOscillator();
-    const padGain = audioContext.createGain();
-    pad.type = "sine";
-    pad.frequency.setValueAtTime(frequency, startAt);
-    pad.frequency.linearRampToValueAtTime(frequency * 1.01, endAt);
-    padGain.gain.setValueAtTime(gain, startAt);
-    pad.connect(padGain);
-    padGain.connect(master);
-    pad.start(startAt);
-    pad.stop(endAt);
-    nodes.push(pad);
-  });
-
-  destination.stream.getAudioTracks().forEach(track => stream.addTrack(track));
-  await audioContext.resume();
-
-  return () => {
-    nodes.forEach(node => {
-      try {
-        node.stop();
-      } catch {
-        // Already stopped by the scheduled render.
-      }
-    });
-    destination.stream.getTracks().forEach(track => track.stop());
-    void audioContext.close();
-  };
-}
-
 async function generateBrowserVideo(reel: MarketingReelRecord) {
   if (typeof document === "undefined" || typeof MediaRecorder === "undefined") {
     throw new Error("Este navegador no permite renderizar video automaticamente.");
@@ -256,17 +200,10 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
   const sceneMs = durationMs / Math.max(1, scenes.length);
   const startedAt = performance.now();
   const stream = canvas.captureStream(30);
-  let cleanupAudio: () => void = () => undefined;
-  try {
-    cleanupAudio = await attachBrowserAudioTrack(stream, durationMs);
-  } catch {
-    cleanupAudio = () => undefined;
-  }
   const mimeType = getSupportedVideoType();
   const recorder = new MediaRecorder(stream, {
     ...(mimeType ? { mimeType } : {}),
     videoBitsPerSecond: 550_000,
-    audioBitsPerSecond: 96_000,
   });
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = event => {
@@ -419,7 +356,6 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
   const finished = new Promise<Blob>((resolve, reject) => {
     recorder.onerror = () => reject(new Error("No se pudo grabar el video."));
     recorder.onstop = () => {
-      cleanupAudio();
       stream.getTracks().forEach(track => track.stop());
       resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
     };
@@ -565,7 +501,7 @@ export default function MarketingReelsPage() {
       throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);
     }
     await loadDashboard();
-    setNotice("Video renderizado y guardado. Abrelo grande y revisa la cama de audio suave.");
+    setNotice("Preview visual guardado. Para audio, voz y musica real falta conectar el render MP4 profesional.");
   }
 
   async function generate(event?: FormEvent<HTMLFormElement>) {
@@ -824,7 +760,7 @@ export default function MarketingReelsPage() {
                         </button>
                         <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando video" : actionLoading === `upload:${selectedReel.id}` ? "Guardando video" : "Renderizar con audio base"}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : "Renderizar preview"}
                         </button>
                         <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -864,7 +800,7 @@ export default function MarketingReelsPage() {
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Audio</span>
-                          <span className="text-right font-semibold text-amber-700">Cama suave en render nuevo</span>
+                          <span className="text-right font-semibold text-amber-700">Pendiente MP4 pro</span>
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
@@ -873,7 +809,7 @@ export default function MarketingReelsPage() {
                       </div>
                       {selectedReel.videoUrl && (
                         <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                          Si este archivo fue creado antes del ajuste de audio y cierre, renderizalo otra vez.
+                          Este preview sirve para revisar estructura. El reel final con audio requiere proveedor profesional.
                         </p>
                       )}
                     </div>
@@ -893,9 +829,6 @@ export default function MarketingReelsPage() {
                           <div className="mt-3 grid min-w-0 gap-3 xl:grid-cols-2">
                             <SceneDetail label="Texto en pantalla" strong>{scene.onScreenText}</SceneDetail>
                             <SceneDetail label="Voz en off">{scene.voiceOver}</SceneDetail>
-                          </div>
-                          <div className="mt-3">
-                            <SceneDetail label="Visual">{scene.visual}</SceneDetail>
                           </div>
                         </article>
                       ))}
@@ -923,7 +856,7 @@ export default function MarketingReelsPage() {
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        Ahora: cama suave generada por navegador. Siguiente mejora: voz en off y musica real con proveedor MP4.
+                        El preview del navegador no incluye audio confiable. El siguiente paso es conectar voz en off, musica y mezcla desde un renderizador MP4 profesional.
                       </p>
                     </div>
                   </aside>
