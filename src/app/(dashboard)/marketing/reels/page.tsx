@@ -9,6 +9,7 @@ import {
   Clapperboard,
   Copy,
   Download,
+  ExternalLink,
   Film,
   Hash,
   Instagram,
@@ -136,10 +137,14 @@ function downloadJson(reel: MarketingReelRecord) {
 
 function getSupportedVideoType() {
   const types = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1.4D401E,mp4a.40.2",
     "video/mp4;codecs=avc1.42E01E",
     "video/mp4;codecs=avc1.4D401E",
     "video/mp4;codecs=h264",
     "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
@@ -149,6 +154,64 @@ function getSupportedVideoType() {
 
 function getVideoExtension(type: string) {
   return type.toLowerCase().includes("mp4") ? "mp4" : "webm";
+}
+
+async function attachBrowserAudioTrack(stream: MediaStream, durationMs: number) {
+  if (typeof window === "undefined") return () => undefined;
+  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextCtor) return () => undefined;
+
+  const audioContext = new AudioContextCtor();
+  const destination = audioContext.createMediaStreamDestination();
+  const master = audioContext.createGain();
+  const nodes: AudioScheduledSourceNode[] = [];
+  const startAt = audioContext.currentTime + 0.08;
+  const endAt = startAt + durationMs / 1000;
+
+  master.gain.setValueAtTime(0.16, startAt);
+  master.connect(destination);
+
+  const pad = audioContext.createOscillator();
+  const padGain = audioContext.createGain();
+  pad.type = "sine";
+  pad.frequency.setValueAtTime(164.81, startAt);
+  padGain.gain.setValueAtTime(0.025, startAt);
+  pad.connect(padGain);
+  padGain.connect(master);
+  pad.start(startAt);
+  pad.stop(endAt);
+  nodes.push(pad);
+
+  for (let beat = 0; beat < durationMs / 1000; beat += 0.5) {
+    const t = startAt + beat;
+    const kick = audioContext.createOscillator();
+    const kickGain = audioContext.createGain();
+    kick.type = "triangle";
+    kick.frequency.setValueAtTime(beat % 1 === 0 ? 92 : 128, t);
+    kickGain.gain.setValueAtTime(0.0001, t);
+    kickGain.gain.exponentialRampToValueAtTime(0.09, t + 0.018);
+    kickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    kick.connect(kickGain);
+    kickGain.connect(master);
+    kick.start(t);
+    kick.stop(t + 0.2);
+    nodes.push(kick);
+  }
+
+  destination.stream.getAudioTracks().forEach(track => stream.addTrack(track));
+  await audioContext.resume();
+
+  return () => {
+    nodes.forEach(node => {
+      try {
+        node.stop();
+      } catch {
+        // Already stopped by the scheduled render.
+      }
+    });
+    destination.stream.getTracks().forEach(track => track.stop());
+    void audioContext.close();
+  };
 }
 
 async function generateBrowserVideo(reel: MarketingReelRecord) {
@@ -167,23 +230,29 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
   if (!ctx) throw new Error("No se pudo iniciar el lienzo de video.");
   ctx.scale(renderWidth / designWidth, renderHeight / designHeight);
 
-  const stream = canvas.captureStream(30);
-  const mimeType = getSupportedVideoType();
-  const recorder = new MediaRecorder(stream, {
-    ...(mimeType ? { mimeType } : {}),
-    videoBitsPerSecond: 550_000,
-  });
-  const chunks: BlobPart[] = [];
-  recorder.ondataavailable = event => {
-    if (event.data.size > 0) chunks.push(event.data);
-  };
-
   const scenes = reel.renderSpec.scenes.length > 0
     ? reel.renderSpec.scenes
     : reel.creativePackage.scenes.map((scene, index) => ({ ...scene, index }));
   const durationMs = Math.max(10, reel.durationSeconds) * 1000;
   const sceneMs = durationMs / Math.max(1, scenes.length);
   const startedAt = performance.now();
+  const stream = canvas.captureStream(30);
+  let cleanupAudio: () => void = () => undefined;
+  try {
+    cleanupAudio = await attachBrowserAudioTrack(stream, durationMs);
+  } catch {
+    cleanupAudio = () => undefined;
+  }
+  const mimeType = getSupportedVideoType();
+  const recorder = new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond: 550_000,
+    audioBitsPerSecond: 96_000,
+  });
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = event => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
 
   function wrapText(text: string, maxWidth: number, font: string) {
     ctx.font = font;
@@ -301,6 +370,7 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
   const finished = new Promise<Blob>((resolve, reject) => {
     recorder.onerror = () => reject(new Error("No se pudo grabar el video."));
     recorder.onstop = () => {
+      cleanupAudio();
       stream.getTracks().forEach(track => track.stop());
       resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
     };
@@ -658,15 +728,25 @@ export default function MarketingReelsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid gap-4 p-4 xl:grid-cols-[minmax(360px,520px)_minmax(0,1fr)_320px]">
                   <div className="space-y-4">
                     <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4">
-                      <div className="flex items-center gap-2">
-                        <Film className="h-4 w-4 text-[var(--cc-copper)]" />
-                        <h3 className="text-sm font-semibold cc-text-primary">Video</h3>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <Film className="h-4 w-4 text-[var(--cc-copper)]" />
+                          <h3 className="text-sm font-semibold cc-text-primary">Video</h3>
+                        </div>
+                        {selectedReel.videoUrl && (
+                          <a href={selectedReel.videoUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--cc-line)] bg-white px-2 text-[11px] font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Abrir grande
+                          </a>
+                        )}
                       </div>
                       {selectedReel.videoUrl ? (
-                        <video controls src={selectedReel.videoUrl} className="mt-3 aspect-[9/16] max-h-[520px] w-full rounded-lg bg-black object-cover" />
+                        <div className="mt-3 flex justify-center">
+                          <video controls playsInline src={selectedReel.videoUrl} className="aspect-[9/16] max-h-[720px] w-full max-w-[420px] rounded-lg bg-black object-contain shadow-sm" />
+                        </div>
                       ) : (
                         <div className="mt-3 grid aspect-[9/16] max-h-[520px] place-items-center rounded-lg border border-dashed border-[var(--cc-line)] bg-white p-5 text-center">
                           <div>
@@ -678,7 +758,14 @@ export default function MarketingReelsPage() {
                         </div>
                       )}
                     </div>
+                  </div>
 
+                  <div className="space-y-3">
+                    {selectedReel.videoUrl && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                        Los renders nuevos incluyen audio base. Si este video sigue mudo, pulsa Renderizar video otra vez. Para voz real hay que conectar el renderizador MP4 profesional.
+                      </div>
+                    )}
                     <div className="space-y-3">
                       {selectedReel.creativePackage.scenes.map((scene, index) => (
                         <article key={`${selectedReel.id}-${scene.time}-${index}`} className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
