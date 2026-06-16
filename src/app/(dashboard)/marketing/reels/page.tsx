@@ -157,14 +157,22 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
   }
 
   const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1920;
+  const designWidth = 1080;
+  const designHeight = 1920;
+  const renderWidth = 720;
+  const renderHeight = 1280;
+  canvas.width = renderWidth;
+  canvas.height = renderHeight;
   const ctx = canvas.getContext("2d")!;
   if (!ctx) throw new Error("No se pudo iniciar el lienzo de video.");
+  ctx.scale(renderWidth / designWidth, renderHeight / designHeight);
 
   const stream = canvas.captureStream(30);
   const mimeType = getSupportedVideoType();
-  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const recorder = new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond: 550_000,
+  });
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = event => {
     if (event.data.size > 0) chunks.push(event.data);
@@ -217,12 +225,12 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     const progress = elapsed / durationMs;
     const localProgress = (elapsed - sceneIndex * sceneMs) / sceneMs;
 
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    const gradient = ctx.createLinearGradient(0, 0, designWidth, designHeight);
     gradient.addColorStop(0, "#fbf8f3");
     gradient.addColorStop(0.48 + Math.sin(progress * Math.PI) * 0.05, "#f1e6d8");
     gradient.addColorStop(1, "#1f1713");
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, designWidth, designHeight);
 
     ctx.fillStyle = "rgba(181, 102, 78, 0.22)";
     ctx.beginPath();
@@ -298,7 +306,7 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     };
   });
 
-  recorder.start();
+  recorder.start(1000);
   requestAnimationFrame(drawFrame);
   return finished;
 }
@@ -429,8 +437,14 @@ export default function MarketingReelsPage() {
       method: "POST",
       body: formData,
     });
-    const data = await response.json().catch(() => ({})) as DashboardResponse;
-    if (!response.ok) throw new Error(data.error || "No se pudo guardar el video renderizado.");
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json().catch(() => ({})) as DashboardResponse
+      : {} as DashboardResponse;
+    if (!response.ok) {
+      if (response.status === 413) throw new Error("El video quedo demasiado pesado para subirlo. Intenta renderizar nuevamente.");
+      throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);
+    }
     await loadDashboard();
   }
 
