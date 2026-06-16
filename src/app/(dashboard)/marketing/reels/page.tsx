@@ -185,55 +185,37 @@ async function attachBrowserAudioTrack(stream: MediaStream, durationMs: number) 
   const audioContext = new AudioContextCtor();
   const destination = audioContext.createMediaStreamDestination();
   const master = audioContext.createGain();
+  const filter = audioContext.createBiquadFilter();
   const nodes: AudioScheduledSourceNode[] = [];
   const startAt = audioContext.currentTime + 0.08;
   const endAt = startAt + durationMs / 1000;
 
-  master.gain.setValueAtTime(0.34, startAt);
-  master.connect(destination);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(680, startAt);
+  master.gain.setValueAtTime(0.0001, startAt);
+  master.gain.exponentialRampToValueAtTime(0.055, startAt + 1.2);
+  master.gain.setValueAtTime(0.055, Math.max(startAt + 1.2, endAt - 1.4));
+  master.gain.exponentialRampToValueAtTime(0.0001, endAt);
+  master.connect(filter);
+  filter.connect(destination);
 
-  const pad = audioContext.createOscillator();
-  const padGain = audioContext.createGain();
-  pad.type = "sine";
-  pad.frequency.setValueAtTime(164.81, startAt);
-  padGain.gain.setValueAtTime(0.045, startAt);
-  pad.connect(padGain);
-  padGain.connect(master);
-  pad.start(startAt);
-  pad.stop(endAt);
-  nodes.push(pad);
-
-  for (let beat = 0; beat < durationMs / 1000; beat += 0.5) {
-    const t = startAt + beat;
-    const kick = audioContext.createOscillator();
-    const kickGain = audioContext.createGain();
-    kick.type = "square";
-    kick.frequency.setValueAtTime(beat % 1 === 0 ? 92 : 128, t);
-    kickGain.gain.setValueAtTime(0.0001, t);
-    kickGain.gain.exponentialRampToValueAtTime(0.18, t + 0.018);
-    kickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-    kick.connect(kickGain);
-    kickGain.connect(master);
-    kick.start(t);
-    kick.stop(t + 0.2);
-    nodes.push(kick);
-  }
-
-  for (let step = 0; step < durationMs / 1000; step += 1) {
-    const t = startAt + step + 0.24;
-    const tone = audioContext.createOscillator();
-    const toneGain = audioContext.createGain();
-    tone.type = "sine";
-    tone.frequency.setValueAtTime(step % 4 === 0 ? 329.63 : 246.94, t);
-    toneGain.gain.setValueAtTime(0.0001, t);
-    toneGain.gain.exponentialRampToValueAtTime(0.07, t + 0.02);
-    toneGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-    tone.connect(toneGain);
-    toneGain.connect(master);
-    tone.start(t);
-    tone.stop(t + 0.24);
-    nodes.push(tone);
-  }
+  [
+    { frequency: 110, gain: 0.055 },
+    { frequency: 164.81, gain: 0.035 },
+    { frequency: 220, gain: 0.025 },
+  ].forEach(({ frequency, gain }) => {
+    const pad = audioContext.createOscillator();
+    const padGain = audioContext.createGain();
+    pad.type = "sine";
+    pad.frequency.setValueAtTime(frequency, startAt);
+    pad.frequency.linearRampToValueAtTime(frequency * 1.01, endAt);
+    padGain.gain.setValueAtTime(gain, startAt);
+    pad.connect(padGain);
+    padGain.connect(master);
+    pad.start(startAt);
+    pad.stop(endAt);
+    nodes.push(pad);
+  });
 
   destination.stream.getAudioTracks().forEach(track => stream.addTrack(track));
   await audioContext.resume();
@@ -324,6 +306,21 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     ctx.fill();
   }
 
+  function drawTextBlock(text: string, x: number, y: number, maxWidth: number, font: string, lineHeight: number, color: string, maxLines = 5) {
+    ctx.fillStyle = color;
+    ctx.font = font;
+    wrapText(text, maxWidth, font).slice(0, maxLines).forEach((line, index) => {
+      ctx.fillText(line, x, y + index * lineHeight);
+    });
+  }
+
+  function drawProgress(progress: number) {
+    ctx.fillStyle = "rgba(31, 23, 19, 0.16)";
+    ctx.fillRect(120, 1692, 820, 12);
+    ctx.fillStyle = "#b5664e";
+    ctx.fillRect(120, 1692, 820 * progress, 12);
+  }
+
   function drawFrame(now: number) {
     const elapsed = Math.min(durationMs, now - startedAt);
     const sceneIndex = Math.min(scenes.length - 1, Math.floor(elapsed / sceneMs));
@@ -350,12 +347,46 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     drawRoundRect(76, 128, 928, 1664, 42);
 
+    const brandName = reel.renderSpec.brand.name || "ConviveConnect";
+    const brandDomain = reel.renderSpec.brand.domain || "conviveconnect.com";
+    const ctaText = reel.creativePackage.coverText || "Agenda una demo";
+    const proofText = reel.objective || reel.creativePackage.angle;
+    const finalScene = sceneIndex === scenes.length - 1 || progress > 0.84;
+
     ctx.fillStyle = "#1f1713";
     ctx.font = "700 44px Arial";
-    ctx.fillText("ConviveConnect", 120, 210);
+    ctx.fillText(brandName, 120, 210);
     ctx.fillStyle = "#b5664e";
     ctx.font = "700 24px Arial";
     ctx.fillText("OPERACION DE CONDOMINIOS", 120, 250);
+
+    if (finalScene) {
+      ctx.fillStyle = "#1f1713";
+      drawRoundRect(120, 360, 118, 118, 28);
+      ctx.fillStyle = "#fbf8f3";
+      ctx.font = "700 54px Arial";
+      ctx.fillText("C", 158, 435);
+
+      drawTextBlock("ConviveConnect", 270, 410, 620, "700 58px Arial", 66, "#1f1713", 2);
+      drawTextBlock("Tu edificio en una sola operacion clara.", 270, 510, 620, "400 34px Arial", 46, "#4f4038", 2);
+
+      drawTextBlock(scene?.onScreenText || ctaText, 120, 700, 820, "700 72px Arial", 84, "#1f1713", 3);
+      drawTextBlock(scene?.voiceOver || "Convierte la administracion del edificio en una operacion clara y trazable.", 120, 970, 820, "400 40px Arial", 56, "#4f4038", 4);
+
+      ctx.fillStyle = "#fbf8f3";
+      drawRoundRect(120, 1280, 820, 170, 28);
+      drawTextBlock("Agenda una demo", 164, 1350, 740, "700 42px Arial", 54, "#1f1713", 1);
+      drawTextBlock(brandDomain, 164, 1410, 740, "700 44px Arial", 54, "#b5664e", 1);
+
+      ctx.fillStyle = "#1f1713";
+      ctx.font = "400 28px Arial";
+      ctx.fillText("Permisos, confirmacion humana y auditoria operativa.", 120, 1588);
+      drawProgress(progress);
+
+      if (elapsed < durationMs) requestAnimationFrame(drawFrame);
+      else recorder.stop();
+      return;
+    }
 
     ctx.fillStyle = "#b5664e";
     drawRoundRect(120, 328, 190, 58, 29);
@@ -363,39 +394,20 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     ctx.font = "700 26px Arial";
     ctx.fillText(`${sceneIndex + 1}/${scenes.length}`, 170, 366);
 
-    ctx.fillStyle = "#1f1713";
-    const headlineFont = "700 68px Arial";
-    const headlineLines = wrapText(scene?.onScreenText || reel.title, 820, headlineFont);
-    ctx.font = headlineFont;
-    headlineLines.forEach((line, index) => {
-      ctx.fillText(line, 120, 510 + index * 82);
-    });
-
-    ctx.fillStyle = "#4f4038";
-    const voiceFont = "400 38px Arial";
-    const voiceLines = wrapText(scene?.voiceOver || reel.caption, 820, voiceFont);
-    ctx.font = voiceFont;
-    voiceLines.slice(0, 5).forEach((line, index) => {
-      ctx.fillText(line, 120, 980 + index * 54);
-    });
+    drawTextBlock(scene?.onScreenText || reel.title, 120, 510, 820, "700 68px Arial", 82, "#1f1713", 4);
+    drawTextBlock(scene?.voiceOver || reel.caption, 120, 930, 820, "400 38px Arial", 54, "#4f4038", 5);
 
     ctx.fillStyle = "#fbf8f3";
-    drawRoundRect(120, 1370, 820, 236, 28);
+    drawRoundRect(120, 1340, 820, 250, 28);
     ctx.fillStyle = "#75584c";
     ctx.font = "700 24px Arial";
-    ctx.fillText("VISUAL", 160, 1430);
-    ctx.fillStyle = "#1f1713";
-    const visualLines = wrapText(scene?.visual || reel.featureFocus, 740, "400 31px Arial");
-    ctx.font = "400 31px Arial";
-    visualLines.slice(0, 3).forEach((line, index) => {
-      ctx.fillText(line, 160, 1492 + index * 43);
-    });
+    ctx.fillText("POR QUE IMPORTA", 160, 1400);
+    drawTextBlock(proofText, 160, 1470, 740, "400 31px Arial", 43, "#1f1713", 3);
 
-    ctx.fillStyle = "#b5664e";
-    ctx.fillRect(120, 1692, 820 * progress, 12);
+    drawProgress(progress);
     ctx.fillStyle = "#1f1713";
     ctx.font = "700 34px Arial";
-    ctx.fillText(reel.creativePackage.coverText || "Agenda una demo en conviveconnect.com", 120, 1756);
+    ctx.fillText(`${ctaText} | ${brandDomain}`, 120, 1756);
 
     ctx.globalAlpha = Math.min(1, Math.max(0.35, localProgress < 0.12 ? localProgress / 0.12 : 1));
     ctx.globalAlpha = 1;
@@ -553,7 +565,7 @@ export default function MarketingReelsPage() {
       throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);
     }
     await loadDashboard();
-    setNotice("Video renderizado y guardado. Abrelo grande y sube el volumen para revisar el audio base.");
+    setNotice("Video renderizado y guardado. Abrelo grande y revisa la cama de audio suave.");
   }
 
   async function generate(event?: FormEvent<HTMLFormElement>) {
@@ -852,7 +864,7 @@ export default function MarketingReelsPage() {
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Audio</span>
-                          <span className="text-right font-semibold text-amber-700">Base en render nuevo</span>
+                          <span className="text-right font-semibold text-amber-700">Cama suave en render nuevo</span>
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
@@ -861,7 +873,7 @@ export default function MarketingReelsPage() {
                       </div>
                       {selectedReel.videoUrl && (
                         <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                          Si este archivo fue creado antes del ajuste de audio, renderizalo otra vez y revisalo con el volumen del reproductor arriba.
+                          Si este archivo fue creado antes del ajuste de audio y cierre, renderizalo otra vez.
                         </p>
                       )}
                     </div>
@@ -911,7 +923,7 @@ export default function MarketingReelsPage() {
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        Ahora: beat base generado por navegador. Siguiente mejora: voz en off y musica real con proveedor MP4.
+                        Ahora: cama suave generada por navegador. Siguiente mejora: voz en off y musica real con proveedor MP4.
                       </p>
                     </div>
                   </aside>
