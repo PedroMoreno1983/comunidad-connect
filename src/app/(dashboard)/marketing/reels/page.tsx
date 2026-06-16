@@ -102,6 +102,27 @@ function statusClass(status: MarketingReelStatus) {
   return "border-[var(--cc-line)] bg-[var(--cc-ivory)] cc-text-secondary";
 }
 
+function getFriendlyFailure(message?: string | null) {
+  if (!message) return "";
+  if (message.includes("MARKETING_VIDEO_RENDER_WEBHOOK_URL")) {
+    return "Render profesional pendiente. Hoy puedes usar el render rapido del navegador; para voz, musica y edicion final hay que conectar un proveedor MP4.";
+  }
+  return message;
+}
+
+function isWebmVideo(url?: string | null) {
+  return Boolean(url?.toLowerCase().split("?")[0].endsWith(".webm"));
+}
+
+function getNextStep(reel: MarketingReelRecord, instagram: InstagramConnectionSummary) {
+  if (!reel.videoUrl) return "Aprueba y renderiza el video.";
+  if (isWebmVideo(reel.videoUrl)) return "El video es vista previa WEBM. Para publicar automatico en Instagram necesitas MP4.";
+  if (instagram.status !== "connected") return "Conecta Instagram para publicar desde el agente.";
+  if (reel.status === "published") return "Publicado. Puedes generar una nueva variante.";
+  if (reel.status === "scheduled") return `Agendado para ${formatDate(reel.scheduledAt)}.`;
+  return "Revisa el video, sube volumen y publica cuando este listo.";
+}
+
 function formatDate(value?: string | null) {
   if (!value) return "Sin fecha";
   try {
@@ -168,14 +189,14 @@ async function attachBrowserAudioTrack(stream: MediaStream, durationMs: number) 
   const startAt = audioContext.currentTime + 0.08;
   const endAt = startAt + durationMs / 1000;
 
-  master.gain.setValueAtTime(0.16, startAt);
+  master.gain.setValueAtTime(0.34, startAt);
   master.connect(destination);
 
   const pad = audioContext.createOscillator();
   const padGain = audioContext.createGain();
   pad.type = "sine";
   pad.frequency.setValueAtTime(164.81, startAt);
-  padGain.gain.setValueAtTime(0.025, startAt);
+  padGain.gain.setValueAtTime(0.045, startAt);
   pad.connect(padGain);
   padGain.connect(master);
   pad.start(startAt);
@@ -186,16 +207,32 @@ async function attachBrowserAudioTrack(stream: MediaStream, durationMs: number) 
     const t = startAt + beat;
     const kick = audioContext.createOscillator();
     const kickGain = audioContext.createGain();
-    kick.type = "triangle";
+    kick.type = "square";
     kick.frequency.setValueAtTime(beat % 1 === 0 ? 92 : 128, t);
     kickGain.gain.setValueAtTime(0.0001, t);
-    kickGain.gain.exponentialRampToValueAtTime(0.09, t + 0.018);
+    kickGain.gain.exponentialRampToValueAtTime(0.18, t + 0.018);
     kickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
     kick.connect(kickGain);
     kickGain.connect(master);
     kick.start(t);
     kick.stop(t + 0.2);
     nodes.push(kick);
+  }
+
+  for (let step = 0; step < durationMs / 1000; step += 1) {
+    const t = startAt + step + 0.24;
+    const tone = audioContext.createOscillator();
+    const toneGain = audioContext.createGain();
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(step % 4 === 0 ? 329.63 : 246.94, t);
+    toneGain.gain.setValueAtTime(0.0001, t);
+    toneGain.gain.exponentialRampToValueAtTime(0.07, t + 0.02);
+    toneGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    tone.connect(toneGain);
+    toneGain.connect(master);
+    tone.start(t);
+    tone.stop(t + 0.24);
+    nodes.push(tone);
   }
 
   destination.stream.getAudioTracks().forEach(track => stream.addTrack(track));
@@ -516,6 +553,7 @@ export default function MarketingReelsPage() {
       throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);
     }
     await loadDashboard();
+    setNotice("Video renderizado y guardado. Abrelo grande y sube el volumen para revisar el audio base.");
   }
 
   async function generate(event?: FormEvent<HTMLFormElement>) {
@@ -569,7 +607,7 @@ export default function MarketingReelsPage() {
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
         <section className="flex flex-col gap-4 border-b border-[var(--cc-line)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="cc-eyebrow">Marketing Agent</p>
@@ -581,13 +619,14 @@ export default function MarketingReelsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <CapabilityPill ready={Boolean(capabilities?.videoRendering)} label="Video MP4" />
+            <CapabilityPill ready label="Render rapido" />
             <CapabilityPill ready={instagram.status === "connected" || Boolean(capabilities?.instagramPublishing)} label="Instagram" />
+            <CapabilityPill ready={Boolean(capabilities?.videoRendering)} label="MP4 pro" />
             <CapabilityPill ready={Boolean(capabilities?.cronSecretConfigured)} label="Agenda" />
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="grid gap-6 2xl:grid-cols-[380px_minmax(0,1fr)]">
           <div className="space-y-4">
             <form onSubmit={generate} className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-[var(--cc-line)] pb-3">
@@ -704,105 +743,84 @@ export default function MarketingReelsPage() {
             )}
 
             {selectedReel ? (
-              <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] shadow-sm">
-                <div className="flex flex-col gap-3 border-b border-[var(--cc-line)] p-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <span className={clsx("inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]", statusClass(selectedReel.status))}>
-                      {STATUS_LABELS[selectedReel.status]}
-                    </span>
-                    <h2 className="mt-3 text-2xl font-semibold cc-text-primary">{selectedReel.title}</h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.angle}</p>
-                    {selectedReel.failureReason && (
-                      <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                        {selectedReel.failureReason}
+              <div className="space-y-4">
+                <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <span className={clsx("inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]", statusClass(selectedReel.status))}>
+                        {STATUS_LABELS[selectedReel.status]}
+                      </span>
+                      <h2 className="mt-3 max-w-4xl text-2xl font-semibold leading-tight cc-text-primary">{selectedReel.title}</h2>
+                      <p className="mt-2 max-w-4xl text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.angle}</p>
+                      <p className="mt-3 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
+                        Siguiente paso: <span className="font-semibold cc-text-primary">{getNextStep(selectedReel, instagram)}</span>
                       </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <CopyButton text={captionBlock(selectedReel)} label="Caption" />
-                    <CopyButton text={buildFullScript(selectedReel)} label="Guion" />
-                    <button type="button" onClick={() => downloadJson(selectedReel)} className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
-                      <Download className="h-3.5 w-3.5" />
-                      JSON
-                    </button>
+                      {selectedReel.failureReason && (
+                        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                          {getFriendlyFailure(selectedReel.failureReason)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <CopyButton text={captionBlock(selectedReel)} label="Caption" />
+                      <CopyButton text={buildFullScript(selectedReel)} label="Guion" />
+                      <button type="button" onClick={() => downloadJson(selectedReel)} className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                        <Download className="h-3.5 w-3.5" />
+                        JSON
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 p-4 xl:grid-cols-[minmax(360px,520px)_minmax(0,1fr)_320px]">
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <Film className="h-4 w-4 text-[var(--cc-copper)]" />
-                          <h3 className="text-sm font-semibold cc-text-primary">Video</h3>
-                        </div>
-                        {selectedReel.videoUrl && (
-                          <a href={selectedReel.videoUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--cc-line)] bg-white px-2 text-[11px] font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Abrir grande
-                          </a>
-                        )}
+                <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(320px,560px)_minmax(280px,360px)]">
+                  <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Film className="h-4 w-4 text-[var(--cc-copper)]" />
+                        <h3 className="text-sm font-semibold cc-text-primary">Video</h3>
                       </div>
-                      {selectedReel.videoUrl ? (
-                        <div className="mt-3 flex justify-center">
-                          <video controls playsInline src={selectedReel.videoUrl} className="aspect-[9/16] max-h-[720px] w-full max-w-[420px] rounded-lg bg-black object-contain shadow-sm" />
-                        </div>
-                      ) : (
-                        <div className="mt-3 grid aspect-[9/16] max-h-[520px] place-items-center rounded-lg border border-dashed border-[var(--cc-line)] bg-white p-5 text-center">
-                          <div>
-                            <p className="text-sm font-semibold cc-text-primary">Video pendiente</p>
-                            <p className="mt-2 text-xs leading-5 cc-text-secondary">
-                              Usa Renderizar video. Si no hay proveedor conectado, Chrome intentara crear un MP4 base con las escenas aprobadas.
-                            </p>
-                          </div>
-                        </div>
+                      {selectedReel.videoUrl && (
+                        <a href={selectedReel.videoUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--cc-line)] bg-white px-2 text-[11px] font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)]">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Abrir grande
+                        </a>
                       )}
                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {selectedReel.videoUrl && (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                        Los renders nuevos incluyen audio base. Si este video sigue mudo, pulsa Renderizar video otra vez. Para voz real hay que conectar el renderizador MP4 profesional.
+                    {selectedReel.videoUrl ? (
+                      <div className="mt-3 flex justify-center rounded-lg bg-[var(--cc-ink)] p-3">
+                        <video controls playsInline src={selectedReel.videoUrl} className="aspect-[9/16] max-h-[72vh] w-full max-w-[430px] rounded-md bg-black object-contain shadow-sm" />
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid aspect-[9/16] max-h-[680px] place-items-center rounded-lg border border-dashed border-[var(--cc-line)] bg-[var(--cc-ivory)] p-5 text-center">
+                        <div>
+                          <p className="text-sm font-semibold cc-text-primary">Video pendiente</p>
+                          <p className="mt-2 text-xs leading-5 cc-text-secondary">
+                            Aprueba el guion y pulsa Renderizar. El render rapido se crea aqui mismo y se guarda en Supabase.
+                          </p>
+                        </div>
                       </div>
                     )}
-                    <div className="space-y-3">
-                      {selectedReel.creativePackage.scenes.map((scene, index) => (
-                        <article key={`${selectedReel.id}-${scene.time}-${index}`} className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-md bg-[var(--cc-ink)] px-2 py-1 text-xs font-semibold text-white">{scene.time}</span>
-                            <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Escena {index + 1}</span>
-                          </div>
-                          <div className="mt-3 grid min-w-0 gap-3 2xl:grid-cols-2">
-                            <SceneDetail label="Texto en pantalla" strong>{scene.onScreenText}</SceneDetail>
-                            <SceneDetail label="Voz en off">{scene.voiceOver}</SceneDetail>
-                          </div>
-                          <div className="mt-3">
-                            <SceneDetail label="Visual">{scene.visual}</SceneDetail>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
                   </div>
 
                   <aside className="space-y-4">
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
-                      <h3 className="text-sm font-semibold cc-text-primary">Acciones</h3>
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                      <h3 className="text-sm font-semibold cc-text-primary">Control de publicacion</h3>
                       <div className="mt-3 grid gap-2">
-                        <button type="button" onClick={() => runReelAction("approve", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
+                        <button type="button" onClick={() => runReelAction("approve", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
                           {actionLoading === `approve:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          Aprobar
+                          Aprobar guion
                         </button>
-                        <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
+                        <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando video" : actionLoading === `upload:${selectedReel.id}` ? "Guardando video" : "Renderizar video"}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando video" : actionLoading === `upload:${selectedReel.id}` ? "Guardando video" : "Renderizar con audio base"}
                         </button>
-                        <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
+                        <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                           Publicar ahora
                         </button>
                       </div>
-                      <div className="mt-4 space-y-2">
+
+                      <div className="mt-4 space-y-2 border-t border-[var(--cc-line)] pt-4">
                         <FieldLabel>Agendar</FieldLabel>
                         <input
                           type="datetime-local"
@@ -817,7 +835,63 @@ export default function MarketingReelsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
+                      <h3 className="text-sm font-semibold cc-text-primary">Estado real</h3>
+                      <div className="mt-3 space-y-2 text-xs leading-5">
+                        <p className="flex items-start justify-between gap-3">
+                          <span className="cc-text-secondary">Instagram</span>
+                          <span className={instagram.status === "connected" ? "font-semibold text-emerald-700" : "font-semibold text-amber-700"}>
+                            {instagram.status === "connected" ? "Conectado" : "Pendiente"}
+                          </span>
+                        </p>
+                        <p className="flex items-start justify-between gap-3">
+                          <span className="cc-text-secondary">Video</span>
+                          <span className={selectedReel.videoUrl ? "font-semibold text-emerald-700" : "font-semibold text-amber-700"}>
+                            {selectedReel.videoUrl ? "Guardado" : "Pendiente"}
+                          </span>
+                        </p>
+                        <p className="flex items-start justify-between gap-3">
+                          <span className="cc-text-secondary">Audio</span>
+                          <span className="text-right font-semibold text-amber-700">Base en render nuevo</span>
+                        </p>
+                        <p className="flex items-start justify-between gap-3">
+                          <span className="cc-text-secondary">Voz/musica pro</span>
+                          <span className="text-right font-semibold text-amber-700">Requiere proveedor</span>
+                        </p>
+                      </div>
+                      {selectedReel.videoUrl && (
+                        <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
+                          Si este archivo fue creado antes del ajuste de audio, renderizalo otra vez y revisalo con el volumen del reproductor arriba.
+                        </p>
+                      )}
+                    </div>
+                  </aside>
+                </div>
+
+                <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
+                  <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold cc-text-primary">Guion por escenas</h3>
+                    <div className="mt-3 grid gap-3">
+                      {selectedReel.creativePackage.scenes.map((scene, index) => (
+                        <article key={`${selectedReel.id}-${scene.time}-${index}`} className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-md bg-[var(--cc-ink)] px-2 py-1 text-xs font-semibold text-white">{scene.time}</span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Escena {index + 1}</span>
+                          </div>
+                          <div className="mt-3 grid min-w-0 gap-3 xl:grid-cols-2">
+                            <SceneDetail label="Texto en pantalla" strong>{scene.onScreenText}</SceneDetail>
+                            <SceneDetail label="Voz en off">{scene.voiceOver}</SceneDetail>
+                          </div>
+                          <div className="mt-3">
+                            <SceneDetail label="Visual">{scene.visual}</SceneDetail>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+
+                  <aside className="space-y-4">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
                       <div className="flex items-center gap-2">
                         <Hash className="h-4 w-4 text-[var(--cc-copper)]" />
                         <h3 className="text-sm font-semibold cc-text-primary">Caption</h3>
@@ -830,12 +904,15 @@ export default function MarketingReelsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4">
+                    <div className="rounded-lg border border-[var(--cc-line)] bg-white p-4 shadow-sm">
                       <div className="flex items-center gap-2">
                         <Music2 className="h-4 w-4 text-[var(--cc-copper)]" />
                         <h3 className="text-sm font-semibold cc-text-primary">Audio</h3>
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
+                      <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
+                        Ahora: beat base generado por navegador. Siguiente mejora: voz en off y musica real con proveedor MP4.
+                      </p>
                     </div>
                   </aside>
                 </div>
