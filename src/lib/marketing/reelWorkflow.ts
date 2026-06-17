@@ -178,7 +178,7 @@ export async function getMarketingReelsDashboard(profile: MarketingProfile) {
 export function getMarketingCapabilities() {
     return {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
-        videoRendering: Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
+        videoRendering: Boolean(process.env.CREATOMATE_API_KEY && process.env.CREATOMATE_TEMPLATE_ID) || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
         instagramOAuth: isInstagramOAuthConfigured(),
         cronSecretConfigured: Boolean(process.env.CRON_SECRET),
@@ -291,10 +291,145 @@ type RenderResult = {
     providerJobId?: string | null;
 };
 
+function firstSceneText(reel: MarketingReelRecord, index: number) {
+    return reel.creativePackage.scenes[index]?.onScreenText
+        || reel.creativePackage.scenes[index]?.voiceOver
+        || reel.creativePackage.angle
+        || reel.title;
+}
+
+function buildCreatomateModifications(reel: MarketingReelRecord) {
+    const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
+    const website = reel.renderSpec.brand.domain || 'conviveconnect.com';
+    const hook = reel.creativePackage.hook || firstSceneText(reel, 0);
+    const headline = reel.title || reel.creativePackage.title || 'ConviveConnect';
+    const scene1 = firstSceneText(reel, 0);
+    const scene2 = firstSceneText(reel, 1);
+    const scene3 = firstSceneText(reel, 2);
+    const values: Record<string, string> = {
+        headline,
+        hook,
+        scene_1: scene1,
+        scene_2: scene2,
+        scene_3: scene3,
+        cta,
+        website,
+        brand_name: reel.renderSpec.brand.name || 'ConviveConnect',
+        caption: reel.caption,
+    };
+
+    const envMap = process.env.CREATOMATE_MODIFICATION_MAP;
+    if (envMap) {
+        const modifications: Record<string, string> = {};
+        envMap.split(',').map(item => item.trim()).filter(Boolean).forEach(pair => {
+            const [creatomateKey, valueKey] = pair.split(':').map(item => item.trim());
+            if (creatomateKey && valueKey && values[valueKey]) modifications[creatomateKey] = values[valueKey];
+        });
+        if (Object.keys(modifications).length > 0) return modifications;
+    }
+
+    return {
+        headline,
+        hook,
+        scene_1: scene1,
+        scene_2: scene2,
+        scene_3: scene3,
+        cta,
+        website,
+        brand_name: reel.renderSpec.brand.name || 'ConviveConnect',
+        caption: reel.caption,
+        'Name.text.hook': hook,
+    };
+}
+
+function getCreatomateVideoUrl(data: unknown) {
+    const first = Array.isArray(data) ? data[0] : data;
+    if (!first || typeof first !== 'object') return '';
+    const row = first as Record<string, unknown>;
+    return asString(row.url)
+        || asString(row.video_url)
+        || asString(row.videoUrl)
+        || asString(row.output_url)
+        || asString(row.outputUrl);
+}
+
+function getCreatomateJobId(data: unknown) {
+    const first = Array.isArray(data) ? data[0] : data;
+    if (!first || typeof first !== 'object') return '';
+    return asString((first as Record<string, unknown>).id);
+}
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function creatomateRenderStatusUrl(renderId: string) {
+    const rendersUrl = process.env.CREATOMATE_RENDERS_URL || 'https://api.creatomate.com/v2/renders';
+    return `${rendersUrl.replace(/\/$/, '')}/${encodeURIComponent(renderId)}`;
+}
+
+async function waitForCreatomateUrl(renderId: string, apiKey: string) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        await sleep(3000);
+        const response = await fetch(creatomateRenderStatusUrl(renderId), {
+            headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        const data = await response.json().catch(() => ({})) as unknown;
+        if (!response.ok) continue;
+        const videoUrl = getCreatomateVideoUrl(data);
+        if (videoUrl) return videoUrl;
+    }
+    return '';
+}
+
+async function requestCreatomateRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    const apiKey = process.env.CREATOMATE_API_KEY;
+    const templateId = process.env.CREATOMATE_TEMPLATE_ID;
+    if (!apiKey || !templateId) {
+        throw new Error('Falta configurar CREATOMATE_API_KEY y CREATOMATE_TEMPLATE_ID para generar el MP4 profesional.');
+    }
+
+    const response = await fetch(process.env.CREATOMATE_RENDERS_URL || 'https://api.creatomate.com/v2/renders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+            template_id: templateId,
+            modifications: buildCreatomateModifications(reel),
+        }),
+    });
+
+    const data = await response.json().catch(() => ({})) as unknown;
+    if (!response.ok) {
+        const errorMessage = data && typeof data === 'object'
+            ? asString((data as Record<string, unknown>).error) || asString((data as Record<string, unknown>).message)
+            : '';
+        throw new Error(errorMessage || 'Creatomate no pudo iniciar el render del reel.');
+    }
+
+    const providerJobId = getCreatomateJobId(data);
+    const videoUrl = getCreatomateVideoUrl(data) || (providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : '');
+    if (!videoUrl) {
+        throw new Error('Creatomate inicio el render pero aun no devolvio URL de video. Revisa API Log; si queda en proceso, configuramos webhook de finalizacion.');
+    }
+
+    return {
+        videoUrl,
+        thumbnailUrl: null,
+        providerJobId: providerJobId || null,
+    };
+}
+
 async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    if (process.env.CREATOMATE_API_KEY && process.env.CREATOMATE_TEMPLATE_ID) {
+        return requestCreatomateRender(reel);
+    }
+
     const webhookUrl = process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL;
     if (!webhookUrl) {
-        throw new Error('Falta configurar MARKETING_VIDEO_RENDER_WEBHOOK_URL para generar el MP4 final.');
+        throw new Error('Falta configurar CREATOMATE_API_KEY y CREATOMATE_TEMPLATE_ID, o MARKETING_VIDEO_RENDER_WEBHOOK_URL, para generar el MP4 final.');
     }
 
     const response = await fetch(webhookUrl, {
