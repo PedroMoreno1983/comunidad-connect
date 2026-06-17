@@ -43,6 +43,14 @@ function asString(value: unknown, fallback = '') {
     return typeof value === 'string' ? value : fallback;
 }
 
+function compactJson(value: unknown, max = 600) {
+    try {
+        return JSON.stringify(value).slice(0, max);
+    } catch {
+        return '';
+    }
+}
+
 function asNumber(value: unknown, fallback = 0) {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -339,7 +347,12 @@ function buildCreatomateModifications(reel: MarketingReelRecord) {
         brand_name: reel.renderSpec.brand.name || 'ConviveConnect',
         caption: reel.caption,
         'Name.text.hook': hook,
+        'Name.text': hook,
     };
+}
+
+function normalizeBearerToken(value: string) {
+    return value.trim().replace(/^Bearer\s+/i, '').trim();
 }
 
 function getCreatomateVideoUrl(data: unknown) {
@@ -372,7 +385,7 @@ async function waitForCreatomateUrl(renderId: string, apiKey: string) {
     for (let attempt = 0; attempt < 10; attempt += 1) {
         await sleep(3000);
         const response = await fetch(creatomateRenderStatusUrl(renderId), {
-            headers: { Authorization: `Bearer ${apiKey}` },
+            headers: { Authorization: `Bearer ${normalizeBearerToken(apiKey)}` },
         });
         const data = await response.json().catch(() => ({})) as unknown;
         if (!response.ok) continue;
@@ -382,8 +395,20 @@ async function waitForCreatomateUrl(renderId: string, apiKey: string) {
     return '';
 }
 
+function getProviderErrorMessage(data: unknown, fallback: string) {
+    if (!data || typeof data !== 'object') return fallback;
+    const row = data as Record<string, unknown>;
+    const nestedError = row.error && typeof row.error === 'object' ? row.error as Record<string, unknown> : null;
+    const message = asString(row.message)
+        || asString(row.error)
+        || asString(row.detail)
+        || asString(nestedError?.message)
+        || asString(nestedError?.detail);
+    return message || `${fallback} Respuesta: ${compactJson(data)}`;
+}
+
 async function requestCreatomateRender(reel: MarketingReelRecord): Promise<RenderResult> {
-    const apiKey = process.env.CREATOMATE_API_KEY;
+    const apiKey = process.env.CREATOMATE_API_KEY ? normalizeBearerToken(process.env.CREATOMATE_API_KEY) : '';
     const templateId = process.env.CREATOMATE_TEMPLATE_ID;
     if (!apiKey || !templateId) {
         throw new Error('Falta configurar CREATOMATE_API_KEY y CREATOMATE_TEMPLATE_ID para generar el MP4 profesional.');
@@ -403,10 +428,7 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
 
     const data = await response.json().catch(() => ({})) as unknown;
     if (!response.ok) {
-        const errorMessage = data && typeof data === 'object'
-            ? asString((data as Record<string, unknown>).error) || asString((data as Record<string, unknown>).message)
-            : '';
-        throw new Error(errorMessage || 'Creatomate no pudo iniciar el render del reel.');
+        throw new Error(getProviderErrorMessage(data, 'Creatomate no pudo iniciar el render del reel.'));
     }
 
     const providerJobId = getCreatomateJobId(data);
