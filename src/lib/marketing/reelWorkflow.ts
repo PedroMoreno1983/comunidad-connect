@@ -527,6 +527,7 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
             source: musicUrl,
             time: 0,
             duration,
+            loop: true,
             volume: '24%',
             audio_fade_in: 1,
             audio_fade_out: 1,
@@ -538,7 +539,7 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
         elements.push({
             type: 'audio',
             provider: voiceProvider,
-            text: buildVoiceoverText(reel),
+            source: buildVoiceoverText(reel),
             time: 0,
             duration,
             volume: '88%',
