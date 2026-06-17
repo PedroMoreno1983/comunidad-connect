@@ -298,6 +298,19 @@ export async function approveMarketingReel(profile: MarketingProfile, reelId: st
     return updateReel(reelId, { status: 'approved', failure_reason: null });
 }
 
+export async function deleteMarketingReel(profile: MarketingProfile, reelId: string) {
+    requireAdmin(profile);
+    const reel = await loadReelForCommunity(reelId, communityIdFor(profile));
+    const { error } = await getSupabaseAdmin()
+        .from('marketing_reels')
+        .delete()
+        .eq('id', reel.id)
+        .eq('community_id', communityIdFor(profile));
+
+    if (error) throw error;
+    return reel;
+}
+
 type RenderResult = {
     videoUrl: string;
     thumbnailUrl?: string | null;
@@ -428,7 +441,7 @@ function textElement(
     fontSize: number,
     fillColor: string,
     fontWeight: number,
-    alignment: 'left' | 'center' = 'left',
+    alignment: '0%' | '50%' = '0%',
 ): CreatomateElement {
     return {
         type: 'text',
@@ -444,7 +457,7 @@ function textElement(
         font_size: fontSize,
         font_weight: fontWeight,
         x_alignment: alignment,
-        y_alignment: 'center',
+        y_alignment: '50%',
         text_wrap: true,
     };
 }
@@ -488,7 +501,7 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
             boxElement(time, localDuration, '18%', '20%', '16%', '4%', copper),
             textElement(brandName, time, localDuration, '36%', '9%', '52%', '5%', 38, ink, 700),
             textElement('OPERACION DE CONDOMINIOS', time, localDuration, '39%', '12%', '58%', '3%', 19, copper, 700),
-            textElement(`${index + 1}/${sceneCount}`, time, localDuration, '18%', '20%', '16%', '4%', 26, paper, 700, 'center'),
+            textElement(`${index + 1}/${sceneCount}`, time, localDuration, '18%', '20%', '16%', '4%', 26, paper, 700, '50%'),
             textElement(scene.onScreenText || reel.title, time, localDuration, '50%', '36%', '80%', '22%', 62, ink, 700),
             textElement(scene.voiceOver || reel.caption, time, localDuration, '50%', '58%', '80%', '19%', 34, muted, 400),
             textElement(scene.productionNote || reel.objective, time, localDuration, '50%', '79%', '76%', '9%', 25, muted, 400),
@@ -503,8 +516,8 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
         textElement(brandName, finalTime, finalDuration, '50%', '14%', '80%', '6%', 44, ink, 700),
         textElement(reel.creativePackage.coverText || 'Tu edificio, en una sola plataforma', finalTime, finalDuration, '50%', '34%', '80%', '20%', 68, ink, 700),
         textElement(reel.creativePackage.angle || reel.objective, finalTime, finalDuration, '50%', '57%', '80%', '16%', 34, muted, 400),
-        textElement(reel.creativePackage.coverText || 'Agenda una demo guiada', finalTime, finalDuration, '50%', '76%', '80%', '7%', 40, paper, 700, 'center'),
-        textElement(website, finalTime, finalDuration, '50%', '86%', '80%', '7%', 48, copper, 700, 'center'),
+        textElement(reel.creativePackage.coverText || 'Agenda una demo guiada', finalTime, finalDuration, '50%', '76%', '80%', '7%', 40, paper, 700, '50%'),
+        textElement(website, finalTime, finalDuration, '50%', '86%', '80%', '7%', 48, copper, 700, '50%'),
     );
 
     const musicUrl = process.env.CREATOMATE_MUSIC_URL;
@@ -617,9 +630,7 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
         body: JSON.stringify(useTemplate ? {
             template_id: templateId,
             modifications: buildCreatomateModifications(reel),
-        } : {
-            source: buildCreatomateRenderScript(reel),
-        }),
+        } : buildCreatomateRenderScript(reel)),
     });
 
     const data = await response.json().catch(() => ({})) as unknown;

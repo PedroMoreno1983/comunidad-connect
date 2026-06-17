@@ -20,6 +20,7 @@ import {
   Send,
   Sparkles,
   Timer,
+  Trash2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -528,7 +529,8 @@ export default function MarketingReelsPage() {
     }
   }
 
-  async function runReelAction(action: "approve" | "render" | "publish", reelId: string) {
+  async function runReelAction(action: "approve" | "render" | "publish" | "delete", reelId: string) {
+    if (action === "delete" && !window.confirm("Borrar este reel del historial?")) return;
     setActionLoading(`${action}:${reelId}`);
     setError("");
     try {
@@ -539,6 +541,7 @@ export default function MarketingReelsPage() {
         setActionLoading(`upload:${reelId}`);
         await uploadBrowserRender(updated, video);
       }
+      if (action === "delete") setNotice("Reel borrado del historial.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo procesar la accion.");
     } finally {
@@ -908,23 +911,32 @@ export default function MarketingReelsPage() {
               </div>
               <div className="mt-4 grid gap-2">
                 {reels.map(reel => (
-                  <button
+                  <div
                     key={reel.id}
-                    type="button"
-                    onClick={() => setSelectedReelId(reel.id)}
                     className={clsx(
-                      "rounded-lg border p-3 text-left transition hover:bg-[var(--cc-ivory)]",
+                      "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border p-3 transition hover:bg-[var(--cc-ivory)]",
                       selectedReel?.id === reel.id ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)]" : "border-[var(--cc-line)] bg-white"
                     )}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-sm font-semibold cc-text-primary">{reel.title}</span>
-                      <span className={clsx("shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold", statusClass(reel.status))}>{STATUS_LABELS[reel.status]}</span>
-                    </div>
-                    <p className="mt-1 text-xs cc-text-tertiary">
-                      {reel.scheduledAt ? `Agendado: ${formatDate(reel.scheduledAt)}` : `Creado: ${formatDate(reel.createdAt)}`}
-                    </p>
-                  </button>
+                    <button type="button" onClick={() => setSelectedReelId(reel.id)} className="min-w-0 text-left">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate text-sm font-semibold cc-text-primary">{reel.title}</span>
+                        <span className={clsx("shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold", statusClass(reel.status))}>{STATUS_LABELS[reel.status]}</span>
+                      </div>
+                      <p className="mt-1 text-xs cc-text-tertiary">
+                        {reel.scheduledAt ? `Agendado: ${formatDate(reel.scheduledAt)}` : `Creado: ${formatDate(reel.createdAt)}`}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => runReelAction("delete", reel.id)}
+                      disabled={Boolean(actionLoading)}
+                      title="Borrar reel"
+                      className="grid h-9 w-9 place-items-center rounded-md border border-rose-100 bg-white text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      {actionLoading === `delete:${reel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
                 ))}
                 {reels.length === 0 && (
                   <div className="rounded-lg border border-dashed border-[var(--cc-line)] p-4 text-sm cc-text-secondary">
