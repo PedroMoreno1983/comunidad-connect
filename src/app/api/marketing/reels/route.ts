@@ -5,6 +5,7 @@ import { recordOperationEvent } from '@/lib/operations/audit';
 import {
     approveMarketingReel,
     createMarketingReel,
+    deleteMarketingReel,
     getMarketingReelsDashboard,
     publishMarketingReel,
     renderMarketingReel,
@@ -63,6 +64,9 @@ export async function POST(req: NextRequest) {
         } else if (action === 'publish') {
             if (!reelId) throw new Error('Falta reelId.');
             reel = await publishMarketingReel(profile, reelId);
+        } else if (action === 'delete') {
+            if (!reelId) throw new Error('Falta reelId.');
+            reel = await deleteMarketingReel(profile, reelId);
         } else {
             throw new Error('Accion de marketing no soportada.');
         }
