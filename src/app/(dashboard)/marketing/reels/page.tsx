@@ -40,6 +40,7 @@ type DashboardResponse = {
   capabilities?: {
     aiScriptGeneration: boolean;
     videoRendering: boolean;
+    professionalAudio?: boolean;
     instagramPublishing: boolean;
     instagramOAuth: boolean;
     cronSecretConfigured: boolean;
@@ -104,6 +105,9 @@ function statusClass(status: MarketingReelStatus) {
 
 function getFriendlyFailure(message?: string | null) {
   if (!message) return "";
+  if (message.includes("CREATOMATE_API_KEY")) {
+    return "Falta la API key de Creatomate. Con esa clave el agente genera el MP4 por RenderScript sin que tengas que crear plantillas manuales.";
+  }
   if (message.includes("MARKETING_VIDEO_RENDER_WEBHOOK_URL")) {
     return "Render profesional pendiente. El preview del navegador solo sirve para revisar estructura; voz, musica, ritmo y MP4 final requieren un proveedor conectado.";
   }
@@ -114,13 +118,17 @@ function isWebmVideo(url?: string | null) {
   return Boolean(url?.toLowerCase().split("?")[0].endsWith(".webm"));
 }
 
-function getNextStep(reel: MarketingReelRecord, instagram: InstagramConnectionSummary) {
-  if (!reel.videoUrl) return "Aprueba y renderiza el video.";
+function getNextStep(reel: MarketingReelRecord, instagram: InstagramConnectionSummary, hasProfessionalRenderer: boolean) {
+  if (!reel.videoUrl) return hasProfessionalRenderer
+    ? "Aprueba el guion y genera el MP4 profesional con el agente."
+    : "Aprueba el guion. Falta conectar Creatomate para el MP4 profesional.";
   if (isWebmVideo(reel.videoUrl)) return "El video es vista previa WEBM. Para publicar automatico en Instagram necesitas MP4.";
   if (instagram.status !== "connected") return "Conecta Instagram para publicar desde el agente.";
   if (reel.status === "published") return "Publicado. Puedes generar una nueva variante.";
   if (reel.status === "scheduled") return `Agendado para ${formatDate(reel.scheduledAt)}.`;
-  return "Revisa el preview visual. Para audio y acabado profesional conecta MP4 pro.";
+  return hasProfessionalRenderer
+    ? "Revisa el MP4 final. Si esta bien, publicalo o dejalo agendado."
+    : "Revisa el preview visual. Para audio y acabado profesional conecta MP4 pro.";
 }
 
 function formatDate(value?: string | null) {
@@ -424,6 +432,8 @@ export default function MarketingReelsPage() {
     () => reels.find(reel => reel.id === selectedReelId) || reels[0] || null,
     [reels, selectedReelId]
   );
+  const hasProfessionalRenderer = Boolean(capabilities?.videoRendering);
+  const hasProfessionalAudio = Boolean(capabilities?.professionalAudio);
 
   function hydrate(data: DashboardResponse) {
     const nextReels = Array.isArray(data.reels) ? data.reels : [];
@@ -501,7 +511,7 @@ export default function MarketingReelsPage() {
       throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);
     }
     await loadDashboard();
-    setNotice("Preview visual guardado. Para audio, voz y musica real falta conectar el render MP4 profesional.");
+    setNotice("Preview visual guardado. Para audio, voz y musica real conecta Creatomate como render MP4 profesional.");
   }
 
   async function generate(event?: FormEvent<HTMLFormElement>) {
@@ -701,7 +711,7 @@ export default function MarketingReelsPage() {
                       <h2 className="mt-3 max-w-4xl text-2xl font-semibold leading-tight cc-text-primary">{selectedReel.title}</h2>
                       <p className="mt-2 max-w-4xl text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.angle}</p>
                       <p className="mt-3 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        Siguiente paso: <span className="font-semibold cc-text-primary">{getNextStep(selectedReel, instagram)}</span>
+                        Siguiente paso: <span className="font-semibold cc-text-primary">{getNextStep(selectedReel, instagram, hasProfessionalRenderer)}</span>
                       </p>
                       {selectedReel.failureReason && (
                         <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
@@ -760,7 +770,7 @@ export default function MarketingReelsPage() {
                         </button>
                         <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : "Renderizar preview"}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
                         </button>
                         <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -800,16 +810,22 @@ export default function MarketingReelsPage() {
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Audio</span>
-                          <span className="text-right font-semibold text-amber-700">Pendiente MP4 pro</span>
+                          <span className={clsx("text-right font-semibold", hasProfessionalAudio ? "text-emerald-700" : "text-amber-700")}>
+                            {hasProfessionalAudio ? "Conectado" : hasProfessionalRenderer ? "MP4 sin voz pro" : "Pendiente MP4 pro"}
+                          </span>
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
-                          <span className="text-right font-semibold text-amber-700">Requiere proveedor</span>
+                          <span className={clsx("text-right font-semibold", hasProfessionalRenderer ? "text-emerald-700" : "text-amber-700")}>
+                            {hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
+                          </span>
                         </p>
                       </div>
                       {selectedReel.videoUrl && (
                         <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                          Este preview sirve para revisar estructura. El reel final con audio requiere proveedor profesional.
+                          {hasProfessionalRenderer
+                            ? "El agente genera el MP4 desde instrucciones propias. Tu trabajo es revisar el video y decidir si se publica."
+                            : "Este preview sirve para revisar estructura. El reel final con audio requiere proveedor profesional."}
                         </p>
                       )}
                     </div>
@@ -856,7 +872,9 @@ export default function MarketingReelsPage() {
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        El preview del navegador no incluye audio confiable. El siguiente paso es conectar voz en off, musica y mezcla desde un renderizador MP4 profesional.
+                        {hasProfessionalRenderer
+                          ? "El agente envia narracion, textos, escenas y cierre a Creatomate. La voz o musica se activan con CREATOMATE_VOICE_PROVIDER o CREATOMATE_MUSIC_URL."
+                          : "El preview del navegador no incluye audio confiable. El siguiente paso es conectar voz en off, musica y mezcla desde un renderizador MP4 profesional."}
                       </p>
                     </div>
                   </aside>

@@ -184,9 +184,14 @@ export async function getMarketingReelsDashboard(profile: MarketingProfile) {
 }
 
 export function getMarketingCapabilities() {
+    const useCreatomateTemplate = process.env.CREATOMATE_USE_TEMPLATE === 'true';
+    const creatomateReady = Boolean(process.env.CREATOMATE_API_KEY)
+        && (!useCreatomateTemplate || Boolean(process.env.CREATOMATE_TEMPLATE_ID));
+
     return {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
-        videoRendering: Boolean(process.env.CREATOMATE_API_KEY && process.env.CREATOMATE_TEMPLATE_ID) || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
+        videoRendering: creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
+        professionalAudio: Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
         instagramOAuth: isInstagramOAuthConfigured(),
         cronSecretConfigured: Boolean(process.env.CRON_SECRET),
@@ -351,6 +356,191 @@ function buildCreatomateModifications(reel: MarketingReelRecord) {
     };
 }
 
+type CreatomateElement = Record<string, unknown>;
+
+type CreatomateRenderScript = {
+    output_format: 'mp4';
+    width: number;
+    height: number;
+    duration: number;
+    elements: CreatomateElement[];
+};
+
+function clampText(value: string, maxLength: number) {
+    const clean = value.replace(/\s+/g, ' ').trim();
+    return clean.length > maxLength ? `${clean.slice(0, Math.max(0, maxLength - 1)).trim()}...` : clean;
+}
+
+function normalizeDurationSeconds(reel: MarketingReelRecord) {
+    return Math.max(15, Math.min(60, Math.round(reel.durationSeconds || reel.renderSpec.durationSeconds || 35)));
+}
+
+function rectangleElement(time: number, duration: number, fillColor: string): CreatomateElement {
+    return {
+        type: 'shape',
+        time,
+        duration,
+        width: '100%',
+        height: '100%',
+        x: '50%',
+        y: '50%',
+        path: 'M 0% 0% L 100% 0% L 100% 100% L 0% 100% Z',
+        fill_color: fillColor,
+    };
+}
+
+function boxElement(time: number, duration: number, x: string, y: string, width: string, height: string, fillColor: string): CreatomateElement {
+    return {
+        type: 'shape',
+        time,
+        duration,
+        width,
+        height,
+        x,
+        y,
+        path: 'M 0% 0% L 100% 0% L 100% 100% L 0% 100% Z',
+        fill_color: fillColor,
+    };
+}
+
+function circleElement(time: number, duration: number, x: string, y: string, size: string, fillColor: string): CreatomateElement {
+    return {
+        type: 'shape',
+        time,
+        duration,
+        width: size,
+        height: size,
+        x,
+        y,
+        path: 'M 50% 0% C 77.6% 0% 100% 22.4% 100% 50% C 100% 77.6% 77.6% 100% 50% 100% C 22.4% 100% 0% 77.6% 0% 50% C 0% 22.4% 22.4% 0% 50% 0% Z',
+        fill_color: fillColor,
+    };
+}
+
+function textElement(
+    text: string,
+    time: number,
+    duration: number,
+    x: string,
+    y: string,
+    width: string,
+    height: string,
+    fontSize: number,
+    fillColor: string,
+    fontWeight: number,
+    alignment: 'left' | 'center' = 'left',
+): CreatomateElement {
+    return {
+        type: 'text',
+        text: clampText(text, 220),
+        time,
+        duration,
+        x,
+        y,
+        width,
+        height,
+        fill_color: fillColor,
+        font_family: 'Arial',
+        font_size: fontSize,
+        font_weight: fontWeight,
+        x_alignment: alignment,
+        y_alignment: 'center',
+        text_wrap: true,
+    };
+}
+
+function buildVoiceoverText(reel: MarketingReelRecord) {
+    const sceneVoice = reel.creativePackage.scenes
+        .map(scene => scene.voiceOver)
+        .filter(Boolean)
+        .join(' ');
+    return clampText(`${sceneVoice} ${reel.creativePackage.coverText}. ${reel.renderSpec.brand.domain}.`, 1600);
+}
+
+function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRenderScript {
+    const width = reel.renderSpec.width || 1080;
+    const height = reel.renderSpec.height || 1920;
+    const duration = normalizeDurationSeconds(reel);
+    const brand = reel.renderSpec.brand;
+    const brandName = brand.name || 'ConviveConnect';
+    const website = brand.domain || 'conviveconnect.com';
+    const copper = brand.primaryColor || '#B5664E';
+    const ink = '#1F1713';
+    const muted = '#73584D';
+    const paper = brand.backgroundColor || '#FBF8F3';
+    const scenes = reel.renderSpec.scenes.length > 0
+        ? reel.renderSpec.scenes
+        : reel.creativePackage.scenes.map((scene, index) => ({ ...scene, index }));
+    const visibleScenes = scenes.slice(0, Math.max(3, Math.min(5, scenes.length || 5)));
+    const sceneCount = Math.max(1, visibleScenes.length + 1);
+    const sceneDuration = duration / sceneCount;
+    const elements: CreatomateElement[] = [
+        rectangleElement(0, duration, paper),
+        circleElement(0, duration, '86%', '12%', '36%', '#EBD6CD'),
+        circleElement(0, duration, '14%', '88%', '42%', '#EFE7DF'),
+    ];
+
+    visibleScenes.forEach((scene, index) => {
+        const time = Number((index * sceneDuration).toFixed(2));
+        const localDuration = Number((sceneDuration + 0.2).toFixed(2));
+        elements.push(
+            boxElement(time, localDuration, '50%', '50%', '86%', '78%', '#FFFFFF'),
+            boxElement(time, localDuration, '18%', '20%', '16%', '4%', copper),
+            textElement(brandName, time, localDuration, '36%', '9%', '52%', '5%', 38, ink, 700),
+            textElement('OPERACION DE CONDOMINIOS', time, localDuration, '39%', '12%', '58%', '3%', 19, copper, 700),
+            textElement(`${index + 1}/${sceneCount}`, time, localDuration, '18%', '20%', '16%', '4%', 26, paper, 700, 'center'),
+            textElement(scene.onScreenText || reel.title, time, localDuration, '50%', '36%', '80%', '22%', 62, ink, 700),
+            textElement(scene.voiceOver || reel.caption, time, localDuration, '50%', '58%', '80%', '19%', 34, muted, 400),
+            textElement(scene.productionNote || reel.objective, time, localDuration, '50%', '79%', '76%', '9%', 25, muted, 400),
+            textElement(`${reel.creativePackage.coverText || 'Agenda una demo'} | ${website}`, time, localDuration, '50%', '92%', '80%', '5%', 31, ink, 700),
+        );
+    });
+
+    const finalTime = Number((visibleScenes.length * sceneDuration).toFixed(2));
+    const finalDuration = Math.max(3, Number((duration - finalTime).toFixed(2)));
+    elements.push(
+        boxElement(finalTime, finalDuration, '50%', '81%', '78%', '14%', ink),
+        textElement(brandName, finalTime, finalDuration, '50%', '14%', '80%', '6%', 44, ink, 700),
+        textElement(reel.creativePackage.coverText || 'Tu edificio, en una sola plataforma', finalTime, finalDuration, '50%', '34%', '80%', '20%', 68, ink, 700),
+        textElement(reel.creativePackage.angle || reel.objective, finalTime, finalDuration, '50%', '57%', '80%', '16%', 34, muted, 400),
+        textElement(reel.creativePackage.coverText || 'Agenda una demo guiada', finalTime, finalDuration, '50%', '76%', '80%', '7%', 40, paper, 700, 'center'),
+        textElement(website, finalTime, finalDuration, '50%', '86%', '80%', '7%', 48, copper, 700, 'center'),
+    );
+
+    const musicUrl = process.env.CREATOMATE_MUSIC_URL;
+    if (musicUrl) {
+        elements.push({
+            type: 'audio',
+            source: musicUrl,
+            time: 0,
+            duration,
+            volume: '24%',
+            audio_fade_in: 1,
+            audio_fade_out: 1,
+        });
+    }
+
+    const voiceProvider = process.env.CREATOMATE_VOICE_PROVIDER;
+    if (voiceProvider) {
+        elements.push({
+            type: 'audio',
+            provider: voiceProvider,
+            text: buildVoiceoverText(reel),
+            time: 0,
+            duration,
+            volume: '88%',
+        });
+    }
+
+    return {
+        output_format: 'mp4',
+        width,
+        height,
+        duration,
+        elements,
+    };
+}
+
 function normalizeBearerToken(value: string) {
     return value.trim().replace(/^Bearer\s+/i, '').trim();
 }
@@ -410,8 +600,12 @@ function getProviderErrorMessage(data: unknown, fallback: string) {
 async function requestCreatomateRender(reel: MarketingReelRecord): Promise<RenderResult> {
     const apiKey = process.env.CREATOMATE_API_KEY ? normalizeBearerToken(process.env.CREATOMATE_API_KEY) : '';
     const templateId = process.env.CREATOMATE_TEMPLATE_ID;
-    if (!apiKey || !templateId) {
-        throw new Error('Falta configurar CREATOMATE_API_KEY y CREATOMATE_TEMPLATE_ID para generar el MP4 profesional.');
+    const useTemplate = process.env.CREATOMATE_USE_TEMPLATE === 'true';
+    if (!apiKey) {
+        throw new Error('Falta configurar CREATOMATE_API_KEY para que el agente genere el MP4 profesional.');
+    }
+    if (useTemplate && !templateId) {
+        throw new Error('CREATOMATE_USE_TEMPLATE esta activo, pero falta CREATOMATE_TEMPLATE_ID.');
     }
 
     const response = await fetch(process.env.CREATOMATE_RENDERS_URL || 'https://api.creatomate.com/v2/renders', {
@@ -420,9 +614,11 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
             'Content-Type': 'application/json',
             Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(useTemplate ? {
             template_id: templateId,
             modifications: buildCreatomateModifications(reel),
+        } : {
+            source: buildCreatomateRenderScript(reel),
         }),
     });
 
@@ -445,13 +641,13 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
 }
 
 async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
-    if (process.env.CREATOMATE_API_KEY && process.env.CREATOMATE_TEMPLATE_ID) {
+    if (process.env.CREATOMATE_API_KEY) {
         return requestCreatomateRender(reel);
     }
 
     const webhookUrl = process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL;
     if (!webhookUrl) {
-        throw new Error('Falta configurar CREATOMATE_API_KEY y CREATOMATE_TEMPLATE_ID, o MARKETING_VIDEO_RENDER_WEBHOOK_URL, para generar el MP4 final.');
+        throw new Error('Falta configurar CREATOMATE_API_KEY, o MARKETING_VIDEO_RENDER_WEBHOOK_URL, para generar el MP4 final.');
     }
 
     const response = await fetch(webhookUrl, {
