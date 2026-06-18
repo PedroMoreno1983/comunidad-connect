@@ -42,6 +42,7 @@ type DashboardResponse = {
     aiScriptGeneration: boolean;
     videoRendering: boolean;
     professionalAudio?: boolean;
+    videoAiGeneration?: boolean;
     instagramPublishing: boolean;
     instagramOAuth: boolean;
     cronSecretConfigured: boolean;
@@ -435,6 +436,7 @@ export default function MarketingReelsPage() {
   );
   const hasProfessionalRenderer = Boolean(capabilities?.videoRendering);
   const hasProfessionalAudio = Boolean(capabilities?.professionalAudio);
+  const hasVideoAiGeneration = Boolean(capabilities?.videoAiGeneration);
 
   function hydrate(data: DashboardResponse) {
     const nextReels = Array.isArray(data.reels) ? data.reels : [];
@@ -580,7 +582,7 @@ export default function MarketingReelsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <CapabilityPill ready label="Render rapido" />
+            <CapabilityPill ready={hasVideoAiGeneration} label="Video IA" />
             <CapabilityPill ready={instagram.status === "connected" || Boolean(capabilities?.instagramPublishing)} label="Instagram" />
             <CapabilityPill ready={Boolean(capabilities?.videoRendering)} label="MP4 pro" />
             <CapabilityPill ready={Boolean(capabilities?.cronSecretConfigured)} label="Agenda" />
@@ -773,7 +775,7 @@ export default function MarketingReelsPage() {
                         </button>
                         <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : hasVideoAiGeneration ? "Generar video IA completo" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
                         </button>
                         <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -814,13 +816,13 @@ export default function MarketingReelsPage() {
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Audio</span>
                           <span className={clsx("text-right font-semibold", hasProfessionalAudio ? "text-emerald-700" : "text-amber-700")}>
-                            {hasProfessionalAudio ? "Conectado" : hasProfessionalRenderer ? "MP4 sin voz pro" : "Pendiente MP4 pro"}
+                            {hasProfessionalAudio ? "Voz y musica IA" : hasProfessionalRenderer ? "MP4 sin voz pro" : "Pendiente MP4 pro"}
                           </span>
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
                           <span className={clsx("text-right font-semibold", hasProfessionalRenderer ? "text-emerald-700" : "text-amber-700")}>
-                            {hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
+                            {hasVideoAiGeneration ? "HeyGen" : hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
                           </span>
                         </p>
                       </div>
@@ -875,7 +877,9 @@ export default function MarketingReelsPage() {
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        {hasProfessionalRenderer
+                        {hasVideoAiGeneration
+                          ? "El agente envia el brief completo a HeyGen para crear video, voz, subtitulos, musica y cierre de marca. Tu solo revisas el MP4 final."
+                          : hasProfessionalRenderer
                           ? "El agente envia narracion, textos, escenas y cierre a Creatomate. La voz o musica se activan con CREATOMATE_VOICE_PROVIDER o CREATOMATE_MUSIC_URL."
                           : "El preview del navegador no incluye audio confiable. El siguiente paso es conectar voz en off, musica y mezcla desde un renderizador MP4 profesional."}
                       </p>
