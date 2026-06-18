@@ -187,11 +187,13 @@ export function getMarketingCapabilities() {
     const useCreatomateTemplate = process.env.CREATOMATE_USE_TEMPLATE === 'true';
     const creatomateReady = Boolean(process.env.CREATOMATE_API_KEY)
         && (!useCreatomateTemplate || Boolean(process.env.CREATOMATE_TEMPLATE_ID));
+    const heygenReady = Boolean(process.env.HEYGEN_API_KEY);
 
     return {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
-        videoRendering: creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
-        professionalAudio: Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
+        videoRendering: heygenReady || creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
+        professionalAudio: heygenReady || Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
+        videoAiGeneration: heygenReady,
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
         instagramOAuth: isInstagramOAuthConfigured(),
         cronSecretConfigured: Boolean(process.env.CRON_SECRET),
@@ -611,6 +613,129 @@ function getProviderErrorMessage(data: unknown, fallback: string) {
     return message || `${fallback} Respuesta: ${compactJson(data)}`;
 }
 
+function buildHeyGenPrompt(reel: MarketingReelRecord) {
+    const scenes = reel.creativePackage.scenes
+        .map((scene, index) => [
+            `Escena ${index + 1} (${scene.time})`,
+            `Texto en pantalla: ${scene.onScreenText}`,
+            `Narracion: ${scene.voiceOver}`,
+            `Visual: ${scene.visual}`,
+            `Nota: ${scene.productionNote}`,
+        ].join('\n'))
+        .join('\n\n');
+
+    return [
+        'Crea un reel vertical 9:16 listo para Instagram Reels para promocionar ConviveConnect.',
+        'El video debe sentirse premium, claro, moderno y comercial para administradores de condominios en Chile.',
+        'Incluye voz en off profesional en espanol neutro latino, subtitulos quemados, ritmo dinamico, musica corporativa moderna de fondo y cierre con marca.',
+        'No uses estetica infantil ni videojuego; evita audio tipo Atari. Usa visuales SaaS, edificios, paneles operativos, trazabilidad, permisos y administracion moderna.',
+        `Titulo: ${reel.title}`,
+        `Objetivo: ${reel.objective}`,
+        `Angulo: ${reel.creativePackage.angle}`,
+        `Hook: ${reel.creativePackage.hook}`,
+        `Duracion objetivo: ${normalizeDurationSeconds(reel)} segundos`,
+        `Marca: ${reel.renderSpec.brand.name || 'ConviveConnect'}`,
+        `Sitio: ${reel.renderSpec.brand.domain || 'conviveconnect.com'}`,
+        `CTA final: ${reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com'}`,
+        `Escenas:\n${scenes}`,
+        `Caption de referencia: ${reel.caption}`,
+        'Entrega un MP4 vertical final. El usuario solo revisara el resultado, no editara plantillas.',
+    ].join('\n\n').slice(0, 10000);
+}
+
+function getHeyGenVideoUrl(data: unknown) {
+    const root = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    const row = root.data && typeof root.data === 'object' ? root.data as Record<string, unknown> : root;
+    return asString(row.captioned_video_url)
+        || asString(row.video_url)
+        || asString(row.url)
+        || asString(row.output_url);
+}
+
+function getHeyGenVideoId(data: unknown) {
+    const root = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    const row = root.data && typeof root.data === 'object' ? root.data as Record<string, unknown> : root;
+    return asString(row.video_id) || asString(row.id);
+}
+
+function getHeyGenFailure(data: unknown) {
+    const root = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    const row = root.data && typeof root.data === 'object' ? root.data as Record<string, unknown> : root;
+    return asString(row.failure_message) || asString(row.failure_code);
+}
+
+async function waitForHeyGenVideo(videoId: string, apiKey: string) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+        await sleep(5000);
+        const response = await fetch(`https://api.heygen.com/v3/videos/${encodeURIComponent(videoId)}`, {
+            headers: { 'x-api-key': apiKey },
+        });
+        const data = await response.json().catch(() => ({})) as unknown;
+        if (!response.ok) continue;
+        const failure = getHeyGenFailure(data);
+        if (failure) throw new Error(`HeyGen no pudo generar el video: ${failure}`);
+        const videoUrl = getHeyGenVideoUrl(data);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                thumbnailUrl: (() => {
+                    const root = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+                    const row = root.data && typeof root.data === 'object' ? root.data as Record<string, unknown> : root;
+                    return asString(row.thumbnail_url) || null;
+                })(),
+            };
+        }
+    }
+    return null;
+}
+
+async function requestHeyGenRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    const apiKey = process.env.HEYGEN_API_KEY?.trim();
+    if (!apiKey) {
+        throw new Error('Falta configurar HEYGEN_API_KEY para que el agente genere el video completo.');
+    }
+
+    const body: Record<string, unknown> = {
+        prompt: buildHeyGenPrompt(reel),
+        mode: 'generate',
+        orientation: 'portrait',
+        incognito_mode: true,
+    };
+    if (process.env.HEYGEN_AVATAR_ID) body.avatar_id = process.env.HEYGEN_AVATAR_ID;
+    if (process.env.HEYGEN_VOICE_ID) body.voice_id = process.env.HEYGEN_VOICE_ID;
+    if (process.env.HEYGEN_STYLE_ID) body.style_id = process.env.HEYGEN_STYLE_ID;
+    if (process.env.HEYGEN_BRAND_KIT_ID) body.brand_kit_id = process.env.HEYGEN_BRAND_KIT_ID;
+
+    const response = await fetch('https://api.heygen.com/v3/video-agents', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+        },
+        body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({})) as unknown;
+    if (!response.ok) {
+        throw new Error(getProviderErrorMessage(data, 'HeyGen no pudo iniciar el video completo.'));
+    }
+
+    const videoId = getHeyGenVideoId(data);
+    if (!videoId) {
+        throw new Error(getProviderErrorMessage(data, 'HeyGen no devolvio video_id para consultar el resultado.'));
+    }
+
+    const finished = await waitForHeyGenVideo(videoId, apiKey);
+    if (!finished?.videoUrl) {
+        throw new Error(`HeyGen inicio el video (${videoId}) pero aun no devolvio MP4. Espera unos segundos y vuelve a renderizar si no aparece.`);
+    }
+
+    return {
+        videoUrl: finished.videoUrl,
+        thumbnailUrl: finished.thumbnailUrl,
+        providerJobId: videoId,
+    };
+}
+
 async function requestCreatomateRender(reel: MarketingReelRecord): Promise<RenderResult> {
     const apiKey = process.env.CREATOMATE_API_KEY ? normalizeBearerToken(process.env.CREATOMATE_API_KEY) : '';
     const templateId = process.env.CREATOMATE_TEMPLATE_ID;
@@ -653,6 +778,10 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
 }
 
 async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    if (process.env.HEYGEN_API_KEY) {
+        return requestHeyGenRender(reel);
+    }
+
     if (process.env.CREATOMATE_API_KEY) {
         return requestCreatomateRender(reel);
     }
