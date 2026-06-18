@@ -302,12 +302,23 @@ export async function approveMarketingReel(profile: MarketingProfile, reelId: st
 
 export async function deleteMarketingReel(profile: MarketingProfile, reelId: string) {
     requireAdmin(profile);
-    const reel = await loadReelForCommunity(reelId, communityIdFor(profile));
-    const { error } = await getSupabaseAdmin()
+    const communityId = communityIdFor(profile);
+    const reel = await loadReelForCommunity(reelId, communityId);
+    const admin = getSupabaseAdmin();
+    const storagePrefix = `${communityId}/${reel.id}`;
+    const { data: storedFiles } = await admin.storage
+        .from('marketing-reels')
+        .list(storagePrefix, { limit: 100 });
+    const filesToRemove = (storedFiles || []).map(file => `${storagePrefix}/${file.name}`).filter(Boolean);
+    if (filesToRemove.length > 0) {
+        await admin.storage.from('marketing-reels').remove(filesToRemove);
+    }
+
+    const { error } = await admin
         .from('marketing_reels')
         .delete()
         .eq('id', reel.id)
-        .eq('community_id', communityIdFor(profile));
+        .eq('community_id', communityId);
 
     if (error) throw error;
     return reel;
@@ -318,6 +329,15 @@ type RenderResult = {
     thumbnailUrl?: string | null;
     providerJobId?: string | null;
 };
+
+class PendingVideoRenderError extends Error {
+    providerJobId: string;
+
+    constructor(providerJobId: string) {
+        super(`HEYGEN_PENDING:${providerJobId}`);
+        this.providerJobId = providerJobId;
+    }
+}
 
 function firstSceneText(reel: MarketingReelRecord, index: number) {
     return reel.creativePackage.scenes[index]?.onScreenText
@@ -664,6 +684,14 @@ function getHeyGenFailure(data: unknown) {
     return asString(row.failure_message) || asString(row.failure_code);
 }
 
+function getPendingHeyGenJobId(reel: MarketingReelRecord) {
+    const marker = 'HEYGEN_PENDING:';
+    const detail = reel.failureReason || '';
+    const index = detail.indexOf(marker);
+    if (index < 0) return '';
+    return detail.slice(index + marker.length).split(/\s+/)[0]?.trim() || '';
+}
+
 async function waitForHeyGenVideo(videoId: string, apiKey: string) {
     for (let attempt = 0; attempt < 12; attempt += 1) {
         await sleep(5000);
@@ -693,6 +721,17 @@ async function requestHeyGenRender(reel: MarketingReelRecord): Promise<RenderRes
     const apiKey = process.env.HEYGEN_API_KEY?.trim();
     if (!apiKey) {
         throw new Error('Falta configurar HEYGEN_API_KEY para que el agente genere el video completo.');
+    }
+
+    const pendingJobId = getPendingHeyGenJobId(reel);
+    if (pendingJobId) {
+        const finished = await waitForHeyGenVideo(pendingJobId, apiKey);
+        if (!finished?.videoUrl) throw new PendingVideoRenderError(pendingJobId);
+        return {
+            videoUrl: finished.videoUrl,
+            thumbnailUrl: finished.thumbnailUrl,
+            providerJobId: pendingJobId,
+        };
     }
 
     const body: Record<string, unknown> = {
@@ -726,7 +765,7 @@ async function requestHeyGenRender(reel: MarketingReelRecord): Promise<RenderRes
 
     const finished = await waitForHeyGenVideo(videoId, apiKey);
     if (!finished?.videoUrl) {
-        throw new Error(`HeyGen inicio el video (${videoId}) pero aun no devolvio MP4. Espera unos segundos y vuelve a renderizar si no aparece.`);
+        throw new PendingVideoRenderError(videoId);
     }
 
     return {
@@ -834,6 +873,12 @@ export async function renderMarketingReel(profile: MarketingProfile, reelId: str
             failure_reason: null,
         });
     } catch (error) {
+        if (error instanceof PendingVideoRenderError) {
+            return updateReel(reel.id, {
+                status: 'rendering',
+                failure_reason: `HEYGEN_PENDING:${error.providerJobId}`,
+            });
+        }
         const message = error instanceof Error ? error.message : 'No se pudo generar el video final.';
         return updateReel(reel.id, { status: 'blocked', failure_reason: message });
     }

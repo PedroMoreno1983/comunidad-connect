@@ -107,6 +107,9 @@ function statusClass(status: MarketingReelStatus) {
 
 function getFriendlyFailure(message?: string | null) {
   if (!message) return "";
+  if (message.includes("HEYGEN_PENDING:")) {
+    return "HeyGen sigue generando el MP4. Espera unos segundos y vuelve a pulsar Generar video IA completo para revisar el mismo trabajo.";
+  }
   if (message.includes("CREATOMATE_API_KEY")) {
     return "Falta la API key de Creatomate. Con esa clave el agente genera el MP4 por RenderScript sin que tengas que crear plantillas manuales.";
   }
@@ -543,7 +546,11 @@ export default function MarketingReelsPage() {
         setActionLoading(`upload:${reelId}`);
         await uploadBrowserRender(updated, video);
       }
-      if (action === "delete") setNotice("Reel borrado del historial.");
+      if (action === "delete") {
+        setReels(current => current.filter(reel => reel.id !== reelId));
+        if (selectedReelId === reelId) setSelectedReelId(null);
+        setNotice("Reel borrado del historial.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo procesar la accion.");
     } finally {
