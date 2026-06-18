@@ -637,9 +637,23 @@ function getProviderErrorMessage(data: unknown, fallback: string) {
 
 function getHiggsfieldCredentials() {
     const direct = process.env.HF_CREDENTIALS || process.env.HIGGSFIELD_CREDENTIALS;
-    if (direct?.includes(':')) return direct.trim();
-    const key = process.env.HF_API_KEY || process.env.HIGGSFIELD_API_KEY || process.env.HIGGSFIELD_KEY_ID;
-    const secret = process.env.HF_API_SECRET || process.env.HIGGSFIELD_API_SECRET || process.env.HIGGSFIELD_KEY_SECRET;
+    if (direct?.includes(':')) {
+        const [keyId, ...secretParts] = direct.split(':');
+        const keySecret = secretParts.join(':');
+        if (keyId.trim() && keySecret.trim()) return `${keyId.trim()}:${keySecret.trim()}`;
+    }
+    const key = process.env.HF_API_KEY_ID
+        || process.env.HF_KEY_ID
+        || process.env.HF_API_KEY
+        || process.env.HIGGSFIELD_API_KEY_ID
+        || process.env.HIGGSFIELD_KEY_ID
+        || process.env.HIGGSFIELD_API_KEY;
+    const secret = process.env.HF_API_KEY_SECRET
+        || process.env.HF_KEY_SECRET
+        || process.env.HF_API_SECRET
+        || process.env.HIGGSFIELD_API_KEY_SECRET
+        || process.env.HIGGSFIELD_KEY_SECRET
+        || process.env.HIGGSFIELD_API_SECRET;
     return key && secret ? `${key.trim()}:${secret.trim()}` : '';
 }
 
