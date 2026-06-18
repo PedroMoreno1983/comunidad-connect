@@ -786,7 +786,7 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<Rende
 
     const imageResult = await requestHiggsfieldEndpoint('/v1/text2image/soul', {
         prompt: buildHiggsfieldImagePrompt(reel),
-        width_and_height: '720x1280',
+        width_and_height: process.env.HIGGSFIELD_IMAGE_SIZE || '1152x2048',
         quality: '720p',
         batch_size: 1,
         enhance_prompt: true,
