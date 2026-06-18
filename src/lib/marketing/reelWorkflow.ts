@@ -188,12 +188,14 @@ export function getMarketingCapabilities() {
     const creatomateReady = Boolean(process.env.CREATOMATE_API_KEY)
         && (!useCreatomateTemplate || Boolean(process.env.CREATOMATE_TEMPLATE_ID));
     const heygenReady = Boolean(process.env.HEYGEN_API_KEY);
+    const higgsfieldReady = Boolean(getHiggsfieldCredentials());
 
     return {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
-        videoRendering: heygenReady || creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
-        professionalAudio: heygenReady || Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
-        videoAiGeneration: heygenReady,
+        videoRendering: higgsfieldReady || heygenReady || creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
+        professionalAudio: (!higgsfieldReady && heygenReady) || Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
+        videoAiGeneration: higgsfieldReady || heygenReady,
+        videoAiProvider: higgsfieldReady ? 'higgsfield' : heygenReady ? 'heygen' : null,
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
         instagramOAuth: isInstagramOAuthConfigured(),
         cronSecretConfigured: Boolean(process.env.CRON_SECRET),
@@ -633,6 +635,123 @@ function getProviderErrorMessage(data: unknown, fallback: string) {
     return message || `${fallback} Respuesta: ${compactJson(data)}`;
 }
 
+function getHiggsfieldCredentials() {
+    const direct = process.env.HF_CREDENTIALS || process.env.HIGGSFIELD_CREDENTIALS;
+    if (direct?.includes(':')) return direct.trim();
+    const key = process.env.HF_API_KEY || process.env.HIGGSFIELD_API_KEY || process.env.HIGGSFIELD_KEY_ID;
+    const secret = process.env.HF_API_SECRET || process.env.HIGGSFIELD_API_SECRET || process.env.HIGGSFIELD_KEY_SECRET;
+    return key && secret ? `${key.trim()}:${secret.trim()}` : '';
+}
+
+function buildConviveBrandDirection() {
+    return [
+        'Direccion de arte ConviveConnect obligatoria:',
+        'Paleta: fondo marfil calido #FAF7F1 y #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 y #1F1713, cobre terracota #C8705A y #B45F4B como acento, verde grisaceo sobrio #6E8268 solo para confirmaciones.',
+        'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Mucho espacio en blanco, bordes finos, cards de radio 8-10px, sombras suaves, dashboards reales.',
+        'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
+        'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
+    ].join('\n');
+}
+
+function buildHiggsfieldImagePrompt(reel: MarketingReelRecord) {
+    const firstScenes = reel.creativePackage.scenes
+        .slice(0, 3)
+        .map(scene => scene.onScreenText)
+        .filter(Boolean)
+        .join(' | ');
+    return [
+        'Create a premium vertical 9:16 hero frame for an Instagram Reel promoting ConviveConnect, a SaaS platform for condominium operations in Chile.',
+        buildConviveBrandDirection(),
+        'Visual content: clean admin dashboard mockups, audit trail cards, permissions chips, checklist panels, condominium building context, operational clarity.',
+        'Composition: editorial SaaS layout, readable Spanish text overlays, subtle terracotta accents, ivory background, no clutter.',
+        `Brand: ${reel.renderSpec.brand.name || 'ConviveConnect'}`,
+        `Headline: ${reel.creativePackage.hook || reel.title}`,
+        `Scene text references: ${firstScenes}`,
+        `Final URL: ${reel.renderSpec.brand.domain || 'conviveconnect.com'}`,
+    ].join('\n\n').slice(0, 6000);
+}
+
+function buildHiggsfieldVideoPrompt(reel: MarketingReelRecord) {
+    const sceneMotion = reel.creativePackage.scenes
+        .slice(0, 5)
+        .map((scene, index) => `Scene ${index + 1}: ${scene.visual}. On-screen Spanish text: ${scene.onScreenText}.`)
+        .join('\n');
+    return [
+        'Animate this branded SaaS hero frame into a premium vertical Instagram Reel.',
+        buildConviveBrandDirection(),
+        'Use smooth camera movement, subtle parallax, dashboard panels sliding softly, readable Spanish captions, no chaotic effects.',
+        'Keep ConviveConnect colors and typography style visible throughout.',
+        'End with a clean brand close: ConviveConnect and conviveconnect.com.',
+        `Target duration: ${normalizeDurationSeconds(reel)} seconds.`,
+        sceneMotion,
+    ].join('\n\n').slice(0, 6000);
+}
+
+function getHiggsfieldImageUrl(data: unknown) {
+    if (!data || typeof data !== 'object') return '';
+    const row = data as Record<string, unknown>;
+    const images = Array.isArray(row.images) ? row.images : [];
+    const firstImage = images[0] && typeof images[0] === 'object' ? images[0] as Record<string, unknown> : null;
+    return asString(firstImage?.url);
+}
+
+function getHiggsfieldVideoUrl(data: unknown) {
+    if (!data || typeof data !== 'object') return '';
+    const row = data as Record<string, unknown>;
+    const video = row.video && typeof row.video === 'object' ? row.video as Record<string, unknown> : null;
+    return asString(video?.url);
+}
+
+async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    const credentials = getHiggsfieldCredentials();
+    if (!credentials) {
+        throw new Error('Falta configurar HF_CREDENTIALS o HIGGSFIELD_CREDENTIALS con formato KEY_ID:KEY_SECRET.');
+    }
+
+    const { createHiggsfieldClient } = await import('@higgsfield/client/v2');
+    const client = createHiggsfieldClient({
+        credentials,
+        timeout: 120000,
+        pollInterval: 3000,
+        maxPollTime: 240000,
+    });
+
+    const imageResult = await client.subscribe('flux-pro/kontext/max/text-to-image', {
+        input: {
+            aspect_ratio: '9:16',
+            prompt: buildHiggsfieldImagePrompt(reel),
+            safety_tolerance: 2,
+            seed: Math.floor(Date.now() % 100000),
+        },
+        withPolling: true,
+    });
+    const imageUrl = getHiggsfieldImageUrl(imageResult);
+    if (!imageUrl) {
+        throw new Error(getProviderErrorMessage(imageResult, 'Higgsfield genero la imagen base pero no devolvio URL.'));
+    }
+
+    const videoResult = await client.subscribe('/v1/image2video/dop', {
+        input: {
+            model: process.env.HIGGSFIELD_DOP_MODEL || 'dop-turbo',
+            prompt: buildHiggsfieldVideoPrompt(reel),
+            input_images: [{ type: 'image_url', image_url: imageUrl }],
+            enhance_prompt: true,
+            seed: Math.floor((Date.now() + 17) % 100000),
+        },
+        withPolling: true,
+    });
+    const videoUrl = getHiggsfieldVideoUrl(videoResult);
+    if (!videoUrl) {
+        throw new Error(getProviderErrorMessage(videoResult, 'Higgsfield no devolvio URL de video.'));
+    }
+
+    return {
+        videoUrl,
+        thumbnailUrl: imageUrl,
+        providerJobId: asString((videoResult as unknown as Record<string, unknown>).request_id) || null,
+    };
+}
+
 function buildHeyGenPrompt(reel: MarketingReelRecord) {
     const scenes = reel.creativePackage.scenes
         .map((scene, index) => [
@@ -825,6 +944,10 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
 }
 
 async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
+    if (getHiggsfieldCredentials()) {
+        return requestHiggsfieldRender(reel);
+    }
+
     if (process.env.HEYGEN_API_KEY) {
         return requestHeyGenRender(reel);
     }

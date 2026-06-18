@@ -43,6 +43,7 @@ type DashboardResponse = {
     videoRendering: boolean;
     professionalAudio?: boolean;
     videoAiGeneration?: boolean;
+    videoAiProvider?: string | null;
     instagramPublishing: boolean;
     instagramOAuth: boolean;
     cronSecretConfigured: boolean;
@@ -440,6 +441,7 @@ export default function MarketingReelsPage() {
   const hasProfessionalRenderer = Boolean(capabilities?.videoRendering);
   const hasProfessionalAudio = Boolean(capabilities?.professionalAudio);
   const hasVideoAiGeneration = Boolean(capabilities?.videoAiGeneration);
+  const videoAiProvider = capabilities?.videoAiProvider || null;
 
   function hydrate(data: DashboardResponse) {
     const nextReels = Array.isArray(data.reels) ? data.reels : [];
@@ -782,7 +784,7 @@ export default function MarketingReelsPage() {
                         </button>
                         <button type="button" onClick={() => runReelAction("render", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-ivory)] disabled:opacity-60">
                           {actionLoading === `render:${selectedReel.id}` || actionLoading === `browser-render:${selectedReel.id}` || actionLoading === `upload:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : hasVideoAiGeneration ? "Generar video IA completo" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
+                          {actionLoading === `browser-render:${selectedReel.id}` ? "Creando preview" : actionLoading === `upload:${selectedReel.id}` ? "Guardando preview" : videoAiProvider === "higgsfield" ? "Generar video Higgsfield" : hasVideoAiGeneration ? "Generar video IA completo" : hasProfessionalRenderer ? "Renderizar MP4 profesional" : "Renderizar preview"}
                         </button>
                         <button type="button" onClick={() => runReelAction("publish", selectedReel.id)} disabled={Boolean(actionLoading)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60">
                           {actionLoading === `publish:${selectedReel.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -829,7 +831,7 @@ export default function MarketingReelsPage() {
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
                           <span className={clsx("text-right font-semibold", hasProfessionalRenderer ? "text-emerald-700" : "text-amber-700")}>
-                            {hasVideoAiGeneration ? "HeyGen" : hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
+                            {videoAiProvider === "higgsfield" ? "Higgsfield" : hasVideoAiGeneration ? "HeyGen" : hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
                           </span>
                         </p>
                       </div>
@@ -884,7 +886,9 @@ export default function MarketingReelsPage() {
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
-                        {hasVideoAiGeneration
+                        {videoAiProvider === "higgsfield"
+                          ? "El agente envia direccion de arte, escenas y estilo ConviveConnect a Higgsfield para generar un video visual de marca. La voz en off no viene incluida en este proveedor."
+                          : hasVideoAiGeneration
                           ? "El agente envia el brief completo a HeyGen para crear video, voz, subtitulos, musica y cierre de marca. Tu solo revisas el MP4 final."
                           : hasProfessionalRenderer
                           ? "El agente envia narracion, textos, escenas y cierre a Creatomate. La voz o musica se activan con CREATOMATE_VOICE_PROVIDER o CREATOMATE_MUSIC_URL."
