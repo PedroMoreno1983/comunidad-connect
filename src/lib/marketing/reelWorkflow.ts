@@ -706,14 +706,76 @@ function getHiggsfieldImageUrl(data: unknown) {
     const row = data as Record<string, unknown>;
     const images = Array.isArray(row.images) ? row.images : [];
     const firstImage = images[0] && typeof images[0] === 'object' ? images[0] as Record<string, unknown> : null;
-    return asString(firstImage?.url);
+    return asString(firstImage?.url) || getHiggsfieldRawResultUrl(row);
 }
 
 function getHiggsfieldVideoUrl(data: unknown) {
     if (!data || typeof data !== 'object') return '';
     const row = data as Record<string, unknown>;
     const video = row.video && typeof row.video === 'object' ? row.video as Record<string, unknown> : null;
-    return asString(video?.url);
+    return asString(video?.url) || getHiggsfieldRawResultUrl(row);
+}
+
+function getHiggsfieldRawResultUrl(row: Record<string, unknown>) {
+    const jobs = Array.isArray(row.jobs) ? row.jobs : [];
+    const firstJob = jobs[0] && typeof jobs[0] === 'object' ? jobs[0] as Record<string, unknown> : null;
+    const results = firstJob?.results && typeof firstJob.results === 'object'
+        ? firstJob.results as Record<string, unknown>
+        : null;
+    const raw = results?.raw && typeof results.raw === 'object'
+        ? results.raw as Record<string, unknown>
+        : null;
+    return asString(raw?.url)
+        || asString(raw?.video_url)
+        || asString(raw?.image_url)
+        || asString(results?.url)
+        || asString(results?.video_url)
+        || asString(results?.image_url);
+}
+
+async function requestHiggsfieldEndpoint(endpoint: string, params: Record<string, unknown>, credentials: string) {
+    const baseUrl = (process.env.HIGGSFIELD_API_BASE_URL || 'https://platform.higgsfield.ai').replace(/\/$/, '');
+    const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const response = await fetch(`${baseUrl}${formattedEndpoint}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Key ${credentials}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ params }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(getProviderErrorMessage(data, 'Higgsfield rechazo la solicitud.'));
+    }
+
+    const row = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    const requestId = asString(row.request_id);
+    if (!requestId || asString(row.status) === 'completed') return row;
+    return pollHiggsfieldRequest(requestId, credentials);
+}
+
+async function pollHiggsfieldRequest(requestId: string, credentials: string) {
+    const baseUrl = (process.env.HIGGSFIELD_API_BASE_URL || 'https://platform.higgsfield.ai').replace(/\/$/, '');
+    const startedAt = Date.now();
+    const maxPollMs = 240000;
+    while (Date.now() - startedAt < maxPollMs) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const response = await fetch(`${baseUrl}/requests/${requestId}/status`, {
+            headers: { Authorization: `Key ${credentials}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(getProviderErrorMessage(data, 'Higgsfield no pudo consultar el estado del render.'));
+        }
+        const row = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+        const status = asString(row.status);
+        if (status === 'completed') return row;
+        if (status === 'failed' || status === 'nsfw') {
+            throw new Error(getProviderErrorMessage(row, `Higgsfield termino el render con estado ${status}.`));
+        }
+    }
+    throw new Error('Higgsfield inicio el render pero no devolvio resultado dentro del tiempo esperado. Intenta nuevamente en unos segundos.');
 }
 
 async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<RenderResult> {
@@ -722,38 +784,26 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<Rende
         throw new Error('Falta configurar HF_CREDENTIALS o HIGGSFIELD_CREDENTIALS con formato KEY_ID:KEY_SECRET.');
     }
 
-    const { createHiggsfieldClient } = await import('@higgsfield/client/v2');
-    const client = createHiggsfieldClient({
-        credentials,
-        timeout: 120000,
-        pollInterval: 3000,
-        maxPollTime: 240000,
-    });
-
-    const imageResult = await client.subscribe('flux-pro/kontext/max/text-to-image', {
-        input: {
-            aspect_ratio: '9:16',
-            prompt: buildHiggsfieldImagePrompt(reel),
-            safety_tolerance: 2,
-            seed: Math.floor(Date.now() % 100000),
-        },
-        withPolling: true,
-    });
+    const imageResult = await requestHiggsfieldEndpoint('/v1/text2image/soul', {
+        prompt: buildHiggsfieldImagePrompt(reel),
+        width_and_height: '720x1280',
+        quality: '720p',
+        batch_size: 1,
+        enhance_prompt: true,
+        seed: Math.floor(Date.now() % 100000),
+    }, credentials);
     const imageUrl = getHiggsfieldImageUrl(imageResult);
     if (!imageUrl) {
         throw new Error(getProviderErrorMessage(imageResult, 'Higgsfield genero la imagen base pero no devolvio URL.'));
     }
 
-    const videoResult = await client.subscribe('/v1/image2video/dop', {
-        input: {
-            model: process.env.HIGGSFIELD_DOP_MODEL || 'dop-turbo',
-            prompt: buildHiggsfieldVideoPrompt(reel),
-            input_images: [{ type: 'image_url', image_url: imageUrl }],
-            enhance_prompt: true,
-            seed: Math.floor((Date.now() + 17) % 100000),
-        },
-        withPolling: true,
-    });
+    const videoResult = await requestHiggsfieldEndpoint('/v1/image2video/dop', {
+        model: process.env.HIGGSFIELD_DOP_MODEL || 'dop-turbo',
+        prompt: buildHiggsfieldVideoPrompt(reel),
+        input_images: [{ type: 'image_url', image_url: imageUrl }],
+        enhance_prompt: true,
+        seed: Math.floor((Date.now() + 17) % 100000),
+    }, credentials);
     const videoUrl = getHiggsfieldVideoUrl(videoResult);
     if (!videoUrl) {
         throw new Error(getProviderErrorMessage(videoResult, 'Higgsfield no devolvio URL de video.'));
