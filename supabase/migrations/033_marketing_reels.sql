@@ -89,7 +89,7 @@ VALUES (
   'marketing-reels',
   true,
   104857600,
-  ARRAY['video/mp4', 'video/webm', 'image/jpeg', 'image/png']
+  ARRAY['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac']
 )
 ON CONFLICT (id) DO UPDATE
 SET public = EXCLUDED.public,

@@ -28,6 +28,7 @@ const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
 const FACEBOOK_GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
+const MARKETING_REELS_MIME_TYPES = ['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac'];
 
 function requireAdmin(profile: MarketingProfile) {
     if (profile.role !== 'admin') {
@@ -534,9 +535,21 @@ function buildCocoVoiceoverText(reel: MarketingReelRecord) {
 async function uploadMarketingAsset(communityId: string, reelId: string, fileName: string, buffer: Buffer, contentType: string) {
     const admin = getSupabaseAdmin();
     const path = `${communityId}/${reelId}/${fileName}`;
-    const { error } = await admin.storage
+    let { error } = await admin.storage
         .from('marketing-reels')
         .upload(path, buffer, { contentType, upsert: true });
+    if (error && contentType.startsWith('audio/')) {
+        const { error: bucketError } = await admin.storage.updateBucket('marketing-reels', {
+            public: true,
+            fileSizeLimit: 104857600,
+            allowedMimeTypes: MARKETING_REELS_MIME_TYPES,
+        });
+        if (bucketError) throw bucketError;
+        const retry = await admin.storage
+            .from('marketing-reels')
+            .upload(path, buffer, { contentType, upsert: true });
+        error = retry.error;
+    }
     if (error) throw error;
     const { data: { publicUrl } } = admin.storage.from('marketing-reels').getPublicUrl(path);
     return publicUrl;
