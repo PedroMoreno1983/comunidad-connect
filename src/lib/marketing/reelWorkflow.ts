@@ -189,11 +189,12 @@ export function getMarketingCapabilities() {
         && (!useCreatomateTemplate || Boolean(process.env.CREATOMATE_TEMPLATE_ID));
     const heygenReady = Boolean(process.env.HEYGEN_API_KEY);
     const higgsfieldReady = Boolean(getHiggsfieldCredentials());
+    const cocoVoiceReady = Boolean(process.env.OPENAI_API_KEY && process.env.CREATOMATE_API_KEY);
 
     return {
         aiScriptGeneration: Boolean(process.env.ANTHROPIC_API_KEY),
         videoRendering: higgsfieldReady || heygenReady || creatomateReady || Boolean(process.env.MARKETING_VIDEO_RENDER_WEBHOOK_URL),
-        professionalAudio: (!higgsfieldReady && heygenReady) || Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
+        professionalAudio: (higgsfieldReady && cocoVoiceReady) || (!higgsfieldReady && heygenReady) || Boolean(process.env.CREATOMATE_MUSIC_URL || process.env.CREATOMATE_VOICE_PROVIDER),
         videoAiGeneration: higgsfieldReady || heygenReady,
         videoAiProvider: higgsfieldReady ? 'higgsfield' : heygenReady ? 'heygen' : null,
         instagramPublishing: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID),
@@ -517,6 +518,60 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
     return clampText(`${sceneVoice} ${reel.creativePackage.coverText}. ${reel.renderSpec.brand.domain}.`, 1600);
 }
 
+function buildCocoVoiceoverText(reel: MarketingReelRecord) {
+    const sceneVoice = reel.creativePackage.scenes
+        .map(scene => scene.voiceOver)
+        .filter(Boolean)
+        .join(' ');
+    return clampText([
+        'Hola, soy CoCo, la agente operativa de ConviveConnect.',
+        sceneVoice,
+        reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
+        'ConviveConnect convierte la administracion del edificio en una operacion clara, trazable y moderna.',
+    ].join(' '), 1400);
+}
+
+async function uploadMarketingAsset(communityId: string, reelId: string, fileName: string, buffer: Buffer, contentType: string) {
+    const admin = getSupabaseAdmin();
+    const path = `${communityId}/${reelId}/${fileName}`;
+    const { error } = await admin.storage
+        .from('marketing-reels')
+        .upload(path, buffer, { contentType, upsert: true });
+    if (error) throw error;
+    const { data: { publicUrl } } = admin.storage.from('marketing-reels').getPublicUrl(path);
+    return publicUrl;
+}
+
+async function requestCocoVoiceoverAudio(reel: MarketingReelRecord, communityId: string) {
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+        throw new Error('Falta OPENAI_API_KEY para generar la voz femenina de CoCo.');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts',
+            voice: process.env.OPENAI_TTS_VOICE || 'coral',
+            input: buildCocoVoiceoverText(reel),
+            instructions: 'Voz femenina latina, clara, cercana y profesional. Habla como CoCo, una agente de IA operativa. Ritmo comercial, confiable, sin sonar como locutora exagerada.',
+            response_format: 'mp3',
+        }),
+    });
+
+    if (!response.ok) {
+        const message = await response.text().catch(() => '');
+        throw new Error(`OpenAI TTS no pudo generar la voz de CoCo. ${message}`.trim());
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return uploadMarketingAsset(communityId, reel.id, `coco-voice-${Date.now()}.mp3`, buffer, 'audio/mpeg');
+}
+
 function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRenderScript {
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
@@ -600,6 +655,81 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
         duration,
         elements,
     };
+}
+
+function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUrl: string, voiceoverUrl: string): CreatomateRenderScript {
+    const width = reel.renderSpec.width || 1080;
+    const height = reel.renderSpec.height || 1920;
+    const duration = normalizeDurationSeconds(reel);
+    const brand = reel.renderSpec.brand;
+    const brandName = brand.name || 'ConviveConnect';
+    const website = brand.domain || 'conviveconnect.com';
+    const copper = brand.primaryColor || '#B5664E';
+    const ink = '#1F1713';
+    const paper = brand.backgroundColor || '#FBF8F3';
+    const hook = reel.creativePackage.hook || reel.title;
+    const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
+
+    return {
+        output_format: 'mp4',
+        width,
+        height,
+        duration,
+        elements: [
+            {
+                type: 'video',
+                source: visualVideoUrl,
+                time: 0,
+                duration,
+                x: '50%',
+                y: '50%',
+                width: '100%',
+                height: '100%',
+                fit: 'cover',
+                volume: '0%',
+            },
+            rectangleElement(0, duration, 'rgba(250,247,241,0.22)'),
+            boxElement(0, duration, '50%', '10%', '84%', '12%', 'rgba(251,248,243,0.92)'),
+            textElement(brandName, 0, duration, '25%', '7%', '36%', '4%', 38, ink, 700),
+            textElement('CoCo presenta', 0, duration, '72%', '7%', '28%', '4%', 25, copper, 700, '50%'),
+            textElement(hook, 0.4, Math.max(5, duration - 3), '50%', '25%', '82%', '16%', 58, ink, 700),
+            textElement('Voz IA de CoCo. Sin avatar, sin rostro.', 0.4, Math.max(4, duration - 4), '50%', '38%', '82%', '5%', 26, '#6E5A50', 600, '50%'),
+            boxElement(Math.max(0, duration - 5), 5, '50%', '82%', '82%', '13%', ink),
+            textElement(cta, Math.max(0, duration - 5), 5, '50%', '78%', '76%', '6%', 38, paper, 700, '50%'),
+            textElement(website, Math.max(0, duration - 5), 5, '50%', '86%', '76%', '5%', 34, copper, 700, '50%'),
+            {
+                type: 'audio',
+                source: voiceoverUrl,
+                time: 0,
+                duration,
+                volume: '92%',
+                audio_fade_in: 0.2,
+                audio_fade_out: 0.8,
+            },
+        ],
+    };
+}
+
+async function requestCreatomateScriptRender(script: CreatomateRenderScript, fallback: string) {
+    const apiKey = process.env.CREATOMATE_API_KEY ? normalizeBearerToken(process.env.CREATOMATE_API_KEY) : '';
+    if (!apiKey) throw new Error('Falta CREATOMATE_API_KEY para unir el video visual con la voz femenina de CoCo en un MP4 final.');
+
+    const response = await fetch(process.env.CREATOMATE_RENDERS_URL || 'https://api.creatomate.com/v2/renders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(script),
+    });
+
+    const data = await response.json().catch(() => ({})) as unknown;
+    if (!response.ok) throw new Error(getProviderErrorMessage(data, fallback));
+
+    const providerJobId = getCreatomateJobId(data);
+    const videoUrl = getCreatomateVideoUrl(data) || (providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : '');
+    if (!videoUrl) throw new Error('Creatomate inicio la composicion con voz de CoCo, pero aun no devolvio URL de video. Espera unos segundos y vuelve a intentar.');
+    return { videoUrl, providerJobId: providerJobId || null };
 }
 
 function normalizeBearerToken(value: string) {
@@ -687,6 +817,7 @@ function buildConviveBrandDirection() {
         'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Mucho espacio en blanco, bordes finos, cards de radio 8-10px, sombras suaves, dashboards reales.',
         'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
         'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
+        'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no mostrar rostros, no mostrar avatares ni personas mirando a camara. Dejar zonas limpias para overlays reales posteriores.',
     ].join('\n');
 }
 
@@ -697,14 +828,12 @@ function buildHiggsfieldImagePrompt(reel: MarketingReelRecord) {
         .filter(Boolean)
         .join(' | ');
     return [
-        'Create a premium vertical 9:16 hero frame for an Instagram Reel promoting ConviveConnect, a SaaS platform for condominium operations in Chile.',
+        'Create a premium vertical 9:16 background plate for an Instagram Reel about a SaaS platform for condominium operations in Chile.',
         buildConviveBrandDirection(),
-        'Visual content: clean admin dashboard mockups, audit trail cards, permissions chips, checklist panels, condominium building context, operational clarity.',
-        'Composition: editorial SaaS layout, readable Spanish text overlays, subtle terracotta accents, ivory background, no clutter.',
-        `Brand: ${reel.renderSpec.brand.name || 'ConviveConnect'}`,
-        `Headline: ${reel.creativePackage.hook || reel.title}`,
-        `Scene text references: ${firstScenes}`,
-        `Final URL: ${reel.renderSpec.brand.domain || 'conviveconnect.com'}`,
+        'Visual content only: clean admin dashboard shapes, audit trail cards without readable text, permission chips without words, checklist panels without words, condominium lobby context, operational clarity.',
+        'Composition: editorial SaaS background, subtle terracotta accents, ivory background, no clutter, empty safe zones for real captions to be added later.',
+        'Do not include any readable text. Do not include the words ConviveConnect, CoCo, concrete, cement, condo, or any invented logo. Do not include people, faces, avatars, presenters, microphones, or talking heads.',
+        `Mood reference: ${reel.creativePackage.hook || reel.title}. Scene concepts only, no visible text: ${firstScenes}`,
     ].join('\n\n').slice(0, 6000);
 }
 
@@ -714,13 +843,13 @@ function buildHiggsfieldVideoPrompt(reel: MarketingReelRecord) {
         .map((scene, index) => `Scene ${index + 1}: ${scene.visual}. On-screen Spanish text: ${scene.onScreenText}.`)
         .join('\n');
     return [
-        'Animate this branded SaaS hero frame into a premium vertical Instagram Reel.',
+        'Animate this SaaS background plate into a premium vertical Instagram Reel visual layer.',
         buildConviveBrandDirection(),
-        'Use smooth camera movement, subtle parallax, dashboard panels sliding softly, readable Spanish captions, no chaotic effects.',
-        'Keep ConviveConnect colors and typography style visible throughout.',
-        'End with a clean brand close: ConviveConnect and conviveconnect.com.',
+        'Use smooth camera movement, subtle parallax, dashboard panels sliding softly, no chaotic effects.',
+        'Do not add any readable text, subtitles, logos, brand names, symbols, people, faces, avatars, presenters, or talking heads. The final brand, captions, and CoCo voiceover will be added by a controlled compositor after this render.',
+        'Keep the color palette close to warm ivory, deep ink, copper terracotta, and restrained green accents.',
         `Target duration: ${normalizeDurationSeconds(reel)} seconds.`,
-        sceneMotion,
+        `Scene concepts only, no visible text:\n${sceneMotion}`,
     ].join('\n\n').slice(0, 6000);
 }
 
@@ -863,7 +992,7 @@ async function pollHiggsfieldRequest(requestId: string, credentials: string, max
     throw new HiggsfieldQueuedJobError(requestId);
 }
 
-async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<RenderResult> {
+async function requestHiggsfieldRender(reel: MarketingReelRecord, communityId: string): Promise<RenderResult> {
     const credentials = getHiggsfieldCredentials();
     if (!credentials) {
         throw new Error('Falta configurar HF_CREDENTIALS o HIGGSFIELD_CREDENTIALS con formato KEY_ID:KEY_SECRET.');
@@ -928,6 +1057,25 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<Rende
     const videoUrl = getHiggsfieldVideoUrl(videoResult);
     if (!videoUrl) {
         throw new Error(getProviderErrorMessage(videoResult, 'Higgsfield no devolvio URL de video.'));
+    }
+
+    if (process.env.HIGGSFIELD_REQUIRE_COCO_VOICE !== 'false') {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('El video visual de Higgsfield esta listo, pero falta OPENAI_API_KEY para que CoCo grabe la voz femenina.');
+        }
+        if (!process.env.CREATOMATE_API_KEY) {
+            throw new Error('El video visual de Higgsfield esta listo, pero falta CREATOMATE_API_KEY para incrustar la voz femenina de CoCo en el MP4 final.');
+        }
+        const voiceoverUrl = await requestCocoVoiceoverAudio(reel, communityId);
+        const composed = await requestCreatomateScriptRender(
+            buildCocoCompositeRenderScript(reel, videoUrl, voiceoverUrl),
+            'Creatomate no pudo unir el video de Higgsfield con la voz femenina de CoCo.',
+        );
+        return {
+            videoUrl: composed.videoUrl,
+            thumbnailUrl: imageUrl,
+            providerJobId: composed.providerJobId || getHiggsfieldJobSetId(videoResult),
+        };
     }
 
     return {
@@ -1128,9 +1276,9 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
     };
 }
 
-async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
+async function requestVideoRender(reel: MarketingReelRecord, communityId: string): Promise<RenderResult> {
     if (getHiggsfieldCredentials()) {
-        return requestHiggsfieldRender(reel);
+        return requestHiggsfieldRender(reel, communityId);
     }
 
     if (process.env.HEYGEN_API_KEY) {
@@ -1177,11 +1325,12 @@ async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResu
 
 export async function renderMarketingReel(profile: MarketingProfile, reelId: string) {
     requireAdmin(profile);
-    const reel = await loadReelForCommunity(reelId, communityIdFor(profile));
+    const communityId = communityIdFor(profile);
+    const reel = await loadReelForCommunity(reelId, communityId);
     await updateReel(reel.id, { status: 'rendering', failure_reason: null });
 
     try {
-        const result = await requestVideoRender(reel);
+        const result = await requestVideoRender(reel, communityId);
         return updateReel(reel.id, {
             status: 'rendered',
             video_url: result.videoUrl,

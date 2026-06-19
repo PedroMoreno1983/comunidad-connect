@@ -114,6 +114,12 @@ function getFriendlyFailure(message?: string | null) {
   if (message.includes("HIGGSFIELD_VIDEO_PENDING:")) {
     return "Higgsfield esta generando el video final desde la imagen de marca. Espera unos segundos y vuelve a pulsar Generar video Higgsfield para consultar el resultado.";
   }
+  if (message.includes("OPENAI_API_KEY")) {
+    return "Falta OPENAI_API_KEY para que CoCo grabe la voz femenina del reel.";
+  }
+  if (message.includes("CREATOMATE_API_KEY") && message.includes("CoCo")) {
+    return "Falta CREATOMATE_API_KEY para unir el visual de Higgsfield con la voz femenina de CoCo en un MP4 final.";
+  }
   if (message.includes("HEYGEN_PENDING:")) {
     return "HeyGen sigue generando el MP4. Espera unos segundos y vuelve a pulsar Generar video IA completo para revisar el mismo trabajo.";
   }
@@ -832,13 +838,13 @@ export default function MarketingReelsPage() {
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Audio</span>
                           <span className={clsx("text-right font-semibold", hasProfessionalAudio ? "text-emerald-700" : "text-amber-700")}>
-                            {hasProfessionalAudio ? "Voz y musica IA" : hasProfessionalRenderer ? "MP4 sin voz pro" : "Pendiente MP4 pro"}
+                            {videoAiProvider === "higgsfield" && hasProfessionalAudio ? "CoCo voz femenina" : hasProfessionalAudio ? "Voz y musica IA" : hasProfessionalRenderer ? "MP4 sin voz pro" : "Pendiente MP4 pro"}
                           </span>
                         </p>
                         <p className="flex items-start justify-between gap-3">
                           <span className="cc-text-secondary">Voz/musica pro</span>
                           <span className={clsx("text-right font-semibold", hasProfessionalRenderer ? "text-emerald-700" : "text-amber-700")}>
-                            {videoAiProvider === "higgsfield" ? "Higgsfield" : hasVideoAiGeneration ? "HeyGen" : hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
+                            {videoAiProvider === "higgsfield" ? (hasProfessionalAudio ? "Higgsfield + CoCo" : "Falta composicion") : hasVideoAiGeneration ? "HeyGen" : hasProfessionalRenderer ? "Creatomate" : "Requiere proveedor"}
                           </span>
                         </p>
                       </div>
@@ -894,7 +900,7 @@ export default function MarketingReelsPage() {
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.audioDirection}</p>
                       <p className="mt-3 rounded-md bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
                         {videoAiProvider === "higgsfield"
-                          ? "El agente envia direccion de arte, escenas y estilo ConviveConnect a Higgsfield para generar un video visual de marca. La voz en off no viene incluida en este proveedor."
+                          ? "CoCo debe narrar con voz femenina sin avatar ni rostro. Higgsfield solo crea el visual de fondo; la marca, textos exactos y voz se agregan en una composicion controlada del MP4 final."
                           : hasVideoAiGeneration
                           ? "El agente envia el brief completo a HeyGen para crear video, voz, subtitulos, musica y cierre de marca. Tu solo revisas el MP4 final."
                           : hasProfessionalRenderer
