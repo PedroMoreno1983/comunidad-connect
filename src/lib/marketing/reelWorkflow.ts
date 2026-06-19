@@ -341,6 +341,29 @@ class PendingVideoRenderError extends Error {
     }
 }
 
+class PendingHiggsfieldRenderError extends Error {
+    stage: 'image' | 'video';
+    providerJobId: string;
+    imageUrl: string | null;
+
+    constructor(stage: 'image' | 'video', providerJobId: string, imageUrl?: string | null) {
+        const encodedImageUrl = imageUrl ? ` IMAGE_URL:${encodeURIComponent(imageUrl)}` : '';
+        super(`HIGGSFIELD_${stage.toUpperCase()}_PENDING:${providerJobId}${encodedImageUrl}`);
+        this.stage = stage;
+        this.providerJobId = providerJobId;
+        this.imageUrl = imageUrl || null;
+    }
+}
+
+class HiggsfieldQueuedJobError extends Error {
+    providerJobId: string;
+
+    constructor(providerJobId: string) {
+        super(`Higgsfield job queued: ${providerJobId}`);
+        this.providerJobId = providerJobId;
+    }
+}
+
 function firstSceneText(reel: MarketingReelRecord, index: number) {
     return reel.creativePackage.scenes[index]?.onScreenText
         || reel.creativePackage.scenes[index]?.voiceOver
@@ -733,6 +756,43 @@ function getHiggsfieldRawResultUrl(row: Record<string, unknown>) {
         || asString(results?.image_url);
 }
 
+function getHiggsfieldJobSetId(data: unknown) {
+    if (!data || typeof data !== 'object') return '';
+    const row = data as Record<string, unknown>;
+    return asString(row.request_id) || asString(row.id);
+}
+
+function getPendingHiggsfieldRender(reel: MarketingReelRecord) {
+    const detail = reel.failureReason || '';
+    const imageMarker = 'HIGGSFIELD_IMAGE_PENDING:';
+    const videoMarker = 'HIGGSFIELD_VIDEO_PENDING:';
+    const marker = detail.includes(videoMarker) ? videoMarker : detail.includes(imageMarker) ? imageMarker : '';
+    if (!marker) return null;
+
+    const rest = detail.slice(detail.indexOf(marker) + marker.length);
+    const [idPart] = rest.split(/\s+/);
+    const providerJobId = idPart?.trim() || '';
+    if (!providerJobId) return null;
+
+    const imageUrlMarker = 'IMAGE_URL:';
+    const imageUrlIndex = detail.indexOf(imageUrlMarker);
+    const encodedImageUrl = imageUrlIndex >= 0 ? detail.slice(imageUrlIndex + imageUrlMarker.length).split(/\s+/)[0] || '' : '';
+    let imageUrl = '';
+    if (encodedImageUrl) {
+        try {
+            imageUrl = decodeURIComponent(encodedImageUrl);
+        } catch {
+            imageUrl = encodedImageUrl;
+        }
+    }
+
+    return {
+        stage: marker === videoMarker ? 'video' as const : 'image' as const,
+        providerJobId,
+        imageUrl: imageUrl || reel.thumbnailUrl || null,
+    };
+}
+
 async function requestHiggsfieldEndpoint(endpoint: string, params: Record<string, unknown>, credentials: string) {
     const baseUrl = (process.env.HIGGSFIELD_API_BASE_URL || 'https://platform.higgsfield.ai').replace(/\/$/, '');
     const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -750,7 +810,7 @@ async function requestHiggsfieldEndpoint(endpoint: string, params: Record<string
     }
 
     const row = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-    const requestId = asString(row.request_id) || asString(row.id);
+    const requestId = getHiggsfieldJobSetId(row);
     if (!requestId || isHiggsfieldCompleted(row)) return row;
     return pollHiggsfieldRequest(requestId, credentials);
 }
@@ -781,10 +841,9 @@ function getHiggsfieldStatus(row: Record<string, unknown>) {
     return '';
 }
 
-async function pollHiggsfieldRequest(requestId: string, credentials: string) {
+async function pollHiggsfieldRequest(requestId: string, credentials: string, maxPollMs = 90000) {
     const baseUrl = (process.env.HIGGSFIELD_API_BASE_URL || 'https://platform.higgsfield.ai').replace(/\/$/, '');
     const startedAt = Date.now();
-    const maxPollMs = 240000;
     while (Date.now() - startedAt < maxPollMs) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         const response = await fetch(`${baseUrl}/requests/${requestId}/status`, {
@@ -801,7 +860,7 @@ async function pollHiggsfieldRequest(requestId: string, credentials: string) {
             throw new Error(getProviderErrorMessage(row, `Higgsfield termino el render con estado ${status}.`));
         }
     }
-    throw new Error('Higgsfield inicio el render pero no devolvio resultado dentro del tiempo esperado. Intenta nuevamente en unos segundos.');
+    throw new HiggsfieldQueuedJobError(requestId);
 }
 
 async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<RenderResult> {
@@ -810,26 +869,62 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<Rende
         throw new Error('Falta configurar HF_CREDENTIALS o HIGGSFIELD_CREDENTIALS con formato KEY_ID:KEY_SECRET.');
     }
 
-    const imageResult = await requestHiggsfieldEndpoint('/v1/text2image/soul', {
-        prompt: buildHiggsfieldImagePrompt(reel),
-        width_and_height: process.env.HIGGSFIELD_IMAGE_SIZE || '1152x2048',
-        quality: '720p',
-        batch_size: 1,
-        enhance_prompt: true,
-        seed: Math.floor(Date.now() % 100000),
-    }, credentials);
-    const imageUrl = getHiggsfieldImageUrl(imageResult);
-    if (!imageUrl) {
-        throw new Error(getProviderErrorMessage(imageResult, 'Higgsfield genero la imagen base pero no devolvio URL.'));
+    const pending = getPendingHiggsfieldRender(reel);
+    let imageUrl = pending?.stage === 'video' && pending.imageUrl ? pending.imageUrl : '';
+
+    if (pending?.stage === 'image') {
+        try {
+            const imageResult = await pollHiggsfieldRequest(pending.providerJobId, credentials);
+            imageUrl = getHiggsfieldImageUrl(imageResult);
+        } catch (error) {
+            if (error instanceof HiggsfieldQueuedJobError) {
+                throw new PendingHiggsfieldRenderError('image', error.providerJobId);
+            }
+            throw error;
+        }
     }
 
-    const videoResult = await requestHiggsfieldEndpoint('/v1/image2video/dop', {
-        model: process.env.HIGGSFIELD_DOP_MODEL || 'dop-turbo',
-        prompt: buildHiggsfieldVideoPrompt(reel),
-        input_images: [{ type: 'image_url', image_url: imageUrl }],
-        enhance_prompt: true,
-        seed: Math.floor((Date.now() + 17) % 100000),
-    }, credentials);
+    if (!imageUrl && !pending) {
+        try {
+            const imageResult = await requestHiggsfieldEndpoint('/v1/text2image/soul', {
+                prompt: buildHiggsfieldImagePrompt(reel),
+                width_and_height: process.env.HIGGSFIELD_IMAGE_SIZE || '1152x2048',
+                quality: '720p',
+                batch_size: 1,
+                enhance_prompt: true,
+                seed: Math.floor(Date.now() % 100000),
+            }, credentials);
+            imageUrl = getHiggsfieldImageUrl(imageResult);
+        } catch (error) {
+            if (error instanceof HiggsfieldQueuedJobError) {
+                throw new PendingHiggsfieldRenderError('image', error.providerJobId);
+            }
+            throw error;
+        }
+    }
+
+    if (!imageUrl) {
+        throw new Error('Higgsfield genero la imagen base pero no devolvio URL utilizable.');
+    }
+
+    let videoResult: unknown;
+    try {
+        videoResult = pending?.stage === 'video'
+            ? await pollHiggsfieldRequest(pending.providerJobId, credentials)
+            : await requestHiggsfieldEndpoint('/v1/image2video/dop', {
+                model: process.env.HIGGSFIELD_DOP_MODEL || 'dop-turbo',
+                prompt: buildHiggsfieldVideoPrompt(reel),
+                input_images: [{ type: 'image_url', image_url: imageUrl }],
+                enhance_prompt: true,
+                seed: Math.floor((Date.now() + 17) % 100000),
+            }, credentials);
+    } catch (error) {
+        if (error instanceof HiggsfieldQueuedJobError) {
+            throw new PendingHiggsfieldRenderError('video', error.providerJobId, imageUrl);
+        }
+        throw error;
+    }
+
     const videoUrl = getHiggsfieldVideoUrl(videoResult);
     if (!videoUrl) {
         throw new Error(getProviderErrorMessage(videoResult, 'Higgsfield no devolvio URL de video.'));
@@ -838,7 +933,7 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<Rende
     return {
         videoUrl,
         thumbnailUrl: imageUrl,
-        providerJobId: asString((videoResult as unknown as Record<string, unknown>).request_id) || null,
+        providerJobId: getHiggsfieldJobSetId(videoResult),
     };
 }
 
@@ -1098,6 +1193,13 @@ export async function renderMarketingReel(profile: MarketingProfile, reelId: str
             return updateReel(reel.id, {
                 status: 'rendering',
                 failure_reason: `HEYGEN_PENDING:${error.providerJobId}`,
+            });
+        }
+        if (error instanceof PendingHiggsfieldRenderError) {
+            return updateReel(reel.id, {
+                status: 'rendering',
+                thumbnail_url: error.imageUrl || reel.thumbnailUrl || null,
+                failure_reason: error.message,
             });
         }
         const message = error instanceof Error ? error.message : 'No se pudo generar el video final.';
