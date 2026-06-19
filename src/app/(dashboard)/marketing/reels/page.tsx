@@ -108,6 +108,12 @@ function statusClass(status: MarketingReelStatus) {
 
 function getFriendlyFailure(message?: string | null) {
   if (!message) return "";
+  if (message.includes("HIGGSFIELD_IMAGE_PENDING:")) {
+    return "Higgsfield esta preparando la imagen base del reel. Espera unos segundos y vuelve a pulsar Generar video Higgsfield para continuar el mismo trabajo.";
+  }
+  if (message.includes("HIGGSFIELD_VIDEO_PENDING:")) {
+    return "Higgsfield esta generando el video final desde la imagen de marca. Espera unos segundos y vuelve a pulsar Generar video Higgsfield para consultar el resultado.";
+  }
   if (message.includes("HEYGEN_PENDING:")) {
     return "HeyGen sigue generando el MP4. Espera unos segundos y vuelve a pulsar Generar video IA completo para revisar el mismo trabajo.";
   }
@@ -125,6 +131,7 @@ function isWebmVideo(url?: string | null) {
 }
 
 function getNextStep(reel: MarketingReelRecord, instagram: InstagramConnectionSummary, hasProfessionalRenderer: boolean) {
+  if (reel.status === "rendering") return "El proveedor esta procesando el video. Espera unos segundos y vuelve a consultar el mismo render.";
   if (!reel.videoUrl) return hasProfessionalRenderer
     ? "Aprueba el guion y genera el MP4 profesional con el agente."
     : "Aprueba el guion. Falta conectar Creatomate para el MP4 profesional.";
