@@ -750,9 +750,35 @@ async function requestHiggsfieldEndpoint(endpoint: string, params: Record<string
     }
 
     const row = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-    const requestId = asString(row.request_id);
-    if (!requestId || asString(row.status) === 'completed') return row;
+    const requestId = asString(row.request_id) || asString(row.id);
+    if (!requestId || isHiggsfieldCompleted(row)) return row;
     return pollHiggsfieldRequest(requestId, credentials);
+}
+
+function isHiggsfieldCompleted(row: Record<string, unknown>) {
+    if (asString(row.status) === 'completed') return true;
+    if (getHiggsfieldRawResultUrl(row)) return true;
+    const jobs = Array.isArray(row.jobs) ? row.jobs : [];
+    if (!jobs.length) return false;
+    return jobs.every(job => {
+        if (!job || typeof job !== 'object') return false;
+        const item = job as Record<string, unknown>;
+        return asString(item.status) === 'completed' && Boolean(item.results);
+    });
+}
+
+function getHiggsfieldStatus(row: Record<string, unknown>) {
+    const directStatus = asString(row.status);
+    if (directStatus) return directStatus;
+    const jobs = Array.isArray(row.jobs) ? row.jobs : [];
+    const statuses = jobs
+        .map(job => job && typeof job === 'object' ? asString((job as Record<string, unknown>).status) : '')
+        .filter(Boolean);
+    if (statuses.some(status => status === 'failed' || status === 'nsfw')) return statuses.find(status => status === 'failed' || status === 'nsfw') || '';
+    if (statuses.length && statuses.every(status => status === 'completed')) return 'completed';
+    if (statuses.some(status => status === 'in_progress')) return 'in_progress';
+    if (statuses.some(status => status === 'queued')) return 'queued';
+    return '';
 }
 
 async function pollHiggsfieldRequest(requestId: string, credentials: string) {
@@ -769,8 +795,8 @@ async function pollHiggsfieldRequest(requestId: string, credentials: string) {
             throw new Error(getProviderErrorMessage(data, 'Higgsfield no pudo consultar el estado del render.'));
         }
         const row = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-        const status = asString(row.status);
-        if (status === 'completed') return row;
+        const status = getHiggsfieldStatus(row);
+        if (isHiggsfieldCompleted(row)) return row;
         if (status === 'failed' || status === 'nsfw') {
             throw new Error(getProviderErrorMessage(row, `Higgsfield termino el render con estado ${status}.`));
         }
