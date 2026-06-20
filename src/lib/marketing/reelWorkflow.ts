@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { decryptMetaToken, isInstagramOAuthConfigured } from '@/lib/marketing/instagramOAuth';
 import { buildReelRenderSpec, generateReelPackage, normalizeReelInput } from '@/lib/marketing/reelAgent';
@@ -28,9 +29,6 @@ const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
 const FACEBOOK_GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
-const MARKETING_REELS_MIME_TYPES = ['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac'];
-const MARKETING_REELS_AUDIO_MIME_TYPES = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg'];
-const MARKETING_REELS_FILE_SIZE_LIMIT = 524288000;
 
 function requireAdmin(profile: MarketingProfile) {
     if (profile.role !== 'admin') {
@@ -528,7 +526,7 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
     return clampText(`${sceneVoice} ${reel.creativePackage.coverText}. ${reel.renderSpec.brand.domain}.`, 1600);
 }
 
-function buildCocoVoiceoverText(reel: MarketingReelRecord) {
+export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     const sceneVoice = reel.creativePackage.scenes
         .slice(0, 3)
         .map(scene => scene.voiceOver)
@@ -542,77 +540,27 @@ function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     ].join(' '), 650);
 }
 
-async function ensureMarketingReelsBucketAllows(contentType: string) {
-    const admin = getSupabaseAdmin();
-    const bucketId = contentType.startsWith('audio/') ? 'marketing-reels-audio' : 'marketing-reels';
-    const allowedMimeTypes = contentType.startsWith('audio/') ? MARKETING_REELS_AUDIO_MIME_TYPES : MARKETING_REELS_MIME_TYPES;
-    const create = await admin.storage.createBucket(bucketId, {
-        public: true,
-        fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
-        allowedMimeTypes,
-    });
-    if (create.error && !/already exists|Duplicate/i.test(create.error.message)) throw create.error;
-    const { error } = await admin.storage.updateBucket(bucketId, {
-        public: true,
-        fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
-        allowedMimeTypes,
-    });
-    if (error) throw error;
+function getVoiceUrlSecret() {
+    return process.env.MARKETING_VOICE_URL_SECRET
+        || process.env.CRON_SECRET
+        || process.env.OPENAI_API_KEY
+        || 'conviveconnect-marketing-voice';
 }
 
-async function uploadMarketingAsset(communityId: string, reelId: string, fileName: string, buffer: Buffer, contentType: string) {
-    const admin = getSupabaseAdmin();
-    const bucketId = contentType.startsWith('audio/') ? 'marketing-reels-audio' : 'marketing-reels';
-    const path = `${communityId}/${reelId}/${fileName}`;
-    await ensureMarketingReelsBucketAllows(contentType);
-    let { error } = await admin.storage
-        .from(bucketId)
-        .upload(path, buffer, { contentType, upsert: true });
-    if (error) {
-        const { error: bucketError } = await admin.storage.updateBucket(bucketId, {
-            public: true,
-            fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
-            allowedMimeTypes: contentType.startsWith('audio/') ? MARKETING_REELS_AUDIO_MIME_TYPES : MARKETING_REELS_MIME_TYPES,
-        });
-        if (bucketError) throw bucketError;
-        const retry = await admin.storage
-            .from(bucketId)
-            .upload(path, buffer, { contentType, upsert: true });
-        error = retry.error;
-    }
-    if (error) throw error;
-    const { data: { publicUrl } } = admin.storage.from(bucketId).getPublicUrl(path);
-    return publicUrl;
+export function signMarketingVoiceRequest(reelId: string) {
+    return createHmac('sha256', getVoiceUrlSecret()).update(reelId).digest('hex');
 }
 
-async function requestCocoVoiceoverAudio(reel: MarketingReelRecord, communityId: string) {
+function getPublicSiteUrl() {
+    return (process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` || 'https://conviveconnect.com').replace(/\/$/, '');
+}
+
+function requestCocoVoiceoverAudio(reel: MarketingReelRecord) {
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
         throw new Error('Falta OPENAI_API_KEY para generar la voz femenina de CoCo.');
     }
-
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts',
-            voice: process.env.OPENAI_TTS_VOICE || 'coral',
-            input: buildCocoVoiceoverText(reel),
-            instructions: 'Voz femenina latina, clara, cercana y profesional. Habla como CoCo, una agente de IA operativa. Ritmo comercial, confiable, sin sonar como locutora exagerada.',
-            response_format: 'mp3',
-        }),
-    });
-
-    if (!response.ok) {
-        const message = await response.text().catch(() => '');
-        throw new Error(`OpenAI TTS no pudo generar la voz de CoCo. ${message}`.trim());
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return uploadMarketingAsset(communityId, reel.id, `coco-voice-${Date.now()}.mp3`, buffer, 'audio/mpeg');
+    return `${getPublicSiteUrl()}/api/marketing/reels/voice/${encodeURIComponent(reel.id)}?token=${signMarketingVoiceRequest(reel.id)}`;
 }
 
 function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRenderScript {
@@ -1035,7 +983,7 @@ async function pollHiggsfieldRequest(requestId: string, credentials: string, max
     throw new HiggsfieldQueuedJobError(requestId);
 }
 
-async function requestHiggsfieldRender(reel: MarketingReelRecord, communityId: string): Promise<RenderResult> {
+async function requestHiggsfieldRender(reel: MarketingReelRecord): Promise<RenderResult> {
     const credentials = getHiggsfieldCredentials();
     if (!credentials) {
         throw new Error('Falta configurar HF_CREDENTIALS o HIGGSFIELD_CREDENTIALS con formato KEY_ID:KEY_SECRET.');
@@ -1109,7 +1057,7 @@ async function requestHiggsfieldRender(reel: MarketingReelRecord, communityId: s
         if (!process.env.CREATOMATE_API_KEY) {
             throw new Error('El video visual de Higgsfield esta listo, pero falta CREATOMATE_API_KEY para incrustar la voz femenina de CoCo en el MP4 final.');
         }
-        const voiceoverUrl = await requestCocoVoiceoverAudio(reel, communityId);
+        const voiceoverUrl = requestCocoVoiceoverAudio(reel);
         const composed = await requestCreatomateScriptRender(
             buildCocoCompositeRenderScript(reel, videoUrl, voiceoverUrl),
             'Creatomate no pudo unir el video de Higgsfield con la voz femenina de CoCo.',
@@ -1319,9 +1267,9 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
     };
 }
 
-async function requestVideoRender(reel: MarketingReelRecord, communityId: string): Promise<RenderResult> {
+async function requestVideoRender(reel: MarketingReelRecord): Promise<RenderResult> {
     if (getHiggsfieldCredentials()) {
-        return requestHiggsfieldRender(reel, communityId);
+        return requestHiggsfieldRender(reel);
     }
 
     if (process.env.HEYGEN_API_KEY) {
@@ -1373,7 +1321,7 @@ export async function renderMarketingReel(profile: MarketingProfile, reelId: str
     await updateReel(reel.id, { status: 'rendering', failure_reason: null });
 
     try {
-        const result = await requestVideoRender(reel, communityId);
+        const result = await requestVideoRender(reel);
         return updateReel(reel.id, {
             status: 'rendered',
             video_url: result.videoUrl,
