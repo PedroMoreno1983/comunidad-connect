@@ -552,7 +552,9 @@ export function signMarketingVoiceRequest(reelId: string) {
 }
 
 function getPublicSiteUrl() {
-    return (process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` || 'https://conviveconnect.com').replace(/\/$/, '');
+    const rawUrl = process.env.MARKETING_PUBLIC_SITE_URL || 'https://conviveconnect.com';
+    const cleanUrl = rawUrl.replace(/\s+/g, '').replace(/\/$/, '');
+    return /^https?:\/\//i.test(cleanUrl) ? cleanUrl : `https://${cleanUrl}`;
 }
 
 function requestCocoVoiceoverAudio(reel: MarketingReelRecord) {
