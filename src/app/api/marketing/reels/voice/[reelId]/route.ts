@@ -66,9 +66,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ reelId:
         },
         body: JSON.stringify({
             model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts',
-            voice: process.env.OPENAI_TTS_VOICE || 'coral',
+            voice: process.env.OPENAI_TTS_VOICE || 'shimmer',
             input: buildCocoVoiceoverText(reel),
-            instructions: 'Voz femenina latina, clara, cercana y profesional. Habla como CoCo, una agente de IA operativa. Ritmo comercial, confiable, sin sonar como locutora exagerada.',
+            instructions: 'Voz femenina latina, fina, serena y profesional. Habla como CoCo, una agente de IA operativa premium. Ritmo pausado, elegante y confiable, con energia contenida. No sonar como locutora radial ni como anuncio exagerado.',
             response_format: 'mp3',
         }),
     });

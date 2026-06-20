@@ -486,6 +486,20 @@ function circleElement(time: number, duration: number, x: string, y: string, siz
     };
 }
 
+function imageElement(source: string, time: number, duration: number, x: string, y: string, width: string, height: string, fit: 'contain' | 'cover' = 'contain'): CreatomateElement {
+    return {
+        type: 'image',
+        source,
+        time,
+        duration,
+        x,
+        y,
+        width,
+        height,
+        fit,
+    };
+}
+
 function textElement(
     text: string,
     time: number,
@@ -527,17 +541,19 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
 }
 
 export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
-    const sceneVoice = reel.creativePackage.scenes
-        .slice(0, 3)
+    const proof = reel.creativePackage.scenes
+        .slice(1, 3)
         .map(scene => scene.voiceOver)
         .filter(Boolean)
         .join(' ');
     return clampText([
         'Hola, soy CoCo.',
         'Soy la agente operativa de ConviveConnect.',
-        sceneVoice,
+        'En un condominio, coordinar por planillas y chats dispersos hace que todo dependa de memoria.',
+        proof || 'ConviveConnect centraliza solicitudes, comunicaciones, reservas y trazabilidad en una sola plataforma.',
+        'Yo preparo acciones, pido confirmacion humana y dejo auditoria antes de tocar datos sensibles.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-    ].join(' '), 650);
+    ].join(' '), 430);
 }
 
 function getVoiceUrlSecret() {
@@ -555,6 +571,11 @@ function getPublicSiteUrl() {
     const rawUrl = process.env.MARKETING_PUBLIC_SITE_URL || 'https://conviveconnect.com';
     const cleanUrl = rawUrl.replace(/\s+/g, '').replace(/\/$/, '');
     return /^https?:\/\//i.test(cleanUrl) ? cleanUrl : `https://${cleanUrl}`;
+}
+
+function publicAssetUrl(path: string) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${getPublicSiteUrl()}${cleanPath}`;
 }
 
 function requestCocoVoiceoverAudio(reel: MarketingReelRecord) {
@@ -653,15 +674,25 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
 function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUrl: string, voiceoverUrl: string): CreatomateRenderScript {
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
-    const duration = normalizeDurationSeconds(reel);
+    const baseDuration = normalizeDurationSeconds(reel);
+    const outroDuration = 4.5;
+    const duration = Math.max(38, Number((baseDuration + outroDuration).toFixed(2)));
+    const contentDuration = Number((duration - outroDuration).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
     const website = brand.domain || 'conviveconnect.com';
     const copper = brand.primaryColor || '#B5664E';
     const ink = '#1F1713';
     const paper = brand.backgroundColor || '#FBF8F3';
+    const muted = '#6E5A50';
     const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
+    const sceneDuration = Number((contentDuration / 3).toFixed(2));
+    const landingImage = publicAssetUrl('/convive-connect/_ref/landing.png');
+    const sidebarImage = publicAssetUrl('/convive-connect/_ref/sidebar.png');
+    const dashboardImage = publicAssetUrl('/convive-connect/_ref/dashboard.png');
+    const topDuration = Math.max(4, contentDuration);
+    const finalTime = Number((duration - outroDuration).toFixed(2));
 
     return {
         output_format: 'mp4',
@@ -669,6 +700,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
         height,
         duration,
         elements: [
+            rectangleElement(0, duration, paper),
             {
                 type: 'video',
                 source: visualVideoUrl,
@@ -680,24 +712,47 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 height: '100%',
                 fit: 'cover',
                 volume: '0%',
+                loop: true,
+                opacity: '18%',
             },
-            rectangleElement(0, duration, 'rgba(250,247,241,0.22)'),
-            boxElement(0, duration, '50%', '10%', '84%', '12%', 'rgba(251,248,243,0.92)'),
-            textElement(brandName, 0, duration, '25%', '7%', '36%', '4%', 38, ink, 700),
-            textElement('CoCo presenta', 0, duration, '72%', '7%', '28%', '4%', 25, copper, 700, '50%'),
-            textElement(hook, 0.4, Math.max(5, duration - 3), '50%', '25%', '82%', '16%', 58, ink, 700),
-            textElement('Voz IA de CoCo. Sin avatar, sin rostro.', 0.4, Math.max(4, duration - 4), '50%', '38%', '82%', '5%', 26, '#6E5A50', 600, '50%'),
-            boxElement(Math.max(0, duration - 5), 5, '50%', '82%', '82%', '13%', ink),
-            textElement(cta, Math.max(0, duration - 5), 5, '50%', '78%', '76%', '6%', 38, paper, 700, '50%'),
-            textElement(website, Math.max(0, duration - 5), 5, '50%', '86%', '76%', '5%', 34, copper, 700, '50%'),
+            circleElement(0, topDuration, '88%', '12%', '36%', 'rgba(200,112,90,0.18)'),
+            circleElement(0, topDuration, '8%', '90%', '46%', 'rgba(235,214,205,0.32)'),
+            boxElement(0, topDuration, '50%', '8%', '88%', '10%', 'rgba(255,255,255,0.94)'),
+            boxElement(0, topDuration, '13%', '8%', '9%', '5.2%', copper),
+            textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
+            textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
+            textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
+            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '20%', '82%', '11%', 50, ink, 700, '50%'),
+
+            boxElement(0.4, sceneDuration + 0.8, '50%', '58%', '74%', '62%', 'rgba(255,255,255,0.94)'),
+            imageElement(landingImage, 0.6, sceneDuration + 0.4, '50%', '60%', '62%', '58%', 'contain'),
+            textElement('Tu edificio, en una sola plataforma', 1, sceneDuration, '50%', '88%', '74%', '5%', 29, ink, 700, '50%'),
+
+            boxElement(sceneDuration, sceneDuration + 0.8, '50%', '58%', '84%', '56%', 'rgba(255,255,255,0.94)'),
+            imageElement(sidebarImage, sceneDuration + 0.3, sceneDuration + 0.4, '50%', '57%', '80%', '50%', 'contain'),
+            textElement('Gestion operativa con permisos y trazabilidad', sceneDuration + 0.7, sceneDuration, '50%', '88%', '76%', '5%', 29, ink, 700, '50%'),
+
+            boxElement(sceneDuration * 2, sceneDuration + 0.9, '50%', '58%', '84%', '56%', 'rgba(255,255,255,0.94)'),
+            imageElement(dashboardImage, sceneDuration * 2 + 0.3, sceneDuration + 0.5, '50%', '57%', '80%', '50%', 'contain'),
+            textElement('CoCo prepara acciones. Tu equipo aprueba.', sceneDuration * 2 + 0.7, sceneDuration, '50%', '88%', '76%', '5%', 29, ink, 700, '50%'),
+
+            rectangleElement(finalTime, outroDuration, paper),
+            circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
+            boxElement(finalTime, outroDuration, '50%', '47%', '82%', '44%', 'rgba(255,255,255,0.96)'),
+            boxElement(finalTime, outroDuration, '50%', '28%', '14%', '8%', copper),
+            textElement('C', finalTime, outroDuration, '50%', '28%', '14%', '8%', 45, paper, 700, '50%'),
+            textElement(brandName, finalTime, outroDuration, '50%', '39%', '78%', '5%', 42, ink, 700, '50%'),
+            textElement(cta, finalTime, outroDuration, '50%', '52%', '76%', '8%', 38, ink, 700, '50%'),
+            textElement(website, finalTime, outroDuration, '50%', '64%', '76%', '5%', 33, copper, 700, '50%'),
+            textElement('Operacion clara. Acciones auditables.', finalTime, outroDuration, '50%', '73%', '76%', '4%', 25, muted, 600, '50%'),
             {
                 type: 'audio',
                 source: voiceoverUrl,
                 time: 0,
-                duration,
-                volume: '92%',
+                duration: contentDuration,
+                volume: '94%',
                 audio_fade_in: 0.2,
-                audio_fade_out: 0.8,
+                audio_fade_out: 1.2,
             },
         ],
     };
