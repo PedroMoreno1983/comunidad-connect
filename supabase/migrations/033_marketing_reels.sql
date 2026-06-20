@@ -88,7 +88,7 @@ VALUES (
   'marketing-reels',
   'marketing-reels',
   true,
-  104857600,
+  524288000,
   ARRAY['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac']
 )
 ON CONFLICT (id) DO UPDATE

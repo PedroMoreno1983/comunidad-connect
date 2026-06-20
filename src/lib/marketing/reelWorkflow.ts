@@ -29,6 +29,7 @@ const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
 const FACEBOOK_GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
 const MARKETING_REELS_MIME_TYPES = ['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac'];
+const MARKETING_REELS_FILE_SIZE_LIMIT = 524288000;
 
 function requireAdmin(profile: MarketingProfile) {
     if (profile.role !== 'admin') {
@@ -521,27 +522,40 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
 
 function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     const sceneVoice = reel.creativePackage.scenes
+        .slice(0, 3)
         .map(scene => scene.voiceOver)
         .filter(Boolean)
         .join(' ');
     return clampText([
-        'Hola, soy CoCo, la agente operativa de ConviveConnect.',
+        'Hola, soy CoCo.',
+        'Soy la agente operativa de ConviveConnect.',
         sceneVoice,
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-        'ConviveConnect convierte la administracion del edificio en una operacion clara, trazable y moderna.',
-    ].join(' '), 1400);
+    ].join(' '), 650);
+}
+
+async function ensureMarketingReelsBucketAllows(contentType: string) {
+    if (!contentType.startsWith('audio/')) return;
+    const admin = getSupabaseAdmin();
+    const { error } = await admin.storage.updateBucket('marketing-reels', {
+        public: true,
+        fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
+        allowedMimeTypes: MARKETING_REELS_MIME_TYPES,
+    });
+    if (error) throw error;
 }
 
 async function uploadMarketingAsset(communityId: string, reelId: string, fileName: string, buffer: Buffer, contentType: string) {
     const admin = getSupabaseAdmin();
     const path = `${communityId}/${reelId}/${fileName}`;
+    await ensureMarketingReelsBucketAllows(contentType);
     let { error } = await admin.storage
         .from('marketing-reels')
         .upload(path, buffer, { contentType, upsert: true });
     if (error && contentType.startsWith('audio/')) {
         const { error: bucketError } = await admin.storage.updateBucket('marketing-reels', {
             public: true,
-            fileSizeLimit: 104857600,
+            fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
             allowedMimeTypes: MARKETING_REELS_MIME_TYPES,
         });
         if (bucketError) throw bucketError;
