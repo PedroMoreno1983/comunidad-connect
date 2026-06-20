@@ -718,7 +718,7 @@ async function requestCreatomateScriptRender(script: CreatomateRenderScript, fal
     if (!response.ok) throw new Error(getProviderErrorMessage(data, fallback));
 
     const providerJobId = getCreatomateJobId(data);
-    const videoUrl = getCreatomateVideoUrl(data) || (providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : '');
+    const videoUrl = providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : getCreatomateVideoUrl(data, true);
     if (!videoUrl) throw new Error('Creatomate inicio la composicion con voz de CoCo, pero aun no devolvio URL de video. Espera unos segundos y vuelve a intentar.');
     return { videoUrl, providerJobId: providerJobId || null };
 }
@@ -727,7 +727,25 @@ function normalizeBearerToken(value: string) {
     return value.trim().replace(/^Bearer\s+/i, '').trim();
 }
 
-function getCreatomateVideoUrl(data: unknown) {
+function getCreatomateStatus(data: unknown) {
+    const first = Array.isArray(data) ? data[0] : data;
+    if (!first || typeof first !== 'object') return '';
+    const row = first as Record<string, unknown>;
+    return asString(row.status).toLowerCase();
+}
+
+function isCreatomateReady(data: unknown) {
+    const status = getCreatomateStatus(data);
+    return !status || ['succeeded', 'success', 'completed', 'complete', 'finished', 'done'].includes(status);
+}
+
+function isCreatomateFailed(data: unknown) {
+    const status = getCreatomateStatus(data);
+    return ['failed', 'error', 'canceled', 'cancelled'].includes(status);
+}
+
+function getCreatomateVideoUrl(data: unknown, requireReady = false) {
+    if (requireReady && !isCreatomateReady(data)) return '';
     const first = Array.isArray(data) ? data[0] : data;
     if (!first || typeof first !== 'object') return '';
     const row = first as Record<string, unknown>;
@@ -754,14 +772,17 @@ function creatomateRenderStatusUrl(renderId: string) {
 }
 
 async function waitForCreatomateUrl(renderId: string, apiKey: string) {
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-        await sleep(3000);
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+        await sleep(5000);
         const response = await fetch(creatomateRenderStatusUrl(renderId), {
             headers: { Authorization: `Bearer ${normalizeBearerToken(apiKey)}` },
         });
         const data = await response.json().catch(() => ({})) as unknown;
         if (!response.ok) continue;
-        const videoUrl = getCreatomateVideoUrl(data);
+        if (isCreatomateFailed(data)) {
+            throw new Error(getProviderErrorMessage(data, 'Creatomate no pudo completar la composicion del reel.'));
+        }
+        const videoUrl = getCreatomateVideoUrl(data, true);
         if (videoUrl) return videoUrl;
     }
     return '';
@@ -1255,7 +1276,7 @@ async function requestCreatomateRender(reel: MarketingReelRecord): Promise<Rende
     }
 
     const providerJobId = getCreatomateJobId(data);
-    const videoUrl = getCreatomateVideoUrl(data) || (providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : '');
+    const videoUrl = providerJobId ? await waitForCreatomateUrl(providerJobId, apiKey) : getCreatomateVideoUrl(data, true);
     if (!videoUrl) {
         throw new Error('Creatomate inicio el render pero aun no devolvio URL de video. Revisa API Log; si queda en proceso, configuramos webhook de finalizacion.');
     }
