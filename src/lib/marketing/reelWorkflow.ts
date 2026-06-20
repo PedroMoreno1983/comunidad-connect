@@ -552,8 +552,10 @@ export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
         'En un condominio, coordinar por planillas y chats dispersos hace que todo dependa de memoria.',
         proof || 'ConviveConnect centraliza solicitudes, comunicaciones, reservas y trazabilidad en una sola plataforma.',
         'Yo preparo acciones, pido confirmacion humana y dejo auditoria antes de tocar datos sensibles.',
+        'Asi tu equipo ve que esta pasando, decide con contexto y evita operar a ciegas.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-    ].join(' '), 430);
+        'ConviveConnect punto com.',
+    ].join(' '), 620);
 }
 
 function getVoiceUrlSecret() {
@@ -675,8 +677,8 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
     const baseDuration = normalizeDurationSeconds(reel);
-    const outroDuration = 4.5;
-    const duration = Math.max(38, Number((baseDuration + outroDuration).toFixed(2)));
+    const duration = Math.max(32, Math.min(38, baseDuration));
+    const outroDuration = 3.4;
     const contentDuration = Number((duration - outroDuration).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
@@ -687,10 +689,12 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const muted = '#6E5A50';
     const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
-    const sceneDuration = Number((contentDuration / 3).toFixed(2));
-    const landingImage = publicAssetUrl('/convive-connect/_ref/landing.png');
-    const sidebarImage = publicAssetUrl('/convive-connect/_ref/sidebar.png');
-    const dashboardImage = publicAssetUrl('/convive-connect/_ref/dashboard.png');
+    const sceneDuration = Number((contentDuration / 5).toFixed(2));
+    const homeImage = publicAssetUrl('/convive-connect/reels/home.png');
+    const financesImage = publicAssetUrl('/convive-connect/reels/admin-finanzas.png');
+    const maintenanceImage = publicAssetUrl('/convive-connect/reels/admin-mantenimiento.png');
+    const servicesImage = publicAssetUrl('/convive-connect/reels/services.png');
+    const chatImage = publicAssetUrl('/convive-connect/reels/chat.png');
     const topDuration = Math.max(4, contentDuration);
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
@@ -722,23 +726,31 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
             textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
-            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '20%', '82%', '11%', 50, ink, 700, '50%'),
+            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '19%', '82%', '10%', 46, ink, 700, '50%'),
 
-            boxElement(0.4, sceneDuration + 0.8, '50%', '58%', '74%', '62%', 'rgba(255,255,255,0.94)'),
-            imageElement(landingImage, 0.6, sceneDuration + 0.4, '50%', '60%', '62%', '58%', 'contain'),
-            textElement('Tu edificio, en una sola plataforma', 1, sceneDuration, '50%', '88%', '74%', '5%', 29, ink, 700, '50%'),
+            boxElement(0.4, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
+            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
+            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration, sceneDuration + 0.8, '50%', '58%', '84%', '56%', 'rgba(255,255,255,0.94)'),
-            imageElement(sidebarImage, sceneDuration + 0.3, sceneDuration + 0.4, '50%', '57%', '80%', '50%', 'contain'),
-            textElement('Gestion operativa con permisos y trazabilidad', sceneDuration + 0.7, sceneDuration, '50%', '88%', '76%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
+            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
+            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 2, sceneDuration + 0.9, '50%', '58%', '84%', '56%', 'rgba(255,255,255,0.94)'),
-            imageElement(dashboardImage, sceneDuration * 2 + 0.3, sceneDuration + 0.5, '50%', '57%', '80%', '50%', 'contain'),
-            textElement('CoCo prepara acciones. Tu equipo aprueba.', sceneDuration * 2 + 0.7, sceneDuration, '50%', '88%', '76%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
+            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
+            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+
+            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
+            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
+            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+
+            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
+            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
+            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
-            boxElement(finalTime, outroDuration, '50%', '47%', '82%', '44%', 'rgba(255,255,255,0.96)'),
+            boxElement(finalTime, outroDuration, '50%', '47%', '82%', '45%', 'rgba(255,255,255,0.96)'),
             boxElement(finalTime, outroDuration, '50%', '28%', '14%', '8%', copper),
             textElement('C', finalTime, outroDuration, '50%', '28%', '14%', '8%', 45, paper, 700, '50%'),
             textElement(brandName, finalTime, outroDuration, '50%', '39%', '78%', '5%', 42, ink, 700, '50%'),
@@ -749,10 +761,10 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 type: 'audio',
                 source: voiceoverUrl,
                 time: 0,
-                duration: contentDuration,
+                duration,
                 volume: '94%',
                 audio_fade_in: 0.2,
-                audio_fade_out: 1.2,
+                audio_fade_out: 0.4,
             },
         ],
     };
