@@ -29,6 +29,7 @@ const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || 'v21.0';
 const FACEBOOK_GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
 const MARKETING_REELS_MIME_TYPES = ['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac'];
+const MARKETING_REELS_AUDIO_MIME_TYPES = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg'];
 const MARKETING_REELS_FILE_SIZE_LIMIT = 524288000;
 
 function requireAdmin(profile: MarketingProfile) {
@@ -318,6 +319,13 @@ export async function deleteMarketingReel(profile: MarketingProfile, reelId: str
     if (filesToRemove.length > 0) {
         await admin.storage.from('marketing-reels').remove(filesToRemove);
     }
+    const { data: storedAudioFiles } = await admin.storage
+        .from('marketing-reels-audio')
+        .list(storagePrefix, { limit: 100 });
+    const audioFilesToRemove = (storedAudioFiles || []).map(file => `${storagePrefix}/${file.name}`).filter(Boolean);
+    if (audioFilesToRemove.length > 0) {
+        await admin.storage.from('marketing-reels-audio').remove(audioFilesToRemove);
+    }
 
     const { error } = await admin
         .from('marketing_reels')
@@ -535,37 +543,45 @@ function buildCocoVoiceoverText(reel: MarketingReelRecord) {
 }
 
 async function ensureMarketingReelsBucketAllows(contentType: string) {
-    if (!contentType.startsWith('audio/')) return;
     const admin = getSupabaseAdmin();
-    const { error } = await admin.storage.updateBucket('marketing-reels', {
+    const bucketId = contentType.startsWith('audio/') ? 'marketing-reels-audio' : 'marketing-reels';
+    const allowedMimeTypes = contentType.startsWith('audio/') ? MARKETING_REELS_AUDIO_MIME_TYPES : MARKETING_REELS_MIME_TYPES;
+    const create = await admin.storage.createBucket(bucketId, {
         public: true,
         fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
-        allowedMimeTypes: MARKETING_REELS_MIME_TYPES,
+        allowedMimeTypes,
+    });
+    if (create.error && !/already exists|Duplicate/i.test(create.error.message)) throw create.error;
+    const { error } = await admin.storage.updateBucket(bucketId, {
+        public: true,
+        fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
+        allowedMimeTypes,
     });
     if (error) throw error;
 }
 
 async function uploadMarketingAsset(communityId: string, reelId: string, fileName: string, buffer: Buffer, contentType: string) {
     const admin = getSupabaseAdmin();
+    const bucketId = contentType.startsWith('audio/') ? 'marketing-reels-audio' : 'marketing-reels';
     const path = `${communityId}/${reelId}/${fileName}`;
     await ensureMarketingReelsBucketAllows(contentType);
     let { error } = await admin.storage
-        .from('marketing-reels')
+        .from(bucketId)
         .upload(path, buffer, { contentType, upsert: true });
-    if (error && contentType.startsWith('audio/')) {
-        const { error: bucketError } = await admin.storage.updateBucket('marketing-reels', {
+    if (error) {
+        const { error: bucketError } = await admin.storage.updateBucket(bucketId, {
             public: true,
             fileSizeLimit: MARKETING_REELS_FILE_SIZE_LIMIT,
-            allowedMimeTypes: MARKETING_REELS_MIME_TYPES,
+            allowedMimeTypes: contentType.startsWith('audio/') ? MARKETING_REELS_AUDIO_MIME_TYPES : MARKETING_REELS_MIME_TYPES,
         });
         if (bucketError) throw bucketError;
         const retry = await admin.storage
-            .from('marketing-reels')
+            .from(bucketId)
             .upload(path, buffer, { contentType, upsert: true });
         error = retry.error;
     }
     if (error) throw error;
-    const { data: { publicUrl } } = admin.storage.from('marketing-reels').getPublicUrl(path);
+    const { data: { publicUrl } } = admin.storage.from(bucketId).getPublicUrl(path);
     return publicUrl;
 }
 

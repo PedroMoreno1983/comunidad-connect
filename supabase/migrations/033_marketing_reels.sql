@@ -96,6 +96,19 @@ SET public = EXCLUDED.public,
     file_size_limit = EXCLUDED.file_size_limit,
     allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'marketing-reels-audio',
+  'marketing-reels-audio',
+  true,
+  524288000,
+  ARRAY['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg']
+)
+ON CONFLICT (id) DO UPDATE
+SET public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
 ALTER TABLE marketing_reel_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE marketing_reels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE instagram_connections ENABLE ROW LEVEL SECURITY;
