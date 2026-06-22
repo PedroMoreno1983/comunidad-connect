@@ -518,51 +518,22 @@ function textElement(
     };
 }
 
-function productMockupScene(
+function captionOverlayScene(
     time: number,
     duration: number,
-    caption: string,
-    title: string,
-    metricA: string,
-    metricB: string,
-    cards: string[],
+    kicker: string,
+    headline: string,
+    detail: string,
     accentColor: string,
 ): CreatomateElement[] {
-    const localDuration = duration + 0.45;
-    const cardOne = cards[0] || 'Accion prioritaria';
-    const cardTwo = cards[1] || 'Revision pendiente';
-    const cardThree = cards[2] || 'Auditoria visible';
+    const localDuration = duration + 0.3;
 
     return [
-        boxElement(time, localDuration, '50%', '57%', '88%', '70%', '#FFFFFF'),
-        boxElement(time, localDuration, '50%', '31%', '78%', '8%', '#FBF8F3'),
-        boxElement(time, localDuration, '18%', '31%', '12%', '6%', accentColor),
-        textElement('C', time, localDuration, '18%', '31%', '12%', '6%', 42, '#FBF8F3', 700, '50%'),
-        textElement(title, time, localDuration, '54%', '30%', '58%', '5%', 44, '#1F1713', 700),
-        textElement('ConviveConnect', time, localDuration, '54%', '36%', '58%', '3%', 24, '#7A655B', 600),
-
-        boxElement(time, localDuration, '31%', '48%', '34%', '13%', '#FBF8F3'),
-        textElement(metricA, time, localDuration, '31%', '45.5%', '28%', '5%', 52, '#1F1713', 700, '50%'),
-        textElement('prioridad', time, localDuration, '31%', '52%', '28%', '3%', 22, '#7A655B', 600, '50%'),
-        boxElement(time, localDuration, '69%', '48%', '34%', '13%', '#FBF8F3'),
-        textElement(metricB, time, localDuration, '69%', '45.5%', '28%', '5%', 44, '#1F1713', 700, '50%'),
-        textElement('estado', time, localDuration, '69%', '52%', '28%', '3%', 22, '#7A655B', 600, '50%'),
-
-        boxElement(time, localDuration, '50%', '64%', '74%', '9%', '#FBF8F3'),
-        boxElement(time, localDuration, '18%', '64%', '5%', '4%', 'rgba(200,112,90,0.25)'),
-        textElement(cardOne, time, localDuration, '55%', '63.5%', '58%', '5%', 32, '#1F1713', 700),
-        textElement('Preparado por CoCo', time, localDuration, '55%', '68%', '58%', '3%', 20, '#7A655B', 600),
-
-        boxElement(time, localDuration, '50%', '76%', '74%', '9%', '#FBF8F3'),
-        boxElement(time, localDuration, '18%', '76%', '5%', '4%', 'rgba(200,112,90,0.25)'),
-        textElement(cardTwo, time, localDuration, '55%', '75.5%', '58%', '5%', 32, '#1F1713', 700),
-        textElement('Aprobacion humana', time, localDuration, '55%', '80%', '58%', '3%', 20, '#7A655B', 600),
-
-        boxElement(time, localDuration, '50%', '88%', '74%', '8%', '#FBF8F3'),
-        textElement(cardThree, time, localDuration, '50%', '87%', '66%', '4%', 28, '#1F1713', 700, '50%'),
-        textElement('Auditoria visible', time, localDuration, '50%', '91%', '66%', '3%', 19, '#7A655B', 600, '50%'),
-
-        textElement(caption, time + 0.25, duration, '50%', '18%', '86%', '7%', 52, '#1F1713', 700, '50%'),
+        boxElement(time, localDuration, '50%', '76%', '88%', '25%', 'rgba(31,23,19,0.82)'),
+        boxElement(time, localDuration, '25%', '66%', '31%', '4.5%', accentColor),
+        textElement(kicker, time, localDuration, '25%', '66%', '29%', '4%', 22, '#FBF8F3', 700, '50%'),
+        textElement(headline, time, localDuration, '50%', '75%', '78%', '9%', 56, '#FFFFFF', 700, '50%'),
+        textElement(detail, time, localDuration, '50%', '86%', '78%', '6%', 30, '#F1E7DF', 600, '50%'),
     ];
 }
 
@@ -575,21 +546,13 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
 }
 
 export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
-    const proof = reel.creativePackage.scenes
-        .slice(1, 3)
-        .map(scene => scene.voiceOver)
-        .filter(Boolean)
-        .join(' ');
     return clampText([
-        'Hola, soy CoCo.',
-        'Soy la agente operativa de ConviveConnect.',
-        'Cuando un condominio opera con planillas y chats dispersos, todo depende de memoria.',
-        proof || 'ConviveConnect centraliza solicitudes, comunicaciones, reservas y trazabilidad en una sola plataforma.',
-        'Yo preparo acciones, pido confirmacion humana y dejo auditoria.',
-        'Asi tu equipo decide con contexto y evita operar a ciegas.',
+        'Soy CoCo, la agente operativa de ConviveConnect.',
+        'Tu edificio no tiene que funcionar con planillas, chats sueltos y memoria.',
+        'ConviveConnect ordena solicitudes, comunicaciones, reservas y trazabilidad en una sola operacion.',
+        'Yo preparo acciones, tu equipo aprueba, y todo queda auditado.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-        'ConviveConnect punto com.',
-    ].join(' '), 520);
+    ].join(' '), 390);
 }
 
 function getVoiceUrlSecret() {
@@ -706,8 +669,8 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
     const baseDuration = normalizeDurationSeconds(reel);
-    const duration = Math.max(48, baseDuration + 13);
-    const outroDuration = 6;
+    const duration = Math.max(30, Math.min(38, baseDuration));
+    const outroDuration = 4;
     const contentDuration = Number((duration - outroDuration).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
@@ -718,7 +681,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const muted = '#6E5A50';
     const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
-    const sceneDuration = Number((contentDuration / 5).toFixed(2));
+    const sceneDuration = Number((contentDuration / 4).toFixed(2));
     const topDuration = Math.max(4, contentDuration);
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
@@ -741,32 +704,27 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 fit: 'cover',
                 volume: '0%',
                 loop: true,
-                opacity: '8%',
             },
-            circleElement(0, topDuration, '88%', '12%', '36%', 'rgba(200,112,90,0.18)'),
-            circleElement(0, topDuration, '8%', '90%', '46%', 'rgba(235,214,205,0.32)'),
-            boxElement(0, topDuration, '50%', '8%', '88%', '10%', 'rgba(255,255,255,0.94)'),
+            boxElement(0, topDuration, '50%', '8%', '88%', '10%', 'rgba(251,248,243,0.92)'),
             boxElement(0, topDuration, '13%', '8%', '9%', '5.2%', copper),
             textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
-            textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
-            textElement(hook, 0.2, Math.max(5, sceneDuration - 0.5), '50%', '18%', '84%', '10%', 43, ink, 700, '50%'),
+            textElement('CoCo presenta', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
 
-            ...productMockupScene(0.4, sceneDuration, 'Panel operativo del edificio', 'Operacion', '12', 'Activo', ['Cobranza prioritaria', 'Comite pendiente', 'Aviso a residentes'], copper),
-            ...productMockupScene(sceneDuration, sceneDuration, 'Gastos y pagos con visibilidad', 'Finanzas', '$4.2M', 'Al dia', ['Gasto comun emitido', 'Pago por revisar', 'Reporte mensual'], copper),
-            ...productMockupScene(sceneDuration * 2, sceneDuration, 'Solicitudes ordenadas y auditables', 'Solicitudes', '8', 'SLA OK', ['Ascensor en revision', 'Filtro de acceso', 'Mantencion cerrada'], copper),
-            ...productMockupScene(sceneDuration * 3, sceneDuration, 'Servicios y comunidad en un flujo', 'Servicios', '24', 'Listo', ['Reserva confirmada', 'Proveedor asignado', 'Vecino notificado'], copper),
-            ...productMockupScene(sceneDuration * 4, sceneDuration, 'CoCo prepara. Tu equipo aprueba.', 'CoCo Agent', '3', 'Seguro', ['Accion preparada', 'Confirmacion humana', 'Auditoria guardada'], copper),
+            ...captionOverlayScene(0.4, sceneDuration, 'AGENT CENTER', hook, 'Operacion moderna para edificios reales.', copper),
+            ...captionOverlayScene(sceneDuration, sceneDuration, 'ORDEN', 'Menos chats. Mas trazabilidad.', 'Solicitudes, avisos y decisiones en un solo flujo.', copper),
+            ...captionOverlayScene(sceneDuration * 2, sceneDuration, 'CONTROL', 'CoCo prepara. Tu equipo aprueba.', 'Acciones con confirmacion humana y registro.', copper),
+            ...captionOverlayScene(sceneDuration * 3, sceneDuration, 'VISIBILIDAD', 'Una operacion clara para administrar mejor.', 'Pensado para administradores y comites.', copper),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
-            boxElement(finalTime, outroDuration, '50%', '50%', '92%', '70%', 'rgba(255,255,255,0.97)'),
-            boxElement(finalTime, outroDuration, '50%', '24%', '18%', '10%', copper),
-            textElement('C', finalTime, outroDuration, '50%', '24%', '18%', '10%', 58, paper, 700, '50%'),
-            textElement(brandName, finalTime, outroDuration, '50%', '37%', '82%', '6%', 50, ink, 700, '50%'),
-            textElement(cta, finalTime, outroDuration, '50%', '51%', '82%', '10%', 43, ink, 700, '50%'),
-            textElement(website, finalTime, outroDuration, '50%', '66%', '82%', '6%', 39, copper, 700, '50%'),
-            textElement('Operacion clara. Acciones auditables.', finalTime, outroDuration, '50%', '78%', '82%', '5%', 30, muted, 600, '50%'),
+            boxElement(finalTime, outroDuration, '50%', '50%', '92%', '68%', 'rgba(255,255,255,0.95)'),
+            boxElement(finalTime, outroDuration, '50%', '26%', '18%', '10%', copper),
+            textElement('C', finalTime, outroDuration, '50%', '26%', '18%', '10%', 58, paper, 700, '50%'),
+            textElement(brandName, finalTime, outroDuration, '50%', '39%', '82%', '6%', 50, ink, 700, '50%'),
+            textElement(cta, finalTime, outroDuration, '50%', '53%', '82%', '10%', 43, ink, 700, '50%'),
+            textElement(website, finalTime, outroDuration, '50%', '68%', '82%', '6%', 39, copper, 700, '50%'),
+            textElement('Operacion clara. Acciones auditables.', finalTime, outroDuration, '50%', '80%', '82%', '5%', 30, muted, 600, '50%'),
             {
                 type: 'audio',
                 source: voiceoverUrl,
@@ -905,10 +863,10 @@ function buildConviveBrandDirection() {
     return [
         'Direccion de arte ConviveConnect obligatoria:',
         'Paleta: fondo marfil calido #FAF7F1 y #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 y #1F1713, cobre terracota #C8705A y #B45F4B como acento, verde grisaceo sobrio #6E8268 solo para confirmaciones.',
-        'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Mucho espacio en blanco, bordes finos, cards de radio 8-10px, sombras suaves, dashboards reales.',
+        'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Cinematografia limpia, luz natural, espacios modernos, detalles de administracion real, tecnologia discreta.',
         'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
         'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
-        'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no mostrar rostros, no mostrar avatares ni personas mirando a camara. Dejar zonas limpias para overlays reales posteriores.',
+        'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no mostrar avatares ni presentadores. Puede mostrar manos, dispositivos, conserjeria, lobbies y residentes de espalda o fuera de foco, sin close-ups de rostros.',
     ].join('\n');
 }
 
@@ -919,11 +877,12 @@ function buildHiggsfieldImagePrompt(reel: MarketingReelRecord) {
         .filter(Boolean)
         .join(' | ');
     return [
-        'Create a premium vertical 9:16 background plate for an Instagram Reel about a SaaS platform for condominium operations in Chile.',
+        'Create a premium vertical 9:16 cinematic hero frame for an Instagram Reel promoting a SaaS platform for condominium operations in Chile.',
         buildConviveBrandDirection(),
-        'Visual content only: clean admin dashboard shapes, audit trail cards without readable text, permission chips without words, checklist panels without words, condominium lobby context, operational clarity.',
-        'Composition: editorial SaaS background, subtle terracotta accents, ivory background, no clutter, empty safe zones for real captions to be added later.',
-        'Do not include any readable text. Do not include the words ConviveConnect, CoCo, concrete, cement, condo, or any invented logo. Do not include people, faces, avatars, presenters, microphones, or talking heads.',
+        'Visual content: modern condominium lobby in Chile, concierge desk, administrator reviewing a tablet, subtle app-like interface reflections without readable text, organized operations, premium proptech mood.',
+        'Composition: cinematic vertical frame, clean depth of field, warm ivory and terracotta accents, premium lighting, professional commercial quality, space at top and bottom for real captions.',
+        'Do not include any readable text, fake words, logos, brand names, watermark, microphones, presenters, avatars, or talking heads.',
+        'Quality requirements: sharp, polished, high-end advertisement, no blur, no low resolution, no warped UI, no fake typography.',
         `Mood reference: ${reel.creativePackage.hook || reel.title}. Scene concepts only, no visible text: ${firstScenes}`,
     ].join('\n\n').slice(0, 6000);
 }
@@ -934,11 +893,12 @@ function buildHiggsfieldVideoPrompt(reel: MarketingReelRecord) {
         .map((scene, index) => `Scene ${index + 1}: ${scene.visual}. On-screen Spanish text: ${scene.onScreenText}.`)
         .join('\n');
     return [
-        'Animate this SaaS background plate into a premium vertical Instagram Reel visual layer.',
+        'Animate this into a premium vertical Instagram Reel visual layer with cinematic commercial quality.',
         buildConviveBrandDirection(),
-        'Use smooth camera movement, subtle parallax, dashboard panels sliding softly, no chaotic effects.',
-        'Do not add any readable text, subtitles, logos, brand names, symbols, people, faces, avatars, presenters, or talking heads. The final brand, captions, and CoCo voiceover will be added by a controlled compositor after this render.',
+        'Use smooth camera movement, confident pacing, premium proptech advertising style, modern condominium lobby shots, tablet close-ups, hands approving actions, concierge desk, elevator/lobby transitions, clean operational energy.',
+        'Do not add any readable text, subtitles, logos, brand names, fake UI words, symbols, avatars, presenters, microphones, or talking heads. The final brand, captions, and CoCo voiceover will be added by a controlled compositor after this render.',
         'Keep the color palette close to warm ivory, deep ink, copper terracotta, and restrained green accents.',
+        'Quality requirements: sharp, high-detail, polished, cinematic, no blurry frames, no low-quality generated UI, no distorted letters.',
         `Target duration: ${normalizeDurationSeconds(reel)} seconds.`,
         `Scene concepts only, no visible text:\n${sceneMotion}`,
     ].join('\n\n').slice(0, 6000);
