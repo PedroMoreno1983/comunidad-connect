@@ -534,37 +534,35 @@ function productMockupScene(
     const cardThree = cards[2] || 'Auditoria visible';
 
     return [
-        boxElement(time, localDuration, '50%', '58%', '66%', '69%', 'rgba(31,23,19,0.96)'),
-        boxElement(time, localDuration, '50%', '58%', '58%', '63%', '#FBF8F3'),
-        boxElement(time, localDuration, '50%', '31%', '58%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '30%', '31%', '8%', '5%', accentColor),
-        textElement('C', time, localDuration, '30%', '31%', '8%', '5%', 30, '#FBF8F3', 700, '50%'),
-        textElement(title, time, localDuration, '55%', '31%', '38%', '4%', 24, '#1F1713', 700),
-        textElement('ConviveConnect', time, localDuration, '55%', '35%', '38%', '3%', 15, '#7A655B', 600),
+        boxElement(time, localDuration, '50%', '57%', '88%', '70%', '#FFFFFF'),
+        boxElement(time, localDuration, '50%', '31%', '78%', '8%', '#FBF8F3'),
+        boxElement(time, localDuration, '18%', '31%', '12%', '6%', accentColor),
+        textElement('C', time, localDuration, '18%', '31%', '12%', '6%', 42, '#FBF8F3', 700, '50%'),
+        textElement(title, time, localDuration, '54%', '30%', '58%', '5%', 44, '#1F1713', 700),
+        textElement('ConviveConnect', time, localDuration, '54%', '36%', '58%', '3%', 24, '#7A655B', 600),
 
-        boxElement(time, localDuration, '38%', '45%', '25%', '10%', '#FFFFFF'),
-        textElement(metricA, time, localDuration, '38%', '43%', '20%', '3%', 25, '#1F1713', 700, '50%'),
-        textElement('hoy', time, localDuration, '38%', '47%', '20%', '3%', 14, '#7A655B', 600, '50%'),
-        boxElement(time, localDuration, '62%', '45%', '25%', '10%', '#FFFFFF'),
-        textElement(metricB, time, localDuration, '62%', '43%', '20%', '3%', 25, '#1F1713', 700, '50%'),
-        textElement('estado', time, localDuration, '62%', '47%', '20%', '3%', 14, '#7A655B', 600, '50%'),
+        boxElement(time, localDuration, '31%', '48%', '34%', '13%', '#FBF8F3'),
+        textElement(metricA, time, localDuration, '31%', '45.5%', '28%', '5%', 52, '#1F1713', 700, '50%'),
+        textElement('prioridad', time, localDuration, '31%', '52%', '28%', '3%', 22, '#7A655B', 600, '50%'),
+        boxElement(time, localDuration, '69%', '48%', '34%', '13%', '#FBF8F3'),
+        textElement(metricB, time, localDuration, '69%', '45.5%', '28%', '5%', 44, '#1F1713', 700, '50%'),
+        textElement('estado', time, localDuration, '69%', '52%', '28%', '3%', 22, '#7A655B', 600, '50%'),
 
-        boxElement(time, localDuration, '50%', '57%', '48%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '31%', '57%', '5%', '3%', 'rgba(200,112,90,0.20)'),
-        textElement(cardOne, time, localDuration, '54%', '56.5%', '36%', '4%', 20, '#1F1713', 700),
-        textElement('Preparado por CoCo', time, localDuration, '54%', '60%', '36%', '3%', 13, '#7A655B', 600),
+        boxElement(time, localDuration, '50%', '64%', '74%', '9%', '#FBF8F3'),
+        boxElement(time, localDuration, '18%', '64%', '5%', '4%', 'rgba(200,112,90,0.25)'),
+        textElement(cardOne, time, localDuration, '55%', '63.5%', '58%', '5%', 32, '#1F1713', 700),
+        textElement('Preparado por CoCo', time, localDuration, '55%', '68%', '58%', '3%', 20, '#7A655B', 600),
 
-        boxElement(time, localDuration, '50%', '68%', '48%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '31%', '68%', '5%', '3%', 'rgba(200,112,90,0.20)'),
-        textElement(cardTwo, time, localDuration, '54%', '67.5%', '36%', '4%', 20, '#1F1713', 700),
-        textElement('Requiere aprobacion', time, localDuration, '54%', '71%', '36%', '3%', 13, '#7A655B', 600),
+        boxElement(time, localDuration, '50%', '76%', '74%', '9%', '#FBF8F3'),
+        boxElement(time, localDuration, '18%', '76%', '5%', '4%', 'rgba(200,112,90,0.25)'),
+        textElement(cardTwo, time, localDuration, '55%', '75.5%', '58%', '5%', 32, '#1F1713', 700),
+        textElement('Aprobacion humana', time, localDuration, '55%', '80%', '58%', '3%', 20, '#7A655B', 600),
 
-        boxElement(time, localDuration, '50%', '79%', '48%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '31%', '79%', '5%', '3%', 'rgba(200,112,90,0.20)'),
-        textElement(cardThree, time, localDuration, '54%', '78.5%', '36%', '4%', 20, '#1F1713', 700),
-        textElement('Registro auditable', time, localDuration, '54%', '82%', '36%', '3%', 13, '#7A655B', 600),
+        boxElement(time, localDuration, '50%', '88%', '74%', '8%', '#FBF8F3'),
+        textElement(cardThree, time, localDuration, '50%', '87%', '66%', '4%', 28, '#1F1713', 700, '50%'),
+        textElement('Auditoria visible', time, localDuration, '50%', '91%', '66%', '3%', 19, '#7A655B', 600, '50%'),
 
-        textElement(caption, time + 0.25, duration, '50%', '93%', '84%', '5%', 32, '#1F1713', 700, '50%'),
+        textElement(caption, time + 0.25, duration, '50%', '18%', '86%', '7%', 52, '#1F1713', 700, '50%'),
     ];
 }
 
@@ -752,7 +750,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
             textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
-            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '18%', '84%', '10%', 43, ink, 700, '50%'),
+            textElement(hook, 0.2, Math.max(5, sceneDuration - 0.5), '50%', '18%', '84%', '10%', 43, ink, 700, '50%'),
 
             ...productMockupScene(0.4, sceneDuration, 'Panel operativo del edificio', 'Operacion', '12', 'Activo', ['Cobranza prioritaria', 'Comite pendiente', 'Aviso a residentes'], copper),
             ...productMockupScene(sceneDuration, sceneDuration, 'Gastos y pagos con visibilidad', 'Finanzas', '$4.2M', 'Al dia', ['Gasto comun emitido', 'Pago por revisar', 'Reporte mensual'], copper),
