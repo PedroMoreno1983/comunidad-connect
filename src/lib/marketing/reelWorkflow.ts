@@ -486,20 +486,6 @@ function circleElement(time: number, duration: number, x: string, y: string, siz
     };
 }
 
-function imageElement(source: string, time: number, duration: number, x: string, y: string, width: string, height: string, fit: 'contain' | 'cover' = 'contain'): CreatomateElement {
-    return {
-        type: 'image',
-        source,
-        time,
-        duration,
-        x,
-        y,
-        width,
-        height,
-        fit,
-    };
-}
-
 function textElement(
     text: string,
     time: number,
@@ -530,6 +516,56 @@ function textElement(
         y_alignment: '50%',
         text_wrap: true,
     };
+}
+
+function productMockupScene(
+    time: number,
+    duration: number,
+    caption: string,
+    title: string,
+    metricA: string,
+    metricB: string,
+    cards: string[],
+    accentColor: string,
+): CreatomateElement[] {
+    const localDuration = duration + 0.45;
+    const cardOne = cards[0] || 'Accion prioritaria';
+    const cardTwo = cards[1] || 'Revision pendiente';
+    const cardThree = cards[2] || 'Auditoria visible';
+
+    return [
+        boxElement(time, localDuration, '50%', '58%', '66%', '69%', 'rgba(31,23,19,0.96)'),
+        boxElement(time, localDuration, '50%', '58%', '58%', '63%', '#FBF8F3'),
+        boxElement(time, localDuration, '50%', '31%', '58%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '30%', '31%', '8%', '5%', accentColor),
+        textElement('C', time, localDuration, '30%', '31%', '8%', '5%', 30, '#FBF8F3', 700, '50%'),
+        textElement(title, time, localDuration, '55%', '31%', '38%', '4%', 24, '#1F1713', 700),
+        textElement('ConviveConnect', time, localDuration, '55%', '35%', '38%', '3%', 15, '#7A655B', 600),
+
+        boxElement(time, localDuration, '38%', '45%', '25%', '10%', '#FFFFFF'),
+        textElement(metricA, time, localDuration, '38%', '43%', '20%', '3%', 25, '#1F1713', 700, '50%'),
+        textElement('hoy', time, localDuration, '38%', '47%', '20%', '3%', 14, '#7A655B', 600, '50%'),
+        boxElement(time, localDuration, '62%', '45%', '25%', '10%', '#FFFFFF'),
+        textElement(metricB, time, localDuration, '62%', '43%', '20%', '3%', 25, '#1F1713', 700, '50%'),
+        textElement('estado', time, localDuration, '62%', '47%', '20%', '3%', 14, '#7A655B', 600, '50%'),
+
+        boxElement(time, localDuration, '50%', '57%', '48%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '31%', '57%', '5%', '3%', 'rgba(200,112,90,0.20)'),
+        textElement(cardOne, time, localDuration, '54%', '56.5%', '36%', '4%', 20, '#1F1713', 700),
+        textElement('Preparado por CoCo', time, localDuration, '54%', '60%', '36%', '3%', 13, '#7A655B', 600),
+
+        boxElement(time, localDuration, '50%', '68%', '48%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '31%', '68%', '5%', '3%', 'rgba(200,112,90,0.20)'),
+        textElement(cardTwo, time, localDuration, '54%', '67.5%', '36%', '4%', 20, '#1F1713', 700),
+        textElement('Requiere aprobacion', time, localDuration, '54%', '71%', '36%', '3%', 13, '#7A655B', 600),
+
+        boxElement(time, localDuration, '50%', '79%', '48%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '31%', '79%', '5%', '3%', 'rgba(200,112,90,0.20)'),
+        textElement(cardThree, time, localDuration, '54%', '78.5%', '36%', '4%', 20, '#1F1713', 700),
+        textElement('Registro auditable', time, localDuration, '54%', '82%', '36%', '3%', 13, '#7A655B', 600),
+
+        textElement(caption, time + 0.25, duration, '50%', '93%', '84%', '5%', 32, '#1F1713', 700, '50%'),
+    ];
 }
 
 function buildVoiceoverText(reel: MarketingReelRecord) {
@@ -573,11 +609,6 @@ function getPublicSiteUrl() {
     const rawUrl = process.env.MARKETING_PUBLIC_SITE_URL || 'https://conviveconnect.com';
     const cleanUrl = rawUrl.replace(/\s+/g, '').replace(/\/$/, '');
     return /^https?:\/\//i.test(cleanUrl) ? cleanUrl : `https://${cleanUrl}`;
-}
-
-function publicAssetUrl(path: string) {
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${getPublicSiteUrl()}${cleanPath}`;
 }
 
 function requestCocoVoiceoverAudio(reel: MarketingReelRecord) {
@@ -690,11 +721,6 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
     const sceneDuration = Number((contentDuration / 5).toFixed(2));
-    const homeImage = publicAssetUrl('/convive-connect/reels/mobile-home.png');
-    const financesImage = publicAssetUrl('/convive-connect/reels/mobile-admin-finanzas.png');
-    const maintenanceImage = publicAssetUrl('/convive-connect/reels/mobile-admin-mantenimiento.png');
-    const servicesImage = publicAssetUrl('/convive-connect/reels/mobile-services.png');
-    const chatImage = publicAssetUrl('/convive-connect/reels/mobile-chat.png');
     const topDuration = Math.max(4, contentDuration);
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
@@ -728,25 +754,11 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
             textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '18%', '84%', '10%', 43, ink, 700, '50%'),
 
-            boxElement(0.4, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
-            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
-            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
-
-            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
-            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
-            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
-
-            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
-            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
-            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
-
-            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
-            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
-            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
-
-            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
-            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
-            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
+            ...productMockupScene(0.4, sceneDuration, 'Panel operativo del edificio', 'Operacion', '12', 'Activo', ['Cobranza prioritaria', 'Comite pendiente', 'Aviso a residentes'], copper),
+            ...productMockupScene(sceneDuration, sceneDuration, 'Gastos y pagos con visibilidad', 'Finanzas', '$4.2M', 'Al dia', ['Gasto comun emitido', 'Pago por revisar', 'Reporte mensual'], copper),
+            ...productMockupScene(sceneDuration * 2, sceneDuration, 'Solicitudes ordenadas y auditables', 'Solicitudes', '8', 'SLA OK', ['Ascensor en revision', 'Filtro de acceso', 'Mantencion cerrada'], copper),
+            ...productMockupScene(sceneDuration * 3, sceneDuration, 'Servicios y comunidad en un flujo', 'Servicios', '24', 'Listo', ['Reserva confirmada', 'Proveedor asignado', 'Vecino notificado'], copper),
+            ...productMockupScene(sceneDuration * 4, sceneDuration, 'CoCo prepara. Tu equipo aprueba.', 'CoCo Agent', '3', 'Seguro', ['Accion preparada', 'Confirmacion humana', 'Auditoria guardada'], copper),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
