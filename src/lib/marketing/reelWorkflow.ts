@@ -690,11 +690,11 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
     const sceneDuration = Number((contentDuration / 5).toFixed(2));
-    const homeImage = publicAssetUrl('/convive-connect/reels/home.png');
-    const financesImage = publicAssetUrl('/convive-connect/reels/admin-finanzas.png');
-    const maintenanceImage = publicAssetUrl('/convive-connect/reels/admin-mantenimiento.png');
-    const servicesImage = publicAssetUrl('/convive-connect/reels/services.png');
-    const chatImage = publicAssetUrl('/convive-connect/reels/chat.png');
+    const homeImage = publicAssetUrl('/convive-connect/reels/mobile-home.png');
+    const financesImage = publicAssetUrl('/convive-connect/reels/mobile-admin-finanzas.png');
+    const maintenanceImage = publicAssetUrl('/convive-connect/reels/mobile-admin-mantenimiento.png');
+    const servicesImage = publicAssetUrl('/convive-connect/reels/mobile-services.png');
+    const chatImage = publicAssetUrl('/convive-connect/reels/mobile-chat.png');
     const topDuration = Math.max(4, contentDuration);
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
@@ -717,7 +717,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 fit: 'cover',
                 volume: '0%',
                 loop: true,
-                opacity: '18%',
+                opacity: '8%',
             },
             circleElement(0, topDuration, '88%', '12%', '36%', 'rgba(200,112,90,0.18)'),
             circleElement(0, topDuration, '8%', '90%', '46%', 'rgba(235,214,205,0.32)'),
@@ -726,27 +726,27 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
             textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
-            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '19%', '82%', '10%', 46, ink, 700, '50%'),
+            textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '18%', '84%', '10%', 43, ink, 700, '50%'),
 
-            boxElement(0.4, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
-            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
-            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(0.4, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
+            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
+            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
 
-            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
-            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
-            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
+            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
+            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
-            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
-            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
+            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
+            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
-            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
-            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
+            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
+            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
-            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
-            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '58%', '58%', '67%', 'rgba(31,23,19,0.96)'),
+            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '58%', '52%', '62%', 'contain'),
+            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '92%', '82%', '5%', 32, ink, 700, '50%'),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
