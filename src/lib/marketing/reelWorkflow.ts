@@ -677,8 +677,8 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
     const baseDuration = normalizeDurationSeconds(reel);
-    const duration = Math.max(44, baseDuration + 9);
-    const outroDuration = 5;
+    const duration = Math.max(48, baseDuration + 13);
+    const outroDuration = 6;
     const contentDuration = Number((duration - outroDuration).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
@@ -750,13 +750,13 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
-            boxElement(finalTime, outroDuration, '50%', '47%', '82%', '45%', 'rgba(255,255,255,0.96)'),
-            boxElement(finalTime, outroDuration, '50%', '28%', '14%', '8%', copper),
-            textElement('C', finalTime, outroDuration, '50%', '28%', '14%', '8%', 45, paper, 700, '50%'),
-            textElement(brandName, finalTime, outroDuration, '50%', '39%', '78%', '5%', 42, ink, 700, '50%'),
-            textElement(cta, finalTime, outroDuration, '50%', '52%', '76%', '8%', 38, ink, 700, '50%'),
-            textElement(website, finalTime, outroDuration, '50%', '64%', '76%', '5%', 33, copper, 700, '50%'),
-            textElement('Operacion clara. Acciones auditables.', finalTime, outroDuration, '50%', '73%', '76%', '4%', 25, muted, 600, '50%'),
+            boxElement(finalTime, outroDuration, '50%', '50%', '92%', '70%', 'rgba(255,255,255,0.97)'),
+            boxElement(finalTime, outroDuration, '50%', '24%', '18%', '10%', copper),
+            textElement('C', finalTime, outroDuration, '50%', '24%', '18%', '10%', 58, paper, 700, '50%'),
+            textElement(brandName, finalTime, outroDuration, '50%', '37%', '82%', '6%', 50, ink, 700, '50%'),
+            textElement(cta, finalTime, outroDuration, '50%', '51%', '82%', '10%', 43, ink, 700, '50%'),
+            textElement(website, finalTime, outroDuration, '50%', '66%', '82%', '6%', 39, copper, 700, '50%'),
+            textElement('Operacion clara. Acciones auditables.', finalTime, outroDuration, '50%', '78%', '82%', '5%', 30, muted, 600, '50%'),
             {
                 type: 'audio',
                 source: voiceoverUrl,
