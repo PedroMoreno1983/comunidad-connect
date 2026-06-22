@@ -524,16 +524,26 @@ function captionOverlayScene(
     kicker: string,
     headline: string,
     detail: string,
+    chips: string[],
     accentColor: string,
 ): CreatomateElement[] {
     const localDuration = duration + 0.3;
+    const chipOne = chips[0] || 'Solicitudes';
+    const chipTwo = chips[1] || 'Aprobacion';
+    const chipThree = chips[2] || 'Auditoria';
 
     return [
         boxElement(time, localDuration, '50%', '76%', '88%', '25%', 'rgba(31,23,19,0.82)'),
         boxElement(time, localDuration, '25%', '66%', '31%', '4.5%', accentColor),
         textElement(kicker, time, localDuration, '25%', '66%', '29%', '4%', 22, '#FBF8F3', 700, '50%'),
-        textElement(headline, time, localDuration, '50%', '75%', '78%', '9%', 56, '#FFFFFF', 700, '50%'),
-        textElement(detail, time, localDuration, '50%', '86%', '78%', '6%', 30, '#F1E7DF', 600, '50%'),
+        textElement(headline, time, localDuration, '50%', '74%', '78%', '8%', 54, '#FFFFFF', 700, '50%'),
+        textElement(detail, time, localDuration, '50%', '83%', '78%', '5%', 28, '#F1E7DF', 600, '50%'),
+        boxElement(time, localDuration, '27%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
+        textElement(chipOne, time, localDuration, '27%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
+        boxElement(time, localDuration, '50%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
+        textElement(chipTwo, time, localDuration, '50%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
+        boxElement(time, localDuration, '73%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
+        textElement(chipThree, time, localDuration, '73%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
     ];
 }
 
@@ -711,10 +721,10 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
             textElement('CoCo presenta', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
 
-            ...captionOverlayScene(0.4, sceneDuration, 'AGENT CENTER', hook, 'Operacion moderna para edificios reales.', copper),
-            ...captionOverlayScene(sceneDuration, sceneDuration, 'ORDEN', 'Menos chats. Mas trazabilidad.', 'Solicitudes, avisos y decisiones en un solo flujo.', copper),
-            ...captionOverlayScene(sceneDuration * 2, sceneDuration, 'CONTROL', 'CoCo prepara. Tu equipo aprueba.', 'Acciones con confirmacion humana y registro.', copper),
-            ...captionOverlayScene(sceneDuration * 3, sceneDuration, 'VISIBILIDAD', 'Una operacion clara para administrar mejor.', 'Pensado para administradores y comites.', copper),
+            ...captionOverlayScene(0.4, sceneDuration, 'AGENT CENTER', hook, 'Operacion moderna para edificios reales.', ['CoCo', 'Permisos', 'Auditoria'], copper),
+            ...captionOverlayScene(sceneDuration, sceneDuration, 'ORDEN', 'Menos chats. Mas trazabilidad.', 'Solicitudes, avisos y decisiones en un solo flujo.', ['Solicitudes', 'Avisos', 'Reservas'], copper),
+            ...captionOverlayScene(sceneDuration * 2, sceneDuration, 'CONTROL', 'CoCo prepara. Tu equipo aprueba.', 'Acciones con confirmacion humana y registro.', ['Preparar', 'Aprobar', 'Registrar'], copper),
+            ...captionOverlayScene(sceneDuration * 3, sceneDuration, 'VISIBILIDAD', 'Una operacion clara para administrar mejor.', 'Pensado para administradores y comites.', ['Gastos', 'Comite', 'Conserjeria'], copper),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
@@ -866,7 +876,7 @@ function buildConviveBrandDirection() {
         'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Cinematografia limpia, luz natural, espacios modernos, detalles de administracion real, tecnologia discreta.',
         'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
         'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
-        'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no mostrar avatares ni presentadores. Puede mostrar manos, dispositivos, conserjeria, lobbies y residentes de espalda o fuera de foco, sin close-ups de rostros.',
+        'Regla critica para IA visual: no escribir logos, no escribir palabras legibles, no inventar marcas, no generar pantallas de software, no generar dashboards, no generar texto falso, no mostrar avatares ni presentadores. Puede mostrar manos, tablets apagadas o con pantalla abstracta borrosa, conserjeria, lobbies y residentes de espalda o fuera de foco, sin close-ups de rostros.',
     ].join('\n');
 }
 
@@ -879,10 +889,10 @@ function buildHiggsfieldImagePrompt(reel: MarketingReelRecord) {
     return [
         'Create a premium vertical 9:16 cinematic hero frame for an Instagram Reel promoting a SaaS platform for condominium operations in Chile.',
         buildConviveBrandDirection(),
-        'Visual content: modern condominium lobby in Chile, concierge desk, administrator reviewing a tablet, subtle app-like interface reflections without readable text, organized operations, premium proptech mood.',
+        'Visual content: modern condominium lobby in Chile, concierge desk, administrator reviewing a tablet with abstract blurred light only, organized operations, premium proptech mood. No visible software interface.',
         'Composition: cinematic vertical frame, clean depth of field, warm ivory and terracotta accents, premium lighting, professional commercial quality, space at top and bottom for real captions.',
         'Do not include any readable text, fake words, logos, brand names, watermark, microphones, presenters, avatars, or talking heads.',
-        'Quality requirements: sharp, polished, high-end advertisement, no blur, no low resolution, no warped UI, no fake typography.',
+        'Quality requirements: sharp, polished, high-end advertisement, no low resolution, no generated UI, no warped screens, no fake typography.',
         `Mood reference: ${reel.creativePackage.hook || reel.title}. Scene concepts only, no visible text: ${firstScenes}`,
     ].join('\n\n').slice(0, 6000);
 }
@@ -895,10 +905,10 @@ function buildHiggsfieldVideoPrompt(reel: MarketingReelRecord) {
     return [
         'Animate this into a premium vertical Instagram Reel visual layer with cinematic commercial quality.',
         buildConviveBrandDirection(),
-        'Use smooth camera movement, confident pacing, premium proptech advertising style, modern condominium lobby shots, tablet close-ups, hands approving actions, concierge desk, elevator/lobby transitions, clean operational energy.',
-        'Do not add any readable text, subtitles, logos, brand names, fake UI words, symbols, avatars, presenters, microphones, or talking heads. The final brand, captions, and CoCo voiceover will be added by a controlled compositor after this render.',
+        'Use smooth camera movement, confident pacing, premium proptech advertising style, modern condominium lobby shots, tablet close-ups with abstract blurred screen only, hands approving actions, concierge desk, elevator/lobby transitions, clean operational energy.',
+        'Do not add any readable text, subtitles, logos, brand names, fake UI words, software screens, dashboards, symbols, avatars, presenters, microphones, or talking heads. The final ConviveConnect content, captions, and CoCo voiceover will be added by a controlled compositor after this render.',
         'Keep the color palette close to warm ivory, deep ink, copper terracotta, and restrained green accents.',
-        'Quality requirements: sharp, high-detail, polished, cinematic, no blurry frames, no low-quality generated UI, no distorted letters.',
+        'Quality requirements: sharp, high-detail, polished, cinematic, no blurry frames, no generated UI, no distorted letters.',
         `Target duration: ${normalizeDurationSeconds(reel)} seconds.`,
         `Scene concepts only, no visible text:\n${sceneMotion}`,
     ].join('\n\n').slice(0, 6000);
