@@ -549,13 +549,13 @@ export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     return clampText([
         'Hola, soy CoCo.',
         'Soy la agente operativa de ConviveConnect.',
-        'En un condominio, coordinar por planillas y chats dispersos hace que todo dependa de memoria.',
+        'Cuando un condominio opera con planillas y chats dispersos, todo depende de memoria.',
         proof || 'ConviveConnect centraliza solicitudes, comunicaciones, reservas y trazabilidad en una sola plataforma.',
-        'Yo preparo acciones, pido confirmacion humana y dejo auditoria antes de tocar datos sensibles.',
-        'Asi tu equipo ve que esta pasando, decide con contexto y evita operar a ciegas.',
+        'Yo preparo acciones, pido confirmacion humana y dejo auditoria.',
+        'Asi tu equipo decide con contexto y evita operar a ciegas.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
         'ConviveConnect punto com.',
-    ].join(' '), 620);
+    ].join(' '), 520);
 }
 
 function getVoiceUrlSecret() {
@@ -677,8 +677,8 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
     const baseDuration = normalizeDurationSeconds(reel);
-    const duration = Math.max(32, Math.min(38, baseDuration));
-    const outroDuration = 3.4;
+    const duration = Math.max(44, baseDuration + 9);
+    const outroDuration = 5;
     const contentDuration = Number((duration - outroDuration).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
@@ -728,25 +728,25 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement('CoCo Agent Center', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
             textElement(hook, 0.2, Math.max(6, contentDuration - 1), '50%', '19%', '82%', '10%', 46, ink, 700, '50%'),
 
-            boxElement(0.4, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
-            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
-            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(0.4, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
+            imageElement(homeImage, 0.6, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
+            textElement('Panel operativo del edificio', 1, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
-            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
-            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
+            imageElement(financesImage, sceneDuration + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
+            textElement('Gastos y pagos con visibilidad', sceneDuration + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
-            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
-            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 2, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
+            imageElement(maintenanceImage, sceneDuration * 2 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
+            textElement('Solicitudes ordenadas y auditables', sceneDuration * 2 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
-            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
-            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 3, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
+            imageElement(servicesImage, sceneDuration * 3 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
+            textElement('Servicios y comunidad en un flujo', sceneDuration * 3 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
 
-            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '58%', '88%', '57%', 'rgba(255,255,255,0.96)'),
-            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '58%', '84%', '51%', 'cover'),
-            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '88%', '82%', '5%', 29, ink, 700, '50%'),
+            boxElement(sceneDuration * 4, sceneDuration + 0.4, '50%', '56%', '90%', '43%', 'rgba(255,255,255,0.96)'),
+            imageElement(chatImage, sceneDuration * 4 + 0.2, sceneDuration + 0.1, '50%', '56%', '86%', '37%', 'contain'),
+            textElement('CoCo prepara. Tu equipo aprueba.', sceneDuration * 4 + 0.6, sceneDuration, '50%', '84%', '82%', '5%', 29, ink, 700, '50%'),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
@@ -764,7 +764,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 duration,
                 volume: '94%',
                 audio_fade_in: 0.2,
-                audio_fade_out: 0.4,
+                audio_fade_out: 0.1,
             },
         ],
     };
