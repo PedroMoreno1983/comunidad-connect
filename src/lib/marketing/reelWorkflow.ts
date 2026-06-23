@@ -518,32 +518,48 @@ function textElement(
     };
 }
 
-function captionOverlayScene(
+function conviveProductScene(
     time: number,
     duration: number,
-    kicker: string,
-    headline: string,
-    detail: string,
-    chips: string[],
+    title: string,
+    subtitle: string,
+    cards: string[],
+    footer: string,
     accentColor: string,
 ): CreatomateElement[] {
-    const localDuration = duration + 0.3;
-    const chipOne = chips[0] || 'Solicitudes';
-    const chipTwo = chips[1] || 'Aprobacion';
-    const chipThree = chips[2] || 'Auditoria';
+    const localDuration = duration + 0.35;
+    const first = cards[0] || 'CoCo prepara acciones';
+    const second = cards[1] || 'Tu equipo aprueba';
+    const third = cards[2] || 'Todo queda auditado';
 
     return [
-        boxElement(time, localDuration, '50%', '76%', '88%', '25%', 'rgba(31,23,19,0.82)'),
-        boxElement(time, localDuration, '25%', '66%', '31%', '4.5%', accentColor),
-        textElement(kicker, time, localDuration, '25%', '66%', '29%', '4%', 22, '#FBF8F3', 700, '50%'),
-        textElement(headline, time, localDuration, '50%', '74%', '78%', '8%', 54, '#FFFFFF', 700, '50%'),
-        textElement(detail, time, localDuration, '50%', '83%', '78%', '5%', 28, '#F1E7DF', 600, '50%'),
-        boxElement(time, localDuration, '27%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
-        textElement(chipOne, time, localDuration, '27%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
-        boxElement(time, localDuration, '50%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
-        textElement(chipTwo, time, localDuration, '50%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
-        boxElement(time, localDuration, '73%', '91%', '24%', '4%', 'rgba(251,248,243,0.92)'),
-        textElement(chipThree, time, localDuration, '73%', '91%', '22%', '3%', 18, '#1F1713', 700, '50%'),
+        boxElement(time, localDuration, '50%', '49%', '88%', '64%', 'rgba(251,248,243,0.96)'),
+        boxElement(time, localDuration, '50%', '24%', '78%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '18%', '24%', '10%', '6%', accentColor),
+        textElement('C', time, localDuration, '18%', '24%', '10%', '6%', 40, '#FBF8F3', 700, '50%'),
+        textElement('ConviveConnect', time, localDuration, '45%', '23%', '45%', '4%', 32, '#1F1713', 700),
+        textElement('Agent Center', time, localDuration, '45%', '27%', '45%', '3%', 18, '#B45F4B', 700),
+
+        textElement(title, time, localDuration, '50%', '38%', '76%', '10%', 56, '#1F1713', 700, '50%'),
+        textElement(subtitle, time, localDuration, '50%', '49%', '76%', '6%', 30, '#604D44', 600, '50%'),
+
+        boxElement(time, localDuration, '50%', '61%', '74%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '19%', '61%', '5%', '4%', 'rgba(200,112,90,0.24)'),
+        textElement(first, time, localDuration, '54%', '60.5%', '58%', '5%', 30, '#1F1713', 700),
+        textElement('Permisos por rol', time, localDuration, '54%', '65%', '58%', '3%', 19, '#6E5A50', 600),
+
+        boxElement(time, localDuration, '50%', '73%', '74%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '19%', '73%', '5%', '4%', 'rgba(200,112,90,0.24)'),
+        textElement(second, time, localDuration, '54%', '72.5%', '58%', '5%', 30, '#1F1713', 700),
+        textElement('Confirmacion humana', time, localDuration, '54%', '77%', '58%', '3%', 19, '#6E5A50', 600),
+
+        boxElement(time, localDuration, '50%', '85%', '74%', '9%', '#FFFFFF'),
+        boxElement(time, localDuration, '19%', '85%', '5%', '4%', 'rgba(200,112,90,0.24)'),
+        textElement(third, time, localDuration, '54%', '84.5%', '58%', '5%', 30, '#1F1713', 700),
+        textElement('Auditoria operativa', time, localDuration, '54%', '89%', '58%', '3%', 19, '#6E5A50', 600),
+
+        boxElement(time, localDuration, '50%', '95%', '74%', '4%', 'rgba(31,23,19,0.90)'),
+        textElement(footer, time, localDuration, '50%', '95%', '70%', '3%', 19, '#FBF8F3', 700, '50%'),
     ];
 }
 
@@ -558,11 +574,11 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
 export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     return clampText([
         'Soy CoCo, la agente operativa de ConviveConnect.',
-        'Tu edificio no tiene que funcionar con planillas, chats sueltos y memoria.',
-        'ConviveConnect ordena solicitudes, comunicaciones, reservas y trazabilidad en una sola operacion.',
-        'Yo preparo acciones, tu equipo aprueba, y todo queda auditado.',
+        'ConviveConnect ordena solicitudes, gastos, reservas y comunicaciones en una sola operacion.',
+        'Yo preparo acciones con permisos y contexto.',
+        'Tu equipo aprueba, y cada paso queda auditado.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-    ].join(' '), 390);
+    ].join(' '), 330);
 }
 
 function getVoiceUrlSecret() {
@@ -689,9 +705,8 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const ink = '#1F1713';
     const paper = brand.backgroundColor || '#FBF8F3';
     const muted = '#6E5A50';
-    const hook = reel.creativePackage.hook || reel.title;
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
-    const sceneDuration = Number((contentDuration / 4).toFixed(2));
+    const sceneDuration = Number((contentDuration / 3).toFixed(2));
     const topDuration = Math.max(4, contentDuration);
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
@@ -721,10 +736,9 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
             textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
             textElement('CoCo presenta', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
 
-            ...captionOverlayScene(0.4, sceneDuration, 'AGENT CENTER', hook, 'Operacion moderna para edificios reales.', ['CoCo', 'Permisos', 'Auditoria'], copper),
-            ...captionOverlayScene(sceneDuration, sceneDuration, 'ORDEN', 'Menos chats. Mas trazabilidad.', 'Solicitudes, avisos y decisiones en un solo flujo.', ['Solicitudes', 'Avisos', 'Reservas'], copper),
-            ...captionOverlayScene(sceneDuration * 2, sceneDuration, 'CONTROL', 'CoCo prepara. Tu equipo aprueba.', 'Acciones con confirmacion humana y registro.', ['Preparar', 'Aprobar', 'Registrar'], copper),
-            ...captionOverlayScene(sceneDuration * 3, sceneDuration, 'VISIBILIDAD', 'Una operacion clara para administrar mejor.', 'Pensado para administradores y comites.', ['Gastos', 'Comite', 'Conserjeria'], copper),
+            ...conviveProductScene(0.4, sceneDuration, 'Tu edificio en una sola operacion', 'Solicitudes, gastos, reservas y comunicaciones con trazabilidad.', ['Solicitudes ordenadas', 'Avisos segmentados', 'Reservas visibles'], 'ConviveConnect | operacion de condominios', copper),
+            ...conviveProductScene(sceneDuration, sceneDuration, 'CoCo prepara. Tu equipo aprueba.', 'Agent Center convierte pedidos en acciones revisables.', ['Accion preparada', 'Permiso validado', 'Registro auditable'], 'Confirmacion humana antes de tocar datos', copper),
+            ...conviveProductScene(sceneDuration * 2, sceneDuration, 'Menos chats. Mas control.', 'Cada decision queda visible para administracion, comite y conserjeria.', ['Gastos comunes', 'Comite informado', 'Conserjeria coordinada'], 'Agenda una demo en conviveconnect.com', copper),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
