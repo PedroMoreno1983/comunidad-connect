@@ -518,48 +518,71 @@ function textElement(
     };
 }
 
-function conviveProductScene(
+function conviveDashboardScene(
     time: number,
     duration: number,
     title: string,
     subtitle: string,
-    cards: string[],
+    activeSection: string,
+    mainCards: string[],
+    agentRows: string[],
     footer: string,
     accentColor: string,
 ): CreatomateElement[] {
-    const localDuration = duration + 0.35;
-    const first = cards[0] || 'CoCo prepara acciones';
-    const second = cards[1] || 'Tu equipo aprueba';
-    const third = cards[2] || 'Todo queda auditado';
+    const localDuration = duration + 0.25;
+    const first = mainCards[0] || 'Solicitudes ordenadas';
+    const second = mainCards[1] || 'Permisos por rol';
+    const third = mainCards[2] || 'Auditoria visible';
+    const firstAgentRow = agentRows[0] || 'CoCo prepara la accion';
+    const secondAgentRow = agentRows[1] || 'Administrador aprueba';
+    const thirdAgentRow = agentRows[2] || 'Registro auditable';
+    const ink = '#1F1713';
+    const muted = '#6E5A50';
+    const paper = '#FBF8F3';
 
     return [
-        boxElement(time, localDuration, '50%', '49%', '88%', '64%', 'rgba(251,248,243,0.96)'),
-        boxElement(time, localDuration, '50%', '24%', '78%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '18%', '24%', '10%', '6%', accentColor),
-        textElement('C', time, localDuration, '18%', '24%', '10%', '6%', 40, '#FBF8F3', 700, '50%'),
-        textElement('ConviveConnect', time, localDuration, '45%', '23%', '45%', '4%', 32, '#1F1713', 700),
-        textElement('Agent Center', time, localDuration, '45%', '27%', '45%', '3%', 18, '#B45F4B', 700),
+        rectangleElement(time, localDuration, paper),
+        circleElement(time, localDuration, '86%', '15%', '32%', 'rgba(200,112,90,0.18)'),
+        circleElement(time, localDuration, '10%', '92%', '36%', 'rgba(239,231,223,0.88)'),
+        boxElement(time, localDuration, '50%', '52%', '92%', '82%', 'rgba(255,255,255,0.97)'),
 
-        textElement(title, time, localDuration, '50%', '38%', '76%', '10%', 56, '#1F1713', 700, '50%'),
-        textElement(subtitle, time, localDuration, '50%', '49%', '76%', '6%', 30, '#604D44', 600, '50%'),
+        boxElement(time, localDuration, '16%', '52%', '20%', '82%', '#F4ECE4'),
+        boxElement(time, localDuration, '9%', '17%', '5.5%', '4.2%', accentColor),
+        textElement('C', time, localDuration, '9%', '17%', '5.5%', '4%', 25, paper, 700, '50%'),
+        textElement('Convive Connect', time, localDuration, '19.5%', '17%', '14%', '3.8%', 19, ink, 700),
+        textElement('INTELIGENCIA OPERATIVA', time, localDuration, '16%', '25%', '15%', '2.8%', 11, muted, 700, '50%'),
+        boxElement(time, localDuration, '16%', '33%', '15%', '5.2%', 'rgba(180,95,75,0.18)'),
+        textElement(activeSection, time, localDuration, '16%', '33%', '13%', '3.8%', 19, ink, 700, '50%'),
+        textElement('Inicio', time, localDuration, '16%', '43%', '13%', '3.5%', 17, muted, 600, '50%'),
+        textElement('Comunicaciones', time, localDuration, '16%', '50%', '14%', '3.5%', 16, muted, 600, '50%'),
+        textElement('Directorio', time, localDuration, '16%', '57%', '13%', '3.5%', 16, muted, 600, '50%'),
 
-        boxElement(time, localDuration, '50%', '61%', '74%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '19%', '61%', '5%', '4%', 'rgba(200,112,90,0.24)'),
-        textElement(first, time, localDuration, '54%', '60.5%', '58%', '5%', 30, '#1F1713', 700),
-        textElement('Permisos por rol', time, localDuration, '54%', '65%', '58%', '3%', 19, '#6E5A50', 600),
+        textElement(title, time, localDuration, '53%', '18%', '54%', '7%', 43, ink, 700),
+        textElement(subtitle, time, localDuration, '53%', '25%', '54%', '5%', 23, muted, 600),
 
-        boxElement(time, localDuration, '50%', '73%', '74%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '19%', '73%', '5%', '4%', 'rgba(200,112,90,0.24)'),
-        textElement(second, time, localDuration, '54%', '72.5%', '58%', '5%', 30, '#1F1713', 700),
-        textElement('Confirmacion humana', time, localDuration, '54%', '77%', '58%', '3%', 19, '#6E5A50', 600),
+        boxElement(time, localDuration, '44%', '43%', '37%', '11%', '#FBF8F3'),
+        textElement(first, time, localDuration, '44%', '41%', '32%', '4%', 24, ink, 700, '50%'),
+        textElement('Vista clara para administracion y comite', time, localDuration, '44%', '47%', '32%', '3.3%', 17, muted, 600, '50%'),
 
-        boxElement(time, localDuration, '50%', '85%', '74%', '9%', '#FFFFFF'),
-        boxElement(time, localDuration, '19%', '85%', '5%', '4%', 'rgba(200,112,90,0.24)'),
-        textElement(third, time, localDuration, '54%', '84.5%', '58%', '5%', 30, '#1F1713', 700),
-        textElement('Auditoria operativa', time, localDuration, '54%', '89%', '58%', '3%', 19, '#6E5A50', 600),
+        boxElement(time, localDuration, '44%', '58%', '37%', '11%', '#FBF8F3'),
+        textElement(second, time, localDuration, '44%', '56%', '32%', '4%', 24, ink, 700, '50%'),
+        textElement('Responsables, estados y prioridad', time, localDuration, '44%', '62%', '32%', '3.3%', 17, muted, 600, '50%'),
 
-        boxElement(time, localDuration, '50%', '95%', '74%', '4%', 'rgba(31,23,19,0.90)'),
-        textElement(footer, time, localDuration, '50%', '95%', '70%', '3%', 19, '#FBF8F3', 700, '50%'),
+        boxElement(time, localDuration, '44%', '73%', '37%', '11%', '#FBF8F3'),
+        textElement(third, time, localDuration, '44%', '71%', '32%', '4%', 24, ink, 700, '50%'),
+        textElement('Historial operativo sin perder contexto', time, localDuration, '44%', '77%', '32%', '3.3%', 17, muted, 600, '50%'),
+
+        boxElement(time, localDuration, '76%', '57%', '26%', '45%', '#FFFFFF'),
+        textElement('CoCo prepara', time, localDuration, '76%', '40%', '21%', '4%', 24, ink, 700, '50%'),
+        boxElement(time, localDuration, '76%', '49%', '20%', '6%', 'rgba(200,112,90,0.12)'),
+        textElement(firstAgentRow, time, localDuration, '76%', '49%', '18%', '3.8%', 18, ink, 700, '50%'),
+        boxElement(time, localDuration, '76%', '59%', '20%', '6%', 'rgba(200,112,90,0.12)'),
+        textElement(secondAgentRow, time, localDuration, '76%', '59%', '18%', '3.8%', 18, ink, 700, '50%'),
+        boxElement(time, localDuration, '76%', '69%', '20%', '6%', 'rgba(200,112,90,0.12)'),
+        textElement(thirdAgentRow, time, localDuration, '76%', '69%', '18%', '3.8%', 18, ink, 700, '50%'),
+
+        boxElement(time, localDuration, '53%', '88%', '67%', '5%', 'rgba(31,23,19,0.92)'),
+        textElement(footer, time, localDuration, '53%', '88%', '62%', '3.4%', 18, paper, 700, '50%'),
     ];
 }
 
@@ -574,11 +597,11 @@ function buildVoiceoverText(reel: MarketingReelRecord) {
 export function buildCocoVoiceoverText(reel: MarketingReelRecord) {
     return clampText([
         'Soy CoCo, la agente operativa de ConviveConnect.',
-        'ConviveConnect ordena solicitudes, gastos, reservas y comunicaciones en una sola operacion.',
-        'Yo preparo acciones con permisos y contexto.',
-        'Tu equipo aprueba, y cada paso queda auditado.',
+        'Tu edificio deja atras planillas, chats sueltos y memoria operacional.',
+        'Agent Center ordena solicitudes, permisos y acciones pendientes en una vista clara.',
+        'Yo preparo, tu equipo aprueba, y cada paso queda auditado.',
         reel.creativePackage.coverText || 'Agenda una demo en conviveconnect.com.',
-    ].join(' '), 330);
+    ].join(' '), 285);
 }
 
 function getVoiceUrlSecret() {
@@ -695,9 +718,11 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const width = reel.renderSpec.width || 1080;
     const height = reel.renderSpec.height || 1920;
     const baseDuration = normalizeDurationSeconds(reel);
-    const duration = Math.max(30, Math.min(38, baseDuration));
-    const outroDuration = 4;
-    const contentDuration = Number((duration - outroDuration).toFixed(2));
+    const duration = Math.max(22, Math.min(24, baseDuration));
+    const introDuration = 4.2;
+    const outroDuration = 3.8;
+    const layoutDuration = Number((duration - introDuration - outroDuration).toFixed(2));
+    const layoutSceneDuration = Number((layoutDuration / 2).toFixed(2));
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
     const website = brand.domain || 'conviveconnect.com';
@@ -706,8 +731,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const paper = brand.backgroundColor || '#FBF8F3';
     const muted = '#6E5A50';
     const cta = reel.creativePackage.coverText || 'Agenda una demo guiada';
-    const sceneDuration = Number((contentDuration / 3).toFixed(2));
-    const topDuration = Math.max(4, contentDuration);
+    const secondLayoutTime = Number((introDuration + layoutSceneDuration).toFixed(2));
     const finalTime = Number((duration - outroDuration).toFixed(2));
 
     return {
@@ -721,24 +745,43 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
                 type: 'video',
                 source: visualVideoUrl,
                 time: 0,
-                duration,
+                duration: introDuration,
                 x: '50%',
                 y: '50%',
                 width: '100%',
                 height: '100%',
                 fit: 'cover',
                 volume: '0%',
-                loop: true,
             },
-            boxElement(0, topDuration, '50%', '8%', '88%', '10%', 'rgba(251,248,243,0.92)'),
-            boxElement(0, topDuration, '13%', '8%', '9%', '5.2%', copper),
-            textElement('C', 0, topDuration, '13%', '8%', '9%', '5%', 31, paper, 700, '50%'),
-            textElement(brandName, 0, topDuration, '36%', '7.4%', '38%', '4%', 32, ink, 700),
-            textElement('CoCo presenta', 0, topDuration, '72%', '7.4%', '30%', '4%', 23, copper, 700, '50%'),
+            boxElement(0, introDuration, '50%', '73%', '88%', '22%', 'rgba(31,23,19,0.78)'),
+            boxElement(0, introDuration, '18%', '62%', '10%', '6%', copper),
+            textElement('C', 0, introDuration, '18%', '62%', '10%', '5%', 37, paper, 700, '50%'),
+            textElement(brandName, 0, introDuration, '51%', '62%', '54%', '5%', 38, paper, 700),
+            textElement('CoCo presenta una operacion clara para tu edificio', 0, introDuration, '50%', '73%', '78%', '8%', 38, paper, 700, '50%'),
+            textElement('Solicitudes, permisos y auditoria en una sola plataforma.', 0, introDuration, '50%', '83%', '78%', '4%', 22, '#F4ECE4', 600, '50%'),
 
-            ...conviveProductScene(0.4, sceneDuration, 'Tu edificio en una sola operacion', 'Solicitudes, gastos, reservas y comunicaciones con trazabilidad.', ['Solicitudes ordenadas', 'Avisos segmentados', 'Reservas visibles'], 'ConviveConnect | operacion de condominios', copper),
-            ...conviveProductScene(sceneDuration, sceneDuration, 'CoCo prepara. Tu equipo aprueba.', 'Agent Center convierte pedidos en acciones revisables.', ['Accion preparada', 'Permiso validado', 'Registro auditable'], 'Confirmacion humana antes de tocar datos', copper),
-            ...conviveProductScene(sceneDuration * 2, sceneDuration, 'Menos chats. Mas control.', 'Cada decision queda visible para administracion, comite y conserjeria.', ['Gastos comunes', 'Comite informado', 'Conserjeria coordinada'], 'Agenda una demo en conviveconnect.com', copper),
+            ...conviveDashboardScene(
+                introDuration,
+                layoutSceneDuration,
+                'Agent Center visible',
+                'Solicitudes, gastos y comunicaciones en una pantalla operativa.',
+                'Agent Center',
+                ['Solicitudes priorizadas', 'Permisos por rol', 'Trazabilidad completa'],
+                ['Accion lista', 'Aprobacion humana', 'Auditoria guardada'],
+                'Tu equipo ve que hacer, quien aprueba y que quedo registrado.',
+                copper,
+            ),
+            ...conviveDashboardScene(
+                secondLayoutTime,
+                layoutSceneDuration,
+                'Menos caos, mas control',
+                'CoCo prepara el trabajo sin reemplazar la decision humana.',
+                'Reels Agent',
+                ['Gastos comunes', 'Comite informado', 'Conserjeria coordinada'],
+                ['Contexto reunido', 'Siguiente paso claro', 'Evidencia disponible'],
+                'ConviveConnect centraliza la operacion antes de publicar o ejecutar.',
+                copper,
+            ),
 
             rectangleElement(finalTime, outroDuration, paper),
             circleElement(finalTime, outroDuration, '84%', '18%', '34%', 'rgba(200,112,90,0.20)'),
