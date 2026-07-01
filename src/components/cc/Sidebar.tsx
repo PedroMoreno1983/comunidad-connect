@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
+import { isPlatformCreatorEmail } from "@/lib/platformAccess";
 import { clsx } from "clsx";
 import {
   Activity,
@@ -74,6 +75,16 @@ type SidebarProps = {
   user?: { name: string; initials: string; roleLabel: string };
 };
 
+type SidebarLink = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  roles: string[];
+  feature?: string;
+  premium?: boolean;
+  creatorOnly?: boolean;
+};
+
 export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser }: SidebarProps) {
   const pathname = usePathname();
   const { user: authUser, logout } = useAuth();
@@ -111,13 +122,14 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
   const role: Role = (activeUser.role === "concierge" ? "conserje" : activeUser.role === "resident" ? "resident" : "admin") as Role;
   const accent = ACCENT[role];
   const activeHref = propActiveHref || pathname;
+  const isPlatformCreator = isPlatformCreatorEmail(activeUser.email);
 
   const menuSections = [
     {
       title: "INTELIGENCIA OPERATIVA",
       links: [
         { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
-        { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true },
+        { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true, creatorOnly: true },
       ]
     },
     {
@@ -196,8 +208,9 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     });
   }
 
-  const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean }) => {
+  const canShowLink = (link: SidebarLink) => {
     if (!link.roles.includes(activeUser.role || "resident")) return false;
+    if (link.creatorOnly && !isPlatformCreator) return false;
     if (link.feature && activeUser.features) {
       if (activeUser.features[link.feature] === false) return false;
     }

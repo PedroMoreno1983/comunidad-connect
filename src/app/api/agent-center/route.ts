@@ -369,28 +369,32 @@ function inferActionHeuristic(message: string): AgentAction {
     const agentKey = pickAgent(message);
     const date = dateFromText(message);
     const { start, end } = timeFromText(message);
+    const wantsWorkflow = lower.includes('playbook') || lower.includes('workflow') || lower.includes('flujo') || lower.includes('proceso') || lower.includes('prepara');
+    const wantsResidentOnboarding = lower.includes('onboarding') || lower.includes('nomina') || lower.includes('residentes') || lower.includes('cargar usuarios') || lower.includes('cargar edificio') || lower.includes('activar edificio');
+    const wantsCollection = lower.includes('moros') || lower.includes('cobran') || lower.includes('impago') || lower.includes('deudor') || lower.includes('cobros pendientes');
+    const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
+    const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
+    const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
 
-    if (lower.includes('playbook') || lower.includes('flujo') || lower.includes('proceso')) {
-        if (lower.includes('moros') || lower.includes('cobran') || lower.includes('gasto')) {
-            const playbook = getPlaybook('finance_collection_review');
-            if (playbook) return playbookAction(playbook, message);
-        }
-        if (lower.includes('onboarding') || lower.includes('excel') || lower.includes('nomina') || lower.includes('nómina')) {
-            const playbook = getPlaybook('onboarding_import_review');
-            if (playbook) return playbookAction(playbook, message);
-        }
-        if (lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion') || lower.includes('filtración')) {
-            const playbook = getPlaybook('iot_emergency_readiness');
-            if (playbook) return playbookAction(playbook, message);
-        }
-        if (lower.includes('ticket') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor')) {
-            const playbook = getPlaybook('maintenance_ticket_triage');
-            if (playbook) return playbookAction(playbook, message);
-        }
-        if (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('difusion') || lower.includes('difusión')) {
-            const playbook = getPlaybook('community_broadcast');
-            if (playbook) return playbookAction(playbook, message);
-        }
+    if (wantsResidentOnboarding) {
+        const playbook = getPlaybook('onboarding_import_review');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsCollection) {
+        const playbook = getPlaybook('finance_collection_review');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsIotReadiness) {
+        const playbook = getPlaybook('iot_emergency_readiness');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsMaintenanceReview && wantsWorkflow) {
+        const playbook = getPlaybook('maintenance_ticket_triage');
+        if (playbook) return playbookAction(playbook, message);
+    }
+    if (wantsBroadcastWorkflow) {
+        const playbook = getPlaybook('community_broadcast');
+        if (playbook) return playbookAction(playbook, message);
     }
 
     if (lower.includes('gasto') || lower.includes('pago') || lower.includes('deuda')) {
@@ -827,6 +831,7 @@ Definición de agentes y herramientas:
      summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
 5. Playbooks operativos:
+   - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar emergencia IoT o preparar un comunicado guiado.
    - Herramienta 'run_playbook': Para preparar un flujo multi-paso gobernado con aprobacion humana.
      Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
      requiresConfirmation: true
@@ -1626,7 +1631,7 @@ export async function POST(req: NextRequest) {
         if (!confirmed && !rejected && !requestedPlaybook && (isSmallTalk(message) || isTooAmbiguousForAction(message))) {
             return NextResponse.json({
                 status: 'executed',
-                reply: 'Hola. Puedo ayudarte a preparar acciones reales como reservas, tickets, comunicados, visitas, cobranza u onboarding. Dime que necesitas hacer y te muestro una propuesta antes de ejecutarla.',
+                reply: 'Hola. Puedo ayudarte con acciones concretas: cargar residentes, preparar cobranza, crear un comunicado, registrar una visita, reservar espacios o abrir tickets. Elige una accion guiada o escribeme lo que necesitas y te mostrare una propuesta antes de ejecutarla.',
                 steps: [
                     {
                         kind: 'reasoning',

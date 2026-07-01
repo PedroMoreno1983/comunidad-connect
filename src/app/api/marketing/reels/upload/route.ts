@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { isPlatformCreatorEmail } from '@/lib/platformAccess';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -34,8 +35,8 @@ export async function POST(req: NextRequest) {
     try {
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
-        if (profile.role !== 'admin') {
-            return NextResponse.json({ error: 'Solo administracion puede guardar videos de marketing.' }, { status: 403 });
+        if (!isPlatformCreatorEmail(profile.email)) {
+            return NextResponse.json({ error: 'Solo el creador de la plataforma puede guardar videos de marketing.' }, { status: 403 });
         }
 
         const formData = await req.formData();

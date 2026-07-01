@@ -165,10 +165,43 @@ const AGENTS = [
 ];
 
 const EXAMPLES = [
-  "Reserva el quincho para este viernes a las 20:00",
-  "Quiero vender mi televisor LED a 80 mil pesos",
-  "Reporta que la luz del ascensor 2 parpadea",
-  "Revisa mis gastos comunes pendientes",
+  "Cargar residentes desde una nomina",
+  "Revisar morosos y preparar cobranza",
+  "Publicar comunicado: corte de agua manana a las 10",
+  "Registrar visita de Juan Perez al depto 501",
+];
+
+type QuickAction = {
+  label: string;
+  description: string;
+  message: string;
+  playbookKey?: string;
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: "Activar edificio",
+    description: "Carga nomina, revisa brechas y sincroniza residentes.",
+    message: "Prepara el onboarding del edificio para cargar residentes desde una nomina.",
+    playbookKey: "onboarding_import_review",
+  },
+  {
+    label: "Cobranza privada",
+    description: "Detecta impagos y prepara notificaciones auditadas.",
+    message: "Revisar morosos y preparar cobranza privada del mes.",
+    playbookKey: "finance_collection_review",
+  },
+  {
+    label: "Comunicado",
+    description: "Redacta un aviso oficial antes de publicarlo.",
+    message: "Preparar comunicado comunitario para los residentes.",
+    playbookKey: "community_broadcast",
+  },
+  {
+    label: "Ticket operativo",
+    description: "Convierte un problema en solicitud trazable.",
+    message: "Crear ticket por una falla en el edificio.",
+  },
 ];
 
 function nowId() {
@@ -406,7 +439,7 @@ export default function AgentCenterPage() {
     {
       id: "welcome",
       role: "agent",
-      content: "Soy CoCo Agent Center. Puedo preparar acciones reales y pedir confirmacion antes de tocar datos del condominio.",
+      content: "Soy CoCo Agent Center. Elige una accion guiada o escribeme en lenguaje natural; preparare una propuesta real antes de tocar datos del condominio.",
       status: "executed",
       steps: [
         { kind: "reasoning", title: "Modo comercial", detail: "Acciones reales, permisos por rol y auditoria." },
@@ -551,6 +584,16 @@ export default function AgentCenterPage() {
     const message = `Ejecuta el playbook ${playbook.name}`;
     setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
     await sendAgentRequest({ message, type: "playbook_request", playbookKey: playbook.key });
+  }
+
+  async function requestQuickAction(action: QuickAction) {
+    if (loading) return;
+    setInput("");
+    setMessages((current) => [...current, { id: nowId(), role: "user", content: action.message }]);
+    await sendAgentRequest({
+      message: action.message,
+      ...(action.playbookKey ? { type: "playbook_request", playbookKey: action.playbookKey } : {}),
+    });
   }
 
   async function requestWorkflow(workflow: AgentWorkflow) {
@@ -973,6 +1016,26 @@ export default function AgentCenterPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="border-t border-[var(--cc-line)] p-4">
+              <div className="pb-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold cc-text-primary">Acciones guiadas</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Siempre pide confirmacion</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.label}
+                      type="button"
+                      onClick={() => requestQuickAction(action)}
+                      disabled={loading}
+                      className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-3 text-left transition hover:border-[var(--cc-copper)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="block text-xs font-semibold cc-text-primary">{action.label}</span>
+                      <span className="mt-1 block text-[11px] leading-4 cc-text-secondary">{action.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2 pb-3">
                 {EXAMPLES.map((example) => (
                   <button
@@ -989,7 +1052,7 @@ export default function AgentCenterPage() {
                 <input
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
-                  placeholder="Pidele a CoCo una accion real..."
+                  placeholder="Ej: carga residentes, prepara cobranza, registra una visita o crea un ticket..."
                   className="min-h-11 flex-1 rounded-lg border border-[var(--cc-line)] bg-white px-4 text-sm outline-none transition focus:border-[var(--cc-copper)]"
                 />
                 <button

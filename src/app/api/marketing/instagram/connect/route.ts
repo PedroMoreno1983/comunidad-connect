@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { isPlatformCreatorEmail } from '@/lib/platformAccess';
 import {
     buildInstagramConnectUrl,
     createInstagramOAuthState,
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     try {
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.redirect(new URL('/login?next=/marketing/reels', req.url));
-        if (profile.role !== 'admin') {
+        if (!isPlatformCreatorEmail(profile.email)) {
             return NextResponse.redirect(new URL('/marketing/reels?instagram=forbidden', req.url));
         }
 
