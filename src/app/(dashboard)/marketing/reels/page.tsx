@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CalendarClock,
@@ -32,6 +33,8 @@ import type {
   ReelAudience,
   ReelTone,
 } from "@/lib/types";
+import { useAuth } from "@/lib/authContext";
+import { isPlatformCreatorEmail } from "@/lib/platformAccess";
 
 type DashboardResponse = {
   reel?: MarketingReelRecord;
@@ -435,6 +438,8 @@ function SceneDetail({ label, children, strong = false }: { label: string; child
 }
 
 export default function MarketingReelsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [form, setForm] = useState<ReelAgentInput>(DEFAULT_FORM);
   const [reels, setReels] = useState<MarketingReelRecord[]>([]);
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
@@ -446,6 +451,7 @@ export default function MarketingReelsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const isPlatformCreator = isPlatformCreatorEmail(user?.email);
 
   const selectedReel = useMemo(
     () => reels.find(reel => reel.id === selectedReelId) || reels[0] || null,
@@ -474,9 +480,16 @@ export default function MarketingReelsPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isPlatformCreator) {
+      const fallbackHref = user?.role === "resident" ? "/home" : user?.role === "concierge" ? "/concierge" : "/admin";
+      router.replace(fallbackHref);
+      return;
+    }
+
     loadDashboard().catch(err => setError(err instanceof Error ? err.message : "No se pudo cargar Reels Agent."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading, isPlatformCreator, router, user?.role]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -490,7 +503,7 @@ export default function MarketingReelsPage() {
       setError(detail || "No se pudo conectar Instagram.");
     } else if (instagramStatus === "forbidden") {
       setNotice("");
-      setError("Solo administracion puede conectar Instagram.");
+      setError("Solo el creador de la plataforma puede conectar Instagram.");
     } else if (instagramStatus === "login_required") {
       setNotice("");
       setError("Inicia sesion nuevamente para terminar la conexion con Instagram.");
@@ -589,6 +602,8 @@ export default function MarketingReelsPage() {
       setActionLoading(null);
     }
   }
+
+  if (authLoading || !isPlatformCreator) return null;
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-10">

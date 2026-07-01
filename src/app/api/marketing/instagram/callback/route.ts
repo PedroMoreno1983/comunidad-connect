@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { isPlatformCreatorEmail } from '@/lib/platformAccess';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { recordOperationEvent } from '@/lib/operations/audit';
 import {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
         const state = verifyInstagramOAuthState(rawState);
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return redirectToReels(req, { instagram: 'login_required' });
-        if (profile.role !== 'admin') return redirectToReels(req, { instagram: 'forbidden' });
+        if (!isPlatformCreatorEmail(profile.email)) return redirectToReels(req, { instagram: 'forbidden' });
         if (profile.id !== state.profileId || (profile.community_id || state.communityId) !== state.communityId) {
             throw new Error('La sesion no coincide con la autorizacion de Instagram.');
         }

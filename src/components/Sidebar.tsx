@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
+import { isPlatformCreatorEmail } from '@/lib/platformAccess';
 import { clsx } from 'clsx';
 import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -76,6 +77,8 @@ export function Sidebar() {
         return () => window.removeEventListener('keydown', handleEscape);
     }, []);
 
+    const isPlatformCreator = isPlatformCreatorEmail(user?.email);
+
     const handleLogout = () => {
         logout();
         router.push('/');
@@ -88,7 +91,7 @@ export function Sidebar() {
             title: 'INTELIGENCIA OPERATIVA',
             links: [
                 { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
-                { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true },
+                { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true, creatorOnly: true },
             ]
         },
         {
@@ -191,8 +194,9 @@ export function Sidebar() {
         }
     };
 
-    const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean }) => {
+    const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean; creatorOnly?: boolean }) => {
         if (!link.roles.includes(user.role)) return false;
+        if (link.creatorOnly && !isPlatformCreator) return false;
 
         if (link.feature && user.features) {
             if (user.features[link.feature] === false) return false;

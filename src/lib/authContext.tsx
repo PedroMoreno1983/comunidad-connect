@@ -143,21 +143,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     || 'Usuario';
 
                 const features = profile.communities?.pricing_tiers?.features || {};
+                const profileRole = profile.role || 'resident';
+                const profileUnitId = typeof profile.unit_id === 'string' ? profile.unit_id : undefined;
+                const profileDepartmentNumber = typeof profile.department_number === 'string' ? profile.department_number.trim() : '';
 
                 // Map from DB profile
                 setUser({
                     id: sbUser.id,
                     name: displayName,
                     email: sbUser.email || '',
-                    role: profile.role || 'resident',
-                    unitId: undefined,
+                    role: profileRole,
+                    unitId: profileUnitId,
+                    unitName: profileDepartmentNumber ? `Depto ${profileDepartmentNumber}` : undefined,
                     photo: profile.avatar_url,
                     communityId: profile.community_id,
                     features,
                 });
 
-                // Fetch unit if exists
-                fetchUnitForUser(sbUser.id);
+                // Fetch or repair unit if exists
+                fetchUnitForUser(sbUser.id, profileUnitId);
+                if (profileRole === 'resident' && !profileUnitId) {
+                    ensureResidentUnitForUser();
+                }
             }
         } catch (err) {
             console.warn("[auth] Profile fetch failed, using auth metadata fallback:", err);
@@ -166,15 +173,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
         }
     };
-
     // Helper to fetch unit
-    const fetchUnitForUser = async (userId: string) => {
+    const fetchUnitForUser = async (userId: string, profileUnitId?: string) => {
         try {
-            const { data: unit, error } = await supabase
+            let query = supabase
                 .from('units')
-                .select('*')
-                .eq('owner_id', userId)
-                .maybeSingle();
+                .select('*');
+
+            query = profileUnitId
+                ? query.or(`owner_id.eq.${userId},id.eq.${profileUnitId}`)
+                : query.eq('owner_id', userId);
+
+            const { data: units, error } = await query.limit(1);
+            const unit = Array.isArray(units) ? units[0] : null;
 
             if (unit && !error) {
                 const unitNumber = unit.number || unit.unit_number || unit.department_number;
@@ -182,6 +193,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         } catch (err) {
             console.error("Could not fetch unit for user:", err);
+        }
+    };
+
+    const ensureResidentUnitForUser = async () => {
+        try {
+            const response = await fetch('/api/profile/ensure-resident-unit', { method: 'POST' });
+            if (!response.ok) return;
+            const data = await response.json().catch(() => ({})) as { unitId?: string; unitName?: string };
+            if (data.unitId) {
+                setUser(prev => prev ? ({ ...prev, unitId: data.unitId, unitName: data.unitName || prev.unitName }) : null);
+            }
+        } catch (err) {
+            console.warn("[auth] Resident unit auto-link skipped:", err);
         }
     };
 
