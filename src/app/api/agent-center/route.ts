@@ -108,8 +108,8 @@ const AGENT_PLAYBOOKS: AgentPlaybook[] = [
     {
         key: 'maintenance_ticket_triage',
         agentKey: 'maintenance',
-        name: 'Triage de mantenimiento',
-        description: 'Ordena tickets abiertos, revisa proveedores disponibles y deja seguimiento operativo trazable.',
+        name: 'Ordenar tickets',
+        description: 'Ordena tickets abiertos, revisa proveedores y deja el seguimiento listo.',
         targetHref: '/admin/mantenimiento',
         requiresAdmin: true,
         steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],
@@ -117,8 +117,8 @@ const AGENT_PLAYBOOKS: AgentPlaybook[] = [
     {
         key: 'onboarding_import_review',
         agentKey: 'community',
-        name: 'Onboarding de edificio',
-        description: 'Abre el flujo correcto para cargar nominas, revisar calidad y sincronizar residentes con confirmacion.',
+        name: 'Cargar residentes',
+        description: 'Prepara la carga de residentes, revisa datos y sincroniza unidades con confirmacion.',
         targetHref: '/admin/onboarding',
         requiresAdmin: true,
         steps: ['Subir archivo', 'Extraer residentes', 'Revisar advertencias', 'Sincronizar perfiles y unidades'],
@@ -263,7 +263,7 @@ function playbookAction(playbook: AgentPlaybook, message: string): AgentAction {
             requestedText: cleanText(message, 600),
         },
         requiresConfirmation: true,
-        title: `Preparar workflow: ${playbook.name}`,
+        title: `Preparar revision: ${playbook.name}`,
         summary: playbook.description,
         targetHref: playbook.targetHref,
     };
@@ -284,7 +284,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     create_service_request: 'Preparar solicitud de servicio',
     register_visitor: 'Registrar visita',
     get_my_expenses: 'Consultar gastos comunes',
-    run_playbook: 'Preparar workflow',
+    run_playbook: 'Preparar revision',
 };
 
 function humanizeArgKey(key: string) {
@@ -294,7 +294,7 @@ function humanizeArgKey(key: string) {
         date: 'Fecha',
         description: 'Descripcion',
         endTime: 'Termino',
-        playbookKey: 'Workflow',
+        playbookKey: 'Accion',
         preferredDate: 'Fecha preferida',
         preferredTime: 'Hora preferida',
         price: 'Precio',
@@ -322,7 +322,7 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
         return [
             {
                 kind: 'reasoning',
-                title: 'Workflow seleccionado',
+                title: 'Accion seleccionada',
                 detail: `${playbook.name}. ${playbook.description}`,
             },
             {
@@ -351,7 +351,7 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
 
 function activityDisplayForAction(action: AgentAction) {
     const playbook = action.toolName === 'run_playbook' ? getPlaybook(action.args.playbookKey) : null;
-    if (playbook) return `Workflow: ${playbook.name}`;
+    if (playbook) return playbook.name;
     return TOOL_LABELS[action.toolName] || 'Actividad CoCo';
 }
 
@@ -665,17 +665,17 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
         {
             key: 'maintenance_ticket_triage',
             agentKey: 'maintenance',
-            name: 'Mantenimiento y tickets',
+            name: 'Tickets y proveedores',
             status: workflowStatus(requestCount, providerCount > 0 ? 0 : 1),
             priority: workflowPriority(requestCount, providerCount > 0 ? 0 : 1),
             nextAction: providerCount > 0
-                ? 'Preparar priorizacion y seguimiento de tickets abiertos'
-                : 'Registrar o verificar proveedores antes de automatizar despacho',
+                ? 'Ordenar tickets abiertos y preparar seguimiento'
+                : 'Registrar o verificar proveedores antes de asignar tareas',
             pendingActions: requestCount,
             completedActions: 0,
             estimatedMinutesSaved: requestCount * 18,
             targetHref: '/admin/mantenimiento',
-            summary: 'CoCo puede ordenar incidencias, detectar falta de proveedor y dejar seguimiento auditable.',
+            summary: 'CoCo puede ordenar incidencias, revisar proveedores y dejar seguimiento claro.',
             metrics: [
                 { label: 'Tickets abiertos', value: String(requestCount), tone: requestCount > 0 ? 'warning' : 'success' },
                 { label: 'Proveedores verificados', value: String(providerCount), tone: providerCount > 0 ? 'success' : 'warning' },
@@ -685,15 +685,15 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
         {
             key: 'finance_collection_review',
             agentKey: 'finance',
-            name: 'Cobranza mensual',
+            name: 'Morosos y cobranza',
             status: workflowStatus(expenseCount, 0),
             priority: workflowPriority(expenseCount, 0),
-            nextAction: expenseCount > 0 ? 'Preparar cobranza privada para gastos pendientes' : 'Sin cobros pendientes por gestionar',
+            nextAction: expenseCount > 0 ? 'Preparar avisos privados para gastos pendientes' : 'No hay cobros pendientes por gestionar',
             pendingActions: expenseCount,
             completedActions: 0,
             estimatedMinutesSaved: expenseCount * 5,
             targetHref: '/admin/finanzas',
-            summary: 'Segmenta gastos pendientes, notifica sin exponer deudas y registra auditoria.',
+            summary: 'Ordena gastos pendientes y prepara avisos privados sin exponer deudas.',
             metrics: [
                 { label: 'Cobros pendientes', value: String(expenseCount), tone: expenseCount > 0 ? 'warning' : 'success' },
                 { label: 'Propuestas por aprobar', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'neutral' },
@@ -703,15 +703,15 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
         {
             key: 'onboarding_import_review',
             agentKey: 'community',
-            name: 'Onboarding de edificio',
+            name: 'Cargar residentes',
             status: workflowStatus(onboardingGap, units > 0 ? 0 : 1),
             priority: workflowPriority(onboardingGap, units > 0 ? 0 : 1),
-            nextAction: units > 0 ? 'Revisar residentes faltantes y sincronizacion de perfiles' : 'Cargar unidades base del edificio',
+            nextAction: units > 0 ? 'Revisar residentes faltantes y preparar accesos' : 'Cargar unidades base del edificio',
             pendingActions: onboardingGap,
             completedActions: profiles,
             estimatedMinutesSaved: Math.max(1, onboardingGap) * 3,
             targetHref: '/admin/onboarding',
-            summary: 'Revisa nominas, detecta brechas de datos y sincroniza unidades con confirmacion.',
+            summary: 'Revisa nominas, detecta datos faltantes y prepara accesos por unidad.',
             metrics: [
                 { label: 'Unidades', value: String(units), tone: units > 0 ? 'success' : 'warning' },
                 { label: 'Perfiles comunidad', value: String(profiles), tone: profiles > 0 ? 'success' : 'neutral' },
@@ -721,15 +721,15 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
         {
             key: 'community_broadcast',
             agentKey: 'community',
-            name: 'Comunicaciones oficiales',
+            name: 'Comunicados',
             status: workflowStatus(pendingAuditActions, 0),
             priority: workflowPriority(pendingAuditActions, 0),
-            nextAction: pendingAuditActions > 0 ? 'Revisar propuestas pendientes antes de publicar' : 'Preparar comunicado cuando administracion lo solicite',
+            nextAction: pendingAuditActions > 0 ? 'Revisar propuestas antes de publicar' : 'Preparar comunicado cuando administracion lo solicite',
             pendingActions: pendingAuditActions,
             completedActions: 0,
             estimatedMinutesSaved: pendingAuditActions * 3,
             targetHref: '/comunicaciones',
-            summary: 'Redacta comunicados con control editorial, permiso humano y bitacora.',
+            summary: 'Redacta avisos para revisar antes de publicar.',
             metrics: [
                 { label: 'Propuestas pendientes', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'success' },
                 { label: 'Modo', value: 'Aprobacion', tone: 'neutral' },
@@ -830,13 +830,13 @@ Definición de agentes y herramientas:
      title: 'Publicar comunicado oficial'
      summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
-5. Playbooks operativos:
+5. Acciones frecuentes:
    - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar emergencia IoT o preparar un comunicado guiado.
-   - Herramienta 'run_playbook': Para preparar un flujo multi-paso gobernado con aprobacion humana.
+   - Herramienta 'run_playbook': Para preparar una tarea guiada con aprobacion humana.
      Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
      requiresConfirmation: true
      targetHref: usa el targetHref del playbook.
-     title: 'Preparar workflow'
+     title: 'Preparar revision'
      summary: 'CoCo preparara un proceso guiado con auditoria y confirmacion humana.'
 
 Instrucciones de formato:
@@ -940,7 +940,7 @@ function normalizeAction(action: AgentAction): AgentAction {
         toolName: action.toolName,
         args: safeArgs,
         requiresConfirmation: writesRequireConfirmation ? true : Boolean(action.requiresConfirmation),
-        title: playbook ? `Preparar workflow: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
+        title: playbook ? `Preparar revision: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
         summary: playbook?.description || cleanText(action.summary, 280) || 'CoCo preparo una accion operacional.',
         targetHref: playbook?.targetHref || cleanText(action.targetHref, 120) || '/agent-center',
         proposalId: action.proposalId || null,
@@ -1124,7 +1124,7 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
     return action;
 }
 
-function requireAdmin(profile: AgentProfile, message = 'Solo administracion puede ejecutar este playbook.') {
+function requireAdmin(profile: AgentProfile, message = 'Solo administracion puede preparar esta accion.') {
     if (profile.role !== 'admin') throw new Error(message);
 }
 
@@ -1188,7 +1188,7 @@ async function runFinanceCollectionPlaybook(profile: AgentProfile) {
         entityType: 'agent_playbook',
         severity: notifications.length === rows.length ? 'success' : 'warning',
         status: notifications.length === rows.length ? 'success' : 'pending',
-        summary: `Playbook cobranza: ${rows.length} cobro(s) impago(s), ${notifications.length} notificacion(es) creadas`,
+        summary: `Cobranza privada: ${rows.length} cobro(s) impago(s), ${notifications.length} notificacion(es) creadas`,
         metadata: {
             pendingExpenses: rows.length,
             notifications: notifications.length,
@@ -1258,7 +1258,7 @@ async function runMaintenanceTicketTriagePlaybook(profile: AgentProfile) {
         entityType: 'agent_playbook',
         severity: warnings.length ? 'warning' : 'success',
         status: warnings.length ? 'pending' : 'success',
-        summary: warnings.length ? 'Triage de mantenimiento detecto brechas operativas' : 'Triage de mantenimiento sin brechas criticas',
+        summary: warnings.length ? 'Revision de mantencion detecto brechas operativas' : 'Mantencion sin brechas criticas',
         metadata: {
             openRequests: rows.length,
             verifiedProviders: providerCount || 0,
@@ -1277,7 +1277,7 @@ async function runMaintenanceTicketTriagePlaybook(profile: AgentProfile) {
     return {
         entityType: 'agent_playbook',
         entityId: null,
-        title: warnings.length ? 'Triage con acciones pendientes' : 'Mantenimiento ordenado',
+        title: warnings.length ? 'Revision con acciones pendientes' : 'Mantenimiento ordenado',
         message: warnings.length
             ? `Revise ${rows.length} ticket(s) abiertos y detecte ${warnings.length} brecha(s): ${warnings.join(' ')}`
             : `Revise ${rows.length} ticket(s) abiertos. Hay proveedores verificados y no detecte atrasos criticos.`,
@@ -1303,14 +1303,14 @@ async function runOnboardingReviewPlaybook(profile: AgentProfile) {
         entityType: 'agent_playbook',
         severity: 'info',
         status: 'pending',
-        summary: 'Playbook onboarding preparado: cargar archivo, revisar calidad y sincronizar residentes',
+        summary: 'Carga de residentes preparada: cargar archivo, revisar calidad y sincronizar unidades',
         metadata: { targetHref: '/admin/onboarding' },
     });
 
     return {
         entityType: 'agent_playbook',
         entityId: null,
-        title: 'Onboarding listo para ejecutar',
+        title: 'Carga de residentes lista para revisar',
         message: 'Abre Carga Masiva para subir Excel/PDF, revisar advertencias del agente y sincronizar perfiles con confirmacion.',
         targetHref: '/admin/onboarding',
         data: { checklist: getPlaybook('onboarding_import_review')?.steps || [] },
@@ -1347,7 +1347,7 @@ async function runIotReadinessPlaybook(profile: AgentProfile) {
         entityType: 'agent_playbook',
         severity: warnings.length ? 'warning' : 'success',
         status: warnings.length ? 'pending' : 'success',
-        summary: warnings.length ? 'Playbook IoT detecto brechas de preparacion' : 'Playbook IoT listo para emergencia',
+        summary: warnings.length ? 'Emergencia IoT detecto brechas de preparacion' : 'Emergencia IoT lista para revisar',
         metadata: { staffCount: staffCount || 0, providerCount: providerCount || 0, warnings },
     });
 
@@ -1376,7 +1376,7 @@ async function runCommunityBroadcastPlaybook(profile: AgentProfile, requestedTex
         entityType: 'agent_playbook',
         severity: 'info',
         status: 'pending',
-        summary: 'Playbook comunicado preparado para revision humana',
+        summary: 'Comunicado preparado para revision humana',
         metadata: { requestedText: cleanText(requestedText, 700), targetHref: '/comunicaciones' },
     });
 
@@ -1393,7 +1393,7 @@ async function runCommunityBroadcastPlaybook(profile: AgentProfile, requestedTex
 async function runPlaybook(action: AgentAction, profile: AgentProfile) {
     const playbookKey = cleanText(action.args.playbookKey, 80) as PlaybookKey;
     const playbook = getPlaybook(playbookKey);
-    if (!playbook) throw new Error('Playbook no soportado.');
+    if (!playbook) throw new Error('Accion no soportada.');
     if (playbook.requiresAdmin) requireAdmin(profile);
 
     if (playbook.key === 'finance_collection_review') return runFinanceCollectionPlaybook(profile);
@@ -1401,7 +1401,7 @@ async function runPlaybook(action: AgentAction, profile: AgentProfile) {
     if (playbook.key === 'onboarding_import_review') return runOnboardingReviewPlaybook(profile);
     if (playbook.key === 'iot_emergency_readiness') return runIotReadinessPlaybook(profile);
     if (playbook.key === 'community_broadcast') return runCommunityBroadcastPlaybook(profile, cleanText(action.args.requestedText, 700));
-    throw new Error('Playbook no soportado.');
+    throw new Error('Accion no soportada.');
 }
 
 async function executeAction(action: AgentAction, profile: AgentProfile) {
@@ -1625,7 +1625,7 @@ export async function POST(req: NextRequest) {
         const rejected = Boolean(body.rejected);
         const requestedPlaybook = body.type === 'playbook_request' ? getPlaybook(body.playbookKey) : null;
         if (body.type === 'playbook_request' && !requestedPlaybook) {
-            throw new Error('Playbook no soportado.');
+            throw new Error('Accion no soportada.');
         }
 
         if (!confirmed && !rejected && !requestedPlaybook && (isSmallTalk(message) || isTooAmbiguousForAction(message))) {

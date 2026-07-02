@@ -128,36 +128,36 @@ type AgentCenterGetResponse = {
 const AGENTS = [
   {
     key: "finance" as const,
-    name: "Finance Agent",
-    label: "Cobros, gastos y morosidad",
-    autonomy: "Semiautonomo",
+    name: "Finanzas",
+    label: "Cobros, gastos comunes y morosidad",
+    autonomy: "Propone y ordena",
     icon: DollarSign,
     accent: "text-emerald-700",
     bg: "bg-emerald-50",
   },
   {
     key: "maintenance" as const,
-    name: "Maintenance Agent",
-    label: "Reservas, tickets y proveedores",
-    autonomy: "Manual con confirmacion",
+    name: "Mantencion",
+    label: "Tickets, proveedores y seguimiento",
+    autonomy: "Solo propone",
     icon: Wrench,
     accent: "text-cyan-700",
     bg: "bg-cyan-50",
   },
   {
     key: "concierge" as const,
-    name: "Concierge Agent",
+    name: "Conserjeria",
     label: "Visitas, paquetes y accesos",
-    autonomy: "Manual con bitacora",
+    autonomy: "Solo propone",
     icon: ConciergeBell,
     accent: "text-amber-700",
     bg: "bg-amber-50",
   },
   {
     key: "community" as const,
-    name: "Community Agent",
-    label: "Marketplace, avisos y convivencia",
-    autonomy: "Semiautonomo",
+    name: "Comunidad",
+    label: "Avisos, marketplace y convivencia",
+    autonomy: "Propone y ordena",
     icon: MessageSquareText,
     accent: "text-rose-700",
     bg: "bg-rose-50",
@@ -180,26 +180,26 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    label: "Activar edificio",
-    description: "Carga nomina, revisa brechas y sincroniza residentes.",
-    message: "Prepara el onboarding del edificio para cargar residentes desde una nomina.",
+    label: "Cargar residentes",
+    description: "Revisa nomina y prepara accesos por unidad.",
+    message: "Prepara la carga de residentes desde una nomina del edificio.",
     playbookKey: "onboarding_import_review",
   },
   {
-    label: "Cobranza privada",
-    description: "Detecta impagos y prepara notificaciones auditadas.",
-    message: "Revisar morosos y preparar cobranza privada del mes.",
+    label: "Revisar morosos",
+    description: "Ordena deuda y deja avisos privados listos.",
+    message: "Revisar morosos y preparar avisos privados de cobranza.",
     playbookKey: "finance_collection_review",
   },
   {
-    label: "Comunicado",
-    description: "Redacta un aviso oficial antes de publicarlo.",
+    label: "Crear comunicado",
+    description: "Redacta un aviso antes de publicarlo.",
     message: "Preparar comunicado comunitario para los residentes.",
     playbookKey: "community_broadcast",
   },
   {
-    label: "Ticket operativo",
-    description: "Convierte un problema en solicitud trazable.",
+    label: "Abrir ticket",
+    description: "Convierte un problema en seguimiento.",
     message: "Crear ticket por una falla en el edificio.",
   },
 ];
@@ -231,30 +231,30 @@ const ACTIVITY_TOOL_LABELS: Record<string, string> = {
   get_my_expenses: "Consulta de gastos",
   policy_update: "Politica actualizada",
   register_visitor: "Visita registrada",
-  run_playbook: "Workflow preparado",
+  run_playbook: "Revision preparada",
 };
 
 const ACTIVITY_PLAYBOOK_LABELS: Record<string, string> = {
-  community_broadcast: "Workflow: Comunicado comunitario",
-  finance_collection_review: "Workflow: Cobranza controlada",
-  iot_emergency_readiness: "Workflow: Emergencia IoT",
-  maintenance_ticket_triage: "Workflow: Triage de mantenimiento",
-  onboarding_import_review: "Workflow: Onboarding de edificio",
+  community_broadcast: "Comunicado comunitario",
+  finance_collection_review: "Cobranza privada",
+  iot_emergency_readiness: "Emergencia IoT",
+  maintenance_ticket_triage: "Revision de mantencion",
+  onboarding_import_review: "Carga de residentes",
 };
 
 function cleanActivityText(value: string) {
   return value
-    .replace(/Ejecutado:\s*Ejecutar playbook\b:?/gi, "Ejecutado: Preparar workflow:")
-    .replace(/Rechazado:\s*Ejecutar playbook\b:?/gi, "Rechazado: Preparar workflow:")
-    .replace(/Ejecutar playbook\b:?/gi, "Preparar workflow:")
-    .replace(/\brun_playbook\b/gi, "workflow operativo")
-    .replace(/\bagent\.playbook\./gi, "workflow ");
+    .replace(/Ejecutado:\s*Ejecutar playbook\b:?/gi, "Ejecutado:")
+    .replace(/Rechazado:\s*Ejecutar playbook\b:?/gi, "Rechazado:")
+    .replace(/Ejecutar playbook\b:?/gi, "Preparar revision:")
+    .replace(/\brun_playbook\b/gi, "revision operativa")
+    .replace(/Preparar workflow\b:?/gi, "Preparar revision:")
 }
 
 function playbookLabelFromText(value: string) {
   const lower = value.toLowerCase();
   for (const [key, label] of Object.entries(ACTIVITY_PLAYBOOK_LABELS)) {
-    if (lower.includes(key) || lower.includes(label.toLowerCase().replace("workflow: ", ""))) {
+    if (lower.includes(key) || lower.includes(label.toLowerCase())) {
       return label;
     }
   }
@@ -284,10 +284,10 @@ function humanizeActivitySummary(item: ActivityRow) {
   const playbookLabel = playbookLabelFromText(`${item.action} ${rawSummary} ${metadataText}`);
 
   if (playbookLabel) {
-    const playbookName = playbookLabel.replace("Workflow: ", "");
+    const playbookName = playbookLabel;
     if (/^ejecutado:/i.test(summary)) return `Ejecutado: ${playbookName}`;
     if (/^rechazado:/i.test(summary)) return `Rechazado: ${playbookName}`;
-    if (/preparar workflow|workflow operativo/i.test(summary)) return `Preparado para revision: ${playbookName}`;
+    if (/preparar revision|revision operativa/i.test(summary)) return `Listo para revisar: ${playbookName}`;
   }
 
   return summary;
@@ -313,7 +313,7 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
   {
     key: "finance_collection_review",
     agentKey: "finance",
-    name: "Cobranza controlada",
+    name: "Revisar morosos",
     description: "Detecta gastos impagos y notifica de forma privada.",
     targetHref: "/admin/finanzas",
     requiresAdmin: true,
@@ -322,7 +322,7 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
   {
     key: "maintenance_ticket_triage",
     agentKey: "maintenance",
-    name: "Triage de mantenimiento",
+    name: "Ordenar tickets",
     description: "Ordena tickets abiertos, proveedores y seguimiento operativo.",
     targetHref: "/admin/mantenimiento",
     requiresAdmin: true,
@@ -331,7 +331,7 @@ const DEFAULT_PLAYBOOKS: AgentPlaybook[] = [
   {
     key: "onboarding_import_review",
     agentKey: "community",
-    name: "Onboarding de edificio",
+    name: "Cargar residentes",
     description: "Guia carga masiva, revision de calidad y sincronizacion.",
     targetHref: "/admin/onboarding",
     requiresAdmin: true,
@@ -364,7 +364,7 @@ const DEFAULT_WORKFLOWS: AgentWorkflow[] = [
     name: "Mantenimiento y tickets",
     status: "ready",
     priority: "high",
-    nextAction: "Preparar triage de tickets abiertos",
+    nextAction: "Ordenar tickets abiertos y preparar seguimiento",
     pendingActions: 0,
     completedActions: 0,
     estimatedMinutesSaved: 0,
@@ -372,7 +372,7 @@ const DEFAULT_WORKFLOWS: AgentWorkflow[] = [
     summary: "Ordena incidencias, proveedores y seguimiento operativo.",
     metrics: [
       { label: "Tickets abiertos", value: "0", tone: "success" },
-      { label: "Ahorro potencial", value: "0 min", tone: "neutral" },
+      { label: "Tiempo potencial", value: "0 min", tone: "neutral" },
     ],
   },
   {
@@ -389,7 +389,7 @@ const DEFAULT_WORKFLOWS: AgentWorkflow[] = [
     summary: "Prepara cobranza privada y auditable.",
     metrics: [
       { label: "Cobros pendientes", value: "0", tone: "success" },
-      { label: "Ahorro potencial", value: "0 min", tone: "neutral" },
+      { label: "Tiempo potencial", value: "0 min", tone: "neutral" },
     ],
   },
 ];
@@ -433,13 +433,17 @@ function metricToneClass(tone: "success" | "warning" | "neutral") {
   return "cc-text-primary";
 }
 
+function areaLabel(agentKey: AgentKey) {
+  return ACTIVITY_AGENT_LABELS[agentKey];
+}
+
 export default function AgentCenterPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([
     {
       id: "welcome",
       role: "agent",
-      content: "Soy CoCo Agent Center. Elige una accion guiada o escribeme en lenguaje natural; preparare una propuesta real antes de tocar datos del condominio.",
+      content: "Soy CoCo. Elige una accion o escribeme lo que necesitas; dejare una propuesta lista antes de tocar datos del edificio.",
       status: "executed",
       steps: [
         { kind: "reasoning", title: "Modo comercial", detail: "Acciones reales, permisos por rol y auditoria." },
@@ -581,7 +585,7 @@ export default function AgentCenterPage() {
 
   async function requestPlaybook(playbook: AgentPlaybook) {
     if (loading) return;
-    const message = `Ejecuta el playbook ${playbook.name}`;
+    const message = `Prepara esta accion: ${playbook.name}`;
     setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
     await sendAgentRequest({ message, type: "playbook_request", playbookKey: playbook.key });
   }
@@ -598,7 +602,7 @@ export default function AgentCenterPage() {
 
   async function requestWorkflow(workflow: AgentWorkflow) {
     if (loading || workflowLoadingKey) return;
-    const message = `Prepara workflow ${workflow.name}: ${workflow.nextAction}`;
+    const message = `Revisa esto con CoCo: ${workflow.name}. ${workflow.nextAction}`;
     setWorkflowLoadingKey(workflow.key);
     setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
     try {
@@ -615,30 +619,52 @@ export default function AgentCenterPage() {
           <div>
             <p className="cc-eyebrow">Inteligencia Operativa</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-normal cc-text-primary md:text-4xl">
-              Agent Center
+              CoCo Operaciones
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 cc-text-secondary">
-              Consola de ejecucion con agentes especializados. Cada accion sensible queda en modo previsualizacion,
-              requiere confirmacion y escribe en modulos reales.
+              Acciones diarias del edificio en lenguaje simple: CoCo prepara, tu revisas y luego se ejecuta con registro.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 py-2 text-xs font-semibold cc-text-secondary">
             <ShieldCheck className="h-4 w-4 text-[var(--cc-sage)]" />
-            Manual first, audit ready
+            Tu apruebas antes de ejecutar
           </div>
         </section>
 
         <section className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--cc-copper)]">Inicio rapido</p>
+              <h2 className="mt-1 text-lg font-semibold cc-text-primary">Que quieres resolver ahora</h2>
+            </div>
+            <span className="text-xs font-semibold cc-text-tertiary">CoCo deja la propuesta lista para aprobar.</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={`top-${action.label}`}
+                type="button"
+                onClick={() => requestQuickAction(action)}
+                disabled={loading}
+                className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] p-4 text-left transition hover:border-[var(--cc-copper)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="block text-sm font-semibold cc-text-primary">{action.label}</span>
+                <span className="mt-1 block text-xs leading-5 cc-text-secondary">{action.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
           <div className="flex flex-col gap-2 border-b border-[var(--cc-line)] pb-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--cc-copper)]">Workflow Center</p>
-              <h2 className="mt-1 text-lg font-semibold cc-text-primary">Operaciones listas para que CoCo las avance</h2>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--cc-copper)]">Pendientes</p>
+              <h2 className="mt-1 text-lg font-semibold cc-text-primary">Lo que CoCo puede preparar ahora</h2>
               <p className="mt-1 text-xs cc-text-tertiary">
-                Cada flujo muestra estado, siguiente accion, ROI estimado y permiso humano antes de ejecutar.
+                Elige una tarea y CoCo dejara la propuesta lista para revisar.
               </p>
             </div>
             <div className="rounded-md border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 text-xs font-semibold cc-text-secondary">
-              {workflows.reduce((sum, item) => sum + item.pendingActions, 0)} acciones por revisar
+              {workflows.reduce((sum, item) => sum + item.pendingActions, 0)} pendientes
             </div>
           </div>
 
@@ -662,10 +688,10 @@ export default function AgentCenterPage() {
                         )}
                       </div>
                       <p className="mt-2 text-sm leading-6 cc-text-secondary">{workflow.summary}</p>
-                      <p className="mt-3 text-xs font-semibold cc-text-primary">Proxima accion: {workflow.nextAction}</p>
+                      <p className="mt-3 text-xs font-semibold cc-text-primary">Siguiente paso: {workflow.nextAction}</p>
                     </div>
                     <div className="rounded-lg border border-[var(--cc-line)] bg-white px-3 py-2 text-right">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Ahorro</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Tiempo</p>
                       <p className="mt-1 text-lg font-bold cc-text-primary">{workflow.estimatedMinutesSaved} min</p>
                     </div>
                   </div>
@@ -687,13 +713,13 @@ export default function AgentCenterPage() {
                       className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                      {isPreparing ? "Preparando..." : "Preparar workflow"}
+                      {isPreparing ? "Preparando..." : "Revisar con CoCo"}
                     </button>
                     <Link
                       href={workflow.targetHref}
                       className="inline-flex items-center justify-center gap-2 rounded-md border border-[var(--cc-line)] bg-white px-3 py-2 text-xs font-semibold cc-text-secondary transition hover:bg-[var(--cc-paper)]"
                     >
-                      Abrir modulo
+                      Ir al modulo
                     </Link>
                   </div>
                 </article>
@@ -709,7 +735,7 @@ export default function AgentCenterPage() {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Eficiencia Operacional</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Tareas resueltas</p>
               <h3 className="text-xl font-bold cc-text-primary">{summary.successRate}%</h3>
             </div>
           </div>
@@ -718,7 +744,7 @@ export default function AgentCenterPage() {
               <Activity className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Tiempo Ahorrado</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Tiempo estimado</p>
               <h3 className="text-xl font-bold cc-text-primary">{Math.round(summary.estimatedMinutesSaved / 60 * 10) / 10} hrs</h3>
             </div>
           </div>
@@ -727,7 +753,7 @@ export default function AgentCenterPage() {
               <Play className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Ejecuciones Reales</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Acciones ejecutadas</p>
               <h3 className="text-xl font-bold cc-text-primary">{summary.executedRuns}</h3>
             </div>
           </div>
@@ -760,7 +786,7 @@ export default function AgentCenterPage() {
                 <div className="mt-4 flex items-center justify-between text-xs cc-text-tertiary">
                   <span className="flex items-center gap-1">
                     <Activity className="h-3.5 w-3.5" />
-                    Autonomía:
+                    Nivel de ayuda:
                   </span>
                   <select
                     value={policy.autonomyLevel}
@@ -775,9 +801,9 @@ export default function AgentCenterPage() {
                     }}
                     className="rounded border border-[var(--cc-line)] bg-white px-2 py-1 text-xs font-semibold cc-text-secondary outline-none transition focus:border-[var(--cc-copper)]"
                   >
-                    <option value="manual">Manual</option>
-                    <option value="semi_autonomous">Semicontrolado</option>
-                    <option value="autonomous">Autónomo</option>
+                    <option value="manual">Solo proponer</option>
+                    <option value="semi_autonomous">Proponer y ordenar</option>
+                    <option value="autonomous">Ejecutar automatico</option>
                   </select>
                 </div>
               </article>
@@ -788,11 +814,11 @@ export default function AgentCenterPage() {
         <section className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
           <div className="flex flex-col gap-2 border-b border-[var(--cc-line)] pb-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold cc-text-primary">Playbooks operativos</h2>
-              <p className="mt-1 text-xs cc-text-tertiary">Flujos multi-paso con confirmacion, permisos y auditoria.</p>
+              <h2 className="text-sm font-semibold cc-text-primary">Acciones frecuentes</h2>
+              <p className="mt-1 text-xs cc-text-tertiary">Atajos seguros para preparar tareas comunes del edificio.</p>
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">
-              {summary.pendingProposals} propuesta(s) pendiente(s)
+              {summary.pendingProposals} propuestas pendientes
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -802,7 +828,7 @@ export default function AgentCenterPage() {
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-sm font-semibold cc-text-primary">{playbook.name}</h3>
                     <span className="rounded-full border border-[var(--cc-line)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] cc-text-tertiary">
-                      {playbook.agentKey}
+                      {areaLabel(playbook.agentKey)}
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 cc-text-secondary">{playbook.description}</p>
@@ -817,7 +843,7 @@ export default function AgentCenterPage() {
                   className="mt-4 inline-flex items-center justify-center gap-2 rounded-md bg-[var(--cc-ink)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  Preparar
+                  Revisar con CoCo
                 </button>
               </article>
             ))}
@@ -832,8 +858,8 @@ export default function AgentCenterPage() {
                   <Bot className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold cc-text-primary">Consola de ejecucion</h2>
-                  <p className="text-xs cc-text-tertiary">Razonamiento, herramienta y resultado visible</p>
+                  <h2 className="text-sm font-semibold cc-text-primary">Conversacion con CoCo</h2>
+                  <p className="text-xs cc-text-tertiary">Propuestas claras antes de ejecutar</p>
                 </div>
               </div>
               <Sparkles className="h-4 w-4 text-[var(--cc-copper)]" />
@@ -979,7 +1005,7 @@ export default function AgentCenterPage() {
                                     href={message.action.targetHref}
                                     className="inline-flex items-center gap-2 rounded-md border border-[var(--cc-line)] px-3 py-2 text-xs font-semibold cc-text-secondary"
                                   >
-                                    Abrir modulo
+                                    Ir al modulo
                                   </Link>
                                 </div>
                               )}
@@ -1018,8 +1044,8 @@ export default function AgentCenterPage() {
             <form onSubmit={handleSubmit} className="border-t border-[var(--cc-line)] p-4">
               <div className="pb-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold cc-text-primary">Acciones guiadas</p>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Siempre pide confirmacion</span>
+                  <p className="text-xs font-semibold cc-text-primary">Que necesitas hacer</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Siempre revisas antes</span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {QUICK_ACTIONS.map((action) => (
@@ -1061,7 +1087,7 @@ export default function AgentCenterPage() {
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--cc-copper)] px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Ejecutar
+                  Enviar
                 </button>
               </div>
             </form>
@@ -1069,8 +1095,8 @@ export default function AgentCenterPage() {
 
           <aside className="space-y-4">
             <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
-              <h2 className="text-sm font-semibold cc-text-primary">Actividad agéntica</h2>
-              <p className="mt-1 text-xs cc-text-tertiary">Registro en tiempo real de las acciones auditadas.</p>
+              <h2 className="text-sm font-semibold cc-text-primary">Historial reciente</h2>
+              <p className="mt-1 text-xs cc-text-tertiary">Ultimas propuestas y acciones registradas.</p>
               <div className="mt-4 space-y-3">
                 {activity.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-[var(--cc-line)] p-4 text-xs leading-5 cc-text-secondary">
@@ -1097,9 +1123,9 @@ export default function AgentCenterPage() {
 
             <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ink)] p-4 text-white shadow-sm">
               <CalendarCheck className="h-5 w-5 text-[var(--cc-copper)]" />
-              <h2 className="mt-3 text-sm font-semibold">Regla premium</h2>
+              <h2 className="mt-3 text-sm font-semibold">Control humano</h2>
               <p className="mt-2 text-xs leading-5 text-white/75">
-                Los agentes no reemplazan permisos: proponen, explican, piden confirmacion y dejan rastro operacional.
+                CoCo no publica ni cambia datos sensibles sin que alguien autorizado confirme primero.
               </p>
             </div>
           </aside>
