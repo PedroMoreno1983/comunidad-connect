@@ -197,6 +197,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     courseContent,
                     userId: user?.id,
                     communityId: user?.communityId,
+                    userName: user?.name,
                 }),
             });
 
