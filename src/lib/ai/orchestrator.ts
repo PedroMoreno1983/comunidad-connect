@@ -10,9 +10,19 @@ import { MemoryService } from '../../ai/memoryService.js';
 type MessageRole = 'user' | 'model';
 type AgentRole = 'system' | 'tutor' | 'classmate' | 'user';
 
-const DEFAULT_GEMINI_MODELS = [
-    "gemini-2.5-flash-lite",
+// La Tutora hace la tarea compleja: enseñar, seguir el contenido del curso, decidir
+// la pizarra y las imágenes. Prioriza el modelo con mejor razonamiento y cae a los
+// más baratos solo si ese falla (rate limit, etc.).
+const DEFAULT_TUTOR_MODELS = [
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+];
+
+// Los compañeros IA solo dan una opinión corta (1-2 frases) en personaje: tarea
+// simple, así que usan siempre el modelo más barato.
+const DEFAULT_CLASSMATE_MODELS = [
+    "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
 ];
 
@@ -40,13 +50,23 @@ function sanitizeAgentResponse(text: string, userName?: string) {
         .trim();
 }
 
-function getGeminiModels() {
-    const configured = process.env.GEMINI_TRAINING_MODELS
+function parseModelList(envValue: string | undefined) {
+    return envValue
         ?.split(",")
         .map(model => model.trim())
         .filter(Boolean);
+}
 
-    return configured?.length ? configured : DEFAULT_GEMINI_MODELS;
+function getTutorModels() {
+    // GEMINI_TRAINING_MODELS queda como override global de compatibilidad (afecta todo);
+    // GEMINI_TUTOR_MODELS permite afinar solo la Tutora.
+    const configured = parseModelList(process.env.GEMINI_TUTOR_MODELS) || parseModelList(process.env.GEMINI_TRAINING_MODELS);
+    return configured?.length ? configured : DEFAULT_TUTOR_MODELS;
+}
+
+function getClassmateModels() {
+    const configured = parseModelList(process.env.GEMINI_CLASSMATE_MODELS) || parseModelList(process.env.GEMINI_TRAINING_MODELS);
+    return configured?.length ? configured : DEFAULT_CLASSMATE_MODELS;
 }
 
 function extractGeminiError(text: string) {
@@ -131,7 +151,7 @@ function buildAutoBlackboard(userMessage: string, tutorText: string) {
 /**
  * Llama a la API nativa de Gemini con el contexto de la clase.
  */
-async function callGemini(apiKey: string, systemPrompt: string, history: {role: MessageRole, text: string}[], budget?: Partial<AiBudgetContext>) {
+async function callGemini(apiKey: string, systemPrompt: string, history: {role: MessageRole, text: string}[], budget?: Partial<AiBudgetContext>, models: string[] = DEFAULT_TUTOR_MODELS) {
     const formattedHistory = history.map(msg => ({
         role: msg.role,
         parts: [{ text: msg.text }]
@@ -150,7 +170,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
 
     let errors: string[] = [];
 
-    for (const model of getGeminiModels()) {
+    for (const model of models) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const startedAt = Date.now();
         const promptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
@@ -374,7 +394,7 @@ export async function runMultiAgentTurn(
             actionType: 'chat' as const,
         };
 
-        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + "\n\n" + userContext + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory, budgetContext);
+        const rawTutorResponse = await callGemini(apiKey, TUTOR_PROMPT + "\n\n" + userContext + tutorCourseContext + memoryContext + "\n\n" + tutorContextParam, geminiHistory, budgetContext, getTutorModels());
 
         let tutorChatText = sanitizeAgentResponse(rawTutorResponse, cleanUserName);
         let tutorBlackboard = "";
@@ -453,7 +473,7 @@ export async function runMultiAgentTurn(
         const classmateContextParam = `Eres ${persona1.name}, un ESTUDIANTE de esta clase. La tutora acaba de decir textualmente: "${tutorChatText}". Responde brevemente SOLO con tu propio diálogo. REGLAS ESTRICTAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO EXPLICAR LA CLASE.\n2. NO uses corchetes con tu nombre al principio de tu mensaje ni escribas acciones entre asteriscos. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.\n3. Tu comentario debe reaccionar específicamente a lo que la Tutora ACABA de decir arriba. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n4. REGLA DE ORO: Máximo 2 oraciones. Cállate inmediatamente después de 2 oraciones para no interpretar a otros personajes. NO hables con otros alumnos.`;
         let classmateResponse = "";
         try {
-            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History, budgetContext);
+            classmateResponse = await callGemini(apiKey, persona1.prompt + "\n\n" + classmateContextParam, classmate1History, budgetContext, getClassmateModels());
         } catch (err) {
             console.warn("Classmate 1 unavailable:", err);
         }
@@ -484,7 +504,7 @@ export async function runMultiAgentTurn(
                 const classmate2ContextParam = `Eres ${persona2.name}, un ESTUDIANTE. El vecino ${persona1.name} acaba de decir: "${classmate1FinalText}". REGLAS:\n1. ERES UN ALUMNO. ESTÁ ESTRICTAMENTE PROHIBIDO DAR LA CLASE O EXPLICAR MÓDULOS.\n2. Respóndele a tu vecino brevemente, reaccionando específicamente a lo que él/ella acaba de decir. NO cambies de tema ni traigas tu problema personal recurrente si no tiene relación directa con eso.\n3. NO uses etiquetas de nombre ni asteriscos de acciones. Nunca escribas placeholders como [USER] o [CLASSMATE]; si te diriges al vecino real, ${cleanUserName ? `llámalo "${cleanUserName}"` : "hazlo sin nombrarlo"}.`;
                 let classmate2Response = "";
                 try {
-                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History, budgetContext);
+                    classmate2Response = await callGemini(apiKey, persona2.prompt + "\n\n" + classmate2ContextParam, classmate2History, budgetContext, getClassmateModels());
                 } catch (err) {
                     console.warn("Classmate 2 unavailable:", err);
                 }
