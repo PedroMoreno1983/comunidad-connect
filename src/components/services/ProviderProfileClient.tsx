@@ -16,7 +16,6 @@ import {
     Send,
     ShieldCheck,
     Star,
-    TrendingUp,
 } from "lucide-react";
 import { ServiceProvider, Review } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +29,7 @@ import {
 } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { getInitials, getProviderAvatar } from "@/lib/utils/avatar";
+import { getInitials } from "@/lib/utils/avatar";
 
 interface ProviderProfileClientProps {
     provider: ServiceProvider;
@@ -73,23 +72,14 @@ function getAvailabilityConfig(availability: string) {
 }
 
 function ProviderProfileAvatar({ provider }: { provider: ServiceProvider }) {
-    const [failed, setFailed] = useState(false);
     const initials = getInitials(provider.name);
 
     return (
-        <div className="relative h-32 w-32 overflow-hidden rounded-2xl border-4 border-surface bg-brand-600 shadow-lg">
-            {!failed ? (
-                <img
-                    src={getProviderAvatar(provider.name, provider.photo)}
-                    alt={provider.name}
-                    className="h-full w-full object-cover"
-                    onError={() => setFailed(true)}
-                />
-            ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,var(--cc-brand-600),var(--cc-ink))] text-3xl font-bold text-white">
-                    {initials}
-                </div>
-            )}
+        <div
+            className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl sm:h-28 sm:w-28"
+            style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 36 }}
+        >
+            {initials}
         </div>
     );
 }
@@ -212,74 +202,68 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
     return (
         <>
-            <section className="overflow-hidden rounded-2xl border border-default bg-surface shadow-sm">
-                <div className="relative h-44 bg-[#111827]">
-                    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(181,102,78,0.78),rgba(17,24,39,0.96))]" />
-                    <div className="absolute bottom-5 left-6 inline-flex items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/82">
-                        <Briefcase className="h-3.5 w-3.5" />
-                        Perfil profesional verificado
+            <section className="rounded-2xl border p-6 shadow-sm sm:p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <span
+                    className="mb-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
+                    style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}
+                >
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    Perfil profesional verificado
+                </span>
+
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                        <ProviderProfileAvatar provider={provider} />
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="font-display text-3xl leading-none tracking-tight cc-text-primary md:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                    {provider.name}
+                                </h1>
+                                {provider.verified && <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-sage)" }} />}
+                            </div>
+                            <p className="mt-2 text-sm cc-text-secondary">
+                                {categoryLabel} para comunidades residenciales
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm cc-text-secondary">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Star className="h-4 w-4" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
+                                    <strong className="font-mono cc-text-primary">{provider.rating}</strong>
+                                    ({provider.reviewCount} reseñas)
+                                </span>
+                                <span style={{ color: "var(--cc-line-strong)" }}>·</span>
+                                <span>{provider.yearsExperience} años de experiencia</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2.5">
+                        <Button onClick={() => setIsRequestDialogOpen(true)} className="hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Solicitar servicio
+                        </Button>
+                        <a
+                            href={`tel:${provider.contactPhone}`}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium cc-text-primary transition hover:bg-[var(--cc-paper-warm)]"
+                            style={{ borderColor: "var(--cc-line-strong)" }}
+                        >
+                            <Phone className="h-4 w-4" />
+                            Llamar
+                        </a>
                     </div>
                 </div>
 
-                <div className="px-5 pb-6 sm:px-8">
-                    <div className="relative z-10 -mt-16 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
-                            <ProviderProfileAvatar provider={provider} />
-                            <div className="pb-1 pt-2 sm:pt-16">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h1 className="text-3xl font-bold tracking-normal cc-text-primary md:text-4xl">
-                                        {provider.name}
-                                    </h1>
-                                    {provider.verified && (
-                                        <BadgeCheck className="h-7 w-7 fill-brand-100 text-brand-600" />
-                                    )}
-                                </div>
-                                <p className="mt-2 text-base font-semibold cc-text-secondary">
-                                    {categoryLabel} para comunidades residenciales
-                                </p>
-                                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm cc-text-secondary">
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-                                        <strong className="cc-text-primary">{provider.rating}</strong>
-                                        ({provider.reviewCount} resenas)
-                                    </span>
-                                    <span className="hidden sm:inline">|</span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <TrendingUp className="h-4 w-4 text-brand-500" />
-                                        {provider.yearsExperience} anos de experiencia
-                                    </span>
-                                </div>
-                            </div>
+                <div className="mt-6 grid gap-3 sm:grid-cols-4">
+                    {[
+                        { label: "Trabajos", value: provider.completedJobs },
+                        { label: "Respuesta", value: provider.responseTime },
+                        { label: "Tarifa", value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotiza" },
+                        { label: "Estado", value: availability.label },
+                    ].map(stat => (
+                        <div key={stat.label} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                            <p className="text-2xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{stat.value}</p>
+                            <p className="mt-1.5 text-[10px] uppercase tracking-[0.08em] cc-text-tertiary">{stat.label}</p>
                         </div>
-
-                        <div className="flex flex-wrap gap-3 lg:pt-16">
-                            <Button onClick={() => setIsRequestDialogOpen(true)} className="bg-brand-600 hover:bg-brand-700">
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Solicitar servicio
-                            </Button>
-                            <a
-                                href={`tel:${provider.contactPhone}`}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-default bg-surface px-4 py-2 text-sm font-bold cc-text-primary transition hover:bg-elevated"
-                            >
-                                <Phone className="h-4 w-4" />
-                                Llamar
-                            </a>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 grid gap-3 sm:grid-cols-4">
-                        {[
-                            { label: "Trabajos", value: provider.completedJobs },
-                            { label: "Respuesta", value: provider.responseTime },
-                            { label: "Tarifa", value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotiza" },
-                            { label: "Estado", value: availability.label },
-                        ].map(stat => (
-                            <div key={stat.label} className="rounded-xl border border-default bg-elevated p-4">
-                                <p className="text-lg font-bold cc-text-primary">{stat.value}</p>
-                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] cc-text-tertiary">{stat.label}</p>
-                            </div>
-                        ))}
-                    </div>
+                    ))}
                 </div>
             </section>
 
@@ -287,7 +271,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 <main className="space-y-6">
                     <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
                         <div className="mb-4 flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-brand-600" />
+                            <Briefcase className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                             <h2 className="text-xl font-bold tracking-normal cc-text-primary">Acerca del proveedor</h2>
                         </div>
                         <p className="text-sm leading-7 cc-text-secondary">{provider.bio}</p>
@@ -295,12 +279,16 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
                     <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
                         <div className="mb-4 flex items-center gap-2">
-                            <Award className="h-5 w-5 text-brand-600" />
+                            <Award className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                             <h2 className="text-xl font-bold tracking-normal cc-text-primary">Habilidades principales</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {provider.specialties.map((specialty) => (
-                                <span key={specialty} className="rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">
+                                <span
+                                    key={specialty}
+                                    className="rounded-full px-4 py-2 text-sm font-medium"
+                                    style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper-deep)" }}
+                                >
                                     {specialty}
                                 </span>
                             ))}
@@ -310,7 +298,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     {provider.certifications.length > 0 && (
                         <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
                             <div className="mb-4 flex items-center gap-2">
-                                <ShieldCheck className="h-5 w-5 text-brand-600" />
+                                <ShieldCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                                 <h2 className="text-xl font-bold tracking-normal cc-text-primary">Credenciales</h2>
                             </div>
                             <div className="space-y-3">
@@ -327,7 +315,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
                         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-brand-600" />
+                                <MessageSquare className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                                 <h2 className="text-xl font-bold tracking-normal cc-text-primary">Resenas ({reviews.length})</h2>
                             </div>
                             <Button variant="outline" size="sm" onClick={() => setIsReviewDialogOpen(true)}>
@@ -349,7 +337,10 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
+                                                <div
+                                                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold"
+                                                    style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)" }}
+                                                >
                                                     {review.userName.charAt(0)}
                                                 </div>
                                             )}
@@ -388,36 +379,36 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                             <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
                             <span className="text-xs font-bold">{availability.label}</span>
                         </div>
-                        <Button onClick={() => setIsRequestDialogOpen(true)} className="w-full bg-brand-600 hover:bg-brand-700">
+                        <Button onClick={() => setIsRequestDialogOpen(true)} className="w-full hover:opacity-90" style={{ backgroundColor: "var(--cc-copper)" }}>
                             <Send className="mr-2 h-4 w-4" />
-                            Solicitar cotizacion
+                            Solicitar cotización
                         </Button>
-                        <div className="mt-4 space-y-3 border-t border-default pt-4">
-                            <a href={`tel:${provider.contactPhone}`} className="flex items-center gap-3 text-sm font-semibold cc-text-secondary hover:text-brand-700">
-                                <Phone className="h-4 w-4 text-brand-500" />
+                        <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: "var(--cc-line)" }}>
+                            <a href={`tel:${provider.contactPhone}`} className="flex items-center gap-3 text-sm cc-text-secondary transition hover:cc-text-primary">
+                                <Phone className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
                                 {provider.contactPhone}
                             </a>
                             {provider.email && (
-                                <a href={`mailto:${provider.email}`} className="flex items-center gap-3 break-all text-sm font-semibold cc-text-secondary hover:text-brand-700">
-                                    <Mail className="h-4 w-4 shrink-0 text-brand-500" />
+                                <a href={`mailto:${provider.email}`} className="flex items-center gap-3 break-all text-sm cc-text-secondary transition hover:cc-text-primary">
+                                    <Mail className="h-4 w-4 shrink-0" style={{ color: "var(--cc-copper)" }} />
                                     {provider.email}
                                 </a>
                             )}
-                            <p className="flex items-center gap-3 text-sm font-semibold cc-text-secondary">
-                                <Clock className="h-4 w-4 text-brand-500" />
+                            <p className="flex items-center gap-3 text-sm cc-text-secondary">
+                                <Clock className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
                                 Responde en {provider.responseTime}
                             </p>
                         </div>
                     </section>
 
                     {provider.verified && (
-                        <section className="rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm">
-                            <div className="mb-3 flex items-center gap-3">
-                                <BadgeCheck className="h-6 w-6 text-brand-700" />
-                                <h3 className="font-bold cc-text-primary">Proveedor verificado</h3>
+                        <section className="rounded-2xl border p-5" style={{ borderColor: "rgba(181,102,78,0.20)", background: "var(--cc-copper-tint)" }}>
+                            <div className="mb-2.5 flex items-center gap-2.5">
+                                <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
+                                <h3 className="text-sm font-semibold cc-text-primary">Proveedor verificado</h3>
                             </div>
                             <p className="text-sm leading-6 cc-text-secondary">
-                                Perfil revisado para operar dentro de comunidades, con reputacion y datos de contacto visibles.
+                                Perfil revisado para operar dentro de comunidades, con reputación y datos de contacto visibles.
                             </p>
                         </section>
                     )}
@@ -454,7 +445,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         <div className="space-y-2">
                             <label className="text-sm font-medium cc-text-secondary">Descripcion del servicio</label>
                             <textarea
-                                className="min-h-[100px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+                                className="min-h-[100px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:outline-none focus:border-[var(--cc-copper)] focus:ring-4 focus:ring-[var(--cc-copper)]/15"
                                 placeholder="Describe el servicio que necesitas..."
                                 required
                                 value={requestForm.description}
@@ -499,7 +490,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         <div className="space-y-2">
                             <label className="text-sm font-medium cc-text-secondary">Tu comentario</label>
                             <textarea
-                                className="min-h-[120px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+                                className="min-h-[120px] w-full rounded-xl border border-default bg-surface px-3 py-2 text-sm cc-text-primary focus:outline-none focus:border-[var(--cc-copper)] focus:ring-4 focus:ring-[var(--cc-copper)]/15"
                                 placeholder="Cuéntanos sobre tu experiencia..."
                                 required
                                 value={reviewForm.comment}
