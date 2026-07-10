@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { message, history, courseContent, userId, communityId } = body;
+        const { message, history, courseContent, userId, communityId, userName } = body;
 
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
             message,
             courseContent,
             userId,
-            communityId
+            communityId,
+            userName
         );
 
         return NextResponse.json({ responses }, { status: 200 });
