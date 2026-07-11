@@ -363,6 +363,10 @@ export function isToolAllowedForRole(name: string, role?: string) {
 /** Título + resumen legible de una acción pendiente, para la pantalla de confirmación. */
 export function describePendingAction(name: string, input: Record<string, unknown>): { title: string; summary: string } {
     const str = (key: string) => typeof input[key] === 'string' ? (input[key] as string) : '';
+    const unit = (key: string) => {
+        const value = str(key);
+        return isUuid(value) ? 'tu unidad' : value;
+    };
 
     switch (name) {
         case 'create_claim':
@@ -376,15 +380,15 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'vote_in_poll':
             return { title: 'Emitir voto', summary: 'Registrar tu voto en la votación activa.' };
         case 'register_visitor':
-            return { title: 'Registrar visita', summary: `${str('visitor_name') || 'Visitante'} → unidad ${str('host_unit_id')}.` };
+            return { title: 'Registrar visita', summary: `${str('visitor_name') || 'Visitante'} → unidad ${unit('host_unit_id')}.` };
         case 'register_package':
-            return { title: 'Registrar encomienda', summary: `Paquete de ${str('courier') || 'courier'} para la unidad ${str('unit_id')}.` };
+            return { title: 'Registrar encomienda', summary: `Paquete de ${str('courier') || 'courier'} para la unidad ${unit('unit_id')}.` };
         case 'send_whatsapp_notification':
             return { title: 'Enviar WhatsApp', summary: str('message') || 'Notificación a un residente.' };
         case 'create_poll':
             return { title: 'Crear votación', summary: str('title') || 'Nueva votación para la comunidad.' };
         case 'update_unit_data':
-            return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${str('unit_id')}.` };
+            return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${unit('unit_id')}.` };
         case 'request_urgent_access_approval':
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':

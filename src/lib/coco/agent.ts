@@ -498,6 +498,7 @@ export async function askCoCo(
     let reply = rawText
         .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
         .replace(/CMD:[A-Z_]+/g, '')
+        .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, 'identificador interno protegido')
         .trim();
 
     if (requiredTool) {
