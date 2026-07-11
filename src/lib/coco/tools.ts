@@ -935,14 +935,27 @@ export async function executeTool(
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const query = supabaseAdmin
                     .from('expenses')
-                    .select('unit_id,amount,due_date,month,units:unit_id(number,unit_number)')
+                    .select('unit_id,amount,due_date,month')
                     .eq('community_id', communityId)
                     .in('status', ['pending', 'overdue'])
                     .order('due_date', { ascending: true });
                 if (input.month) query.eq('month', input.month);
                 const { data, error } = await query.limit(20);
                 if (error) return { error: 'No se pudo consultar la cartera vencida.' };
-                return data ?? [];
+                const expenseRows = data ?? [];
+                const unitIds = [...new Set(expenseRows.map(row => row.unit_id).filter(Boolean))];
+                if (unitIds.length === 0) return [];
+                const { data: units, error: unitsError } = await supabaseAdmin
+                    .from('units')
+                    .select('id,number,unit_number')
+                    .eq('community_id', communityId)
+                    .in('id', unitIds);
+                if (unitsError) return { error: 'No se pudieron identificar las unidades de la cartera vencida.' };
+                const unitsById = new Map((units || []).map(unitRow => [unitRow.id, unitRow]));
+                return expenseRows.map(expenseRow => ({
+                    ...expenseRow,
+                    unit: unitsById.get(expenseRow.unit_id) || null,
+                }));
             }
 
             case 'create_poll': {
