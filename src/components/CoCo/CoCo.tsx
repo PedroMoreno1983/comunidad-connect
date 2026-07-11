@@ -3,13 +3,21 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot } from "lucide-react";
+import { X, Send, Loader2, ChevronDown, Sparkles, Calendar, DollarSign, Hash, Paperclip, Bot, ShieldCheck, Check, XCircle } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { getApiUrl } from "@/lib/config";
 import { useToast } from "@/components/ui/Toast";
 import confetti from "canvas-confetti";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+interface PendingAction {
+    toolUseId: string;
+    name: string;
+    input: Record<string, unknown>;
+    title: string;
+    summary: string;
+}
 
 interface Message {
     id: string;
@@ -18,6 +26,8 @@ interface Message {
     nav?: string;
     action?: string;
     imageBase64?: string;
+    pendingActions?: PendingAction[];
+    resolvedActions?: Record<string, "approved" | "rejected">;
     case?: {
         created: boolean;
         id?: string;
@@ -119,94 +129,121 @@ export default function CoCo() {
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
+    const postToCoCo = async (body: Record<string, unknown>) => {
+        const res = await fetch(getApiUrl("/api/coco"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentPage: pathname, ...body }),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.reply || `HTTP ${res.status}`);
+        }
+
+        return res.json();
+    };
+
+    const appendAssistantReply = (d: {
+        reply?: string;
+        navigate?: string;
+        action?: string;
+        pendingActions?: PendingAction[];
+        case?: Message["case"];
+    }) => {
+        setMsgs(p => [...p, {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            text: d.reply || (d.pendingActions?.length ? "" : "No pude responder."),
+            nav: d.navigate,
+            action: d.action,
+            pendingActions: d.pendingActions,
+            case: d.case?.created ? d.case : undefined,
+        }]);
+
+        if (d.navigate) {
+            const target = d.navigate;
+            setTimeout(() => router.push(target), 800);
+        }
+
+        // Handle UI actions
+        if (d.action) {
+            setTimeout(() => {
+                switch (d.action) {
+                    case 'THEME_DARK':
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                        break;
+                    case 'THEME_LIGHT':
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                        break;
+                    case 'LOGOUT':
+                        logout();
+                        router.push('/');
+                        break;
+                    case 'CONFETTI':
+                        confetti({ zIndex: 99999, particleCount: 150, spread: 80 });
+                        break;
+                    case 'SCROLL_TOP':
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        break;
+                    case 'TEXT_ENLARGE':
+                        document.documentElement.style.fontSize = '125%';
+                        break;
+                    case 'TEXT_NORMAL':
+                        document.documentElement.style.fontSize = '';
+                        break;
+                    case 'READ_ALOUD':
+                        if ('speechSynthesis' in window && d.reply) {
+                            window.speechSynthesis.cancel(); // Stop any previous
+                            const utterance = new SpeechSynthesisUtterance(d.reply.replace(/\*\*/g, '').replace(/\[.*\]\(.*\)/g, ''));
+                            utterance.lang = 'es-CL';
+                            utterance.rate = 1.05;
+                            window.speechSynthesis.speak(utterance);
+                        }
+                        break;
+                }
+            }, 500); // 500ms delay to feel natural after message
+        }
+    };
+
     const send = async (text: string, imageStr: string | null = selectedImage) => {
         if ((!text.trim() && !imageStr) || loading) return;
 
-        setMsgs(p => [...p, { 
-            id: Date.now().toString(), 
-            role: "user", 
-            text, 
-            imageBase64: imageStr || undefined 
+        setMsgs(p => [...p, {
+            id: Date.now().toString(),
+            role: "user",
+            text,
+            imageBase64: imageStr || undefined
         }]);
-        
+
         setInput("");
         removeImage();
         setLoading(true);
 
         try {
-            const history = msgs.slice(-10).map(m => ({
-                role: m.role === "assistant" ? "model" : "user",
-                text: m.text
-            }));
+            const d = await postToCoCo({ message: text || "Mira esta imagen", imageBase64: imageStr });
+            appendAssistantReply(d);
+        } catch (err: unknown) {
+            const error = err as Error;
+            console.error("CoCo connection failed details:", error);
+            const errorMsg = error.message || "Tuve un problema de conexión 😅";
+            setMsgs(p => [...p, { id: (Date.now() + 1).toString(), role: "assistant", text: `${errorMsg} Inténtalo de nuevo.` }]);
+        } finally { setLoading(false); }
+    };
 
-            const res = await fetch(getApiUrl("/api/coco"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: text || "Mira esta imagen",
-                    imageBase64: imageStr,
-                    history: history,
-                    currentPage: pathname,
-                }),
-            });
+    const resolveAction = async (messageId: string, toolUseId: string, decision: "approved" | "rejected") => {
+        if (loading) return;
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.reply || `HTTP ${res.status}`);
-            }
+        setMsgs(p => p.map(m => m.id === messageId
+            ? { ...m, resolvedActions: { ...(m.resolvedActions || {}), [toolUseId]: decision } }
+            : m));
+        setLoading(true);
 
-            const d = await res.json();
-            setMsgs(p => [...p, {
-                id: (Date.now() + 1).toString(),
-                role: "assistant",
-                text: d.reply || "No pude responder.",
-                nav: d.navigate,
-                action: d.action,
-                case: d.case?.created ? d.case : undefined,
-            }]);
-            
-            if (d.navigate) setTimeout(() => router.push(d.navigate), 800);
-            
-            // Handle UI actions
-            if (d.action) {
-                setTimeout(() => {
-                    switch (d.action) {
-                        case 'THEME_DARK':
-                            document.documentElement.classList.add('dark');
-                            localStorage.setItem('theme', 'dark');
-                            break;
-                        case 'THEME_LIGHT':
-                            document.documentElement.classList.remove('dark');
-                            localStorage.setItem('theme', 'light');
-                            break;
-                        case 'LOGOUT':
-                            logout();
-                            router.push('/');
-                            break;
-                        case 'CONFETTI':
-                            confetti({ zIndex: 99999, particleCount: 150, spread: 80 });
-                            break;
-                        case 'SCROLL_TOP':
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                            break;
-                        case 'TEXT_ENLARGE':
-                            document.documentElement.style.fontSize = '125%';
-                            break;
-                        case 'TEXT_NORMAL':
-                            document.documentElement.style.fontSize = '';
-                            break;
-                        case 'READ_ALOUD':
-                            if ('speechSynthesis' in window) {
-                                window.speechSynthesis.cancel(); // Stop any previous
-                                const utterance = new SpeechSynthesisUtterance(d.reply.replace(/\*\*/g, '').replace(/\[.*\]\(.*\)/g, ''));
-                                utterance.lang = 'es-CL';
-                                utterance.rate = 1.05;
-                                window.speechSynthesis.speak(utterance);
-                            }
-                            break;
-                    }
-                }, 500); // 500ms delay to feel natural after message
-            }
+        try {
+            const d = await postToCoCo({ resolutions: { [toolUseId]: decision } });
+            appendAssistantReply(d);
         } catch (err: unknown) {
             const error = err as Error;
             console.error("CoCo connection failed details:", error);
@@ -271,6 +308,42 @@ export default function CoCo() {
                                                 )}
                                             </div>
                                         )}
+                                        {msg.role === "assistant" && msg.pendingActions?.map(pending => {
+                                            const decision = msg.resolvedActions?.[pending.toolUseId];
+                                            return (
+                                                <div key={pending.toolUseId} className="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+                                                    <div className="flex items-start gap-2">
+                                                        <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-700 dark:text-amber-300" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-xs font-black text-amber-800 dark:text-amber-200">{pending.title}</p>
+                                                            <p className="mt-0.5 text-xs leading-snug text-amber-700/90 dark:text-amber-200/80">{pending.summary}</p>
+                                                        </div>
+                                                    </div>
+                                                    {!decision ? (
+                                                        <div className="mt-2.5 flex gap-2">
+                                                            <button
+                                                                onClick={() => resolveAction(msg.id, pending.toolUseId, "approved")}
+                                                                disabled={loading}
+                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-950 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+                                                            >
+                                                                <Check className="h-3.5 w-3.5" /> Aprobar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => resolveAction(msg.id, pending.toolUseId, "rejected")}
+                                                                disabled={loading}
+                                                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-white/70 px-3 py-1.5 text-[11px] font-bold text-amber-800 transition-colors hover:bg-white disabled:opacity-50 dark:bg-black/20 dark:text-amber-200"
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5" /> Rechazar
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                                            {decision === "approved" ? "✓ Aprobado" : "✕ Rechazado"}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                     {msg.role === "user" && (
                                         <div className="w-7 h-7 rounded-lg bg-elevated flex items-center justify-center text-xs font-black cc-text-secondary flex-shrink-0 mt-1">U</div>

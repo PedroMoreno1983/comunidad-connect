@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo, type CoCoImageAttachment, type CoCoImageMediaType } from '@/lib/coco/agent';
+import { askCoCo, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoResolutions } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
@@ -22,6 +22,16 @@ const GEMINI_MODELS = [
 function sanitize(value: unknown, max: number): string {
     if (typeof value !== 'string') return '';
     return value.trim().slice(0, max);
+}
+
+/** Valida el objeto { toolUseId: 'approved' | 'rejected' } que manda el cliente al confirmar/rechazar. */
+function parseResolutions(value: unknown): CoCoResolutions | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const entries = Object.entries(value as Record<string, unknown>)
+        .filter((entry): entry is [string, 'approved' | 'rejected'] =>
+            typeof entry[0] === 'string' && (entry[1] === 'approved' || entry[1] === 'rejected'));
+    if (entries.length === 0) return null;
+    return Object.fromEntries(entries);
 }
 
 const SUPPORTED_IMAGE_MEDIA_TYPES: CoCoImageMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -308,6 +318,7 @@ export async function POST(req: NextRequest) {
         // ── 2. Validar entrada ───────────────────────────────────────────────
         const message     = sanitize(body.message, 1000);
         const currentPage = sanitize(body.currentPage, 100);
+        const resolutions = parseResolutions(body.resolutions);
         let imageAttachment: CoCoImageAttachment | null = null;
         try {
             imageAttachment = parseImageAttachment(body.imageBase64);
@@ -318,7 +329,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!message) {
+        if (!message && !resolutions) {
             return NextResponse.json(
                 { reply: 'Por favor envía un mensaje para que pueda ayudarte. 😊' },
                 { status: 400 }
@@ -347,6 +358,13 @@ export async function POST(req: NextRequest) {
             currentPage,
             channel: 'web',
         };
+
+        if (resolutions && !process.env.ANTHROPIC_API_KEY) {
+            return NextResponse.json(
+                { reply: 'No pude confirmar la acción porque el motor principal no está disponible en este momento. Intenta de nuevo en unos segundos.' },
+                { status: 503 }
+            );
+        }
 
         if (!process.env.ANTHROPIC_API_KEY) {
             if (imageAttachment) {
@@ -388,7 +406,10 @@ export async function POST(req: NextRequest) {
                     currentPage,
                     channel:     'web',
                 },
-                imageAttachment ? { image: imageAttachment } : undefined
+                {
+                    ...(imageAttachment ? { image: imageAttachment } : {}),
+                    ...(resolutions ? { resolutions } : {}),
+                }
             );
         } catch (agentError) {
             if (isAiBudgetExceededError(agentError)) {
@@ -418,8 +439,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
         }
 
-        const { reply, navigate, action, updatedHistory } = agentResponse;
-        const cocoCase = await maybeCreateCoCoCase(message, caseContext, reply);
+        const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
 
         // ── 5. Guardar sesión actualizada ────────────────────────────────────
         await saveSession(`web:${sessionKey}`, {
@@ -432,6 +452,18 @@ export async function POST(req: NextRequest) {
                 channel:      'web',
             },
         });
+
+        // CoCo propuso una accion que muta datos: no hay respuesta final todavia
+        // (y por lo tanto tampoco un "caso" que registrar) hasta que el usuario
+        // confirme o rechace desde el cliente.
+        if (pendingActions && pendingActions.length > 0) {
+            return NextResponse.json({
+                reply: reply || 'Antes de continuar, necesito tu confirmación:',
+                pendingActions,
+            }, { status: 200 });
+        }
+
+        const cocoCase = await maybeCreateCoCoCase(message, caseContext, reply);
 
         return NextResponse.json({ reply, navigate, action, case: cocoCase }, { status: 200 });
 

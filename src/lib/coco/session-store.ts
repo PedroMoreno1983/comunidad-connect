@@ -4,12 +4,15 @@
  * Funciona en Vercel serverless sin Redis.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin as supabase } from '@/lib/supabase/supabaseAdmin';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Nota de seguridad: coco_sessions guarda el historial completo de conversaciones
+// (incluye nombre, unidad, comunidad y todo lo que el residente le contó a CoCo).
+// Este store SIEMPRE debe usar el cliente de servicio (bypassa RLS a propósito,
+// solo desde server-side) y la tabla NUNCA debe tener una policy que permita
+// acceso con la anon key — de lo contrario cualquiera podría leer el historial
+// de cualquier otro usuario solo con la key pública. Ver migración
+// 037_coco_sessions_lockdown.sql.
 
 const MAX_HISTORY = 20; // máximo de mensajes a persistir por sesión
 

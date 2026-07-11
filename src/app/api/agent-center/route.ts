@@ -1459,12 +1459,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         const hint = cleanText(action.args.amenityHint, 80).toLowerCase();
         let amenitiesQuery = admin.from('amenities').select('id, name').eq('community_id', communityId).eq('is_active', true).limit(10);
         if (hint) amenitiesQuery = amenitiesQuery.ilike('name', `%${hint}%`);
-        let { data: amenities, error: amenitiesError } = await amenitiesQuery;
-        if ((!amenities || amenities.length === 0) && communityId !== DEFAULT_COMMUNITY_ID) {
-            const fallback = await admin.from('amenities').select('id, name').eq('is_active', true).ilike('name', `%${hint || ''}%`).limit(10);
-            amenities = fallback.data;
-            amenitiesError = fallback.error;
-        }
+        const { data: amenities, error: amenitiesError } = await amenitiesQuery;
         if (amenitiesError) throw amenitiesError;
         const amenity = amenities?.[0];
         if (!amenity) throw new Error('No encontre un espacio comun activo que calce con la solicitud.');
