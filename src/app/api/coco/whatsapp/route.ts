@@ -10,6 +10,7 @@ import { askCoCo } from '@/lib/coco/agent';
 import {
     getSession,
     saveSession,
+    deleteSession,
     checkRateLimit,
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -163,13 +164,43 @@ export async function POST(req: NextRequest) {
 
         // ── ¿Ya está autenticado? ────────────────────────────────────────────
         if (session?.auth_state === 'verified') {
-            const { reply, updatedHistory } = await askCoCo(
+            const authenticatedUserId = session.user_context.user_id;
+            const { data: currentProfile } = authenticatedUserId
+                ? await getSupabaseAdmin()
+                    .from('profiles')
+                    .select('id,name,full_name,role,unit_id,community_id,phone_number,whatsapp_enabled')
+                    .eq('id', authenticatedUserId)
+                    .maybeSingle()
+                : { data: null };
+            if (
+                !currentProfile
+                || !currentProfile.whatsapp_enabled
+                || !phoneMatches(currentProfile.phone_number, waId)
+                || !currentProfile.community_id
+            ) {
+                await deleteSession(sessionKey);
+                return twiml('Tu sesion de CoCo debe verificarse nuevamente. Envia otro mensaje para comenzar.');
+            }
+
+            const verifiedContext = {
+                user_id: String(currentProfile.id),
+                unit_id: typeof currentProfile.unit_id === 'string' ? currentProfile.unit_id : undefined,
+                role: String(currentProfile.role || 'resident'),
+                community_id: String(currentProfile.community_id),
+                name: String(currentProfile.name || currentProfile.full_name || 'vecino/a'),
+                channel: 'whatsapp',
+            };
+            const { reply, updatedHistory, pendingActions } = await askCoCo(
                 message,
                 session,
-                { ...session.user_context, channel: 'whatsapp' }
+                verifiedContext,
             );
-            await saveSession(sessionKey, { ...session, conversation: updatedHistory });
-            return twiml(reply);
+            await saveSession(sessionKey, { ...session, conversation: updatedHistory, user_context: verifiedContext });
+            if (pendingActions?.length) {
+                const actionList = pendingActions.map(action => `- ${action.title}: ${action.summary}`).join('\n');
+                return twiml(`${reply || 'Necesito tu confirmacion antes de continuar.'}\n\n${actionList}\n\nResponde APROBAR para ejecutar o RECHAZAR para cancelar.`);
+            }
+            return twiml(reply || 'La solicitud fue procesada.');
         }
 
         // ── Flujo de autenticación ───────────────────────────────────────────

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo } from '@/lib/coco/agent';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+
+function cleanText(value: unknown, maxLength = 200) {
+    return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 /**
  * Recibe eventos de sensores (Shelly, Tuya, etc.) e invoca a CoCo IA
@@ -21,13 +30,29 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
         }
 
-        const payload = await req.json();
+        const payload = await req.json() as Record<string, unknown>;
         
         // Payload tipico de un evento IoT (ej. Shelly Flood o boton fisico).
-        const { sensor_id, type, unit_id, community_id, severity, location_detail } = payload;
+        const sensor_id = cleanText(payload.sensor_id, 120);
+        const type = cleanText(payload.type, 80);
+        const unit_id = cleanText(payload.unit_id, 120);
+        const community_id = cleanText(payload.community_id, 120);
+        const severity = cleanText(payload.severity, 30) || 'ALTA';
+        const location_detail = cleanText(payload.location_detail, 300) || 'No especificada';
 
-        if (!sensor_id || !type || !unit_id) {
-            return NextResponse.json({ error: 'Faltan campos (sensor_id, type, unit_id)' }, { status: 400 });
+        if (!sensor_id || !type || !unit_id || !isUuid(community_id)) {
+            return NextResponse.json({ error: 'Faltan campos validos (sensor_id, type, unit_id, community_id)' }, { status: 400 });
+        }
+
+        const unitQuery = getSupabaseAdmin()
+            .from('units')
+            .select('id')
+            .eq('community_id', community_id);
+        const { data: unit } = isUuid(unit_id)
+            ? await unitQuery.eq('id', unit_id).maybeSingle()
+            : await unitQuery.eq('number', unit_id).maybeSingle();
+        if (!unit) {
+            return NextResponse.json({ error: 'La unidad no pertenece a la comunidad indicada' }, { status: 403 });
         }
 
         // Construir un mensaje del sistema que desencadene el loop agéntico de CoCo.
@@ -52,8 +77,8 @@ Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejec
         // Contexto de sistema para el agente autonomo.
         const sysCtx = {
             role: 'system',
-            unit_id,
-            community_id: community_id || 'COMM-DEFAULT',
+            unit_id: unit.id,
+            community_id,
             name: 'AWS IoT Core Monitor',
         };
 

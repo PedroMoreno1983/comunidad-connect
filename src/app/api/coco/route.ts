@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { askCoCo, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoResolutions } from '@/lib/coco/agent';
+import { askCoCo, CoCoPendingResolutionError, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoResolutions } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
 import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
@@ -27,11 +27,12 @@ function sanitize(value: unknown, max: number): string {
 /** Valida el objeto { toolUseId: 'approved' | 'rejected' } que manda el cliente al confirmar/rechazar. */
 function parseResolutions(value: unknown): CoCoResolutions | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const entries = Object.entries(value as Record<string, unknown>)
-        .filter((entry): entry is [string, 'approved' | 'rejected'] =>
-            typeof entry[0] === 'string' && (entry[1] === 'approved' || entry[1] === 'rejected'));
-    if (entries.length === 0) return null;
-    return Object.fromEntries(entries);
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (
+        entries.length === 0
+        || entries.some(([id, decision]) => !id.trim() || (decision !== 'approved' && decision !== 'rejected'))
+    ) return null;
+    return Object.fromEntries(entries) as CoCoResolutions;
 }
 
 const SUPPORTED_IMAGE_MEDIA_TYPES: CoCoImageMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -319,6 +320,12 @@ export async function POST(req: NextRequest) {
         const message     = sanitize(body.message, 1000);
         const currentPage = sanitize(body.currentPage, 100);
         const resolutions = parseResolutions(body.resolutions);
+        if (body.resolutions !== undefined && !resolutions) {
+            return NextResponse.json(
+                { reply: 'La resolucion enviada no es valida. Aprueba o rechaza cada accion pendiente.' },
+                { status: 400 },
+            );
+        }
         let imageAttachment: CoCoImageAttachment | null = null;
         try {
             imageAttachment = parseImageAttachment(body.imageBase64);
@@ -401,8 +408,8 @@ export async function POST(req: NextRequest) {
                     user_id:     userId,
                     name:        userName,
                     role:        safeRole,
-                    unit_id:     unitId    || session?.user_context?.unit_id,
-                    community_id: communityId || session?.user_context?.community_id,
+                    unit_id:     unitId,
+                    community_id: communityId,
                     currentPage,
                     channel:     'web',
                 },
@@ -412,6 +419,9 @@ export async function POST(req: NextRequest) {
                 }
             );
         } catch (agentError) {
+            if (agentError instanceof CoCoPendingResolutionError) {
+                return NextResponse.json({ reply: agentError.message }, { status: 409 });
+            }
             if (isAiBudgetExceededError(agentError)) {
                 return NextResponse.json(
                     { reply: agentError.reason, action: 'AI_BUDGET_EXCEEDED' },
@@ -446,8 +456,8 @@ export async function POST(req: NextRequest) {
             conversation: updatedHistory,
             user_context: {
                 role:         safeRole,
-                unit_id:      unitId || session?.user_context?.unit_id,
-                community_id: communityId || session?.user_context?.community_id,
+                unit_id:      unitId,
+                community_id: communityId,
                 name:         userName,
                 channel:      'web',
             },

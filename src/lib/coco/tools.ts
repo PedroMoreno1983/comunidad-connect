@@ -145,10 +145,6 @@ export const TOOL_DEFINITIONS = [
                 community_id: { type: 'string' },
                 title: { type: 'string' },
                 body: { type: 'string' },
-                audience: {
-                    type: 'string',
-                    enum: ['TODOS', 'PROPIETARIOS', 'ARRENDATARIOS'],
-                },
             },
             required: ['community_id', 'title', 'body'],
         },
@@ -200,7 +196,6 @@ export const TOOL_DEFINITIONS = [
             properties: {
                 community_id: { type: 'string' },
                 visitor_name: { type: 'string' },
-                visitor_rut: { type: 'string', description: 'RUT del visitante (opcional).' },
                 host_unit_id: { type: 'string', description: 'Depto o unidad donde va la visita.' },
                 expected_at: { type: 'string', description: 'Hora esperada en formato HH:MM (opcional).' },
             },
@@ -336,6 +331,35 @@ export const MUTATING_TOOLS = new Set<string>([
     'dispatch_provider',
 ]);
 
+const RESIDENT_TOOLS = new Set([
+    'get_resident_info', 'get_payment_status', 'get_water_consumption', 'list_services',
+    'search_marketplace', 'create_claim', 'get_claim_status', 'list_my_claims',
+    'check_availability', 'create_reservation', 'create_social_post', 'list_active_polls',
+    'vote_in_poll', 'register_visitor', 'get_pending_packages',
+]);
+
+const CONCIERGE_TOOLS = new Set([
+    ...RESIDENT_TOOLS,
+    'register_package', 'send_whatsapp_notification', 'request_urgent_access_approval',
+    'dispatch_provider',
+]);
+
+const ADMIN_TOOLS = new Set([
+    ...CONCIERGE_TOOLS,
+    'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
+]);
+
+const SYSTEM_TOOLS = new Set([
+    'list_services', 'create_claim', 'request_urgent_access_approval', 'dispatch_provider',
+]);
+
+export function isToolAllowedForRole(name: string, role?: string) {
+    if (role === 'system') return SYSTEM_TOOLS.has(name);
+    if (role === 'admin') return ADMIN_TOOLS.has(name) && name !== 'vote_in_poll';
+    if (role === 'concierge') return CONCIERGE_TOOLS.has(name) && name !== 'vote_in_poll';
+    return RESIDENT_TOOLS.has(name);
+}
+
 /** Título + resumen legible de una acción pendiente, para la pantalla de confirmación. */
 export function describePendingAction(name: string, input: Record<string, unknown>): { title: string; summary: string } {
     const str = (key: string) => typeof input[key] === 'string' ? (input[key] as string) : '';
@@ -364,7 +388,7 @@ export function describePendingAction(name: string, input: Record<string, unknow
         case 'request_urgent_access_approval':
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
-            return { title: 'Despachar proveedor', summary: str('details') || 'Contactar proveedor externo de emergencia.' };
+            return { title: 'Proponer proveedor de emergencia', summary: str('details') || 'Identificar un proveedor y notificar al equipo para que confirme el despacho.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -388,12 +412,65 @@ function isAdmin(userCtx: UserContext) {
     return userCtx.role === 'admin' || userCtx.role === 'system';
 }
 
-function scopedUnit(userCtx: UserContext, requestedUnitId?: string) {
-    return isStaff(userCtx) ? requestedUnitId || userCtx.unit_id : userCtx.unit_id;
+function isUuid(value?: string) {
+    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
-function scopedCommunity(userCtx: UserContext, requestedCommunityId?: string) {
-    return isStaff(userCtx) ? requestedCommunityId || userCtx.community_id : userCtx.community_id;
+function isIsoDate(value?: string) {
+    return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)));
+}
+
+function isTime(value?: string) {
+    return Boolean(value && /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value));
+}
+
+async function scopedUnit(userCtx: UserContext, requestedUnitId?: string) {
+    const communityId = scopedCommunity(userCtx);
+    if (!communityId) return undefined;
+    let unitReference = isStaff(userCtx) ? requestedUnitId || userCtx.unit_id : userCtx.unit_id;
+
+    if (!isStaff(userCtx) && !unitReference && userCtx.user_id) {
+        const { data: ownedUnits } = await supabaseAdmin
+            .from('units')
+            .select('id')
+            .eq('community_id', communityId)
+            .eq('owner_id', userCtx.user_id)
+            .limit(2);
+        if (ownedUnits?.length === 1) unitReference = ownedUnits[0].id;
+    }
+    if (!unitReference) return undefined;
+
+    if (isUuid(unitReference)) {
+        const { data } = await supabaseAdmin
+            .from('units')
+            .select('id')
+            .eq('community_id', communityId)
+            .eq('id', unitReference)
+            .maybeSingle();
+        return data?.id;
+    }
+
+    const cleanReference = unitReference.trim().slice(0, 80);
+    const byNumber = await supabaseAdmin
+        .from('units')
+        .select('id')
+        .eq('community_id', communityId)
+        .eq('number', cleanReference)
+        .limit(2);
+    if (byNumber.data?.length === 1) return byNumber.data[0].id;
+
+    const byLegacyNumber = await supabaseAdmin
+        .from('units')
+        .select('id')
+        .eq('community_id', communityId)
+        .eq('unit_number', cleanReference)
+        .limit(2);
+    return byLegacyNumber.data?.length === 1 ? byLegacyNumber.data[0].id : undefined;
+}
+
+function scopedCommunity(userCtx: UserContext, _requestedCommunityId?: string) {
+    void _requestedCommunityId;
+    return isUuid(userCtx.community_id) ? userCtx.community_id : undefined;
 }
 
 function forbidden(message = 'No tienes permiso para ejecutar esta herramienta.') {
@@ -406,54 +483,73 @@ export async function executeTool(
     userCtx: UserContext
 ): Promise<unknown> {
     try {
+        if (!isToolAllowedForRole(name, userCtx.role)) return forbidden();
         switch (name) {
 
             // ── RESIDENTE / FINANZAS ─────────────────────────────────────────
             case 'get_resident_info': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar tu unidad.');
-                const { data } = await supabaseAdmin
+                const { data: unit, error: unitError } = await supabaseAdmin
                     .from('units')
-                    .select('unit_number, residents(name, email, phone), communities(name)')
+                    .select('id,number,unit_number,tower,owner_id,community_id')
                     .eq('id', unitId)
                     .maybeSingle();
-                return data ?? { error: 'Unidad no encontrada' };
+                if (unitError) return { error: 'No se pudo consultar la unidad.' };
+                if (!unit) return { error: 'Unidad no encontrada' };
+                const residentId = !isStaff(userCtx) ? userCtx.user_id : unit.owner_id;
+                const { data: resident } = residentId
+                    ? await supabaseAdmin.from('profiles').select('name,email,phone_number').eq('id', residentId).eq('community_id', unit.community_id).maybeSingle()
+                    : { data: null };
+                return { ...unit, resident };
             }
 
             case 'get_payment_status': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar tu unidad.');
                 const month = input.month || new Date().toISOString().slice(0, 7);
-                const { data } = await supabaseAdmin
-                    .from('fees')
-                    .select('amount, status, due_date, paid_at')
+                if (!/^\d{4}-\d{2}$/.test(month)) return { error: 'El periodo debe usar el formato YYYY-MM.' };
+                const { data, error } = await supabaseAdmin
+                    .from('expenses')
+                    .select('amount,status,due_date,paid_at,month')
                     .eq('unit_id', unitId)
-                    .like('period', `${month}%`)
+                    .eq('community_id', userCtx.community_id)
+                    .eq('month', month)
                     .order('due_date', { ascending: false })
                     .limit(3);
+                if (error) return { error: 'No se pudo consultar el estado de pago.' };
                 return data ?? { error: 'Sin datos de pago para ese período' };
             }
 
             case 'get_water_consumption': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar tu unidad.');
                 const month = input.month || new Date().toISOString().slice(0, 7);
-                const { data } = await supabaseAdmin
+                if (!/^\d{4}-\d{2}$/.test(month)) return { error: 'El periodo debe usar el formato YYYY-MM.' };
+                const [year, monthNumber] = month.split('-').map(Number);
+                const monthName = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][monthNumber - 1];
+                if (!monthName) return { error: 'El periodo indicado no es valido.' };
+                const { data, error } = await supabaseAdmin
                     .from('water_readings')
-                    .select('period, m3_consumed, amount_charged, reading_date')
+                    .select('reading_value,reading_date,month,year')
                     .eq('unit_id', unitId)
-                    .like('period', `${month}%`)
+                    .eq('community_id', userCtx.community_id)
+                    .eq('year', year)
+                    .eq('month', monthName)
                     .order('reading_date', { ascending: false })
                     .limit(3);
+                if (error) return { error: 'No se pudo consultar el consumo de agua.' };
                 return data ?? { error: 'Sin datos de consumo para ese período' };
             }
 
             case 'list_services': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const query = supabaseAdmin
                     .from('service_providers')
                     .select('id, name, category, rating, contact_phone')
+                    .eq('community_id', communityId)
                     .order('rating', { ascending: false });
-                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
                 
                 if (input.category) {
                     query.eq('category', input.category);
@@ -465,26 +561,31 @@ export async function executeTool(
             }
 
             case 'search_marketplace': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const query = supabaseAdmin
                     .from('marketplace_items')
                     .select('id, title, description, price, category, status')
                     .ilike('title', `%${input.query}%`)
+                    .eq('community_id', communityId)
                     .eq('status', 'available')
                     .limit(5);
-                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
-                const { data } = await query;
+                const { data, error } = await query;
+                if (error) return { error: 'No se pudo buscar en el Marketplace.' };
                 return data ?? [];
             }
 
             // ── RECLAMOS ────────────────────────────────────────────────────
             case 'create_claim': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad asociada al reclamo.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const result = await maybeCreateCoCoCase(
                     input.description,
                     {
                         unitId,
-                        communityId: userCtx.community_id,
+                        communityId,
                         role: userCtx.role || 'resident',
                         channel: 'coco_tool',
                     },
@@ -502,22 +603,25 @@ export async function executeTool(
             }
 
             case 'get_claim_status': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const query = supabaseAdmin
                     .from('coco_cases')
                     .select('id, category, description, status, urgency, created_at, updated_at')
-                    .eq('id', input.claim_id);
+                    .eq('id', input.claim_id)
+                    .eq('community_id', communityId);
                 if (!isStaff(userCtx)) {
-                    if (!userCtx.unit_id) return forbidden('No pude determinar tu unidad.');
-                    query.eq('unit_id', userCtx.unit_id);
-                } else if (userCtx.community_id) {
-                    query.eq('community_id', userCtx.community_id);
+                    const residentUnitId = await scopedUnit(userCtx);
+                    if (!residentUnitId) return forbidden('No pude determinar tu unidad.');
+                    query.eq('unit_id', residentUnitId);
                 }
-                const { data } = await query.maybeSingle();
+                const { data, error } = await query.maybeSingle();
+                if (error) return { error: 'No se pudo consultar el reclamo.' };
                 return data ?? { error: 'Reclamo no encontrado' };
             }
 
             case 'list_my_claims': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad.');
                 const query = supabaseAdmin
                     .from('coco_cases')
@@ -527,22 +631,38 @@ export async function executeTool(
                     .order('created_at', { ascending: false })
                     .limit(10);
                 if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
-                const { data } = await query;
+                const { data, error } = await query;
+                if (error) return { error: 'No se pudieron consultar los reclamos.' };
                 return data ?? [];
             }
 
             // ── RESERVAS ────────────────────────────────────────────────────
             case 'check_availability': {
-                const query = supabaseAdmin
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                if (!isIsoDate(input.date)) return { error: 'La fecha debe usar el formato YYYY-MM-DD.' };
+                const { data: amenity, error: amenityError } = await supabaseAdmin
+                    .from('amenities')
+                    .select('id,name')
+                    .eq('community_id', communityId)
+                    .eq('is_active', true)
+                    .ilike('name', `%${input.space_name}%`)
+                    .limit(1)
+                    .maybeSingle();
+                if (amenityError) return { error: 'No se pudo consultar el espacio comun.' };
+                if (!amenity) return { error: `No se encontro el espacio "${input.space_name}" en tu comunidad.` };
+
+                const { data, error } = await supabaseAdmin
                     .from('bookings')
-                    .select('start_time, end_time, amenities(name)')
+                    .select('start_time,end_time')
+                    .eq('community_id', communityId)
+                    .eq('amenity_id', amenity.id)
                     .eq('date', input.date)
-                    .ilike('amenities.name', `%${input.space_name}%`)
-                    .eq('status', 'confirmed');
-                if (userCtx.community_id) query.eq('community_id', userCtx.community_id);
-                const { data } = await query;
+                    .neq('status', 'cancelled')
+                    .order('start_time', { ascending: true });
+                if (error) return { error: 'No se pudo consultar la disponibilidad.' };
                 return {
-                    space: input.space_name,
+                    space: amenity.name,
                     date: input.date,
                     occupied_slots: data ?? [],
                     available: !data || data.length === 0,
@@ -550,30 +670,49 @@ export async function executeTool(
             }
 
             case 'create_reservation': {
-                if (!userCtx.community_id) return forbidden('No pude determinar la comunidad del residente.');
-                const { data: amenity } = await supabaseAdmin
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad del residente.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('No pude determinar la unidad asociada a la reserva.');
+                if (!userCtx.user_id) return forbidden('No se pudo identificar al usuario para crear la reserva.');
+                if (!isIsoDate(input.date) || input.date < new Date().toISOString().slice(0, 10)) {
+                    return { error: 'La reserva requiere una fecha valida, igual o posterior a hoy.' };
+                }
+                if (!isTime(input.start_time) || !isTime(input.end_time) || input.start_time >= input.end_time) {
+                    return { error: 'El horario debe ser valido y la hora de termino posterior al inicio.' };
+                }
+                const { data: amenity, error: amenityError } = await supabaseAdmin
                     .from('amenities')
                     .select('id, name')
-                    .eq('community_id', userCtx.community_id)
+                    .eq('community_id', communityId)
+                    .eq('is_active', true)
                     .ilike('name', `%${input.space_name}%`)
+                    .limit(1)
                     .maybeSingle();
+                if (amenityError) return { error: 'No se pudo consultar el espacio comun.' };
                 if (!amenity) return { error: `No se encontró el espacio "${input.space_name}"` };
-                if (!userCtx.user_id) return { error: 'No se pudo identificar al residente para crear la reserva.' };
-                const { data, error } = await supabaseAdmin
+                const { data: conflict, error: conflictError } = await supabaseAdmin
                     .from('bookings')
-                    .insert({
-                        user_id: userCtx.user_id,
-                        amenity_id: amenity.id,
-                        date: input.date,
-                        start_time: input.start_time,
-                        end_time: input.end_time,
-                        status: 'confirmed',
-                        community_id: userCtx.community_id,
-                    })
                     .select('id')
-                    .single();
+                    .eq('community_id', communityId)
+                    .eq('amenity_id', amenity.id)
+                    .eq('date', input.date)
+                    .neq('status', 'cancelled')
+                    .lt('start_time', input.end_time)
+                    .gt('end_time', input.start_time)
+                    .limit(1);
+                if (conflictError) return { error: 'No se pudo validar la disponibilidad del horario.' };
+                if (conflict?.length) return { error: 'Ese horario ya esta ocupado. Elige otro bloque.' };
+                const { data, error } = await supabaseAdmin.rpc('coco_create_booking', {
+                    p_community_id: communityId,
+                    p_amenity_id: amenity.id,
+                    p_user_id: userCtx.user_id,
+                    p_date: input.date,
+                    p_start_time: input.start_time,
+                    p_end_time: input.end_time,
+                });
                 if (error) return { error: 'No se pudo crear la reserva. Puede que ese horario ya esté ocupado.' };
-                return { success: true, booking_id: data.id, message: `Reserva de ${amenity.name} confirmada.` };
+                return { success: true, booking_id: String(data), message: `Reserva de ${amenity.name} confirmada.` };
             }
 
             // ── COMUNICACIÓN ─────────────────────────────────────────────────
@@ -587,9 +726,8 @@ export async function executeTool(
                         community_id: communityId,
                         title: input.title,
                         content: input.body,
-                        audience: input.audience || 'TODOS',
-                        source: 'COCO_IA',
-                        created_at: new Date().toISOString(),
+                        author_id: userCtx.user_id || null,
+                        priority: 'info',
                     })
                     .select('id')
                     .single();
@@ -600,16 +738,15 @@ export async function executeTool(
             case 'create_social_post': {
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
-                const unitId = scopedUnit(userCtx, input.author_unit_id);
+                if (!userCtx.user_id) return forbidden('No pude determinar el autor de la publicacion.');
+                const unitId = await scopedUnit(userCtx, input.author_unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad autora.');
                 const { data, error } = await supabaseAdmin
                     .from('social_posts')
                     .insert({
                         community_id: communityId,
                         content: input.content,
-                        unit_id: unitId,
-                        source: 'COCO_IA',
-                        created_at: new Date().toISOString(),
+                        author_id: userCtx.user_id,
                     })
                     .select('id')
                     .single();
@@ -621,48 +758,66 @@ export async function executeTool(
             case 'list_active_polls': {
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
-                const { data } = await supabaseAdmin
+                const { data, error } = await supabaseAdmin
                     .from('polls')
-                    .select('id, title, description, closes_at, options:poll_options(id, text)')
+                    .select('id,title,description,end_date,options:poll_options(id,text)')
                     .eq('community_id', communityId)
-                    .gte('closes_at', new Date().toISOString())
-                    .order('closes_at', { ascending: true });
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .order('end_date', { ascending: true });
+                if (error) return { error: 'No se pudieron consultar las votaciones.' };
                 return data ?? [];
             }
 
             case 'vote_in_poll': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                if (userCtx.role !== 'resident') return forbidden('Solo los residentes pueden emitir votos.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId || !userCtx.user_id) return forbidden('No pude determinar al residente y su comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad votante.');
-                const { error } = await supabaseAdmin
-                    .from('poll_votes')
-                    .insert({
-                        poll_id: input.poll_id,
-                        option_id: input.option_id,
-                        unit_id: unitId,
-                        voted_at: new Date().toISOString(),
-                    });
+                const { data: poll } = await supabaseAdmin
+                    .from('polls')
+                    .select('id')
+                    .eq('id', input.poll_id)
+                    .eq('community_id', communityId)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .maybeSingle();
+                if (!poll) return { error: 'La votacion no existe, ya cerro o no pertenece a tu comunidad.' };
+                const { data: option } = await supabaseAdmin
+                    .from('poll_options')
+                    .select('id')
+                    .eq('id', input.option_id)
+                    .eq('poll_id', poll.id)
+                    .maybeSingle();
+                if (!option) return { error: 'La opcion indicada no pertenece a esta votacion.' };
+                const { error } = await supabaseAdmin.rpc('coco_cast_vote', {
+                    p_community_id: communityId,
+                    p_poll_id: poll.id,
+                    p_option_id: option.id,
+                    p_user_id: userCtx.user_id,
+                });
                 if (error) return { error: 'No se pudo registrar el voto. ¿Ya votaste en esta encuesta?' };
                 return { success: true, message: '¡Voto registrado exitosamente! 🗳️' };
             }
 
             // ── CONSERJERÍA ──────────────────────────────────────────────────
             case 'register_visitor': {
-                if (!isStaff(userCtx) && input.host_unit_id !== userCtx.unit_id) {
-                    return forbidden('Solo puedes registrar visitas para tu propia unidad.');
-                }
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.host_unit_id);
+                if (!unitId) return forbidden('La unidad de destino no existe en tu comunidad o no tienes permiso para usarla.');
+                if (!userCtx.user_id) return forbidden('No pude identificar a quien registra la visita.');
                 const { data, error } = await supabaseAdmin
-                    .from('visitors')
+                    .from('visitor_logs')
                     .insert({
                         community_id: communityId,
                         visitor_name: input.visitor_name,
-                        visitor_rut: input.visitor_rut || null,
-                        host_unit_id: input.host_unit_id,
-                        expected_at: input.expected_at || null,
-                        status: 'ESPERADO',
-                        registered_at: new Date().toISOString(),
-                        source: 'COCO_IA',
+                        unit_id: unitId,
+                        purpose: input.expected_at
+                            ? `Visita esperada a las ${input.expected_at}`
+                            : 'Visita registrada desde CoCo',
+                        registered_by: userCtx.user_id,
                     })
                     .select('id')
                     .single();
@@ -674,16 +829,16 @@ export async function executeTool(
                 if (!isStaff(userCtx)) return forbidden('Solo conserjería o administración pueden registrar encomiendas.');
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('La unidad destinataria no existe en tu comunidad.');
+                const packageDescription = [input.courier, input.description].filter(Boolean).join(' - ') || 'Encomienda sin descripcion';
                 const { data, error } = await supabaseAdmin
                     .from('packages')
                     .insert({
                         community_id: communityId,
-                        unit_id: input.unit_id,
-                        courier: input.courier || 'Sin especificar',
-                        description: input.description || null,
-                        status: 'PENDIENTE_RETIRO',
-                        received_at: new Date().toISOString(),
-                        source: 'COCO_IA',
+                        recipient_unit_id: unitId,
+                        description: packageDescription,
+                        status: 'pending',
                     })
                     .select('id')
                     .single();
@@ -692,14 +847,18 @@ export async function executeTool(
             }
 
             case 'get_pending_packages': {
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad.');
-                const { data } = await supabaseAdmin
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data, error } = await supabaseAdmin
                     .from('packages')
-                    .select('id, courier, description, received_at')
-                    .eq('unit_id', unitId)
-                    .eq('status', 'PENDIENTE_RETIRO')
+                    .select('id,description,received_at')
+                    .eq('community_id', communityId)
+                    .eq('recipient_unit_id', unitId)
+                    .eq('status', 'pending')
                     .order('received_at', { ascending: false });
+                if (error) return { error: 'No se pudieron consultar las encomiendas.' };
                 return data ?? [];
             }
 
@@ -715,11 +874,14 @@ export async function executeTool(
 
                 // Find all profiles for this unit
                 if (!isStaff(userCtx)) return forbidden('Solo conserjería o administración pueden enviar WhatsApp a una unidad.');
-                const unitId = scopedUnit(userCtx, input.unit_id);
+                const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar la unidad destino.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const { data: profiles } = await supabaseAdmin
                     .from('profiles')
                     .select('id, name')
+                    .eq('community_id', communityId)
                     .eq('unit_id', unitId);
                 
                 if (!profiles || profiles.length === 0) {
@@ -729,6 +891,8 @@ export async function executeTool(
                 const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PUBLIC_SITE_URL;
                 
                 let successCount = 0;
+                let skippedCount = 0;
+                let failedCount = 0;
                 for (const p of profiles) {
                     const res = await fetch(`${baseUrl}/api/whatsapp-notify`, {
                         method: 'POST',
@@ -743,12 +907,20 @@ export async function executeTool(
                             type: 'info'
                         })
                     });
-                    if (res.ok) successCount++;
+                    const delivery = await res.json().catch(() => ({})) as { success?: boolean; skipped?: boolean };
+                    if (res.ok && delivery.success) successCount++;
+                    else if (res.ok && delivery.skipped) skippedCount++;
+                    else failedCount++;
                 }
                 
                 return { 
-                    success: true, 
-                    message: `Mensaje de WhatsApp enviado a ${successCount} residente(s) del departamento.` 
+                    success: successCount > 0,
+                    sent: successCount,
+                    skipped: skippedCount,
+                    failed: failedCount,
+                    message: successCount > 0
+                        ? `Mensaje de WhatsApp enviado a ${successCount} residente(s) del departamento.`
+                        : 'No se envio el WhatsApp porque ningun residente de la unidad tiene el canal habilitado.',
                 };
             }
 
@@ -758,13 +930,14 @@ export async function executeTool(
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const query = supabaseAdmin
-                    .from('fees')
-                    .select('unit_id, amount, due_date, period, units(unit_number)')
+                    .from('expenses')
+                    .select('unit_id,amount,due_date,month,units:unit_id(number,unit_number)')
                     .eq('community_id', communityId)
-                    .eq('status', 'PENDIENTE')
+                    .in('status', ['pending', 'overdue'])
                     .order('due_date', { ascending: true });
-                if (input.month) query.like('period', `${input.month}%`);
-                const { data } = await query.limit(20);
+                if (input.month) query.eq('month', input.month);
+                const { data, error } = await query.limit(20);
+                if (error) return { error: 'No se pudo consultar la cartera vencida.' };
                 return data ?? [];
             }
 
@@ -773,50 +946,87 @@ export async function executeTool(
                 const communityId = scopedCommunity(userCtx, input.community_id);
                 if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const options = input.options.split(',').map(o => o.trim()).filter(Boolean);
+                if (options.length < 2) return { error: 'La votacion necesita al menos dos opciones.' };
+                const endDate = input.closes_at;
+                if (!endDate || Number.isNaN(Date.parse(endDate)) || Date.parse(endDate) <= Date.now()) {
+                    return { error: 'La fecha de cierre debe ser valida y posterior al momento actual.' };
+                }
                 const { data: poll, error: pollErr } = await supabaseAdmin
                     .from('polls')
                     .insert({
                         community_id: communityId,
                         title: input.title,
-                        description: input.description || null,
-                        closes_at: input.closes_at || null,
-                        source: 'COCO_IA',
+                        description: input.description || input.title,
+                        end_date: new Date(endDate).toISOString(),
+                        status: 'active',
+                        created_by: userCtx.user_id || null,
                     })
                     .select('id')
                     .single();
                 if (pollErr) return { error: 'No se pudo crear la votación.' };
-                await supabaseAdmin.from('poll_options').insert(
-                    options.map(text => ({ poll_id: poll.id, text }))
+                const { error: optionsError } = await supabaseAdmin.from('poll_options').insert(
+                    options.map((text, display_order) => ({ poll_id: poll.id, text, display_order, votes: 0 }))
                 );
+                if (optionsError) {
+                    await supabaseAdmin.from('polls').delete().eq('id', poll.id).eq('community_id', communityId);
+                    return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
+                }
                 return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
             }
 
             case 'update_unit_data': {
                 if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden modificar información de departamentos.' };
                 
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('La unidad no existe en tu comunidad.');
                 const updates: Record<string, string | number> = {};
-                if (input.number !== undefined) updates.number = input.number;
-                if (input.floor !== undefined) updates.floor = Number(input.floor);
+                if (input.number !== undefined) updates.number = input.number.trim().slice(0, 80);
+                if (input.floor !== undefined) {
+                    const floor = Number(input.floor);
+                    if (!Number.isInteger(floor) || floor < -10 || floor > 300) return { error: 'El piso indicado no es valido.' };
+                    updates.floor = floor;
+                }
 
                 if (Object.keys(updates).length === 0) return { error: 'No se enviaron datos para actualizar' };
 
                 const update = supabaseAdmin
                     .from('units')
                     .update(updates)
-                    .eq('id', input.unit_id);
-                if (userCtx.community_id) update.eq('community_id', userCtx.community_id);
-                const { error } = await update;
+                    .eq('id', unitId)
+                    .eq('community_id', communityId)
+                    .select('id')
+                    .maybeSingle();
+                const { data: updatedUnit, error } = await update;
                 
-                if (error) return { error: 'No se pudo actualizar el departamento', detail: error.message };
+                if (error || !updatedUnit) return { error: 'No se pudo actualizar el departamento', detail: error?.message };
                 return { success: true, message: `Información de la unidad actualizada correctamente.` };
             }
 
             // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
             case 'request_urgent_access_approval': {
-                const { data: residents } = await supabaseAdmin
+                if (!isStaff(userCtx)) return forbidden('Solo conserjeria o administracion pueden solicitar acceso urgente.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('La unidad no existe en tu comunidad.');
+                const { data: unit, error: unitError } = await supabaseAdmin
+                    .from('units')
+                    .select('owner_id')
+                    .eq('id', unitId)
+                    .eq('community_id', communityId)
+                    .maybeSingle();
+                if (unitError || !unit) return { error: 'No se pudo validar la unidad para solicitar acceso.' };
+                const residentFilter = unit?.owner_id
+                    ? `unit_id.eq.${unitId},id.eq.${unit.owner_id}`
+                    : `unit_id.eq.${unitId}`;
+                const { data: residents, error: residentsError } = await supabaseAdmin
                     .from('profiles')
                     .select('id')
-                    .eq('unit_id', input.unit_id);
+                    .eq('community_id', communityId)
+                    .or(residentFilter);
+                if (residentsError) return { error: 'No se pudieron consultar los residentes de la unidad.' };
 
                 const notifications = (residents || []).map(resident => ({
                     user_id: resident.id,
@@ -825,17 +1035,20 @@ export async function executeTool(
                     title: 'Solicitud urgente de acceso',
                     body: input.reason,
                     link: '/resident/cases',
-                    community_id: userCtx.community_id,
+                    community_id: communityId,
                 }));
 
+                let notificationError: string | null = null;
                 if (notifications.length > 0) {
-                    await supabaseAdmin.from('notifications').insert(notifications);
+                    const { error } = await supabaseAdmin.from('notifications').insert(notifications);
+                    notificationError = error?.message || null;
                 }
 
                 return {
-                    success: true,
+                    success: notifications.length > 0 && !notificationError,
                     status: 'APPROVAL_PENDING',
                     notified_residents: notifications.length,
+                    ...(notificationError ? { error: 'No se pudo entregar la solicitud de acceso.' } : {}),
                     message: notifications.length > 0
                         ? `Se notificó a ${notifications.length} residente(s) de la unidad ${input.unit_id} para autorizar acceso urgente.`
                         : `No encontré residentes asociados a la unidad ${input.unit_id}; escalar a conserjería.`
@@ -843,27 +1056,33 @@ export async function executeTool(
             }
 
             case 'dispatch_provider': {
+                if (!isStaff(userCtx)) return forbidden('Solo conserjeria o administracion pueden gestionar proveedores de emergencia.');
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
                 const providerQuery = supabaseAdmin
                     .from('service_providers')
                     .select('id, name, contact_phone, category, response_time')
+                    .eq('community_id', communityId)
                     .eq('availability', 'available')
                     .order('verified', { ascending: false })
                     .order('rating', { ascending: false })
                     .limit(1);
-                if (userCtx.community_id) providerQuery.eq('community_id', userCtx.community_id);
                 if (input.category) providerQuery.eq('category', input.category);
 
-                const { data: providers } = await providerQuery;
+                const { data: providers, error: providerError } = await providerQuery;
+                if (providerError) return { error: 'No se pudo consultar el directorio de proveedores.' };
                 const provider = providers?.[0];
 
-                const { data: staff } = await supabaseAdmin
+                const { data: staff, error: staffError } = await supabaseAdmin
                     .from('profiles')
                     .select('id')
-                    .eq('community_id', userCtx.community_id)
+                    .eq('community_id', communityId)
                     .in('role', ['admin', 'concierge']);
+                if (staffError) return { error: 'No se pudo consultar al equipo de la comunidad.' };
 
+                let staffNotificationError: string | null = null;
                 if (staff?.length) {
-                    await supabaseAdmin.from('notifications').insert(staff.map(member => ({
+                    const { error } = await supabaseAdmin.from('notifications').insert(staff.map(member => ({
                         user_id: member.id,
                         type: input.urgency === 'URGENTE' ? 'alert' : 'warning',
                         category: 'iot_provider_dispatch',
@@ -872,15 +1091,17 @@ export async function executeTool(
                             ? `${provider.name} (${provider.contact_phone}) calza con ${input.category}. Detalle: ${input.details}`
                             : `No hay proveedor disponible para ${input.category}. Detalle: ${input.details}`,
                         link: '/admin/mantenimiento',
-                        community_id: userCtx.community_id,
+                        community_id: communityId,
                     })));
+                    staffNotificationError = error?.message || null;
                 }
 
                 return {
-                    success: Boolean(provider),
+                    success: Boolean(provider) && !staffNotificationError,
                     status: provider ? 'PROVIDER_IDENTIFIED' : 'NO_PROVIDER_AVAILABLE',
                     provider,
                     notified_staff: staff?.length || 0,
+                    ...(staffNotificationError ? { error: 'No se pudo notificar al equipo de la comunidad.' } : {}),
                     message: provider
                         ? `Proveedor disponible sugerido: ${provider.name} (${provider.contact_phone}). Staff notificado para confirmar despacho.`
                         : `No encontré proveedor disponible para ${input.category}; staff notificado para gestión manual.`
