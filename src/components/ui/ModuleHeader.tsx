@@ -11,23 +11,34 @@ type ModuleHeaderProps = {
 
 export function ModuleHeader({ eyebrow, title, description, icon, meta, actions }: ModuleHeaderProps) {
     return (
-        <header className="flex flex-col gap-5 border-b border-subtle pb-6 md:flex-row md:items-end md:justify-between">
+        <header
+            className="flex flex-col gap-5 pb-6 sm:flex-row sm:items-end sm:justify-between"
+            style={{ borderBottom: "1px solid var(--cc-line)" }}
+        >
             <div className="min-w-0">
                 <div className="mb-3 flex items-center gap-3">
                     {icon && (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600">
+                        <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                            style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}
+                        >
                             {icon}
                         </div>
                     )}
                     <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">{eyebrow}</p>
-                        {meta && <div className="mt-1 text-xs font-medium cc-text-secondary">{meta}</div>}
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--cc-ink-tertiary)" }}>{eyebrow}</p>
+                        {meta && <div className="mt-1 text-xs cc-text-secondary">{meta}</div>}
                     </div>
                 </div>
-                <h1 className="text-2xl font-bold cc-text-primary md:text-3xl">{title}</h1>
-                {description && <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">{description}</p>}
+                <h1
+                    className="text-[28px] leading-none sm:text-[34px]"
+                    style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)", letterSpacing: "-0.01em" }}
+                >
+                    {title}
+                </h1>
+                {description && <p className="mt-2.5 max-w-2xl text-sm leading-6 cc-text-secondary">{description}</p>}
             </div>
-            {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
+            {actions && <div className="flex shrink-0 flex-wrap items-center gap-2.5">{actions}</div>}
         </header>
     );
 }
@@ -46,15 +57,24 @@ export function ModuleStat({ label, value, icon, active, onClick }: ModuleStatPr
     return (
         <Comp
             onClick={onClick}
-            className={`flex min-h-[92px] items-center justify-between rounded-lg border bg-surface p-4 text-left shadow-sm transition-colors ${
-                active ? "border-brand-300 bg-brand-50" : "border-subtle hover:border-default"
-            }`}
+            className="flex min-h-[92px] items-center justify-between rounded-xl border p-4 text-left transition-colors"
+            style={{
+                borderColor: active ? "rgba(181,102,78,0.30)" : "var(--cc-line)",
+                background: active ? "var(--cc-copper-tint)" : "var(--cc-paper)",
+            }}
         >
             <div>
-                <p className="text-2xl font-semibold cc-text-primary">{value}</p>
-                <p className="mt-1 text-xs font-semibold cc-text-secondary">{label}</p>
+                <p className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{value}</p>
+                <p className="mt-1.5 text-xs cc-text-secondary">{label}</p>
             </div>
-            {icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-subtle bg-elevated cc-text-secondary">{icon}</div>}
+            {icon && (
+                <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                    style={{ background: "var(--cc-paper-warm)", color: "var(--cc-ink-tertiary)" }}
+                >
+                    {icon}
+                </div>
+            )}
         </Comp>
     );
 }

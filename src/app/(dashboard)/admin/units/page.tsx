@@ -222,15 +222,16 @@ export default function UnitsPage() {
                 <ModuleStat label="Torres" value={stats.towers} icon={<Building2 className="h-4 w-4" />} />
             </section>
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="grid gap-3 border-b border-subtle p-4 md:grid-cols-[1fr_auto] md:items-center">
+            <section className="rounded-xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-center" style={{ borderBottom: "1px solid var(--cc-line)" }}>
                     <div className="relative">
-                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--cc-ink-tertiary)" }} />
                         <input
                             value={query}
                             onChange={event => setQuery(event.target.value)}
                             placeholder="Buscar por unidad, torre, piso o residente"
-                            className="h-11 w-full rounded-lg border border-subtle bg-canvas pl-10 pr-4 text-sm font-medium outline-none transition-colors focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
+                            className="h-11 w-full rounded-xl border pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--cc-copper)]"
+                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                         />
                     </div>
                     <Badge variant={stats.unassigned > 0 ? "warning" : "success"}>
@@ -255,7 +256,7 @@ export default function UnitsPage() {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[780px] text-left text-sm">
-                            <thead className="border-b border-subtle bg-elevated/50 text-[11px] font-bold uppercase tracking-[0.12em] cc-text-secondary">
+                            <thead className="text-[11px] font-medium uppercase tracking-[0.12em] cc-text-tertiary" style={{ borderBottom: "1px solid var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                 <tr>
                                     <th className="px-5 py-3">Unidad</th>
                                     <th className="px-5 py-3">Ubicacion</th>
@@ -264,16 +265,16 @@ export default function UnitsPage() {
                                     <th className="px-5 py-3 text-right">Accion</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tbody>
                                 {filteredUnits.map(unit => {
                                     const residentName = getResidentName(unit);
                                     const assigned = Boolean(residentName);
 
                                     return (
-                                        <tr key={unit.id} className="transition-colors hover:bg-elevated/50">
+                                        <tr key={unit.id} className="transition-colors hover:bg-[var(--cc-paper-warm)]" style={{ borderTop: "1px solid var(--cc-line)" }}>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}>
                                                         <Home className="h-5 w-5" />
                                                     </div>
                                                     <div>

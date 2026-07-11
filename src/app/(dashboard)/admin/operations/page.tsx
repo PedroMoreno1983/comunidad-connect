@@ -140,12 +140,20 @@ export default function AdminOperationsPage() {
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
             <header className="flex flex-col gap-5 border-b border-subtle pb-6 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <p className="inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">
+                    <p
+                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]"
+                        style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}
+                    >
                         <Activity className="h-3.5 w-3.5" />
                         Operacion comercial
                     </p>
-                    <h1 className="mt-3 text-3xl font-semibold cc-text-primary">Centro operativo</h1>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 cc-text-secondary">
+                    <h1
+                        className="mt-3 text-[28px] leading-none sm:text-[34px]"
+                        style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)", letterSpacing: "-0.01em" }}
+                    >
+                        Centro operativo
+                    </h1>
+                    <p className="mt-2.5 max-w-3xl text-sm leading-6 cc-text-secondary">
                         Revisa acciones criticas, salud de integraciones y eventos que explican que paso, quien lo hizo y que queda pendiente.
                     </p>
                 </div>
@@ -153,7 +161,8 @@ export default function AdminOperationsPage() {
                 <button
                     onClick={load}
                     disabled={loading}
-                    className="inline-flex items-center justify-center gap-2 rounded-md border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)] disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{ borderColor: "var(--cc-line-strong)" }}
                 >
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                     Actualizar
@@ -167,39 +176,39 @@ export default function AdminOperationsPage() {
             )}
 
             <section className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Eventos 24h</span>
                         <Signal className="h-4 w-4 text-brand-600" />
                     </div>
-                    <p className="mt-4 text-3xl font-semibold cc-text-primary">{summary.total}</p>
+                    <p className="mt-4 text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{summary.total}</p>
                     <p className="mt-1 text-xs cc-text-secondary">Acciones registradas</p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Correctas</span>
                         <CheckCircle2 className="h-4 w-4 text-success-fg" />
                     </div>
-                    <p className="mt-4 text-3xl font-semibold cc-text-primary">{summary.success}</p>
+                    <p className="mt-4 text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{summary.success}</p>
                     <p className="mt-1 text-xs cc-text-secondary">Flujos completados</p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Revisar</span>
                         <AlertTriangle className="h-4 w-4 text-warning-fg" />
                     </div>
-                    <p className="mt-4 text-3xl font-semibold cc-text-primary">{summary.warnings + summary.pending}</p>
+                    <p className="mt-4 text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{summary.warnings + summary.pending}</p>
                     <p className="mt-1 text-xs cc-text-secondary">Pendientes o alertas</p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Integraciones</span>
                         <Database className="h-4 w-4 text-slate-500" />
                     </div>
-                    <p className="mt-4 text-3xl font-semibold cc-text-primary">{healthyChecks.ok}/{healthyChecks.total || 0}</p>
+                    <p className="mt-4 text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{healthyChecks.ok}/{healthyChecks.total || 0}</p>
                     <p className="mt-1 text-xs cc-text-secondary">Checks configurados</p>
                 </div>
             </section>
@@ -259,7 +268,7 @@ export default function AdminOperationsPage() {
                 </div>
 
                 <aside className="space-y-5">
-                    <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center gap-3">
                             <ShieldCheck className="h-5 w-5 text-success-fg" />
                             <h2 className="text-lg font-semibold cc-text-primary">Salud plataforma</h2>
@@ -286,7 +295,7 @@ export default function AdminOperationsPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <div className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center gap-3">
                             <Zap className="h-5 w-5 text-brand-600" />
                             <h2 className="text-lg font-semibold cc-text-primary">Acciones frecuentes</h2>

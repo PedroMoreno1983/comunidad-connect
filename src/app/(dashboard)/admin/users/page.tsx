@@ -124,7 +124,8 @@ export default function UsersPage() {
                 actions={
                     <Link
                         href="/admin/onboarding"
-                        className="inline-flex items-center justify-center gap-2 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-medium leading-none text-white shadow-sm transition-colors hover:bg-brand-600"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium leading-none transition-opacity hover:opacity-90"
+                        style={{ background: "var(--cc-copper)", color: "#fff" }}
                     >
                         <UserPlus className="h-4 w-4" />
                             Nuevo usuario
@@ -141,11 +142,11 @@ export default function UsersPage() {
             </section>
 
             {(residentCode || conciergeCode) && (
-                <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <section className="rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Codigos de invitacion</h2>
-                            <p className="text-sm cc-text-secondary">Comparte cada codigo segun el rol que debe activar la persona.</p>
+                            <h2 className="text-xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Códigos de invitación</h2>
+                            <p className="mt-2 text-sm cc-text-secondary">Comparte cada código según el rol que debe activar la persona.</p>
                         </div>
                         <Badge variant="info">Onboarding controlado</Badge>
                     </div>
@@ -175,15 +176,16 @@ export default function UsersPage() {
                 </section>
             )}
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="grid gap-3 border-b border-subtle p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+            <section className="rounded-xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="grid gap-3 p-4 lg:grid-cols-[1fr_auto] lg:items-center" style={{ borderBottom: "1px solid var(--cc-line)" }}>
                     <div className="relative">
-                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--cc-ink-tertiary)" }} />
                         <input
                             value={query}
                             onChange={event => setQuery(event.target.value)}
                             placeholder="Buscar por nombre, correo, rol o unidad"
-                            className="h-11 w-full rounded-lg border border-subtle bg-canvas pl-10 pr-4 text-sm font-medium outline-none transition-colors focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
+                            className="h-11 w-full rounded-xl border pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--cc-copper)]"
+                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -192,11 +194,12 @@ export default function UsersPage() {
                                 key={filter}
                                 type="button"
                                 onClick={() => setRoleFilter(filter)}
-                                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                                className="rounded-full px-3.5 py-2 text-xs font-medium transition-colors"
+                                style={
                                     roleFilter === filter
-                                        ? "bg-slate-950 text-white"
-                                        : "bg-elevated cc-text-secondary hover:bg-surface"
-                                }`}
+                                        ? { background: "var(--cc-ink)", color: "var(--cc-paper)" }
+                                        : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" }
+                                }
                             >
                                 {filter === "all" ? "Todos" : roleLabels[filter]}
                             </button>
@@ -206,7 +209,7 @@ export default function UsersPage() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[760px] text-left text-sm">
-                        <thead className="border-b border-subtle bg-elevated/50 text-[11px] font-bold uppercase tracking-[0.12em] cc-text-secondary">
+                        <thead className="text-[11px] font-medium uppercase tracking-[0.12em] cc-text-tertiary" style={{ borderBottom: "1px solid var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                             <tr>
                                 <th className="px-5 py-3">Usuario</th>
                                 <th className="px-5 py-3">Rol</th>
@@ -242,10 +245,13 @@ export default function UsersPage() {
                                     const status = getOperationalStatus(profile);
 
                                     return (
-                                        <tr key={profile.id} className="transition-colors hover:bg-elevated/50">
+                                        <tr key={profile.id} className="transition-colors hover:bg-[var(--cc-paper-warm)]" style={{ borderTop: "1px solid var(--cc-line)" }}>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white">
+                                                    <div
+                                                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm"
+                                                        style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 16 }}
+                                                    >
                                                         {name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0">
@@ -269,7 +275,8 @@ export default function UsersPage() {
                                             <td className="px-5 py-4 text-right">
                                                 <Link
                                                     href={status.variant === "warning" ? "/admin/units" : "/admin/onboarding"}
-                                                    className="inline-flex items-center justify-center rounded-md border border-subtle bg-elevated px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-surface"
+                                                    className="inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-[13px] font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                                    style={{ borderColor: "var(--cc-line-strong)" }}
                                                 >
                                                     {status.variant === "warning" ? "Asignar unidad" : "Ver onboarding"}
                                                 </Link>
@@ -302,27 +309,28 @@ function InviteCodeCard({
     icon: ReactNode;
 }) {
     return (
-        <div className="rounded-lg border border-subtle bg-elevated/40 p-4">
+        <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="flex gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface cc-text-secondary">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                         {icon}
                     </div>
                     <div>
-                        <h3 className="font-semibold cc-text-primary">{title}</h3>
+                        <h3 className="text-[15px] font-medium cc-text-primary">{title}</h3>
                         <p className="mt-1 text-sm leading-5 cc-text-secondary">{description}</p>
                     </div>
                 </div>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-subtle bg-surface px-4 py-3">
-                <span className="min-w-0 truncate font-mono text-lg font-bold tracking-[0.16em] cc-text-primary">{code}</span>
+            <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <span className="min-w-0 truncate font-mono text-lg tracking-[0.16em]" style={{ color: "var(--cc-copper)" }}>{code}</span>
                 <button
                     type="button"
                     onClick={onCopy}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-subtle bg-elevated cc-text-secondary transition-colors hover:bg-surface"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors hover:bg-[var(--cc-paper-warm)]"
+                    style={{ borderColor: "var(--cc-line-strong)", color: "var(--cc-ink-muted)" }}
                     aria-label={`Copiar codigo ${title}`}
                 >
-                    {copied ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    {copied ? <CheckCheck className="h-4 w-4" style={{ color: "var(--cc-sage)" }} /> : <Copy className="h-4 w-4" />}
                 </button>
             </div>
         </div>
