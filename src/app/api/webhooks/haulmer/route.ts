@@ -60,7 +60,7 @@ export async function GET() {
 async function processExpensePayment(recordId: string, params: CallbackParams, completed: boolean) {
     const { data: expense, error: readError } = await supabaseAdmin
         .from('expenses')
-        .select('id,status')
+        .select('id,status,amount')
         .eq('id', recordId)
         .maybeSingle();
 
@@ -69,6 +69,20 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
     if (expense.status === 'paid') return { status: 'idempotent' };
 
     const metadata = buildPaymentMetadata(params);
+    // Tolerancia de 1 peso por redondeo; el monto pagado puede ser mayor si incluyo comision de servicio,
+    // pero nunca debe marcarse "pagado" si es menor al monto realmente adeudado.
+    const paidEnough = metadata.amount >= Math.round(Number(expense.amount || 0)) - 1;
+
+    if (completed && !paidEnough) {
+        console.warn(`[Haulmer] Pago incompleto para expense ${recordId}: pagado ${metadata.amount}, adeudado ${expense.amount}`);
+        const { error } = await supabaseAdmin
+            .from('expenses')
+            .update({ payment_metadata: { ...metadata, mismatch: true } })
+            .eq('id', recordId);
+        if (error) throw error;
+        return { status: 'amount_mismatch' };
+    }
+
     const update = completed
         ? { status: 'paid', paid_at: new Date().toISOString(), payment_metadata: metadata }
         : { payment_metadata: metadata };
