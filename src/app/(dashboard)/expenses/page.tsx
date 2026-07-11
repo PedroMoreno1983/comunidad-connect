@@ -1,10 +1,11 @@
 "use client";
 
 import { ExpensesService } from "@/lib/api";
-import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Download, Loader2 } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, ArrowRight, Sparkles, Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
@@ -59,14 +60,33 @@ function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
 export default function ExpensesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPaying, setIsPaying] = useState<string | null>(null);
     const [step, setStep] = useState<"review" | "method" | "success">("review");
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [contributionType, setContributionType] = useState<string>("none");
+    const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number } | null>(null);
 
     const targetUnitId = user?.unitId;
+
+    useEffect(() => {
+        if (searchParams.get("status") !== "success") return;
+
+        const expenseId = searchParams.get("expenseId") || "";
+        const amount = Number(searchParams.get("amount") || 0);
+        setConfirmedPayment({ expenseId, amount });
+        setStep("success");
+        toast({
+            title: "Pago recibido",
+            description: "Tu pago fue procesado correctamente.",
+            variant: "success",
+        });
+        router.replace("/expenses");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
 
     useEffect(() => {
         const fetchExpenses = async () => {
@@ -153,11 +173,11 @@ export default function ExpensesPage() {
                         name: user?.name || "Residente",
                         email: user?.email || "",
                     },
-                    returnUrl: `${window.location.origin}/expenses?status=success`,
+                    returnUrl: `${window.location.origin}/expenses?status=success&expenseId=${activeExpense.id}&amount=${totalAmount}`,
                 }),
             });
             if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as { error?: string };
+                const data = await response.json().catch(() => ({})) as { error?: string; code?: string };
                 throw new Error(data.error || "No se pudo generar el enlace de pago.");
             }
 
@@ -165,10 +185,13 @@ export default function ExpensesPage() {
             if (!data.url) throw new Error("La pasarela no devolvio URL de pago.");
             window.location.href = data.url;
             return;
-        } catch {
+        } catch (error: unknown) {
+            const description = error instanceof Error && error.message
+                ? error.message
+                : "No se pudo procesar el pago. Intenta nuevamente en unos segundos.";
             toast({
-                title: "Error",
-                description: "No se pudo procesar el pago.",
+                title: "No pudimos iniciar el pago",
+                description,
                 variant: "destructive",
             });
         } finally {
@@ -180,7 +203,7 @@ export default function ExpensesPage() {
         return (
             <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
                 <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentasâ€¦</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentas…</span>
             </div>
         );
     }
@@ -272,7 +295,7 @@ export default function ExpensesPage() {
                             <div className="text-[12px] flex justify-between items-center" style={{ color: "var(--cc-ink-tertiary)", marginBottom: 8 }}>
                                 <span>Total a pagar antes del {formattedDueDate}</span>
                                 {activeExpense?.status === "paid" && (
-                                    <Tag tone="sage" solid dot>Al dÃ­a</Tag>
+                                    <Tag tone="sage" solid dot>Al día</Tag>
                                 )}
                             </div>
                             <div className="flex items-baseline gap-1.5">
@@ -334,7 +357,7 @@ export default function ExpensesPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--cc-ink-soft)" }}>
-                                    Apoya a familias del edificio con dificultades para cubrir su gasto comÃºn debido a cesantÃ­a o jubilaciÃ³n. 100% regulado y anÃ³nimo.
+                                    Apoya a familias del edificio con dificultades para cubrir su gasto común debido a cesantía o jubilación. 100% regulado y anónimo.
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -397,7 +420,7 @@ export default function ExpensesPage() {
                         )}
 
                         {/* History chart */}
-                        <Eyebrow className="mb-3">HistÃ³rico Â· Ãºltimos 5 meses</Eyebrow>
+                        <Eyebrow className="mb-3">Histórico · últimos 5 meses</Eyebrow>
                         <div
                             className="rounded-xl border bg-paper-warm mb-6"
                             style={{ borderColor: "var(--cc-line)", padding: "20px 18px 14px", borderRadius: 18 }}
@@ -435,7 +458,7 @@ export default function ExpensesPage() {
                             </div>
                         ) : (
                             <div className="mt-auto pt-4 pb-3 text-center text-sm font-semibold text-success flex items-center justify-center gap-2">
-                                <Check size={16} /> EstÃ¡s al dÃ­a con tus gastos comunes.
+                                <Check size={16} /> Estás al día con tus gastos comunes.
                             </div>
                         )}
                     </>
@@ -443,9 +466,9 @@ export default function ExpensesPage() {
 
                 {step === "method" && (
                     <>
-                        <Eyebrow className="mb-2">MÃ‰TODO DE PAGO</Eyebrow>
+                        <Eyebrow className="mb-2">MÉTODO DE PAGO</Eyebrow>
                         <DisplayHeading size={36} className="mb-6">
-                            Elige cÃ³mo <em>pagar</em>
+                            Elige cómo <em>pagar</em>
                         </DisplayHeading>
 
                         {/* Payment methods list */}
@@ -504,30 +527,26 @@ export default function ExpensesPage() {
 
                 {step === "success" && (
                     <div className="flex-1 flex flex-col justify-center items-center text-center py-8">
-                        <div 
+                        <div
                           className="w-16 h-16 rounded-full flex items-center justify-center bg-[rgba(110,130,104,0.1)] text-[#6E8268] mb-6"
                         >
                             <Check size={32} />
                         </div>
-                        
+
                         <DisplayHeading size={38} className="mb-4">
-                            Â¡Pago <em>exitoso!</em>
+                            ¡Pago <em>exitoso!</em>
                         </DisplayHeading>
-                        
+
                         <p className="text-sm leading-relaxed max-w-xs mb-8" style={{ color: "var(--cc-ink-muted)" }}>
-                            Tu pago de <span className="font-semibold text-ink">${totalAmount.toLocaleString("es-CL")}</span> fue recibido y procesado de forma correcta.
+                            Tu pago de <span className="font-semibold text-ink">${(confirmedPayment?.amount || 0).toLocaleString("es-CL")}</span> fue recibido y procesado de forma correcta.
                         </p>
 
-                        {/* Invoice box */}
+                        {/* Comprobante */}
                         <div className="w-full bg-[#FAF7F1] border rounded-2xl p-5 mb-8 text-left" style={{ borderColor: "var(--cc-line)" }}>
-                            <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-3">COMPROBANTE DIGITAL</div>
+                            <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-3">COMPROBANTE DE PAGO</div>
                             <div className="flex justify-between items-center text-sm py-1.5">
-                                <span className="text-slate-400">Emisor:</span>
-                                <span className="font-medium">Servicio Impuestos Internos</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm py-1.5">
-                                <span className="text-slate-400">Folio:</span>
-                                <span className="font-mono font-medium">#1094830</span>
+                                <span className="text-slate-400">Referencia:</span>
+                                <span className="font-mono font-medium">{confirmedPayment?.expenseId.slice(0, 8) || "--"}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm py-1.5">
                                 <span className="text-slate-400">Fecha:</span>
@@ -536,22 +555,13 @@ export default function ExpensesPage() {
                         </div>
 
                         <div className="w-full space-y-3">
-                            <Button 
-                                variant="primary" 
-                                size="md" 
-                                block 
-                                onClick={() => {
-                                    toast({ title: "Descargando boleta SII", description: "Comprobante generado correctamente.", variant: "success" });
-                                }}
-                            >
-                                <Download size={15} /> Descargar Boleta SII
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="md" 
-                                block 
+                            <Button
+                                variant="ghost"
+                                size="md"
+                                block
                                 onClick={() => {
                                     setStep("review");
+                                    setConfirmedPayment(null);
                                 }}
                             >
                                 Volver a Cuentas

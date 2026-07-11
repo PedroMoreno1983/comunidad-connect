@@ -157,6 +157,14 @@ export async function POST(req: NextRequest) {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error generating Haulmer link';
         console.error('[payments/create-haulmer-link] Haulmer Gateway Error:', error);
+
+        if (message.includes('Haulmer/Tuu no esta configurado')) {
+            return NextResponse.json({
+                error: 'Los pagos en línea todavía no están habilitados para tu comunidad. Contacta a administración.',
+                code: 'PAYMENT_NOT_CONFIGURED',
+            }, { status: 503 });
+        }
+
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
