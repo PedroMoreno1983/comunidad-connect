@@ -286,6 +286,7 @@ export async function askCoCo(
 
     // 2. Contexto del usuario en el system prompt
     const contextLine = [
+        `Fecha actual: ${new Date().toISOString().slice(0, 10)}`,
         userCtx.name && `Nombre: ${userCtx.name}`,
         userCtx.role && `Rol: ${userCtx.role}`,
         userCtx.unit_id && `Unidad: ${userCtx.unit_id}`,
@@ -438,6 +439,14 @@ export async function askCoCo(
             const toolUses = response.content.filter(
                 (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
             );
+            if (/\b(este mes|mes actual)\b/i.test(message)) {
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                for (const toolUse of toolUses) {
+                    if (['get_payment_status', 'get_water_consumption', 'get_defaulters_list'].includes(toolUse.name)) {
+                        toolUse.input = { ...(toolUse.input as Record<string, unknown>), month: currentMonth };
+                    }
+                }
+            }
             const mutatingUses = toolUses.filter(tu => MUTATING_TOOLS.has(tu.name));
 
             if (mutatingUses.length > 0 && userCtx.role !== 'system') {
