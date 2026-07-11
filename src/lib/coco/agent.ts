@@ -230,6 +230,23 @@ function needsLegalContext(message: string, session: SessionData | null) {
         .test(`${recentText} ${message}`);
 }
 
+function requiredMutationTool(message: string, role?: string) {
+    const text = message.toLocaleLowerCase('es-CL');
+    if (role === 'system') return undefined;
+    if (/\b(c[oó]mo|como)\b/.test(text)) return undefined;
+
+    if (/\b(reserva|reservar|res[eé]rvame|agenda|agendar)\b/.test(text)) return 'create_reservation';
+    if (/\b(registra|registrar|anota|anotar)\b.*\b(visita|visitante)\b|\bva a llegar\b/.test(text)) return 'register_visitor';
+    if ((role === 'admin' || role === 'concierge') && /\b(registra|registrar|recib[ií]|lleg[oó])\b.*\b(paquete|encomienda)\b/.test(text)) return 'register_package';
+    if ((role === 'admin' || role === 'concierge') && /\b(env[ií]a|mandar|manda)\b.*\bwhatsapp\b/.test(text)) return 'send_whatsapp_notification';
+    if (role === 'admin' && /\b(publica|publicar|env[ií]a|mandar|manda)\b.*\b(circular|comunicado oficial)\b/.test(text)) return 'create_circular';
+    if (role === 'admin' && /\b(crea|crear)\b.*\b(votaci[oó]n|encuesta)\b/.test(text)) return 'create_poll';
+    if (role === 'resident' && /\b(vota|votar|mi voto)\b/.test(text)) return 'vote_in_poll';
+    if (/\b(publica|publicar|postea|postear)\b.*\b(muro|social|aviso)\b/.test(text)) return 'create_social_post';
+    if (/\b(registra|registrar|crea|crear|reporta|reportar)\b.*\b(reclamo|caso|problema|filtraci[oó]n|ruido|falla)\b/.test(text)) return 'create_claim';
+    return undefined;
+}
+
 export async function askCoCo(
     message: string,
     session: SessionData | null,
@@ -276,6 +293,7 @@ export async function askCoCo(
     ].filter(Boolean).join(' | ');
 
     const legalKnowledge = needsLegalContext(message, session) ? COCO_LEGAL_KNOWLEDGE : '';
+    const requiredTool = requiredMutationTool(message, userCtx.role);
     const systemPrompt = [
         COCO_SYSTEM_PROMPT,
         legalKnowledge,
@@ -384,6 +402,7 @@ export async function askCoCo(
             messages: history,
             tools: TOOL_DEFINITIONS
                 .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
+            ...(requiredTool && rounds === 0 ? { tool_choice: { type: 'tool' as const, name: requiredTool } } : {}),
         });
 
         const usage = response.usage;
@@ -480,6 +499,10 @@ export async function askCoCo(
         .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
         .replace(/CMD:[A-Z_]+/g, '')
         .trim();
+
+    if (requiredTool) {
+        reply = 'No pude preparar la accion solicitada con datos verificables. No se realizaron cambios; intenta nuevamente.';
+    }
 
     // 7. Actualizar historial con la respuesta final del asistente
     const finalAssistantMessage: ConversationMessage = {
