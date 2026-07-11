@@ -85,6 +85,9 @@ export default function CoCo() {
         id: "w", role: "assistant",
         text: "Hola. Soy **CoCo**, tu asistente operativo de Convive Connect. ¿En qué te puedo ayudar?",
     }]);
+    const hasUnresolvedPending = msgs.some(message =>
+        message.pendingActions?.some(action => !message.resolvedActions?.[action.toolUseId]),
+    );
     const [input, setInput] = useState("");
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -209,7 +212,7 @@ export default function CoCo() {
     };
 
     const send = async (text: string, imageStr: string | null = selectedImage) => {
-        if ((!text.trim() && !imageStr) || loading) return;
+        if ((!text.trim() && !imageStr) || loading || hasUnresolvedPending) return;
 
         setMsgs(p => [...p, {
             id: Date.now().toString(),
@@ -233,18 +236,31 @@ export default function CoCo() {
         } finally { setLoading(false); }
     };
 
-    const resolveAction = async (messageId: string, toolUseId: string, decision: "approved" | "rejected") => {
+    const resolveAction = async (
+        messageId: string,
+        pendingActions: PendingAction[],
+        toolUseId: string,
+        decision: "approved" | "rejected",
+    ) => {
         if (loading) return;
 
+        const resolutions: Record<string, "approved" | "rejected"> = Object.fromEntries(
+            pendingActions.map(action => [
+                action.toolUseId,
+                action.toolUseId === toolUseId ? decision : "rejected",
+            ]),
+        );
+
         setMsgs(p => p.map(m => m.id === messageId
-            ? { ...m, resolvedActions: { ...(m.resolvedActions || {}), [toolUseId]: decision } }
+            ? { ...m, resolvedActions: resolutions }
             : m));
         setLoading(true);
 
         try {
-            const d = await postToCoCo({ resolutions: { [toolUseId]: decision } });
+            const d = await postToCoCo({ resolutions });
             appendAssistantReply(d);
         } catch (err: unknown) {
+            setMsgs(p => p.map(m => m.id === messageId ? { ...m, resolvedActions: undefined } : m));
             const error = err as Error;
             console.error("CoCo connection failed details:", error);
             const errorMsg = error.message || "Tuve un problema de conexión 😅";
@@ -322,14 +338,14 @@ export default function CoCo() {
                                                     {!decision ? (
                                                         <div className="mt-2.5 flex gap-2">
                                                             <button
-                                                                onClick={() => resolveAction(msg.id, pending.toolUseId, "approved")}
+                                                                onClick={() => resolveAction(msg.id, msg.pendingActions || [], pending.toolUseId, "approved")}
                                                                 disabled={loading}
                                                                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-950 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                                                             >
-                                                                <Check className="h-3.5 w-3.5" /> Aprobar
+                                                                <Check className="h-3.5 w-3.5" /> {(msg.pendingActions?.length || 0) > 1 ? "Aprobar solo esta" : "Aprobar"}
                                                             </button>
                                                             <button
-                                                                onClick={() => resolveAction(msg.id, pending.toolUseId, "rejected")}
+                                                                onClick={() => resolveAction(msg.id, msg.pendingActions || [], pending.toolUseId, "rejected")}
                                                                 disabled={loading}
                                                                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-white/70 px-3 py-1.5 text-[11px] font-bold text-amber-800 transition-colors hover:bg-white disabled:opacity-50 dark:bg-black/20 dark:text-amber-200"
                                                             >
@@ -411,7 +427,7 @@ export default function CoCo() {
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    disabled={loading}
+                                    disabled={loading || hasUnresolvedPending}
                                     className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
                                 >
                                     <Paperclip className="h-5 w-5" />
@@ -419,11 +435,11 @@ export default function CoCo() {
 
                                 <input
                                     value={input} onChange={e => setInput(e.target.value)}
-                                    placeholder={selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
+                                    placeholder={hasUnresolvedPending ? "Aprueba o rechaza la acción pendiente" : selectedImage ? "Añade un comentario..." : "Pregúntale a CoCo..."}
                                     className="flex-1 px-3.5 py-2.5 rounded-lg bg-elevated text-sm font-medium outline-none focus:ring-2 focus:ring-brand-400/30"
                                 />
                                 
-                                <button type="submit" disabled={(!input.trim() && !selectedImage) || loading}
+                                <button type="submit" disabled={(!input.trim() && !selectedImage) || loading || hasUnresolvedPending}
                                     className="p-2.5 bg-brand-500 rounded-lg text-white disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>

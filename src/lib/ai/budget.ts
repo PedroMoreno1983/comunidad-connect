@@ -107,12 +107,12 @@ function dayStart() {
 function defaultBudget(): AiBudget {
     return {
         is_enabled: true,
-        monthly_token_limit: Number(process.env.AI_DEFAULT_MONTHLY_TOKEN_LIMIT || 1_000_000),
+        monthly_token_limit: Number(process.env.AI_DEFAULT_MONTHLY_TOKEN_LIMIT || 10_000_000),
         monthly_image_limit: Number(process.env.AI_DEFAULT_MONTHLY_IMAGE_LIMIT || 30),
-        monthly_cost_limit_cents: Number(process.env.AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS || 2500),
-        resident_daily_token_limit: Number(process.env.AI_RESIDENT_DAILY_TOKEN_LIMIT || 8000),
-        staff_daily_token_limit: Number(process.env.AI_STAFF_DAILY_TOKEN_LIMIT || 50000),
-        heavy_action_daily_limit: Number(process.env.AI_HEAVY_DAILY_LIMIT || 10),
+        monthly_cost_limit_cents: Number(process.env.AI_DEFAULT_MONTHLY_COST_LIMIT_CENTS || 10_000),
+        resident_daily_token_limit: Number(process.env.AI_RESIDENT_DAILY_TOKEN_LIMIT || 100_000),
+        staff_daily_token_limit: Number(process.env.AI_STAFF_DAILY_TOKEN_LIMIT || 300_000),
+        heavy_action_daily_limit: Number(process.env.AI_HEAVY_DAILY_LIMIT || 20),
     };
 }
 

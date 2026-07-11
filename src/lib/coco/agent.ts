@@ -5,16 +5,19 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction } from './tools';
+import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
+import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
+import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-5';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
@@ -44,6 +47,164 @@ export interface CoCoResponse {
 /** Resoluciones del usuario a una tanda de acciones pendientes, indexadas por tool_use_id. */
 export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 
+export class CoCoPendingResolutionError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'CoCoPendingResolutionError';
+    }
+}
+
+type CoCoUserContext = {
+    user_id?: string;
+    unit_id?: string;
+    role?: string;
+    community_id?: string;
+    name?: string;
+    currentPage?: string;
+    channel?: string;
+};
+
+function pendingToolUses(session: SessionData | null): Anthropic.ToolUseBlock[] {
+    const lastTurn = session?.conversation?.[session.conversation.length - 1];
+    if (lastTurn?.role !== 'assistant' || !Array.isArray(lastTurn.content)) return [];
+    return (lastTurn.content as Anthropic.ContentBlock[]).filter(
+        (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
+    );
+}
+
+function pendingActionsFrom(toolUses: Anthropic.ToolUseBlock[]): CoCoPendingAction[] {
+    return toolUses
+        .filter(toolUse => MUTATING_TOOLS.has(toolUse.name))
+        .map(toolUse => {
+            const input = toolUse.input as Record<string, unknown>;
+            const { title, summary } = describePendingAction(toolUse.name, input);
+            return { toolUseId: toolUse.id, name: toolUse.name, input, title, summary };
+        });
+}
+
+function textualResolution(message: string, toolUses: Anthropic.ToolUseBlock[]): CoCoResolutions | undefined {
+    if (!toolUses.some(toolUse => MUTATING_TOOLS.has(toolUse.name))) return undefined;
+    const normalized = message.trim().toLocaleLowerCase('es-CL').replace(/[.!]+$/g, '');
+    const decision = ['aprobar', 'apruebo', 'confirmar', 'confirmo', 'si, apruebo', 'si, confirmo', 'sí, apruebo', 'sí, confirmo'].includes(normalized)
+        ? 'approved'
+        : ['rechazar', 'rechazo', 'cancelar', 'cancelo', 'no, rechazar', 'no, cancelo'].includes(normalized)
+            ? 'rejected'
+            : undefined;
+    if (!decision) return undefined;
+    return Object.fromEntries(
+        toolUses
+            .filter(toolUse => MUTATING_TOOLS.has(toolUse.name))
+            .map(toolUse => [toolUse.id, decision]),
+    );
+}
+
+function resultFailed(result: unknown) {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+    const value = result as Record<string, unknown>;
+    return typeof value.error === 'string' || value.success === false;
+}
+
+function resultDescription(result: unknown, fallback: string) {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return fallback;
+    const value = result as Record<string, unknown>;
+    if (typeof value.message === 'string' && value.message.trim()) return value.message;
+    if (typeof value.error === 'string' && value.error.trim()) return value.error;
+    return fallback;
+}
+
+function resultEntityId(result: unknown) {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+    const idEntry = Object.entries(result as Record<string, unknown>)
+        .find(([key, value]) => key.endsWith('_id') && typeof value === 'string');
+    return idEntry?.[1] as string | undefined || null;
+}
+
+async function auditRejectedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCoUserContext) {
+    const result = { error: 'El usuario rechazo esta accion. No se ejecuto.' };
+    await recordOperationEvent({
+        communityId: userCtx.community_id,
+        actorId: userCtx.user_id,
+        actorRole: userCtx.role,
+        action: `coco.tool.${toolUse.name}`,
+        entityType: 'coco_tool_action',
+        severity: 'warning',
+        status: 'blocked',
+        summary: `Accion de CoCo rechazada por el usuario: ${toolUse.name}`,
+        metadata: { decision: 'rejected', channel: userCtx.channel, input: toolUse.input, result },
+        requestId: toolUse.id,
+    });
+}
+
+async function executeAuditedTool(toolUse: Anthropic.ToolUseBlock, userCtx: CoCoUserContext, decisionSource: 'user_confirmation' | 'system_automation') {
+    const action = `coco.tool.${toolUse.name}`;
+    const admin = getSupabaseAdmin();
+    const readReceipt = async () => admin
+        .from('operation_events')
+        .select('status,metadata')
+        .eq('community_id', userCtx.community_id)
+        .eq('action', action)
+        .eq('request_id', toolUse.id)
+        .maybeSingle();
+    const existing = await readReceipt();
+    if (existing.data) {
+        const metadata = existing.data.metadata as Record<string, unknown> | null;
+        if (metadata?.result !== undefined) return metadata.result;
+        return { error: 'Esta accion ya se esta procesando. Espera unos segundos antes de reintentar.' };
+    }
+
+    const claim = await recordOperationEvent({
+        communityId: userCtx.community_id,
+        actorId: userCtx.user_id,
+        actorRole: userCtx.role,
+        action,
+        entityType: 'coco_tool_action',
+        severity: 'info',
+        status: 'pending',
+        summary: `Accion de CoCo en proceso: ${toolUse.name}`,
+        metadata: { decision: 'approved', decisionSource, channel: userCtx.channel, input: toolUse.input },
+        requestId: toolUse.id,
+    });
+    if (!claim.ok) {
+        const concurrentReceipt = await readReceipt();
+        const metadata = concurrentReceipt.data?.metadata as Record<string, unknown> | null;
+        if (metadata?.result !== undefined) return metadata.result;
+        return { error: concurrentReceipt.data
+            ? 'Esta accion ya se esta procesando. Espera unos segundos antes de reintentar.'
+            : 'No se pudo asegurar la ejecucion unica de la accion. No se realizaron cambios.' };
+    }
+
+    const result = await executeTool(toolUse.name, toolUse.input as Record<string, string>, userCtx);
+    const failed = resultFailed(result);
+    const { error: receiptError } = await admin
+        .from('operation_events')
+        .update({
+            entity_id: resultEntityId(result),
+            severity: failed ? 'error' : 'success',
+            status: failed ? 'error' : 'success',
+            summary: failed
+                ? `Accion de CoCo no ejecutada: ${toolUse.name}`
+                : `Accion de CoCo ejecutada: ${toolUse.name}`,
+            metadata: sanitizeMetadata({ decision: 'approved', decisionSource, channel: userCtx.channel, input: toolUse.input, result }),
+        })
+        .eq('community_id', userCtx.community_id)
+        .eq('action', action)
+        .eq('request_id', toolUse.id);
+    if (receiptError) console.error('[CoCo Audit] No se pudo cerrar el recibo de accion:', receiptError.message);
+    console.info(JSON.stringify({
+        type: 'operation_event_update',
+        community_id: userCtx.community_id,
+        actor_id: userCtx.user_id || null,
+        actor_role: userCtx.role || null,
+        action,
+        entity_type: 'coco_tool_action',
+        entity_id: resultEntityId(result),
+        severity: failed ? 'error' : 'success',
+        status: failed ? 'error' : 'success',
+        request_id: toolUse.id,
+    }));
+    return result;
+}
+
 function buildUserContent(message: string, image?: CoCoImageAttachment): Anthropic.MessageParam['content'] {
     if (!image) return message;
 
@@ -60,25 +221,38 @@ function buildUserContent(message: string, image?: CoCoImageAttachment): Anthrop
     ];
 }
 
+function needsLegalContext(message: string, session: SessionData | null) {
+    const recentText = (session?.conversation ?? [])
+        .slice(-4)
+        .map(turn => typeof turn.content === 'string' ? turn.content : '')
+        .join(' ');
+    return /\b(ley|legal|art[ií]culo|copropiedad|reglamento|multa|sanci[oó]n|suspender|cortar|c[aá]mara|privacidad|datos? personales?|electrodependiente|registro nacional de administradores)\b/i
+        .test(`${recentText} ${message}`);
+}
+
 export async function askCoCo(
     message: string,
     session: SessionData | null,
-    userCtx: {
-        user_id?: string;
-        unit_id?: string;
-        role?: string;
-        community_id?: string;
-        name?: string;
-        currentPage?: string;
-        channel?: string;
-    },
+    userCtx: CoCoUserContext,
     options: {
         image?: CoCoImageAttachment;
         /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
         resolutions?: CoCoResolutions;
     } = {}
 ): Promise<CoCoResponse> {
-    const isResuming = Boolean(options.resolutions);
+    const persistedToolUses = pendingToolUses(session);
+    const persistedActions = pendingActionsFrom(persistedToolUses);
+    const effectiveResolutions = options.resolutions || textualResolution(message, persistedToolUses);
+
+    if (persistedActions.length > 0 && !effectiveResolutions) {
+        return {
+            reply: 'Tienes acciones pendientes. Apruebalas o rechazalas antes de enviar una nueva solicitud.',
+            updatedHistory: session?.conversation ?? [],
+            pendingActions: persistedActions,
+        };
+    }
+
+    const isResuming = Boolean(effectiveResolutions);
 
     // Si estamos resolviendo una confirmación pendiente, esa tanda ya no cuenta
     // como el último turno "limpio" de la conversación persistida: se reemplaza
@@ -90,7 +264,7 @@ export async function askCoCo(
     // 1. Construir historial de mensajes
     const history: Anthropic.MessageParam[] = (session?.conversation ?? []).map(msg => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content as any,
+        content: msg.content as Anthropic.MessageParam['content'],
     }));
 
     // 2. Contexto del usuario en el system prompt
@@ -101,9 +275,12 @@ export async function askCoCo(
         userCtx.currentPage && `Página actual: ${userCtx.currentPage}`,
     ].filter(Boolean).join(' | ');
 
-    const systemPrompt = contextLine
-        ? `${COCO_SYSTEM_PROMPT}\n\n**Contexto del usuario:** ${contextLine}`
-        : COCO_SYSTEM_PROMPT;
+    const legalKnowledge = needsLegalContext(message, session) ? COCO_LEGAL_KNOWLEDGE : '';
+    const systemPrompt = [
+        COCO_SYSTEM_PROMPT,
+        legalKnowledge,
+        contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
+    ].filter(Boolean).join('\n\n');
 
     if (isResuming) {
         // 3a. Resolver la tanda de tool_use pendiente (el último turno del historial).
@@ -113,27 +290,67 @@ export async function askCoCo(
                 (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
             )
             : [];
+        const mutatingPendingToolUses = pendingToolUses.filter(toolUse => MUTATING_TOOLS.has(toolUse.name));
+        const expectedResolutionIds = new Set(mutatingPendingToolUses.map(toolUse => toolUse.id));
+        const providedResolutionIds = Object.keys(effectiveResolutions || {});
 
-        const toolResults = await Promise.all(
+        if (mutatingPendingToolUses.length === 0) {
+            throw new CoCoPendingResolutionError('No hay una accion pendiente de confirmacion en esta conversacion.');
+        }
+        if (
+            providedResolutionIds.length !== expectedResolutionIds.size
+            || providedResolutionIds.some(id => !expectedResolutionIds.has(id))
+        ) {
+            throw new CoCoPendingResolutionError('Debes aprobar o rechazar explicitamente cada accion pendiente.');
+        }
+
+        const resolvedResults = await Promise.all(
             pendingToolUses.map(async (tu) => {
-                const resolution = options.resolutions?.[tu.id];
-                if (resolution === 'rejected') {
+                const resolution = effectiveResolutions?.[tu.id];
+                if (MUTATING_TOOLS.has(tu.name) && resolution !== 'approved') {
+                    await auditRejectedTool(tu, userCtx);
                     return {
-                        type: 'tool_result' as const,
-                        tool_use_id: tu.id,
-                        content: JSON.stringify({ error: 'El usuario rechazó esta acción. No se ejecutó.' }),
+                        toolUse: tu,
+                        resolution: 'rejected' as const,
+                        result: { error: 'El usuario rechazo esta accion. No se ejecuto.' },
                     };
                 }
-                const result = await executeTool(tu.name, tu.input as Record<string, string>, userCtx);
+                const result = MUTATING_TOOLS.has(tu.name)
+                    ? await executeAuditedTool(tu, userCtx, 'user_confirmation')
+                    : await executeTool(tu.name, tu.input as Record<string, string>, userCtx);
                 return {
-                    type: 'tool_result' as const,
-                    tool_use_id: tu.id,
-                    content: JSON.stringify(result),
+                    toolUse: tu,
+                    resolution: 'approved' as const,
+                    result,
                 };
             })
         );
 
+        const toolResults: Anthropic.ToolResultBlockParam[] = resolvedResults.map(resolved => ({
+            type: 'tool_result',
+            tool_use_id: resolved.toolUse.id,
+            content: JSON.stringify(resolved.result),
+        }));
         history.push({ role: 'user', content: toolResults });
+
+        const summaries = resolvedResults
+            .filter(resolved => MUTATING_TOOLS.has(resolved.toolUse.name))
+            .map(resolved => {
+                const { title } = describePendingAction(
+                    resolved.toolUse.name,
+                    resolved.toolUse.input as Record<string, unknown>,
+                );
+                if (resolved.resolution === 'rejected') return `${title}: rechazada. No se realizaron cambios.`;
+                return resultFailed(resolved.result)
+                    ? `${title}: no se pudo completar. ${resultDescription(resolved.result, 'La operacion fallo.')}`
+                    : `${title}: completada. ${resultDescription(resolved.result, 'La operacion se ejecuto correctamente.')}`;
+            });
+        const reply = summaries.join('\n');
+        const updatedHistory: ConversationMessage[] = [
+            ...baseConversation,
+            { role: 'assistant', content: reply },
+        ];
+        return { reply, updatedHistory };
     } else {
         // 3b. Agregar mensaje del usuario al historial
         history.push({ role: 'user', content: buildUserContent(message, options.image) });
@@ -165,7 +382,8 @@ export async function askCoCo(
             max_tokens: 2048,
             system: systemPrompt,
             messages: history,
-            tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+            tools: TOOL_DEFINITIONS
+                .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
         });
 
         const usage = response.usage;
@@ -203,19 +421,18 @@ export async function askCoCo(
             );
             const mutatingUses = toolUses.filter(tu => MUTATING_TOOLS.has(tu.name));
 
-            if (mutatingUses.length > 0) {
+            if (mutatingUses.length > 0 && userCtx.role !== 'system') {
                 // Alguna herramienta muta datos reales: pausamos TODA la tanda (aunque
                 // venga mezclada con lecturas) y esperamos confirmación explícita del
                 // usuario antes de ejecutar nada. Se persiste el turno tal cual (con los
                 // tool_use crudos) para poder resolverlo despues en una llamada RESUME.
-                const pendingActions: CoCoPendingAction[] = toolUses.map(tu => {
-                    const { title, summary } = describePendingAction(tu.name, tu.input as Record<string, unknown>);
-                    return { toolUseId: tu.id, name: tu.name, input: tu.input as Record<string, unknown>, title, summary };
-                });
+                const pendingActions = pendingActionsFrom(toolUses);
 
                 const updatedHistory: ConversationMessage[] = [
-                    ...baseConversation,
-                    ...(isResuming ? [] : [{ role: 'user' as const, content: message }]),
+                    ...history.map(historyMessage => ({
+                        role: historyMessage.role,
+                        content: historyMessage.content as string | object[],
+                    })),
                     { role: 'assistant', content: response.content as unknown as object[] },
                 ];
 
@@ -228,11 +445,9 @@ export async function askCoCo(
             // Ninguna herramienta de esta tanda muta datos: se ejecutan de inmediato.
             const toolResults = await Promise.all(
                 toolUses.map(async (tu) => {
-                    const result = await executeTool(
-                        tu.name,
-                        tu.input as Record<string, string>,
-                        userCtx
-                    );
+                    const result = MUTATING_TOOLS.has(tu.name)
+                        ? await executeAuditedTool(tu, userCtx, 'system_automation')
+                        : await executeTool(tu.name, tu.input as Record<string, string>, userCtx);
                     return {
                         type: 'tool_result' as const,
                         tool_use_id: tu.id,
