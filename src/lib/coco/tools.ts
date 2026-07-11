@@ -317,6 +317,59 @@ export const TOOL_DEFINITIONS = [
 
 ] as const;
 
+// ── Herramientas que mutan datos reales ──────────────────────────────────────
+// Estas SIEMPRE deben pasar por confirmación explícita del usuario antes de
+// ejecutarse (ver askCoCo en agent.ts). Las que no están en este set son de
+// solo lectura y se ejecutan de inmediato.
+export const MUTATING_TOOLS = new Set<string>([
+    'create_claim',
+    'create_reservation',
+    'create_circular',
+    'create_social_post',
+    'vote_in_poll',
+    'register_visitor',
+    'register_package',
+    'send_whatsapp_notification',
+    'create_poll',
+    'update_unit_data',
+    'request_urgent_access_approval',
+    'dispatch_provider',
+]);
+
+/** Título + resumen legible de una acción pendiente, para la pantalla de confirmación. */
+export function describePendingAction(name: string, input: Record<string, unknown>): { title: string; summary: string } {
+    const str = (key: string) => typeof input[key] === 'string' ? (input[key] as string) : '';
+
+    switch (name) {
+        case 'create_claim':
+            return { title: 'Registrar reclamo', summary: str('description') || 'Nuevo reclamo o solicitud de mantención.' };
+        case 'create_reservation':
+            return { title: 'Reservar espacio común', summary: `${str('space_name') || 'Espacio'} el ${str('date')} de ${str('start_time')} a ${str('end_time')}.` };
+        case 'create_circular':
+            return { title: 'Publicar circular', summary: str('title') || 'Aviso oficial para la comunidad.' };
+        case 'create_social_post':
+            return { title: 'Publicar en el muro social', summary: str('content') || 'Nueva publicación.' };
+        case 'vote_in_poll':
+            return { title: 'Emitir voto', summary: 'Registrar tu voto en la votación activa.' };
+        case 'register_visitor':
+            return { title: 'Registrar visita', summary: `${str('visitor_name') || 'Visitante'} → unidad ${str('host_unit_id')}.` };
+        case 'register_package':
+            return { title: 'Registrar encomienda', summary: `Paquete de ${str('courier') || 'courier'} para la unidad ${str('unit_id')}.` };
+        case 'send_whatsapp_notification':
+            return { title: 'Enviar WhatsApp', summary: str('message') || 'Notificación a un residente.' };
+        case 'create_poll':
+            return { title: 'Crear votación', summary: str('title') || 'Nueva votación para la comunidad.' };
+        case 'update_unit_data':
+            return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${str('unit_id')}.` };
+        case 'request_urgent_access_approval':
+            return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
+        case 'dispatch_provider':
+            return { title: 'Despachar proveedor', summary: str('details') || 'Contactar proveedor externo de emergencia.' };
+        default:
+            return { title: name, summary: 'Acción propuesta por CoCo.' };
+    }
+}
+
 // ── Executor ─────────────────────────────────────────────────────────────────
 
 interface UserContext {
@@ -497,9 +550,11 @@ export async function executeTool(
             }
 
             case 'create_reservation': {
+                if (!userCtx.community_id) return forbidden('No pude determinar la comunidad del residente.');
                 const { data: amenity } = await supabaseAdmin
                     .from('amenities')
                     .select('id, name')
+                    .eq('community_id', userCtx.community_id)
                     .ilike('name', `%${input.space_name}%`)
                     .maybeSingle();
                 if (!amenity) return { error: `No se encontró el espacio "${input.space_name}"` };

@@ -5,7 +5,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { TOOL_DEFINITIONS, executeTool } from './tools';
+import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
 import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
@@ -24,12 +24,25 @@ export interface CoCoImageAttachment {
     data: string;
 }
 
+export interface CoCoPendingAction {
+    toolUseId: string;
+    name: string;
+    input: Record<string, unknown>;
+    title: string;
+    summary: string;
+}
+
 export interface CoCoResponse {
     reply: string;
     navigate?: string;
     action?: string;
     updatedHistory: ConversationMessage[];
+    /** Presente solo cuando CoCo propuso una acción que muta datos y espera confirmación. */
+    pendingActions?: CoCoPendingAction[];
 }
+
+/** Resoluciones del usuario a una tanda de acciones pendientes, indexadas por tool_use_id. */
+export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 
 function buildUserContent(message: string, image?: CoCoImageAttachment): Anthropic.MessageParam['content'] {
     if (!image) return message;
@@ -61,8 +74,19 @@ export async function askCoCo(
     },
     options: {
         image?: CoCoImageAttachment;
+        /** Si viene, esta llamada RESUELVE una tanda de acciones pendientes en vez de mandar un mensaje nuevo. */
+        resolutions?: CoCoResolutions;
     } = {}
 ): Promise<CoCoResponse> {
+    const isResuming = Boolean(options.resolutions);
+
+    // Si estamos resolviendo una confirmación pendiente, esa tanda ya no cuenta
+    // como el último turno "limpio" de la conversación persistida: se reemplaza
+    // por el resultado real (ejecutado o rechazado) más abajo.
+    const baseConversation = isResuming
+        ? (session?.conversation ?? []).slice(0, -1)
+        : (session?.conversation ?? []);
+
     // 1. Construir historial de mensajes
     const history: Anthropic.MessageParam[] = (session?.conversation ?? []).map(msg => ({
         role: msg.role as 'user' | 'assistant',
@@ -81,8 +105,39 @@ export async function askCoCo(
         ? `${COCO_SYSTEM_PROMPT}\n\n**Contexto del usuario:** ${contextLine}`
         : COCO_SYSTEM_PROMPT;
 
-    // 3. Agregar mensaje del usuario al historial
-    history.push({ role: 'user', content: buildUserContent(message, options.image) });
+    if (isResuming) {
+        // 3a. Resolver la tanda de tool_use pendiente (el último turno del historial).
+        const pausedTurn = history[history.length - 1];
+        const pendingToolUses = Array.isArray(pausedTurn?.content)
+            ? (pausedTurn.content as Anthropic.ContentBlock[]).filter(
+                (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
+            )
+            : [];
+
+        const toolResults = await Promise.all(
+            pendingToolUses.map(async (tu) => {
+                const resolution = options.resolutions?.[tu.id];
+                if (resolution === 'rejected') {
+                    return {
+                        type: 'tool_result' as const,
+                        tool_use_id: tu.id,
+                        content: JSON.stringify({ error: 'El usuario rechazó esta acción. No se ejecutó.' }),
+                    };
+                }
+                const result = await executeTool(tu.name, tu.input as Record<string, string>, userCtx);
+                return {
+                    type: 'tool_result' as const,
+                    tool_use_id: tu.id,
+                    content: JSON.stringify(result),
+                };
+            })
+        );
+
+        history.push({ role: 'user', content: toolResults });
+    } else {
+        // 3b. Agregar mensaje del usuario al historial
+        history.push({ role: 'user', content: buildUserContent(message, options.image) });
+    }
 
     // 4. Loop agéntico
     let rounds = 0;
@@ -146,11 +201,31 @@ export async function askCoCo(
             const toolUses = response.content.filter(
                 (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
             );
+            const mutatingUses = toolUses.filter(tu => MUTATING_TOOLS.has(tu.name));
+
+            if (mutatingUses.length > 0) {
+                // Alguna herramienta muta datos reales: pausamos TODA la tanda (aunque
+                // venga mezclada con lecturas) y esperamos confirmación explícita del
+                // usuario antes de ejecutar nada. Se persiste el turno tal cual (con los
+                // tool_use crudos) para poder resolverlo despues en una llamada RESUME.
+                const pendingActions: CoCoPendingAction[] = toolUses.map(tu => {
+                    const { title, summary } = describePendingAction(tu.name, tu.input as Record<string, unknown>);
+                    return { toolUseId: tu.id, name: tu.name, input: tu.input as Record<string, unknown>, title, summary };
+                });
+
+                const updatedHistory: ConversationMessage[] = [
+                    ...baseConversation,
+                    ...(isResuming ? [] : [{ role: 'user' as const, content: message }]),
+                    { role: 'assistant', content: response.content as unknown as object[] },
+                ];
+
+                return { reply: '', updatedHistory, pendingActions };
+            }
 
             // Agregar respuesta de asistente con los tool_use blocks al historial
             history.push({ role: 'assistant', content: response.content });
 
-            // Ejecutar herramientas en paralelo
+            // Ninguna herramienta de esta tanda muta datos: se ejecutan de inmediato.
             const toolResults = await Promise.all(
                 toolUses.map(async (tu) => {
                     const result = await executeTool(
@@ -194,12 +269,12 @@ export async function askCoCo(
     // 7. Actualizar historial con la respuesta final del asistente
     const finalAssistantMessage: ConversationMessage = {
         role: 'assistant',
-        content: reply, // Solo guardar la respuesta limpia en historial 
+        content: reply, // Solo guardar la respuesta limpia en historial
     };
 
     const updatedHistory: ConversationMessage[] = [
-        ...(session?.conversation ?? []),
-        { role: 'user', content: message },
+        ...baseConversation,
+        ...(isResuming ? [] : [{ role: 'user' as const, content: message }]),
         finalAssistantMessage,
     ];
 
