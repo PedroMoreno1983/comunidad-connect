@@ -118,19 +118,20 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-sm z-50 border-l border-white/20 dark:border-slate-800 flex flex-col"
+                        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col shadow-xl sm:w-[420px]"
+                        style={{ background: "var(--cc-paper)", borderLeft: "1px solid var(--cc-line)" }}
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-subtle flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                        <div className="flex items-center justify-between p-6" style={{ borderBottom: "1px solid var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                             <div>
-                                <h2 className="text-2xl font-semibold cc-text-primary">Unidad {unit.number}</h2>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Torre {unit.tower} • Piso {unit.floor}</p>
+                                <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Unidad {unit.number}</h2>
+                                <p className="mt-1.5 text-[11px] font-medium uppercase tracking-widest cc-text-tertiary">Torre {unit.tower} • Piso {unit.floor}</p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 hover:bg-elevated rounded-full transition-colors"
+                                className="rounded-full p-2 transition-colors hover:bg-[var(--cc-line)]"
                             >
-                                <X className="h-6 w-6 text-slate-400" />
+                                <X className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                             </button>
                         </div>
 
@@ -138,28 +139,31 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
 
                             {/* Resident Info */}
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
-                                    <User className="h-4 w-4 text-blue-500" />
-                                    Residente Principal
+                            <div className="space-y-3.5">
+                                <h3 className="flex items-center gap-2 text-sm font-medium cc-text-primary">
+                                    <User className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
+                                    Residente principal
                                 </h3>
-                                <div className="p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm">
+                                <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                                        <div
+                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                                            style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)" }}
+                                        >
                                             {resident?.name.charAt(0) || "U"}
                                         </div>
-                                        <div>
-                                            <p className="font-bold cc-text-primary">{resident?.name || "Sin residente asignado"}</p>
-                                            <p className="text-xs text-slate-500">{resident?.email || "No email"}</p>
+                                        <div className="min-w-0">
+                                            <p className="truncate font-medium cc-text-primary">{resident?.name || "Sin residente asignado"}</p>
+                                            <p className="truncate text-xs cc-text-tertiary">{resident?.email || "No email"}</p>
                                         </div>
                                     </div>
                                     <div className="mt-4 flex gap-2">
-                                        <Button variant="outline" className="flex-1 h-9 text-xs">
-                                            <Phone className="h-3 w-3 mr-2" />
+                                        <Button variant="outline" className="h-9 flex-1 text-xs">
+                                            <Phone className="mr-2 h-3 w-3" />
                                             Llamar
                                         </Button>
-                                        <Button variant="outline" className="flex-1 h-9 text-xs">
-                                            <Mail className="h-3 w-3 mr-2" />
+                                        <Button variant="outline" className="h-9 flex-1 text-xs">
+                                            <Mail className="mr-2 h-3 w-3" />
                                             Email
                                         </Button>
                                     </div>
@@ -167,32 +171,34 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                             </div>
 
                             {/* Current Reading Action */}
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
-                                    <Save className="h-4 w-4 text-emerald-500" />
+                            <div className="space-y-3.5">
+                                <h3 className="flex items-center gap-2 text-sm font-medium cc-text-primary">
+                                    <Save className="h-4 w-4" style={{ color: "var(--cc-sage)" }} />
                                     Lectura actual ({currentMonth} {currentYear})
                                 </h3>
-                                <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800">
+                                <div className="rounded-xl border p-6" style={{ background: "var(--cc-copper-tint)", borderColor: "rgba(181,102,78,0.20)" }}>
                                     <div className="flex flex-col gap-4">
-                                        <label className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">
+                                        <label className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--cc-copper-deep)" }}>
                                             Ingresar m³
                                         </label>
-                                        <div className="flex gap-4">
+                                        <div className="flex gap-3">
                                             <Input
                                                 type="number"
                                                 value={readingValue}
                                                 onChange={(e) => setReadingValue(e.target.value)}
-                                                className="h-14 text-2xl font-semibold text-center bg-surface border-blue-200 dark:border-blue-800 focus:ring-blue-500"
+                                                className="h-14 rounded-xl text-center text-2xl font-semibold"
+                                                style={{ background: "var(--cc-paper)", borderColor: "rgba(181,102,78,0.30)" }}
                                                 placeholder="0.0"
                                             />
                                             <Button
                                                 onClick={handleSave}
-                                                className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shadow-blue-500/20"
+                                                className="h-14 rounded-xl px-8"
+                                                style={{ background: "var(--cc-copper)", color: "#fff" }}
                                             >
                                                 Guardar
                                             </Button>
                                         </div>
-                                        <p className="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium text-center">
+                                        <p className="text-center text-xs font-medium" style={{ color: "var(--cc-copper-deep)", opacity: 0.75 }}>
                                             {previousReading
                                                 ? `Lectura anterior: ${previousReading.reading_value.toFixed(1)} m³ (${previousReading.month} ${previousReading.year})`
                                                 : 'Sin lectura anterior registrada'}
@@ -202,27 +208,30 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                             </div>
 
                             {/* History */}
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-semibold cc-text-primary flex items-center gap-2">
-                                    <HistoryIcon className="h-4 w-4 text-brand-500" />
-                                    Historial de Consumo
+                            <div className="space-y-3.5">
+                                <h3 className="flex items-center gap-2 text-sm font-medium cc-text-primary">
+                                    <HistoryIcon className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
+                                    Historial de consumo
                                 </h3>
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                     {history.length > 0 ? (
-                                        history.map((record) => (
-                                            <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-lg shadow-sm">
-                                                <div>
-                                                    <p className="font-bold cc-text-secondary">{record.month} {record.year}</p>
-                                                    <p className="text-xs text-slate-400">Lectura: {record.reading_value}</p>
+                                        history.map((record) => {
+                                            const isHigh = (record.consumption || 0) > 20;
+                                            return (
+                                                <div key={record.id} className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                                    <div>
+                                                        <p className="font-medium cc-text-secondary">{record.month} {record.year}</p>
+                                                        <p className="text-xs cc-text-tertiary">Lectura: {record.reading_value}</p>
+                                                    </div>
+                                                    <div className="text-right" style={{ color: isHigh ? "var(--cc-amber)" : "var(--cc-sage)" }}>
+                                                        <p className="text-lg font-semibold">{(record.consumption || 0).toFixed(1)} m³</p>
+                                                        <p className="text-[10px] font-medium uppercase">{isHigh ? 'Alto' : 'Normal'}</p>
+                                                    </div>
                                                 </div>
-                                                <div className={`text-right ${(record.consumption || 0) > 20 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                    <p className="font-semibold text-lg">{(record.consumption || 0).toFixed(1)} m³</p>
-                                                    <p className="text-[10px] font-bold uppercase">{(record.consumption || 0) > 20 ? 'Alto' : 'Normal'}</p>
-                                                </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     ) : (
-                                        <div className="text-center py-8 text-slate-400 text-sm">
+                                        <div className="py-8 text-center text-sm cc-text-tertiary">
                                             No hay historial disponible
                                         </div>
                                     )}

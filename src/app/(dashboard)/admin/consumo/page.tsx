@@ -108,26 +108,29 @@ export default function AdminConsumoPage() {
     const healthLabel = stats.alertCount > 0 ? "Requiere revisión" : pendingUnits > 0 ? "En captura" : "Periodo al día";
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 p-6">
-            <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+            <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                 <div>
-                    <h1 className="text-3xl font-bold cc-text-primary">Control hídrico</h1>
-                    <p className="cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}</p>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--cc-ink-tertiary)" }}>Administración</p>
+                    <h1 className="mt-2 text-[28px] leading-none sm:text-[34px]" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Control hídrico</h1>
+                    <p className="mt-2.5 cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
                     <button
                         type="button"
                         onClick={() => window.print()}
-                        className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm transition-colors hover:bg-elevated"
+                        className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                        style={{ borderColor: "var(--cc-line-strong)" }}
                     >
-                        <Printer className="h-4 w-4 cc-text-secondary" />
+                        <Printer className="h-4 w-4" style={{ color: "var(--cc-ink-tertiary)" }} />
                         Imprimir planillas
                     </button>
                     <button
                         type="button"
                         onClick={() => openWaterReportPrompt(periodLabel)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
+                        className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                        style={{ background: "var(--cc-copper)" }}
                     >
                         <Filter className="h-4 w-4" />
                         Ver reportes
@@ -135,55 +138,55 @@ export default function AdminConsumoPage() {
                 </div>
             </header>
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="flex flex-col gap-4 border-b border-subtle p-5 md:flex-row md:items-center md:justify-between">
+            <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: "1px solid var(--cc-line)" }}>
                     <div className="flex items-center gap-3">
-                        <Waves className="h-5 w-5 text-slate-500" />
+                        <Waves className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Resumen del periodo</h2>
-                            <p className="text-sm cc-text-secondary">Lecturas, consumo y alertas del mes activo.</p>
+                            <h2 className="text-lg leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Resumen del periodo</h2>
+                            <p className="mt-1.5 text-sm cc-text-secondary">Lecturas, consumo y alertas del mes activo.</p>
                         </div>
                     </div>
                     <div className="min-w-[220px]">
-                        <div className="mb-1 flex items-center justify-between text-xs font-semibold cc-text-secondary">
+                        <div className="mb-1.5 flex items-center justify-between text-xs font-medium cc-text-secondary">
                             <span>Cobertura de lectura</span>
                             <span>{coverage}%</span>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-elevated">
-                            <div className="h-full bg-brand-500" style={{ width: `${coverage}%` }} />
+                        <div className="h-2 overflow-hidden rounded-full" style={{ background: "var(--cc-paper-warm)" }}>
+                            <div className="h-full rounded-full" style={{ width: `${coverage}%`, background: "var(--cc-copper)" }} />
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 divide-y divide-subtle md:grid-cols-3 md:divide-x md:divide-y-0">
+                <div className="grid grid-cols-1 divide-y divide-[var(--cc-line)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                     <div className="p-5">
-                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] cc-text-tertiary">
                             <Waves className="h-4 w-4" />
                             Consumo total mes
                         </div>
-                        <p className="text-3xl font-semibold cc-text-primary">{stats.totalConsumption.toFixed(1)} m3</p>
-                        <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-success-fg">
+                        <p className="text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{stats.totalConsumption.toFixed(1)} m3</p>
+                        <p className="mt-2.5 flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--cc-sage)" }}>
                             <TrendingUp className="h-3 w-3 rotate-180" />
                             Promedio {stats.averageConsumption.toFixed(1)} m3 por unidad
                         </p>
                     </div>
 
                     <div className="p-5">
-                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] cc-text-tertiary">
                             <AlertCircle className="h-4 w-4" />
                             Alertas de fuga
                         </div>
-                        <p className="text-3xl font-semibold cc-text-primary">{stats.alertCount}</p>
-                        <p className="mt-2 text-xs font-semibold text-warning-fg">Unidades con sobreconsumo</p>
+                        <p className="text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{stats.alertCount}</p>
+                        <p className="mt-2.5 text-xs font-medium" style={{ color: "var(--cc-amber)" }}>Unidades con sobreconsumo</p>
                     </div>
 
                     <div className="p-5">
-                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] cc-text-secondary">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] cc-text-tertiary">
                             <Activity className="h-4 w-4" />
                             Lecturas registradas
                         </div>
-                        <p className="text-3xl font-semibold cc-text-primary">{stats.readUnits} / {stats.totalUnits}</p>
-                        <p className="mt-2 text-xs font-semibold cc-text-secondary">Unidades del periodo</p>
+                        <p className="text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{stats.readUnits} / {stats.totalUnits}</p>
+                        <p className="mt-2.5 text-xs cc-text-secondary">Unidades del periodo</p>
                     </div>
                 </div>
             </section>
@@ -206,36 +209,39 @@ export default function AdminConsumoPage() {
             />
 
             <section className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
+                <div className="rounded-2xl border p-5 lg:col-span-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-5 flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Operación del periodo</h2>
-                            <p className="mt-1 text-sm cc-text-secondary">Prioridades para cerrar lecturas y anticipar reclamos por consumo.</p>
+                            <h2 className="text-lg leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Operación del periodo</h2>
+                            <p className="mt-2 text-sm cc-text-secondary">Prioridades para cerrar lecturas y anticipar reclamos por consumo.</p>
                         </div>
-                        <span className={`rounded-md px-3 py-1 text-xs font-semibold ${stats.alertCount > 0 ? "bg-warning-bg text-warning-fg" : "bg-success-bg text-success-fg"}`}>
+                        <span
+                            className="rounded-full px-3 py-1 text-xs font-medium"
+                            style={stats.alertCount > 0 ? { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" } : { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}
+                        >
                             {healthLabel}
                         </span>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
                         {[
                             { label: "Lecturas pendientes", value: pendingUnits, detail: "Unidades por capturar", icon: <Activity className="h-4 w-4" /> },
                             { label: "Alertas activas", value: stats.alertCount, detail: "Sobreconsumo a revisar", icon: <AlertCircle className="h-4 w-4" /> },
                             { label: "Promedio comunidad", value: `${stats.averageConsumption.toFixed(1)} m3`, detail: "Base para comparación", icon: <Waves className="h-4 w-4" /> },
                         ].map(item => (
-                            <div key={item.label} className="rounded-lg border border-subtle bg-elevated/40 p-4">
-                                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                            <div key={item.label} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "var(--cc-paper)", color: "var(--cc-ink-tertiary)" }}>
                                     {item.icon}
                                 </div>
-                                <p className="text-2xl font-semibold cc-text-primary">{item.value}</p>
-                                <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{item.label}</p>
-                                <p className="mt-2 text-xs cc-text-secondary">{item.detail}</p>
+                                <p className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{item.value}</p>
+                                <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] cc-text-tertiary">{item.label}</p>
+                                <p className="mt-1.5 text-xs cc-text-secondary">{item.detail}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                    <h2 className="text-lg font-semibold cc-text-primary">Checklist de cierre</h2>
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <h2 className="text-lg leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Checklist de cierre</h2>
                     <div className="mt-4 space-y-3">
                         {[
                             { label: "Capturar lecturas faltantes", done: pendingUnits === 0 },
@@ -243,31 +249,31 @@ export default function AdminConsumoPage() {
                             { label: "Preparar reporte para administración", done: coverage >= 90 },
                         ].map(item => (
                             <div key={item.label} className="flex items-center gap-3 text-sm">
-                                <CheckCircle2 className={`h-5 w-5 ${item.done ? "text-success-fg" : "cc-text-tertiary"}`} />
-                                <span className={item.done ? "cc-text-primary" : "cc-text-secondary"}>{item.label}</span>
+                                <CheckCircle2 className="h-5 w-5" style={{ color: item.done ? "var(--cc-sage)" : "var(--cc-ink-faint)" }} />
+                                <span style={{ color: item.done ? "var(--cc-ink)" : "var(--cc-ink-muted)" }}>{item.label}</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            <section id="estado-lecturas" className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="flex items-center justify-between border-b border-subtle p-5">
+            <section id="estado-lecturas" className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="flex items-center justify-between p-5" style={{ borderBottom: "1px solid var(--cc-line)" }}>
                     <div className="flex items-center gap-3">
-                        <Activity className="h-5 w-5 text-slate-500" />
-                        <h2 className="text-lg font-semibold cc-text-primary">Estado de lecturas comunidad</h2>
+                        <Activity className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
+                        <h2 className="text-lg leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Estado de lecturas comunidad</h2>
                     </div>
-                    <span className="text-sm font-semibold cc-text-secondary">{coverage}% cobertura</span>
+                    <span className="text-sm font-medium cc-text-secondary">{coverage}% cobertura</span>
                 </div>
                 <div className="p-5">
                     <UnitStatusGrid onUnitSelect={setSelectedUnit} />
                 </div>
             </section>
 
-            <section id="ingreso-lecturas" className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="flex items-center gap-3 border-b border-subtle p-5">
-                    <Settings className="h-5 w-5 text-slate-500" />
-                    <h2 className="text-lg font-semibold cc-text-primary">Ingreso de lecturas</h2>
+            <section id="ingreso-lecturas" className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="flex items-center gap-3 p-5" style={{ borderBottom: "1px solid var(--cc-line)" }}>
+                    <Settings className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
+                    <h2 className="text-lg leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Ingreso de lecturas</h2>
                 </div>
                 <div className="p-5">
                     <AdminMeterEntry onUnitSelect={setSelectedUnit} />

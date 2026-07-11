@@ -118,31 +118,32 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
     };
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-8 sm:space-y-10">
             {/* Header / Actions */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4 h-14">
-                        <div className="relative h-full">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                            <Input
-                                className="h-full pl-12 pr-6 w-80 rounded-lg bg-surface border-subtle font-bold"
-                                placeholder="Buscar unidad (Piso, depto)..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                    <div className="relative h-12">
+                        <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2" style={{ color: "var(--cc-ink-tertiary)" }} />
+                        <Input
+                            className="h-full w-full rounded-xl pl-11 pr-5 sm:w-80"
+                            style={{ background: "var(--cc-paper-warm)", borderColor: "var(--cc-line)" }}
+                            placeholder="Buscar unidad (piso, depto)..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                     {/* Filters */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {(['all', 'pending', 'completed', 'alert'] as const).map((status: 'all' | 'pending' | 'completed' | 'alert') => (
                             <button
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
-                                className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all border ${filterStatus === status
-                                    ? 'bg-canvas text-white border-slate-900 dark:bg-white dark:text-canvas'
-                                    : 'bg-white text-slate-500 border-default hover:border-default bg-surface cc-text-tertiary'
-                                    }`}
+                                className="rounded-full px-3.5 py-2 text-xs font-medium uppercase tracking-wider transition-all"
+                                style={
+                                    filterStatus === status
+                                        ? { background: "var(--cc-ink)", color: "var(--cc-paper)" }
+                                        : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" }
+                                }
                             >
                                 {status === 'all' && 'Todos'}
                                 {status === 'pending' && 'Pendientes'}
@@ -153,87 +154,99 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-3 px-8 py-4 bg-surface cc-text-primary font-semibold rounded-lg border border-subtle hover:bg-slate-50 transition-all shadow-sm">
-                        <Download className="h-5 w-5" />
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        className="flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-medium cc-text-primary transition-all hover:bg-[var(--cc-paper-warm)]"
+                        style={{ borderColor: "var(--cc-line-strong)" }}
+                    >
+                        <Download className="h-4.5 w-4.5" />
                         Formato Excel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={Object.keys(readings).length === 0 || isSaving}
-                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
+                        className="flex items-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{ background: "var(--cc-copper)" }}
                     >
-                        {isSaving ? <Calculator className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                        Procesar Lecturas
+                        {isSaving ? <Calculator className="h-4.5 w-4.5 animate-spin" /> : <Save className="h-4.5 w-4.5" />}
+                        Procesar lecturas
                     </button>
                 </div>
             </div>
 
             {/* Entry Table */}
-            <div className="bg-surface rounded-lg border border-subtle overflow-hidden shadow-sm shadow-slate-200/20 dark:shadow-none">
+            <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-subtle">
-                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Unidad</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-right">Anterior (m³)</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Nueva Lectura</th>
-                                <th className="px-10 py-8 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-right">Consumo</th>
-                                <th className="px-10 py-8 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Estado</th>
+                            <tr style={{ borderBottom: "1px solid var(--cc-line)" }}>
+                                <th className="px-6 py-5 text-left text-[10px] font-medium uppercase tracking-widest cc-text-tertiary sm:px-8">Unidad</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-medium uppercase tracking-widest cc-text-tertiary sm:px-8">Anterior (m³)</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-medium uppercase tracking-widest cc-text-tertiary sm:px-8">Nueva lectura</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-medium uppercase tracking-widest cc-text-tertiary sm:px-8">Consumo</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-medium uppercase tracking-widest cc-text-tertiary sm:px-8">Estado</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                        <tbody>
                             {filteredUnits.map((unit: Unit) => {
                                 // Find last reading for this unit
                                 const lastReading = lastReadings[unit.id];
                                 const lastValue = lastReading?.reading_value || 0;
                                 const currentEntry = readings[unit.id];
                                 const consumption = currentEntry ? Math.max(0, currentEntry - lastValue) : (lastReading?.consumption || 0);
+                                const isHigh = consumption > 25;
 
                                 return (
                                     <tr
                                         key={unit.id}
                                         onClick={() => onUnitSelect(unit)}
-                                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group cursor-pointer"
+                                        className="group cursor-pointer transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                        style={{ borderTop: "1px solid var(--cc-line)" }}
                                     >
-                                        <td className="px-10 py-8">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-lg bg-elevated flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors font-semibold text-xs">
+                                        <td className="px-6 py-6 sm:px-8">
+                                            <div className="flex items-center gap-3.5">
+                                                <div
+                                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xs font-medium"
+                                                    style={{ background: "var(--cc-paper-warm)", color: "var(--cc-ink-tertiary)" }}
+                                                >
                                                     {unit.number}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold cc-text-primary leading-none mb-1">Unidad {unit.number}</p>
-                                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Torre {unit.tower}</p>
+                                                    <p className="mb-1 font-medium leading-none cc-text-primary">Unidad {unit.number}</p>
+                                                    <p className="text-[10px] font-medium uppercase tracking-widest cc-text-tertiary">Torre {unit.tower}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-10 py-8 text-right font-bold text-slate-400 text-sm">
+                                        <td className="px-6 py-6 text-right text-sm font-medium cc-text-tertiary sm:px-8">
                                             {lastValue.toFixed(1)}
                                         </td>
-                                        <td className="px-10 py-8">
+                                        <td className="px-6 py-6 sm:px-8">
                                             <Input
                                                 type="number"
-                                                className="w-32 h-14 rounded-xl border-subtle font-bold focus:ring-blue-500/20 focus:border-blue-500 text-center"
+                                                className="h-12 w-28 rounded-xl text-center font-medium focus:border-[var(--cc-copper)]"
+                                                style={{ borderColor: "var(--cc-line)" }}
                                                 placeholder="0.0"
                                                 value={readings[unit.id] || ""}
                                                 onChange={(e) => setReadings({ ...readings, [unit.id]: parseFloat(e.target.value) })}
                                             />
                                         </td>
-                                        <td className={`px-10 py-8 text-right font-semibold text-lg ${consumption > 25 ? 'text-red-500' :
-                                            consumption > 0 ? 'text-blue-600 dark:text-blue-400' :
-                                                'text-slate-300'
-                                            }`}>
+                                        <td
+                                            className="px-6 py-6 text-right text-lg font-medium sm:px-8"
+                                            style={{ color: isHigh ? "var(--cc-rose)" : consumption > 0 ? "var(--cc-copper)" : "var(--cc-ink-faint)" }}
+                                        >
                                             {consumption.toFixed(1)} m³
                                         </td>
-                                        <td className="px-10 py-8 text-right">
+                                        <td className="px-6 py-6 text-right sm:px-8">
                                             {consumption > 0 || (lastReading?.month === currentMonth) ? (
-                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-semibold uppercase tracking-wider ${consumption > 25 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-                                                    }`}>
-                                                    {consumption > 25 ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-                                                    {consumption > 25 ? "Alto Consumo" : "Normal"}
+                                                <div
+                                                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider"
+                                                    style={isHigh ? { background: "var(--cc-rose-tint)", color: "var(--cc-rose)" } : { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}
+                                                >
+                                                    {isHigh ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                                                    {isHigh ? "Alto consumo" : "Normal"}
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-widest">Pendiente</span>
+                                                <span className="text-[10px] font-medium uppercase tracking-widest cc-text-disabled">Pendiente</span>
                                             )}
                                         </td>
                                     </tr>
@@ -244,8 +257,8 @@ export function AdminMeterEntry({ onUnitSelect = () => { } }: AdminMeterEntryPro
                 </div>
 
                 {filteredUnits.length === 0 && (
-                    <div className="p-20 text-center">
-                        <p className="text-slate-400 font-bold">No se encontraron unidades para la búsqueda.</p>
+                    <div className="p-16 text-center sm:p-20">
+                        <p className="font-medium cc-text-tertiary">No se encontraron unidades para la búsqueda.</p>
                     </div>
                 )}
             </div>
