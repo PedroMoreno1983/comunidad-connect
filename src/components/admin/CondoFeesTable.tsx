@@ -94,7 +94,7 @@ export function CondoFeesTable() {
     };
 
     if (loading) {
-        return <div className="p-10 text-center text-slate-500">Cargando registros...</div>;
+        return <div className="p-10 text-center cc-text-secondary">Cargando registros...</div>;
     }
 
     const filteredFees = fees.filter(fee => {
@@ -107,31 +107,33 @@ export function CondoFeesTable() {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm"
+            className="w-full overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
         >
-            <div className="flex items-center justify-between border-b border-subtle p-5">
+            <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)" }}>
                 <div>
-                    <h3 className="text-lg font-semibold cc-text-primary">Registro de cobros</h3>
+                    <h3 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Registro de cobros</h3>
                     <p className="mt-1 text-sm cc-text-secondary">Historial y estado de los gastos comunes</p>
                 </div>
                 <button
                     onClick={handleSendEmails}
                     disabled={sending || !fees.some(fee => fee.status !== 'paid')}
-                    className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                    style={{ background: "var(--cc-copper)" }}
                 >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                     {sending ? 'Enviando...' : 'Enviar a Residentes'}
                 </button>
             </div>
 
-            <div className="grid gap-3 border-b border-subtle p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="grid gap-3 border-b p-4 lg:grid-cols-[1fr_auto] lg:items-center" style={{ borderColor: "var(--cc-line)" }}>
                 <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--cc-ink-faint)" }} />
                     <input
                         value={query}
                         onChange={event => setQuery(event.target.value)}
                         placeholder="Buscar por torre, unidad o mes"
-                        className="h-11 w-full rounded-lg border border-subtle bg-canvas pl-10 pr-4 text-sm font-medium outline-none transition-colors focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
+                        className="h-11 w-full rounded-lg border pl-10 pr-4 text-sm font-medium outline-none transition-colors focus:border-[var(--cc-copper)] focus:ring-2 focus:ring-[var(--cc-copper)]/15"
+                        style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                     />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -145,9 +147,10 @@ export function CondoFeesTable() {
                             key={key}
                             type="button"
                             onClick={() => setStatusFilter(key)}
-                            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                                statusFilter === key ? "bg-slate-950 text-white" : "bg-elevated cc-text-secondary hover:bg-surface"
-                            }`}
+                            className="rounded-full px-3 py-2 text-xs font-semibold transition-colors"
+                            style={statusFilter === key
+                                ? { background: "var(--cc-ink)", color: "#fff" }
+                                : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" }}
                         >
                             {label}
                         </button>
@@ -157,7 +160,7 @@ export function CondoFeesTable() {
 
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-elevated/50 cc-text-secondary">
+                    <thead className="cc-text-secondary" style={{ background: "var(--cc-paper-warm)" }}>
                         <tr>
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Unidad</th>
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Mes / Vencimiento</th>
@@ -166,17 +169,17 @@ export function CondoFeesTable() {
                             <th className="font-bold py-4 px-6 uppercase tracking-wider text-[10px]">Pago</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-subtle/50">
+                    <tbody className="divide-y divide-[var(--cc-line)]">
                         {filteredFees.map((fee) => (
-                            <tr key={fee.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                            <tr key={fee.id} className="transition-colors hover:bg-[var(--cc-paper-warm)]">
                                 <td className="py-4 px-6">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                                        <div className="h-10 w-10 rounded-full flex items-center justify-center font-bold" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                             {fee.units?.tower ? fee.units.tower[0] : ''}
                                         </div>
                                         <div>
                                             <p className="font-semibold cc-text-primary">Torre {fee.units?.tower || 'A'}</p>
-                                            <p className="text-xs text-slate-500 font-medium">Depto {fee.units?.number}</p>
+                                            <p className="text-xs cc-text-tertiary font-medium">Depto {fee.units?.number}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -184,7 +187,7 @@ export function CondoFeesTable() {
                                     <p className="font-bold cc-text-secondary capitalize">
                                         {safeFormatDate(fee.month, 'MMMM yyyy', true)}
                                     </p>
-                                    <p className="text-xs text-slate-400">
+                                    <p className="text-xs cc-text-tertiary">
                                         Vence: {safeFormatDate(fee.due_date, 'dd/MM/yyyy')}
                                     </p>
                                 </td>
@@ -193,17 +196,17 @@ export function CondoFeesTable() {
                                 </td>
                                 <td className="py-4 px-6">
                                     {fee.status === 'paid' && (
-                                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">
+                                        <Badge variant="success">
                                             <CheckCircle2 className="w-3 h-3 mr-1" /> Pagado
                                         </Badge>
                                     )}
                                     {fee.status === 'pending' && (
-                                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none">
+                                        <Badge variant="warning">
                                             <Clock className="w-3 h-3 mr-1" /> Pendiente
                                         </Badge>
                                     )}
                                     {fee.status === 'overdue' && (
-                                        <Badge variant="destructive" className="bg-rose-100 text-rose-700 hover:bg-rose-200 border-none">
+                                        <Badge variant="danger">
                                             <AlertCircle className="w-3 h-3 mr-1" /> Atrasado
                                         </Badge>
                                     )}
@@ -212,17 +215,17 @@ export function CondoFeesTable() {
                                     {fee.status === 'paid' ? (
                                         <div className="flex flex-col">
                                             <span className="text-xs font-bold cc-text-secondary flex items-center gap-1">
-                                                <CreditCard className="w-3 h-3 text-slate-400" />
+                                                <CreditCard className="w-3 h-3" style={{ color: "var(--cc-ink-faint)" }} />
                                                 {fee.payment_method === 'haulmer' ? 'Haulmer Pay' : 'Transferencia'}
                                             </span>
                                             {fee.paid_at && (
-                                                <span className="text-[10px] text-slate-400">
+                                                <span className="text-[10px] cc-text-tertiary">
                                                     {safeFormatDate(fee.paid_at, 'dd/MM HH:mm')}
                                                 </span>
                                             )}
                                         </div>
                                     ) : (
-                                        <span className="text-xs text-slate-400 border border-subtle rounded-md px-2 py-1 inline-block">
+                                        <span className="text-xs cc-text-tertiary border rounded-full px-2 py-1 inline-block" style={{ borderColor: "var(--cc-line)" }}>
                                             Esperando pago
                                         </span>
                                     )}
@@ -231,7 +234,7 @@ export function CondoFeesTable() {
                         ))}
                         {filteredFees.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="py-12 text-center text-slate-500 font-medium">
+                                <td colSpan={5} className="py-12 text-center cc-text-secondary font-medium">
                                     {fees.length === 0 ? "No hay registros de gastos comunes." : "No hay cobros para esta busqueda."}
                                 </td>
                             </tr>

@@ -9,6 +9,7 @@ import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 const fallbackFinances: CommunityFinance = {
     period: new Date().toISOString().slice(0, 7),
@@ -53,7 +54,7 @@ export default function AdminFinanzasPage() {
     if (loading && !finances) {
         return (
             <div className="flex h-[50vh] items-center justify-center gap-3 text-sm font-semibold cc-text-secondary">
-                <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--cc-copper)" }} />
                 Cargando finanzas...
             </div>
         );
@@ -66,10 +67,15 @@ export default function AdminFinanzasPage() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mx-auto max-w-6xl space-y-6 p-6"
+                className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6"
             >
+                <header>
+                    <Eyebrow className="mb-2">Cierre financiero</Eyebrow>
+                    <DisplayHeading size={32}>Finanzas de la comunidad</DisplayHeading>
+                </header>
+
                 {usingFallback && (
-                    <div className="flex items-start gap-3 rounded-lg border border-warning-border bg-warning-bg p-4">
+                    <div className="flex items-start gap-3 rounded-2xl border border-warning-border bg-warning-bg p-4">
                         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" />
                         <div>
                             <p className="font-semibold cc-text-primary">Sin conexión a datos financieros</p>
@@ -79,7 +85,7 @@ export default function AdminFinanzasPage() {
                         </div>
                     </div>
                 )}
-                <section className="grid gap-4 lg:grid-cols-3">
+                <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[
                         {
                             title: "Cobranza prioritaria",
@@ -100,13 +106,13 @@ export default function AdminFinanzasPage() {
                             icon: <Send className="h-4 w-4" />,
                         },
                     ].map(item => (
-                        <article key={item.title} className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                            <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-elevated cc-text-secondary">
+                        <article key={item.title} className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                            <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
                                 {item.icon}
                             </div>
-                            <h2 className="font-semibold cc-text-primary">{item.title}</h2>
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{item.title}</h2>
                             <p className="mt-2 text-sm leading-6 cc-text-secondary">{item.description}</p>
-                            <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-info-bg px-2.5 py-1 text-xs font-semibold text-info-fg">
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-info-bg px-2.5 py-1 text-xs font-semibold text-info-fg">
                                 <ShieldCheck className="h-3.5 w-3.5" />
                                 {item.meta}
                             </div>
