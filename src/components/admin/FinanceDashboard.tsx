@@ -17,6 +17,7 @@ import { ExpenseAreaChart, ExpensePieChart } from "@/components/charts/Charts";
 import { BladeFan } from "@/components/cc/viz/BladeFan";
 import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { DotMatrix } from "@/components/cc/viz/DotMatrix";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 interface FinanceDashboardProps {
     data: CommunityFinance;
@@ -108,18 +109,19 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
         <div className="space-y-6">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
-                    <h1 className="text-3xl font-bold cc-text-primary">Control financiero</h1>
-                    <p className="cc-text-secondary">Recaudación, egresos, cobranza y movimientos de la comunidad.</p>
+                    <Eyebrow className="mb-2">Control financiero</Eyebrow>
+                    <DisplayHeading size={30}>Recaudación y movimientos</DisplayHeading>
+                    <p className="mt-2 text-sm font-medium cc-text-secondary">Recaudación, egresos, cobranza y movimientos de la comunidad.</p>
                 </div>
 
-                <div className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2.5 text-sm font-semibold cc-text-primary shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold cc-text-primary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <Calendar className="h-4 w-4 cc-text-secondary" />
                     <span className="capitalize">{currentPeriod}</span>
                 </div>
             </header>
 
-            <section className="rounded-lg border border-subtle bg-surface shadow-sm">
-                <div className="grid grid-cols-1 divide-y divide-subtle md:grid-cols-4 md:divide-x md:divide-y-0">
+            <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="grid grid-cols-1 divide-y divide-[var(--cc-line)] sm:grid-cols-2 sm:divide-x sm:divide-[var(--cc-line)] md:grid-cols-4 md:divide-y-0">
                     {stats.map(stat => {
                         const Icon = stat.icon;
                         return (
@@ -128,7 +130,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                     <Icon className="h-4 w-4" />
                                     {stat.label}
                                 </div>
-                                <p className="text-2xl font-semibold cc-text-primary">{stat.value}</p>
+                                <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{stat.value}</p>
                                 <p className="mt-2 text-xs font-semibold cc-text-tertiary">{stat.detail}</p>
                             </article>
                         );
@@ -137,15 +139,15 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
             </section>
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                <article className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-3">
+                <article className="rounded-2xl border p-5 lg:col-span-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-5 flex flex-col gap-1">
                         <span className="text-xs font-bold uppercase tracking-[0.14em] cc-text-tertiary">Vista ejecutiva</span>
-                        <h2 className="text-lg font-semibold cc-text-primary">Indicadores financieros del periodo</h2>
+                        <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Indicadores financieros del periodo</h2>
                         <p className="text-sm cc-text-secondary">Lectura compacta de cobranza, reserva, egresos y actividad operacional.</p>
                     </div>
 
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,420px)_1fr]">
-                        <div className="overflow-hidden rounded-lg bg-canvas px-2 py-4">
+                        <div className="overflow-hidden rounded-xl px-2 py-4" style={{ background: "var(--cc-paper-warm)" }}>
                             <div className="flex min-h-[300px] justify-center overflow-x-auto">
                                 <BladeFan
                                     width={400}
@@ -168,7 +170,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
 
                         <div className="grid content-center gap-3">
                             {executiveMetrics.map(metric => (
-                                <div key={metric.label} className="rounded-lg border border-subtle bg-elevated/50 p-3">
+                                <div key={metric.label} className="rounded-xl border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                     <div className="mb-2 flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2">
                                             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: metric.color }} />
@@ -184,14 +186,14 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     </div>
                 </article>
 
-                <article className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
+                <article className="rounded-2xl border p-5 lg:col-span-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-5 flex flex-col gap-1">
                         <span className="text-xs font-bold uppercase tracking-[0.14em] cc-text-tertiary">Cobranza por unidades</span>
-                        <h2 className="text-lg font-semibold cc-text-primary">{paidUnits} de {totalUnits} unidades al día</h2>
+                        <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{paidUnits} de {totalUnits} unidades al día</h2>
                         <p className="text-sm cc-text-secondary">Cada punto representa una unidad del condominio en el periodo actual.</p>
                     </div>
 
-                    <div className="overflow-x-auto rounded-lg bg-canvas p-4">
+                    <div className="overflow-x-auto rounded-xl p-4" style={{ background: "var(--cc-paper-warm)" }}>
                         <DotMatrix rows={matrixRows} cols={matrixColumns} filled={paidUnits} color={DATA_PALETTE.copper} dotSize={7} gap={5} />
                     </div>
 
@@ -202,13 +204,13 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         </div>
                         <FoldedBar pct={collectionRate} color={DATA_PALETTE.copper} orientation="horizontal" thickness={10} />
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-lg bg-elevated p-3">
+                            <div className="rounded-xl p-3" style={{ background: "var(--cc-paper-warm)" }}>
                                 <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-tertiary">Pendientes</p>
-                                <p className="mt-1 text-xl font-semibold cc-text-primary">{data.pendingUnits}</p>
+                                <p className="mt-1 text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{data.pendingUnits}</p>
                             </div>
-                            <div className="rounded-lg bg-elevated p-3">
+                            <div className="rounded-xl p-3" style={{ background: "var(--cc-paper-warm)" }}>
                                 <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-tertiary">Riesgo</p>
-                                <p className="mt-1 text-xl font-semibold cc-text-primary">{data.overdueAmount > 0 ? "Alto" : collectionRate >= 90 ? "Bajo" : "Medio"}</p>
+                                <p className="mt-1 text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{data.overdueAmount > 0 ? "Alto" : collectionRate >= 90 ? "Bajo" : "Medio"}</p>
                             </div>
                         </div>
                     </div>
@@ -216,19 +218,20 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
             </section>
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <article className="rounded-lg border border-subtle bg-surface p-5 shadow-sm lg:col-span-2">
+                <article className="rounded-2xl border p-5 lg:col-span-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-5 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <TrendingUp className="h-5 w-5 text-slate-500" />
+                            <TrendingUp className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                             <div>
-                                <h2 className="text-lg font-semibold cc-text-primary">Evolución de facturación</h2>
+                                <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Evolución de facturación</h2>
                                 <p className="text-sm cc-text-secondary">Cobros reales de los últimos 6 periodos</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={printFinancialReport}
-                            className="rounded-lg border border-subtle px-3 py-2 text-xs font-semibold cc-text-primary transition-colors hover:bg-elevated"
+                            className="rounded-full border px-3 py-2 text-xs font-semibold cc-text-primary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                            style={{ borderColor: "var(--cc-line)" }}
                         >
                             Imprimir PDF
                         </button>
@@ -240,11 +243,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     </div>
                 </article>
 
-                <article className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <article className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="mb-5 flex items-center gap-3">
-                        <PieChart className="h-5 w-5 text-slate-500" />
+                        <PieChart className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Distribución</h2>
+                            <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Distribución</h2>
                             <p className="text-sm cc-text-secondary">Por categoría</p>
                         </div>
                     </div>
@@ -255,7 +258,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     </div>
                     <div className="mt-5 space-y-2">
                         {expenseCategoryData.map(item => (
-                            <div key={item.name} className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2">
+                            <div key={item.name} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: "var(--cc-paper-warm)" }}>
                                 <div className="flex items-center gap-2">
                                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                                     <span className="text-sm font-semibold cc-text-secondary">{item.name}</span>
@@ -268,25 +271,26 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
             </section>
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <article className="rounded-lg border border-subtle bg-surface shadow-sm lg:col-span-2">
-                    <div className="flex items-center justify-between border-b border-subtle p-5">
+                <article className="rounded-2xl border lg:col-span-2" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
-                            <Activity className="h-5 w-5 text-slate-500" />
-                            <h2 className="text-lg font-semibold cc-text-primary">Movimientos recientes</h2>
+                            <Activity className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
+                            <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Movimientos recientes</h2>
                         </div>
                         <button
                             type="button"
                             onClick={() => scrollToSection("cobranzas")}
-                            className="text-sm font-semibold text-brand-600"
+                            className="text-sm font-semibold"
+                            style={{ color: "var(--cc-copper)" }}
                         >
                             Ver registros
                         </button>
                     </div>
-                    <div className="divide-y divide-subtle">
+                    <div className="divide-y divide-[var(--cc-line)]">
                         {recentActivity.map(activity => (
-                            <div key={activity.id} className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-elevated/50">
+                            <div key={activity.id} className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-[var(--cc-paper-warm)]">
                                 <div className="flex items-center gap-4">
-                                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${activity.type === "income" ? "bg-success-bg text-success-fg" : "bg-danger-bg text-danger-fg"}`}>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full" style={activity.type === "income" ? { background: "var(--cc-success-bg)", color: "var(--cc-success-fg)" } : { background: "var(--cc-danger-bg)", color: "var(--cc-danger-fg)" }}>
                                         {activity.type === "income" ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                                     </div>
                                     <div>
@@ -309,36 +313,37 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                 </article>
 
                 <aside className="space-y-6">
-                    <article className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <article className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="mb-4 flex items-center gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-success-fg" />
-                            <h2 className="text-lg font-semibold cc-text-primary">Estado de cobranza</h2>
+                            <CheckCircle2 className="h-5 w-5" style={{ color: "var(--cc-sage)" }} />
+                            <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Estado de cobranza</h2>
                         </div>
-                        <p className="text-3xl font-semibold cc-text-primary">{collectionRate}%</p>
+                        <p className="text-3xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{collectionRate}%</p>
                         <p className="mt-1 text-sm cc-text-secondary">Recaudación lograda</p>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-elevated">
-                            <div className="h-full bg-brand-500" style={{ width: `${collectionRate}%` }} />
+                        <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ background: "var(--cc-paper-warm)" }}>
+                            <div className="h-full rounded-full" style={{ width: `${collectionRate}%`, background: "var(--cc-copper)" }} />
                         </div>
                     </article>
 
-                    <article className="rounded-lg border border-warning-border bg-warning-bg p-5">
+                    <article className="rounded-2xl border border-warning-border bg-warning-bg p-5">
                         <div className="mb-4 flex items-center gap-3">
                             <AlertCircle className="h-5 w-5 text-warning-fg" />
-                            <h2 className="text-lg font-semibold cc-text-primary">Atención requerida</h2>
+                            <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Atención requerida</h2>
                         </div>
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2">
+                            <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: "var(--cc-paper)" }}>
                                 <span className="text-sm font-semibold cc-text-secondary">Morosos crónicos (+3m)</span>
                                 <span className="font-semibold text-danger-fg">{data.chronicDebtors}</span>
                             </div>
-                            <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2">
+                            <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: "var(--cc-paper)" }}>
                                 <span className="text-sm font-semibold cc-text-secondary">Monto vencido</span>
                                 <span className="font-semibold text-warning-fg">${data.overdueAmount.toLocaleString("es-CL")}</span>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => scrollToSection("cobranzas")}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+                                style={{ background: "var(--cc-copper)" }}
                             >
                                 <Users className="h-4 w-4" />
                                 Gestionar cobranza
