@@ -13,6 +13,7 @@ import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import type { ResidentFinanceExpense } from "@/lib/types";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 export default function FinancesPage() {
     const { user } = useAuth();
@@ -121,33 +122,33 @@ export default function FinancesPage() {
     const totalDebt = pendingExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
     return (
-        <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6">
-            <header className="flex flex-col justify-between gap-4 border-b border-subtle pb-6 md:flex-row md:items-end">
+        <div className="mx-auto max-w-7xl space-y-7 px-4 py-6 sm:px-6 sm:py-8">
+            <header className="flex flex-col justify-between gap-4 border-b pb-6 md:flex-row md:items-end" style={{ borderColor: "var(--cc-line)" }}>
                 <div>
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Finanzas personales</p>
-                    <h1 className="text-3xl font-semibold cc-text-primary">Gastos comunes</h1>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
+                    <Eyebrow className="mb-2">Finanzas personales</Eyebrow>
+                    <DisplayHeading size={32}>Gastos comunes</DisplayHeading>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 font-medium cc-text-secondary">
                         Revisa deuda vigente, vencimientos e historial de pagos asociados a tu unidad.
                     </p>
                 </div>
-                <div className="rounded-lg border border-subtle bg-surface px-4 py-3 text-sm font-semibold cc-text-primary shadow-sm">
+                <div className="rounded-full border px-4 py-3 text-sm font-semibold cc-text-primary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     Depto {expenses[0]?.units?.number ?? user?.unitName ?? "sin asignar"}
                 </div>
             </header>
 
-            <section className="grid gap-3 md:grid-cols-3">
+            <section className="grid gap-3 sm:grid-cols-3">
                 <Metric icon={<AlertCircle className="h-5 w-5" />} label="Total pendiente" value={formatCurrency(totalDebt)} tone="rose" />
                 <Metric icon={<Clock className="h-5 w-5" />} label="Cobros abiertos" value={pendingExpenses.length} tone="amber" />
-                <Metric icon={<CheckCircle2 className="h-5 w-5" />} label="Pagos registrados" value={paidExpenses.length} tone="emerald" />
+                <Metric icon={<CheckCircle2 className="h-5 w-5" />} label="Pagos registrados" value={paidExpenses.length} tone="sage" />
             </section>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-                <section className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
-                    <div className="flex items-center justify-between border-b border-subtle p-5">
+                <section className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-slate-500" />
+                            <FileText className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                             <div>
-                                <h2 className="text-lg font-semibold cc-text-primary">Cobros pendientes</h2>
+                                <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Cobros pendientes</h2>
                                 <p className="text-sm cc-text-secondary">Ordenados por periodo y vencimiento</p>
                             </div>
                         </div>
@@ -163,24 +164,24 @@ export default function FinancesPage() {
                             <motion.div
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg bg-success-bg"
+                                className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success-bg"
                             >
                                 <CheckCircle2 className="h-7 w-7 text-success-fg" />
                             </motion.div>
-                            <h3 className="text-xl font-semibold cc-text-primary">Todo al dia</h3>
+                            <h3 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Todo al dia</h3>
                             <p className="mt-2 max-w-sm text-sm leading-6 cc-text-secondary">
                                 No tienes pagos pendientes en este momento.
                             </p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-subtle">
+                        <div className="divide-y divide-[var(--cc-line)]">
                             {pendingExpenses.map((expense) => {
                                 const fee = calculateHaulmerServiceFee(expense.amount);
 
                                 return (
-                                <div key={expense.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-elevated/50 sm:flex-row sm:items-center sm:justify-between">
+                                <div key={expense.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-[var(--cc-paper-warm)] sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "var(--cc-rose-tint)", color: "var(--cc-rose)" }}>
                                             <Home className="h-5 w-5" />
                                         </div>
                                         <div>
@@ -194,7 +195,7 @@ export default function FinancesPage() {
                                     </div>
                                     <div className="flex items-center justify-between gap-4 sm:justify-end">
                                         <div className="text-right">
-                                            <span className="text-lg font-semibold cc-text-primary">
+                                            <span className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                                 {formatCurrency(fee.totalWithFee)}
                                             </span>
                                             <p className="text-xs cc-text-secondary">
@@ -203,7 +204,8 @@ export default function FinancesPage() {
                                         </div>
                                         <Button
                                             onClick={() => handlePayHaulmer(expense)}
-                                            className="min-w-[150px] rounded-lg bg-slate-950 text-white hover:bg-slate-800"
+                                            className="min-w-[150px] rounded-full text-white"
+                                            style={{ background: "var(--cc-ink)" }}
                                             disabled={processingId === expense.id}
                                         >
                                             {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
@@ -216,22 +218,22 @@ export default function FinancesPage() {
                     )}
                 </section>
 
-                <aside className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
-                    <div className="flex items-center gap-3 border-b border-subtle p-5">
-                        <History className="h-5 w-5 text-slate-500" />
+                <aside className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex items-center gap-3 border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
+                        <History className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                         <div>
-                            <h2 className="text-lg font-semibold cc-text-primary">Historial</h2>
+                            <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Historial</h2>
                             <p className="text-sm cc-text-secondary">Pagos confirmados</p>
                         </div>
                     </div>
                     {paidExpenses.length === 0 ? (
                         <div className="p-8 text-center text-sm cc-text-secondary">No hay pagos registrados.</div>
                     ) : (
-                        <div className="max-h-[460px] divide-y divide-subtle overflow-y-auto">
+                        <div className="max-h-[460px] divide-y divide-[var(--cc-line)] overflow-y-auto">
                             {paidExpenses.map((expense) => (
-                                <div key={expense.id} className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-elevated/50">
+                                <div key={expense.id} className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-[var(--cc-paper-warm)]">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
                                             <CreditCard className="h-4 w-4" />
                                         </div>
                                         <div>
@@ -257,19 +259,19 @@ export default function FinancesPage() {
     );
 }
 
-function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone: "rose" | "amber" | "emerald" }) {
+function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone: "rose" | "amber" | "sage" }) {
     const colors = {
-        rose: "bg-rose-50 text-rose-600",
-        amber: "bg-amber-50 text-amber-600",
-        emerald: "bg-emerald-50 text-emerald-600",
+        rose: { background: "var(--cc-rose-tint)", color: "var(--cc-rose)" },
+        amber: { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" },
+        sage: { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" },
     };
 
     return (
-        <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${colors[tone]}`}>
+        <div className="rounded-2xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full" style={colors[tone]}>
                 {icon}
             </div>
-            <p className="text-2xl font-semibold cc-text-primary">{value}</p>
+            <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{value}</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{label}</p>
         </div>
     );
