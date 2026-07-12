@@ -44,6 +44,9 @@ jobs:
       - name: Security boundary regression
         run: npm run qa:security-boundaries
 
+      - name: Architecture boundary regression
+        run: npm run qa:architecture-boundaries
+
       - name: Production dependency audit
         run: npm audit --omit=dev
 
