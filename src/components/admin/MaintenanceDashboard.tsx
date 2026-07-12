@@ -286,7 +286,7 @@ export function MaintenanceDashboard() {
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Pendientes</h3>
                     </div>
                     <p className="text-4xl font-semibold cc-text-primary">{pendingCount}</p>
-                    <p className="text-xs font-bold text-slate-400 mt-2">Próximos 7 días</p>
+                    <p className="text-xs font-medium cc-text-tertiary mt-2">Próximos 7 días</p>
                 </div>
 
                 <div className="bg-[var(--cc-paper)] p-8 rounded-lg border border-[var(--cc-line)] shadow-sm shadow-slate-200/20 dark:shadow-black/40">
@@ -339,7 +339,7 @@ export function MaintenanceDashboard() {
                 <div className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm shadow-slate-200/20 dark:shadow-black/30">
                     {serviceRequests.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-                            <Wrench className="h-10 w-10 text-slate-300" />
+                            <Wrench className="h-10 w-10 text-[var(--cc-ink-faint)]" />
                             <p className="text-sm font-bold cc-text-secondary">Todavía no hay solicitudes de servicios.</p>
                             <p className="max-w-md text-xs cc-text-tertiary">
                                 Cuando un residente contacte a un técnico desde el directorio, aparecerá aquí para seguimiento operativo.
@@ -354,9 +354,9 @@ export function MaintenanceDashboard() {
                                     item.status === 'completed'
                                         ? 'bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
                                         : item.status === 'cancelled'
-                                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                                            ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]'
                                             : item.status === 'accepted'
-                                                ? 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'
+                                                ? 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'
                                                 : 'bg-[var(--cc-amber-tint)] text-[var(--cc-amber)]';
 
                                 return (
@@ -497,7 +497,7 @@ export function MaintenanceDashboard() {
                     </div>
                     {cocoCases.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-                            <Bot className="h-10 w-10 text-slate-300" />
+                            <Bot className="h-10 w-10 text-[var(--cc-ink-faint)]" />
                             <p className="text-sm font-bold cc-text-secondary">Todavia no hay casos creados por CoCo.</p>
                             <p className="max-w-md text-xs cc-text-tertiary">
                                 Cuando un residente reporte filtraciones, ruidos, seguridad o mantencion, apareceran aqui.
@@ -505,7 +505,7 @@ export function MaintenanceDashboard() {
                         </div>
                     ) : visibleCocoCases.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-                            <Filter className="h-9 w-9 text-slate-300" />
+                            <Filter className="h-9 w-9 text-[var(--cc-ink-faint)]" />
                             <p className="text-sm font-bold cc-text-secondary">No hay casos para estos filtros.</p>
                             <button
                                 onClick={() => {
@@ -527,7 +527,7 @@ export function MaintenanceDashboard() {
                                     <article key={item.id} className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
                                         <div className="min-w-0 space-y-3">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${isHot ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${isHot ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
                                                     {isHot && <ShieldAlert className="h-3 w-3" />}
                                                     {item.urgency}
                                                 </span>
@@ -613,7 +613,7 @@ export function MaintenanceDashboard() {
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-semibold text-[var(--cc-copper)] uppercase tracking-widest">{asset?.name}</p>
                                             <h4 className="text-lg font-semibold cc-text-primary">{task.title}</h4>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <p className="text-xs font-medium cc-text-tertiary uppercase tracking-widest flex items-center gap-2">
                                                 <Calendar className="h-3 w-3" />
                                                 Vence: {new Date(task.dueDate).toLocaleDateString()}
                                             </p>
@@ -650,20 +650,20 @@ export function MaintenanceDashboard() {
                         <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Historial Reciente</h2>
                     </div>
 
-                    <div className="bg-[var(--cc-paper)] p-10 rounded-lg border border-[var(--cc-line)] space-y-8 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
-                        {logs.length === 0 && <p className="text-slate-500 text-sm">No hay historial reciente.</p>}
+                    <div className="rounded-2xl border p-8 space-y-8 sm:p-10" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                        {logs.length === 0 && <p className="text-sm cc-text-tertiary">No hay historial reciente.</p>}
                         {logs.map((log: MaintenanceLog, i: number) => (
                             <div key={log.id} className="flex gap-4 relative">
-                                {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-elevated" />}
-                                <div className="h-6 w-6 rounded-full border-4 border-white dark:border-slate-900 bg-[var(--cc-copper-tint)]0 z-10 shrink-0" />
+                                {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px]" style={{ background: "var(--cc-line)" }} />}
+                                <div className="h-6 w-6 shrink-0 rounded-full border-4 z-10" style={{ borderColor: "var(--cc-paper)", background: "var(--cc-copper)" }} />
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                                    <p className="text-[10px] font-medium uppercase tracking-widest cc-text-tertiary">
                                         {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
                                     </p>
-                                    <p className="text-sm font-bold cc-text-primary">{log.description}</p>
+                                    <p className="text-sm font-medium cc-text-primary">{log.description}</p>
                                     <div className="text-right flex-shrink-0">
-                                        <p className="text-sm font-semibold cc-text-primary">${(log.cost || 0).toLocaleString('es-CL')}</p>
-                                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Costo</p>
+                                        <p className="text-sm font-medium cc-text-primary">${(log.cost || 0).toLocaleString('es-CL')}</p>
+                                        <p className="text-[10px] font-medium uppercase tracking-widest cc-text-tertiary">Costo</p>
                                     </div>
                                 </div>
                             </div>
@@ -686,19 +686,19 @@ export function MaintenanceDashboard() {
                                         }`}>
                                         {selectedTask.status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                     </span>
-                                    <span className="text-xs font-bold text-slate-400">ID: {selectedTask.id}</span>
+                                    <span className="text-xs font-medium cc-text-tertiary">ID: {selectedTask.id}</span>
                                 </div>
                                 <h3 className="text-3xl font-semibold cc-text-primary leading-tight">{selectedTask.title}</h3>
-                                <p className="text-slate-500 font-medium leading-relaxed">{selectedTask.description}</p>
+                                <p className="cc-text-secondary font-medium leading-relaxed">{selectedTask.description}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-6 p-6 bg-elevated/50 rounded-lg">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Frecuencia</p>
+                                    <p className="text-[10px] font-medium cc-text-tertiary uppercase tracking-widest">Frecuencia</p>
                                     <p className="font-bold cc-text-primary capitalize">{selectedTask.frequency === 'weekly' ? 'Semanal' : selectedTask.frequency === 'monthly' ? 'Mensual' : selectedTask.frequency === 'quarterly' ? 'Trimestral' : 'Anual'}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vencimiento</p>
+                                    <p className="text-[10px] font-medium cc-text-tertiary uppercase tracking-widest">Vencimiento</p>
                                     <p className="font-bold cc-text-primary">{new Date(selectedTask.dueDate).toLocaleDateString()}</p>
                                 </div>
                             </div>
@@ -743,7 +743,7 @@ export function MaintenanceDashboard() {
                                     <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
                                         {selectedCase.status.replace('_', ' ')}
                                     </span>
-                                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${selectedCase.urgency === 'emergencia' || selectedCase.urgency === 'alta' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
+                                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${selectedCase.urgency === 'emergencia' || selectedCase.urgency === 'alta' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
                                         {selectedCase.urgency}
                                     </span>
                                     <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
