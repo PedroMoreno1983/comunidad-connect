@@ -3,6 +3,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { sendWelcomeEmail } from '@/lib/email';
 import type { UserRole } from '@/lib/types';
+import { logApiError, logger, resolveRequestId } from '@/lib/observability/logger';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -107,11 +108,14 @@ export async function POST(req: NextRequest) {
             residentName: fullName,
             unitName: departmentNumber ? `Depto ${departmentNumber}` : resolvedRole === 'admin' ? 'Administración' : 'Conserjería',
             condoName: community.name || 'Convive Connect',
-        }).catch(error => console.warn('[auth/signup] Welcome email failed:', error));
+        }).catch(error => logger.warn('auth.signup_welcome_email_failed', {
+            requestId: resolveRequestId(req),
+            error,
+        }));
 
         return NextResponse.json({ ok: true, role: resolvedRole });
     } catch (error) {
-        console.error('[auth/signup]', error);
+        logApiError(req, '/api/auth/signup', error);
         return NextResponse.json({ error: 'No se pudo crear la cuenta.' }, { status: 500 });
     }
 }

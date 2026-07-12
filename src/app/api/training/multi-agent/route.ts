@@ -3,6 +3,7 @@ import { buildTrainingFallbackTurn, runMultiAgentTurn } from "@/lib/ai/orchestra
 import { isAiBudgetExceededError } from "@/lib/ai/budget";
 import { enforceDistributedRateLimit } from "@/lib/security/rateLimit";
 import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
+import { logApiError } from "@/lib/observability/logger";
 
 const MAX_MESSAGE_LENGTH = 4_000;
 const MAX_COURSE_CONTENT_LENGTH = 40_000;
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
             }, { status: 429 });
         }
 
-        console.error("Training MultiAgent API Error:", error);
+        logApiError(req, "/api/training/multi-agent", error);
         return NextResponse.json({
             responses: [{
                 id: `sys-err-${Date.now()}`,
