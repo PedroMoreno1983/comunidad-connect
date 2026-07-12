@@ -19,6 +19,7 @@ import { WaterService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { WaterReading, ConsumptionMetric } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 const BUILDING_AVERAGE_M3 = 15.5;
 
@@ -102,7 +103,7 @@ export default function WaterConsumptionPage() {
     if (loading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--cc-copper)" }} />
             </div>
         );
     }
@@ -110,9 +111,9 @@ export default function WaterConsumptionPage() {
     if (readings.length === 0) {
         return (
             <div className="flex h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
-                <Waves className="h-12 w-12 text-slate-300" />
+                <Waves className="h-12 w-12" style={{ color: "var(--cc-ink-faint)" }} />
                 <h2 className="text-xl font-bold cc-text-secondary">{user?.unitId ? "Sin lecturas cargadas" : "Sin unidad asignada"}</h2>
-                <p className="max-w-md text-slate-500">
+                <p className="max-w-md cc-text-tertiary">
                     {user?.unitId
                         ? "Aun no existen lecturas reales para tu unidad. Cuando administracion cargue el periodo, veras tendencia, alertas y estimacion de costo."
                         : "Contacta a la administracion para vincular tu usuario a un departamento."}
@@ -122,14 +123,12 @@ export default function WaterConsumptionPage() {
     }
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 md:px-8">
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:py-10 md:px-8">
             <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-400">
-                        Eficiencia hídrica
-                    </p>
-                    <h1 className="text-3xl font-semibold cc-text-primary">Consumo de agua</h1>
-                    <p className="max-w-2xl cc-text-secondary">
+                    <Eyebrow>Eficiencia hídrica</Eyebrow>
+                    <DisplayHeading size={32}>Consumo de agua</DisplayHeading>
+                    <p className="max-w-2xl text-sm font-medium cc-text-secondary">
                         Controla lecturas, gasto estimado y señales tempranas de sobreconsumo.
                     </p>
                 </div>
@@ -137,57 +136,58 @@ export default function WaterConsumptionPage() {
                 <button
                     type="button"
                     onClick={() => openLeakReport(user?.unitName)}
-                    className="inline-flex items-center justify-center gap-3 rounded-lg border border-blue-200 bg-surface px-6 py-4 text-sm font-semibold cc-text-primary shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 dark:border-blue-500/20 dark:hover:bg-blue-500/10"
+                    className="inline-flex items-center justify-center gap-3 rounded-full border px-6 py-4 text-sm font-semibold cc-text-primary transition-all hover:bg-[var(--cc-paper-warm)]"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                 >
-                    <Waves className="h-5 w-5 text-blue-500" />
+                    <Waves className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                     Reportar fuga con CoCo
                 </button>
             </header>
 
-            <section className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10">
+            <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                         <Waves className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-semibold cc-text-primary">{currentConsumption.toFixed(1)} m?</p>
+                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{currentConsumption.toFixed(1)} m³</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Consumo actual</p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                    <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${consumptionDelta <= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" : "bg-amber-50 text-amber-600 dark:bg-amber-500/10"}`}>
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full" style={consumptionDelta <= 0 ? { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" } : { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" }}>
                         {consumptionDelta <= 0 ? <TrendingDown className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
                     </div>
-                    <p className="text-2xl font-semibold cc-text-primary">{formatPercent(trendPercent)}</p>
+                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{formatPercent(trendPercent)}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">
                         {consumptionDelta <= 0 ? "Menos que mes anterior" : "Más que mes anterior"}
                     </p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                    <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${isElevated ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"}`}>
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full" style={isElevated ? { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" } : { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
                         {isElevated ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
                     </div>
-                    <p className="text-2xl font-semibold cc-text-primary">{isElevated ? "Alto" : "Normal"}</p>
+                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{isElevated ? "Alto" : "Normal"}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Contra promedio edificio</p>
                 </div>
 
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-ink)" }}>
                         <Calculator className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-semibold cc-text-primary">{readings.length}</p>
+                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{readings.length}</p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">Lecturas registradas</p>
                 </div>
             </section>
 
             {possibleLeak && (
-                <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/20 dark:bg-amber-500/10">
+                <section className="rounded-2xl border border-warning-border bg-warning-bg p-5">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex gap-4">
-                            <AlertTriangle className="mt-1 h-6 w-6 shrink-0 text-amber-600" />
+                            <AlertTriangle className="mt-1 h-6 w-6 shrink-0 text-warning-fg" />
                             <div>
-                                <h2 className="font-semibold text-amber-900 dark:text-amber-200">Posible sobreconsumo detectado</h2>
-                                <p className="text-sm text-amber-800/80 dark:text-amber-100/80">
+                                <h2 className="font-semibold text-warning-fg">Posible sobreconsumo detectado</h2>
+                                <p className="text-sm text-warning-fg opacity-80">
                                     El consumo subió más de 35% respecto al mes anterior. Conviene revisar llaves, estanques y filtraciones visibles.
                                 </p>
                             </div>
@@ -195,7 +195,8 @@ export default function WaterConsumptionPage() {
                         <button
                             type="button"
                             onClick={() => openLeakReport(user?.unitName)}
-                            className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                            className="rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+                            style={{ background: "var(--cc-amber)" }}
                         >
                             Pedir revisión
                         </button>
@@ -217,56 +218,56 @@ export default function WaterConsumptionPage() {
                     <CostEstimator consumption={currentConsumption} />
 
                     {lastReading && (
-                        <section className="space-y-6 rounded-lg border border-subtle bg-surface p-8 shadow-sm shadow-slate-200/20 dark:shadow-none">
+                        <section className="space-y-6 rounded-2xl border p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                             <div className="flex items-center gap-4">
-                                <div className="rounded-lg bg-blue-50 p-3 text-blue-600 dark:bg-blue-500/10">
+                                <div className="rounded-full p-3" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                     <Calculator className="h-6 w-6" />
                                 </div>
-                                <h2 className="text-xl font-semibold cc-text-primary">Lectura del mes</h2>
+                                <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Lectura del mes</h2>
                             </div>
 
-                            <div className="flex items-end justify-between border-b border-subtle pb-4">
+                            <div className="flex items-end justify-between border-b pb-4" style={{ borderColor: "var(--cc-line)" }}>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Actual</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-tertiary">Actual</p>
                                     <p className="text-sm font-bold cc-text-secondary">{lastReading.reading_value.toFixed(1)}</p>
                                 </div>
-                                <ArrowRight className="mb-1 h-4 w-4 text-slate-300" />
+                                <ArrowRight className="mb-1 h-4 w-4" style={{ color: "var(--cc-ink-faint)" }} />
                                 <div className="space-y-1 text-right">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Anterior</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] cc-text-tertiary">Anterior</p>
                                     <p className="text-sm font-bold cc-text-secondary">{previousReading?.reading_value.toFixed(1) || "0.0"}</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between rounded-lg bg-elevated/50 px-4 py-4">
-                                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Consumo neto</span>
-                                <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{currentConsumption.toFixed(1)} m?</span>
+                            <div className="flex items-center justify-between rounded-xl px-4 py-4" style={{ background: "var(--cc-paper-warm)" }}>
+                                <span className="text-xs font-semibold uppercase tracking-[0.08em] cc-text-tertiary">Consumo neto</span>
+                                <span className="text-2xl font-semibold" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-copper)" }}>{currentConsumption.toFixed(1)} m³</span>
                             </div>
                         </section>
                     )}
 
                     <section className="space-y-6 px-2">
                         <div className="flex items-center gap-4">
-                            <History className="h-5 w-5 text-slate-400" />
+                            <History className="h-5 w-5" style={{ color: "var(--cc-ink-tertiary)" }} />
                             <h2 className="text-xs font-semibold uppercase tracking-[0.08em] cc-text-primary">Historial reciente</h2>
                         </div>
 
                         <div className="space-y-3">
                             {recentReadings.map(reading => (
-                                <div key={reading.id} className="flex items-center justify-between rounded-lg border border-subtle bg-surface p-4 transition-all hover:border-blue-100 dark:hover:border-blue-900/50">
+                                <div key={reading.id} className="flex items-center justify-between rounded-xl border p-4 transition-all hover:border-[var(--cc-copper)]" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                     <div className="flex items-center gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated text-xs font-bold text-slate-400">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold cc-text-tertiary" style={{ background: "var(--cc-paper-warm)" }}>
                                             {shortMonth(reading.month)}
                                         </div>
                                         <div>
                                             <p className="text-sm font-semibold cc-text-primary">{reading.month} {reading.year}</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">Lectura {reading.reading_value}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] cc-text-tertiary">Lectura {reading.reading_value}</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{reading.consumption} m?</p>
+                                    <p className="text-sm font-semibold" style={{ color: "var(--cc-copper)" }}>{reading.consumption} m³</p>
                                 </div>
                             ))}
                             {readings.length === 0 && (
-                                <p className="pl-2 text-xs text-slate-400">No hay historial disponible.</p>
+                                <p className="pl-2 text-xs cc-text-tertiary">No hay historial disponible.</p>
                             )}
                         </div>
                     </section>
