@@ -14,40 +14,41 @@ import {
     ShieldAlert,
     Wrench
 } from "lucide-react";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
-const statusCopy: Record<CocoCase["status"], { label: string; icon: typeof Clock; className: string }> = {
+const statusCopy: Record<CocoCase["status"], { label: string; icon: typeof Clock; style: React.CSSProperties }> = {
     open: {
         label: "Recibido",
         icon: Clock,
-        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+        style: { background: "var(--cc-amber-tint)", color: "var(--cc-amber)", borderColor: "transparent" },
     },
     in_progress: {
         label: "En revisión",
         icon: Wrench,
-        className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
+        style: { background: "var(--cc-copper-tint)", color: "var(--cc-copper)", borderColor: "transparent" },
     },
     resolved: {
         label: "Resuelto",
         icon: CheckCircle2,
-        className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
+        style: { background: "var(--cc-sage-tint)", color: "var(--cc-sage)", borderColor: "transparent" },
     },
     closed: {
         label: "Cerrado",
         icon: CheckCircle2,
-        className: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/30",
+        style: { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)", borderColor: "transparent" },
     },
     cancelled: {
         label: "Cancelado",
         icon: AlertTriangle,
-        className: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30",
+        style: { background: "var(--cc-rose-tint)", color: "var(--cc-rose)", borderColor: "transparent" },
     },
 };
 
-const urgencyClass: Record<CocoCase["urgency"], string> = {
-    baja: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
-    media: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
-    alta: "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300",
-    emergencia: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300",
+const urgencyStyle: Record<CocoCase["urgency"], React.CSSProperties> = {
+    baja: { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" },
+    media: { background: "var(--cc-copper-tint)", color: "var(--cc-copper)" },
+    alta: { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" },
+    emergencia: { background: "var(--cc-rose-tint)", color: "var(--cc-rose)" },
 };
 
 export default function ResidentCasesPage() {
@@ -84,59 +85,58 @@ export default function ResidentCasesPage() {
         <div className="mx-auto max-w-6xl space-y-8">
             <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-600">
-                        Seguimiento CoCo
-                    </p>
-                    <h1 className="text-3xl font-semibold cc-text-primary md:text-4xl">Mis Casos CoCo</h1>
+                    <Eyebrow>Seguimiento CoCo</Eyebrow>
+                    <DisplayHeading size={32}>Mis Casos CoCo</DisplayHeading>
                     <p className="max-w-2xl text-sm font-medium cc-text-secondary">
                         Revisa los reportes que CoCo registró desde tus conversaciones y el avance de Administración o Conserjería.
                     </p>
                 </div>
                 <Link
                     href="/services"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-subtle bg-surface px-5 py-3 text-sm font-semibold cc-text-secondary shadow-sm transition-colors hover:bg-elevated"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                 >
                     <Wrench className="h-4 w-4" />
                     Solicitar servicio
                 </Link>
             </header>
 
-            <section className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+            <section className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Abiertos</p>
-                    <p className="mt-2 text-3xl font-semibold cc-text-primary">{summary.open}</p>
+                    <p className="mt-2 text-3xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{summary.open}</p>
                 </div>
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Alta prioridad</p>
-                    <p className="mt-2 text-3xl font-semibold text-orange-600">{summary.hot}</p>
+                    <p className="mt-2 text-3xl font-semibold" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-amber)" }}>{summary.hot}</p>
                 </div>
-                <div className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <p className="text-xs font-semibold uppercase tracking-widest cc-text-tertiary">Resueltos</p>
-                    <p className="mt-2 text-3xl font-semibold text-emerald-600">{summary.resolved}</p>
+                    <p className="mt-2 text-3xl font-semibold" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-sage)" }}>{summary.resolved}</p>
                 </div>
             </section>
 
-            <section className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm shadow-slate-200/20 dark:shadow-black/30">
+            <section className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 {loading ? (
                     <div className="space-y-4 p-6">
                         {[0, 1, 2].map(item => (
-                            <div key={item} className="h-28 animate-pulse rounded-lg bg-elevated" />
+                            <div key={item} className="h-28 animate-pulse rounded-xl" style={{ background: "var(--cc-paper-warm)" }} />
                         ))}
                     </div>
                 ) : cases.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-                        <div className="rounded-lg bg-emerald-50 p-4 text-emerald-600 dark:bg-emerald-500/10">
+                        <div className="rounded-full p-4" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
                             <Bot className="h-10 w-10" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold cc-text-primary">Aun no tienes casos CoCo</h2>
+                            <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Aun no tienes casos CoCo</h2>
                             <p className="mt-2 max-w-md text-sm cc-text-secondary">
                                 Cuando le reportes a CoCo una filtracion, ruido, seguridad o mantencion, quedara aqui para seguimiento.
                             </p>
                         </div>
                     </div>
                 ) : (
-                    <div className="divide-y divide-subtle">
+                    <div className="divide-y divide-[var(--cc-line)]">
                         {cases.map(item => {
                             const status = statusCopy[item.status] || statusCopy.open;
                             const StatusIcon = status.icon;
@@ -147,21 +147,21 @@ export default function ResidentCasesPage() {
                                 <article key={item.id} className="grid gap-5 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
                                     <div className="min-w-0 space-y-3">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${status.className}`}>
+                                            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-widest" style={status.style}>
                                                 <StatusIcon className="h-3.5 w-3.5" />
                                                 {status.label}
                                             </span>
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${urgencyClass[item.urgency]}`}>
+                                            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest" style={urgencyStyle[item.urgency]}>
                                                 {isHot && <ShieldAlert className="h-3.5 w-3.5" />}
                                                 {item.urgency}
                                             </span>
-                                            <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
+                                            <span className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary" style={{ background: "var(--cc-paper-warm)" }}>
                                                 {item.category}
                                             </span>
                                         </div>
 
                                         <div>
-                                            <h2 className="truncate text-lg font-semibold cc-text-primary">{item.title}</h2>
+                                            <h2 className="truncate text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{item.title}</h2>
                                             <p className="mt-1 line-clamp-2 text-sm font-medium cc-text-secondary">{item.source_message}</p>
                                         </div>
 
@@ -171,7 +171,7 @@ export default function ResidentCasesPage() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-lg bg-elevated p-4 lg:w-72">
+                                    <div className="rounded-xl p-4 lg:w-72" style={{ background: "var(--cc-paper-warm)" }}>
                                         <div className="flex items-start gap-3">
                                             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
                                             <div>
