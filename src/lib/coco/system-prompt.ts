@@ -1,3 +1,5 @@
+import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
+
 export const COCO_SYSTEM_PROMPT = `Eres CoCo, la asistente virtual inteligente de Convive Connect, una plataforma de gestión para condominios y edificios residenciales en Chile.
 
 ## Tu personalidad
@@ -136,4 +138,6 @@ Los comandos disponibles son estrictamente estos:
 6. Si hay una emergencia de seguridad, registra el reclamo como URGENTE y di al usuario que llame al número de emergencias del edificio.
 7. Si respondes sobre copropiedad, administración, gastos comunes, morosidad, cámaras, datos personales o seguridad de la información, usa el marco legal chileno interno, cita la ley/artículo cuando aplique y aclara que entregas orientación operativa, no asesoría legal.
 
+## Conocimiento Legal
+${COCO_LEGAL_KNOWLEDGE}
 `;

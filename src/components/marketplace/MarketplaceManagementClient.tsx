@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import {
     Dialog,
     DialogContent,
@@ -176,17 +177,17 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
 
     return (
         <>
-        <div className="mx-auto max-w-6xl space-y-6 p-6">
+        <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-brand-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">
+                    <Eyebrow className="mb-2 inline-flex items-center gap-2">
                         {isAdminMode ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
                         {isAdminMode ? "Moderación" : "Mis publicaciones"}
-                    </div>
-                    <h1 className="text-3xl font-bold cc-text-primary">
+                    </Eyebrow>
+                    <DisplayHeading size={32}>
                         {isAdminMode ? "Control del Marketplace" : "Gestiona tus publicaciones"}
-                    </h1>
-                    <p className="mt-1 max-w-2xl cc-text-secondary">
+                    </DisplayHeading>
+                    <p className="mt-2 max-w-2xl text-sm font-medium cc-text-secondary">
                         {isAdminMode
                             ? "Revisa estados, oculta anuncios problemáticos y mantén ordenada la vitrina comunitaria."
                             : "Marca artículos como reservados o vendidos y retira lo que ya no quieras mostrar."}
@@ -203,7 +204,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                 </div>
             </header>
 
-            <div className="grid gap-3 md:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                 {([
                     ["all", "Total", stats.total],
                     ["available", "Disponibles", stats.available],
@@ -215,19 +216,18 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                         key={key}
                         type="button"
                         onClick={() => setFilter(key)}
-                        className={`rounded-lg border p-4 text-left transition-colors ${
-                            filter === key
-                                ? "border-brand-300 bg-brand-50"
-                                : "border-subtle bg-surface hover:bg-elevated"
-                        }`}
+                        className="rounded-2xl border p-4 text-left transition-colors"
+                        style={filter === key
+                            ? { borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }
+                            : { borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                     >
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">{label}</p>
-                        <p className="mt-1 text-2xl font-semibold cc-text-primary">{value}</p>
+                        <p className="mt-1 text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{value}</p>
                     </button>
                 ))}
             </div>
 
-            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+            <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
                         {
@@ -246,8 +246,8 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                             icon: isAdminMode ? <EyeOff className="h-4 w-4" /> : <PackageSearch className="h-4 w-4" />,
                         },
                     ].map(item => (
-                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                        <div key={item.title} className="flex gap-4 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper)", color: "var(--cc-copper)" }}>
                                 {item.icon}
                             </div>
                             <div>
@@ -260,8 +260,8 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
             </section>
 
             {loading ? (
-                <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <div className="flex items-center justify-center gap-3 rounded-2xl border p-10 text-sm font-bold cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--cc-copper)" }} />
                     Cargando publicaciones...
                 </div>
             ) : filteredItems.length === 0 ? (
@@ -287,14 +287,14 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                         const isSaving = savingId === item.id;
 
                         return (
-                            <article key={item.id} className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
+                            <article key={item.id} className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                                 <div className="grid gap-0 md:grid-cols-[180px_1fr]">
-                                    <div className="relative h-48 bg-elevated md:h-full">
+                                    <div className="relative h-48 md:h-full" style={{ background: "var(--cc-paper-warm)" }}>
                                         {image ? (
                                             <Image src={image} alt={item.title} fill sizes="180px" className="object-cover" />
                                         ) : (
                                             <div className="flex h-full items-center justify-center">
-                                                <ShoppingBag className="h-10 w-10 text-slate-300" />
+                                                <ShoppingBag className="h-10 w-10" style={{ color: "var(--cc-ink-faint)" }} />
                                             </div>
                                         )}
                                     </div>
@@ -307,14 +307,14 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                                     {item.allowSwap && <Badge variant="conserje">Permuta</Badge>}
                                                     {item.allowBarter && <Badge variant="success">Trueque</Badge>}
                                                 </div>
-                                                <h2 className="truncate text-lg font-semibold cc-text-primary">{item.title}</h2>
-                                                <p className="mt-1 line-clamp-2 text-sm cc-text-secondary">{item.description}</p>
+                                                <h2 className="truncate text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{item.title}</h2>
+                                                <p className="mt-1 line-clamp-2 text-sm font-medium cc-text-secondary">{item.description}</p>
                                             </div>
                                             <div className="shrink-0 text-left md:text-right">
                                                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">
                                                     {isAdminMode ? `Depto ${getDeptNumber(item)}` : "Precio"}
                                                 </p>
-                                                <p className="text-lg font-semibold text-brand-600">
+                                                <p className="text-lg font-semibold" style={{ color: "var(--cc-copper)" }}>
                                                     {item.allowSale !== false ? `$${item.price.toLocaleString("es-CL")}` : "Intercambio"}
                                                 </p>
                                             </div>
@@ -349,7 +349,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                         </div>
 
                                         {item.status === "hidden" && (
-                                            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                                            <div className="flex items-start gap-2 rounded-xl border p-3 text-xs font-semibold" style={{ borderColor: "var(--cc-amber)", background: "var(--cc-amber-tint)", color: "var(--cc-amber)" }}>
                                                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                                                 Esta publicación está oculta para residentes en el marketplace público.
                                             </div>
