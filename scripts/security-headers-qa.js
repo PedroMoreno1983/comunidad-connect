@@ -8,14 +8,14 @@ const requiredHeaders = [
   'referrer-policy',
   'permissions-policy',
   'cross-origin-opener-policy',
-  'content-security-policy-report-only',
+  'content-security-policy',
 ];
 
 const expectedValues = {
   'x-content-type-options': value => value.toLowerCase() === 'nosniff',
   'x-frame-options': value => value.toUpperCase() === 'DENY',
   'referrer-policy': value => value.toLowerCase() === 'strict-origin-when-cross-origin',
-  'content-security-policy-report-only': value => value.includes("frame-ancestors 'none'") && value.includes("object-src 'none'"),
+  'content-security-policy': value => value.includes("frame-ancestors 'none'") && value.includes("object-src 'none'"),
 };
 
 async function checkHeaders() {
