@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceDistributedRateLimit } from "@/lib/security/rateLimit";
 import { sendWelcomeEmail, resend, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper } from "@/lib/email";
 import { PUBLIC_SITE_URL } from "@/lib/config";
+import { logApiError } from "@/lib/observability/logger";
 
 type GeocodeSelection = {
     label?: string;
@@ -247,7 +248,7 @@ export async function POST(req: NextRequest) {
         if (createdUserId) await admin.auth.admin.deleteUser(createdUserId).catch(() => undefined);
         if (createdCommunityId) await admin.from("communities").delete().eq("id", createdCommunityId);
         const message = error instanceof Error ? error.message : "No se pudo registrar el edificio.";
-        console.error("[admin-onboarding/register]", error);
+        logApiError(req, "/api/admin-onboarding/register", error);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

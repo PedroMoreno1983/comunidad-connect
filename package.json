@@ -25,7 +25,8 @@
     "qa:auth-boundaries": "node scripts/auth-boundaries-qa.js",
     "qa:supabase-schema": "node scripts/supabase-schema-qa.js",
     "search:backfill": "node scripts/backfill-marketplace-embeddings.js",
-    "test:whatsapp": "node scripts/test-whatsapp.js"
+    "test:whatsapp": "node scripts/test-whatsapp.js",
+    "test:e2e:security": "playwright test tests/e2e/security-boundaries.spec.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.1.0",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",

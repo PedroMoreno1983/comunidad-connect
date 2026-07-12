@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { logger, resolveRequestId } from '@/lib/observability/logger';
 
 type OperationSeverity = 'info' | 'success' | 'warning' | 'error';
 type OperationStatus = 'success' | 'error' | 'blocked' | 'pending';
@@ -57,10 +58,7 @@ export function sanitizeMetadata(metadata: Record<string, unknown> = {}) {
 }
 
 export function getRequestId(request?: Request | null) {
-    return request?.headers.get('x-vercel-id')
-        || request?.headers.get('x-request-id')
-        || request?.headers.get('cf-ray')
-        || null;
+    return request ? resolveRequestId(request) : null;
 }
 
 export async function recordOperationEvent(input: OperationEventInput) {
@@ -78,10 +76,7 @@ export async function recordOperationEvent(input: OperationEventInput) {
         request_id: input.requestId || null,
     };
 
-    console.info(JSON.stringify({
-        type: 'operation_event',
-        ...payload,
-    }));
+    logger.info('operation.event', payload);
 
     if (!payload.community_id) {
         return { ok: false, reason: 'missing_community_id' as const };
@@ -93,14 +88,14 @@ export async function recordOperationEvent(input: OperationEventInput) {
             .insert(payload);
 
         if (error) {
-            console.warn('[operation_events] insert failed:', error.message);
+            logger.warn('operation.event_insert_failed', { requestId: payload.request_id, reason: error.message });
             return { ok: false, reason: error.message };
         }
 
         return { ok: true as const };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown operation audit error';
-        console.warn('[operation_events] insert crashed:', message);
+        logger.error('operation.event_insert_crashed', error, { requestId: payload.request_id });
         return { ok: false, reason: message };
     }
 }

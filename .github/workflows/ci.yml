@@ -41,5 +41,11 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Security boundary regression
+        run: npm run qa:security-boundaries
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+
       - name: Build
         run: npm run build

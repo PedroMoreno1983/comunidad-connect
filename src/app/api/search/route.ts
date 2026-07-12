@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SearchService } from '@/lib/search';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { logApiError } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
 
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('[API /search] Error:', error);
+    logApiError(req, '/api/search', error, { scope });
     return NextResponse.json(
       { error: 'Error interno en el motor de búsqueda.' },
       { status: 500 }
