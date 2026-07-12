@@ -266,14 +266,14 @@ export function PollManager() {
             </section>
 
             <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
-                <form id="crear-votacion" onSubmit={handleCreatePoll} className="min-w-0 rounded-lg border border-subtle bg-surface shadow-sm">
-                    <div className="border-b border-subtle p-5">
+                <form id="crear-votacion" onSubmit={handleCreatePoll} className="min-w-0 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
                         <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                 <Plus className="h-5 w-5" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-semibold cc-text-primary">Nueva votacion</h2>
+                                <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)", fontSize: 19 }}>Nueva votacion</h2>
                                 <p className="text-sm cc-text-secondary">Crea la consulta y decide por que canales enviarla.</p>
                             </div>
                         </div>
@@ -285,7 +285,7 @@ export function PollManager() {
                                 value={form.title}
                                 onChange={event => setForm({ ...form, title: event.target.value })}
                                 placeholder="Ej: Aprobacion presupuesto ascensor Torre B"
-                                className="rounded-md"
+                                className="rounded-lg"
                             />
                         </Field>
 
@@ -294,7 +294,8 @@ export function PollManager() {
                                 value={form.description}
                                 onChange={event => setForm({ ...form, description: event.target.value })}
                                 placeholder="Explica que se vota, por que importa y que pasa si se aprueba."
-                                className="min-h-28 w-full resize-none rounded-md border border-subtle bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                                className="min-h-28 w-full resize-none rounded-lg border px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--cc-copper)] focus:ring-2 focus:ring-[var(--cc-copper)]/15"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                             />
                         </Field>
 
@@ -303,7 +304,8 @@ export function PollManager() {
                                 <select
                                     value={form.category}
                                     onChange={event => setForm({ ...form, category: event.target.value as Poll["category"] })}
-                                    className="h-11 w-full rounded-md border border-subtle bg-surface px-3 text-sm font-medium cc-text-primary outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                                    className="h-11 w-full rounded-lg border px-3 text-sm font-medium cc-text-primary outline-none focus:border-[var(--cc-copper)] focus:ring-2 focus:ring-[var(--cc-copper)]/15"
+                                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                                 >
                                     <option value="community">Comunidad</option>
                                     <option value="maintenance">Mantención</option>
@@ -316,7 +318,7 @@ export function PollManager() {
                                     type="date"
                                     value={form.endDate}
                                     onChange={event => setForm({ ...form, endDate: event.target.value })}
-                                    className="rounded-md"
+                                    className="rounded-lg"
                                 />
                             </Field>
                         </div>
@@ -324,7 +326,7 @@ export function PollManager() {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Opciones de voto</p>
-                                <button type="button" onClick={addOption} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                                <button type="button" onClick={addOption} className="text-xs font-semibold" style={{ color: "var(--cc-copper)" }}>
                                     Agregar opcion
                                 </button>
                             </div>
@@ -334,13 +336,14 @@ export function PollManager() {
                                         value={option}
                                         onChange={event => updateOption(index, event.target.value)}
                                         placeholder={`Opcion ${index + 1}`}
-                                        className="min-w-0 rounded-md"
+                                        className="min-w-0 rounded-lg"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => removeOption(index)}
                                         disabled={form.options.length <= 2}
-                                        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-subtle text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border text-[var(--cc-ink-faint)] transition-colors hover:bg-[var(--cc-rose-tint)] hover:text-[var(--cc-rose)] disabled:cursor-not-allowed disabled:opacity-40"
+                                        style={{ borderColor: "var(--cc-line)" }}
                                         title="Eliminar opcion"
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -349,7 +352,7 @@ export function PollManager() {
                             ))}
                         </div>
 
-                        <div className="rounded-lg border border-subtle bg-canvas p-4">
+                        <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                             <p className="mb-3 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Canales de envio</p>
                             <ChannelToggle
                                 checked={form.sendChat}
@@ -374,17 +377,17 @@ export function PollManager() {
                             />
                         </div>
 
-                        <div className="rounded-lg border border-warning-border bg-warning-bg p-4">
+                        <div className="rounded-xl border border-warning-border bg-warning-bg p-4">
                             <div className="flex gap-3">
                                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" />
-                                <p className="text-sm leading-6 text-amber-900">
+                                <p className="text-sm leading-6 text-warning-fg">
                                     Revisa el texto antes de enviar. Si activas WhatsApp, se mandara solo a residentes que hayan habilitado ese canal y tengan telefono valido.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 border-t border-subtle p-5 sm:flex-row">
+                    <div className="flex flex-col gap-3 border-t p-5 sm:flex-row" style={{ borderColor: "var(--cc-line)" }}>
                         <Button type="button" variant="outline" className="sm:flex-1" onClick={resetForm} disabled={isPublishing}>
                             Limpiar
                         </Button>
@@ -396,13 +399,13 @@ export function PollManager() {
                 </form>
 
                 <div className="min-w-0 space-y-5">
-                    <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+                    <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                 <FileText className="h-5 w-5" />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-lg font-semibold cc-text-primary">Flujo de publicacion</h2>
+                                <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)", fontSize: 19 }}>Flujo de publicacion</h2>
                                 <p className="mt-1 text-sm leading-6 cc-text-secondary">
                                     Cada consulta termina en el centro de votacion del residente, un anuncio para la comunidad y un registro de envio para auditoria.
                                 </p>
@@ -421,13 +424,13 @@ export function PollManager() {
                         </div>
                     )}
 
-                    <section id="votaciones-publicadas" className="overflow-hidden rounded-lg border border-subtle bg-surface shadow-sm">
-                        <div className="flex flex-col gap-3 border-b border-subtle p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <section id="votaciones-publicadas" className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                        <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line)" }}>
                             <div>
-                                <h2 className="text-lg font-semibold cc-text-primary">Votaciones publicadas</h2>
+                                <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)", fontSize: 19 }}>Votaciones publicadas</h2>
                                 <p className="text-sm cc-text-secondary">Seguimiento de consultas, participacion y fecha de cierre.</p>
                             </div>
-                            <div className="inline-flex items-center gap-2 rounded-md border border-subtle bg-canvas px-3 py-2 text-xs font-semibold cc-text-secondary">
+                            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                 <CalendarDays className="h-4 w-4" />
                                 Ordenadas por publicacion
                             </div>
@@ -435,7 +438,7 @@ export function PollManager() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[760px] text-sm">
-                                <thead className="border-b border-subtle bg-canvas text-xs font-bold uppercase tracking-[0.08em] cc-text-secondary">
+                                <thead className="border-b text-xs font-bold uppercase tracking-[0.08em] cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                     <tr>
                                         <th className="px-5 py-4 text-left">Votacion</th>
                                         <th className="px-5 py-4 text-left">Opciones</th>
@@ -444,7 +447,7 @@ export function PollManager() {
                                         <th className="px-5 py-4 text-left">Cierre</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-subtle">
+                                <tbody className="divide-y divide-[var(--cc-line)]">
                                     {isLoading ? (
                                         <tr>
                                             <td colSpan={5} className="px-5 py-12 text-center cc-text-secondary">Cargando consultas...</td>
@@ -456,39 +459,39 @@ export function PollManager() {
                                     ) : polls.map((poll) => {
                                         const daysLeft = Math.max(0, Math.ceil((new Date(poll.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                                         return (
-                                            <tr key={poll.id} className="hover:bg-elevated/50">
+                                            <tr key={poll.id} className="hover:bg-[var(--cc-paper-warm)]">
                                                 <td className="px-5 py-5">
                                                     <div className="flex items-start gap-3">
-                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                                             <Vote className="h-5 w-5" />
                                                         </div>
                                                         <div>
                                                             <p className="font-semibold cc-text-primary">{poll.title}</p>
                                                             <p className="mt-1 line-clamp-2 max-w-md text-xs cc-text-secondary">{poll.description}</p>
-                                                            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-600">{categoryLabels[poll.category]}</p>
+                                                            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--cc-copper)" }}>{categoryLabels[poll.category]}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-5">
                                                     <div className="flex flex-wrap gap-2">
                                                         {poll.options.slice(0, 3).map(option => (
-                                                            <span key={option.id} className="rounded-md border border-subtle bg-canvas px-2.5 py-1 text-xs font-semibold cc-text-secondary">
+                                                            <span key={option.id} className="rounded-full border px-2.5 py-1 text-xs font-semibold cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                                                                 {option.text}
                                                             </span>
                                                         ))}
                                                         {poll.options.length > 3 && (
-                                                            <span className="rounded-md bg-elevated px-2.5 py-1 text-xs font-semibold cc-text-secondary">+{poll.options.length - 3}</span>
+                                                            <span className="rounded-full px-2.5 py-1 text-xs font-semibold cc-text-secondary" style={{ background: "var(--cc-paper-warm)" }}>+{poll.options.length - 3}</span>
                                                         )}
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-5">
                                                     <p className="font-semibold cc-text-primary">{poll.totalVotes} votos</p>
-                                                    <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-elevated">
-                                                        <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, (poll.totalVotes / 80) * 100)}%` }} />
+                                                    <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full" style={{ background: "var(--cc-paper-warm)" }}>
+                                                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (poll.totalVotes / 80) * 100)}%`, background: "var(--cc-copper)" }} />
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-5">
-                                                    <span className={`rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] ${poll.status === "active" ? "bg-success-bg text-success-fg" : "bg-elevated cc-text-secondary"}`}>
+                                                    <span className="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em]" style={poll.status === "active" ? { background: "var(--cc-success-bg)", color: "var(--cc-success-fg)" } : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-muted)" }}>
                                                         {poll.status === "active" ? "Activa" : "Cerrada"}
                                                     </span>
                                                 </td>
@@ -517,24 +520,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function StatCard({ icon, label, value, helper, dark = false }: { icon: React.ReactNode; label: string; value: number; helper: string; dark?: boolean }) {
     return (
-        <article className={`rounded-lg border p-5 shadow-sm ${dark ? "border-slate-900 bg-slate-950 text-white" : "border-subtle bg-surface"}`}>
+        <article className="rounded-2xl border p-5" style={dark
+            ? { borderColor: "var(--cc-line)", background: "var(--cc-ink)", color: "#fff" }
+            : { borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
             <div className="flex items-center justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${dark ? "bg-white/10 text-blue-300" : "bg-brand-50 text-brand-600"}`}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full" style={dark
+                    ? { background: "rgba(255,255,255,0.1)", color: "var(--cc-copper-tint)" }
+                    : { background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                     {icon}
                 </div>
-                {dark && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+                {dark && <CheckCircle2 className="h-5 w-5" style={{ color: "var(--cc-sage)" }} />}
             </div>
-            <p className={`mt-5 text-3xl font-semibold ${dark ? "text-white" : "cc-text-primary"}`}>{value}</p>
-            <p className={`mt-1 text-xs font-bold uppercase tracking-[0.12em] ${dark ? "text-slate-400" : "cc-text-secondary"}`}>{label}</p>
-            <p className={`mt-2 text-sm ${dark ? "text-slate-300" : "cc-text-secondary"}`}>{helper}</p>
+            <p className="mt-5 text-3xl font-semibold" style={{ fontFamily: "var(--cc-font-display)", color: dark ? "#fff" : "var(--cc-ink)" }}>{value}</p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em]" style={{ color: dark ? "var(--cc-ink-tertiary)" : "var(--cc-ink-muted)" }}>{label}</p>
+            <p className="mt-2 text-sm" style={{ color: dark ? "var(--cc-ink-muted)" : "var(--cc-ink-muted)" }}>{helper}</p>
         </article>
     );
 }
 
 function FlowStep({ label, text }: { label: string; text: string }) {
     return (
-        <div className="rounded-md border border-subtle bg-canvas p-3">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-brand-600">{label}</p>
+        <div className="rounded-lg border p-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+            <p className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--cc-copper)" }}>{label}</p>
             <p className="mt-1 text-sm leading-5 cc-text-secondary">{text}</p>
         </div>
     );
@@ -554,14 +561,15 @@ function ChannelToggle({
     helper: string;
 }) {
     return (
-        <label className="flex cursor-pointer items-start gap-3 border-t border-subtle py-3 first:border-t-0 first:pt-0 last:pb-0">
+        <label className="flex cursor-pointer items-start gap-3 border-t py-3 first:border-t-0 first:pt-0 last:pb-0" style={{ borderColor: "var(--cc-line)" }}>
             <input
                 type="checkbox"
                 checked={checked}
                 onChange={event => onChange(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-subtle accent-brand-500"
+                className="mt-1 h-4 w-4 rounded accent-[var(--cc-copper)]"
+                style={{ borderColor: "var(--cc-line)" }}
             />
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">{icon}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full cc-text-secondary" style={{ background: "var(--cc-paper)" }}>{icon}</span>
             <span>
                 <span className="block text-sm font-semibold cc-text-primary">{label}</span>
                 <span className="mt-0.5 block text-xs leading-5 cc-text-secondary">{helper}</span>
@@ -572,40 +580,41 @@ function ChannelToggle({
 
 function DeliverySummaryCard({ summary }: { summary: DeliverySummary }) {
     return (
-        <section className="rounded-lg border border-success-border bg-success-bg p-5 shadow-sm">
+        <section className="rounded-2xl border border-success-border bg-success-bg p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-sage)" }}>
                         <CheckCircle2 className="h-5 w-5" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-success-fg">
                             Votacion enviada
                         </h3>
-                        <p className="mt-1 text-sm leading-6 text-emerald-900">{summary.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-emerald-900/70">
+                        <p className="mt-1 text-sm leading-6 text-success-fg">{summary.title}</p>
+                        <p className="mt-1 text-xs font-semibold text-success-fg opacity-70">
                             Publicada {new Date(summary.publishedAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
                         </p>
                     </div>
                 </div>
                 <a
                     href="/votaciones"
-                    className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white/80 px-3 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-white"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-success-fg transition-colors hover:opacity-80"
+                    style={{ borderColor: "var(--cc-success-border)", background: "var(--cc-paper)" }}
                 >
                     Ver centro residente
                     <ExternalLink className="h-4 w-4" />
                 </a>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md bg-white/70 p-3">
+                <div className="rounded-xl p-3" style={{ background: "var(--cc-paper)" }}>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] cc-text-secondary">Chat app</p>
                     <p className="mt-1 text-sm font-semibold cc-text-primary">{summary.chatSent ? "Publicado" : "No enviado"}</p>
                 </div>
-                <div className="rounded-md bg-white/70 p-3">
+                <div className="rounded-xl p-3" style={{ background: "var(--cc-paper)" }}>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] cc-text-secondary">Notificaciones</p>
                     <p className="mt-1 text-sm font-semibold cc-text-primary">{summary.notificationsSent}</p>
                 </div>
-                <div className="rounded-md bg-white/70 p-3">
+                <div className="rounded-xl p-3" style={{ background: "var(--cc-paper)" }}>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] cc-text-secondary">WhatsApp</p>
                     <p className="mt-1 text-sm font-semibold cc-text-primary">
                         {summary.whatsappConfigured ? `${summary.whatsappSent} enviados` : "Sin configurar"}
