@@ -22,6 +22,7 @@
     "qa:visual": "node scripts/production-live-qa.js",
     "qa:security-headers": "node scripts/security-headers-qa.js",
     "qa:security-boundaries": "node scripts/security-boundaries-qa.js",
+    "qa:auth-boundaries": "node scripts/auth-boundaries-qa.js",
     "qa:supabase-schema": "node scripts/supabase-schema-qa.js",
     "search:backfill": "node scripts/backfill-marketplace-embeddings.js",
     "test:whatsapp": "node scripts/test-whatsapp.js"
