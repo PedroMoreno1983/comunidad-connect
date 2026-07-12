@@ -60,7 +60,7 @@ export async function GET() {
 async function processExpensePayment(recordId: string, params: CallbackParams, completed: boolean) {
     const { data: expense, error: readError } = await supabaseAdmin
         .from('expenses')
-        .select('id,status,amount')
+        .select('id,status,amount,payment_metadata')
         .eq('id', recordId)
         .maybeSingle();
 
@@ -68,16 +68,18 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
     if (!expense) return { status: 'unknown_reference' };
     if (expense.status === 'paid') return { status: 'idempotent' };
 
-    const metadata = buildPaymentMetadata(params);
-    // Tolerancia de 1 peso por redondeo; el monto pagado puede ser mayor si incluyo comision de servicio,
-    // pero nunca debe marcarse "pagado" si es menor al monto realmente adeudado.
-    const paidEnough = metadata.amount >= Math.round(Number(expense.amount || 0)) - 1;
+    const previousMetadata = expense.payment_metadata && typeof expense.payment_metadata === 'object'
+        ? expense.payment_metadata as Record<string, unknown>
+        : {};
+    const metadata = { ...previousMetadata, ...buildPaymentMetadata(params) };
+    const expectedAmount = Math.round(Number(previousMetadata.amount || expense.amount || 0));
+    const amountMatches = expectedAmount > 0 && Math.abs(Number(metadata.amount || 0) - expectedAmount) <= 1;
 
-    if (completed && !paidEnough) {
-        console.warn(`[Haulmer] Pago incompleto para expense ${recordId}: pagado ${metadata.amount}, adeudado ${expense.amount}`);
+    if (completed && !amountMatches) {
+        console.warn(`[Haulmer] Monto no coincide para expense ${recordId}: pagado ${metadata.amount}, esperado ${expectedAmount}`);
         const { error } = await supabaseAdmin
             .from('expenses')
-            .update({ payment_metadata: { ...metadata, mismatch: true } })
+            .update({ payment_metadata: { ...metadata, mismatch: true, expected_amount: expectedAmount } })
             .eq('id', recordId);
         if (error) throw error;
         return { status: 'amount_mismatch' };
@@ -99,13 +101,20 @@ async function processExpensePayment(recordId: string, params: CallbackParams, c
 async function processMarketplacePayment(recordId: string, params: CallbackParams, completed: boolean) {
     const { data: item, error: readError } = await supabaseAdmin
         .from('marketplace_items')
-        .select('id,status,payment_status')
+        .select('id,status,payment_status,price')
         .eq('id', recordId)
         .maybeSingle();
 
     if (readError) throw readError;
     if (!item) return { status: 'unknown_reference' };
     if (item.payment_status === 'completed') return { status: 'idempotent' };
+
+    const paidAmount = Number(params.x_amount || 0);
+    const expectedAmount = Math.round(Number(item.price || 0));
+    if (completed && (expectedAmount <= 0 || Math.abs(paidAmount - expectedAmount) > 1)) {
+        console.warn(`[Haulmer] Monto no coincide para marketplace ${recordId}: pagado ${paidAmount}, esperado ${expectedAmount}`);
+        return { status: 'amount_mismatch' };
+    }
 
     const update = completed
         ? { status: 'sold', payment_status: 'completed' }

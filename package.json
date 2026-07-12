@@ -13,6 +13,7 @@
     "qa:production-live": "node scripts/production-live-qa.js",
     "qa:production-hardening": "node scripts/production-hardening-qa.js",
     "qa:coco-legal": "node scripts/coco-legal-qa.js",
+    "qa:finance-agent": "node scripts/finance-agent-integrity-qa.js",
     "qa:multitenant": "node scripts/multitenant-qa.js",
     "qa:operations": "node scripts/operations-qa.js",
     "qa:workflows": "node scripts/operations-qa.js",
@@ -20,6 +21,7 @@
     "qa:human-flows": "node scripts/production-hardening-qa.js",
     "qa:visual": "node scripts/production-live-qa.js",
     "qa:security-headers": "node scripts/security-headers-qa.js",
+    "qa:security-boundaries": "node scripts/security-boundaries-qa.js",
     "qa:supabase-schema": "node scripts/supabase-schema-qa.js",
     "search:backfill": "node scripts/backfill-marketplace-embeddings.js",
     "test:whatsapp": "node scripts/test-whatsapp.js"
@@ -56,7 +58,8 @@
   },
   "overrides": {
     "@xmldom/xmldom": "^0.8.13",
-    "postcss": "^8.5.6"
+    "postcss": "^8.5.6",
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.1.0",

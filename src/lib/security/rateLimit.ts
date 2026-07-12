@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 type RateLimitEntry = {
     count: number;
@@ -67,4 +69,54 @@ export function enforceRateLimit(
             },
         }
     );
+}
+
+/**
+ * Cross-instance limiter backed by Postgres. It falls back to the local bucket
+ * only while the migration is being rolled out, so a missing RPC never turns
+ * into an outage.
+ */
+export async function enforceDistributedRateLimit(
+    request: Request,
+    scope: string,
+    options: { limit: number; windowMs: number }
+) {
+    const subjectHash = createHash('sha256')
+        .update(getClientIp(request))
+        .digest('hex');
+
+    try {
+        const { data, error } = await getSupabaseAdmin().rpc('consume_api_rate_limit', {
+            p_scope: scope,
+            p_subject_hash: subjectHash,
+            p_limit: options.limit,
+            p_window_seconds: Math.max(1, Math.ceil(options.windowMs / 1000)),
+        });
+        if (error) throw error;
+
+        const row = (Array.isArray(data) ? data[0] : data) as {
+            allowed?: boolean;
+            remaining?: number;
+            retry_after_seconds?: number;
+        } | null;
+
+        if (row?.allowed !== false) return null;
+
+        return NextResponse.json(
+            { error: 'Demasiadas solicitudes. Intenta nuevamente en unos segundos.' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(Math.max(1, Number(row.retry_after_seconds) || 1)),
+                    'X-RateLimit-Limit': String(options.limit),
+                    'X-RateLimit-Remaining': String(Math.max(0, Number(row.remaining) || 0)),
+                },
+            },
+        );
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('[rate-limit] Distributed limiter unavailable; using local fallback.', error);
+        }
+        return enforceRateLimit(request, scope, options);
+    }
 }

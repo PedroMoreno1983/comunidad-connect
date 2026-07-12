@@ -69,11 +69,12 @@ async function main() {
     }
     assert(true, 'Voting tables are available');
 
-    const { error: communitiesError } = await admin.from('communities').insert([
+    const { data: createdCommunities, error: communitiesError } = await admin.from('communities').insert([
       { id: communityA, name: `QA Comunidad A ${runId}`, subscription_status: 'active' },
       { id: communityB, name: `QA Comunidad B ${runId}`, subscription_status: 'active' },
-    ]);
+    ]).select('id,admin_code');
     if (communitiesError) throw communitiesError;
+    const inviteCodeByCommunity = new Map(createdCommunities.map(community => [community.id, community.admin_code]));
     assert(true, 'Temporary communities created');
 
     for (const [email, communityId, label] of [
@@ -86,8 +87,7 @@ async function main() {
         email_confirm: true,
         user_metadata: {
           name: label,
-          role: 'admin',
-          community_id: communityId,
+          invite_code: inviteCodeByCommunity.get(communityId),
         },
       });
       if (error || !data.user) throw error || new Error(`Could not create ${email}`);

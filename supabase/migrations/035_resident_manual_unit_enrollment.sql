@@ -10,16 +10,32 @@ DECLARE
   v_community_id UUID;
   v_name TEXT;
   v_role TEXT;
+  v_invite_code TEXT;
   v_department TEXT;
   v_unit_id UUID;
   v_tower TEXT;
   v_floor INTEGER;
   v_numeric_part TEXT;
 BEGIN
-  IF (NEW.raw_user_meta_data->>'community_id') IS NOT NULL AND (NEW.raw_user_meta_data->>'community_id') <> '' THEN
-    v_community_id := (NEW.raw_user_meta_data->>'community_id')::UUID;
-  ELSE
-    v_community_id := '00000000-0000-0000-0000-000000000000'::UUID;
+  -- Never trust role or community_id supplied by the browser. The invitation
+  -- code is resolved again inside PostgreSQL for every auth user creation.
+  v_invite_code := UPPER(BTRIM(COALESCE(NEW.raw_user_meta_data->>'invite_code', '')));
+
+  SELECT c.id,
+         CASE
+           WHEN c.resident_code = v_invite_code THEN 'resident'
+           WHEN c.concierge_code = v_invite_code THEN 'concierge'
+           WHEN c.admin_code = v_invite_code THEN 'admin'
+         END
+    INTO v_community_id, v_role
+  FROM public.communities c
+  WHERE c.resident_code = v_invite_code
+     OR c.concierge_code = v_invite_code
+     OR c.admin_code = v_invite_code
+  LIMIT 1;
+
+  IF v_community_id IS NULL OR v_role IS NULL THEN
+    RAISE EXCEPTION 'A valid invitation code is required';
   END IF;
 
   v_name := COALESCE(
@@ -27,7 +43,6 @@ BEGIN
     NULLIF(NEW.raw_user_meta_data->>'name', ''),
     NEW.email
   );
-  v_role := COALESCE(NULLIF(NEW.raw_user_meta_data->>'role', ''), 'resident');
   v_department := NULLIF(BTRIM(COALESCE(
     NEW.raw_user_meta_data->>'department_number',
     NEW.raw_user_meta_data->>'unit_number',
@@ -78,3 +93,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Invitation codes must never be enumerable through the public anon client.
+DROP POLICY IF EXISTS "Public can view community by code" ON public.communities;
+DROP POLICY IF EXISTS "Authenticated users can view own community" ON public.communities;
+CREATE POLICY "Authenticated users can view own community"
+  ON public.communities
+  FOR SELECT
+  TO authenticated
+  USING (id = public.get_my_community_id());

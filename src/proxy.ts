@@ -5,10 +5,6 @@ import { isSuperAdminEmail } from "@/lib/security/superadmin";
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (!pathname.startsWith("/superadmin")) {
-    return NextResponse.next();
-  }
-
   const res = NextResponse.next();
 
   const supabase = createServerClient(
@@ -31,13 +27,42 @@ export async function proxy(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const email = user?.email?.toLowerCase();
-  if (!isSuperAdminEmail(email)) {
+  if (!user) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("next", `${pathname}${req.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith("/superadmin")) {
+    if (isSuperAdminEmail(email)) return res;
     return NextResponse.redirect(new URL("/home", req.url));
   }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const role = typeof profile?.role === "string" ? profile.role : "resident";
+  const allowed = pathname.startsWith("/admin")
+    ? role === "admin"
+    : pathname.startsWith("/concierge")
+      ? role === "concierge" || role === "admin"
+      : pathname.startsWith("/resident")
+        ? role === "resident" || role === "admin"
+        : true;
+
+  if (!allowed) return NextResponse.redirect(new URL("/home", req.url));
 
   return res;
 }
 
 export const config = {
-  matcher: ["/superadmin", "/superadmin/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/concierge/:path*",
+    "/resident/:path*",
+    "/superadmin/:path*",
+  ],
 };

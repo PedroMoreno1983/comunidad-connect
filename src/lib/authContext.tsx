@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from './types';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { PUBLIC_SITE_URL } from '@/lib/config';
 
 // ============================================
 // Unified Auth Context
@@ -21,7 +20,6 @@ interface AuthContextType {
     supabaseUser: SupabaseUser | null;
     session: Session | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, userData: Record<string, unknown>) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -230,32 +228,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Supabase sign up
-    const signUp = async (email: string, password: string, userData: Record<string, unknown>) => {
-        try {
-            // Determine current origin for email redirection
-            const origin = typeof window !== 'undefined' ? window.location.origin : PUBLIC_SITE_URL;
-            
-            if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-                console.error("Supabase not configured. Signup will fail.");
-                return { error: new Error("Sistema no configurado para registro real. Revisa Supabase.") };
-            }
-
-            const { error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: userData,
-                    emailRedirectTo: `${origin}/login`,
-                },
-            });
-            if (error) return { error };
-            return { error: null };
-        } catch (error: unknown) {
-            return { error: error as Error };
-        }
-    };
-
     // Logout
     const logout = async () => {
         if (typeof window !== 'undefined') {
@@ -275,7 +247,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             supabaseUser,
             session,
             signIn,
-            signUp,
         }}>
             {children}
         </AuthContext.Provider>

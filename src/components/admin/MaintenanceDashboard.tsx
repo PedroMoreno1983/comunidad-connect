@@ -264,7 +264,7 @@ export function MaintenanceDashboard() {
         <div className="space-y-12">
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-[var(--cc-paper)] p-8 rounded-lg border border-[var(--cc-line)] shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-danger-bg rounded-lg">
                             <AlertCircle className="h-6 w-6 text-danger-fg" />
@@ -272,16 +272,16 @@ export function MaintenanceDashboard() {
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Tareas Vencidas</h3>
                     </div>
                     <p className="text-4xl font-semibold cc-text-primary">{overdueCount}</p>
-                    <p className="text-xs font-bold text-red-500 mt-2 flex items-center gap-1">
+                    <p className="text-xs font-bold text-[var(--cc-rose)] mt-2 flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         Requiere acción inmediata
                     </p>
                 </div>
 
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-[var(--cc-paper)] p-8 rounded-lg border border-[var(--cc-line)] shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <div className="p-3 bg-[var(--cc-copper-tint)] rounded-lg">
+                            <Clock className="h-6 w-6 text-[var(--cc-copper)]" />
                         </div>
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Pendientes</h3>
                     </div>
@@ -289,7 +289,7 @@ export function MaintenanceDashboard() {
                     <p className="text-xs font-bold text-slate-400 mt-2">Próximos 7 días</p>
                 </div>
 
-                <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                <div className="bg-[var(--cc-paper)] p-8 rounded-lg border border-[var(--cc-line)] shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-warning-bg rounded-lg">
                             <Activity className="h-6 w-6 text-warning-fg" />
@@ -297,19 +297,19 @@ export function MaintenanceDashboard() {
                         <h3 className="font-semibold cc-text-primary uppercase text-[10px] tracking-widest">Activos Críticos</h3>
                     </div>
                     <p className="text-4xl font-semibold cc-text-primary">{criticalAssets}</p>
-                    <p className="text-xs font-bold text-amber-500 mt-2">Revisar hoja de vida</p>
+                    <p className="text-xs font-bold text-[var(--cc-amber)] mt-2">Revisar hoja de vida</p>
                 </div>
 
-                <div className="bg-canvas/80 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-lg shadow-sm shadow-blue-500/10 relative overflow-hidden group">
+                <div className="relative overflow-hidden rounded-2xl p-8 group" style={{ background: "var(--cc-ink)" }}>
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                        <TrendingUp className="h-20 w-20 text-blue-500" />
+                        <TrendingUp className="h-20 w-20" style={{ color: "var(--cc-copper-soft)" }} />
                     </div>
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div>
-                            <h3 className="font-semibold text-white uppercase text-[10px] tracking-widest mb-1">Costo Operativo</h3>
-                            <p className="text-2xl font-semibold text-white">$450.000</p>
+                            <h3 className="mb-1 text-[10px] font-medium uppercase tracking-widest" style={{ color: "var(--cc-paper)" }}>Costo operativo</h3>
+                            <p className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-paper)" }}>$450.000</p>
                         </div>
-                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Este mes</p>
+                        <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: "var(--cc-copper-soft)" }}>Este mes</p>
                     </div>
                 </div>
             </div>
@@ -318,19 +318,19 @@ export function MaintenanceDashboard() {
             <section className="space-y-6">
                 <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Wrench className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+                        <div className="p-3 bg-[var(--cc-copper-tint)] rounded-lg">
+                            <Wrench className="h-6 w-6 text-[var(--cc-copper)]" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-[0.25em]">Servicios</p>
-                            <h2 className="text-2xl font-semibold cc-text-primary">Solicitudes de proveedores</h2>
+                            <p className="text-[10px] font-semibold text-[var(--cc-copper)] uppercase tracking-[0.25em]">Servicios</p>
+                            <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Solicitudes de proveedores</h2>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                         <span className="rounded-lg bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
                             {activeServiceRequests.length} activas
                         </span>
-                        <span className="rounded-lg bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
+                        <span className="rounded-lg bg-[var(--cc-amber-tint)] px-4 py-2 text-xs font-semibold text-[var(--cc-amber)]">
                             {pendingServiceRequests} pendientes
                         </span>
                     </div>
@@ -352,12 +352,12 @@ export function MaintenanceDashboard() {
                                 const isDone = item.status === 'completed' || item.status === 'cancelled';
                                 const statusClass =
                                     item.status === 'completed'
-                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                        ? 'bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
                                         : item.status === 'cancelled'
                                             ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
                                             : item.status === 'accepted'
-                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
-                                                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+                                                ? 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'
+                                                : 'bg-[var(--cc-amber-tint)] text-[var(--cc-amber)]';
 
                                 return (
                                     <article key={item.id} className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
@@ -392,7 +392,7 @@ export function MaintenanceDashboard() {
                                                 <button
                                                     onClick={() => handleUpdateServiceStatus(item.id, 'accepted')}
                                                     disabled={serviceUpdatingId === item.id}
-                                                    className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                                                    className="rounded-xl bg-[var(--cc-copper)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
                                                 >
                                                     Aceptar
                                                 </button>
@@ -401,7 +401,7 @@ export function MaintenanceDashboard() {
                                                 <button
                                                     onClick={() => handleUpdateServiceStatus(item.id, 'completed')}
                                                     disabled={serviceUpdatingId === item.id}
-                                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                                                    className="rounded-xl bg-[var(--cc-sage)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
                                                 >
                                                     Completar
                                                 </button>
@@ -410,7 +410,7 @@ export function MaintenanceDashboard() {
                                                 <button
                                                     onClick={() => handleUpdateServiceStatus(item.id, 'cancelled')}
                                                     disabled={serviceUpdatingId === item.id}
-                                                    className="rounded-xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary transition-colors hover:bg-slate-200 disabled:opacity-50 dark:hover:bg-slate-800"
+                                                    className="rounded-xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-line)] disabled:opacity-50"
                                                 >
                                                     Cancelar
                                                 </button>
@@ -428,12 +428,12 @@ export function MaintenanceDashboard() {
             <section className="space-y-6">
                 <div className="flex flex-col gap-4 px-2 md:flex-row md:items-end md:justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
-                            <Bot className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
+                        <div className="p-3 bg-[var(--cc-sage-tint)] rounded-lg">
+                            <Bot className="h-6 w-6 text-[var(--cc-sage)]" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-[0.25em]">Operacion CoCo</p>
-                            <h2 className="text-2xl font-semibold cc-text-primary">Casos detectados por IA</h2>
+                            <p className="text-[10px] font-semibold text-[var(--cc-sage)] uppercase tracking-[0.25em]">Operacion CoCo</p>
+                            <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Casos detectados por IA</h2>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -448,7 +448,7 @@ export function MaintenanceDashboard() {
                                     onClick={() => setCaseStatusFilter(option.key as typeof caseStatusFilter)}
                                     className={`rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors ${
                                         caseStatusFilter === option.key
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                            ? 'bg-[var(--cc-ink)] text-[var(--cc-paper)]'
                                             : 'cc-text-secondary hover:bg-elevated'
                                     }`}
                                 >
@@ -460,8 +460,8 @@ export function MaintenanceDashboard() {
                             onClick={() => setCaseUrgencyFilter(prev => prev === 'hot' ? 'all' : 'hot')}
                             className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
                                 caseUrgencyFilter === 'hot'
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
+                                    ? 'bg-[var(--cc-rose)] text-white'
+                                    : 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]'
                             }`}
                         >
                             Solo urgentes
@@ -469,7 +469,7 @@ export function MaintenanceDashboard() {
                         <span className="rounded-lg bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary">
                             {openCocoCases} abiertos
                         </span>
-                        <span className="rounded-lg bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-300">
+                        <span className="rounded-lg bg-[var(--cc-rose-tint)] px-4 py-2 text-xs font-semibold text-[var(--cc-rose)]">
                             {emergencyCocoCases} alta prioridad
                         </span>
                     </div>
@@ -482,12 +482,12 @@ export function MaintenanceDashboard() {
                                 key={insight.title}
                                 className={`rounded-lg border p-4 ${
                                     insight.tone === 'red'
-                                        ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200'
+                                        ? 'border-[rgba(181,82,78,0.30)] bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]'
                                         : insight.tone === 'amber'
-                                            ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                            ? 'border-[rgba(201,154,74,0.30)] bg-[var(--cc-amber-tint)] text-[var(--cc-amber)]'
                                             : insight.tone === 'blue'
-                                                ? 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200'
-                                                : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                                ? 'border-[rgba(181,102,78,0.30)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper-deep)]'
+                                                : 'border-[rgba(110,130,104,0.30)] bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
                                 }`}
                             >
                                 <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">{insight.title}</p>
@@ -512,7 +512,7 @@ export function MaintenanceDashboard() {
                                     setCaseStatusFilter('all');
                                     setCaseUrgencyFilter('all');
                                 }}
-                                className="rounded-xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary hover:bg-slate-200 dark:hover:bg-slate-800"
+                                className="rounded-xl bg-elevated px-4 py-2 text-xs font-semibold cc-text-secondary hover:bg-[var(--cc-line)]"
                             >
                                 Limpiar filtros
                             </button>
@@ -527,7 +527,7 @@ export function MaintenanceDashboard() {
                                     <article key={item.id} className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
                                         <div className="min-w-0 space-y-3">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${isHot ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${isHot ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
                                                     {isHot && <ShieldAlert className="h-3 w-3" />}
                                                     {item.urgency}
                                                 </span>
@@ -538,7 +538,7 @@ export function MaintenanceDashboard() {
                                                     {item.status.replace('_', ' ')}
                                                 </span>
                                                 {item.unit_label && (
-                                                    <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white">
+                                                    <span className="rounded-full bg-[var(--cc-ink)] px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--cc-paper)]">
                                                         {item.unit_label}
                                                     </span>
                                                 )}
@@ -574,7 +574,7 @@ export function MaintenanceDashboard() {
                                             <button
                                                 onClick={() => handleUpdateCaseStatus(item.id, 'resolved')}
                                                 disabled={caseUpdatingId === item.id || isClosed}
-                                                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--cc-sage)] px-4 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 <CheckCircle2 className="h-4 w-4" />
                                                 Resolver
@@ -596,7 +596,7 @@ export function MaintenanceDashboard() {
                             <div className="p-3 bg-elevated rounded-lg">
                                 <CalendarDays className="h-6 w-6 cc-text-primary" />
                             </div>
-                            <h2 className="text-2xl font-semibold cc-text-primary">Tareas de Mantenimiento</h2>
+                            <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Tareas de Mantenimiento</h2>
                         </div>
                     </div>
 
@@ -604,14 +604,14 @@ export function MaintenanceDashboard() {
                         {tasks.map((task: MaintenanceTask) => {
                             const asset = assets.find(a => a.id === task.assetId);
                             return (
-                                <div key={task.id} className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-8 rounded-lg border border-white/50 dark:border-slate-700/50 hover:border-white/80 dark:hover:border-slate-600 hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">
+                                <div key={task.id} className="bg-[var(--cc-paper)] p-8 rounded-lg border border-[var(--cc-line)] hover:border-[var(--cc-line-strong)] hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 group">
                                     <div className="flex items-center gap-6">
-                                        <div className={`h-16 w-16 rounded-lg flex items-center justify-center ${task.status === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                                        <div className={`h-16 w-16 rounded-lg flex items-center justify-center ${task.status === 'overdue' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'
                                             }`}>
                                             <Wrench className="h-7 w-7" />
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest">{asset?.name}</p>
+                                            <p className="text-[10px] font-semibold text-[var(--cc-copper)] uppercase tracking-widest">{asset?.name}</p>
                                             <h4 className="text-lg font-semibold cc-text-primary">{task.title}</h4>
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <Calendar className="h-3 w-3" />
@@ -620,8 +620,8 @@ export function MaintenanceDashboard() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <span className={`px-4 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                                            task.priority === 'high' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'
+                                        <span className={`px-4 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${task.status === 'completed' ? 'bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]' :
+                                            task.priority === 'high' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-paper-warm)] text-[var(--cc-ink-tertiary)]'
                                             }`}>
                                             {task.status === 'completed' ? 'Finalizada' : `Prioridad ${task.priority === 'high' ? 'Alta' : 'Media'}`}
                                         </span>
@@ -630,7 +630,7 @@ export function MaintenanceDashboard() {
                                                 setSelectedTask(task);
                                                 setIsDetailOpen(true);
                                             }}
-                                            className="p-4 bg-elevated rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all"
+                                            className="p-4 bg-elevated rounded-lg group-hover:bg-[var(--cc-copper)] group-hover:text-white transition-all"
                                         >
                                             <ArrowRight className="h-5 w-5" />
                                         </button>
@@ -647,15 +647,15 @@ export function MaintenanceDashboard() {
                         <div className="p-3 bg-elevated rounded-lg">
                             <History className="h-6 w-6 cc-text-primary" />
                         </div>
-                        <h2 className="text-2xl font-semibold cc-text-primary">Historial Reciente</h2>
+                        <h2 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Historial Reciente</h2>
                     </div>
 
-                    <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl p-10 rounded-lg border border-white/50 dark:border-slate-700/50 space-y-8 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                    <div className="bg-[var(--cc-paper)] p-10 rounded-lg border border-[var(--cc-line)] space-y-8 shadow-sm shadow-slate-200/20 dark:shadow-black/40">
                         {logs.length === 0 && <p className="text-slate-500 text-sm">No hay historial reciente.</p>}
                         {logs.map((log: MaintenanceLog, i: number) => (
                             <div key={log.id} className="flex gap-4 relative">
                                 {i !== logs.length - 1 && <div className="absolute left-[11px] top-10 bottom-0 w-[2px] bg-elevated" />}
-                                <div className="h-6 w-6 rounded-full border-4 border-white dark:border-slate-900 bg-blue-500 z-10 shrink-0" />
+                                <div className="h-6 w-6 rounded-full border-4 border-white dark:border-slate-900 bg-[var(--cc-copper-tint)]0 z-10 shrink-0" />
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                                         {new Date(log.date).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
@@ -668,7 +668,7 @@ export function MaintenanceDashboard() {
                                 </div>
                             </div>
                         ))}
-                        <button className="w-full py-4 text-[10px] font-semibold text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors">
+                        <button className="w-full py-4 text-[10px] font-semibold text-[var(--cc-copper)] uppercase tracking-widest hover:text-[var(--cc-copper)] transition-colors">
                             Ver historial completo
                         </button>
                     </div>
@@ -677,12 +677,12 @@ export function MaintenanceDashboard() {
 
             {/* Task Detail Dialog */}
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="sm:max-w-[550px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-lg p-10 shadow-sm">
+                <DialogContent className="sm:max-w-[550px] bg-[var(--cc-paper)] border-[var(--cc-line)] rounded-lg p-10 shadow-sm">
                     {selectedTask && (
                         <div className="space-y-8">
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${selectedTask.status === 'overdue' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${selectedTask.status === 'overdue' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'
                                         }`}>
                                         {selectedTask.status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                     </span>
@@ -703,9 +703,9 @@ export function MaintenanceDashboard() {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex gap-3 border border-blue-100 dark:border-blue-500/20">
-                                <Info className="h-5 w-5 text-blue-600 shrink-0" />
-                                <p className="text-[11px] font-medium text-blue-700 leading-relaxed">
+                            <div className="p-4 bg-[var(--cc-copper-tint)] rounded-lg flex gap-3 border border-[rgba(181,102,78,0.20)]">
+                                <Info className="h-5 w-5 text-[var(--cc-copper)] shrink-0" />
+                                <p className="text-[11px] font-medium text-[var(--cc-copper)] leading-relaxed">
                                     Al completar esta tarea, se generará automáticamente un registro en la bitácora técnica del activo correspondiente.
                                 </p>
                             </div>
@@ -721,7 +721,7 @@ export function MaintenanceDashboard() {
                                 {selectedTask.status !== 'completed' && (
                                     <Button
                                         onClick={() => handleCompleteTask(selectedTask.id)}
-                                        className="flex-[2] h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all"
+                                        className="flex-[2] h-16 rounded-lg bg-[var(--cc-copper)] hover:opacity-90 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all"
                                     >
                                         <Check className="mr-2 h-5 w-5" />
                                         Marcar como Completada
@@ -735,7 +735,7 @@ export function MaintenanceDashboard() {
 
             {/* CoCo Case Detail Dialog */}
             <Dialog open={isCaseDetailOpen} onOpenChange={setIsCaseDetailOpen}>
-                <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[760px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 rounded-lg p-8 shadow-sm">
+                <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[760px] bg-[var(--cc-paper)] border-[var(--cc-line)] rounded-lg p-8 shadow-sm">
                     {selectedCase && (
                         <div className="space-y-6">
                             <div className="space-y-3 pr-8">
@@ -743,14 +743,14 @@ export function MaintenanceDashboard() {
                                     <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
                                         {selectedCase.status.replace('_', ' ')}
                                     </span>
-                                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${selectedCase.urgency === 'emergencia' || selectedCase.urgency === 'alta' ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300'}`}>
+                                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${selectedCase.urgency === 'emergencia' || selectedCase.urgency === 'alta' ? 'bg-[var(--cc-rose-tint)] text-[var(--cc-rose)]' : 'bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]'}`}>
                                         {selectedCase.urgency}
                                     </span>
                                     <span className="rounded-full bg-elevated px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cc-text-secondary">
                                         {selectedCase.category}
                                     </span>
                                 </div>
-                                <h3 className="text-2xl font-semibold cc-text-primary">{selectedCase.title}</h3>
+                                <h3 className="text-2xl leading-none" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>{selectedCase.title}</h3>
                                 <p className="text-sm font-medium cc-text-secondary">{selectedCase.source_message}</p>
                             </div>
 
@@ -780,7 +780,7 @@ export function MaintenanceDashboard() {
                                         {caseEvents.map(event => (
                                             <div key={event.id} className="rounded-lg border border-subtle bg-surface p-4">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600">
+                                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--cc-sage)]">
                                                         {event.event_type === 'status_changed' ? 'Cambio de estado' : event.event_type}
                                                     </span>
                                                     <span className="text-[10px] font-bold cc-text-tertiary">
@@ -815,7 +815,7 @@ export function MaintenanceDashboard() {
                                     <button
                                         onClick={handleAddCaseComment}
                                         disabled={caseCommentSaving || !caseComment.trim()}
-                                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--cc-sage)] px-5 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                                     >
                                         {caseCommentSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                         Comentar

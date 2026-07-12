@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { resend, FROM_EMAIL, formatCLP } from '@/lib/email';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { resend, FROM_EMAIL, formatCLP } from '@/lib/email';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
@@ -9,220 +9,145 @@ import { PUBLIC_SITE_URL, SUPPORT_EMAIL } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
+type ExpenseEmailItem = { label?: string | null; amount?: number | string | null };
+type ExpenseEmailRow = {
+    id: string;
+    unit_id: string;
+    amount?: number | string | null;
+    due_date?: string | null;
+    items?: ExpenseEmailItem[] | null;
+};
+
+function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function renderExpenseEmail(input: {
+    residentName: string;
+    communityName: string;
+    monthLabel: string;
+    dueDate?: string | null;
+    amount: number;
+    items: ExpenseEmailItem[];
+}) {
+    const itemRows = input.items.length
+        ? input.items.map(item => `
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid #eee;color:#3f3a36">${escapeHtml(item.label || 'Concepto')}</td>
+              <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-weight:700;color:#1f1b18">${formatCLP(Number(item.amount || 0))}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="2" style="padding:16px 0;color:#777;text-align:center">Sin desglose disponible</td></tr>';
+
+    const dueDate = input.dueDate
+        ? new Date(`${input.dueDate}T12:00:00`).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
+
+    return `<!doctype html>
+<html lang="es">
+<body style="margin:0;background:#f6f2ec;font-family:Arial,sans-serif;color:#1f1b18">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:36px 16px">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#fff;border:1px solid #e7ddd2;border-radius:18px;overflow:hidden">
+        <tr><td style="height:6px;background:#b5664e"></td></tr>
+        <tr><td style="padding:34px">
+          <p style="margin:0 0 8px;color:#b5664e;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(input.monthLabel)}</p>
+          <h1 style="margin:0 0 18px;font-size:26px">Estado de gastos comunes</h1>
+          <p style="margin:0 0 24px;line-height:1.6;color:#625b55">Hola <strong>${escapeHtml(input.residentName)}</strong>. Este es el cobro pendiente de tu unidad en <strong>${escapeHtml(input.communityName)}</strong>.</p>
+          <table width="100%" cellpadding="0" cellspacing="0">${itemRows}</table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;background:#f4e8df;border-radius:12px">
+            <tr>
+              <td style="padding:18px;font-weight:700;color:#974c3c">Total a pagar</td>
+              <td style="padding:18px;text-align:right;font-size:22px;font-weight:800;color:#974c3c">${formatCLP(input.amount)}</td>
+            </tr>
+          </table>
+          ${dueDate ? `<p style="margin:18px 0 0;color:#7a5b21"><strong>Vencimiento:</strong> ${escapeHtml(dueDate)}</p>` : ''}
+          <p style="margin:28px 0 0;text-align:center"><a href="${PUBLIC_SITE_URL}/expenses" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#b5664e;color:#fff;text-decoration:none;font-weight:700">Revisar y pagar</a></p>
+          <p style="margin:24px 0 0;color:#8a8179;font-size:12px;line-height:1.5">El pago solo se registra cuando la pasarela envia una confirmacion firmada. Consultas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#974c3c">${SUPPORT_EMAIL}</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export async function POST(request: Request) {
     const limited = enforceRateLimit(request, 'email.send_expenses', { limit: 10, windowMs: 60_000 });
     if (limited) return limited;
 
     try {
-        // ─── Auth gate: only authenticated admins can send mass emails ───
         const cookieStore = await cookies();
         const supabaseUser = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+            { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
         );
         const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-        }
+        if (authError || !user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
         const supabaseAdmin = getSupabaseAdmin();
-
-        // Verify caller is admin and get their communityId
         const { data: callerProfile } = await supabaseAdmin
             .from('profiles')
-            .select('id, role, community_id')
+            .select('id,role,community_id')
             .eq('id', user.id)
-            .single();
-
+            .maybeSingle();
         if (!callerProfile || callerProfile.role !== 'admin') {
-            return NextResponse.json({ error: 'Acceso denegado: solo administradores pueden enviar correos masivos' }, { status: 403 });
-        }
-        // ─────────────────────────────────────────────────────────────────
-
-        const { communityId, month, items, dueDate, totalAmount } = await request.json();
-
-        // Ensure communityId matches the caller's own community — prevents cross-community abuse
-        if (!communityId || communityId !== callerProfile.community_id) {
-            return NextResponse.json({ error: 'communityId no válido' }, { status: 403 });
+            return NextResponse.json({ error: 'Solo administradores pueden enviar recordatorios.' }, { status: 403 });
         }
 
-        // Get community name
-        const { data: community } = await supabaseAdmin
-            .from('communities')
-            .select('name')
-            .eq('id', communityId)
-            .single();
-
-        // Get all residents with email in the community
-        const { data: residents, error: resError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, name, email')
-            .eq('community_id', communityId)
-            .eq('role', 'resident')
-            .not('email', 'is', null);
-
-        if (resError) throw resError;
-        if (!residents || residents.length === 0) {
-            return NextResponse.json({ error: 'No hay residentes con email en esta comunidad' }, { status: 404 });
+        const body = await request.json() as Record<string, unknown>;
+        const communityId = typeof body.communityId === 'string' ? body.communityId : '';
+        const month = typeof body.month === 'string' ? body.month : '';
+        if (communityId !== callerProfile.community_id) {
+            return NextResponse.json({ error: 'Comunidad no autorizada.' }, { status: 403 });
+        }
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+            return NextResponse.json({ error: 'Periodo invalido. Usa formato YYYY-MM.' }, { status: 400 });
         }
 
-        const communityName = community?.name || 'Tu Comunidad';
-        const siteUrl = PUBLIC_SITE_URL;
-        const monthLabel = month
-            ? new Date(month + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
-            : 'Este mes';
+        const [{ data: community }, { data: residents, error: residentError }, { data: expenses, error: expenseError }] = await Promise.all([
+            supabaseAdmin.from('communities').select('name').eq('id', communityId).maybeSingle(),
+            supabaseAdmin.from('profiles').select('id,name,email,unit_id').eq('community_id', communityId).eq('role', 'resident').not('email', 'is', null),
+            supabaseAdmin.from('expenses').select('id,unit_id,amount,due_date,items:expense_items(label,amount)').eq('community_id', communityId).eq('month', month).in('status', ['pending', 'overdue']),
+        ]);
+        if (residentError) throw residentError;
+        if (expenseError) throw expenseError;
 
-        // Build items table rows
-        const itemRows = Array.isArray(items) && items.length > 0
-            ? items.map((item: { label: string; amount: number }) => `
-                <tr>
-                  <td style="padding:14px 0;color:#374151;font-size:15px;border-bottom:1px solid #f3f4f6;">${item.label}</td>
-                  <td style="padding:14px 0;color:#111827;font-size:15px;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6;">${formatCLP(item.amount)}</td>
-                </tr>`).join('')
-            : `<tr><td colspan="2" style="padding:14px 0;color:#9ca3af;text-align:center;">Sin desglose disponible</td></tr>`;
-
-        // Send one email per resident
-        const results = await Promise.allSettled(
-            residents.map((resident) => {
-                const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Gastos Comunes ${monthLabel}</title>
-</head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:48px 0;">
-<tr><td align="center">
-<table width="580" cellpadding="0" cellspacing="0" style="width:100%;max-width:580px;">
-
-  <!-- Logo header -->
-  <tr>
-    <td align="center" style="padding-bottom:32px;">
-      <table cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="background:linear-gradient(135deg,#C8705A,#974C3C);border-radius:14px;padding:10px 20px;">
-            <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Convive Connect</span>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-
-  <!-- Card -->
-  <tr>
-    <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 1px 16px rgba(0,0,0,0.07);">
-
-      <!-- Card top accent -->
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="background:linear-gradient(90deg,#C8705A,#974C3C);height:5px;"></td>
-        </tr>
-      </table>
-
-      <!-- Card body -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 40px;">
-
-        <!-- Month badge + title -->
-        <tr>
-          <td style="padding-top:40px;padding-bottom:6px;">
-            <span style="background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:20px;text-transform:capitalize;">${monthLabel}</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-bottom:8px;">
-            <h1 style="margin:0;font-size:26px;font-weight:800;color:#111827;letter-spacing:-0.5px;">Estado de tus Gastos Comunes</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-bottom:36px;">
-            <p style="margin:0;font-size:15px;color:#6b7280;">Hola <strong style="color:#111827;">${resident.name || 'Residente'}</strong> — aquí está el detalle de cobro para tu unidad en <strong style="color:#111827;">${communityName}</strong>.</p>
-          </td>
-        </tr>
-
-        <!-- Items table -->
-        <tr>
-          <td>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <th style="padding:10px 0;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;text-align:left;border-bottom:2px solid #e5e7eb;">Concepto</th>
-                <th style="padding:10px 0;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;text-align:right;border-bottom:2px solid #e5e7eb;">Monto</th>
-              </tr>
-              ${itemRows}
-            </table>
-          </td>
-        </tr>
-
-        <!-- Total -->
-        <tr>
-          <td style="padding-top:0;padding-bottom:36px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4E8DF;border-radius:12px;margin-top:4px;">
-              <tr>
-                <td style="padding:18px 20px;font-size:14px;font-weight:700;color:#974C3C;">TOTAL A PAGAR</td>
-                <td style="padding:18px 20px;font-size:22px;font-weight:900;color:#974C3C;text-align:right;">${formatCLP(totalAmount || 0)}</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        ${dueDate ? `
-        <!-- Due date -->
-        <tr>
-          <td style="padding-bottom:32px;">
-            <table cellpadding="0" cellspacing="0" style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;width:100%;">
-              <tr>
-                <td style="padding:14px 20px;font-size:14px;color:#92400e;">
-                  ⏰ <strong>Fecha límite de pago:</strong> ${new Date(dueDate).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>` : ''}
-
-        <!-- CTA -->
-        <tr>
-          <td align="center" style="padding-bottom:48px;">
-            <a href="${siteUrl}/expenses"
-               style="display:inline-block;background:linear-gradient(135deg,#C8705A,#974C3C);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;letter-spacing:-.2px;">
-              Pagar en línea &rarr;
-            </a>
-            <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">También puedes pagar por transferencia bancaria según las instrucciones de tu administrador.</p>
-          </td>
-        </tr>
-
-      </table>
-    </td>
-  </tr>
-
-  <!-- Footer -->
-  <tr>
-    <td align="center" style="padding:32px 0 0;">
-      <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
-        Convive Connect &mdash; Sistema de Gestión Inmobiliaria<br/>
-        Preguntas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#974C3C;text-decoration:none;">${SUPPORT_EMAIL}</a>
-      </p>
-    </td>
-  </tr>
-
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-
-
-                return resend.emails.send({
-                    from: FROM_EMAIL,
-                    to: [resident.email],
-                    subject: `📄 Gastos Comunes ${monthLabel} — ${communityName}`,
-                    html,
-                });
-            })
+        const expenseByUnit = new Map(
+            ((expenses || []) as ExpenseEmailRow[]).map(expense => [expense.unit_id, expense]),
         );
+        const recipients = (residents || []).flatMap(resident => {
+            const expense = resident.unit_id ? expenseByUnit.get(resident.unit_id) : null;
+            return expense && resident.email ? [{ ...resident, expense }] : [];
+        });
+        if (recipients.length === 0) {
+            return NextResponse.json({ error: 'No hay cobros pendientes con destinatario para ese periodo.' }, { status: 404 });
+        }
 
-        const sent = results.filter(r => r.status === 'fulfilled').length;
-        const failed = results.filter(r => r.status === 'rejected').length;
+        const monthLabel = new Date(`${month}-02T12:00:00`).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+        const communityName = community?.name || 'Tu comunidad';
+        const results = await Promise.allSettled(recipients.map(recipient => resend.emails.send({
+            from: FROM_EMAIL,
+            to: [recipient.email],
+            subject: `Gastos comunes ${monthLabel} - ${communityName}`,
+            html: renderExpenseEmail({
+                residentName: recipient.name || 'Residente',
+                communityName,
+                monthLabel,
+                dueDate: recipient.expense.due_date,
+                amount: Number(recipient.expense.amount || 0),
+                items: recipient.expense.items || [],
+            }),
+        })));
+
+        const sent = results.filter(result => result.status === 'fulfilled').length;
+        const failed = results.length - sent;
+        const totalNotifiedAmount = recipients.reduce((sum, recipient) => sum + Number(recipient.expense.amount || 0), 0);
 
         await recordOperationEvent({
             communityId,
@@ -230,23 +155,17 @@ export async function POST(request: Request) {
             actorRole: callerProfile.role,
             action: 'expenses.email_batch_sent',
             entityType: 'expense_batch',
-            severity: failed > 0 ? 'warning' : 'success',
-            status: failed > 0 ? 'pending' : 'success',
-            summary: `Gastos comunes enviados por email: ${sent} de ${residents.length}`,
-            metadata: {
-                month,
-                totalAmount,
-                sent,
-                failed,
-                recipients: residents.length,
-            },
+            severity: failed ? 'warning' : 'success',
+            status: failed ? 'pending' : 'success',
+            summary: `Recordatorios financieros enviados: ${sent} de ${recipients.length}`,
+            metadata: { month, sent, failed, recipients: recipients.length, totalNotifiedAmount },
             requestId: getRequestId(request),
         });
 
-        return NextResponse.json({ ok: true, sent, failed, total: residents.length });
-    } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Error desconocido';
-        console.error('Error sending expenses email:', message);
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ ok: true, sent, failed, total: recipients.length });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('[email/send-expenses]', message);
+        return NextResponse.json({ error: 'No se pudieron enviar los recordatorios.' }, { status: 500 });
     }
 }
