@@ -42,6 +42,19 @@ export const resend = {
 export const FROM_EMAIL = 'Convive Connect <notificaciones@datawiseconsultoria.com>';
 export const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'pedromoreno1983@gmail.com';
 
+export function escapeEmailHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function cleanEmailSubject(value: unknown): string {
+    return String(value ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, 180);
+}
+
 // Format Chilean pesos
 export const formatCLP = (n: number) =>
     new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n);
@@ -110,6 +123,9 @@ export async function sendExpenseAlert({
     amount: number;
     dueDate: string;
 }) {
+    residentName = escapeEmailHtml(residentName);
+    unitName = escapeEmailHtml(unitName);
+    month = escapeEmailHtml(month);
     const formattedAmount = formatCLP(amount);
     const formattedDue = new Date(dueDate).toLocaleDateString('es-CL', {
         day: 'numeric', month: 'long', year: 'numeric'
@@ -145,7 +161,7 @@ export async function sendExpenseAlert({
     return resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `⚠️ Gasto común pendiente — ${month} — ${formattedAmount}`,
+        subject: cleanEmailSubject(`Gasto común pendiente — ${month} — ${formattedAmount}`),
         html: emailWrapper(content, 'Gasto Común Pendiente'),
     });
 }
@@ -168,6 +184,10 @@ export async function sendBookingConfirmation({
     startTime: string;
     endTime: string;
 }) {
+    residentName = escapeEmailHtml(residentName);
+    amenityName = escapeEmailHtml(amenityName);
+    startTime = escapeEmailHtml(startTime);
+    endTime = escapeEmailHtml(endTime);
     const formattedDate = new Date(date).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
@@ -202,7 +222,7 @@ export async function sendBookingConfirmation({
     return resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `✅ Reserva confirmada — ${amenityName} — ${formattedDate}`,
+        subject: cleanEmailSubject(`Reserva confirmada — ${amenityName} — ${formattedDate}`),
         html: emailWrapper(content, 'Confirmación de Reserva'),
     });
 }
@@ -223,6 +243,10 @@ export async function sendWelcomeEmail({
     condoName?: string;
     temporaryPassword?: string;
 }) {
+    residentName = escapeEmailHtml(residentName);
+    unitName = escapeEmailHtml(unitName);
+    condoName = escapeEmailHtml(condoName);
+    temporaryPassword = temporaryPassword ? escapeEmailHtml(temporaryPassword) : undefined;
     const content = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#0f172a;">
       Bienvenido/a a ${condoName}, ${residentName}! 🏡
@@ -253,7 +277,7 @@ export async function sendWelcomeEmail({
     return resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `🏡 Bienvenido/a a ${condoName} — Tu cuenta está lista`,
+        subject: cleanEmailSubject(`Bienvenido/a a ${condoName} — Tu cuenta está lista`),
         html: emailWrapper(content, `Bienvenido a ${condoName}`),
     });
 }

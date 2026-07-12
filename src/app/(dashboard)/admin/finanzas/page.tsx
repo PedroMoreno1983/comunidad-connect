@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ExpenseService } from "@/lib/services/supabaseServices";
+import { AdminFinanceService } from "@/lib/api";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
@@ -11,10 +11,21 @@ import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "luc
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 
 const fallbackFinances: CommunityFinance = {
+    period: new Date().toISOString().slice(0, 7),
     totalRevenue: 0,
+    totalBilled: 0,
     totalExpenses: 0,
     reserveFund: 0,
+    pendingAmount: 0,
+    overdueAmount: 0,
     collectionRate: 0,
+    totalUnits: 0,
+    billedUnits: 0,
+    paidUnits: 0,
+    pendingUnits: 0,
+    chronicDebtors: 0,
+    monthlyTrend: [],
+    categoryBreakdown: [],
     recentActivity: [],
 };
 
@@ -27,16 +38,7 @@ export default function AdminFinanzasPage() {
         const loadFinances = async () => {
             try {
                 setLoading(true);
-                const stats = await ExpenseService.getStats();
-                setFinances({
-                    totalRevenue: stats.totalRevenue,
-                    totalExpenses: stats.totalBilled,
-                    reserveFund: Math.max(0, stats.totalRevenue - stats.totalBilled * 0.8),
-                    collectionRate: Math.round(stats.collectionRate || 0),
-                    recentActivity: [
-                        { id: 'a1', type: 'income', title: 'Recaudación registrada', amount: stats.totalRevenue, date: new Date().toISOString() },
-                    ]
-                });
+                setFinances(await AdminFinanceService.getOverview());
             } catch {
                 console.warn("Finance stats unavailable; showing empty operational state.");
                 setUsingFallback(true);

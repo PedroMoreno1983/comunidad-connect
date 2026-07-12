@@ -361,10 +361,21 @@ export interface HaulmerFeeCalculation {
 }
 
 export interface CommunityFinance {
+  period: string;
   totalRevenue: number;
+  totalBilled: number;
   totalExpenses: number;
   reserveFund: number;
+  pendingAmount: number;
+  overdueAmount: number;
   collectionRate: number; // 0-100
+  totalUnits: number;
+  billedUnits: number;
+  paidUnits: number;
+  pendingUnits: number;
+  chronicDebtors: number;
+  monthlyTrend: { month: string; monto: number }[];
+  categoryBreakdown: { name: string; value: number; color?: string }[];
   recentActivity: {
     id: string;
     type: 'income' | 'expense';

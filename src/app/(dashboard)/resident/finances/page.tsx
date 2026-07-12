@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import type { ResidentFinanceExpense } from "@/lib/types";
 
@@ -18,6 +18,7 @@ export default function FinancesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [expenses, setExpenses] = useState<ResidentFinanceExpense[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
@@ -25,12 +26,14 @@ export default function FinancesPage() {
     const loadFinances = useCallback(async () => {
         if (!user) {
             setLoading(false);
-            return;
+            return [];
         }
         try {
             setLoading(true);
 
-            setExpenses(await ResidentFinanceService.getExpensesForResident(user));
+            const data = await ResidentFinanceService.getExpensesForResident(user);
+            setExpenses(data);
+            return data;
 
         } catch (error) {
             console.error(error);
@@ -39,53 +42,74 @@ export default function FinancesPage() {
                 description: "No se pudieron cargar tus finanzas.",
                 variant: "destructive"
             });
+            return [];
         } finally {
             setLoading(false);
         }
     }, [toast, user]);
 
+    const paymentReturnExpenseId = searchParams.get('payment') === 'return'
+        ? searchParams.get('expenseId') || ''
+        : '';
+
     useEffect(() => {
-        if (searchParams.get('status') === 'success') {
-            toast({
-                title: "Pago recibido",
-                description: "Tu pago se esta procesando. El estado se actualizara en unos momentos.",
-                variant: "success"
+        let cancelled = false;
+
+        const refreshAndVerify = async () => {
+            let data = await loadFinances();
+            if (!paymentReturnExpenseId || cancelled) return;
+
+            for (let attempt = 0; attempt < 3 && !data.some(expense => expense.id === paymentReturnExpenseId && expense.status === 'paid'); attempt += 1) {
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                data = await loadFinances();
+            }
+
+            if (cancelled) return;
+            const verified = data.some(expense => expense.id === paymentReturnExpenseId && expense.status === 'paid');
+            toast(verified ? {
+                title: "Pago verificado",
+                description: "La pasarela confirmo el pago y el cobro ya figura pagado.",
+                variant: "success",
+            } : {
+                title: "Pago en verificacion",
+                description: "Aun no recibimos la confirmacion firmada de la pasarela. El cobro seguira pendiente hasta validarla.",
+                variant: "default",
             });
-        }
-        loadFinances();
-    }, [loadFinances, searchParams, toast]);
+            router.replace('/resident/finances');
+        };
+
+        void refreshAndVerify();
+        return () => { cancelled = true; };
+    }, [loadFinances, paymentReturnExpenseId, router, toast]);
 
     const handlePayHaulmer = async (expense: ResidentFinanceExpense) => {
         setProcessingId(expense.id);
         try {
 
-            const monthLabel = safeFormatDate(expense.month, 'MMMM yyyy', true);
             const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: expense.amount,
                     includeServiceFee: true,
-                    description: `Gastos Comunes ${monthLabel} - Depto ${expense.units?.number ?? ''}`,
                     reference: `EXP_${expense.id}`,
-                    client: {
-                        name: user?.name || 'Residente',
-                        email: user?.email || '',
-                    },
-                    returnUrl: window.location.origin + '/resident/finances?status=success'
+                    returnUrl: window.location.origin + '/resident/finances'
                 })
             });
 
-            if (!response.ok) throw new Error("Error al generar orden de pago");
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({})) as { error?: string };
+                throw new Error(payload.error || "Error al generar orden de pago");
+            }
 
             const data = await response.json();
             window.location.href = data.url;
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
             toast({
                 title: "Hubo un problema",
-                description: "No logramos conectar con Haulmer en este momento.",
+                description: error instanceof Error ? error.message : "No logramos conectar con Haulmer en este momento.",
                 variant: "destructive"
             });
             setProcessingId(null);

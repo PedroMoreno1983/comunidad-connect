@@ -135,7 +135,8 @@ async function ensureResidentProfile(
     supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
     resident: NormalizedResident,
     communityId: string,
-    unitId: string
+    unitId: string,
+    residentInviteCode: string,
 ) {
     const existingByEmail = resident.email
         ? await supabaseAdmin
@@ -189,8 +190,7 @@ async function ensureResidentProfile(
         email_confirm: false,
         user_metadata: {
             full_name: resident.name,
-            role: 'resident',
-            community_id: communityId,
+            invite_code: residentInviteCode,
             unit_number: resident.unit_id,
         },
     });
@@ -238,6 +238,14 @@ export async function POST(request: Request) {
 
         const communityId = profile.community_id;
         const supabaseAdmin = getSupabaseAdmin();
+        const { data: community, error: communityError } = await supabaseAdmin
+            .from('communities')
+            .select('resident_code')
+            .eq('id', communityId)
+            .single();
+        if (communityError || !community?.resident_code) {
+            throw communityError || new Error('La comunidad no tiene código de residentes configurado.');
+        }
         const rowResults: SyncRowResult[] = [];
         let successCount = 0;
         let unitOnlyCount = 0;
@@ -255,7 +263,13 @@ export async function POST(request: Request) {
                     floor: unitDetails.floor,
                 });
 
-                const residentProfileId = await ensureResidentProfile(supabaseAdmin, resident, communityId, finalUnitId);
+                const residentProfileId = await ensureResidentProfile(
+                    supabaseAdmin,
+                    resident,
+                    communityId,
+                    finalUnitId,
+                    community.resident_code,
+                );
 
                 if (residentProfileId) {
                     const { error: unitAssignError } = await supabaseAdmin

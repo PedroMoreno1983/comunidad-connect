@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
-import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { enforceDistributedRateLimit } from "@/lib/security/rateLimit";
+import { sendWelcomeEmail, resend, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper } from "@/lib/email";
+import { PUBLIC_SITE_URL } from "@/lib/config";
 
 type GeocodeSelection = {
     label?: string;
@@ -26,6 +28,50 @@ function cleanUnitCount(value: unknown) {
 
 function isEmail(value: string) {
     return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+async function sendOnboardingEmails(input: {
+    fullName: string;
+    email: string;
+    communityName: string;
+    address: string;
+    planId: string;
+}) {
+    const safeName = escapeHtml(input.fullName);
+    const safeCommunity = escapeHtml(input.communityName);
+    const safeAddress = escapeHtml(input.address || "Sin dirección informada");
+    const safePlan = escapeHtml(input.planId || "Por definir");
+
+    await Promise.allSettled([
+        sendWelcomeEmail({
+            to: input.email,
+            residentName: input.fullName,
+            unitName: "Administración",
+            condoName: input.communityName,
+        }),
+        resend.emails.send({
+            from: FROM_EMAIL,
+            to: [SUPERADMIN_EMAIL],
+            subject: `Nuevo edificio: ${input.communityName}`,
+            html: emailWrapper(`
+                <h1 style="margin:0 0 16px;font-size:24px;color:#1e293b">Nuevo edificio registrado</h1>
+                <p><strong>Condominio:</strong> ${safeCommunity}</p>
+                <p><strong>Dirección:</strong> ${safeAddress}</p>
+                <p><strong>Plan:</strong> ${safePlan}</p>
+                <p><strong>Administrador:</strong> ${safeName} &lt;${escapeHtml(input.email)}&gt;</p>
+                <p><a href="${PUBLIC_SITE_URL}/superadmin">Abrir SuperAdmin</a></p>
+            `, "Nuevo edificio registrado"),
+        }),
+    ]);
 }
 
 function isExistingAuthUserError(error: unknown) {
@@ -64,7 +110,7 @@ async function insertCommunity(payload: Record<string, unknown>) {
     let { data, error } = await admin
         .from("communities")
         .insert(payload)
-        .select("id")
+        .select("id,admin_code")
         .single();
 
     const errorMessage = error?.message || "";
@@ -81,15 +127,15 @@ async function insertCommunity(payload: Record<string, unknown>) {
         const retry = await admin
             .from("communities")
             .insert(retryPayload)
-            .select("id")
+            .select("id,admin_code")
             .single();
         data = retry.data;
         error = retry.error;
     }
 
     if (error) throw error;
-    if (!data?.id) throw new Error("No se pudo crear la comunidad.");
-    return String(data.id);
+    if (!data?.id || !data.admin_code) throw new Error("No se pudo crear la comunidad.");
+    return { id: String(data.id), adminCode: String(data.admin_code) };
 }
 
 async function createSeedUnits(communityId: string, count: number) {
@@ -111,8 +157,11 @@ async function createSeedUnits(communityId: string, count: number) {
 }
 
 export async function POST(req: NextRequest) {
-    const limited = enforceRateLimit(req, "admin_onboarding.register", { limit: 8, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(req, "admin_onboarding.register", { limit: 5, windowMs: 60_000 });
     if (limited) return limited;
+
+    let createdCommunityId: string | null = null;
+    let createdUserId: string | null = null;
 
     try {
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
@@ -130,25 +179,6 @@ export async function POST(req: NextRequest) {
         if (password.length < 6) return NextResponse.json({ error: "La contrasena debe tener al menos 6 caracteres." }, { status: 400 });
         if (!communityName) return NextResponse.json({ error: "Ingresa el nombre del edificio." }, { status: 400 });
 
-        const admin = getSupabaseAdmin();
-        const { data: userData, error: userError } = await admin.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: { name: fullName, role: "admin" },
-        });
-        if (isExistingAuthUserError(userError)) {
-            const loginUrl = `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`;
-            return NextResponse.json({
-                code: "EMAIL_ALREADY_REGISTERED",
-                error: "Este correo ya tiene una cuenta. Inicia sesion para continuar con la carga inteligente del edificio.",
-                loginUrl,
-            }, { status: 409 });
-        }
-        if (userError) throw userError;
-        const userId = userData.user?.id;
-        if (!userId) throw new Error("No se pudo crear el usuario administrador.");
-
         const communityPayload: Record<string, unknown> = {
             name: communityName,
             subscription_status: "trialing",
@@ -162,7 +192,35 @@ export async function POST(req: NextRequest) {
             communityPayload.address_geocoding_source = selectedAddress.source;
         }
 
-        const communityId = await insertCommunity(communityPayload);
+        const community = await insertCommunity(communityPayload);
+        const communityId = community.id;
+        createdCommunityId = communityId;
+
+        const admin = getSupabaseAdmin();
+        const { data: userData, error: userError } = await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+                name: fullName,
+                invite_code: community.adminCode,
+                department_number: "Administración",
+            },
+        });
+        if (isExistingAuthUserError(userError)) {
+            await admin.from("communities").delete().eq("id", communityId);
+            createdCommunityId = null;
+            const loginUrl = `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`;
+            return NextResponse.json({
+                code: "EMAIL_ALREADY_REGISTERED",
+                error: "Este correo ya tiene una cuenta. Inicia sesion para continuar con la carga inteligente del edificio.",
+                loginUrl,
+            }, { status: 409 });
+        }
+        if (userError) throw userError;
+        const userId = userData.user?.id;
+        if (!userId) throw new Error("No se pudo crear el usuario administrador.");
+        createdUserId = userId;
 
         const { error: profileError } = await admin
             .from("profiles")
@@ -178,8 +236,16 @@ export async function POST(req: NextRequest) {
 
         await createSeedUnits(communityId, units);
 
+        await sendOnboardingEmails({ fullName, email, communityName, address, planId });
+
+        createdCommunityId = null;
+        createdUserId = null;
+
         return NextResponse.json({ ok: true, communityId, userId });
     } catch (error: unknown) {
+        const admin = getSupabaseAdmin();
+        if (createdUserId) await admin.auth.admin.deleteUser(createdUserId).catch(() => undefined);
+        if (createdCommunityId) await admin.from("communities").delete().eq("id", createdCommunityId);
         const message = error instanceof Error ? error.message : "No se pudo registrar el edificio.";
         console.error("[admin-onboarding/register]", error);
         return NextResponse.json({ error: message }, { status: 500 });

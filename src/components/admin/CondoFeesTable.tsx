@@ -58,12 +58,14 @@ export function CondoFeesTable() {
         }
         setSending(true);
         try {
-            // Get current month in YYYY-MM format
-            const now = new Date();
-            const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-            // Build items from current fees
-            const totalAmount = fees.reduce((acc, f) => acc + (f.amount || 0), 0);
+            const month = fees
+                .filter(fee => fee.status !== 'paid')
+                .map(fee => fee.month)
+                .sort((a, b) => b.localeCompare(a))[0];
+            if (!month) {
+                toast({ title: "Sin pendientes", description: "No hay cobros abiertos para notificar.", variant: "default" });
+                return;
+            }
 
             const res = await fetch('/api/email/send-expenses', {
                 method: 'POST',
@@ -71,8 +73,6 @@ export function CondoFeesTable() {
                 body: JSON.stringify({
                     communityId: user.communityId,
                     month,
-                    totalAmount,
-                    items: [{ label: 'Gastos Comunes', amount: totalAmount }],
                 }),
             });
             const data = await res.json();
@@ -116,7 +116,7 @@ export function CondoFeesTable() {
                 </div>
                 <button
                     onClick={handleSendEmails}
-                    disabled={sending || fees.length === 0}
+                    disabled={sending || !fees.some(fee => fee.status !== 'paid')}
                     className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-600 disabled:opacity-50"
                 >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}

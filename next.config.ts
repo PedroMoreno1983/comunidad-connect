@@ -30,8 +30,8 @@ const securityHeaders = [
     value: "on",
   },
   {
-    key: "Content-Security-Policy-Report-Only",
-    value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://api.twilio.com; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; manifest-src 'self'",
+    key: "Content-Security-Policy",
+    value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.unsplash.com https://ui-avatars.com https://*.supabase.co https://www.google-analytics.com; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.resend.com https://api.twilio.com https://www.google-analytics.com https://region1.google-analytics.com; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests",
   },
 ];
 

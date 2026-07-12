@@ -153,31 +153,6 @@ export default function AdminOnboardingPage() {
                 throw new Error(data.error || "No se pudo registrar el edificio.");
             }
 
-            const selectedPlanName = PLANS.find(p => p.id === selectedPlan)?.name || "Por definir";
-            fetch("/api/email/new-community", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    communityName: communityName.trim(),
-                    address,
-                    planName: selectedPlanName,
-                    adminEmail: email,
-                    adminName: fullName,
-                }),
-            }).catch(console.error);
-
-            // Send transactional welcome email to the administrator
-            fetch("/api/email/welcome", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    to: email,
-                    residentName: fullName,
-                    unitName: "Administración",
-                    condoName: communityName.trim(),
-                }),
-            }).catch(console.error);
-
             toast({
                 title: "Comunidad creada",
                 description: `Ahora inicia sesion para administrar ${communityName}.`,

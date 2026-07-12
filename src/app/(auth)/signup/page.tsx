@@ -8,8 +8,6 @@ import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, ShieldCheck, Users
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import { CommunityAccessService } from "@/lib/api";
-import { useAuth } from "@/lib/authContext";
 import type { UserRole } from "@/lib/types";
 
 const ROLES = [
@@ -28,7 +26,6 @@ export default function SignUpPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedRole, setSelectedRole] = useState<UserRole>("resident");
-    const { signUp } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -51,46 +48,32 @@ export default function SignUpPage() {
         }
 
         setLoading(true);
-        const cleanCode = accessCode.trim().toUpperCase();
-
-        let community: { id: string; name: string | null };
         try {
-            community = await CommunityAccessService.validateInviteCode(cleanCode, selectedRole);
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName,
+                    email,
+                    password,
+                    accessCode,
+                    role: selectedRole,
+                    departmentNumber,
+                }),
+            });
+            const result = await response.json() as { error?: string };
+            if (!response.ok) throw new Error(result.error || 'No se pudo crear la cuenta.');
         } catch (error) {
-            const message = error instanceof Error ? error.message : "El codigo de invitacion no existe o es incorrecto.";
+            const message = error instanceof Error ? error.message : "No se pudo crear la cuenta.";
             const title = message.includes("perfil") ? "Rol no coincide" : "Codigo invalido";
             toast({ title, description: message, variant: "destructive" });
             setLoading(false);
             return;
         }
 
-        const { error } = await signUp(email, password, {
-            name: fullName,
-            community_id: community.id,
-            role: selectedRole,
-            ...(selectedRole === "resident" && departmentNumber ? { department_number: departmentNumber.trim() } : {}),
-        });
-
-        if (error) {
-            toast({ title: "Error al crear cuenta", description: error.message || "Intenta con otro email", variant: "destructive" });
-            setLoading(false);
-            return;
-        }
-
-        fetch("/api/email/welcome", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                to: email,
-                residentName: fullName,
-                unitName: departmentNumber ? `Depto ${departmentNumber.trim()}` : "Unidad",
-                condoName: community.name || "Convive Connect",
-            }),
-        }).catch((err) => console.error("[Welcome Email] Failed to send:", err));
-
         toast({
             title: "Cuenta creada",
-            description: `Enviamos un correo a ${email}. Confirmalo para iniciar sesion.`,
+            description: `Tu cuenta quedó lista. Ya puedes iniciar sesión con ${email}.`,
             variant: "success",
         });
         router.push("/login");

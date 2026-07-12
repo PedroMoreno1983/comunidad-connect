@@ -24,10 +24,12 @@ interface FinanceDashboardProps {
 
 export function FinanceDashboard({ data }: FinanceDashboardProps) {
     const collectionRate = Math.max(0, Math.min(100, data.collectionRate || 0));
-    const totalUnits = 192;
-    const paidUnits = Math.round((collectionRate / 100) * totalUnits);
+    const totalUnits = data.billedUnits || data.totalUnits || 0;
+    const paidUnits = data.paidUnits || 0;
     const recentActivity = data.recentActivity ?? [];
-    const currentPeriod = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date());
+    const currentPeriod = new Date(`${data.period}-02T12:00:00`).toLocaleDateString("es-CL", { month: "long", year: "numeric" });
+    const matrixColumns = Math.min(32, Math.max(1, Math.ceil(Math.max(totalUnits, 1) / 6)));
+    const matrixRows = Math.max(1, Math.ceil(Math.max(totalUnits, 1) / matrixColumns));
 
     const scrollToSection = (id: string) => {
         document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -45,40 +47,31 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
             icon: DollarSign,
         },
         {
-            label: "Egresos totales",
-            value: `$${(data.totalExpenses || 0).toLocaleString("es-CL")}`,
-            detail: "Pagos a proveedores y salarios",
+            label: "Facturación del periodo",
+            value: `$${(data.totalBilled || 0).toLocaleString("es-CL")}`,
+            detail: "Cobros emitidos a las unidades",
             icon: TrendingDown,
         },
         {
-            label: "Fondo de reserva",
+            label: "Aporte a fondo de reserva",
             value: `$${(data.reserveFund || 0).toLocaleString("es-CL")}`,
-            detail: "Capital para emergencias y mejoras",
+            detail: data.reserveFund > 0 ? "Aportes identificados en el desglose" : "Sin desglose configurado para este periodo",
             icon: Wallet,
         },
         {
             label: "Tasa de cobranza",
             value: `${collectionRate}%`,
-            detail: "Porcentaje de vecinos al día",
+            detail: "Porcentaje recaudado sobre lo facturado",
             icon: Activity,
         },
     ];
 
-    const expenseChartData = [
-        { month: "Sep", monto: 12500000 },
-        { month: "Oct", monto: 11200000 },
-        { month: "Nov", monto: 13800000 },
-        { month: "Dic", monto: 15900000 },
-        { month: "Ene", monto: 12100000 },
-        { month: "Feb", monto: 14500000 },
-    ];
-
-    const expenseCategoryData = [
-        { name: "Mantención", value: 4500000, color: DATA_PALETTE.blue },
-        { name: "Sueldos", value: 6500000, color: DATA_PALETTE.green },
-        { name: "Seguridad", value: 2500000, color: DATA_PALETTE.yellow },
-        { name: "Servicios", value: 1000000, color: DATA_PALETTE.copper },
-    ];
+    const expenseChartData = data.monthlyTrend || [];
+    const categoryColors = [DATA_PALETTE.blue, DATA_PALETTE.green, DATA_PALETTE.yellow, DATA_PALETTE.copper, DATA_PALETTE.orange];
+    const expenseCategoryData = (data.categoryBreakdown || []).map((item, index) => ({
+        ...item,
+        color: item.color || categoryColors[index % categoryColors.length],
+    }));
 
     const executiveMetrics = [
         {
@@ -97,10 +90,10 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
         },
         {
             label: "Egresos",
-            value: data.totalExpenses > 0 ? 3.8 : 1,
-            delta: "control",
+            value: data.totalBilled > 0 ? Math.min(5, Math.max(1, collectionRate / 20)) : 1,
+            delta: `$${data.totalBilled.toLocaleString("es-CL")}`,
             color: DATA_PALETTE.orange,
-            caption: "Ejecución presupuestaria",
+            caption: "Facturación del periodo",
         },
         {
             label: "Actividad",
@@ -199,7 +192,7 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                     </div>
 
                     <div className="overflow-x-auto rounded-lg bg-canvas p-4">
-                        <DotMatrix rows={6} cols={32} filled={paidUnits} color={DATA_PALETTE.copper} dotSize={7} gap={5} />
+                        <DotMatrix rows={matrixRows} cols={matrixColumns} filled={paidUnits} color={DATA_PALETTE.copper} dotSize={7} gap={5} />
                     </div>
 
                     <div className="mt-5 space-y-3">
@@ -211,11 +204,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-lg bg-elevated p-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-tertiary">Pendientes</p>
-                                <p className="mt-1 text-xl font-semibold cc-text-primary">{totalUnits - paidUnits}</p>
+                                <p className="mt-1 text-xl font-semibold cc-text-primary">{data.pendingUnits}</p>
                             </div>
                             <div className="rounded-lg bg-elevated p-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-tertiary">Riesgo</p>
-                                <p className="mt-1 text-xl font-semibold cc-text-primary">{collectionRate >= 90 ? "Bajo" : "Medio"}</p>
+                                <p className="mt-1 text-xl font-semibold cc-text-primary">{data.overdueAmount > 0 ? "Alto" : collectionRate >= 90 ? "Bajo" : "Medio"}</p>
                             </div>
                         </div>
                     </div>
@@ -228,8 +221,8 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         <div className="flex items-center gap-3">
                             <TrendingUp className="h-5 w-5 text-slate-500" />
                             <div>
-                                <h2 className="text-lg font-semibold cc-text-primary">Evolución de egresos</h2>
-                                <p className="text-sm cc-text-secondary">Histórico de 6 meses operativos</p>
+                                <h2 className="text-lg font-semibold cc-text-primary">Evolución de facturación</h2>
+                                <p className="text-sm cc-text-secondary">Cobros reales de los últimos 6 periodos</p>
                             </div>
                         </div>
                         <button
@@ -241,7 +234,9 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         </button>
                     </div>
                     <div className="h-80 w-full">
-                        <ExpenseAreaChart data={expenseChartData} />
+                        {expenseChartData.length > 0
+                            ? <ExpenseAreaChart data={expenseChartData} />
+                            : <div className="grid h-full place-items-center text-sm font-semibold cc-text-tertiary">Sin periodos financieros cargados.</div>}
                     </div>
                 </article>
 
@@ -254,7 +249,9 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         </div>
                     </div>
                     <div className="min-h-[220px]">
-                        <ExpensePieChart data={expenseCategoryData} />
+                        {expenseCategoryData.length > 0
+                            ? <ExpensePieChart data={expenseCategoryData} />
+                            : <div className="grid min-h-[220px] place-items-center text-center text-sm font-semibold cc-text-tertiary">Carga el desglose de los gastos para ver categorías reales.</div>}
                     </div>
                     <div className="mt-5 space-y-2">
                         {expenseCategoryData.map(item => (
@@ -305,6 +302,9 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                                 </div>
                             </div>
                         ))}
+                        {recentActivity.length === 0 && (
+                            <p className="p-8 text-center text-sm font-semibold cc-text-tertiary">Aún no hay pagos confirmados para mostrar.</p>
+                        )}
                     </div>
                 </article>
 
@@ -329,11 +329,11 @@ export function FinanceDashboard({ data }: FinanceDashboardProps) {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2">
                                 <span className="text-sm font-semibold cc-text-secondary">Morosos crónicos (+3m)</span>
-                                <span className="font-semibold text-danger-fg">4</span>
+                                <span className="font-semibold text-danger-fg">{data.chronicDebtors}</span>
                             </div>
                             <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2">
-                                <span className="text-sm font-semibold cc-text-secondary">Avisos de corte enviados</span>
-                                <span className="font-semibold text-warning-fg">2</span>
+                                <span className="text-sm font-semibold cc-text-secondary">Monto vencido</span>
+                                <span className="font-semibold text-warning-fg">${data.overdueAmount.toLocaleString("es-CL")}</span>
                             </div>
                             <button
                                 type="button"

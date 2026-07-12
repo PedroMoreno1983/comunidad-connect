@@ -22,6 +22,7 @@ interface Expense {
     status: 'paid' | 'pending' | 'overdue' | string;
     dueDate: string;
     paidAt?: string | null;
+    paymentAmount?: number | null;
     breakdown?: { label: string; amount: number }[];
 }
 
@@ -38,6 +39,7 @@ type SupabaseExpenseRow = {
     status?: Expense["status"] | null;
     due_date?: string | null;
     paid_at?: string | null;
+    payment_metadata?: { amount?: number | string | null } | null;
     items?: ExpenseItemRow[] | null;
 };
 
@@ -50,6 +52,7 @@ function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
         status: expense.status || "pending",
         dueDate: expense.due_date || new Date().toISOString(),
         paidAt: expense.paid_at || null,
+        paymentAmount: expense.payment_metadata?.amount != null ? Number(expense.payment_metadata.amount) : null,
         breakdown: (expense.items || []).map(item => ({
             label: item.label || "Concepto",
             amount: Number(item.amount || 0),
@@ -68,25 +71,12 @@ export default function ExpensesPage() {
     const [step, setStep] = useState<"review" | "method" | "success">("review");
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [contributionType, setContributionType] = useState<string>("none");
-    const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number } | null>(null);
+    const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
 
     const targetUnitId = user?.unitId;
-
-    useEffect(() => {
-        if (searchParams.get("status") !== "success") return;
-
-        const expenseId = searchParams.get("expenseId") || "";
-        const amount = Number(searchParams.get("amount") || 0);
-        setConfirmedPayment({ expenseId, amount });
-        setStep("success");
-        toast({
-            title: "Pago recibido",
-            description: "Tu pago fue procesado correctamente.",
-            variant: "success",
-        });
-        router.replace("/expenses");
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams]);
+    const paymentReturnExpenseId = searchParams.get("payment") === "return"
+        ? searchParams.get("expenseId") || ""
+        : "";
 
     useEffect(() => {
         const fetchExpenses = async () => {
@@ -98,9 +88,38 @@ export default function ExpensesPage() {
 
             try {
                 setIsLoading(true);
-                const data = await ExpensesService.getExpenses(targetUnitId);
+                let mapped = ((await ExpensesService.getExpenses(targetUnitId) || []) as SupabaseExpenseRow[]).map(mapExpenseRow);
 
-                setExpenses(((data || []) as SupabaseExpenseRow[]).map(mapExpenseRow));
+                if (paymentReturnExpenseId) {
+                    for (let attempt = 0; attempt < 3 && !mapped.some(expense => expense.id === paymentReturnExpenseId && expense.status === "paid"); attempt += 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1200));
+                        mapped = ((await ExpensesService.getExpenses(targetUnitId) || []) as SupabaseExpenseRow[]).map(mapExpenseRow);
+                    }
+
+                    const paidExpense = mapped.find(expense => expense.id === paymentReturnExpenseId && expense.status === "paid");
+                    if (paidExpense) {
+                        setConfirmedPayment({
+                            expenseId: paidExpense.id,
+                            amount: paidExpense.paymentAmount || paidExpense.amount,
+                            paidAt: paidExpense.paidAt,
+                        });
+                        setStep("success");
+                        toast({
+                            title: "Pago verificado",
+                            description: "La pasarela confirmo el pago y el cobro ya figura pagado.",
+                            variant: "success",
+                        });
+                    } else {
+                        toast({
+                            title: "Pago en verificacion",
+                            description: "Volviste desde la pasarela, pero aun no recibimos la confirmacion firmada. Tu deuda no se marcara pagada hasta validarla.",
+                            variant: "default",
+                        });
+                    }
+                    router.replace("/expenses");
+                }
+
+                setExpenses(mapped);
             } catch (error: unknown) {
                 console.error("Error fetching expenses:", error);
                 setExpenses([]);
@@ -110,7 +129,9 @@ export default function ExpensesPage() {
         };
 
         fetchExpenses();
-    }, [targetUnitId]);
+        // toast y router son estables en la aplicacion; se excluyen para evitar recargas del retorno.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [targetUnitId, paymentReturnExpenseId]);
 
     const activeExpense = expenses.find(e => e.status !== 'paid');
 
@@ -166,14 +187,10 @@ export default function ExpensesPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     amount: paymentBaseAmount,
+                    extraContribution,
                     includeServiceFee: true,
-                    description: `Gastos comunes ${activeExpense.month} - Unidad ${activeExpense.unitId}`,
                     reference: `EXP_${activeExpense.id}`,
-                    client: {
-                        name: user?.name || "Residente",
-                        email: user?.email || "",
-                    },
-                    returnUrl: `${window.location.origin}/expenses?status=success&expenseId=${activeExpense.id}&amount=${totalAmount}`,
+                    returnUrl: `${window.location.origin}/expenses`,
                 }),
             });
             if (!response.ok) {
@@ -550,7 +567,7 @@ export default function ExpensesPage() {
                             </div>
                             <div className="flex justify-between items-center text-sm py-1.5">
                                 <span className="text-slate-400">Fecha:</span>
-                                <span className="font-medium">{new Date().toLocaleDateString("es-CL")}</span>
+                                <span className="font-medium">{new Date(confirmedPayment?.paidAt || Date.now()).toLocaleDateString("es-CL")}</span>
                             </div>
                         </div>
 

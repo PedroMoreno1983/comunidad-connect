@@ -1134,7 +1134,7 @@ async function runFinanceCollectionPlaybook(profile: AgentProfile) {
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
     const { data: expenses, error } = await admin
         .from('expenses')
-        .select('id, unit_id, month, total_amount, status, due_date')
+        .select('id, unit_id, month, amount, status, due_date')
         .eq('community_id', communityId)
         .in('status', ['pending', 'overdue'])
         .order('due_date', { ascending: true })
@@ -1146,7 +1146,7 @@ async function runFinanceCollectionPlaybook(profile: AgentProfile) {
         id: string;
         unit_id: string;
         month?: string | null;
-        total_amount?: string | number | null;
+        amount?: string | number | null;
         status?: string | null;
         due_date?: string | null;
     }>;
@@ -1169,7 +1169,7 @@ async function runFinanceCollectionPlaybook(profile: AgentProfile) {
             type: row.status === 'overdue' ? 'alert' : 'warning',
             category: 'finance_collection',
             title: 'Gasto comun pendiente',
-            body: `Tu unidad ${unitLabel} registra un gasto comun pendiente de $${Number(row.total_amount || 0).toLocaleString('es-CL')} (${row.month || 'periodo actual'}).`,
+            body: `Tu unidad ${unitLabel} registra un gasto comun pendiente de $${Number(row.amount || 0).toLocaleString('es-CL')} (${row.month || 'periodo actual'}).`,
             link: '/resident/finances',
             community_id: communityId,
         }];
@@ -1417,14 +1417,14 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         if (!unit?.id) throw new Error('No encontre una unidad asociada a tu perfil.');
         const { data, error } = await admin
             .from('expenses')
-            .select('id, month, total_amount, status, due_date')
+            .select('id, month, amount, status, due_date')
             .eq('unit_id', String(unit.id))
             .order('due_date', { ascending: false })
             .limit(6);
         if (error) throw error;
-        const rows = (data || []) as Array<{ total_amount?: number | string | null; status?: string | null }>;
+        const rows = (data || []) as Array<{ amount?: number | string | null; status?: string | null }>;
         const pending = rows.filter(row => row.status !== 'paid');
-        const amount = pending.reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
+        const amount = pending.reduce((sum, row) => sum + Number(row.amount || 0), 0);
         return {
             entityType: 'expenses',
             entityId: null,

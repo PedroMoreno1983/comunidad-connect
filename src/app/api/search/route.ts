@@ -7,13 +7,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchService } from '@/lib/search';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  const limited = enforceRateLimit(req, 'search.ai', { limit: 60, windowMs: 60_000 });
+  const limited = await enforceDistributedRateLimit(req, 'search.ai', { limit: 60, windowMs: 60_000 });
   if (limited) return limited;
+
+  const profile = await getAuthenticatedAgentProfile();
+  if (!profile) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
 
   const { searchParams } = req.nextUrl;
   const query = searchParams.get('q')?.trim() ?? '';
@@ -29,6 +35,13 @@ export async function GET(req: NextRequest) {
   if (query.length < 2) {
     return NextResponse.json(
       { error: 'La búsqueda debe tener al menos 2 caracteres.' },
+      { status: 400 }
+    );
+  }
+
+  if (query.length > 160) {
+    return NextResponse.json(
+      { error: 'La búsqueda no puede superar 160 caracteres.' },
       { status: 400 }
     );
   }

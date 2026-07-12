@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/Button";
 import { CreditCard, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from "@/lib/config";
-import { useAuth } from "@/lib/authContext";
 
 interface PaymentModalProps {
     item: MarketplaceItem | null;
@@ -23,11 +22,12 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalProps) {
-    const { user } = useAuth();
     const [step, setStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const handlePayment = async () => {
         if (!item) return;
+        setErrorMessage(null);
         setStep('processing');
 
         try {
@@ -36,24 +36,22 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: item.price,
-                    description: `Compra en Marketplace: ${item.title}`,
                     reference: `MARKET_${item.id}`,
-                    client: {
-                        name: user?.name || 'Residente',
-                        email: user?.email || ''
-                    },
-                    returnUrl: window.location.origin + '/marketplace?status=success'
+                    returnUrl: window.location.origin + '/marketplace'
                 })
             });
 
-            if (!response.ok) throw new Error("Error generating payment link");
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({})) as { error?: string };
+                throw new Error(payload.error || "No se pudo iniciar el pago.");
+            }
 
             const { url } = await response.json();
             window.location.href = url;
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Payment error:", error);
-            // Optionally could add a toast here for errors
+            setErrorMessage(error instanceof Error ? error.message : "No se pudo iniciar el pago.");
             setStep('checkout');
         }
     };
@@ -116,6 +114,9 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                             >
                                 Confirmar Pago
                             </Button>
+                            {errorMessage && (
+                                <p role="alert" className="text-center text-sm font-semibold text-danger-fg">{errorMessage}</p>
+                            )}
                         </motion.div>
                     )}
 

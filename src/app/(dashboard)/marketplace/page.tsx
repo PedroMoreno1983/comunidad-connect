@@ -7,7 +7,7 @@ import {
     CheckCircle2, ExternalLink, Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck
 } from "lucide-react";
 import { MarketplaceItem } from "@/lib/types";
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Dialog,
     DialogContent,
@@ -94,30 +94,57 @@ export default function MarketplacePage() {
     const { toast } = useToast();
     const { user } = useAuth();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const loadItems = useCallback(async () => {
         setLoading(true);
         try {
             const realItems = await MarketplaceService.getItemsV2();
-            setItems(realItems || []);
+            const loadedItems = realItems || [];
+            setItems(loadedItems);
+            return loadedItems;
         } catch (error: unknown) {
             console.error("Error loading items:", error);
             setItems([]);
+            return [];
         } finally {
             setLoading(false);
         }
     }, []);
 
+    const paymentReturnItemId = searchParams.get('payment') === 'return'
+        ? searchParams.get('itemId') || ''
+        : '';
+
     useEffect(() => {
-        if (searchParams.get('status') === 'success') {
-            toast({
-                title: "¡Compra exitosa!",
-                description: "Tu pago se ha procesado. El vendedor será notificado.",
+        let cancelled = false;
+
+        const refreshAndVerify = async () => {
+            let loadedItems = await loadItems();
+            if (!paymentReturnItemId || cancelled) return;
+
+            for (let attempt = 0; attempt < 3 && !loadedItems.some(item => item.id === paymentReturnItemId && item.paymentStatus === 'completed'); attempt += 1) {
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                loadedItems = await loadItems();
+            }
+
+            if (cancelled) return;
+            const verified = loadedItems.some(item => item.id === paymentReturnItemId && item.paymentStatus === 'completed');
+            toast(verified ? {
+                title: "Compra verificada",
+                description: "La pasarela confirmo el pago y el articulo figura vendido.",
                 variant: "success",
+            } : {
+                title: "Pago en verificacion",
+                description: "Aun no recibimos la confirmacion firmada. El articulo no se marcara vendido hasta validarla.",
+                variant: "default",
             });
-        }
-        loadItems();
-    }, [loadItems, searchParams, toast]);
+            router.replace('/marketplace');
+        };
+
+        void refreshAndVerify();
+        return () => { cancelled = true; };
+    }, [loadItems, paymentReturnItemId, router, toast]);
 
     // ── Búsqueda híbrida con debounce 400ms ─────────────────────────────────
     const runSearch = useCallback(async (query: string) => {
