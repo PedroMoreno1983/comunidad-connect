@@ -13,6 +13,7 @@ import { Booking, Amenity } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Calendar,
@@ -406,12 +407,13 @@ export default function AmenitiesPage() {
                         {/* List of Amenities */}
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {amenities.length === 0 ? (
-                                <div className="col-span-full text-center py-16 border border-dashed border-slate-200 rounded-2xl bg-surface/50 shadow-inner max-w-sm mx-auto my-6">
-                                    <div className="p-3 bg-brand-50 text-brand-500 rounded-full w-fit mx-auto mb-4 border border-brand-100 shadow-sm">
-                                        <Calendar className="h-6 w-6" />
-                                    </div>
-                                    <h3 className="text-sm font-bold cc-text-primary">No hay espacios comunes</h3>
-                                    <p className="text-xs cc-text-secondary mt-1 px-6 leading-relaxed">Aún no se han configurado espacios comunes para tu condominio.</p>
+                                <div className="col-span-full max-w-md mx-auto my-6 w-full">
+                                    <EmptyState
+                                        icon={<Calendar className="h-6 w-6" />}
+                                        title="No hay espacios comunes"
+                                        description="Aún no se han configurado espacios comunes para tu condominio."
+                                        tone="neutral"
+                                    />
                                 </div>
                             ) : (
                                 amenities.map(amenity => {

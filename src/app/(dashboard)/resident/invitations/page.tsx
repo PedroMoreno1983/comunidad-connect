@@ -9,6 +9,7 @@ import {
     ShieldCheck, History
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Invitation {
     id: string;
@@ -141,7 +142,16 @@ export default function ResidentInvitationsPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {isLoading && <p className="text-slate-500">Cargando invitaciones...</p>}
-                            {!isLoading && activeInvitations.length === 0 && <p className="text-slate-500">No hay pases activos.</p>}
+                            {!isLoading && activeInvitations.length === 0 && (
+                                <div className="col-span-full">
+                                    <EmptyState
+                                        icon={<QrCode className="h-6 w-6" />}
+                                        title="No hay pases activos"
+                                        description="Crea una nueva invitación en el panel de la izquierda para autorizar el acceso de tus visitas."
+                                        tone="neutral"
+                                    />
+                                </div>
+                            )}
                             {activeInvitations.map((inv) => (
                                 <motion.div
                                     key={inv.id}
@@ -209,8 +219,14 @@ export default function ResidentInvitationsPage() {
                                     </div>
                                 ))}
                                 {!isLoading && pastInvitations.length === 0 && (
-                                    <div className="p-10 text-center text-slate-400 font-bold italic">
-                                        No hay registros históricos.
+                                    <div className="p-4">
+                                        <EmptyState
+                                            icon={<History className="h-6 w-6" />}
+                                            title="Sin registros históricos"
+                                            description="Aquí verás la bitácora de las visitas que han ingresado o cuyos pases han expirado."
+                                            tone="neutral"
+                                            dashed={false}
+                                        />
                                     </div>
                                 )}
                             </div>
