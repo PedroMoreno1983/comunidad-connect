@@ -1,147 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
-import { getAuthenticatedAgentProfile, type ServerAgentProfile } from '@/lib/server/agentIdentity';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { recordOperationEvent } from '@/lib/operations/audit';
-
-type AgentKey = 'finance' | 'maintenance' | 'concierge' | 'community';
-type AutonomyLevel = 'manual' | 'semi_autonomous' | 'autonomous';
-type ToolName =
-    | 'get_amenities'
-    | 'create_booking'
-    | 'create_marketplace_item'
-    | 'create_announcement'
-    | 'create_service_request'
-    | 'register_visitor'
-    | 'get_my_expenses'
-    | 'run_playbook';
-
-type PlaybookKey =
-    | 'finance_collection_review'
-    | 'maintenance_ticket_triage'
-    | 'onboarding_import_review'
-    | 'iot_emergency_readiness'
-    | 'community_broadcast';
-
-type AgentProfile = ServerAgentProfile;
-
-type AgentAction = {
-    agentKey: AgentKey;
-    toolName: ToolName;
-    args: Record<string, unknown>;
-    requiresConfirmation: boolean;
-    title: string;
-    summary: string;
-    targetHref: string;
-    proposalId?: string | null;
-    runId?: string | null;
-};
-
-type AgentStep = {
-    kind: 'reasoning' | 'tool' | 'confirmation' | 'result' | 'warning';
-    title: string;
-    detail: string;
-    metadata?: Record<string, unknown>;
-};
-
-const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
-
-type AgentPolicy = {
-    agentKey: AgentKey;
-    autonomyLevel: AutonomyLevel;
-    active: boolean;
-    maxDailyActions: number;
-    updatedAt?: string | null;
-};
-
-type AgentSummary = {
-    totalRuns: number;
-    executedRuns: number;
-    pendingProposals: number;
-    failedRuns: number;
-    successRate: number;
-    estimatedMinutesSaved: number;
-};
-
-type AgentPlaybook = {
-    key: PlaybookKey;
-    agentKey: AgentKey;
-    name: string;
-    description: string;
-    targetHref: string;
-    requiresAdmin: boolean;
-    steps: string[];
-};
-
-type AgentWorkflow = {
-    key: PlaybookKey;
-    agentKey: AgentKey;
-    name: string;
-    status: 'ready' | 'needs_review' | 'blocked';
-    priority: 'high' | 'medium' | 'low';
-    nextAction: string;
-    pendingActions: number;
-    completedActions: number;
-    estimatedMinutesSaved: number;
-    targetHref: string;
-    summary: string;
-    metrics: Array<{ label: string; value: string; tone: 'success' | 'warning' | 'neutral' }>;
-};
-
-const DEFAULT_AGENT_POLICIES: Record<AgentKey, Omit<AgentPolicy, 'agentKey' | 'updatedAt'>> = {
-    finance: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 120 },
-    community: { autonomyLevel: 'semi_autonomous', active: true, maxDailyActions: 80 },
-    maintenance: { autonomyLevel: 'manual', active: true, maxDailyActions: 80 },
-    concierge: { autonomyLevel: 'manual', active: true, maxDailyActions: 100 },
-};
-
-const AGENT_PLAYBOOKS: AgentPlaybook[] = [
-    {
-        key: 'finance_collection_review',
-        agentKey: 'finance',
-        name: 'Cobranza controlada',
-        description: 'Detecta gastos impagos, prepara notificaciones internas y deja auditoria sin exponer deudas a vecinos.',
-        targetHref: '/admin/finanzas',
-        requiresAdmin: true,
-        steps: ['Detectar gastos impagos', 'Resolver unidades y residentes', 'Notificar residentes vinculados', 'Registrar evento operativo'],
-    },
-    {
-        key: 'maintenance_ticket_triage',
-        agentKey: 'maintenance',
-        name: 'Ordenar tickets',
-        description: 'Ordena tickets abiertos, revisa proveedores y deja el seguimiento listo.',
-        targetHref: '/admin/mantenimiento',
-        requiresAdmin: true,
-        steps: ['Detectar tickets abiertos', 'Revisar proveedores verificados', 'Priorizar seguimiento', 'Registrar bitacora'],
-    },
-    {
-        key: 'onboarding_import_review',
-        agentKey: 'community',
-        name: 'Cargar residentes',
-        description: 'Prepara la carga de residentes, revisa datos y sincroniza unidades con confirmacion.',
-        targetHref: '/admin/onboarding',
-        requiresAdmin: true,
-        steps: ['Subir archivo', 'Extraer residentes', 'Revisar advertencias', 'Sincronizar perfiles y unidades'],
-    },
-    {
-        key: 'iot_emergency_readiness',
-        agentKey: 'maintenance',
-        name: 'Emergencia IoT',
-        description: 'Verifica que el edificio tenga responsables y proveedores listos para responder a alertas criticas.',
-        targetHref: '/admin/mantenimiento',
-        requiresAdmin: true,
-        steps: ['Revisar staff disponible', 'Revisar proveedores verificados', 'Crear checklist operativo', 'Registrar brechas'],
-    },
-    {
-        key: 'community_broadcast',
-        agentKey: 'community',
-        name: 'Comunicado comunitario',
-        description: 'Prepara un comunicado trazable para administracion o conserjeria con confirmacion antes de publicar.',
-        targetHref: '/comunicaciones',
-        requiresAdmin: false,
-        steps: ['Definir titulo', 'Redactar contenido', 'Confirmar publicacion', 'Auditar difusion'],
-    },
-];
+import {
+    AGENT_PLAYBOOKS,
+    DEFAULT_AGENT_POLICIES,
+    DEFAULT_COMMUNITY_ID,
+    type AgentAction,
+    type AgentKey,
+    type AgentPlaybook,
+    type AgentPolicy,
+    type AgentProfile,
+    type AgentStep,
+    type AgentSummary,
+    type AgentWorkflow,
+    type AutonomyLevel,
+    type PlaybookKey,
+    type ToolName,
+} from '@/lib/agent-center/domain';
 
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
