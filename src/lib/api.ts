@@ -9,6 +9,8 @@ import {
     CocoCase,
     CocoCaseEvent,
     CollectivePurchaseCampaign,
+    CommercialLeadRequest,
+    CommercialLeadResponse,
     CommunityFinance,
     CreateAmenityInput,
     CommunityProject,
@@ -2192,5 +2194,22 @@ export const ProductCapabilitiesService = {
 
         if (!response.ok) throw new Error('No se pudo verificar la disponibilidad de integraciones.');
         return response.json() as Promise<ProductCapabilities>;
+    },
+};
+
+export const CommercialService = {
+    async submitLead(payload: CommercialLeadRequest): Promise<CommercialLeadResponse> {
+        const response = await fetch('/api/email/outreach', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => null) as CommercialLeadResponse | null;
+
+        if (!response.ok || !data?.ok) {
+            throw new Error(data?.error || 'No se pudo registrar la solicitud. Intenta nuevamente.');
+        }
+
+        return data;
     },
 };
