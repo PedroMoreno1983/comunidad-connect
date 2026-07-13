@@ -480,25 +480,42 @@ export const VisitorService = {
         return data;
     },
 
-    async getLatestActiveInvitationForScan(): Promise<{
-        id: string;
-        guest_name: string;
-        guest_dni?: string | null;
-        unit_id?: string | null;
-        units?: { number?: string | null } | null;
-    } | null> {
-        const { data, error } = await supabase
+    async redeemInvitation(qrCode: string, registeredBy: string) {
+        const normalizedCode = qrCode.trim().toUpperCase();
+        if (!normalizedCode) return null;
+        const now = new Date().toISOString();
+        const { data: invitation, error: invitationError } = await supabase
             .from('qr_invitations')
-            .select('*, units:unit_id (number)')
+            .select('id, guest_name, guest_dni, unit_id, valid_to, units:unit_id (number)')
+            .eq('qr_code', normalizedCode)
             .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(1)
+            .lte('valid_from', now)
+            .gte('valid_to', now)
             .maybeSingle();
-
-        if (error) throw error;
-        return data;
+        if (invitationError) throw invitationError;
+        if (!invitation) return null;
+        const { data: consumed, error: consumeError } = await supabase
+            .from('qr_invitations')
+            .update({ status: 'used', used_at: now })
+            .eq('id', invitation.id)
+            .eq('status', 'active')
+            .select('id')
+            .maybeSingle();
+        if (consumeError) throw consumeError;
+        if (!consumed) return null;
+        try {
+            const log = await this.register({
+                visitor_name: invitation.guest_name,
+                unit_id: invitation.unit_id || undefined,
+                registered_by: registeredBy,
+                is_qr: true,
+            });
+            return { invitation, log };
+        } catch (error) {
+            await supabase.from('qr_invitations').update({ status: 'active', used_at: null }).eq('id', invitation.id).eq('status', 'used');
+            throw error;
+        }
     },
-
     async registerExit(visitorId: string) {
         const { error } = await supabase
             .from('visitor_logs')

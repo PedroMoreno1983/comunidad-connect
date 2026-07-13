@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { QRScannerSimulator } from "@/components/admin/QRScannerSimulator";
+import { QRAccessValidator } from "@/components/admin/QRAccessValidator";
 import { useAuth } from "@/lib/authContext";
 import { VisitorLog } from "@/lib/types";
 import { VisitorService } from "@/lib/services/supabaseServices";
@@ -215,7 +215,7 @@ export default function VisitorsPage() {
             </section>
 
             {/* Main Scanner Section */}
-            <QRScannerSimulator
+            <QRAccessValidator
                 onScanSuccess={(newLog: VisitorLog) => {
                     const nextVisitors = [newLog, ...visitors];
                     setVisitors(nextVisitors);
