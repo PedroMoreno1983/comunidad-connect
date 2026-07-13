@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Building2, Shield, Check, Copy, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import CommercialOutreach from "@/components/admin/CommercialOutreach";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 interface PricingTier {
     id: string;
@@ -95,13 +96,13 @@ export default function SuperAdminDashboard() {
     };
 
     if (authLoading || loading) {
-        return <div className="p-8 text-center text-slate-500">Cargando Panel SuperAdmin...</div>;
+        return <div className="p-8 text-center cc-text-secondary">Cargando Panel SuperAdmin...</div>;
     }
 
     if (accessDenied) {
         return (
             <div className="mx-auto max-w-3xl p-8">
-                <div className="rounded-lg border border-danger-border bg-danger-bg p-6">
+                <div className="rounded-2xl border border-danger-border bg-danger-bg p-6">
                     <h1 className="text-xl font-semibold text-danger-fg">Acceso restringido</h1>
                     <p className="mt-2 text-sm text-danger-fg">
                         Este panel requiere que el correo este configurado en SUPERADMIN_EMAILS.
@@ -117,11 +118,12 @@ export default function SuperAdminDashboard() {
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent flex items-center gap-3">
-                        <Shield className="h-8 w-8 text-red-500" />
-                        Panel SuperAdmin (SaaS)
-                    </h1>
-                    <p className="cc-text-secondary mt-2">
+                    <Eyebrow className="mb-2 inline-flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5" style={{ color: "var(--cc-rose)" }} />
+                        Consola operativa
+                    </Eyebrow>
+                    <DisplayHeading size={32}>Panel SuperAdmin (SaaS)</DisplayHeading>
+                    <p className="cc-text-secondary mt-2 text-sm font-medium">
                         Gestiona los condominios clientes, sus planes y módulos activos.
                     </p>
                 </div>
@@ -129,25 +131,25 @@ export default function SuperAdminDashboard() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-surface p-6 rounded-lg shadow-sm border border-subtle">
+                <div className="p-6 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600">
+                        <div className="p-4 rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                             <Building2 className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Total Condominios</p>
-                            <p className="text-2xl font-bold cc-text-primary">{communities.length}</p>
+                            <p className="text-sm font-medium cc-text-secondary">Total Condominios</p>
+                            <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{communities.length}</p>
                         </div>
                     </div>
                 </div>
-                <div className="bg-surface p-6 rounded-lg shadow-sm border border-subtle">
+                <div className="p-6 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                        <div className="p-4 rounded-full" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
                             <Check className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Planes Activos</p>
-                            <p className="text-2xl font-bold cc-text-primary">
+                            <p className="text-sm font-medium cc-text-secondary">Planes Activos</p>
+                            <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 {communities.filter(c => c.subscription_status === 'active').length}
                             </p>
                         </div>
@@ -159,16 +161,16 @@ export default function SuperAdminDashboard() {
             <CommercialOutreach />
 
             {/* Communities List */}
-            <div className="bg-surface rounded-lg shadow-sm overflow-hidden border border-subtle">
-                <div className="p-6 border-b border-subtle flex flex-col md:flex-row justify-between gap-4">
-                    <h2 className="text-xl font-bold cc-text-primary flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-brand-500" />
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="p-6 border-b flex flex-col md:flex-row justify-between gap-4" style={{ borderColor: "var(--cc-line)" }}>
+                    <h2 className="text-xl font-semibold cc-text-primary flex items-center gap-2" style={{ fontFamily: "var(--cc-font-display)" }}>
+                        <Building2 className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                         Directorio de Clientes
                     </h2>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <Input 
-                            placeholder="Buscar condominio..." 
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: "var(--cc-ink-faint)" }} />
+                        <Input
+                            placeholder="Buscar condominio..."
                             className="pl-10 w-full md:w-64"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -178,7 +180,7 @@ export default function SuperAdminDashboard() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-canvas/50 text-slate-500 font-medium text-sm">
+                        <thead className="font-medium text-sm cc-text-tertiary" style={{ background: "var(--cc-paper-warm)" }}>
                             <tr>
                                 <th className="p-4">Condominio</th>
                                 <th className="p-4 text-center">Plan Actual</th>
@@ -186,21 +188,27 @@ export default function SuperAdminDashboard() {
                                 <th className="p-4 text-center">Código Invitación Admin</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-sm">
+                        <tbody className="divide-y divide-[var(--cc-line)] text-sm">
                             {filteredCommunities.map((community) => {
+                                const statusStyle = community.subscription_status === 'active'
+                                    ? { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }
+                                    : community.subscription_status === 'trialing'
+                                        ? { background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }
+                                        : { background: "var(--cc-rose-tint)", color: "var(--cc-rose)" };
                                 return (
-                                    <tr key={community.id} className="hover:bg-elevated/50 transition-colors">
+                                    <tr key={community.id} className="hover:bg-[var(--cc-paper-warm)] transition-colors">
                                         <td className="p-4 font-semibold cc-text-primary">
                                             {community.name}
-                                            <div className="text-xs font-normal text-slate-500 flex gap-2 mt-1">
+                                            <div className="text-xs font-normal cc-text-tertiary flex gap-2 mt-1">
                                                 <span>ID: {community.id.split('-')[0]}...</span>
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <select 
+                                            <select
                                                 value={community.tier_id || ""}
                                                 onChange={(e) => handleTierChange(community.id, e.target.value)}
-                                                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 font-medium text-role-admin-fg focus:ring-2 focus:ring-brand-500"
+                                                className="w-full border-none rounded-lg p-2 font-medium outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/20"
+                                                style={{ background: "var(--cc-paper-warm)", color: "var(--cc-ink)" }}
                                             >
                                                 <option value="" disabled>Selecciona un plan</option>
                                                 {tiers.map(t => (
@@ -211,13 +219,7 @@ export default function SuperAdminDashboard() {
                                             </select>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                ${community.subscription_status === 'active' 
-                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                                    : community.subscription_status === 'trialing'
-                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                                                    : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                                                }`}>
+                                            <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide" style={statusStyle}>
                                                 {community.subscription_status || 'desconocido'}
                                             </span>
                                         </td>
@@ -226,10 +228,11 @@ export default function SuperAdminDashboard() {
                                                 <button
                                                     type="button"
                                                     onClick={() => copyToClipboard(community.admin_code, "Codigo admin")}
-                                                    className="inline-flex items-center gap-2 rounded-lg bg-canvas px-3 py-2 font-mono font-bold tracking-widest cc-text-secondary transition-colors hover:bg-elevated"
+                                                    className="inline-flex items-center gap-2 rounded-full px-3 py-2 font-mono font-bold tracking-widest cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                                    style={{ background: "var(--cc-paper-warm)" }}
                                                 >
                                                     {community.admin_code}
-                                                    {copiedValue === community.admin_code ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                                                    {copiedValue === community.admin_code ? <Check className="h-4 w-4" style={{ color: "var(--cc-sage)" }} /> : <Copy className="h-4 w-4" />}
                                                 </button>
                                             ) : (
                                                 <span className="font-mono font-bold cc-text-secondary">---</span>
@@ -240,7 +243,7 @@ export default function SuperAdminDashboard() {
                             })}
                             {filteredCommunities.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-slate-500">
+                                    <td colSpan={4} className="p-8 text-center cc-text-tertiary">
                                         No se encontraron clientes
                                     </td>
                                 </tr>
@@ -249,19 +252,20 @@ export default function SuperAdminDashboard() {
                     </table>
                 </div>
             </div>
-            
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-lg p-6">
-                <h3 className="text-lg font-bold text-blue-900 dark:text-blue-300 mb-2">Instrucciones para Nuevos Condominios</h3>
-                <p className="text-sm text-blue-800 dark:text-blue-400 leading-relaxed">
+
+            <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-copper-tint)" }}>
+                <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Instrucciones para Nuevos Condominios</h3>
+                <p className="text-sm cc-text-secondary leading-relaxed">
                     Para registrar un nuevo administrador y su condominio, envíales este link:
                     <br/><br/>
                     <button
                         type="button"
                         onClick={() => copyToClipboard("https://conviveconnect.com/admin-onboarding", "Link de onboarding")}
-                        className="inline-flex items-center gap-2 rounded-lg bg-surface px-3 py-2 font-mono font-bold tracking-wider text-blue-600 shadow-sm transition-colors hover:bg-elevated dark:text-blue-400"
+                        className="inline-flex items-center gap-2 rounded-full px-3 py-2 font-mono font-bold tracking-wider transition-colors hover:opacity-80"
+                        style={{ background: "var(--cc-paper)", color: "var(--cc-copper)" }}
                     >
                         https://conviveconnect.com/admin-onboarding
-                        {copiedValue === "https://conviveconnect.com/admin-onboarding" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                        {copiedValue === "https://conviveconnect.com/admin-onboarding" ? <Check className="h-4 w-4" style={{ color: "var(--cc-sage)" }} /> : <Copy className="h-4 w-4" />}
                     </button>
                     <br/><br/>
                     Una vez que se registren allí, aparecerán en esta lista y podrás asignarles un plan.

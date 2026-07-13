@@ -44,14 +44,14 @@ export default function CommercialOutreach() {
     };
 
     return (
-        <div className="rounded-lg border border-brand-100 bg-brand-50/40 p-6 shadow-sm md:p-8">
+        <div className="rounded-2xl border p-6 md:p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-copper-tint)" }}>
             <div className="flex flex-col items-center gap-8 md:flex-row">
                 <div className="flex-1 space-y-4">
-                    <div className="inline-flex items-center gap-2 rounded-md bg-brand-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-700">
+                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider" style={{ background: "var(--cc-paper)", color: "var(--cc-copper)" }}>
                         <Sparkles className="h-3 w-3" />
                         Campaña comercial
                     </div>
-                    <h2 className="text-2xl font-semibold cc-text-primary">
+                    <h2 className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                         Envia una propuesta personalizada
                     </h2>
                     <p className="max-w-lg leading-relaxed cc-text-secondary">
@@ -61,24 +61,24 @@ export default function CommercialOutreach() {
 
                     <div className="flex flex-wrap items-center gap-4 text-sm font-medium cc-text-secondary">
                         <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-success-fg" />
+                            <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--cc-sage)" }} />
                             Diseño oficial
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+                            <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--cc-copper)" }} />
                             Enfoque operacional
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-warning-fg" />
+                            <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--cc-amber)" }} />
                             Directo a reunion
                         </div>
                     </div>
                 </div>
 
-                <form onSubmit={handleSend} className="w-full space-y-4 rounded-lg border border-subtle bg-surface p-6 shadow-sm md:w-96">
+                <form onSubmit={handleSend} className="w-full space-y-4 rounded-2xl border p-6 md:w-96" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
-                            <User className="h-4 w-4 text-brand-500" />
+                            <User className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
                             Nombre del administrador
                         </label>
                         <Input
@@ -91,7 +91,7 @@ export default function CommercialOutreach() {
 
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
-                            <Mail className="h-4 w-4 text-brand-500" />
+                            <Mail className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
                             Email de destino
                         </label>
                         <Input
@@ -105,7 +105,7 @@ export default function CommercialOutreach() {
 
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-semibold cc-text-secondary">
-                            <Building className="h-4 w-4 text-brand-500" />
+                            <Building className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
                             Nombre del condominio
                         </label>
                         <Input
