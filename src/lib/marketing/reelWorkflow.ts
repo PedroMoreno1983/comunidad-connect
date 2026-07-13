@@ -90,7 +90,7 @@ function asRenderSpec(value: unknown): ReelRenderSpec {
         brand: {
             name: 'ConviveConnect',
             domain: 'conviveconnect.com',
-            primaryColor: '#B5664E',
+            primaryColor: '#9C5636',
             backgroundColor: '#FBF8F3',
         },
         scenes: [],
@@ -636,7 +636,7 @@ function buildCreatomateRenderScript(reel: MarketingReelRecord): CreatomateRende
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
     const website = brand.domain || 'conviveconnect.com';
-    const copper = brand.primaryColor || '#B5664E';
+    const copper = brand.primaryColor || '#9C5636';
     const ink = '#1F1713';
     const muted = '#73584D';
     const paper = brand.backgroundColor || '#FBF8F3';
@@ -726,7 +726,7 @@ function buildCocoCompositeRenderScript(reel: MarketingReelRecord, visualVideoUr
     const brand = reel.renderSpec.brand;
     const brandName = brand.name || 'ConviveConnect';
     const website = brand.domain || 'conviveconnect.com';
-    const copper = brand.primaryColor || '#B5664E';
+    const copper = brand.primaryColor || '#9C5636';
     const ink = '#1F1713';
     const paper = brand.backgroundColor || '#FBF8F3';
     const muted = '#6E5A50';
@@ -929,7 +929,7 @@ function getHiggsfieldCredentials() {
 function buildConviveBrandDirection() {
     return [
         'Direccion de arte ConviveConnect obligatoria:',
-        'Paleta: fondo marfil calido #FAF7F1 y #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 y #1F1713, cobre terracota #C8705A y #B45F4B como acento, verde grisaceo sobrio #6E8268 solo para confirmaciones.',
+        'Paleta: fondo marfil calido #FAF7F1 y #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 y #1F1713, cobre terracota #9C5636 y #733D24 como acento, verde grisaceo sobrio #5F7A46 solo para confirmaciones.',
         'Estilo: SaaS premium sobrio, editorial, elegante y operativo. Cinematografia limpia, luz natural, espacios modernos, detalles de administracion real, tecnologia discreta.',
         'Tipografia aproximada: titulos serif editorial tipo Instrument Serif, textos de interfaz sans moderna tipo Geist.',
         'Evitar: azules corporativos genericos, morados, neones, fondos oscuros dominantes, futurismo exagerado, efectos ruidosos, estetica infantil o videojuego.',
@@ -1219,7 +1219,7 @@ function buildHeyGenPrompt(reel: MarketingReelRecord) {
         'El video debe sentirse premium, claro, moderno y comercial para administradores de condominios en Chile.',
         'Incluye voz en off profesional en espanol neutro latino, subtitulos quemados, ritmo dinamico, musica corporativa moderna de fondo y cierre con marca.',
         'Dirección de arte obligatoria de ConviveConnect:',
-        '- Paleta principal: fondo marfil calido #FAF7F1 / #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 / #1F1713, cobre terracota #C8705A / #B45F4B como acento, verde grisaceo sobrio #6E8268 solo para confirmaciones.',
+        '- Paleta principal: fondo marfil calido #FAF7F1 / #FBF8F3, superficie blanca suave #FFFFFF, tinta profunda #1A1611 / #1F1713, cobre terracota #9C5636 / #733D24 como acento, verde grisaceo sobrio #5F7A46 solo para confirmaciones.',
         '- Evita azules corporativos genericos, morados, neones, degradados futuristas, colores saturados o fondos oscuros dominantes.',
         '- Estilo visual: SaaS premium sobrio, editorial, elegante y operativo. Mucho espacio en blanco, bordes finos, cards de radio 8-10px, sombras muy suaves, layouts tipo dashboard real.',
         '- Tipografia aproximada: titulos con serif editorial similar a Instrument Serif, peso liviano; textos de interfaz con sans moderna similar a Geist. Nada de fuentes futuristas, comic, bold exagerado o letras 3D.',

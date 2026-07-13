@@ -59,7 +59,7 @@ export function ModuleStat({ label, value, icon, active, onClick }: ModuleStatPr
             onClick={onClick}
             className="flex min-h-[92px] items-center justify-between rounded-xl border p-4 text-left transition-colors"
             style={{
-                borderColor: active ? "rgba(181,102,78,0.30)" : "var(--cc-line)",
+                borderColor: active ? "rgba(156, 86, 54,0.30)" : "var(--cc-line)",
                 background: active ? "var(--cc-copper-tint)" : "var(--cc-paper)",
             }}
         >

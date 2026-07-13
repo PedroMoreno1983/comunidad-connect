@@ -417,7 +417,7 @@ export default function AgentCenterPage() {
               key={message.id}
               className="flex items-start gap-2.5 rounded-xl border p-3.5 text-[13px]"
               style={{
-                borderColor: message.status === "executed" ? "rgba(110,130,104,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : "var(--cc-line)",
+                borderColor: message.status === "executed" ? "rgba(95, 122, 70,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : "var(--cc-line)",
                 background: message.status === "executed" ? "var(--cc-sage-tint)" : message.status === "rejected" ? "var(--cc-rose-tint)" : "var(--cc-paper)",
               }}
             >

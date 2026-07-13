@@ -124,7 +124,7 @@ export default function HomePage() {
                         style={{
                             position: "absolute", top: -20, right: -30,
                             width: 180, height: 180, borderRadius: "50%",
-                            background: "radial-gradient(circle, rgba(181,102,78,0.35) 0%, transparent 60%)",
+                            background: "radial-gradient(circle, rgba(156, 86, 54,0.35) 0%, transparent 60%)",
                         }}
                     />
                     <div className="relative flex justify-between items-start mb-6">

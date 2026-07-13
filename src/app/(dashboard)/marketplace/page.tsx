@@ -767,7 +767,7 @@ export default function MarketplacePage() {
                         <select
                             value={sortMode}
                             onChange={event => setSortMode(event.target.value as typeof sortMode)}
-                            className="h-10 rounded-xl border border-subtle bg-paper-warm px-3 text-xs font-semibold cc-text-secondary outline-none focus:border-copper focus:ring-2 focus:ring-[rgba(181,102,78,0.16)]"
+                            className="h-10 rounded-xl border border-subtle bg-paper-warm px-3 text-xs font-semibold cc-text-secondary outline-none focus:border-copper focus:ring-2 focus:ring-[rgba(156, 86, 54,0.16)]"
                         >
                             <option value="recent">Más recientes</option>
                             <option value="price_asc">Menor precio</option>

@@ -176,7 +176,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                     <Save className="h-4 w-4" style={{ color: "var(--cc-sage)" }} />
                                     Lectura actual ({currentMonth} {currentYear})
                                 </h3>
-                                <div className="rounded-xl border p-6" style={{ background: "var(--cc-copper-tint)", borderColor: "rgba(181,102,78,0.20)" }}>
+                                <div className="rounded-xl border p-6" style={{ background: "var(--cc-copper-tint)", borderColor: "rgba(156, 86, 54,0.20)" }}>
                                     <div className="flex flex-col gap-4">
                                         <label className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--cc-copper-deep)" }}>
                                             Ingresar m³
@@ -187,7 +187,7 @@ export function UnitDetailPanel({ unit, isOpen, onClose, onSaveReading }: UnitDe
                                                 value={readingValue}
                                                 onChange={(e) => setReadingValue(e.target.value)}
                                                 className="h-14 rounded-xl text-center text-2xl font-semibold"
-                                                style={{ background: "var(--cc-paper)", borderColor: "rgba(181,102,78,0.30)" }}
+                                                style={{ background: "var(--cc-paper)", borderColor: "rgba(156, 86, 54,0.30)" }}
                                                 placeholder="0.0"
                                             />
                                             <Button

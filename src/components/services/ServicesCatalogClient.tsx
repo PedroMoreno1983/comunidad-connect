@@ -108,13 +108,13 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                 <div
                     aria-hidden
                     className="absolute -right-20 -top-24 h-80 w-80 rounded-full"
-                    style={{ background: "radial-gradient(circle, rgba(181,102,78,0.35), transparent 64%)" }}
+                    style={{ background: "radial-gradient(circle, rgba(156, 86, 54,0.35), transparent 64%)" }}
                 />
                 <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.2fr_0.8fr] lg:p-10">
                     <div className="relative flex flex-col justify-between gap-8">
                         <div>
                             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/82">
-                                <ShieldCheck className="h-3.5 w-3.5 text-[#D9A691]" />
+                                <ShieldCheck className="h-3.5 w-3.5 text-[#C99572]" />
                                 Red profesional verificada
                             </div>
                             <DisplayHeading size={52} style={{ color: "var(--cc-paper)" }}>
@@ -150,7 +150,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                             { label: "Trabajos cerrados", value: completedJobs, icon: <BriefcaseBusiness className="h-5 w-5" /> },
                         ].map(stat => (
                             <div key={stat.label} className="rounded-xl border border-white/12 bg-white/[0.07] p-4 shadow-sm">
-                                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#D9A691]">
+                                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#C99572]">
                                     {stat.icon}
                                 </div>
                                 <p className="text-2xl font-bold text-white">{stat.value}</p>
@@ -218,7 +218,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                     value={query}
                                     onChange={event => setQuery(event.target.value)}
                                     placeholder="Buscar por nombre, especialidad o certificación"
-                                    className="w-full rounded-xl border bg-paper-warm py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                    className="w-full rounded-xl border bg-paper-warm py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-copper focus:ring-4 focus:ring-[rgba(156, 86, 54,0.16)]"
                                     style={{ borderColor: "var(--cc-line)" }}
                                 />
                             </div>

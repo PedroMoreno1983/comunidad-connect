@@ -60,7 +60,7 @@ export default function SupportPage() {
             </div>
             <div className="mt-6 space-y-3 text-sm text-[#524A40]">
               <p className="flex gap-2"><Clock className="mt-0.5 h-4 w-4 text-[#B45F4B]" /> Recepcion y triage por prioridad operacional.</p>
-              <p className="flex gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#6E8268]" /> Tratamiento de datos con finalidad, minimizacion y acceso por rol.</p>
+              <p className="flex gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#5F7A46]" /> Tratamiento de datos con finalidad, minimizacion y acceso por rol.</p>
               <p className="flex gap-2"><Smartphone className="mt-0.5 h-4 w-4 text-[#5C4868]" /> Activacion guiada de CoCo IA por WhatsApp.</p>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function SupportPage() {
         <section className="grid gap-4 md:grid-cols-3">
           {supportLanes.map((lane) => (
             <div key={lane.title} className="rounded-2xl border border-[#E4D8CA] bg-white/70 p-6 shadow-sm">
-              <CheckCircle2 className="h-5 w-5 text-[#6E8268]" />
+              <CheckCircle2 className="h-5 w-5 text-[#5F7A46]" />
               <h2 className="mt-4 text-xl font-semibold">{lane.title}</h2>
               <p className="mt-3 text-sm leading-7 text-[#524A40]">{lane.detail}</p>
               <p className="mt-4 rounded-lg bg-[#F5EFE6] px-3 py-2 text-xs font-semibold text-[#8A8580]">{lane.response}</p>

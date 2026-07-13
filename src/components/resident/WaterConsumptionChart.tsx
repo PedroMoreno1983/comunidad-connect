@@ -119,7 +119,7 @@ export function WaterConsumptionChart({ data }: WaterConsumptionChartProps) {
                             />
                             <Bar dataKey="personal" radius={[8, 8, 0, 0]} barSize={28}>
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${entry.month}-${index}`} fill={index === data.length - 1 ? "#B5664E" : "#94a3b833"} />
+                                    <Cell key={`cell-${entry.month}-${index}`} fill={index === data.length - 1 ? "#9C5636" : "#94a3b833"} />
                                 ))}
                             </Bar>
                             <Bar dataKey="average" fill="#cbd5e166" radius={[8, 8, 0, 0]} barSize={28} />

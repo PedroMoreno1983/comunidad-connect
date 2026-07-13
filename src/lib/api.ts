@@ -839,8 +839,8 @@ type AdminUnitRow = { id: string };
 type AdminBookingRow = { id: string; status: string | null; date: string | null };
 
 const ADMIN_CATEGORY_COLORS = [
-    "#B5664E",
-    "#6E8268",
+    "#9C5636",
+    "#5F7A46",
     "#C99A4A",
     "#5C4868",
     "#2F6CB0",

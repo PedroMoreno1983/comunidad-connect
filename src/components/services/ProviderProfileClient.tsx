@@ -402,7 +402,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </section>
 
                     {provider.verified && (
-                        <section className="rounded-2xl border p-5" style={{ borderColor: "rgba(181,102,78,0.20)", background: "var(--cc-copper-tint)" }}>
+                        <section className="rounded-2xl border p-5" style={{ borderColor: "rgba(156, 86, 54,0.20)", background: "var(--cc-copper-tint)" }}>
                             <div className="mb-2.5 flex items-center gap-2.5">
                                 <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                                 <h3 className="text-sm font-semibold cc-text-primary">Proveedor verificado</h3>

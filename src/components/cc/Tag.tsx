@@ -4,8 +4,8 @@ import * as React from "react";
 type Tone = "copper" | "sage" | "amber" | "rose" | "plum" | "ink" | "neutral";
 
 const TONE: Record<Tone, { fg: string; border: string; bg: string }> = {
-  copper:  { fg: "var(--cc-copper)",   border: "rgba(181,102,78,0.30)", bg: "var(--cc-copper-tint)" },
-  sage:    { fg: "var(--cc-sage)",     border: "rgba(110,130,104,0.30)", bg: "var(--cc-sage-tint)"  },
+  copper:  { fg: "var(--cc-copper)",   border: "rgba(156, 86, 54,0.30)", bg: "var(--cc-copper-tint)" },
+  sage:    { fg: "var(--cc-sage)",     border: "rgba(95, 122, 70,0.30)", bg: "var(--cc-sage-tint)"  },
   amber:   { fg: "var(--cc-amber)",    border: "rgba(201,154,74,0.30)",  bg: "var(--cc-amber-tint)" },
   rose:    { fg: "var(--cc-rose)",     border: "rgba(181,82,78,0.30)",   bg: "var(--cc-rose-tint)"  },
   plum:    { fg: "var(--cc-plum)",     border: "rgba(92,72,104,0.30)",   bg: "var(--cc-plum-tint)"  },

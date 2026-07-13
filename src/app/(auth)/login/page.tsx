@@ -67,7 +67,7 @@ function LoginForm() {
                     <div
                         aria-hidden
                         className="pointer-events-none absolute right-0 top-1/4 h-[400px] w-[400px] rounded-full blur-3xl"
-                        style={{ background: "radial-gradient(circle, rgba(181,102,78,0.2) 0%, transparent 70%)" }}
+                        style={{ background: "radial-gradient(circle, rgba(156, 86, 54,0.2) 0%, transparent 70%)" }}
                     />
 
                     <div className="relative z-10">
@@ -78,7 +78,7 @@ function LoginForm() {
 
                     <div className="relative z-10 my-auto max-w-md space-y-8">
                         <div className="space-y-4">
-                            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#D9A691]">BIENVENIDO</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#C99572]">BIENVENIDO</span>
                             <DisplayHeading size={44} style={{ color: "var(--cc-paper)" }}>
                                 Gestiona tu comunidad <br />
                                 con <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>control real.</em>
@@ -95,12 +95,12 @@ function LoginForm() {
                             <div className="mb-3 flex items-center gap-2.5">
                                 <div
                                     className="flex h-8 w-8 items-center justify-center rounded-lg"
-                                    style={{ background: "rgba(217, 166, 145, 0.15)", color: "var(--cc-copper-soft)" }}
+                                    style={{ background: "rgba(200, 160, 142, 0.15)", color: "var(--cc-copper-soft)" }}
                                 >
                                     <Sparkles size={15} />
                                 </div>
                                 <div>
-                                    <div className="text-[10px] font-semibold tracking-wider text-[#D9A691]">COCO AI</div>
+                                    <div className="text-[10px] font-semibold tracking-wider text-[#C99572]">COCO AI</div>
                                     <div className="text-xs font-medium">Te está esperando</div>
                                 </div>
                             </div>
@@ -168,7 +168,7 @@ function LoginForm() {
                                     onChange={(event) => setEmail(event.target.value)}
                                     placeholder={activeTab === "mail" ? "tu@correo.com" : "12.345.678-9"}
                                     required
-                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#B5664E]"
+                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
@@ -190,7 +190,7 @@ function LoginForm() {
                                     onChange={(event) => setPassword(event.target.value)}
                                     placeholder="Tu contraseña"
                                     required
-                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#B5664E]"
+                                    className="w-full rounded-xl border bg-[#FAF7F1] px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#9C5636]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>

@@ -94,7 +94,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
                     const cellStyle = isHigh
                         ? { background: "var(--cc-amber-tint)", borderColor: "rgba(201,154,74,0.30)" }
                         : isRead
-                            ? { background: "var(--cc-sage-tint)", borderColor: "rgba(110,130,104,0.30)" }
+                            ? { background: "var(--cc-sage-tint)", borderColor: "rgba(95, 122, 70,0.30)" }
                             : { background: "var(--cc-paper-warm)", borderColor: "var(--cc-line)" };
                     const labelColor = isHigh ? "var(--cc-amber)" : isRead ? "var(--cc-sage)" : "var(--cc-ink-faint)";
 
@@ -135,7 +135,7 @@ export function UnitStatusGrid({ onUnitSelect = () => { } }: UnitStatusGridProps
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-6 pt-6 sm:gap-8" style={{ borderTop: "1px solid var(--cc-line)" }}>
                 <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-md border" style={{ background: "var(--cc-sage-tint)", borderColor: "rgba(110,130,104,0.30)" }} />
+                    <div className="h-3 w-3 rounded-md border" style={{ background: "var(--cc-sage-tint)", borderColor: "rgba(95, 122, 70,0.30)" }} />
                     <span className="text-[10px] font-medium uppercase tracking-widest cc-text-tertiary">Leído</span>
                 </div>
                 <div className="flex items-center gap-2">
