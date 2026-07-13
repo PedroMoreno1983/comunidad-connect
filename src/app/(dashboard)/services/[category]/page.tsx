@@ -59,10 +59,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
     return (
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
-            <header className="border-b border-subtle pb-7">
+            <header className="border-b pb-7" style={{ borderColor: "var(--cc-line)" }}>
                 <Link
                     href="/services"
-                    className="mb-4 inline-flex items-center gap-2 text-sm font-medium cc-text-secondary transition-colors hover:text-brand-600"
+                    className="mb-4 inline-flex items-center gap-2 text-sm font-medium cc-text-secondary transition-colors hover:text-[var(--cc-copper)]"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Volver a servicios
@@ -70,18 +70,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                     <div>
-                        <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">
+                        <div className="mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                             Red de proveedores
                         </div>
-                        <h1 className="text-3xl font-bold cc-text-primary md:text-4xl">
+                        <h1 className="text-3xl font-semibold cc-text-primary md:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>
                             {config.name}
                         </h1>
                         <p className="mt-2 max-w-2xl text-sm leading-6 cc-text-secondary">
                             {config.description}. Compara disponibilidad, experiencia y evaluaciones antes de solicitar.
                         </p>
                     </div>
-                    <div className="rounded-lg border border-subtle bg-surface px-5 py-4 shadow-sm">
-                        <p className="text-2xl font-semibold cc-text-primary">{categoryProviders.length}</p>
+                    <div className="rounded-2xl border px-5 py-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                        <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{categoryProviders.length}</p>
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">
                             {categoryProviders.length === 1 ? "Tecnico disponible" : "Tecnicos disponibles"}
                         </p>
