@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper, resend } from '@/lib/email';
+import { SUPERADMIN_EMAIL, emailWrapper } from '@/lib/email';
 import { getPublicUrl } from '@/lib/config';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -34,9 +34,26 @@ function asSource(value: unknown): CommercialLeadSource {
 
 async function deliverEmail(to: string, subject: string, html: string): Promise<EmailDeliveryResult> {
     try {
-        const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: [to], subject, html });
-        if (error) return { sent: false, error: error.message };
-        return { sent: true, id: data?.id };
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!supabaseUrl || !serviceRoleKey) {
+            return { sent: false, error: 'Canal de correo no configurado.' };
+        }
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/commercial-email`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${serviceRoleKey}`,
+                apikey: serviceRoleKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ to, subject, html }),
+        });
+        const result = await response.json().catch(() => ({})) as { id?: string; error?: string };
+        if (!response.ok || !result.id) {
+            return { sent: false, error: result.error || 'El canal de correo rechazo la entrega.' };
+        }
+        return { sent: true, id: result.id };
     } catch (error) {
         return {
             sent: false,
