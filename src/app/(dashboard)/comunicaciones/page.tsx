@@ -177,7 +177,7 @@ export default function ComunicacionesPage() {
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Ej: Corte de agua programado"
-                                className="w-full h-11 px-4 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                className="w-full h-11 px-4 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(156, 86, 54,0.16)]"
                                 style={{ borderColor: "var(--cc-line)" }}
                             />
                         </div>
@@ -190,7 +190,7 @@ export default function ComunicacionesPage() {
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 placeholder="Escribe el cuerpo del aviso..."
-                                className="w-full min-h-[140px] px-4 py-3 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(181,102,78,0.16)]"
+                                className="w-full min-h-[140px] px-4 py-3 rounded-xl border bg-paper-warm text-sm font-medium cc-text-primary outline-none transition-all focus:border-copper focus:ring-4 focus:ring-[rgba(156, 86, 54,0.16)]"
                                 style={{ borderColor: "var(--cc-line)" }}
                             />
                         </div>

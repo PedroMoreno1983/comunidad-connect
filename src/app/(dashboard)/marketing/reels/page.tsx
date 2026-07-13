@@ -302,7 +302,7 @@ async function generateBrowserVideo(reel: MarketingReelRecord) {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, designWidth, designHeight);
 
-    ctx.fillStyle = "rgba(181, 102, 78, 0.22)";
+    ctx.fillStyle = "rgba(156, 86, 54, 0.22)";
     ctx.beginPath();
     ctx.arc(860, 240 + Math.sin(progress * Math.PI * 2) * 40, 220, 0, Math.PI * 2);
     ctx.fill();

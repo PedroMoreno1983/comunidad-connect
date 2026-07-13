@@ -130,7 +130,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setFullName(e.target.value)}
                                     placeholder="Juan Perez"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -142,7 +142,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="tu@correo.com"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -165,7 +165,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Minimo 6 caracteres"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
@@ -177,7 +177,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="Repite tu contrasena"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -189,7 +189,7 @@ export default function SignUpPage() {
                                     onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                                     placeholder="INV-X93F"
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all font-mono uppercase tracking-[0.16em]"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all font-mono uppercase tracking-[0.16em]"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
@@ -202,7 +202,7 @@ export default function SignUpPage() {
                                         onChange={(e) => setDepartmentNumber(e.target.value)}
                                         placeholder="Ej: 501, 3B, 1201"
                                         required
-                                        className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#B5664E] transition-all"
+                                        className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                         style={{ borderColor: "var(--cc-line-strong)" }}
                                     />
                                 </Field>
@@ -237,7 +237,7 @@ export default function SignUpPage() {
                     <div
                         aria-hidden
                         className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
-                        style={{ background: "radial-gradient(circle, rgba(181,102,78,0.2) 0%, transparent 70%)" }}
+                        style={{ background: "radial-gradient(circle, rgba(156, 86, 54,0.2) 0%, transparent 70%)" }}
                     />
 
                     <div className="relative z-10 flex justify-end">
@@ -248,7 +248,7 @@ export default function SignUpPage() {
 
                     <div className="relative z-10 max-w-md my-auto space-y-8 ml-auto text-right">
                         <div className="space-y-4">
-                            <span className="text-[10px] font-semibold tracking-widest text-[#D9A691] uppercase">ACCESO CONTROLADO</span>
+                            <span className="text-[10px] font-semibold tracking-widest text-[#C99572] uppercase">ACCESO CONTROLADO</span>
                             <DisplayHeading size={44} style={{ color: "var(--cc-paper)" }}>
                                 Cada usuario entra con<br />
                                 el <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>rol correcto.</em>

@@ -78,9 +78,9 @@ export function ModuleFlow({
                             const isDone = completedSteps >= stepNumber && !isFinalCurrent;
                             const isCurrent = isFinalCurrent || (!isDone && activeStep === stepNumber);
                             const cardStyle = isDone
-                                ? { borderColor: "rgba(110,130,104,0.30)", background: "var(--cc-sage-tint)" }
+                                ? { borderColor: "rgba(95, 122, 70,0.30)", background: "var(--cc-sage-tint)" }
                                 : isCurrent
-                                    ? { borderColor: "rgba(181,102,78,0.30)", background: "var(--cc-copper-tint)" }
+                                    ? { borderColor: "rgba(156, 86, 54,0.30)", background: "var(--cc-copper-tint)" }
                                     : { borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" };
                             const badgeStyle = isDone
                                 ? { background: "var(--cc-sage)", color: "#fff" }
@@ -113,7 +113,7 @@ export function ModuleFlow({
                             );
                         })}
                     </div>
-                    <div className="mt-4 flex items-start gap-3 rounded-xl border p-4" style={{ borderColor: "rgba(110,130,104,0.25)", background: "var(--cc-sage-tint)" }}>
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border p-4" style={{ borderColor: "rgba(95, 122, 70,0.25)", background: "var(--cc-sage-tint)" }}>
                         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--cc-sage)" }} />
                         <p className="text-sm font-medium leading-6" style={{ color: "var(--cc-sage)" }}>{outcome}</p>
                     </div>

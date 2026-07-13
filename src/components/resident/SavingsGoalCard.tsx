@@ -30,7 +30,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
 
             <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-4">
-                    <div className="rounded-full p-3" style={{ background: "rgba(181, 102, 78, 0.2)", color: "var(--cc-copper-tint)" }}>
+                    <div className="rounded-full p-3" style={{ background: "rgba(156, 86, 54, 0.2)", color: "var(--cc-copper-tint)" }}>
                         <Target className="h-6 w-6" />
                     </div>
                     <div>
@@ -70,7 +70,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--cc-ink-tertiary)" }}>Meta de consumo</p>
                                 <p className="flex items-center gap-2 text-2xl font-semibold text-white" style={{ fontFamily: "var(--cc-font-display)" }}>
                                     {targetConsumption.toFixed(1)} m³
-                                    <span className="rounded-full px-2 py-1 text-xs font-bold" style={{ background: "rgba(183, 194, 177, 0.2)", color: "var(--cc-sage)" }}>
+                                    <span className="rounded-full px-2 py-1 text-xs font-bold" style={{ background: "rgba(169, 188, 147, 0.2)", color: "var(--cc-sage)" }}>
                                         -{goalPercentage}%
                                     </span>
                                 </p>
@@ -106,7 +106,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                         </div>
 
                         {isOnTrack && (
-                            <div className="flex items-center gap-3 rounded-xl border p-4" style={{ borderColor: "rgba(183, 194, 177, 0.3)", background: "rgba(183, 194, 177, 0.1)" }}>
+                            <div className="flex items-center gap-3 rounded-xl border p-4" style={{ borderColor: "rgba(169, 188, 147, 0.3)", background: "rgba(169, 188, 147, 0.1)" }}>
                                 <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: "var(--cc-sage)" }} />
                                 <p className="text-xs font-bold" style={{ color: "var(--cc-sage)" }}>
                                     Estás en camino a cumplir tu meta. Sigue así.

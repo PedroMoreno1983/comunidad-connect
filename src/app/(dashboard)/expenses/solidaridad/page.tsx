@@ -374,7 +374,7 @@ export default function SolidarityHubPage() {
   if (loading) {
     return (
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#9C5636] mb-4" />
         <span className="text-sm font-semibold uppercase tracking-widest text-slate-500">Cargando Solidaridad Vecinal…</span>
       </div>
     );
@@ -388,17 +388,17 @@ export default function SolidarityHubPage() {
         <div className="mb-8 pt-2">
           <Eyebrow className="mb-2">Apoyo Mutuo</Eyebrow>
           <DisplayHeading size={58}>
-            Solidaridad <em className="text-[#B5664E] font-serif italic">vecinal</em>.
+            Solidaridad <em className="text-[#9C5636] font-serif italic">vecinal</em>.
           </DisplayHeading>
         </div>
 
         {/* Info Banner */}
         <div 
           className="mb-7 rounded-2xl border bg-paper p-5 md:p-6"
-          style={{ borderColor: "rgba(110, 130, 104, 0.2)", background: "rgba(110, 130, 104, 0.03)" }}
+          style={{ borderColor: "rgba(95, 122, 70, 0.2)", background: "rgba(95, 122, 70, 0.03)" }}
         >
           <div className="flex gap-4">
-            <Heart className="mt-0.5 h-6 w-6 shrink-0 text-[#6E8268]" />
+            <Heart className="mt-0.5 h-6 w-6 shrink-0 text-[#5F7A46]" />
             <div className="text-sm leading-7" style={{ color: "var(--cc-ink-soft)" }}>
               <strong className="text-ink">Fondo de Apoyo Mutuo:</strong> Nos organizamos en comunidad para ayudarnos en momentos difíciles. Cuando un residente no puede cubrir su gasto común debido a cesantía o jubilación, el fondo solidario lo apoya de forma confidencial. A cambio, el residente retribuye colaborando con tareas útiles para la convivencia en el edificio.
             </div>
@@ -411,8 +411,8 @@ export default function SolidarityHubPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             
             {/* Step 1 */}
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#6E8268]/20 bg-white p-5 text-center shadow-sm">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(110,130,104,0.1)] font-mono text-sm font-bold text-[#6E8268]">1</div>
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#5F7A46]/20 bg-white p-5 text-center shadow-sm">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(95, 122, 70,0.1)] font-mono text-sm font-bold text-[#5F7A46]">1</div>
               <span className="mb-2 text-sm font-semibold text-ink">1. Aporte Colectivo</span>
               <p className="text-sm leading-6 text-slate-500">Los vecinos redondean opcionalmente sus gastos comunes para financiar el fondo.</p>
             </div>
@@ -425,8 +425,8 @@ export default function SolidarityHubPage() {
             </div>
 
             {/* Step 3 */}
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#B5664E]/20 bg-white p-5 text-center shadow-sm">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(181,102,78,0.1)] font-mono text-sm font-bold text-[#B5664E]">3</div>
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#9C5636]/20 bg-white p-5 text-center shadow-sm">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(156, 86, 54,0.1)] font-mono text-sm font-bold text-[#9C5636]">3</div>
               <span className="mb-2 text-sm font-semibold text-ink">3. Retribución Activa</span>
               <p className="text-sm leading-6 text-slate-500">Los beneficiados devuelven la ayuda colaborando en horas de servicio comunitario.</p>
             </div>
@@ -447,7 +447,7 @@ export default function SolidarityHubPage() {
           <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border bg-[#FAF7F1] p-5" style={{ borderColor: "var(--cc-line)" }}>
             <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Familias</span>
             <div className="mt-2 flex items-center gap-2 font-mono text-2xl font-bold text-ink">
-              <Users className="h-5 w-5 text-[#B5664E]" /> {familiesAssisted}
+              <Users className="h-5 w-5 text-[#9C5636]" /> {familiesAssisted}
             </div>
             <span className="mt-2 block text-xs text-slate-400">Apoyadas</span>
           </div>
@@ -455,7 +455,7 @@ export default function SolidarityHubPage() {
           <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border bg-[#FAF7F1] p-5" style={{ borderColor: "var(--cc-line)" }}>
             <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Horas devueltas</span>
             <div className="mt-2 flex items-center gap-2 font-mono text-2xl font-bold text-ink">
-              <Clock className="h-5 w-5 text-[#6E8268]" /> {totalHoursRetributed}h
+              <Clock className="h-5 w-5 text-[#5F7A46]" /> {totalHoursRetributed}h
             </div>
             <span className="mt-2 block text-xs text-slate-400">Retribuido</span>
           </div>
@@ -467,7 +467,7 @@ export default function SolidarityHubPage() {
             onClick={() => setActiveTab("transparency")}
             className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "transparency" 
-                ? "border-[#B5664E] text-[#B5664E]" 
+                ? "border-[#9C5636] text-[#9C5636]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
             }`}
           >
@@ -477,7 +477,7 @@ export default function SolidarityHubPage() {
             onClick={() => setActiveTab("apply")}
             className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "apply" 
-                ? "border-[#B5664E] text-[#B5664E]" 
+                ? "border-[#9C5636] text-[#9C5636]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
             }`}
           >
@@ -487,7 +487,7 @@ export default function SolidarityHubPage() {
             onClick={() => setActiveTab("tasks")}
             className={`flex-1 pb-4 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === "tasks" 
-                ? "border-[#B5664E] text-[#B5664E]" 
+                ? "border-[#9C5636] text-[#9C5636]" 
                 : "border-transparent text-slate-400 hover:text-slate-600"
             }`}
           >
@@ -503,7 +503,7 @@ export default function SolidarityHubPage() {
             <div>
               <div className="mb-5 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-base font-semibold uppercase tracking-wider text-ink">
-                  <BookOpen className="h-5 w-5 text-[#B5664E]" /> Libro Diario de Solidaridad
+                  <BookOpen className="h-5 w-5 text-[#9C5636]" /> Libro Diario de Solidaridad
                 </h3>
                 <span className="text-xs italic text-slate-400">Actualizado en tiempo real</span>
               </div>
@@ -593,7 +593,7 @@ export default function SolidarityHubPage() {
                     <select
                       value={postulateCategory}
                       onChange={(e) => setPostulateCategory(e.target.value)}
-                      className="w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#B5664E] focus:outline-none"
+                      className="w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#9C5636] focus:outline-none"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                     >
                       <option value="unemployment">Cesantía / Reducción Laboral</option>
@@ -615,7 +615,7 @@ export default function SolidarityHubPage() {
                         placeholder="Ej. 120000"
                         value={postulateAmount}
                         onChange={(e) => setPostulateAmount(e.target.value)}
-                        className="w-full rounded-xl border bg-paper p-4 pl-8 font-mono text-sm focus:border-[#B5664E] focus:outline-none"
+                        className="w-full rounded-xl border bg-paper p-4 pl-8 font-mono text-sm focus:border-[#9C5636] focus:outline-none"
                         style={{ borderColor: "var(--cc-line-strong)" }}
                         required
                       />
@@ -631,7 +631,7 @@ export default function SolidarityHubPage() {
                       placeholder="Describe brevemente el contexto y cómo el fondo te ayudará temporalmente…"
                       value={postulateDesc}
                       onChange={(e) => setPostulateDesc(e.target.value)}
-                      className="h-32 w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#B5664E] focus:outline-none"
+                      className="h-32 w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#9C5636] focus:outline-none"
                       style={{ borderColor: "var(--cc-line-strong)" }}
                       required
                     />
@@ -812,7 +812,7 @@ export default function SolidarityHubPage() {
                                 setResolvedStatus("approved");
                                 setApprovedAmountInput(String(app.amount_requested));
                               }}
-                              className="flex-1 cursor-pointer rounded-lg border border-transparent bg-[#6E8268] py-3 text-center text-sm font-semibold text-white hover:bg-[#5b6c56]"
+                              className="flex-1 cursor-pointer rounded-lg border border-transparent bg-[#5F7A46] py-3 text-center text-sm font-semibold text-white hover:bg-[#5b6c56]"
                             >
                               Resolver Solicitud
                             </button>
@@ -896,7 +896,7 @@ export default function SolidarityHubPage() {
                           {task.status === "free" && !isAdmin && !isConcierge && (
                             <button
                               onClick={() => setBookingTask(task)}
-                              className="cursor-pointer rounded-lg border border-[#B5664E] bg-transparent px-4 py-2 text-sm font-semibold text-[#B5664E] hover:bg-[rgba(181,102,78,0.05)]"
+                              className="cursor-pointer rounded-lg border border-[#9C5636] bg-transparent px-4 py-2 text-sm font-semibold text-[#9C5636] hover:bg-[rgba(156, 86, 54,0.05)]"
                             >
                               Agendar
                             </button>
@@ -905,14 +905,14 @@ export default function SolidarityHubPage() {
                           {task.status === "reserved" && (isAdmin || isConcierge) && (
                             <button
                               onClick={() => setVerifyingTask(task)}
-                              className="cursor-pointer rounded-lg border border-transparent bg-[#B5664E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a05641]"
+                              className="cursor-pointer rounded-lg border border-transparent bg-[#9C5636] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a05641]"
                             >
                               Verificar PIN
                             </button>
                           )}
                           
                           {task.status === "completed" && (
-                            <div className="flex items-center gap-1 text-sm font-semibold text-[#6E8268]">
+                            <div className="flex items-center gap-1 text-sm font-semibold text-[#5F7A46]">
                               <CheckCircle2 className="h-4 w-4" /> Validada
                             </div>
                           )}
@@ -952,7 +952,7 @@ export default function SolidarityHubPage() {
                       onClick={() => setResolvedStatus("approved")}
                       className={`py-2 text-center text-xs font-semibold rounded-lg border cursor-pointer ${
                         resolvedStatus === "approved"
-                          ? "bg-slate-100 border-[#B5664E] text-[#B5664E]"
+                          ? "bg-slate-100 border-[#9C5636] text-[#9C5636]"
                           : "border-slate-200"
                       }`}
                     >
@@ -963,7 +963,7 @@ export default function SolidarityHubPage() {
                       onClick={() => setResolvedStatus("rejected")}
                       className={`py-2 text-center text-xs font-semibold rounded-lg border cursor-pointer ${
                         resolvedStatus === "rejected"
-                          ? "bg-slate-100 border-[#B5664E] text-[#B5664E]"
+                          ? "bg-slate-100 border-[#9C5636] text-[#9C5636]"
                           : "border-slate-200"
                       }`}
                     >
@@ -999,7 +999,7 @@ export default function SolidarityHubPage() {
                 <button
                   type="button"
                   onClick={handleResolveApplication}
-                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#B5664E] cursor-pointer hover:bg-[#a05641]"
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#9C5636] cursor-pointer hover:bg-[#a05641]"
                   disabled={submittingResolve}
                 >
                   {submittingResolve ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Confirmar"}
@@ -1036,7 +1036,7 @@ export default function SolidarityHubPage() {
                 <button
                   type="button"
                   onClick={handleBookTask}
-                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#6E8268] cursor-pointer hover:bg-[#5b6c56]"
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#5F7A46] cursor-pointer hover:bg-[#5b6c56]"
                   disabled={submittingBooking}
                 >
                   {submittingBooking ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Confirmar Agenda"}
@@ -1086,7 +1086,7 @@ export default function SolidarityHubPage() {
                 <button
                   type="button"
                   onClick={handleVerifyTask}
-                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#B5664E] cursor-pointer hover:bg-[#a05641]"
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg text-white bg-[#9C5636] cursor-pointer hover:bg-[#a05641]"
                   disabled={submittingVerification}
                 >
                   {submittingVerification ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Verificar y Registrar"}

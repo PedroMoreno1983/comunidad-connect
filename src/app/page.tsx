@@ -24,7 +24,7 @@ function AppPreview() {
       {/* Top bar header */}
       <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#F1EAE1] dark:border-[#3B3530]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[rgba(181,102,78,0.1)] text-[#B5664E] flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-full bg-[rgba(156, 86, 54,0.1)] text-[#9C5636] flex items-center justify-center font-bold text-xs">
             PM
           </div>
           <div>
@@ -54,24 +54,24 @@ function AppPreview() {
       </div>
 
       {/* Fondo de Apoyo Mutuo Widget */}
-      <div className="bg-[rgba(110,130,104,0.04)] border border-[rgba(110,130,104,0.12)] rounded-2xl p-4 mb-4">
+      <div className="bg-[rgba(95, 122, 70,0.04)] border border-[rgba(95, 122, 70,0.12)] rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-[9px] font-bold text-[#6E8268] uppercase tracking-widest flex items-center gap-1">
-            <Heart className="w-3 h-3 fill-[#6E8268]" /> Apoyo Mutuo Vecinal
+          <span className="text-[9px] font-bold text-[#5F7A46] uppercase tracking-widest flex items-center gap-1">
+            <Heart className="w-3 h-3 fill-[#5F7A46]" /> Apoyo Mutuo Vecinal
           </span>
-          <span className="text-[10px] font-bold font-mono text-[#6E8268]">$180.000</span>
+          <span className="text-[10px] font-bold font-mono text-[#5F7A46]">$180.000</span>
         </div>
         <p className="text-[10px] leading-relaxed text-[#5F5A54] dark:text-[#C8BFB6] mb-3">
           Tu redondeo mensual: <strong className="text-ink">+$800 CLP</strong> acumulado para la comunidad.
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white dark:bg-[#25242A] border border-[rgba(110,130,104,0.12)] rounded-lg p-2 text-center">
+          <div className="bg-white dark:bg-[#25242A] border border-[rgba(95, 122, 70,0.12)] rounded-lg p-2 text-center">
             <div className="text-[8px] font-bold text-slate-400 uppercase">Horas Devueltas</div>
-            <div className="text-xs font-bold text-[#6E8268] mt-0.5">6.5h</div>
+            <div className="text-xs font-bold text-[#5F7A46] mt-0.5">6.5h</div>
           </div>
-          <div className="bg-white dark:bg-[#25242A] border border-[rgba(110,130,104,0.12)] rounded-lg p-2 text-center">
+          <div className="bg-white dark:bg-[#25242A] border border-[rgba(95, 122, 70,0.12)] rounded-lg p-2 text-center">
             <div className="text-[8px] font-bold text-slate-400 uppercase">Familias Apoyadas</div>
-            <div className="text-xs font-bold text-[#B5664E] mt-0.5">2</div>
+            <div className="text-xs font-bold text-[#9C5636] mt-0.5">2</div>
           </div>
         </div>
       </div>
@@ -339,7 +339,7 @@ export default function LandingPage() {
   const selectedRole = roles.find(r => r.id === selectedInfo);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700" style={{ background: 'radial-gradient(circle at top right, rgba(181, 102, 78, 0.07) 0%, var(--cc-ivory) 100%)' }}>
+    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden relative transition-colors duration-700" style={{ background: 'radial-gradient(circle at top right, rgba(156, 86, 54, 0.07) 0%, var(--cc-ivory) 100%)' }}>
 
       {/* ── Background blobs ── */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -393,10 +393,10 @@ export default function LandingPage() {
           {/* Left: Text */}
           <div className="flex-1 max-w-xl">
             <div
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[rgba(110,130,104,0.06)] border text-xs font-semibold mb-6 transition-all"
-              style={{ borderColor: 'rgba(110, 130, 104, 0.15)' }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[rgba(95, 122, 70,0.06)] border text-xs font-semibold mb-6 transition-all"
+              style={{ borderColor: 'rgba(95, 122, 70, 0.15)' }}
             >
-              <Heart className="h-3.5 w-3.5 text-[#6E8268]" />
+              <Heart className="h-3.5 w-3.5 text-[#5F7A46]" />
               <span style={{ color: 'var(--cc-sage)' }}>Apoyo Mutuo y Convivencia Vecinal</span>
             </div>
 
@@ -658,14 +658,14 @@ export default function LandingPage() {
 
         {/* ── Section: Apoyo Mutuo (Solidaridad Vecinal) ── */}
         <section className="mt-24 md:mt-32 w-full max-w-5xl mx-auto rounded-[2.5rem] bg-[#FAF7F1] dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-14 overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-[rgba(110,130,104,0.06)] rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[rgba(95, 122, 70,0.06)] rounded-full blur-3xl" />
           
           <div className="relative z-10 max-w-3xl mx-auto text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#6E8268]/15 border border-[#6E8268]/20 text-[#6E8268] text-xs font-bold tracking-widest uppercase mb-5 animate-pulse">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#5F7A46]/15 border border-[#5F7A46]/20 text-[#5F7A46] text-xs font-bold tracking-widest uppercase mb-5 animate-pulse">
               ✦ Cohesión Comunitaria Nativa
             </div>
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-4 text-[#2D2A26] dark:text-[#FBF8F3]">
-              Apoyo Mutuo: El <span className="text-[#6E8268] italic font-serif">corazón</span> de tu comunidad
+              Apoyo Mutuo: El <span className="text-[#5F7A46] italic font-serif">corazón</span> de tu comunidad
             </h2>
             <p className="text-base text-slate-500 dark:text-slate-400">
               No somos solo un software contable. Diseñamos el primer ecosistema digital que fomenta la colaboración vecinal organizada y confidencial.
@@ -678,8 +678,8 @@ export default function LandingPage() {
                 num: "01",
                 title: "Redondeo Solidario",
                 desc: "Al pagar los gastos comunes, los residentes pueden elegir redondear su cuenta (por ejemplo, aportar $800 extra). Cada peso va directo al fondo de la comunidad.",
-                icon: <TrendingUp className="w-6 h-6 text-[#6E8268]" />,
-                bg: "bg-[#6E8268]/10"
+                icon: <TrendingUp className="w-6 h-6 text-[#5F7A46]" />,
+                bg: "bg-[#5F7A46]/10"
               },
               {
                 num: "02",
@@ -1043,7 +1043,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
       <div className="relative w-full max-w-md bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530] p-8 md:p-10 z-10 text-left">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <span className="text-[10px] font-semibold tracking-widest text-[#6E8268] uppercase">CONTACTO</span>
+            <span className="text-[10px] font-semibold tracking-widest text-[#5F7A46] uppercase">CONTACTO</span>
             <h2 className="text-2xl font-extrabold tracking-tight mt-1 text-[#2D2A26] dark:text-[#FBF8F3]">Hablemos de tu Comunidad</h2>
             <p className="text-xs text-[#8A8580] dark:text-[#C8BFB6] mt-1">Implementa el Fondo de Apoyo Mutuo y la gestión inteligente.</p>
           </div>
@@ -1057,7 +1057,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
 
         {success ? (
           <div className="text-center py-6 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#6E8268]/15 text-[#6E8268] flex items-center justify-center mx-auto text-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#5F7A46]/15 text-[#5F7A46] flex items-center justify-center mx-auto text-2xl">
               ✓
             </div>
             <h3 className="text-lg font-bold text-[#2D2A26] dark:text-[#FBF8F3]">¡Solicitud Recibida!</h3>
@@ -1066,7 +1066,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
             </p>
             <button
               onClick={onClose}
-              className="mt-4 w-full py-3 bg-[#6E8268] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer"
+              className="mt-4 w-full py-3 bg-[#5F7A46] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer"
             >
               Entendido
             </button>
@@ -1081,7 +1081,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Pedro Moreno"
                 required
-                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#5F7A46] transition-all"
                 style={{ borderColor: "var(--cc-line-strong)" }}
               />
             </div>
@@ -1094,7 +1094,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="pedro@comunidad.com"
                 required
-                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#5F7A46] transition-all"
                 style={{ borderColor: "var(--cc-line-strong)" }}
               />
             </div>
@@ -1106,7 +1106,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
                 value={condo}
                 onChange={(e) => setCondo(e.target.value)}
                 placeholder="Edificio Plaza Mayo"
-                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#6E8268] transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border bg-[#FAF7F1] dark:bg-[#1E1E24] text-xs focus:outline-none focus:ring-2 focus:ring-[#5F7A46] transition-all"
                 style={{ borderColor: "var(--cc-line-strong)" }}
               />
             </div>
@@ -1114,7 +1114,7 @@ function ContactAdminFormModal({ onClose, toast }: { onClose: () => void; toast:
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 mt-2 bg-[#6E8268] text-white text-xs font-bold rounded-xl flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
+              className="w-full py-3.5 mt-2 bg-[#5F7A46] text-white text-xs font-bold rounded-xl flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors"
             >
               {loading ? (
                 <>

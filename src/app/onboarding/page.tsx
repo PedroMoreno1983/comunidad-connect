@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
         <section className="grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:py-16">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#6E8268]/20 bg-[#6E8268]/8 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#6E8268]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#5F7A46]/20 bg-[#5F7A46]/8 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#5F7A46]">
               <CalendarClock className="h-4 w-4" />
               Activacion inteligente con CoCo
             </div>
@@ -160,14 +160,14 @@ export default function OnboardingPage() {
             </div>
 
             <div className="rounded-3xl border border-[#E4D8CA] bg-[#1A1611] p-6 text-white shadow-xl">
-              <div className="mb-4 flex items-center gap-2 text-[#D9A691]">
+              <div className="mb-4 flex items-center gap-2 text-[#C99572]">
                 <Sparkles className="h-5 w-5" />
                 <p className="text-xs font-bold uppercase tracking-[0.16em]">Entregable del arranque</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {checklist.map((item) => (
                   <div key={item} className="flex gap-2 text-sm text-white/78">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#6E8268]" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#5F7A46]" />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -178,7 +178,7 @@ export default function OnboardingPage() {
           <section className="rounded-[2rem] border border-[#E4D8CA] bg-white p-6 shadow-2xl shadow-[#1A1611]/10 sm:p-8">
             {sent ? (
               <div className="flex min-h-[520px] flex-col justify-center text-center">
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#6E8268]/12 text-[#6E8268]">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#5F7A46]/12 text-[#5F7A46]">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight">Solicitud recibida</h2>
@@ -198,7 +198,7 @@ export default function OnboardingPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6E8268]">Preactivacion IA</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5F7A46]">Preactivacion IA</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-tight">Cuéntanos qué puede leer CoCo</h2>
                   <p className="mt-2 text-sm leading-6 text-[#6F665D]">
                     Con estos datos el flujo queda preparado para crear comunidad, cargar archivos y revisar brechas sin partir desde cero.
@@ -207,23 +207,23 @@ export default function OnboardingPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Nombre administrador" icon={<Users className="h-4 w-4" />}>
-                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12" placeholder="Pedro Moreno" />
+                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Pedro Moreno" />
                   </Field>
                   <Field label="Correo" icon={<Mail className="h-4 w-4" />}>
-                    <input type="email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12" placeholder="admin@condominio.cl" />
+                    <input type="email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="admin@condominio.cl" />
                   </Field>
                 </div>
 
                 <Field label="Nombre del condominio" icon={<Building2 className="h-4 w-4" />}>
-                  <input value={condoName} onChange={(event) => setCondoName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12" placeholder="Edificio Plaza Mayor" />
+                  <input value={condoName} onChange={(event) => setCondoName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Edificio Plaza Mayor" />
                 </Field>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Telefono" icon={<Phone className="h-4 w-4" />}>
-                    <input value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12" placeholder="+56 9 1234 5678" />
+                    <input value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="+56 9 1234 5678" />
                   </Field>
                   <Field label="Unidades aprox." icon={<MapPin className="h-4 w-4" />}>
-                    <input value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12" placeholder="80" />
+                    <input value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="80" />
                   </Field>
                 </div>
 
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
                   <select
                     value={priority}
                     onChange={(event) => setPriority(event.target.value)}
-                    className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#B5664E] focus:ring-4 focus:ring-[#B5664E]/12"
+                    className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12"
                   >
                     <option>Activacion completa con CoCo</option>
                     <option>Crear comunidad y cargar residentes</option>
@@ -256,9 +256,9 @@ export default function OnboardingPage() {
                           key={item}
                           type="button"
                           onClick={() => setDocuments(prev => checked ? prev.filter(doc => doc !== item) : [...prev, item])}
-                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition ${checked ? "border-[#6E8268] bg-[#6E8268]/10 text-[#516A4F]" : "border-[#E4D8CA] bg-[#FAF7F1] text-[#6F665D]"}`}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition ${checked ? "border-[#5F7A46] bg-[#5F7A46]/10 text-[#516A4F]" : "border-[#E4D8CA] bg-[#FAF7F1] text-[#6F665D]"}`}
                         >
-                          <CheckCircle2 className={`h-4 w-4 ${checked ? "text-[#6E8268]" : "text-[#A39A91]"}`} />
+                          <CheckCircle2 className={`h-4 w-4 ${checked ? "text-[#5F7A46]" : "text-[#A39A91]"}`} />
                           {item}
                         </button>
                       );

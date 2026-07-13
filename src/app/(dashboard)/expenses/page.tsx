@@ -219,7 +219,7 @@ export default function ExpensesPage() {
     if (isLoading) {
         return (
             <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin text-[#B5664E] mb-4" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#9C5636] mb-4" />
                 <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentas…</span>
             </div>
         );
@@ -364,12 +364,12 @@ export default function ExpensesPage() {
                                 style={{ 
                                     borderColor: "var(--cc-copper-soft)",
                                     borderWidth: "1.5px",
-                                    background: "rgba(181, 102, 78, 0.03)"
+                                    background: "rgba(156, 86, 54, 0.03)"
                                 }}
                             >
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Sparkles size={16} className="text-[#B5664E]" />
-                                    <span className="text-sm font-semibold uppercase tracking-wider text-[#B5664E]">
+                                    <Sparkles size={16} className="text-[#9C5636]" />
+                                    <span className="text-sm font-semibold uppercase tracking-wider text-[#9C5636]">
                                         Fondo de Solidaridad Vecinal
                                     </span>
                                 </div>
@@ -545,7 +545,7 @@ export default function ExpensesPage() {
                 {step === "success" && (
                     <div className="flex-1 flex flex-col justify-center items-center text-center py-8">
                         <div
-                          className="w-16 h-16 rounded-full flex items-center justify-center bg-[rgba(110,130,104,0.1)] text-[#6E8268] mb-6"
+                          className="w-16 h-16 rounded-full flex items-center justify-center bg-[rgba(95, 122, 70,0.1)] text-[#5F7A46] mb-6"
                         >
                             <Check size={32} />
                         </div>

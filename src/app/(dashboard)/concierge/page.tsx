@@ -120,7 +120,7 @@ export default function ConciergeDashboardPage() {
                 <div>
                     <Eyebrow className="mb-2">Recepción</Eyebrow>
                     <DisplayHeading size={40}>
-                        Turno <em className="font-serif font-normal italic text-[var(--cc-amber)]">activo</em>
+                        Turno <em className="font-serif font-normal italic text-[var(--cc-copper)]">activo</em>
                     </DisplayHeading>
                 </div>
                 <div className="flex gap-2">
@@ -130,7 +130,7 @@ export default function ConciergeDashboardPage() {
                         </Button>
                     </Link>
                     <Link href="/concierge/packages">
-                        <Button variant="primary" size="sm" style={{ background: "var(--cc-amber)", color: "#1A1611" }}>
+                        <Button variant="copper" size="sm">
                             Recibir paquete
                         </Button>
                     </Link>

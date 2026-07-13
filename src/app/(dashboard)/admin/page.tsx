@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
                             <div
                                 aria-hidden
                                 className="absolute -right-16 -top-20 h-56 w-56 rounded-full"
-                                style={{ background: "radial-gradient(circle, rgba(181,102,78,0.35), transparent 62%)" }}
+                                style={{ background: "radial-gradient(circle, rgba(156, 86, 54,0.35), transparent 62%)" }}
                             />
                             <div className="relative">
                                 <div className="mb-5 flex items-center justify-between">

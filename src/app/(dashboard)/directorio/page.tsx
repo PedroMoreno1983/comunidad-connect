@@ -244,7 +244,7 @@ export default function DirectoryPage() {
                                                     className="group overflow-hidden rounded-xl border border-subtle bg-surface shadow-sm transition-all hover:border-brand-200"
                                                 >
                                                     <div className="relative h-16 bg-[#111827]">
-                                                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(181,102,78,0.76),rgba(17,24,39,0.94))]" />
+                                                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(156, 86, 54,0.76),rgba(17,24,39,0.94))]" />
                                                         <div className="absolute left-4 top-4">
                                                             <Tag tone={tone} solid>{ROLE_LABELS[neighbor.role]}</Tag>
                                                         </div>

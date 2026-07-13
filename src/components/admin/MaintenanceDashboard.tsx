@@ -486,8 +486,8 @@ export function MaintenanceDashboard() {
                                         : insight.tone === 'amber'
                                             ? 'border-[rgba(201,154,74,0.30)] bg-[var(--cc-amber-tint)] text-[var(--cc-amber)]'
                                             : insight.tone === 'blue'
-                                                ? 'border-[rgba(181,102,78,0.30)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper-deep)]'
-                                                : 'border-[rgba(110,130,104,0.30)] bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
+                                                ? 'border-[rgba(156, 86, 54,0.30)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper-deep)]'
+                                                : 'border-[rgba(95, 122, 70,0.30)] bg-[var(--cc-sage-tint)] text-[var(--cc-sage)]'
                                 }`}
                             >
                                 <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">{insight.title}</p>
@@ -703,7 +703,7 @@ export function MaintenanceDashboard() {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-[var(--cc-copper-tint)] rounded-lg flex gap-3 border border-[rgba(181,102,78,0.20)]">
+                            <div className="p-4 bg-[var(--cc-copper-tint)] rounded-lg flex gap-3 border border-[rgba(156, 86, 54,0.20)]">
                                 <Info className="h-5 w-5 text-[var(--cc-copper)] shrink-0" />
                                 <p className="text-[11px] font-medium text-[var(--cc-copper)] leading-relaxed">
                                     Al completar esta tarea, se generará automáticamente un registro en la bitácora técnica del activo correspondiente.

@@ -64,9 +64,9 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
-  admin: "bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] border-[rgba(181,102,78,0.15)]",
+  admin: "bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] border-[rgba(156, 86, 54,0.15)]",
   concierge: "bg-[var(--cc-amber-tint)] text-[var(--cc-amber)] border-[rgba(201,154,74,0.15)]",
-  resident: "bg-[var(--cc-sage-tint)] text-[var(--cc-sage)] border-[rgba(110,130,104,0.15)]",
+  resident: "bg-[var(--cc-sage-tint)] text-[var(--cc-sage)] border-[rgba(95, 122, 70,0.15)]",
 };
 
 type SidebarProps = {
@@ -267,7 +267,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
                       background: isPremium
                         ? Active
                           ? "linear-gradient(135deg, var(--cc-ink), var(--cc-copper))"
-                          : "linear-gradient(135deg, rgba(26,22,18,0.08), rgba(181,102,78,0.15))"
+                          : "linear-gradient(135deg, rgba(26,22,18,0.08), rgba(156, 86, 54,0.15))"
                         : Active
                           ? "var(--cc-paper)"
                           : "transparent",

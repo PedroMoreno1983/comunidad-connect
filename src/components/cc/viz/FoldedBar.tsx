@@ -17,7 +17,7 @@ export const DATA_PALETTE = {
   purple: "#7C6BA6",
   lime: "#93A23E",
   teal: "#3E8E8E",
-  copper: "#B5664E",
+  copper: "#9C5636",
 } as const;
 
 type FoldedBarProps = {

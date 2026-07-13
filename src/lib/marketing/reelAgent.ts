@@ -171,7 +171,7 @@ export function buildReelRenderSpec(reel: ReelCreativePackage): ReelRenderSpec {
         brand: {
             name: 'ConviveConnect',
             domain: 'conviveconnect.com',
-            primaryColor: '#B5664E',
+            primaryColor: '#9C5636',
             backgroundColor: '#FBF8F3',
         },
         scenes: reel.scenes.map((scene, index) => ({ ...scene, index })),
