@@ -125,14 +125,14 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
     };
 
     return (
-        <section className="rounded-lg border border-subtle bg-surface shadow-sm">
-            <div className="border-b border-subtle p-5">
+        <section className="rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <div className="border-b p-5" style={{ borderColor: "var(--cc-line)" }}>
                 <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-ink)" }}>
                         <UserPlus className="h-5 w-5" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold cc-text-primary">Nuevo pase de visita</h2>
+                        <h2 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Nuevo pase de visita</h2>
                         <p className="mt-1 text-sm leading-6 cc-text-secondary">
                             Genera un acceso temporal con trazabilidad para conserjeria.
                         </p>
@@ -168,7 +168,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                             />
                         </div>
 
-                        <div className="grid gap-3 rounded-lg border border-subtle bg-elevated/40 p-4 text-sm cc-text-secondary">
+                        <div className="grid gap-3 rounded-xl border p-4 text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                             <div className="flex items-center gap-2">
                                 <CalendarClock className="h-4 w-4" />
                                 Vigencia automatica de 24 horas.
@@ -195,7 +195,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                         exit={{ opacity: 0, y: -8 }}
                         className="space-y-5 p-5"
                     >
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                        <div className="rounded-xl border border-success-border bg-success-bg p-4 text-success-fg">
                             <div className="flex items-center gap-2 font-semibold">
                                 <CheckCircle2 className="h-5 w-5" />
                                 Pase activo
@@ -205,17 +205,18 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                             </p>
                         </div>
 
-                        <div className="mx-auto grid aspect-square w-full max-w-[240px] grid-cols-7 gap-1 rounded-lg border border-subtle bg-white p-5 shadow-sm">
+                        <div className="mx-auto grid aspect-square w-full max-w-[240px] grid-cols-7 gap-1 rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "#fff" }}>
                             {qrCells.map((filled, index) => (
                                 <span
                                     key={index}
-                                    className={`rounded-[3px] ${filled ? "bg-slate-950" : "bg-slate-100"}`}
+                                    className="rounded-[3px]"
+                                    style={{ background: filled ? "var(--cc-ink)" : "var(--cc-paper-warm)" }}
                                     aria-hidden="true"
                                 />
                             ))}
                         </div>
 
-                        <div className="rounded-lg border border-subtle bg-elevated/40 p-4">
+                        <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
                             <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Codigo</p>
                             <p className="mt-1 break-all font-mono text-xl font-bold cc-text-primary">{generated.qrCode}</p>
                             <p className="mt-2 text-xs cc-text-secondary">
@@ -237,7 +238,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                         <button
                             type="button"
                             onClick={reset}
-                            className="w-full rounded-lg px-4 py-2 text-sm font-semibold cc-text-secondary transition-colors hover:bg-elevated"
+                            className="w-full rounded-full px-4 py-2 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
                         >
                             Crear otro pase
                         </button>
