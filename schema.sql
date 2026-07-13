@@ -446,6 +446,8 @@ CREATE TABLE IF NOT EXISTS public.training_modules (
   description TEXT,
   target_audience TEXT DEFAULT 'all' CHECK (target_audience IN ('resident', 'concierge', 'admin', 'all')),
   is_active BOOLEAN DEFAULT TRUE,
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -462,9 +464,13 @@ CREATE TABLE IF NOT EXISTS public.user_training_progress (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   module_id UUID REFERENCES public.training_modules(id) ON DELETE CASCADE NOT NULL,
-  status TEXT DEFAULT 'started' CHECK (status IN ('started', 'completed')),
+  community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed')),
+  last_slide_index INTEGER NOT NULL DEFAULT 0 CHECK (last_slide_index >= 0),
   score INTEGER DEFAULT 0,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, module_id)
 );

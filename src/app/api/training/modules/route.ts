@@ -1,141 +1,100 @@
-import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // Ignore headers error in Server Components
-                    }
-                },
-            },
-        }
-    );
+function cleanText(value: unknown, max: number) {
+    return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export async function GET() {
-    try {
-        const supabase = await getSupabase();
-        const { data: modules, error } = await supabase
-            .from('training_modules')
-            .select(`
-                *,
-                training_lessons (
-                    id, title, content
-                )
-            `)
-            .order('created_at', { ascending: false });
+export async function GET(req: NextRequest) {
+    const limited = await enforceDistributedRateLimit(req, 'training.modules.read', { limit: 60, windowMs: 60_000 });
+    if (limited) return limited;
 
-        if (error) throw error;
-        return NextResponse.json(modules);
-    } catch (error: unknown) {
-        console.error("Error fetching modules:", error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+    let query = getSupabaseAdmin()
+        .from('training_modules')
+        .select('id,title,description,target_audience,is_active,community_id,created_at,training_lessons(id,title,content,order_index)')
+        .eq('is_active', true)
+        .or(`community_id.is.null,community_id.eq.${profile.community_id}`)
+        .order('created_at', { ascending: false });
+
+    if (profile.role !== 'admin') {
+        query = query.in('target_audience', ['all', profile.role]);
     }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('[training/modules] Read failed:', error.message);
+        return NextResponse.json({ error: 'No se pudieron cargar los cursos.' }, { status: 500 });
+    }
+    return NextResponse.json(data || []);
 }
 
-export async function POST(req: Request) {
-    try {
-        const supabase = await getSupabase();
-        
-        // Ensure user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-        }
+export async function POST(req: NextRequest) {
+    const limited = await enforceDistributedRateLimit(req, 'training.modules.create', { limit: 12, windowMs: 60_000 });
+    if (limited) return limited;
 
-        // Obtener el community_id y verificar si es administrador
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, community_id')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile || profile.role !== 'admin') {
-            return NextResponse.json({ error: "Permisos insuficientes o no es administrador." }, { status: 403 });
-        }
-
-        const body = await req.json();
-        const { title, description, target_audience, content } = body;
-
-        if (!title || !content) {
-            return NextResponse.json({ error: "Título y contenido son obligatorios" }, { status: 400 });
-        }
-
-        // 1. Crear el módulo
-        const { data: modData, error: modError } = await supabase
-            .from('training_modules')
-            .insert({ 
-                title, 
-                description: description || '',
-                target_audience: target_audience || 'all',
-                is_active: true
-            })
-            .select()
-            .single();
-
-        if (modError) {
-            console.error("Supabase Error Details:", modError);
-            throw new Error(`DB Error: ${modError.message} | Details: ${modError.details || 'n/a'} | Hint: ${modError.hint || 'n/a'}`);
-        }
-
-        // 2. Crear la lección asociada
-        const { error: lessonError } = await supabase
-            .from('training_lessons')
-            .insert({
-                module_id: modData.id,
-                title: "Lección Principal",
-                content,
-                order_index: 0
-            });
-
-        if (lessonError) throw lessonError;
-
-        return NextResponse.json({ success: true, module: modData });
-
-    } catch (error: unknown) {
-        console.error("Error creating module:", error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (profile.role !== 'admin' || !profile.community_id) {
+        return NextResponse.json({ error: 'Solo administracion puede publicar cursos.' }, { status: 403 });
     }
+
+    const body = await req.json() as Record<string, unknown>;
+    const title = cleanText(body.title, 180);
+    const description = cleanText(body.description, 1_500);
+    const content = cleanText(body.content, 100_000);
+    const requestedAudience = cleanText(body.target_audience, 20);
+    const targetAudience = ['all', 'resident', 'concierge', 'admin'].includes(requestedAudience) ? requestedAudience : 'all';
+    if (!title || !content) return NextResponse.json({ error: 'Titulo y contenido son obligatorios.' }, { status: 400 });
+
+    const supabase = getSupabaseAdmin();
+    const { data: module, error: moduleError } = await supabase
+        .from('training_modules')
+        .insert({ title, description, target_audience: targetAudience, is_active: true, community_id: profile.community_id, created_by: profile.id })
+        .select('id,title,description,target_audience,community_id,created_at')
+        .single();
+    if (moduleError || !module) {
+        console.error('[training/modules] Create failed:', moduleError?.message);
+        return NextResponse.json({ error: 'No se pudo guardar el curso.' }, { status: 500 });
+    }
+
+    const { error: lessonError } = await supabase.from('training_lessons').insert({ module_id: module.id, title: 'Leccion principal', content, order_index: 0 });
+    if (lessonError) {
+        await supabase.from('training_modules').delete().eq('id', module.id).eq('community_id', profile.community_id);
+        console.error('[training/modules] Lesson create failed:', lessonError.message);
+        return NextResponse.json({ error: 'No se pudo guardar la leccion.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, module }, { status: 201 });
 }
 
-export async function DELETE(req: Request) {
-    try {
-        const supabase = await getSupabase();
-        const url = new URL(req.url);
-        const id = url.searchParams.get('id');
+export async function DELETE(req: NextRequest) {
+    const limited = await enforceDistributedRateLimit(req, 'training.modules.delete', { limit: 12, windowMs: 60_000 });
+    if (limited) return limited;
 
-        if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
-
-        const { data, error } = await supabase
-            .from('training_modules')
-            .delete()
-            .eq('id', id)
-            .select();
-
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            return NextResponse.json({ 
-                error: "El motor de base de datos denegó la eliminación (No tienes una política RLS de DELETE). Igual que con el INSERT anterior, debes correr esto en el SQL Editor de Supabase:\n\nCREATE POLICY \"Enable Delete for Modules\" ON public.training_modules FOR DELETE TO authenticated USING (true);" 
-            }, { status: 403 });
-        }
-        return NextResponse.json({ success: true });
-    } catch (error: unknown) {
-        console.error("Error deleting module:", error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (profile.role !== 'admin' || !profile.community_id) {
+        return NextResponse.json({ error: 'Solo administracion puede eliminar cursos.' }, { status: 403 });
     }
+
+    const id = new URL(req.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Falta el ID del curso.' }, { status: 400 });
+
+    const supabase = getSupabaseAdmin();
+    const { data: module } = await supabase.from('training_modules').select('id,community_id').eq('id', id).maybeSingle();
+    if (!module) return NextResponse.json({ error: 'Curso no encontrado.' }, { status: 404 });
+    if (!module.community_id) return NextResponse.json({ error: 'Los cursos oficiales no se pueden eliminar.' }, { status: 403 });
+    if (module.community_id !== profile.community_id) return NextResponse.json({ error: 'Curso fuera de tu comunidad.' }, { status: 403 });
+
+    const { error } = await supabase.from('training_modules').delete().eq('id', id).eq('community_id', profile.community_id);
+    if (error) {
+        console.error('[training/modules] Delete failed:', error.message);
+        return NextResponse.json({ error: 'No se pudo eliminar el curso.' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
 }

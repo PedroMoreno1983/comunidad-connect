@@ -24,6 +24,7 @@ interface Course {
     title: string;
     description: string;
     target_audience: string;
+    community_id?: string | null;
     training_lessons: { content: string }[];
 }
 
@@ -231,10 +232,17 @@ export default function AdminTrainingPage() {
         }
         setDeletingId(null);
         try {
-            await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
-            setCourses(c => c.filter(course => course.id !== id));
+            const response = await fetch(`/api/training/modules?id=${id}`, { method: 'DELETE' });
+            const data = await response.json().catch(() => ({})) as { error?: string };
+            if (!response.ok) {
+                toast({ title: "No se pudo eliminar", description: data.error || "Permisos insuficientes.", variant: "destructive" });
+                return;
+            }
+            setCourses(current => current.filter(course => course.id !== id));
+            toast({ title: "Curso eliminado", variant: "success" });
         } catch (err) {
             console.warn("Training course delete failed:", err);
+            toast({ title: "Error de red", description: "No se pudo eliminar el curso.", variant: "destructive" });
         }
     };
 
@@ -507,13 +515,17 @@ export default function AdminTrainingPage() {
                                     <div className="rounded-full p-3" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                         <Play className="h-6 w-6" />
                                     </div>
-                                    <button
-                                        onClick={() => handleDelete(course.id)}
-                                        className="rounded-full p-2 text-[var(--cc-ink-faint)] opacity-0 transition hover:bg-[var(--cc-rose-tint)] hover:text-[var(--cc-rose)] group-hover:opacity-100"
-                                        title="Eliminar curso"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    {course.community_id ? (
+                                        <button
+                                            onClick={() => handleDelete(course.id)}
+                                            className="rounded-full p-2 text-[var(--cc-ink-faint)] opacity-0 transition hover:bg-[var(--cc-rose-tint)] hover:text-[var(--cc-rose)] group-hover:opacity-100"
+                                            title={deletingId === course.id ? "Confirmar eliminacion" : "Eliminar curso"}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    ) : (
+                                        <span className="rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>Oficial</span>
+                                    )}
                                 </div>
                                 <h3 className="mb-2 line-clamp-2 text-xl font-bold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                     {course.title}
