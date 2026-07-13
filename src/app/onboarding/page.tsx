@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { useToast } from "@/components/ui/Toast";
+import { CommercialService } from "@/lib/api";
 
 const steps = [
   {
@@ -67,6 +68,7 @@ export default function OnboardingPage() {
   const [documents, setDocuments] = useState<string[]>(["Nomina residentes/unidades"]);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -81,25 +83,29 @@ export default function OnboardingPage() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/email/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminName,
-          adminEmail,
-          condoName,
-          message: `Solicitud activacion inteligente. Telefono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}. Documentos disponibles: ${documents.join(", ") || "No informado"}.`,
-        }),
+      const result = await CommercialService.submitLead({
+        adminName,
+        adminEmail,
+        condoName,
+        message: `Solicitud activacion inteligente. Telefono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}. Documentos disponibles: ${documents.join(", ") || "No informado"}.`,
+        source: "onboarding_preactivation",
       });
 
-      if (!response.ok) throw new Error("No se pudo registrar la solicitud.");
-
+      setEmailSent(result.emailSent);
       setSent(true);
-      toast({
-        title: "Activacion solicitada",
-        description: "Registramos el edificio y los documentos disponibles para preparar la carga inteligente.",
-        variant: "success",
-      });
+      if (result.emailSent) {
+        toast({
+          title: "Activacion solicitada",
+          description: "Registramos el edificio y enviamos la confirmacion por correo.",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Activacion registrada",
+          description: "La solicitud quedo guardada. La confirmacion por correo esta pendiente.",
+          variant: "default",
+        });
+      }
     } catch (error) {
       toast({
         title: "No se pudo registrar",
@@ -184,6 +190,11 @@ export default function OnboardingPage() {
                 <h2 className="text-3xl font-semibold tracking-tight">Solicitud recibida</h2>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#6F665D]">
                   Dejamos registrada la activacion para {condoName}. El siguiente paso es crear el condominio y entrar al centro de carga asistida.
+                </p>
+                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8A8178]">
+                  {emailSent
+                    ? `Enviamos la confirmacion a ${adminEmail}.`
+                    : "La solicitud esta segura en nuestro registro; el correo de confirmacion sigue pendiente."}
                 </p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2">
                   <Link href="/admin-onboarding" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1611] px-4 py-3 text-sm font-bold text-white">

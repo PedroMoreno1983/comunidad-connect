@@ -784,3 +784,43 @@ export interface ProductCapabilities {
 }
 
 export type ProductCapabilityKey = keyof ProductCapabilities;
+
+export type CommercialLeadSource =
+  | 'landing_contact'
+  | 'commercial_tour'
+  | 'onboarding_preactivation';
+
+export type CommercialLeadStatus = 'notified' | 'delivery_pending';
+
+export interface CommercialLeadRequest {
+  adminName: string;
+  adminEmail: string;
+  condoName?: string;
+  message?: string;
+  source: CommercialLeadSource;
+  website?: string;
+}
+
+export interface CommercialLeadResponse {
+  ok: boolean;
+  leadId?: string;
+  emailSent: boolean;
+  teamNotified: boolean;
+  status: CommercialLeadStatus;
+  message: string;
+  error?: string;
+}
+
+export interface CommercialLeadFormProps {
+  source: CommercialLeadSource;
+}
+
+export interface ContactAdminModalProps {
+  onClose: () => void;
+}
+
+export interface EmailDeliveryResult {
+  sent: boolean;
+  id?: string;
+  error?: string;
+}
