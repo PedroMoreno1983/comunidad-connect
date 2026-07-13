@@ -10,6 +10,8 @@ import { ThemeToggleCompact } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { useState, useEffect } from 'react';
+import { useProductCapabilities } from '@/hooks/useProductCapabilities';
+import type { ProductCapabilityKey } from '@/lib/types';
 import {
     Activity,
     Handshake,
@@ -61,6 +63,7 @@ export function Sidebar() {
     const { user, logout } = useAuth();
     const router = useRouter();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const capabilities = useProductCapabilities();
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -91,7 +94,7 @@ export function Sidebar() {
             title: 'INTELIGENCIA OPERATIVA',
             links: [
                 { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
-                { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true, creatorOnly: true },
+                { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true, creatorOnly: true, capability: 'marketingReels' as ProductCapabilityKey },
             ]
         },
         {
@@ -194,9 +197,11 @@ export function Sidebar() {
         }
     };
 
-    const canShowLink = (link: { roles: string[]; feature?: string; premium?: boolean; creatorOnly?: boolean }) => {
+    const canShowLink = (link: { href: string; roles: string[]; feature?: string; premium?: boolean; creatorOnly?: boolean; capability?: ProductCapabilityKey }) => {
         if (!link.roles.includes(user.role)) return false;
         if (link.creatorOnly && !isPlatformCreator) return false;
+        if (link.href === '/showcase') return false;
+        if (link.capability && !capabilities[link.capability]) return false;
 
         if (link.feature && user.features) {
             if (user.features[link.feature] === false) return false;

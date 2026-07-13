@@ -38,10 +38,6 @@ const STATUS_BADGES: Record<MarketplaceStatus, "success" | "warning" | "neutral"
     hidden: "danger",
 };
 
-function getDeptNumber(item: MarketplaceItem) {
-    return Array.from(item.sellerId ?? item.id).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 900 + 100;
-}
-
 function getPrimaryImage(item: MarketplaceItem) {
     return item.imageUrl || item.images?.[0] || null;
 }
@@ -312,7 +308,7 @@ export function MarketplaceManagementClient({ mode }: MarketplaceManagementClien
                                             </div>
                                             <div className="shrink-0 text-left md:text-right">
                                                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">
-                                                    {isAdminMode ? `Depto ${getDeptNumber(item)}` : "Precio"}
+                                                    {isAdminMode ? "Vendedor" : "Precio"}
                                                 </p>
                                                 <p className="text-lg font-semibold" style={{ color: "var(--cc-copper)" }}>
                                                     {item.allowSale !== false ? `$${item.price.toLocaleString("es-CL")}` : "Intercambio"}

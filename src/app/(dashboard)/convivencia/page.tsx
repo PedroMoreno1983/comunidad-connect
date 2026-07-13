@@ -86,10 +86,10 @@ export default function ConvivenciaPage() {
 
     const [mediationForm, setMediationForm] = useState({
         targetUnit: "",
-        observation: "Hay musica alta a las 2:00 AM",
+        observation: "",
         feeling: "frustrado/a",
-        need: "descansar porque manana trabajo temprano",
-        request: "bajar el volumen durante la noche",
+        need: "",
+        request: "",
     });
     const [lastDraft, setLastDraft] = useState<NeighborMediationCase | null>(null);
 
@@ -354,7 +354,7 @@ export default function ConvivenciaPage() {
                                 <input value={mediationForm.targetUnit} onChange={event => setMediationForm(prev => ({ ...prev, targetUnit: event.target.value }))} placeholder="Ej. 804" className="input-premium h-11 w-full" />
                             </Field>
                             <Field label="Observacion concreta">
-                                <input value={mediationForm.observation} onChange={event => setMediationForm(prev => ({ ...prev, observation: event.target.value }))} className="input-premium h-11 w-full" />
+                                <input value={mediationForm.observation} onChange={event => setMediationForm(prev => ({ ...prev, observation: event.target.value }))} placeholder="Describe un hecho observable, sin juicios" className="input-premium h-11 w-full" required />
                             </Field>
                             <Field label="Sentimiento">
                                 <select value={mediationForm.feeling} onChange={event => setMediationForm(prev => ({ ...prev, feeling: event.target.value }))} className="input-premium h-11 w-full">
@@ -362,10 +362,10 @@ export default function ConvivenciaPage() {
                                 </select>
                             </Field>
                             <Field label="Necesidad">
-                                <input value={mediationForm.need} onChange={event => setMediationForm(prev => ({ ...prev, need: event.target.value }))} className="input-premium h-11 w-full" />
+                                <input value={mediationForm.need} onChange={event => setMediationForm(prev => ({ ...prev, need: event.target.value }))} placeholder="Explica que necesitas cuidar" className="input-premium h-11 w-full" required />
                             </Field>
                             <Field label="Peticion amable">
-                                <input value={mediationForm.request} onChange={event => setMediationForm(prev => ({ ...prev, request: event.target.value }))} className="input-premium h-11 w-full" />
+                                <input value={mediationForm.request} onChange={event => setMediationForm(prev => ({ ...prev, request: event.target.value }))} placeholder="Formula una peticion concreta y realizable" className="input-premium h-11 w-full" required />
                             </Field>
                             <Button type="submit" variant="copper" block>
                                 Redactar con CoCo <MessageSquareHeart className="h-4 w-4" />

@@ -48,6 +48,12 @@ const NAV_MAP: Record<string, string> = {
     "/resident/cases": "Mis Casos CoCo",
 };
 
+const HIDDEN_NAV_ROUTES = new Set(["/resident/supermercado", "/showcase", "/marketing/reels"]);
+
+function getSafeNavigation(target?: string): string | undefined {
+    return target && target in NAV_MAP && !HIDDEN_NAV_ROUTES.has(target) ? target : undefined;
+}
+
 const QUICK = [
     { label: "¿Cómo reservo un espacio?", icon: Calendar },
     { label: "¿Cómo pago mis gastos?", icon: DollarSign },
@@ -154,19 +160,19 @@ export default function CoCo() {
         pendingActions?: PendingAction[];
         case?: Message["case"];
     }) => {
+        const safeNavigate = getSafeNavigation(d.navigate);
         setMsgs(p => [...p, {
             id: (Date.now() + 1).toString(),
             role: "assistant",
             text: d.reply || (d.pendingActions?.length ? "" : "No pude responder."),
-            nav: d.navigate,
+            nav: safeNavigate,
             action: d.action,
             pendingActions: d.pendingActions,
             case: d.case?.created ? d.case : undefined,
         }]);
 
-        if (d.navigate) {
-            const target = d.navigate;
-            setTimeout(() => router.push(target), 800);
+        if (safeNavigate) {
+            setTimeout(() => router.push(safeNavigate), 800);
         }
 
         // Handle UI actions

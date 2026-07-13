@@ -437,7 +437,9 @@ function GuideCard({ guide, index }: { guide: Guide; index: number }) {
                                             className={`text-sm leading-relaxed transition-colors ${completed.has(i) ? "cc-text-tertiary line-through" : "cc-text-secondary"
                                                 }`}
                                             dangerouslySetInnerHTML={{
-                                                __html: step.text.replace(/\*\*(.*?)\*\*/g, "<strong class='font-semibold cc-text-primary'>$1</strong>")
+                                                __html: step.text
+                                                    .replace(/pagar en l.nea/i, "revisar el estado del cobro")
+                                                    .replace(/\*\*(.*?)\*\*/g, "<strong class='font-semibold cc-text-primary'>$1</strong>")
                                             }}
                                         />
                                         {step.tip && (

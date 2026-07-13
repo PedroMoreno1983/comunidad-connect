@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
+import { resolveProductCapabilities } from "@/lib/productCapabilities";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  const capabilities = resolveProductCapabilities(process.env);
+  const alwaysHidden = pathname === "/showcase"
+    || pathname.startsWith("/convive-connect")
+    || pathname.startsWith("/resident/supermercado")
+    || pathname.startsWith("/api/supermarket");
+  const unavailableIntegration = (
+    pathname.startsWith("/marketing/reels")
+    || pathname.startsWith("/api/marketing/reels")
+  ) && !capabilities.marketingReels;
+
+  if (alwaysHidden || unavailableIntegration) {
+    return new NextResponse(null, {
+      status: 404,
+      headers: { "X-Robots-Tag": "noindex, nofollow" },
+    });
+  }
 
   const res = NextResponse.next();
 
@@ -64,5 +82,10 @@ export const config = {
     "/concierge/:path*",
     "/resident/:path*",
     "/superadmin/:path*",
+    "/showcase",
+    "/convive-connect/:path*",
+    "/marketing/reels/:path*",
+    "/api/marketing/reels/:path*",
+    "/api/supermarket",
   ],
 };

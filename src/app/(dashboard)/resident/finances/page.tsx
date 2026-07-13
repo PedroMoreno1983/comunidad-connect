@@ -14,12 +14,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import type { ResidentFinanceExpense } from "@/lib/types";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 
 export default function FinancesPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const capabilities = useProductCapabilities();
     const [expenses, setExpenses] = useState<ResidentFinanceExpense[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
@@ -84,6 +86,7 @@ export default function FinancesPage() {
     }, [loadFinances, paymentReturnExpenseId, router, toast]);
 
     const handlePayHaulmer = async (expense: ResidentFinanceExpense) => {
+        if (!capabilities.onlinePayments) return;
         setProcessingId(expense.id);
         try {
 
@@ -176,7 +179,7 @@ export default function FinancesPage() {
                     ) : (
                         <div className="divide-y divide-[var(--cc-line)]">
                             {pendingExpenses.map((expense) => {
-                                const fee = calculateHaulmerServiceFee(expense.amount);
+                                const fee = capabilities.onlinePayments ? calculateHaulmerServiceFee(expense.amount) : null;
 
                                 return (
                                 <div key={expense.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-[var(--cc-paper-warm)] sm:flex-row sm:items-center sm:justify-between">
@@ -196,20 +199,24 @@ export default function FinancesPage() {
                                     <div className="flex items-center justify-between gap-4 sm:justify-end">
                                         <div className="text-right">
                                             <span className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                                {formatCurrency(fee.totalWithFee)}
+                                                {formatCurrency(fee?.totalWithFee ?? expense.amount)}
                                             </span>
-                                            <p className="text-xs cc-text-secondary">
-                                                Incluye cargo servicio {formatCurrency(fee.totalFee)}
-                                            </p>
+                                            {fee && (
+                                                <p className="text-xs cc-text-secondary">
+                                                    Incluye cargo servicio {formatCurrency(fee.totalFee)}
+                                                </p>
+                                            )}
                                         </div>
-                                        <Button
-                                            onClick={() => handlePayHaulmer(expense)}
-                                            className="min-w-[150px] rounded-full text-white"
-                                            style={{ background: "var(--cc-ink)" }}
-                                            disabled={processingId === expense.id}
-                                        >
-                                            {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
-                                        </Button>
+                                        {capabilities.onlinePayments && (
+                                            <Button
+                                                onClick={() => handlePayHaulmer(expense)}
+                                                className="min-w-[150px] rounded-full text-white"
+                                                style={{ background: "var(--cc-ink)" }}
+                                                disabled={processingId === expense.id}
+                                            >
+                                                {processingId === expense.id ? 'Redirigiendo...' : 'Pagar con Haulmer'}
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                                 );

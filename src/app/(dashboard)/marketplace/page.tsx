@@ -26,7 +26,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MarketplaceCard } from "@/components/marketplace/MarketplaceCard";
 import { ProductFilters } from "@/components/marketplace/ProductFilters";
 import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
-import { ChatModal } from "@/components/marketplace/ChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button as CcButton } from "@/components/cc/Button";
@@ -35,6 +34,7 @@ import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
 } from "lucide-react";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 // Category config repeated here for components or exported from types
@@ -69,7 +69,6 @@ export default function MarketplacePage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [publicationSummary, setPublicationSummary] = useState<PublicationSummary | null>(null);
     const [newItem, setNewItem] = useState({
@@ -95,6 +94,7 @@ export default function MarketplacePage() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const capabilities = useProductCapabilities();
 
     const loadItems = useCallback(async () => {
         setLoading(true);
@@ -807,6 +807,7 @@ export default function MarketplacePage() {
             </div>
 
             {/* Servicios de Entrega */}
+            {capabilities.supermarketOrdering && (
             <section className="px-1">
                 <div className="flex items-center gap-3 mb-5">
                     <div className="h-8 w-8 rounded-xl bg-role-admin-bg flex items-center justify-center">
@@ -857,6 +858,7 @@ export default function MarketplacePage() {
                     </motion.div>
                 </Link>
             </section>
+            )}
 
             {/* Items Grid */}
             {loading && (
@@ -893,22 +895,10 @@ export default function MarketplacePage() {
                 isOpen={isDetailOpen}
                 onClose={() => setIsDetailOpen(false)}
                 categoryLabel={categories.find(c => c.id === selectedItem?.category)?.label || ''}
-                onChat={(item) => {
-                    setSelectedItem(item);
-                    setIsChatOpen(true);
-                }}
                 onBuy={(item) => {
                     setSelectedItem(item);
                     setIsPaymentOpen(true);
                 }}
-            />
-
-            {/* Chat Modal */}
-            <ChatModal
-                item={selectedItem}
-                isOpen={isChatOpen}
-                onClose={() => setIsChatOpen(false)}
-                currentUser={user}
             />
 
             {/* Payment Modal */}

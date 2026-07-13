@@ -172,10 +172,10 @@ export default function HomePage() {
                                 <ChevronRight size={15} color="var(--cc-ink-faint)" className="shrink-0" />
                             </div>
                             <p className="mt-1.5 text-[12px] leading-5 cc-text-secondary">
-                                Pide pagar tu cuenta, reservar un espacio, registrar una visita o abrir una solicitud con trazabilidad.
+                                Pide revisar tu cuenta, reservar un espacio, registrar una visita o abrir una solicitud con trazabilidad.
                             </p>
                             <div className="mt-3 grid grid-cols-3 gap-2">
-                                <AgentChip icon={<CreditCard size={12} />} label="Pagar" />
+                                <AgentChip icon={<CreditCard size={12} />} label="Revisar" />
                                 <AgentChip icon={<CalendarCheck size={12} />} label="Reservar" />
                                 <AgentChip icon={<Wrench size={12} />} label="Ticket" />
                             </div>

@@ -28,7 +28,6 @@ interface MarketplaceCardProps {
 export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryConfig }: MarketplaceCardProps) {
     const Icon = categoryConfig.icon;
     const [imgSrc, setImgSrc] = useState(item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null));
-    const deptNumber = Array.from(item.sellerId ?? item.id).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 900 + 100;
 
     // Premium colorblocks for empty covers based on category
     const categoryColors: Record<string, string> = {
@@ -163,7 +162,7 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                         </div>
                         <div className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            Depto {deptNumber}
+                            Residente autenticado
                         </div>
                     </div>
                 </div>
