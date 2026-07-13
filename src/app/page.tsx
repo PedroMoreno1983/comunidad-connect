@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import {
   Building2,
@@ -443,6 +444,48 @@ export default function LandingPage() {
 
         {/* ── Trust Stats ── */}
         <TrustStats />
+
+        {/* ── Real building showcase — Edificio Málaga, Las Condes ── */}
+        <section className="mt-24 md:mt-32">
+          <div className="mb-8 max-w-xl">
+            <div
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold mb-5"
+              style={{ borderColor: 'var(--cc-line-strong)', background: 'var(--cc-copper-tint)', color: 'var(--cc-copper)' }}
+            >
+              Edificio piloto Net Zero
+            </div>
+            <h2
+              className="text-3xl md:text-5xl leading-[1.05] tracking-tight mb-4"
+              style={{ fontFamily: 'var(--cc-font-display)' }}
+            >
+              Málaga 433, <em className="italic" style={{ color: 'var(--cc-copper)' }}>Las Condes.</em>
+            </h2>
+            <p className="text-base sm:text-lg max-w-md leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>
+              Madera oxidada, acero estructural y vegetación real — así es el edificio donde nace Convive Connect.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl" style={{ borderColor: 'var(--cc-line)' }}>
+              <Image
+                src="/edificio-malaga-patio.jpg"
+                alt="Patio interior del edificio Málaga 433, con revestimiento de madera oxidada, estructura de acero y vegetación nativa"
+                fill
+                sizes="(min-width: 1024px) 60vw, 100vw"
+                className="object-cover"
+                priority
+              />
+            </div>
+            <div className="relative aspect-[4/3] lg:aspect-auto overflow-hidden rounded-2xl">
+              <Image
+                src="/edificio-malaga-exterior.jpg"
+                alt="Fachada exterior del edificio Málaga 433 con paneles solares y balcones de madera"
+                fill
+                sizes="(min-width: 1024px) 40vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+          </div>
+        </section>
 
         {/* ── Section: CoCo IA (WhatsApp Integration) ── */}
         <section className="mt-24 md:mt-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
