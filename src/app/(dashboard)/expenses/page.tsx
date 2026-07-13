@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { getApiUrl } from "@/lib/config";
 import { calculateHaulmerServiceFee } from "@/lib/payments/haulmerFees";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 
 interface Expense {
     id: string;
@@ -62,6 +63,7 @@ function mapExpenseRow(expense: SupabaseExpenseRow): Expense {
 
 export default function ExpensesPage() {
     const { user } = useAuth();
+    const capabilities = useProductCapabilities();
     const { toast } = useToast();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -153,6 +155,7 @@ export default function ExpensesPage() {
     };
 
     const handlePay = async () => {
+        if (!capabilities.onlinePayments) return;
         if (!activeExpense) {
             toast({
                 title: "Sin cobros pendientes",
@@ -236,7 +239,7 @@ export default function ExpensesPage() {
 
     const extraContribution = getContributionAmount(contributionType, baseAmount);
     const paymentBaseAmount = baseAmount + extraContribution;
-    const serviceFee = activeExpense && activeExpense.status !== "paid"
+    const serviceFee = capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid"
         ? calculateHaulmerServiceFee(paymentBaseAmount).totalFee
         : 0;
     const totalAmount = paymentBaseAmount + serviceFee;
@@ -358,7 +361,7 @@ export default function ExpensesPage() {
                         </div>
 
                         {/* Solidarity Option Card */}
-                        {activeExpense && activeExpense.status !== "paid" && (
+                        {capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid" && (
                             <div 
                                 className="mb-6 rounded-xl border p-4 bg-paper"
                                 style={{ 
@@ -463,7 +466,7 @@ export default function ExpensesPage() {
                         </div>
 
                         {/* CTA */}
-                        {activeExpense && activeExpense.status !== "paid" ? (
+                        {capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid" ? (
                             <div className="mt-auto pt-4 pb-3">
                                 <Button variant="primary" size="lg" block onClick={() => setStep("method")}>
                                     <span className="flex-1 text-left">Pagar ${totalAmount.toLocaleString("es-CL")}</span>

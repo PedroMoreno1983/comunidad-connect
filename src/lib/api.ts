@@ -30,6 +30,7 @@ import {
     User,
     WaterReading,
 } from './types';
+import type { ProductCapabilities } from './types';
 
 async function sendBookingConfirmation(payload: {
     bookingId: string;
@@ -2042,4 +2043,16 @@ export const AnnouncementsService = {
             created_at: data.created_at
         };
     }
+};
+
+export const ProductCapabilitiesService = {
+    async getCapabilities(): Promise<ProductCapabilities> {
+        const response = await fetch('/api/product-capabilities', {
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+        });
+
+        if (!response.ok) throw new Error('No se pudo verificar la disponibilidad de integraciones.');
+        return response.json() as Promise<ProductCapabilities>;
+    },
 };

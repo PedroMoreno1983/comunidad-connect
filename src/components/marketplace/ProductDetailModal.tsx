@@ -13,25 +13,23 @@ import {
     Clock,
     CreditCard,
     Home,
-    MessageCircle,
     Repeat,
     ShieldCheck,
     Sparkles,
     Tag,
 } from "lucide-react";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 
 interface ProductDetailModalProps {
     item: MarketplaceItem | null;
     isOpen: boolean;
     onClose: () => void;
     categoryLabel: string;
-    onChat: (item: MarketplaceItem) => void;
     onBuy: (item: MarketplaceItem) => void;
 }
 
-function getDeptNumber(item: MarketplaceItem) {
-    return Array.from(item.sellerId || item.id)
-        .reduce((acc, char) => acc + char.charCodeAt(0), 0) % 900 + 100;
+function getSellerIdentityLabel() {
+    return "Residente autenticado";
 }
 
 function statusLabel(status: MarketplaceItem["status"]) {
@@ -41,11 +39,14 @@ function statusLabel(status: MarketplaceItem["status"]) {
     return "Disponible";
 }
 
-export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onChat, onBuy }: ProductDetailModalProps) {
+export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy }: ProductDetailModalProps) {
+    const capabilities = useProductCapabilities();
     if (!item) return null;
+    const canPayOnline = capabilities.onlinePayments && item.allowSale !== false;
 
     const imgSrc = item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null);
-    const deptNumber = getDeptNumber(item);
+    const sellerIdentityLabel = getSellerIdentityLabel();
+    const deptNumber = sellerIdentityLabel;
     const isUnavailable = item.status === "reserved" || item.status === "sold" || item.status === "hidden";
     const publishedAt = item.createdAt
         ? new Date(item.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "long" })
@@ -88,11 +89,12 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                             <motion.div
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="flex w-fit items-center gap-2.5 rounded-lg border border-blue-100/50 bg-blue-50/50 px-4 py-2 text-xs font-bold text-blue-600 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400"
+                                className="hidden"
                             >
                                 <ShieldCheck className="h-4 w-4" />
                                 Publicación comunitaria verificada · Depto {deptNumber}
                             </motion.div>
+                            <div className="flex w-fit items-center gap-2.5 rounded-lg border border-blue-100/50 bg-blue-50/50 px-4 py-2 text-xs font-bold text-blue-600 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400"><ShieldCheck className="h-4 w-4" /> Publicacion dentro de tu comunidad</div>
                             <DialogTitle className="text-4xl font-semibold leading-[1.05] tracking-tight cc-text-primary md:text-5xl">
                                 {item.title}
                             </DialogTitle>
@@ -103,7 +105,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                 Modalidades
                             </h3>
                             <div className="grid gap-4">
-                                {item.allowSale !== false && (
+                                {canPayOnline && (
                                     <div className="flex items-center justify-between rounded-lg border border-blue-100/30 bg-blue-50/30 p-5 dark:border-blue-500/10 dark:bg-blue-500/5">
                                         <div className="flex items-center gap-4">
                                             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
@@ -111,7 +113,7 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                             </div>
                                             <div>
                                                 <p className="font-semibold cc-text-primary">Venta directa</p>
-                                                <p className="text-xs font-bold uppercase text-slate-400">Pago inmediato</p>
+                                                <p className="text-xs font-bold uppercase text-slate-400">Precio publicado</p>
                                             </div>
                                         </div>
                                         <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
@@ -191,41 +193,27 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onCha
                                 <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] text-xl font-bold text-white shadow-sm shadow-blue-500/20">
                                     <Home className="h-6 w-6" />
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 [&>p:nth-child(2)]:hidden [&>p:nth-child(3)]:hidden">
                                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Vendedor residente</p>
                                     <p className="text-lg font-semibold cc-text-primary">Depto {deptNumber}</p>
                                     <p className="mt-0.5 text-xs font-bold text-slate-400">Identidad visible solo dentro de la comunidad.</p>
+                                    <p className="text-sm font-semibold cc-text-primary">{sellerIdentityLabel}</p>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-3 sm:flex-row">
-                                <button
-                                    type="button"
-                                    onClick={() => onChat(item)}
-                                    className="flex h-16 flex-1 items-center justify-center gap-3 rounded-lg border-2 border-subtle bg-surface text-lg font-semibold cc-text-primary shadow-sm shadow-slate-200/20 transition-all hover:border-blue-600 hover:bg-elevated active:scale-95 dark:shadow-none dark:hover:border-blue-500"
-                                >
-                                    <MessageCircle className="h-6 w-6" />
-                                    Preguntar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onBuy(item)}
-                                    disabled={isUnavailable}
-                                    className="flex h-16 flex-[1.5] items-center justify-center gap-3 rounded-lg bg-blue-600 text-lg font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {item.allowSale !== false ? (
-                                        <>
-                                            <CreditCard className="h-6 w-6" />
-                                            Comprar ahora
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Repeat className="h-6 w-6" />
-                                            Enviar propuesta
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            {canPayOnline && (
+                                <div className="flex">
+                                    <button
+                                        type="button"
+                                        onClick={() => onBuy(item)}
+                                        disabled={isUnavailable}
+                                        className="flex h-16 flex-1 items-center justify-center gap-3 rounded-lg bg-blue-600 text-lg font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <CreditCard className="h-6 w-6" />
+                                        Comprar ahora
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

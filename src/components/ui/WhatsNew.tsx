@@ -49,6 +49,7 @@ export function WhatsNew() {
             link: "/resident/finances"
         }
     ];
+    const visibleNews = news.filter(item => item.link !== '/resident/supermercado' && item.link !== '/resident/finances');
 
     return (
         <AnimatePresence>
@@ -73,7 +74,7 @@ export function WhatsNew() {
 
                         {/* Content */}
                         <div className="p-4 space-y-4">
-                            {news.map((item, idx) => (
+                            {visibleNews.map((item, idx) => (
                                 <Link
                                     key={idx}
                                     href={item.link}

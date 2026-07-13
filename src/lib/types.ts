@@ -740,3 +740,13 @@ export interface MarketingReelRecord {
   createdAt: string;
   updatedAt?: string | null;
 }
+
+export interface ProductCapabilities {
+  onlinePayments: boolean;
+  marketingReels: boolean;
+  iotAutomation: boolean;
+  externalMonitoring: boolean;
+  supermarketOrdering: boolean;
+}
+
+export type ProductCapabilityKey = keyof ProductCapabilities;

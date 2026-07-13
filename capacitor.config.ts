@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Comunidad Connect',
   webDir: 'out',
   server: {
-    url: 'https://comunidadconnect.vercel.app',
-    cleartext: true
+    url: 'https://conviveconnect.com',
+    cleartext: false
   }
 };
 

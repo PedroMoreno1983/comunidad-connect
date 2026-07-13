@@ -708,7 +708,7 @@ Definición de agentes y herramientas:
      summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
 5. Acciones frecuentes:
-   - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar emergencia IoT o preparar un comunicado guiado.
+   - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar una respuesta de emergencia o preparar un comunicado guiado.
    - Herramienta 'run_playbook': Para preparar una tarea guiada con aprobacion humana.
      Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
      requiresConfirmation: true
@@ -1224,17 +1224,17 @@ async function runIotReadinessPlaybook(profile: AgentProfile) {
         entityType: 'agent_playbook',
         severity: warnings.length ? 'warning' : 'success',
         status: warnings.length ? 'pending' : 'success',
-        summary: warnings.length ? 'Emergencia IoT detecto brechas de preparacion' : 'Emergencia IoT lista para revisar',
+        summary: warnings.length ? 'La preparacion de emergencias detecto brechas' : 'La preparacion de emergencias esta lista para revisar',
         metadata: { staffCount: staffCount || 0, providerCount: providerCount || 0, warnings },
     });
 
     return {
         entityType: 'agent_playbook',
         entityId: null,
-        title: warnings.length ? 'Emergencia IoT con brechas' : 'Emergencia IoT preparada',
+        title: warnings.length ? 'Preparacion de emergencias con brechas' : 'Preparacion de emergencias revisada',
         message: warnings.length
             ? `Detecte ${warnings.length} brecha(s): ${warnings.join(' ')}`
-            : 'Hay staff y proveedores verificados para responder a alertas IoT criticas.',
+            : 'Hay staff y proveedores verificados para responder a eventos criticos.',
         targetHref: '/admin/mantenimiento',
         data: { staffCount: staffCount || 0, providerCount: providerCount || 0, warnings },
     };

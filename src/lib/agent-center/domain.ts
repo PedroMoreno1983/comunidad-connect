@@ -122,8 +122,8 @@ export const AGENT_PLAYBOOKS: AgentPlaybook[] = [
     {
         key: 'iot_emergency_readiness',
         agentKey: 'maintenance',
-        name: 'Emergencia IoT',
-        description: 'Verifica que el edificio tenga responsables y proveedores listos para responder a alertas criticas.',
+        name: 'Preparacion de emergencias',
+        description: 'Verifica que el edificio tenga responsables y proveedores listos para responder a eventos criticos.',
         targetHref: '/admin/mantenimiento',
         requiresAdmin: true,
         steps: ['Revisar staff disponible', 'Revisar proveedores verificados', 'Crear checklist operativo', 'Registrar brechas'],

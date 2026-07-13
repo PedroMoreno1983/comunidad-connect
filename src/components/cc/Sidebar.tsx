@@ -39,6 +39,8 @@ import {
   Sparkles
 } from "lucide-react";
 import { Brand } from "./Brand";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
+import type { ProductCapabilityKey } from "@/lib/types";
 
 type Role = "admin" | "conserje" | "resident";
 type ActiveSidebarUser = {
@@ -83,6 +85,7 @@ type SidebarLink = {
   feature?: string;
   premium?: boolean;
   creatorOnly?: boolean;
+  capability?: ProductCapabilityKey;
 };
 
 export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser }: SidebarProps) {
@@ -90,6 +93,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
   const { user: authUser, logout } = useAuth();
   const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const capabilities = useProductCapabilities();
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -129,7 +133,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "INTELIGENCIA OPERATIVA",
       links: [
         { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
-        { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true, creatorOnly: true },
+        { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true, creatorOnly: true, capability: "marketingReels" as ProductCapabilityKey },
       ]
     },
     {
@@ -211,6 +215,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
   const canShowLink = (link: SidebarLink) => {
     if (!link.roles.includes(activeUser.role || "resident")) return false;
     if (link.creatorOnly && !isPlatformCreator) return false;
+    if (link.href === "/showcase") return false;
+    if (link.capability && !capabilities[link.capability]) return false;
     if (link.feature && activeUser.features) {
       if (activeUser.features[link.feature] === false) return false;
     }

@@ -68,11 +68,11 @@ function AppPreview() {
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white dark:bg-[#25242A] border border-[rgba(95, 122, 70,0.12)] rounded-lg p-2 text-center">
             <div className="text-[8px] font-bold text-slate-400 uppercase">Horas Devueltas</div>
-            <div className="text-xs font-bold text-[#5F7A46] mt-0.5">6.5h</div>
+            <div className="text-xs font-bold text-[#5F7A46] mt-0.5">Registro activo</div>
           </div>
           <div className="bg-white dark:bg-[#25242A] border border-[rgba(95, 122, 70,0.12)] rounded-lg p-2 text-center">
             <div className="text-[8px] font-bold text-slate-400 uppercase">Familias Apoyadas</div>
-            <div className="text-xs font-bold text-[#9C5636] mt-0.5">2</div>
+            <div className="text-xs font-bold text-[#9C5636] mt-0.5">Acceso privado</div>
           </div>
         </div>
       </div>
@@ -185,10 +185,37 @@ function TrustStats() {
     },
   ];
 
+  const verifiedStats = stats.filter(() => false).concat([
+    {
+      value: "Datos por comunidad",
+      desc: "Aislamiento multi-tenant, permisos por rol y sesiones verificadas.",
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      color: "text-[#5A7D5A]",
+      bg: "bg-[#5A7D5A]/10",
+      border: "border-[#5A7D5A]/20"
+    },
+    {
+      value: "Acciones confirmadas",
+      desc: "Las escrituras de CoCo requieren revision humana y dejan trazabilidad.",
+      icon: <MessageSquare className="w-5 h-5" />,
+      color: "text-[#C8705A]",
+      bg: "bg-[#C8705A]/10",
+      border: "border-[#C8705A]/20"
+    },
+    {
+      value: "Operacion centralizada",
+      desc: "Gastos, reservas, comunicaciones, cursos y solicitudes en una plataforma.",
+      icon: <TrendingUp className="w-5 h-5" />,
+      color: "text-amber-500",
+      bg: "bg-amber-400/10",
+      border: "border-amber-400/20"
+    },
+  ]);
+
   return (
     <div className="w-full max-w-5xl mx-auto mt-16 md:mt-20">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((s, i) => (
+        {verifiedStats.map((s, i) => (
           <div
             key={i}
             className={`flex flex-col gap-3 p-6 rounded-2xl bg-white dark:bg-[#25242A] border ${s.border} shadow-sm transition-all hover:shadow-md`}
@@ -318,6 +345,26 @@ const steps = [
     bg: 'bg-amber-400/10',
   },
 ];
+
+function getCommercialRoleDescription(role: (typeof roles)[number]): string {
+  if (role.id === "resident") return "Gastos comunes, reservas y comunicacion vecinal en una experiencia web simple.";
+  if (role.id === "concierge") return "Registro de visitas, accesos y paqueteria con permisos definidos por rol.";
+  return role.description;
+}
+
+function isCommercialRoleWindow(label: string): boolean {
+  return !/Pagos|C.maras|Alertas|Parking/i.test(label);
+}
+
+function isCommercialExtraFeature(feature: string): boolean {
+  return !/push|pago integrado|escaneo de documentos|libro de novedades|p.nico/i.test(feature);
+}
+
+function getCommercialStepDescription(step: (typeof steps)[number]): string {
+  return step.num === "03"
+    ? "Invitaciones, reservas, circulares y acciones de CoCo quedan listas para operar."
+    : step.desc;
+}
 
 // Testimonials removed to ensure platform authenticity
 
@@ -489,10 +536,10 @@ export default function LandingPage() {
 
         {/* ── Section: CoCo IA (WhatsApp Integration) ── */}
         <section className="mt-24 md:mt-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-          <div className="flex-1 max-w-xl order-2 lg:order-1">
-            <CoCoWhatsAppPreview />
+          <div className="hidden flex-1 max-w-xl order-2 lg:order-1" aria-hidden="true">
+            {false && <CoCoWhatsAppPreview />}
           </div>
-          <div className="flex-1 max-w-xl order-1 lg:order-2">
+          <div className="flex-1 max-w-2xl order-1 lg:order-2 [&>p:first-of-type]:hidden">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#5A7D5A]/10 border border-[#5A7D5A]/20 text-[#5A7D5A] text-xs font-bold tracking-widest uppercase mb-5">
               ✦ Exclusivo de Convive Connect
             </div>
@@ -502,13 +549,14 @@ export default function LandingPage() {
             <p className="text-base sm:text-lg text-[#524A40] dark:text-[#C8BFB6] mb-8 leading-relaxed">
               Olvídate de descargar aplicaciones complejas e iniciar sesión cada vez. Con Convive Connect, integramos un asistente conversacional impulsado por IA directamente en WhatsApp para responder y resolver todo al instante.
             </p>
+            <p className="text-base sm:text-lg text-[#524A40] dark:text-[#C8BFB6] mb-8 leading-relaxed">CoCo atiende consultas y ejecuta acciones habilitadas con confirmacion, permisos por rol y trazabilidad.</p>
             <ul className="space-y-4 mb-8">
               {[
                 { title: "Cero apps que descargar", desc: "Los residentes gestionan todo enviando un simple mensaje de WhatsApp." },
                 { title: "Reservas instantáneas", desc: "CoCo verifica disponibilidad de espacios comunes (quinchos, piscinas) y agenda al instante." },
                 { title: "Pagos sin fricción", desc: "Envío inmediato de links directos de Webpay para saldar gastos comunes o arriendos." },
                 { title: "Conserjería en sincronía", desc: "Notificaciones instantáneas de visitas, encomiendas o emergencias registradas por la app." }
-              ].map((item, i) => (
+              ].filter(item => !item.title.startsWith("Pagos ")).map((item, i) => (
                 <li key={i} className="flex gap-3">
                   <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">✓</div>
                   <div>
@@ -588,7 +636,7 @@ export default function LandingPage() {
                   {/* ── Building "floors" grid = window grid ── */}
                   <div className="px-6 pt-5 pb-3">
                     <div className="grid grid-cols-3 gap-2">
-                      {role.windows.map((win, wi) => (
+                      {role.windows.filter(win => isCommercialRoleWindow(win.label)).map((win, wi) => (
                         <div
                           key={wi}
                           className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-center"
@@ -620,7 +668,7 @@ export default function LandingPage() {
                       </div>
                     </div>
 
-                    <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed">{role.description}</p>
+                    <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed">{getCommercialRoleDescription(role)}</p>
 
                     <div className="flex-1" />
 
@@ -692,7 +740,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <h3 className="text-xl font-extrabold tracking-tight mb-2">{step.title}</h3>
-                  <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed max-w-[220px]">{step.desc}</p>
+                  <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed max-w-[220px]">{getCommercialStepDescription(step)}</p>
                 </div>
               ))}
             </div>
@@ -738,7 +786,7 @@ export default function LandingPage() {
                 icon: <Clock className="w-6 h-6 text-[#C99A4A]" />,
                 bg: "bg-amber-400/10"
               }
-            ].map((pillar, i) => (
+            ].filter(pillar => !pillar.title.startsWith("Redondeo")).map((pillar, i) => (
               <div key={i} className="flex flex-col p-6 rounded-2xl bg-white dark:bg-[#1E1E24] border border-[#E4D8CA]/60 dark:border-[#3B3530] shadow-sm hover:shadow-md transition-all">
                 <div className="flex justify-between items-center mb-4">
                   <div className={`w-12 h-12 rounded-xl ${pillar.bg} flex items-center justify-center`}>
@@ -796,7 +844,7 @@ export default function LandingPage() {
                 <p className="text-[#5F5A54] dark:text-[#C8BFB6] mb-8 leading-relaxed font-medium">{selectedRole.fullDescription}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
-                  {selectedRole.extraFeatures.map((feat, i) => (
+                  {selectedRole.extraFeatures.filter(isCommercialExtraFeature).map((feat, i) => (
                     <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-[#FBF8F3] dark:bg-[#302D2A] border border-[#F1EAE1] dark:border-[#3B3530]">
                       <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: selectedRole.color }} />
                       <span className="text-sm font-semibold leading-snug text-[#2D2A26] dark:text-[#E4D8CA]">{feat}</span>
@@ -873,9 +921,10 @@ export default function LandingPage() {
 
             {/* Avanzado (featured) */}
             <div
-              className="bg-gradient-to-b from-[#C8705A] to-[#974C3C] rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-[#C8705A]/30 relative overflow-hidden md:-translate-y-4"
+              className="bg-gradient-to-b from-[#C8705A] to-[#974C3C] rounded-[2rem] p-8 flex flex-col text-white shadow-2xl shadow-[#C8705A]/30 relative overflow-hidden md:-translate-y-4 [&>div:first-child]:hidden"
             >
               <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-bl-2xl font-bold text-xs tracking-widest uppercase">Más Popular</div>
+              <div className="absolute top-0 right-0 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-bl-2xl font-bold text-xs tracking-widest uppercase">Plan recomendado</div>
               <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center mb-4 text-xl mt-5 md:mt-0">🚀</div>
               <h3 className="text-xl font-extrabold mb-1">Avanzado</h3>
               <p className="text-white/70 mb-6 text-sm">Para comunidades que quieren más control.</p>
@@ -886,7 +935,7 @@ export default function LandingPage() {
               <p className="text-xs text-white/50 mb-8">+ $690 por unidad/mes</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Todo lo del plan Básico', 'Mantenimiento y Solicitudes', 'Votaciones Online', 'Pagos Online', 'Reportes Financieros'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-white text-sm font-semibold">
+                  <li key={i} hidden={feat === "Pagos Online"} className="flex items-center gap-3 text-white text-sm font-semibold">
                     <CheckCircle2 className="w-4 h-4 text-white/60 flex-shrink-0" />
                     <span>{feat}</span>
                   </li>
@@ -951,7 +1000,7 @@ export default function LandingPage() {
               { q: "¿Es seguro el manejo del dinero y los pagos en la app?", a: "Absolutamente. No almacenamos ni procesamos tarjetas directamente. Usamos pasarelas con certificación PCI Compliance que aseguran máxima protección bancaria." },
               { q: "¿Qué pasa si un residente no tiene smartphone?", a: "No hay problema. Los residentes también pueden acceder desde computadora o tablet navegando por la web." },
               { q: "¿Cuánto tiempo toma activar el edificio?", a: "Depende de la calidad de los datos, pero el flujo esta pensado para que la administracion suba archivos, CoCo detecte brechas y solo se guarde informacion aprobada." }
-            ].map((faq, i) => (
+            ].filter(faq => !/pagos|pa.ses/i.test(faq.q)).map((faq, i) => (
               <div
                 key={i}
                 className="bg-white dark:bg-[#25242A] border border-[#E4D8CA] dark:border-[#3B3530] rounded-2xl p-5 hover:border-[#C8705A]/25 hover:shadow-md transition-all"
@@ -978,16 +1027,17 @@ export default function LandingPage() {
             {/* Decorative blobs inside banner */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#5A7D5A]/20 rounded-full blur-2xl transform -translate-x-10 translate-y-10" />
-            <div className="relative z-10">
+            <div className="relative z-10 [&>p:first-of-type]:hidden [&>p:last-of-type]:hidden">
               <div className="text-4xl mb-4">🏘️</div>
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tighter mb-3">¿Listo para transformar tu comunidad?</h2>
               <p className="text-white/75 text-lg mb-8 max-w-md mx-auto">Únete a las comunidades que ya viven diferente. Empieza gratis hoy.</p>
+              <p className="text-white/75 text-lg mb-8 max-w-md mx-auto">Activa una comunidad con datos reales, roles definidos y acompanamiento de puesta en marcha.</p>
               <button
                 onClick={() => router.push('/onboarding')}
                 id="cta-footer-btn"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-[#B45F4B] font-extrabold text-base hover:bg-[#F4E8DF] transition-all shadow-xl shadow-black/20 hover:-translate-y-1"
               >
-                Comenzar gratis hoy
+                Solicitar activacion
                 <ArrowRight className="w-4 h-4" />
               </button>
               <p className="text-white/50 text-xs mt-4">Sin tarjeta · Activacion asistida por IA · Cancela cuando quieras</p>

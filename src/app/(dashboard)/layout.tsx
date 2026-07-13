@@ -70,7 +70,7 @@ function DashboardShell({
             '/concierge/packages': 'Encomiendas y Paquetes',
             '/admin/users': 'Usuarios y Accesos',
             '/admin/units': 'Departamentos y Copropiedad',
-            '/admin/consumo': 'Consumo de Agua e IoT',
+            '/admin/consumo': 'Consumo de Agua',
             '/admin/finanzas': 'Gastos Comunes y Facturación',
             '/admin/mantenimiento': 'Operaciones e Incidencias',
             '/admin/votaciones': 'Votaciones y Encuestas',

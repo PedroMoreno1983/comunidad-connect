@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { CreditCard, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from "@/lib/config";
+import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 
 interface PaymentModalProps {
     item: MarketplaceItem | null;
@@ -24,6 +25,7 @@ interface PaymentModalProps {
 export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalProps) {
     const [step, setStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const { onlinePayments } = useProductCapabilities();
 
     const handlePayment = async () => {
         if (!item) return;
@@ -56,7 +58,7 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
         }
     };
 
-    if (!item) return null;
+    if (!item || !onlinePayments) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
