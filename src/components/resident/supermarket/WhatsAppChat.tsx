@@ -10,8 +10,6 @@ import { OrderPreviewBubble } from "./OrderPreviewBubble";
 import { RecipeBubble } from "./RecipeBubble";
 import { motion } from "framer-motion";
 import { agent } from "@/lib/agentBrain"; // Importar el cerebro del agente
-import { getApiUrl } from "@/lib/config";
-import { useAuth } from "@/lib/authContext";
 
 interface Message {
     id: string;
@@ -26,7 +24,6 @@ interface Message {
 }
 
 export function WhatsAppChat() {
-    const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -211,33 +208,6 @@ export function WhatsAppChat() {
                                         items={msg.orderData.items}
                                         total={msg.orderData.total}
                                         savings={msg.orderData.savings}
-                                        onPay={async () => {
-                                            const response = await fetch(getApiUrl('/api/payments/create-haulmer-link'), {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    amount: msg.orderData!.total,
-                                                    description: `Compra Supermercado IA (${msg.orderData!.items.length} items)`,
-                                                    reference: `MARKET_CART_${msg.id}`,
-                                                    client: {
-                                                        name: user?.name || 'Residente',
-                                                        email: user?.email || ''
-                                                    },
-                                                    returnUrl: window.location.origin + '/resident/supermercado?status=success'
-                                                })
-                                            });
-
-                                            if (response.ok) {
-                                                const { url } = await response.json();
-                                                window.location.href = url;
-                                            } else {
-                                                addMessage({
-                                                    type: 'text',
-                                                    content: 'No pudimos generar el link de pago con Haulmer.',
-                                                    isSender: false
-                                                });
-                                            }
-                                        }}
                                     />
                                 )}
 
