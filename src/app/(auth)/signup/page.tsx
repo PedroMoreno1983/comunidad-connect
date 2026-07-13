@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, ShieldCheck, Users } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -229,11 +230,21 @@ export default function SignUpPage() {
 
                 <section
                     className="hidden lg:flex flex-col relative overflow-hidden p-12 justify-between"
-                    style={{
-                        background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
-                        color: "var(--cc-paper)",
-                    }}
+                    style={{ color: "var(--cc-paper)" }}
                 >
+                    <Image
+                        src="/edificio-malaga-exterior.jpg"
+                        alt="Fachada exterior del edificio Málaga 433, con paneles solares y balcones de madera oxidada"
+                        fill
+                        priority
+                        sizes="50vw"
+                        className="object-cover"
+                    />
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{ background: "linear-gradient(225deg, rgba(26,22,17,0.55) 0%, rgba(26,22,17,0.80) 60%, rgba(17,13,10,0.94) 100%)" }}
+                    />
                     <div
                         aria-hidden
                         className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"
