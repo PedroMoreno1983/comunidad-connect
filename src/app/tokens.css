@@ -21,27 +21,32 @@
   --cc-line:          rgba(26, 22, 17, 0.08);
   --cc-line-strong:   rgba(26, 22, 17, 0.16);
 
-  /* ─── Brand — copper (default accent) ──────────────────── */
-  --cc-copper:        #B5664E;
-  --cc-copper-deep:   #8E4A35;
-  --cc-copper-soft:   #D9A691;
-  --cc-copper-tint:   rgba(181, 102, 78, 0.08);
-  --cc-copper-bg:     #F2DDD0;
-  --cc-brand-50:      #F8EDE7;
-  --cc-brand-100:     #F2DDD0;
-  --cc-brand-200:     #E5BDAA;
-  --cc-brand-300:     #D79B81;
-  --cc-brand-400:     #C9795E;
-  --cc-brand-500:     #B5664E;
-  --cc-brand-600:     #9F563F;
-  --cc-brand-700:     #8E4A35;
-  --cc-brand-800:     #6E3526;
-  --cc-brand-900:     #452016;
+  /* ─── Brand — oxidised timber cladding (Málaga Net Zero) ─ */
+  --cc-copper:        #9C5636;
+  --cc-copper-deep:   #733D24;
+  --cc-copper-soft:   #C99572;
+  --cc-copper-tint:   rgba(156, 86, 54, 0.10);
+  --cc-copper-bg:     #EAD5C4;
+  --cc-brand-50:      #F7EDE8;
+  --cc-brand-100:     #EAD5C4;
+  --cc-brand-200:     #DDBBA3;
+  --cc-brand-300:     #C99572;
+  --cc-brand-400:     #B37850;
+  --cc-brand-500:     #9C5636;
+  --cc-brand-600:     #86482D;
+  --cc-brand-700:     #733D24;
+  --cc-brand-800:     #562D1B;
+  --cc-brand-900:     #351C11;
+
+  /* ─── Structural steel — dark frames / beams / rails ───── */
+  --cc-carbon:        #201E1A;
+  --cc-carbon-soft:   #3A362F;
+  --cc-carbon-line:   rgba(32, 30, 26, 0.16);
 
   /* ─── Role accents — quiet ──────────────────────────────── */
-  --cc-sage:          #6E8268;
-  --cc-sage-soft:     #B7C2B1;
-  --cc-sage-tint:     rgba(110, 130, 104, 0.10);
+  --cc-sage:          #5F7A46;
+  --cc-sage-soft:     #A9BC93;
+  --cc-sage-tint:     rgba(95, 122, 70, 0.12);
 
   --cc-amber:         #C99A4A;
   --cc-amber-soft:    #E2C892;
@@ -79,8 +84,8 @@
   --cc-shadow-md:   0 1px 0 rgba(26,22,17,0.04), 0 8px 24px -10px rgba(26,22,17,0.12);
   --cc-shadow-lg:   0 1px 0 rgba(26,22,17,0.04), 0 24px 48px -28px rgba(26,22,17,0.18);
   --cc-shadow-xl:   0 1px 0 rgba(26,22,17,0.04), 0 40px 80px -32px rgba(26,22,17,0.30);
-  --cc-glow-brand:  0 10px 30px -14px rgba(181, 102, 78, 0.65);
-  --cc-ring-default: 0 0 0 4px rgba(181, 102, 78, 0.18);
+  --cc-glow-brand:  0 10px 30px -14px rgba(156, 86, 54, 0.65);
+  --cc-ring-default: 0 0 0 4px rgba(156, 86, 54, 0.18);
   --cc-duration-fast: 140ms;
   --cc-duration-normal: 220ms;
   --cc-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -113,7 +118,7 @@
   /* ─── Role Accents — Admin (Copper/Brand) ──────────────── */
   --cc-role-admin-fg:    var(--cc-copper);
   --cc-role-admin-bg:    var(--cc-copper-tint);
-  --cc-role-admin-border: rgba(181, 102, 78, 0.20);
+  --cc-role-admin-border: rgba(156, 86, 54, 0.20);
 
   /* ─── Role Accents — Conserje (Amber) ──────────────────── */
   --cc-role-conserje-fg:     #C99A4A;
@@ -123,12 +128,12 @@
   /* ─── Role Accents — Residente (Sage) ──────────────────── */
   --cc-role-residente-fg:     var(--cc-sage);
   --cc-role-residente-bg:     var(--cc-sage-tint);
-  --cc-role-residente-border: rgba(110, 130, 104, 0.20);
+  --cc-role-residente-border: rgba(95, 122, 70, 0.20);
 
   /* ─── Semantic Mappings (Success/Warning/Danger/Info) ──── */
   --cc-success-fg:     var(--cc-sage);
   --cc-success-bg:     var(--cc-sage-tint);
-  --cc-success-border: rgba(110, 130, 104, 0.20);
+  --cc-success-border: rgba(95, 122, 70, 0.20);
 
   --cc-warning-fg:     #C99A4A;
   --cc-warning-bg:     var(--cc-amber-tint);
@@ -160,18 +165,18 @@
   --cc-line-strong:      rgba(251, 248, 243, 0.16);
 
   /* ─── Accents & Tints for dark mode ────────────────────── */
-  --cc-copper-tint:      rgba(181, 102, 78, 0.15);
-  --cc-brand-50:         #2B1B15;
-  --cc-brand-100:        #3B241B;
-  --cc-brand-200:        #593629;
-  --cc-brand-300:        #7B4936;
-  --cc-brand-400:        #A65D45;
-  --cc-brand-500:        #D0876B;
-  --cc-brand-600:        #E0A38C;
-  --cc-brand-700:        #EABCA9;
-  --cc-brand-800:        #F3D7CB;
-  --cc-brand-900:        #FAEEE8;
-  --cc-sage-tint:        rgba(110, 130, 104, 0.18);
+  --cc-copper-tint:      rgba(156, 86, 54, 0.15);
+  --cc-brand-50:         #29160E;
+  --cc-brand-100:        #351D12;
+  --cc-brand-200:        #512D1C;
+  --cc-brand-300:        #6D3C26;
+  --cc-brand-400:        #8D4E31;
+  --cc-brand-500:        #B58068;
+  --cc-brand-600:        #C8A08E;
+  --cc-brand-700:        #D7BBAF;
+  --cc-brand-800:        #E7D6CF;
+  --cc-brand-900:        #F5EEEB;
+  --cc-sage-tint:        rgba(95, 122, 70, 0.18);
   --cc-amber-tint:       rgba(201, 154, 74, 0.18);
   --cc-rose-tint:        rgba(181, 82, 78, 0.18);
   --cc-plum-tint:        rgba(92, 72, 104, 0.18);
@@ -184,8 +189,8 @@
 
   /* ─── Role Accents — Admin (Copper/Brand) ──────────────── */
   --cc-role-admin-fg:    var(--cc-copper-soft);
-  --cc-role-admin-bg:    rgba(217, 166, 145, 0.15);
-  --cc-role-admin-border: rgba(217, 166, 145, 0.30);
+  --cc-role-admin-bg:    rgba(200, 160, 142, 0.15);
+  --cc-role-admin-border: rgba(200, 160, 142, 0.30);
 
   /* ─── Role Accents — Conserje (Amber) ──────────────────── */
   --cc-role-conserje-fg:     var(--cc-amber-soft);
@@ -194,13 +199,13 @@
 
   /* ─── Role Accents — Residente (Sage) ──────────────────── */
   --cc-role-residente-fg:     var(--cc-sage-soft);
-  --cc-role-residente-bg:     rgba(183, 194, 177, 0.15);
-  --cc-role-residente-border: rgba(183, 194, 177, 0.30);
+  --cc-role-residente-bg:     rgba(169, 188, 147, 0.15);
+  --cc-role-residente-border: rgba(169, 188, 147, 0.30);
 
   /* ─── Semantic Mappings (Success/Warning/Danger/Info) ──── */
   --cc-success-fg:     var(--cc-sage-soft);
-  --cc-success-bg:     rgba(183, 194, 177, 0.15);
-  --cc-success-border: rgba(183, 194, 177, 0.30);
+  --cc-success-bg:     rgba(169, 188, 147, 0.15);
+  --cc-success-border: rgba(169, 188, 147, 0.30);
 
   --cc-warning-fg:     var(--cc-amber-soft);
   --cc-warning-bg:     rgba(226, 200, 146, 0.15);
@@ -234,6 +239,8 @@
   --color-copper-deep:   var(--cc-copper-deep);
   --color-copper-soft:   var(--cc-copper-soft);
   --color-copper-bg:     var(--cc-copper-bg);
+  --color-carbon:        var(--cc-carbon);
+  --color-carbon-soft:   var(--cc-carbon-soft);
 
   --color-sage:          var(--cc-sage);
   --color-sage-soft:     var(--cc-sage-soft);
