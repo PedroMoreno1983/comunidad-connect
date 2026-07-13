@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
+import { DisplayHeading } from "@/components/cc/Eyebrow";
 
 type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
 
@@ -161,7 +162,7 @@ export default function ProviderRegisterPage() {
             {/* Back Button */}
             <Link
                 href="/services"
-                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm cc-text-secondary hover:text-[var(--cc-copper)] transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Servicios
@@ -169,10 +170,10 @@ export default function ProviderRegisterPage() {
 
             {/* Header */}
             <div className="text-center space-y-3">
-                <h1 className="text-3xl font-bold cc-text-primary">
-                    Regístrate como <span className="text-brand-600">Técnico Profesional</span>
-                </h1>
-                <p className="text-lg cc-text-secondary max-w-2xl mx-auto">
+                <DisplayHeading size={32} className="mx-auto">
+                    Regístrate como <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>Técnico Profesional</em>
+                </DisplayHeading>
+                <p className="text-base font-medium cc-text-secondary max-w-2xl mx-auto">
                     Une a nuestra plataforma y conecta con cientos de clientes potenciales
                 </p>
             </div>
@@ -200,28 +201,28 @@ export default function ProviderRegisterPage() {
             <div className="flex items-center justify-center gap-4 mb-8">
                 {[1, 2, 3].map((s) => (
                     <div key={s} className="flex items-center gap-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${s === step
-                            ? 'bg-brand-500 text-white shadow-sm'
-                            : s < step
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-elevated text-slate-400'
-                            }`}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all"
+                            style={s === step
+                                ? { background: "var(--cc-copper)", color: "#fff" }
+                                : s < step
+                                    ? { background: "var(--cc-sage)", color: "#fff" }
+                                    : { background: "var(--cc-paper-warm)", color: "var(--cc-ink-faint)" }}>
                             {s < step ? <CheckCircle2 className="h-5 w-5" /> : s}
                         </div>
                         {s < 3 && (
-                            <div className={`w-16 h-1 rounded-full ${s < step ? 'bg-emerald-500' : 'bg-elevated'}`} />
+                            <div className="w-16 h-1 rounded-full" style={{ background: s < step ? "var(--cc-sage)" : "var(--cc-paper-warm)" }} />
                         )}
                     </div>
                 ))}
             </div>
 
             {/* Form */}
-            <form id="formulario-proveedor" onSubmit={handleSubmit} className="scroll-mt-24 bg-surface rounded-lg shadow-sm border border-subtle p-8">
+            <form id="formulario-proveedor" onSubmit={handleSubmit} className="scroll-mt-24 rounded-2xl border p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 {/* Step 1: Basic Info */}
                 {step === 1 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Información Básica</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary mb-6" style={{ fontFamily: "var(--cc-font-display)" }}>Información Básica</h2>
                         </div>
 
                         <div className="space-y-2">
@@ -272,7 +273,8 @@ export default function ProviderRegisterPage() {
                                 required
                                 value={formData.category}
                                 onChange={(e) => setFormData({ ...formData, category: e.target.value as ProviderCategory })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                className="w-full px-4 py-2.5 rounded-xl border cc-text-primary outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/15 focus:border-[var(--cc-copper)]"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                             >
                                 <option value="plumbing">Gasfitería</option>
                                 <option value="electrical">Electricidad</option>
@@ -295,7 +297,7 @@ export default function ProviderRegisterPage() {
                 {step === 2 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Información Profesional</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary mb-6" style={{ fontFamily: "var(--cc-font-display)" }}>Información Profesional</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -335,7 +337,8 @@ export default function ProviderRegisterPage() {
                                 required
                                 value={formData.responseTime}
                                 onChange={(e) => setFormData({ ...formData, responseTime: e.target.value })}
-                                className="w-full px-4 py-2.5 rounded-xl border border-subtle bg-surface cc-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                className="w-full px-4 py-2.5 rounded-xl border cc-text-primary outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/15 focus:border-[var(--cc-copper)]"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                             >
                                 <option value="< 30 minutos">Menos de 30 minutos</option>
                                 <option value="< 1 hora">Menos de 1 hora</option>
@@ -351,7 +354,8 @@ export default function ProviderRegisterPage() {
                             </label>
                             <textarea
                                 required
-                                className="w-full min-h-[120px] rounded-xl border border-subtle bg-surface cc-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                className="w-full min-h-[120px] rounded-xl border cc-text-primary px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/15 focus:border-[var(--cc-copper)]"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                                 placeholder="Cuenta sobre tu experiencia, especialidades y que te hace confiable para la comunidad..."
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
@@ -380,7 +384,7 @@ export default function ProviderRegisterPage() {
                 {step === 3 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold cc-text-primary mb-6">Especialidades y Certificaciones</h2>
+                            <h2 className="text-2xl font-semibold cc-text-primary mb-6" style={{ fontFamily: "var(--cc-font-display)" }}>Especialidades y Certificaciones</h2>
                         </div>
 
                         {/* Specialties */}
@@ -409,13 +413,14 @@ export default function ProviderRegisterPage() {
                                     {formData.specialties.map((specialty, idx) => (
                                         <span
                                             key={idx}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-sm border border-brand-100"
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border"
+                                            style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)", borderColor: "transparent" }}
                                         >
                                             {specialty}
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveSpecialty(idx)}
-                                                className="hover:text-brand-900"
+                                                className="hover:opacity-70"
                                             >
                                                 ×
                                             </button>
@@ -451,13 +456,13 @@ export default function ProviderRegisterPage() {
                                     {formData.certifications.map((cert, idx) => (
                                         <span
                                             key={idx}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-warning-bg text-warning-fg rounded-lg text-sm border border-amber-100 dark:border-amber-500/20"
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-warning-bg text-warning-fg rounded-full text-sm border border-warning-border"
                                         >
                                             {cert}
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveCertification(idx)}
-                                                className="hover:text-amber-900 dark:hover:text-amber-300"
+                                                className="hover:opacity-70"
                                             >
                                                 ×
                                             </button>
@@ -487,7 +492,8 @@ export default function ProviderRegisterPage() {
                                     event.preventDefault();
                                     handlePhotoFile(event.dataTransfer.files?.[0]);
                                 }}
-                                className="relative cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-default bg-canvas p-6 text-center transition-colors hover:border-brand-400 hover:bg-surface"
+                                className="relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-6 text-center transition-colors hover:border-[var(--cc-copper)]"
+                                style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}
                             >
                                 <input
                                     ref={photoInputRef}
@@ -498,12 +504,12 @@ export default function ProviderRegisterPage() {
                                 />
 
                                 {formData.photo ? (
-                                    <div className="mx-auto flex max-w-xl items-center gap-4 rounded-lg border border-subtle bg-surface p-4 text-left">
-                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-elevated">
+                                    <div className="mx-auto flex max-w-xl items-center gap-4 rounded-xl border p-4 text-left" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl" style={{ background: "var(--cc-paper-warm)" }}>
                                             <img src={formData.photo} alt="Foto de perfil seleccionada" className="h-full w-full object-cover" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700">
+                                            <div className="mb-2 inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                                 <ImageIcon className="h-3.5 w-3.5" />
                                                 Foto cargada
                                             </div>
@@ -517,7 +523,8 @@ export default function ProviderRegisterPage() {
                                                 setFormData(prev => ({ ...prev, photo: '', photoName: '' }));
                                                 if (photoInputRef.current) photoInputRef.current.value = '';
                                             }}
-                                            className="rounded-lg border border-subtle p-2 cc-text-secondary transition-colors hover:bg-elevated"
+                                            className="rounded-full border p-2 cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                                            style={{ borderColor: "var(--cc-line)" }}
                                             aria-label="Quitar foto"
                                         >
                                             <X className="h-4 w-4" />
@@ -525,7 +532,7 @@ export default function ProviderRegisterPage() {
                                     </div>
                                 ) : (
                                     <>
-                                        <Upload className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                                        <Upload className="mx-auto mb-3 h-12 w-12" style={{ color: "var(--cc-ink-faint)" }} />
                                         <p className="text-sm cc-text-secondary">
                                             Haz clic para subir una foto o arrastra aqui
                                         </p>
@@ -557,19 +564,19 @@ export default function ProviderRegisterPage() {
             </form>
 
             {/* Info Box */}
-            <div className="rounded-lg border border-brand-100 bg-brand-50 p-6">
-                <h3 className="mb-2 font-semibold text-brand-900">¿Qué sigue después del registro?</h3>
-                <ul className="space-y-2 text-sm text-brand-800">
+            <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-copper-tint)" }}>
+                <h3 className="mb-2 font-semibold" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>¿Qué sigue después del registro?</h3>
+                <ul className="space-y-2 text-sm cc-text-secondary">
                     <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: "var(--cc-copper)" }} />
                         <span>Revisaremos tu perfil en 24-48 horas</span>
                     </li>
                     <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: "var(--cc-copper)" }} />
                         <span>Te contactaremos para verificar tus certificaciones</span>
                     </li>
                     <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: "var(--cc-copper)" }} />
                         <span>Una vez aprobado, tu perfil estará visible para clientes</span>
                     </li>
                 </ul>
