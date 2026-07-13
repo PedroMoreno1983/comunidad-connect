@@ -5,7 +5,7 @@ import { PollCard } from "@/components/polls/PollCard";
 import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { BarChart3, CalendarDays, CheckCircle2, Download, Users, Vote } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, Users, Vote } from "lucide-react";
 import type { PollVoteRecord, PollWithVoteState, SupabasePollRow } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -17,26 +17,6 @@ export default function VotacionesPage() {
     const [activePolls, setActivePolls] = useState<PollWithVoteState[]>([]);
     const [closedPolls, setClosedPolls] = useState<PollWithVoteState[]>([]);
     const [loading, setLoading] = useState(true);
-
-    const downloadAssemblyDocument = (name: string) => {
-        const content = [
-            "Convive Connect - Respaldo de votacion comunitaria",
-            "",
-            `Documento: ${name}`,
-            "Consulta: Construccion quincho de tejas",
-            "Estado: Asamblea en vivo",
-            "Resumen: Debate sobre ampliacion del area recreativa en terraza Torre A.",
-            "",
-            "Este archivo reemplaza el adjunto operativo mientras se carga el PDF legal definitivo desde administracion.",
-        ].join("\n");
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = name.replace(/\.pdf$/i, ".txt");
-        anchor.click();
-        URL.revokeObjectURL(url);
-    };
 
     useEffect(() => {
         if (user) loadPolls();
@@ -52,6 +32,16 @@ export default function VotacionesPage() {
         }).length;
         return { totalActiveVotes, pendingVotes, closingSoon };
     }, [activePolls]);
+
+    const featuredPoll = useMemo(() => {
+        const pending = activePolls.filter(poll => !poll.hasVotedInit);
+        const pool = pending.length > 0 ? pending : activePolls;
+        return [...pool].sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0] || null;
+    }, [activePolls]);
+
+    const featuredDaysLeft = featuredPoll
+        ? Math.max(0, Math.ceil((new Date(featuredPoll.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0;
 
     const normalizeStatus = (status?: string | null): PollWithVoteState["status"] =>
         status === "closed" ? "closed" : "active";
@@ -165,65 +155,42 @@ export default function VotacionesPage() {
                 </div>
             </header>
 
-            {/* Live Assembly Panel Widget */}
-            <div className="rounded-xl border border-transparent bg-slate-950 p-6 text-white shadow-lg overflow-hidden relative">
-                <div className="absolute right-0 top-0 h-40 w-40 bg-radial-gradient from-brand-500/20 to-transparent pointer-events-none" />
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-3 flex-1">
-                        <div className="flex items-center gap-3">
-                            <Tag tone="rose" dot={true} solid>Asamblea en Vivo</Tag>
-                            <span className="font-mono text-sm tracking-wider text-rose-300 animate-pulse">04:32</span>
-                        </div>
-                        <h2 className="text-2xl font-semibold leading-tight">
-                            Propuesta activa: <em className="text-italic-serif text-brand-300">Construcción quincho de tejas</em>
-                        </h2>
-                        <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                            Debate en curso sobre la ampliación del área recreativa en la terraza de la Torre A. Por favor revise el quórum y los adjuntos.
-                        </p>
-                        
-                        {/* Pros & Cons layout */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 max-w-2xl">
-                            <div className="bg-emerald-950/40 border border-emerald-500/20 rounded-lg p-3 text-xs text-emerald-300">
-                                <p className="font-bold mb-1">Pros:</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                    <li>Incrementa plusvalía del edificio</li>
-                                    <li>Sombra garantizada en temporada alta</li>
-                                </ul>
+            {/* Featured Poll Callout — built entirely from real poll data, no fake countdown/documents */}
+            {featuredPoll && (
+                <div className="rounded-xl border border-transparent bg-slate-950 p-6 text-white shadow-lg overflow-hidden relative">
+                    <div className="absolute right-0 top-0 h-40 w-40 bg-radial-gradient from-brand-500/20 to-transparent pointer-events-none" />
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-3 flex-1">
+                            <div className="flex items-center gap-3">
+                                <Tag tone={featuredDaysLeft <= 1 ? "rose" : "copper"} dot={true} solid>
+                                    {featuredPoll.hasVotedInit ? "Consulta destacada" : "Pendiente de tu voto"}
+                                </Tag>
+                                <span className="font-mono text-sm tracking-wider text-slate-300">
+                                    {featuredDaysLeft === 0 ? "Cierra hoy" : `${featuredDaysLeft} día${featuredDaysLeft === 1 ? "" : "s"} para cerrar`}
+                                </span>
                             </div>
-                            <div className="bg-rose-950/40 border border-rose-500/20 rounded-lg p-3 text-xs text-rose-300">
-                                <p className="font-bold mb-1">Contras:</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                    <li>Costo de mantención del techo de tejas</li>
-                                    <li>Ruido acústico leve para departamentos superiores</li>
-                                </ul>
-                            </div>
+                            <h2 className="text-2xl font-semibold leading-tight">
+                                <em className="text-italic-serif text-brand-300">{featuredPoll.title}</em>
+                            </h2>
+                            <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+                                {featuredPoll.description || "Revisa las opciones y emite tu voto antes del cierre."}
+                            </p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                {featuredPoll.totalVotes} voto{featuredPoll.totalVotes === 1 ? "" : "s"} registrado{featuredPoll.totalVotes === 1 ? "" : "s"} hasta ahora
+                            </p>
                         </div>
-                    </div>
-                    
-                    <div className="space-y-3 shrink-0 lg:max-w-xs w-full lg:w-auto">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Documentos adjuntos</p>
-                        <div className="space-y-2">
-                            {[
-                                "Especificaciones_Tecnicas.pdf",
-                                "Presupuesto_Quincho_V1.pdf"
-                            ].map(doc => (
-                                <button
-                                    key={doc}
-                                    type="button"
-                                    onClick={() => downloadAssemblyDocument(doc)}
-                                    className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 p-2.5 text-left text-xs transition-all hover:bg-white/10"
-                                >
-                                    <span className="truncate text-slate-300 font-medium">{doc}</span>
-                                    <span className="ml-2 inline-flex items-center gap-1 text-brand-300">
-                                        <Download className="h-3.5 w-3.5" />
-                                        Descargar
-                                    </span>
-                                </button>
-                            ))}
+
+                        <div className="shrink-0 lg:max-w-xs w-full lg:w-auto">
+                            <a
+                                href="#consultas-activas"
+                                className="flex w-full items-center justify-center rounded-lg bg-white/10 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-white/20"
+                            >
+                                {featuredPoll.hasVotedInit ? "Ver resultados" : "Ir a votar"}
+                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <section className="grid gap-4 md:grid-cols-3">
                 <MetricCard icon={<Vote className="h-5 w-5" />} label="Consultas activas" value={activePolls.length} helper="Disponibles para votar" />
@@ -231,7 +198,7 @@ export default function VotacionesPage() {
                 <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los próximos 3 días" dark />
             </section>
 
-            <section className="space-y-5">
+            <section id="consultas-activas" className="scroll-mt-24 space-y-5">
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-bold cc-text-primary">Consultas activas</h2>
