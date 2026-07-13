@@ -15,7 +15,9 @@ import {
     UtensilsCrossed,
     ArrowRight,
     Download,
-    PackageCheck
+    PackageCheck,
+    Share2,
+    ExternalLink
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
@@ -32,6 +34,13 @@ interface CartItem {
     isOffer?: boolean;
     checked: boolean;
 }
+
+const STORE_URLS: Record<string, string> = {
+    Lider: "https://www.lider.cl",
+    Jumbo: "https://www.jumbo.cl",
+    Unimarc: "https://www.unimarc.cl",
+    "Santa Isabel": "https://www.santaisabel.cl",
+};
 
 // Curated AI Suggestions
 const AI_SUGGESTIONS = [
@@ -104,26 +113,41 @@ export default function SupermarketPage() {
     
     const totalAmount = list.reduce((sum, item) => sum + (item.price || 0), 0);
     const exportDisabled = list.length === 0;
+    const usedStores = Array.from(new Set(list.map(item => item.store).filter((store): store is string => !!store && store in STORE_URLS)));
+
+    const buildListText = () => [
+        "Lista de compras Convive Connect",
+        `Generada: ${new Date().toLocaleString("es-CL")}`,
+        "",
+        ...list.map((item, index) => {
+            const status = item.checked ? "[x]" : "[ ]";
+            const price = item.price ? ` - $${item.price.toLocaleString("es-CL")}` : "";
+            const store = item.store ? ` (${item.store})` : "";
+            return `${index + 1}. ${status} ${item.name}${price}${store}`;
+        }),
+        "",
+        `Total referencial: $${totalAmount.toLocaleString("es-CL")}`,
+        "Nota: la compra se coordina con los canales habilitados por la comunidad.",
+    ].join("\n");
+
+    const handleShareList = async () => {
+        if (list.length === 0) return;
+        const text = buildListText();
+        if (typeof navigator !== "undefined" && navigator.share) {
+            try {
+                await navigator.share({ text });
+                return;
+            } catch {
+                // user cancelled or share failed, fall back to WhatsApp link below
+            }
+        }
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    };
 
     const handleExportList = () => {
         if (list.length === 0) return;
 
-        const lines = [
-            "Lista de compras Convive Connect",
-            `Generada: ${new Date().toLocaleString("es-CL")}`,
-            "",
-            ...list.map((item, index) => {
-                const status = item.checked ? "[x]" : "[ ]";
-                const price = item.price ? ` - $${item.price.toLocaleString("es-CL")}` : "";
-                const store = item.store ? ` (${item.store})` : "";
-                return `${index + 1}. ${status} ${item.name}${price}${store}`;
-            }),
-            "",
-            `Total referencial: $${totalAmount.toLocaleString("es-CL")}`,
-            "Nota: la compra se coordina con los canales habilitados por la comunidad.",
-        ];
-
-        const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+        const blob = new Blob([buildListText()], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
@@ -325,28 +349,55 @@ export default function SupermarketPage() {
                             <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--cc-sage-tint)" }}>
                                 <ShoppingCart className="h-6 w-6" style={{ color: "var(--cc-sage)" }} />
                             </div>
-                            <Button
-                                onClick={handleExportList}
-                                disabled={exportDisabled || loading}
-                                className="text-white rounded-full h-12 px-6 font-bold flex items-center gap-2 group"
-                                style={{ background: "var(--cc-ink)" }}
-                            >
-                                Exportar lista {totalAmount > 0 ? `($${totalAmount.toLocaleString('es-CL')})` : ''}
-                                <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleShareList}
+                                    disabled={exportDisabled || loading}
+                                    variant="outline"
+                                    className="rounded-full h-12 px-5 font-bold flex items-center gap-2"
+                                    style={{ borderColor: "var(--cc-line)" }}
+                                >
+                                    <Share2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    onClick={handleExportList}
+                                    disabled={exportDisabled || loading}
+                                    className="text-white rounded-full h-12 px-6 font-bold flex items-center gap-2 group"
+                                    style={{ background: "var(--cc-ink)" }}
+                                >
+                                    Exportar lista {totalAmount > 0 ? `($${totalAmount.toLocaleString('es-CL')})` : ''}
+                                    <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--cc-paper-warm)" }}>
                                 <div className="h-8 w-8 rounded-lg" style={{ background: "var(--cc-copper-tint)" }} />
                                 <span className="text-sm font-bold cc-text-secondary">Canal supermercado comunidad</span>
                             </div>
+                            {usedStores.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {usedStores.map(store => (
+                                        <a
+                                            key={store}
+                                            href={STORE_URLS[store]}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-1 min-w-[45%] rounded-xl border p-3 text-center text-sm font-bold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)] flex items-center justify-center gap-1.5"
+                                            style={{ borderColor: "var(--cc-line)" }}
+                                        >
+                                            Ir a {store} <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex items-center gap-3 rounded-xl border p-3 opacity-40" style={{ borderColor: "var(--cc-line)" }}>
                                 <div className="h-8 w-8 rounded-lg" style={{ background: "var(--cc-amber-tint)" }} />
                                 <span className="text-sm font-bold cc-text-secondary">Integracion de pago bajo contrato</span>
                             </div>
                         </div>
                         <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
-                            Lista operativa hoy; pago directo disponible al activar convenio de pagos
+                            Lista operativa hoy; la compra y el pago se hacen directo en el sitio del supermercado
                         </p>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, ArrowRight } from "lucide-react";
+import { ShoppingCart, Share2, ExternalLink } from "lucide-react";
 
 interface ProductItem {
     name: string;
@@ -16,10 +16,36 @@ interface OrderPreviewBubbleProps {
     items: ProductItem[];
     total: number;
     savings: number;
-    onPay: () => void;
 }
 
-export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPreviewBubbleProps) {
+const STORE_URLS: Record<ProductItem["store"], string> = {
+    Lider: "https://www.lider.cl",
+    Jumbo: "https://www.jumbo.cl",
+    Unimarc: "https://www.unimarc.cl",
+    "Santa Isabel": "https://www.santaisabel.cl",
+};
+
+function buildShareText(items: ProductItem[], total: number) {
+    const lines = items.map(item => `• ${item.quantity}x ${item.name} (${item.store}) — $${item.price.toLocaleString("es-CL")}`);
+    return [`Mi lista de compras CoCo 🛒`, ...lines, `Total estimado: $${total.toLocaleString("es-CL")}`].join("\n");
+}
+
+export function OrderPreviewBubble({ items, total, savings }: OrderPreviewBubbleProps) {
+    const stores = Array.from(new Set(items.map(item => item.store)));
+
+    const handleShare = async () => {
+        const text = buildShareText(items, total);
+        if (typeof navigator !== "undefined" && navigator.share) {
+            try {
+                await navigator.share({ text });
+                return;
+            } catch {
+                // user cancelled or share failed, fall back to WhatsApp link below
+            }
+        }
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    };
+
     return (
         <div className="w-full max-w-sm bg-surface rounded-lg overflow-hidden shadow-sm border border-subtle">
             {/* Header */}
@@ -73,11 +99,29 @@ export function OrderPreviewBubble({ items, total, savings, onPay }: OrderPrevie
                 </div>
 
                 <button
-                    onClick={onPay}
+                    onClick={handleShare}
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                    Pagar Ahora <ArrowRight className="h-4 w-4" />
+                    Compartir lista <Share2 className="h-4 w-4" />
                 </button>
+
+                <div className="flex flex-wrap gap-2">
+                    {stores.map(store => (
+                        <a
+                            key={store}
+                            href={STORE_URLS[store]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 min-w-[45%] py-2 px-3 text-center text-xs font-semibold rounded-lg border border-subtle cc-text-secondary hover:bg-canvas transition-all flex items-center justify-center gap-1.5"
+                        >
+                            Ir a {store} <ExternalLink className="h-3 w-3" />
+                        </a>
+                    ))}
+                </div>
+
+                <p className="text-[10px] text-slate-400 text-center">
+                    CoCo compara precios, pero la compra y el pago se hacen directo en la app o sitio del supermercado.
+                </p>
             </div>
         </div>
     );
