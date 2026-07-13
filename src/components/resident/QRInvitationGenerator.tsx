@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarClock, CheckCircle2, Copy, IdCard, Share2, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -27,15 +28,31 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
     const [guestDni, setGuestDni] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [generated, setGenerated] = useState<GeneratedInvitation | null>(null);
+    const [qrDataUrl, setQrDataUrl] = useState("");
 
-    const qrCells = useMemo(() => {
-        const seed = generated?.qrCode || "COMMUNITY";
-        return Array.from({ length: 49 }, (_, index) => {
-            if ([0, 1, 7, 8, 40, 41, 47, 48].includes(index)) return true;
-            const code = seed.charCodeAt(index % seed.length);
-            return (code + index * 7) % 3 !== 0;
+    useEffect(() => {
+        let cancelled = false;
+        if (!generated) {
+            setQrDataUrl("");
+            return;
+        }
+
+        QRCode.toDataURL(generated.qrCode, {
+            errorCorrectionLevel: "M",
+            margin: 2,
+            width: 480,
+            color: { dark: "#1f1713", light: "#ffffff" },
+        }).then(url => {
+            if (!cancelled) setQrDataUrl(url);
+        }).catch(error => {
+            console.error("QR image generation failed:", error);
+            if (!cancelled) setQrDataUrl("");
         });
-    }, [generated?.qrCode]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [generated]);
 
     const handleGenerate = async () => {
         if (!user) {
@@ -205,15 +222,12 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
                             </p>
                         </div>
 
-                        <div className="mx-auto grid aspect-square w-full max-w-[240px] grid-cols-7 gap-1 rounded-xl border p-5" style={{ borderColor: "var(--cc-line)", background: "#fff" }}>
-                            {qrCells.map((filled, index) => (
-                                <span
-                                    key={index}
-                                    className="rounded-[3px]"
-                                    style={{ background: filled ? "var(--cc-ink)" : "var(--cc-paper-warm)" }}
-                                    aria-hidden="true"
-                                />
-                            ))}
+                        <div className="mx-auto aspect-square w-full max-w-[240px] rounded-xl border bg-white p-3" style={{ borderColor: "var(--cc-line)" }}>
+                            {qrDataUrl ? (
+                                <img src={qrDataUrl} alt={"Codigo QR de acceso para " + generated.guestName} className="h-full w-full" />
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-sm cc-text-secondary">Generando codigo QR...</div>
+                            )}
                         </div>
 
                         <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
@@ -248,3 +262,5 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
         </section>
     );
 }
+
+
