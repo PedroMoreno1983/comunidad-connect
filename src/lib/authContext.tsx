@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, communities(id, pricing_tiers(features))')
+                .select('*, communities(id, cover_photo_url, pricing_tiers(features))')
                 .eq('id', sbUser.id)
                 .single();
 
@@ -155,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     unitName: profileDepartmentNumber ? `Depto ${profileDepartmentNumber}` : undefined,
                     photo: profile.avatar_url,
                     communityId: profile.community_id,
+                    communityCoverPhotoUrl: profile.communities?.cover_photo_url || undefined,
                     features,
                 });
 

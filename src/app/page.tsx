@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import {
   Building2,
@@ -11,7 +10,11 @@ import {
   ArrowRight,
   MessageSquare, Package, TrendingUp,
   Users, Zap, ChevronRight, Handshake, Heart, Clock,
-  X, Send, Loader2
+  X, Send, Loader2,
+  Shield, Home, KeyRound,
+  BarChart3, FileText, Wrench, Vote, Megaphone,
+  CreditCard, Waves, ShoppingCart, Bell,
+  DoorOpen, Camera, ClipboardList, AlertTriangle, SquareParking,
 } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { useToast } from '@/components/ui/Toast';
@@ -237,21 +240,18 @@ const roles = [
   {
     id: 'admin',
     title: 'Administración',
-    emoji: '🛡️',
+    Icon: Shield,
     description: 'Panel de control centralizado. Finanzas, auditoría y gestión de comunidad integral.',
-    color: '#C8705A',
-    gradientFrom: 'from-[#C8705A]',
-    gradientTo: 'to-[#B45F4B]',
-    shadowColor: 'hover:shadow-[#C8705A]/20',
-    borderHover: 'hover:border-[#C8705A]/40',
+    color: 'var(--cc-copper)',
+    tint: 'var(--cc-copper-tint)',
     // Building window grid: each cell is a mini feature
     windows: [
-      { icon: '📊', label: 'Finanzas' },
-      { icon: '👥', label: 'Residentes' },
-      { icon: '📋', label: 'Reportes' },
-      { icon: '🔧', label: 'Mantención' },
-      { icon: '🗳️', label: 'Votaciones' },
-      { icon: '📢', label: 'Circulares' },
+      { Icon: BarChart3, label: 'Finanzas' },
+      { Icon: Users, label: 'Residentes' },
+      { Icon: FileText, label: 'Reportes' },
+      { Icon: Wrench, label: 'Mantención' },
+      { Icon: Vote, label: 'Votaciones' },
+      { Icon: Megaphone, label: 'Circulares' },
     ],
     features: ['Analítica Financiera', 'Gestión de Residentes', 'Reportes de Consumo'],
     fullDescription: 'El cerebro de la comunidad. Diseñado para administradores que buscan transparencia total y eficiencia operativa absoluta.',
@@ -265,20 +265,17 @@ const roles = [
   {
     id: 'resident',
     title: 'Residente',
-    emoji: '🏡',
+    Icon: Home,
     description: 'Tu hogar inteligente. Reservas, pagos y comunicación vecinal en un solo lugar.',
-    color: '#5A7D5A',
-    gradientFrom: 'from-[#5A7D5A]',
-    gradientTo: 'to-[#466746]',
-    shadowColor: 'hover:shadow-[#5A7D5A]/20',
-    borderHover: 'hover:border-[#5A7D5A]/40',
+    color: 'var(--cc-sage)',
+    tint: 'var(--cc-sage-tint)',
     windows: [
-      { icon: '💳', label: 'Pagos' },
-      { icon: '🏊', label: 'Piscina' },
-      { icon: '🛒', label: 'Mercado' },
-      { icon: '📦', label: 'Paquetes' },
-      { icon: '💬', label: 'Chat' },
-      { icon: '🔔', label: 'Avisos' },
+      { Icon: CreditCard, label: 'Pagos' },
+      { Icon: Waves, label: 'Piscina' },
+      { Icon: ShoppingCart, label: 'Mercado' },
+      { Icon: Package, label: 'Paquetes' },
+      { Icon: MessageSquare, label: 'Chat' },
+      { Icon: Bell, label: 'Avisos' },
     ],
     features: ['Pago de Gastos', 'Marketplace', 'Reservas de Espacios'],
     fullDescription: 'Tu edificio en el bolsillo. Eliminamos la fricción de vivir en comunidad con herramientas modernas y fáciles de usar.',
@@ -292,20 +289,17 @@ const roles = [
   {
     id: 'concierge',
     title: 'Conserjería',
-    emoji: '🔑',
+    Icon: KeyRound,
     description: 'Operaciones en tiempo real. Máxima seguridad y estricto control de accesos.',
-    color: '#f59e0b',
-    gradientFrom: 'from-amber-400',
-    gradientTo: 'to-amber-600',
-    shadowColor: 'hover:shadow-amber-400/20',
-    borderHover: 'hover:border-amber-400/40',
+    color: 'var(--cc-amber)',
+    tint: 'var(--cc-amber-tint)',
     windows: [
-      { icon: '🚪', label: 'Accesos' },
-      { icon: '📷', label: 'Cámaras' },
-      { icon: '📝', label: 'Novedades' },
-      { icon: '🚨', label: 'Alertas' },
-      { icon: '🅿️', label: 'Parking' },
-      { icon: '🔐', label: 'Visitas' },
+      { Icon: DoorOpen, label: 'Accesos' },
+      { Icon: Camera, label: 'Cámaras' },
+      { Icon: ClipboardList, label: 'Novedades' },
+      { Icon: AlertTriangle, label: 'Alertas' },
+      { Icon: SquareParking, label: 'Parking' },
+      { Icon: KeyRound, label: 'Visitas' },
     ],
     features: ['Control de Visitas', 'Recepción de Paquetes', 'Gestión de Emergencias'],
     fullDescription: 'La primera línea de defensa. Empoderamos a la conserjería con tecnología para un control de acceso sin errores.',
@@ -492,48 +486,6 @@ export default function LandingPage() {
         {/* ── Trust Stats ── */}
         <TrustStats />
 
-        {/* ── Real building showcase — Edificio Málaga, Las Condes ── */}
-        <section className="mt-24 md:mt-32">
-          <div className="mb-8 max-w-xl">
-            <div
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold mb-5"
-              style={{ borderColor: 'var(--cc-line-strong)', background: 'var(--cc-copper-tint)', color: 'var(--cc-copper)' }}
-            >
-              Edificio piloto Net Zero
-            </div>
-            <h2
-              className="text-3xl md:text-5xl leading-[1.05] tracking-tight mb-4"
-              style={{ fontFamily: 'var(--cc-font-display)' }}
-            >
-              Málaga 433, <em className="italic" style={{ color: 'var(--cc-copper)' }}>Las Condes.</em>
-            </h2>
-            <p className="text-base sm:text-lg max-w-md leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>
-              Madera oxidada, acero estructural y vegetación real — así es el edificio donde nace Convive Connect.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl" style={{ borderColor: 'var(--cc-line)' }}>
-              <Image
-                src="/edificio-malaga-patio.jpg"
-                alt="Patio interior del edificio Málaga 433, con revestimiento de madera oxidada, estructura de acero y vegetación nativa"
-                fill
-                sizes="(min-width: 1024px) 60vw, 100vw"
-                className="object-cover"
-                priority
-              />
-            </div>
-            <div className="relative aspect-[4/3] lg:aspect-auto overflow-hidden rounded-2xl">
-              <Image
-                src="/edificio-malaga-exterior.jpg"
-                alt="Fachada exterior del edificio Málaga 433 con paneles solares y balcones de madera"
-                fill
-                sizes="(min-width: 1024px) 40vw, 100vw"
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </section>
-
         {/* ── Section: CoCo IA (WhatsApp Integration) ── */}
         <section className="mt-24 md:mt-32 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           <div className="hidden flex-1 max-w-xl order-2 lg:order-1" aria-hidden="true">
@@ -587,18 +539,21 @@ export default function LandingPage() {
         <section className="w-full pb-4">
           <div className="text-center mb-14">
             <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C8705A]/10 border border-[#C8705A]/20 text-[#B45F4B] dark:text-[#DFAF9B] text-xs font-bold tracking-widest uppercase mb-5"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-bold tracking-widest uppercase mb-5"
+              style={{ borderColor: 'var(--cc-line-strong)', background: 'var(--cc-copper-tint)', color: 'var(--cc-copper)' }}
             >
-              ✦ Tres roles, una sola plataforma
+              Tres roles, una sola plataforma
             </div>
             <h2
-              className="text-3xl md:text-5xl font-extrabold tracking-tighter mb-3"
+              className="text-3xl md:text-5xl tracking-tight mb-3"
+              style={{ fontFamily: 'var(--cc-font-display)' }}
             >
               Tu edificio desde{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8705A] to-[#5A7D5A]">todos los ángulos</span>
+              <em className="italic" style={{ color: 'var(--cc-copper)' }}>todos los ángulos</em>
             </h2>
             <p
-              className="text-[#8A8580] dark:text-[#C8BFB6] text-lg max-w-xl mx-auto"
+              className="text-lg max-w-xl mx-auto"
+              style={{ color: 'var(--cc-ink-muted)' }}
             >
               Haz clic en tu rol para explorar todo lo que tienes a disposición.
             </p>
@@ -607,6 +562,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {roles.map((role) => {
               const isHovered = hoveredRole === role.id;
+              const RoleIcon = role.Icon;
               return (
                 <div
                   key={role.id}
@@ -614,23 +570,21 @@ export default function LandingPage() {
                   onMouseLeave={() => setHoveredRole(null)}
                   onClick={() => setSelectedInfo(role.id)}
                   id={`role-card-${role.id}`}
-                  className="group relative flex flex-col rounded-[2rem] cursor-pointer overflow-hidden transition-all duration-500 ease-out hover:-translate-y-3"
+                  className="group relative flex flex-col rounded-2xl cursor-pointer overflow-hidden transition-all duration-500 ease-out hover:-translate-y-2"
                   style={{
-                    background: isHovered
-                      ? `linear-gradient(145deg, ${role.color}15, ${role.color}08)`
-                      : 'var(--cc-bg-surface)',
-                    border: `2px solid ${isHovered ? role.color + '50' : 'var(--cc-border-default)'}`,
+                    background: isHovered ? role.tint : 'var(--cc-paper)',
+                    border: `1.5px solid ${isHovered ? role.color : 'var(--cc-line)'}`,
                     boxShadow: isHovered
-                      ? `0 30px 60px -15px ${role.color}35, 0 0 0 1px ${role.color}20`
-                      : '0 2px 8px rgba(0,0,0,0.06)',
+                      ? `0 24px 48px -20px color-mix(in srgb, ${role.color} 35%, transparent)`
+                      : '0 1px 2px rgba(26,22,17,0.04)',
                   }}
                   role="button"
                   tabIndex={0}
                 >
                   {/* ── Building facade top bar ── */}
                   <div
-                    className="h-2 w-full transition-all duration-500"
-                    style={{ background: `linear-gradient(90deg, ${role.color}, ${role.color}99)` }}
+                    className="h-1.5 w-full transition-all duration-500"
+                    style={{ background: role.color }}
                   />
 
                   {/* ── Building "floors" grid = window grid ── */}
@@ -639,10 +593,11 @@ export default function LandingPage() {
                       {role.windows.filter(win => isCommercialRoleWindow(win.label)).map((win, wi) => (
                         <div
                           key={wi}
-                          className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-center"
+                          className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl border text-center"
+                          style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
                         >
-                          <span className="text-base leading-none">{win.icon}</span>
-                          <span className="text-[9px] font-bold text-[#8A8580] dark:text-[#C8BFB6] tracking-wide uppercase leading-tight">{win.label}</span>
+                          <win.Icon className="h-4 w-4" style={{ color: role.color }} />
+                          <span className="text-[9px] font-bold tracking-wide uppercase leading-tight" style={{ color: 'var(--cc-ink-tertiary)' }}>{win.label}</span>
                         </div>
                       ))}
                     </div>
@@ -652,35 +607,33 @@ export default function LandingPage() {
                   <div className="px-6 pb-6 flex flex-col flex-1 gap-4">
                     <div className="flex items-center gap-3 mt-1">
                       <div
-                        className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 transition-all duration-500"
+                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500"
                         style={{
-                          background: isHovered
-                            ? `linear-gradient(135deg, ${role.color}, ${role.color}cc)`
-                            : 'var(--cc-bg-elevated)',
-                          boxShadow: isHovered ? `0 6px 20px ${role.color}40` : 'none',
+                          background: isHovered ? role.color : role.tint,
+                          color: isHovered ? '#fff' : role.color,
                         }}
                       >
-                        {role.emoji}
+                        <RoleIcon className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-extrabold tracking-tight leading-none">{role.title}</h3>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: role.color }}>Vista completa</p>
+                        <h3 className="text-xl font-semibold tracking-tight leading-none" style={{ fontFamily: 'var(--cc-font-display)' }}>{role.title}</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: role.color }}>Vista completa</p>
                       </div>
                     </div>
 
-                    <p className="text-[#8A8580] dark:text-[#C8BFB6] text-sm leading-relaxed">{getCommercialRoleDescription(role)}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{getCommercialRoleDescription(role)}</p>
 
                     <div className="flex-1" />
 
-                    <div className="flex items-center justify-between pt-4 border-t border-[#F1EAE1] dark:border-[#3B3530]">
-                      <span className="text-sm font-bold transition-colors duration-300" style={{ color: isHovered ? role.color : 'var(--cc-text-tertiary)' }}>
+                    <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--cc-line)' }}>
+                      <span className="text-sm font-semibold transition-colors duration-300" style={{ color: isHovered ? role.color : 'var(--cc-ink-tertiary)' }}>
                         Explorar funciones
                       </span>
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
                         style={{
-                          background: isHovered ? role.color : 'var(--cc-bg-elevated)',
-                          color: isHovered ? 'white' : 'var(--cc-text-tertiary)',
+                          background: isHovered ? role.color : 'var(--cc-paper-warm)',
+                          color: isHovered ? '#fff' : 'var(--cc-ink-tertiary)',
                           transform: isHovered ? 'translateX(3px)' : 'none',
                         }}
                       >
@@ -816,38 +769,40 @@ export default function LandingPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
               onClick={() => setSelectedInfo(null)}
-              className="absolute inset-0 bg-[#2D2A26]/60 backdrop-blur-md"
+              className="absolute inset-0 backdrop-blur-md"
+              style={{ background: 'rgba(26,22,17,0.6)' }}
             />
             <div
-              className="relative w-full max-w-xl bg-white dark:bg-[#25242A] rounded-[2.5rem] shadow-2xl overflow-hidden border border-[#E4D8CA] dark:border-[#3B3530]"
+              className="relative w-full max-w-xl rounded-2xl overflow-hidden border"
+              style={{ background: 'var(--cc-paper)', borderColor: 'var(--cc-line)' }}
             >
-              <div className={`h-1.5 bg-gradient-to-r ${selectedRole.gradientFrom} ${selectedRole.gradientTo}`} />
+              <div className="h-1.5" style={{ background: selectedRole.color }} />
               <div className="p-8 md:p-10">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${selectedRole.gradientFrom} ${selectedRole.gradientTo} flex items-center justify-center text-2xl shadow-lg`}>
-                      {selectedRole.emoji}
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: selectedRole.color, color: '#fff' }}>
+                      <selectedRole.Icon className="h-6 w-6" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-extrabold tracking-tight">{selectedRole.title}</h2>
+                      <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--cc-font-display)' }}>{selectedRole.title}</h2>
                       <div className="h-1 w-16 rounded-full mt-1" style={{ background: selectedRole.color }} />
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedInfo(null)}
-                    className="p-2 rounded-full hover:bg-[#F1EAE1] dark:hover:bg-[#302D2A] transition-colors"
+                    className="p-2 rounded-full transition-colors hover:bg-[var(--cc-paper-warm)]"
                   >
                     <ChevronRight className="w-6 h-6 rotate-180" />
                   </button>
                 </div>
 
-                <p className="text-[#5F5A54] dark:text-[#C8BFB6] mb-8 leading-relaxed font-medium">{selectedRole.fullDescription}</p>
+                <p className="mb-8 leading-relaxed font-medium" style={{ color: 'var(--cc-ink-muted)' }}>{selectedRole.fullDescription}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
                   {selectedRole.extraFeatures.filter(isCommercialExtraFeature).map((feat, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-[#FBF8F3] dark:bg-[#302D2A] border border-[#F1EAE1] dark:border-[#3B3530]">
+                    <div key={i} className="flex items-start gap-3 p-4 rounded-xl border" style={{ background: 'var(--cc-paper-warm)', borderColor: 'var(--cc-line)' }}>
                       <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: selectedRole.color }} />
-                      <span className="text-sm font-semibold leading-snug text-[#2D2A26] dark:text-[#E4D8CA]">{feat}</span>
+                      <span className="text-sm font-semibold leading-snug cc-text-primary">{feat}</span>
                     </div>
                   ))}
                 </div>
@@ -855,14 +810,15 @@ export default function LandingPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => router.push('/onboarding')}
-                    className="flex-1 py-4 rounded-2xl text-white font-bold hover:opacity-90 transition-all shadow-lg text-sm"
-                    style={{ background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}dd)`, boxShadow: `0 8px 24px ${selectedRole.color}40` }}
+                    className="flex-1 py-4 rounded-full text-white font-semibold transition-all text-sm"
+                    style={{ background: selectedRole.color }}
                   >
                     Ver activacion IA
                   </button>
                   <button
                     onClick={() => setSelectedInfo(null)}
-                    className="px-6 py-4 rounded-2xl bg-[#F1EAE1] dark:bg-[#302D2A] font-bold hover:bg-[#E4D8CA] dark:hover:bg-[#3B3530] transition-all text-sm"
+                    className="px-6 py-4 rounded-full font-semibold transition-all text-sm cc-text-primary"
+                    style={{ background: 'var(--cc-paper-warm)' }}
                   >
                     Cerrar
                   </button>

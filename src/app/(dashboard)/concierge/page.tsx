@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Key, Plus, ShoppingBag, Users } from "lucide-react";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
+import { useAuth } from "@/lib/authContext";
 import { ConciergeService, ConciergeVisitorRow, ConciergePackageRow, ConciergeCaseRow } from "@/lib/services/supabaseServices";
 
 type ShiftEvent = {
@@ -81,6 +83,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
 }
 
 export default function ConciergeDashboardPage() {
+    const { user } = useAuth();
     const [loading, setLoading] = React.useState(true);
     const [visitors, setVisitors] = React.useState<ConciergeVisitorRow[]>([]);
     const [packages, setPackages] = React.useState<ConciergePackageRow[]>([]);
@@ -136,6 +139,27 @@ export default function ConciergeDashboardPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* Real building photo — only shown to concierges of a community that has one configured */}
+            {user?.communityCoverPhotoUrl && (
+                <div className="relative overflow-hidden" style={{ borderRadius: 22, height: 120 }}>
+                    <Image
+                        src={user.communityCoverPhotoUrl}
+                        alt="Foto de tu edificio"
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
+                    />
+                    <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{ background: "linear-gradient(90deg, rgba(26,22,17,0.8) 0%, rgba(26,22,17,0.15) 70%)" }}
+                    />
+                    <div className="absolute inset-y-0 left-5 flex flex-col justify-center" style={{ color: "var(--cc-paper)" }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KpiCard eyebrow="Visitas hoy" value={loading ? "--" : String(visitsToday)} sub="ingresos registrados" icon={<Users size={15} />} tone="amber" />
