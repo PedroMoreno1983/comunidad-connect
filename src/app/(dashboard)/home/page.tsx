@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { HomeService } from "@/lib/api";
 import type { ResidentHomeSummary } from "@/lib/types";
@@ -113,6 +114,27 @@ export default function HomePage() {
                         )}
                     </p>
                 </div>
+
+                {/* Real building photo — only shown to residents of a community that has one configured */}
+                {user.communityCoverPhotoUrl && (
+                    <div className="relative mb-5 overflow-hidden" style={{ borderRadius: 22, height: 140 }}>
+                        <Image
+                            src={user.communityCoverPhotoUrl}
+                            alt="Foto de tu edificio"
+                            fill
+                            sizes="(min-width: 768px) 500px, 100vw"
+                            className="object-cover"
+                        />
+                        <div
+                            aria-hidden
+                            className="absolute inset-0"
+                            style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.75) 0%, rgba(26,22,17,0.05) 60%)" }}
+                        />
+                        <div className="absolute bottom-3 left-4" style={{ color: "var(--cc-paper)" }}>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Featured: pending bill */}
                 <div

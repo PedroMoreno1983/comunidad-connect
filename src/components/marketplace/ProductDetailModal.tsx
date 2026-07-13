@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { MarketplaceItem } from "@/lib/types";
 import {
     Dialog,
@@ -46,7 +45,6 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy
 
     const imgSrc = item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null);
     const sellerIdentityLabel = getSellerIdentityLabel();
-    const deptNumber = sellerIdentityLabel;
     const isUnavailable = item.status === "reserved" || item.status === "sold" || item.status === "hidden";
     const publishedAt = item.createdAt
         ? new Date(item.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "long" })
@@ -86,15 +84,10 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy
 
                     <div className="space-y-10 overflow-y-auto bg-surface p-8 md:w-1/2 md:p-12">
                         <div className="space-y-6">
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="hidden"
-                            >
+                            <div className="flex w-fit items-center gap-2.5 rounded-lg border border-blue-100/50 bg-blue-50/50 px-4 py-2 text-xs font-bold text-blue-600 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
                                 <ShieldCheck className="h-4 w-4" />
-                                Publicación comunitaria verificada · Depto {deptNumber}
-                            </motion.div>
-                            <div className="flex w-fit items-center gap-2.5 rounded-lg border border-blue-100/50 bg-blue-50/50 px-4 py-2 text-xs font-bold text-blue-600 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400"><ShieldCheck className="h-4 w-4" /> Publicacion dentro de tu comunidad</div>
+                                Publicación dentro de tu comunidad
+                            </div>
                             <DialogTitle className="text-4xl font-semibold leading-[1.05] tracking-tight cc-text-primary md:text-5xl">
                                 {item.title}
                             </DialogTitle>
@@ -193,10 +186,8 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy
                                 <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-[#3B82F6] to-[#6D28D9] text-xl font-bold text-white shadow-sm shadow-blue-500/20">
                                     <Home className="h-6 w-6" />
                                 </div>
-                                <div className="flex-1 [&>p:nth-child(2)]:hidden [&>p:nth-child(3)]:hidden">
+                                <div className="flex-1">
                                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Vendedor residente</p>
-                                    <p className="text-lg font-semibold cc-text-primary">Depto {deptNumber}</p>
-                                    <p className="mt-0.5 text-xs font-bold text-slate-400">Identidad visible solo dentro de la comunidad.</p>
                                     <p className="text-sm font-semibold cc-text-primary">{sellerIdentityLabel}</p>
                                 </div>
                             </div>

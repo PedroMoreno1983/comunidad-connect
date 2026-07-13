@@ -2,7 +2,6 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
@@ -60,21 +59,11 @@ function LoginForm() {
             <div className="grid w-full lg:grid-cols-2">
                 <section
                     className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex"
-                    style={{ color: "var(--cc-paper)" }}
+                    style={{
+                        background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
+                        color: "var(--cc-paper)",
+                    }}
                 >
-                    <Image
-                        src="/edificio-malaga-patio.jpg"
-                        alt="Patio interior del edificio Málaga 433, con revestimiento de madera oxidada y vegetación real"
-                        fill
-                        priority
-                        sizes="50vw"
-                        className="object-cover"
-                    />
-                    <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0"
-                        style={{ background: "linear-gradient(180deg, rgba(26,22,17,0.55) 0%, rgba(26,22,17,0.80) 60%, rgba(17,13,10,0.94) 100%)" }}
-                    />
                     <div
                         aria-hidden
                         className="pointer-events-none absolute right-0 top-1/4 h-[400px] w-[400px] rounded-full blur-3xl"

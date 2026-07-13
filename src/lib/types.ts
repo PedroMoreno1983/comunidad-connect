@@ -10,6 +10,7 @@ export interface User {
   unitId?: string; // For residents/tenants
   unitName?: string; // User-friendly unit designator
   communityId?: string; // Multi-tenant ID
+  communityCoverPhotoUrl?: string; // Optional real building photo, set per-community
   features?: Record<string, boolean>; // Plan features
 }
 

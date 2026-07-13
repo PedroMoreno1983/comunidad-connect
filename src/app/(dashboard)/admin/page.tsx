@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
     AlertCircle,
     ArrowRight,
@@ -101,6 +102,27 @@ export default function AdminDashboardPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* Real building photo — only shown to admins of a community that has one configured */}
+            {user?.communityCoverPhotoUrl && (
+                <div className="relative overflow-hidden" style={{ borderRadius: 22, height: 120 }}>
+                    <Image
+                        src={user.communityCoverPhotoUrl}
+                        alt="Foto de tu edificio"
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
+                    />
+                    <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{ background: "linear-gradient(90deg, rgba(26,22,17,0.8) 0%, rgba(26,22,17,0.15) 70%)" }}
+                    />
+                    <div className="absolute inset-y-0 left-5 flex flex-col justify-center" style={{ color: "var(--cc-paper)" }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                    </div>
+                </div>
+            )}
 
             {loading ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
