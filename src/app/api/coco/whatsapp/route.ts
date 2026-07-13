@@ -5,7 +5,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { askCoCo } from '@/lib/coco/agent';
 import {
     getSession,
@@ -16,37 +15,7 @@ import {
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
 import { PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
-
-/**
- * Valida que el POST venga realmente de Twilio (algoritmo oficial:
- * HMAC-SHA1 de la URL exacta del webhook + parametros ordenados, con el
- * Auth Token como llave). Sin esto, cualquiera que conozca la URL puede
- * hacerse pasar por un numero de WhatsApp verificado.
- * https://www.twilio.com/docs/usage/webhooks/webhooks-security
- */
-function verifyTwilioSignature(signature: string | null, params: Record<string, string>): boolean {
-    const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
-    if (!authToken) {
-        console.error('[CoCo WhatsApp] TWILIO_AUTH_TOKEN no configurado');
-        return false;
-    }
-    if (!signature) return false;
-
-    const url = `${PUBLIC_SITE_URL}${WHATSAPP_WEBHOOK_PATH}`;
-    const sortedBody = Object.keys(params)
-        .sort()
-        .map(key => `${key}${params[key]}`)
-        .join('');
-
-    const expected = crypto
-        .createHmac('sha1', authToken)
-        .update(url + sortedBody, 'utf8')
-        .digest('base64');
-
-    const provided = Buffer.from(signature, 'utf8');
-    const expectedBuf = Buffer.from(expected, 'utf8');
-    return provided.length === expectedBuf.length && crypto.timingSafeEqual(provided, expectedBuf);
-}
+import { verifyTwilioSignature } from '@/lib/security/twilioSignature';
 
 function twiml(text: string): NextResponse {
     const safe = text
@@ -143,7 +112,10 @@ export async function POST(req: NextRequest) {
         params[key] = typeof value === 'string' ? value : '';
     }
 
-    if (!verifyTwilioSignature(req.headers.get('x-twilio-signature'), params)) {
+    const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+    if (!authToken) console.error('[CoCo WhatsApp] TWILIO_AUTH_TOKEN no configurado');
+    const webhookUrl = `${PUBLIC_SITE_URL}${WHATSAPP_WEBHOOK_PATH}`;
+    if (!verifyTwilioSignature(req.headers.get('x-twilio-signature'), params, webhookUrl, authToken)) {
         console.warn('[CoCo WhatsApp] Firma de Twilio invalida o ausente; peticion rechazada.');
         return new NextResponse('', { status: 401 });
     }
