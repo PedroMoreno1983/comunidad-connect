@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { DisplayHeading } from "@/components/cc/Eyebrow";
 
 interface CartItem {
     id: string;
@@ -141,38 +142,40 @@ export default function SupermarketPage() {
 
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-10 px-4 sm:px-0">
-            <section className="relative overflow-hidden rounded-lg border border-subtle bg-slate-950 p-6 text-white shadow-sm md:p-8">
-                
+            <section className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8" style={{ borderColor: "var(--cc-line)", background: "var(--cc-ink)" }}>
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                     <div className="space-y-4">
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+                            className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+                            style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
                         >
-                            <Sparkles className="h-3 w-3" />
+                            <Sparkles className="h-3 w-3" style={{ color: "var(--cc-copper-tint)" }} />
                             Nuevo: Smart Shopping
                         </motion.div>
-                        <h1 className="text-3xl font-semibold leading-tight md:text-4xl">
-                            Tus compras, <br /><span className="text-indigo-200">más inteligentes.</span>
-                        </h1>
+                        <DisplayHeading size={36} style={{ color: "#fff" }}>
+                            Tus compras, <em style={{ color: "var(--cc-copper-tint)", fontStyle: "italic" }}>más inteligentes.</em>
+                        </DisplayHeading>
                     </div>
-                    
+
                     {/* AI Input */}
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+                    <div className="rounded-2xl border p-5" style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}>
                         <div className="space-y-3">
-                            <label className="text-[10px] font-semibold text-white/50 uppercase tracking-widest">Pregúntale a CoCo</label>
+                            <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.5)" }}>Pregúntale a CoCo</label>
                             <div className="relative">
-                                <textarea 
-                                    className="min-h-[80px] w-full rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white placeholder:text-white/30 transition-all focus:outline-none focus:ring-1 focus:ring-white/20"
+                                <textarea
+                                    className="min-h-[80px] w-full rounded-xl border p-3 text-sm text-white transition-all focus:outline-none focus:ring-1"
+                                    style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.1)" }}
                                     placeholder="Ej: Necesito ingredientes para una cena keto..."
                                     value={aiInput}
                                     onChange={(e) => setAiInput(e.target.value)}
                                 />
-                                <button 
+                                <button
                                     onClick={processAiInput}
                                     disabled={loading}
-                                    className="absolute bottom-3 right-3 p-2 bg-white text-brand-600 rounded-lg shadow-sm disabled:opacity-50"
+                                    className="absolute bottom-3 right-3 p-2 rounded-full disabled:opacity-50"
+                                    style={{ background: "#fff", color: "var(--cc-copper)" }}
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>
@@ -185,25 +188,26 @@ export default function SupermarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* List Management */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+                    <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="flex items-center gap-3 text-xl font-semibold cc-text-primary">
-                                <ListChecks className="text-brand-600" />
+                            <h2 className="flex items-center gap-3 text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                <ListChecks style={{ color: "var(--cc-copper)" }} />
                                 Lista de Compras
                             </h2>
-                            <span className="rounded-md bg-elevated px-3 py-1.5 text-xs font-semibold text-slate-500">
+                            <span className="rounded-full px-3 py-1.5 text-xs font-semibold cc-text-tertiary" style={{ background: "var(--cc-paper-warm)" }}>
                                 {list.length} artículos
                             </span>
                         </div>
 
                         <form onSubmit={addItem} className="flex gap-3 mb-8">
-                            <Input 
+                            <Input
                                 placeholder="Añade un producto..."
-                                className="h-12 rounded-lg border-subtle bg-elevated/50 text-sm transition-all focus:bg-white dark:focus:bg-slate-800"
+                                className="h-12 rounded-lg text-sm transition-all"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                                 value={newItem}
                                 onChange={(e) => setNewItem(e.target.value)}
                             />
-                            <Button type="submit" className="h-12 w-12 rounded-lg bg-brand-600 p-0 hover:bg-brand-700">
+                            <Button type="submit" className="h-12 w-12 rounded-full p-0" style={{ background: "var(--cc-copper)" }}>
                                 <Plus className="h-6 w-6 text-white" />
                             </Button>
                         </form>
@@ -211,29 +215,29 @@ export default function SupermarketPage() {
                         <div className="space-y-3">
                             <AnimatePresence>
                                 {list.map((item) => (
-                                    <motion.div 
+                                    <motion.div
                                         key={item.id}
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
-                                        className={`flex items-center justify-between rounded-lg border p-4 transition-all ${
-                                            item.checked 
-                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 opacity-60' 
-                                            : 'bg-surface border-subtle hover:border-indigo-200 dark:hover:border-indigo-900/40'
-                                        }`}
+                                        className="flex items-center justify-between rounded-xl border p-4 transition-all"
+                                        style={item.checked
+                                            ? { background: "var(--cc-sage-tint)", borderColor: "var(--cc-success-border)", opacity: 0.6 }
+                                            : { background: "var(--cc-paper)", borderColor: "var(--cc-line)" }}
                                     >
                                         <div className="flex items-center gap-4">
                                             <button
                                                 type="button"
                                                 onClick={() => toggleItem(item.id)}
-                                                className={`h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                                    item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-subtle'
-                                                }`}
+                                                className="h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all"
+                                                style={item.checked
+                                                    ? { background: "var(--cc-sage)", borderColor: "var(--cc-sage)", color: "#fff" }
+                                                    : { borderColor: "var(--cc-line)" }}
                                             >
                                                 {item.checked && <CheckCircle2 className="h-4 w-4" />}
                                             </button>
                                             <div className="flex flex-col">
-                                                <span className={`text-lg font-medium ${item.checked ? 'line-through text-slate-400' : 'cc-text-secondary'}`}>
+                                                <span className={`text-lg font-medium ${item.checked ? 'line-through cc-text-disabled' : 'cc-text-secondary'}`}>
                                                     {item.name}
                                                 </span>
                                                 {(item.price || item.store) && (
@@ -244,7 +248,7 @@ export default function SupermarketPage() {
                                                             </span>
                                                         )}
                                                         {item.store && (
-                                                            <span className="rounded-md bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                                            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider cc-text-tertiary" style={{ background: "var(--cc-paper-warm)" }}>
                                                                 {item.store}
                                                             </span>
                                                         )}
@@ -252,7 +256,7 @@ export default function SupermarketPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                        <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-[var(--cc-ink-faint)] hover:text-[var(--cc-rose)] transition-colors">
                                             <Trash2 className="h-5 w-5" />
                                         </button>
                                     </motion.div>
@@ -261,8 +265,8 @@ export default function SupermarketPage() {
 
                             {list.length === 0 && (
                                 <div className="py-20 text-center space-y-4 opacity-40">
-                                    <ShoppingCart className="h-16 w-16 mx-auto text-slate-300" />
-                                    <p className="text-slate-500 font-bold">Tu lista está vacía</p>
+                                    <ShoppingCart className="h-16 w-16 mx-auto" style={{ color: "var(--cc-ink-faint)" }} />
+                                    <p className="cc-text-tertiary font-bold">Tu lista está vacía</p>
                                 </div>
                             )}
                         </div>
@@ -271,22 +275,23 @@ export default function SupermarketPage() {
 
                 {/* AI Planner Sidebar */}
                 <div className="space-y-6">
-                    <div className="rounded-lg bg-slate-950 p-6 text-white shadow-sm">
+                    <div className="rounded-2xl p-6 text-white" style={{ background: "var(--cc-ink)" }}>
                         <div className="flex items-center gap-3 mb-6">
-                            <ChefHat className="text-brand-400" />
-                            <h3 className="text-xl font-semibold">Planes de CoCo</h3>
+                            <ChefHat style={{ color: "var(--cc-copper-tint)" }} />
+                            <h3 className="text-xl font-semibold" style={{ fontFamily: "var(--cc-font-display)" }}>Planes de CoCo</h3>
                         </div>
                         <div className="space-y-4">
                             {AI_SUGGESTIONS.map((plan, idx) => {
                                 const PlanIcon = plan.icon;
                                 return (
-                                    <button 
+                                    <button
                                         key={idx}
                                         onClick={() => applyAiPlan(plan)}
-                                        className="group w-full rounded-lg border border-white/10 bg-white/5 p-4 text-left transition-colors hover:bg-white/10"
+                                        className="group w-full rounded-xl border p-4 text-left transition-colors hover:bg-white/10"
+                                        style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
                                     >
                                         <div className="flex items-center justify-between mb-2">
-                                            <PlanIcon className="h-6 w-6 text-brand-400" />
+                                            <PlanIcon className="h-6 w-6" style={{ color: "var(--cc-copper-tint)" }} />
                                             <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-white transition-all opacity-0 group-hover:opacity-100" />
                                         </div>
                                         <h4 className="font-bold text-lg mb-1">{plan.title}</h4>
@@ -297,17 +302,17 @@ export default function SupermarketPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-brand-100 bg-brand-50/60 p-6 shadow-sm">
+                    <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-copper-tint)" }}>
                         <div className="flex items-start gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white" style={{ background: "var(--cc-copper)" }}>
                                 <PackageCheck className="h-6 w-6" />
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-lg font-semibold cc-text-primary">Abasto comunitario</h3>
+                                <h3 className="text-lg font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Abasto comunitario</h3>
                                 <p className="mt-2 text-sm leading-6 cc-text-secondary">
                                     Coordina compras al por mayor de agua, gas, alimentos o limpieza con ahorro real por escala.
                                 </p>
-                                <Link href="/convivencia" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-700 hover:text-brand-800">
+                                <Link href="/convivencia" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--cc-copper)" }}>
                                     Ver compras colectivas <ArrowRight className="h-4 w-4" />
                                 </Link>
                             </div>
@@ -315,31 +320,32 @@ export default function SupermarketPage() {
                     </div>
 
                     {/* Coordination card for enabled supermarket channels */}
-                    <div className="rounded-lg border border-subtle bg-surface p-6 shadow-sm">
+                    <div className="rounded-2xl border p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="flex items-center justify-between mb-8">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                                <ShoppingCart className="h-6 w-6 text-emerald-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--cc-sage-tint)" }}>
+                                <ShoppingCart className="h-6 w-6" style={{ color: "var(--cc-sage)" }} />
                             </div>
-                            <Button 
+                            <Button
                                 onClick={handleExportList}
                                 disabled={exportDisabled || loading}
-                                className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl h-12 px-6 font-bold flex items-center gap-2 group"
+                                className="text-white rounded-full h-12 px-6 font-bold flex items-center gap-2 group"
+                                style={{ background: "var(--cc-ink)" }}
                             >
                                 Exportar lista {totalAmount > 0 ? `($${totalAmount.toLocaleString('es-CL')})` : ''}
                                 <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
                             </Button>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-3 rounded-lg bg-elevated/50 p-3">
-                                <div className="h-8 w-8 rounded-md border border-blue-200 bg-blue-100" />
+                            <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--cc-paper-warm)" }}>
+                                <div className="h-8 w-8 rounded-lg" style={{ background: "var(--cc-copper-tint)" }} />
                                 <span className="text-sm font-bold cc-text-secondary">Canal supermercado comunidad</span>
                             </div>
-                            <div className="flex items-center gap-3 rounded-lg border border-subtle p-3 opacity-40">
-                                <div className="h-8 w-8 rounded-md border border-orange-200 bg-orange-100" />
+                            <div className="flex items-center gap-3 rounded-xl border p-3 opacity-40" style={{ borderColor: "var(--cc-line)" }}>
+                                <div className="h-8 w-8 rounded-lg" style={{ background: "var(--cc-amber-tint)" }} />
                                 <span className="text-sm font-bold cc-text-secondary">Integracion de pago bajo contrato</span>
                             </div>
                         </div>
-                        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
                             Lista operativa hoy; pago directo disponible al activar convenio de pagos
                         </p>
                     </div>
