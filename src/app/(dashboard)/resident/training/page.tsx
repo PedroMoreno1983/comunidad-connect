@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MultiAgentClassroom } from "@/components/training/MultiAgentClassroom";
 import { AlertCircle, ArrowLeft, BookOpen, GraduationCap, Play, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -14,7 +14,14 @@ interface Course {
     id: string;
     title: string;
     description: string;
+    community_id?: string | null;
     training_lessons: { content: string }[];
+}
+
+interface TrainingProgress {
+    module_id: string;
+    status: 'in_progress' | 'completed';
+    last_slide_index: number;
 }
 
 export default function ResidentTrainingPage() {
@@ -22,18 +29,53 @@ export default function ResidentTrainingPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
+    const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+    const [resumeSlideIndex, setResumeSlideIndex] = useState(0);
+    const [progress, setProgress] = useState<Record<string, TrainingProgress>>({});
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const { user } = useAuth();
     const { toast } = useToast();
 
     const stats = useMemo(() => {
         const withLessons = courses.filter(course => course.training_lessons?.[0]?.content).length;
-        return {
-            total: courses.length,
-            withLessons,
-            guided: courses.length + 1,
-        };
-    }, [courses]);
+        const completed = Object.values(progress).filter(item => item.status === "completed").length;
+        return { total: courses.length, withLessons, completed };
+    }, [courses, progress]);
+
+    const saveProgress = useCallback(async (moduleId: string, status: "in_progress" | "completed", lastSlideIndex: number) => {
+        const response = await fetch("/api/training/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ moduleId, status, lastSlideIndex }),
+        });
+        if (!response.ok) throw new Error("No se pudo guardar el progreso");
+        const saved = await response.json() as TrainingProgress;
+        setProgress(previous => ({ ...previous, [moduleId]: saved }));
+        if (status === "completed") toast({ title: "Curso completado", description: "Tu avance quedo registrado.", variant: "success" });
+    }, [toast]);
+
+    const handleSlideChange = useCallback((index: number) => {
+        if (selectedCourseId) {
+            void saveProgress(selectedCourseId, "in_progress", index).catch(error => console.warn("Training progress save failed:", error));
+        }
+    }, [saveProgress, selectedCourseId]);
+
+    const handleComplete = useCallback((index: number) => {
+        if (selectedCourseId) {
+            void saveProgress(selectedCourseId, "completed", index).catch(error => {
+                console.warn("Training completion save failed:", error);
+                toast({ title: "No se pudo guardar el cierre", variant: "destructive" });
+            });
+        }
+    }, [saveProgress, selectedCourseId, toast]);
+
+    const openCourse = (course: Course) => {
+        setSelectedCourseId(course.id);
+        setResumeSlideIndex(progress[course.id]?.last_slide_index || 0);
+        setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
+        setSelectedCourseTitle(course.title);
+        if (!progress[course.id]) void saveProgress(course.id, "in_progress", 0).catch(error => console.warn("Training start save failed:", error));
+    };
 
     const handleDeleteCourse = async (id: string, event: React.MouseEvent) => {
         event.stopPropagation();
@@ -59,21 +101,17 @@ export default function ResidentTrainingPage() {
     };
 
     useEffect(() => {
-        fetch("/api/training/modules")
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) {
-                    setCourses(data);
-                } else {
-                    console.warn("Training modules API returned a non-array response.", data);
-                    setCourses([]);
+        Promise.all([fetch("/api/training/modules"), fetch("/api/training/progress")])
+            .then(async ([modulesResponse, progressResponse]) => {
+                const modulesData = await modulesResponse.json();
+                const progressData = await progressResponse.json();
+                setCourses(modulesResponse.ok && Array.isArray(modulesData) ? modulesData : []);
+                if (progressResponse.ok && Array.isArray(progressData)) {
+                    setProgress(Object.fromEntries(progressData.map((item: TrainingProgress) => [item.module_id, item])));
                 }
-                setLoading(false);
             })
-            .catch(error => {
-                console.warn("Training modules load failed:", error);
-                setLoading(false);
-            });
+            .catch(error => console.warn("Training data load failed:", error))
+            .finally(() => setLoading(false));
     }, []);
 
     useEffect(() => {
@@ -90,6 +128,8 @@ export default function ResidentTrainingPage() {
                         onClick={() => {
                             setSelectedCourseContent(null);
                             setSelectedCourseTitle(null);
+                            setSelectedCourseId(null);
+                            setResumeSlideIndex(0);
                         }}
                         className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
                         style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
@@ -112,7 +152,7 @@ export default function ResidentTrainingPage() {
                         </div>
                     </div>
 
-                    <MultiAgentClassroom courseContent={selectedCourseContent} />
+                    <MultiAgentClassroom courseContent={selectedCourseContent} initialSlideIndex={resumeSlideIndex} onSlideChange={handleSlideChange} onComplete={handleComplete} />
                 </div>
             </ErrorBoundary>
         );
@@ -145,7 +185,7 @@ export default function ResidentTrainingPage() {
                     <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
                         <Stat label="Cursos publicados" value={stats.total} icon={<BookOpen className="h-4 w-4" />} />
                         <Stat label="Con guion IA" value={stats.withLessons} icon={<GraduationCap className="h-4 w-4" />} />
-                        <Stat label="Experiencias disponibles" value={stats.guided} icon={<ShieldCheck className="h-4 w-4" />} />
+                        <Stat label="Cursos completados" value={stats.completed} icon={<ShieldCheck className="h-4 w-4" />} />
                     </div>
                 </section>
 
@@ -160,7 +200,7 @@ export default function ResidentTrainingPage() {
                     ]}
                     outcome="Cierre esperado: residente entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
                     currentStep={courses.length ? 2 : 1}
-                    completedSteps={courses.length ? 1 : 0}
+                    completedSteps={stats.completed ? 4 : courses.length ? 1 : 0}
                     statusLabel={courses.length ? "Cursos activos" : "Modo libre"}
                     primaryActionLabel="Ver cursos"
                     primaryActionHref="#catalogo-cursos"
@@ -186,10 +226,8 @@ export default function ResidentTrainingPage() {
                             courses.map(course => (
                                 <article
                                     key={course.id}
-                                    onClick={() => {
-                                        setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
-                                        setSelectedCourseTitle(course.title);
-                                    }}
+                                    onClick={() => openCourse(course)}
+
                                     className="group relative cursor-pointer overflow-hidden rounded-2xl border p-5 transition-colors hover:border-[var(--cc-copper)]"
                                     style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                                 >

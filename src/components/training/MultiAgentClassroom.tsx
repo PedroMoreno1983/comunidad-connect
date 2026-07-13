@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, ChevronRight, ChevronLeft, GraduationCap, Monitor, Users, Lightbulb, Image as ImageIcon, PanelRightOpen } from "lucide-react";
+import { Send, ChevronRight, ChevronLeft, GraduationCap, Monitor, Users, Lightbulb, Image as ImageIcon, PanelRightOpen, CheckCircle2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAuth } from "@/lib/authContext";
@@ -35,6 +35,9 @@ const visualThemes: Record<string, string> = {
 
 interface MultiAgentClassroomProps {
     courseContent?: string;
+    initialSlideIndex?: number;
+    onSlideChange?: (index: number) => void;
+    onComplete?: (lastSlideIndex: number) => void;
 }
 
 function ChatMarkdown({ text }: { text: string }) {
@@ -107,7 +110,7 @@ function BlackboardMarkdown({ content }: { content: string }) {
     );
 }
 
-export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps) {
+export function MultiAgentClassroom({ courseContent, initialSlideIndex = 0, onSlideChange, onComplete }: MultiAgentClassroomProps) {
     const { user } = useAuth();
     const [parsedSlides, setParsedSlides] = useState<Slide[] | null>(null);
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -115,7 +118,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [blackboardContent, setBlackboardContent] = useState<string>(
-        "# Preparando la pizarra\n\nCoCo está armando una vista visual para esta clase."
+        "# Preparando la pizarra\n\nCoCo estÃ¡ armando una vista visual para esta clase."
     );
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -129,6 +132,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 if (Array.isArray(json) && json[0]?.visual_theme) {
                     pSlides = json;
                     setParsedSlides(json);
+                    setCurrentSlideIndex(Math.min(Math.max(initialSlideIndex, 0), json.length - 1));
                     isPresentation = true;
                 }
             }
@@ -140,7 +144,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
             setMessages([{
                 id: "system-1",
                 role: "system",
-                text: "Clase iniciada. CoCo irá guiando cada lámina con ejemplos prácticos.",
+                text: "Clase iniciada. CoCo irÃ¡ guiando cada lÃ¡mina con ejemplos prÃ¡cticos.",
             }]);
         } else {
             setMessages([{
@@ -148,9 +152,9 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                 role: "system",
                 text: "Aula CoCo lista. Haz una pregunta o comenta el caso para actualizar la pizarra.",
             }]);
-            setBlackboardContent(courseContent || "# Bienvenido a la capacitación\n\nAquí aparecerán conceptos clave, imágenes generadas y decisiones prácticas para la comunidad.");
+            setBlackboardContent(courseContent || "# Bienvenido a la capacitaciÃ³n\n\nAquÃ­ aparecerÃ¡n conceptos clave, imÃ¡genes generadas y decisiones prÃ¡cticas para la comunidad.");
         }
-    }, [courseContent]);
+    }, [courseContent, initialSlideIndex]);
 
     useEffect(() => {
         if (parsedSlides && parsedSlides.length > 0) {
@@ -163,8 +167,9 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                     text: slide.notes,
                 },
             ]);
+            onSlideChange?.(currentSlideIndex);
         }
-    }, [currentSlideIndex, parsedSlides]);
+    }, [currentSlideIndex, parsedSlides, onSlideChange]);
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -239,7 +244,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         <div className="z-20 mb-4 flex items-center justify-between">
                             <span className="inline-flex items-center gap-2 rounded-md border border-subtle bg-surface px-3 py-1.5 text-xs font-semibold cc-text-secondary">
                                 <PanelRightOpen className="h-3.5 w-3.5 text-brand-500" />
-                                Presentación interactiva
+                                PresentaciÃ³n interactiva
                             </span>
                             <span className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
                                 {currentSlideIndex + 1} / {parsedSlides.length}
@@ -301,6 +306,13 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 transition={{ duration: 0.25 }}
                             />
                         </div>
+
+                        {currentSlideIndex === parsedSlides.length - 1 && (
+                            <button type="button" onClick={() => onComplete?.(currentSlideIndex)} className="absolute bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Completar curso
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="flex max-h-none min-h-[330px] flex-col bg-surface p-4 sm:min-h-[420px] sm:p-5 lg:h-full lg:min-h-0 lg:p-8">
@@ -311,7 +323,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-semibold cc-text-primary sm:text-xl">Pizarra interactiva</h2>
-                                    <p className="text-sm cc-text-secondary">Síntesis visual guiada por CoCo</p>
+                                    <p className="text-sm cc-text-secondary">SÃ­ntesis visual guiada por CoCo</p>
                                 </div>
                             </div>
                             <span className="hidden rounded-md border border-subtle bg-canvas px-3 py-1.5 text-xs font-semibold cc-text-secondary sm:inline-flex">
@@ -364,7 +376,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                             >
                                 {msg.role !== "system" && (
                                     <span className={`mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${msg.role === "user" ? "text-brand-600" : "cc-text-tertiary"}`}>
-                                        {msg.role === "tutor" ? "Profesora CoCo" : msg.role === "classmate" ? (msg.name || "Compañero IA") : "Tú"}
+                                        {msg.role === "tutor" ? "Profesora CoCo" : msg.role === "classmate" ? (msg.name || "CompaÃ±ero IA") : "TÃº"}
                                     </span>
                                 )}
                                 <div
@@ -386,7 +398,7 @@ export function MultiAgentClassroom({ courseContent }: MultiAgentClassroomProps)
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start">
                             <div className="flex items-center gap-2 rounded-lg border border-subtle bg-surface p-4 text-sm cc-text-secondary shadow-sm">
                                 <Lightbulb className="h-4 w-4 animate-pulse text-brand-500" />
-                                CoCo está preparando una respuesta
+                                CoCo estÃ¡ preparando una respuesta
                             </div>
                         </motion.div>
                     )}
