@@ -26,13 +26,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MarketplaceCard } from "@/components/marketplace/MarketplaceCard";
 import { ProductFilters } from "@/components/marketplace/ProductFilters";
 import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
+import { MarketplaceChatModal } from "@/components/marketplace/MarketplaceChatModal";
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button as CcButton } from "@/components/cc/Button";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
-    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal
+    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal, MessageCircle
 } from "lucide-react";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -69,6 +70,8 @@ export default function MarketplacePage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatItem, setChatItem] = useState<MarketplaceItem | null>(null);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [publicationSummary, setPublicationSummary] = useState<PublicationSummary | null>(null);
     const [newItem, setNewItem] = useState({
@@ -567,6 +570,17 @@ export default function MarketplacePage() {
                         </DialogContent>
                     </Dialog>
 
+                    <CcButton
+                        variant="ghost"
+                        size="md"
+                        onClick={() => {
+                            setChatItem(null);
+                            setIsChatOpen(true);
+                        }}
+                    >
+                        <MessageCircle className="h-4.5 w-4.5" />
+                        Mensajes
+                    </CcButton>
                     <Link href="/marketplace/my-listings">
                         <CcButton variant="ghost" size="md">
                             <ShoppingBag className="h-4.5 w-4.5" />
@@ -895,10 +909,26 @@ export default function MarketplacePage() {
                 isOpen={isDetailOpen}
                 onClose={() => setIsDetailOpen(false)}
                 categoryLabel={categories.find(c => c.id === selectedItem?.category)?.label || ''}
+                currentUserId={user?.id}
+                onMessage={(item) => {
+                    setChatItem(item);
+                    setIsDetailOpen(false);
+                    setIsChatOpen(true);
+                }}
                 onBuy={(item) => {
                     setSelectedItem(item);
                     setIsPaymentOpen(true);
                 }}
+            />
+
+            <MarketplaceChatModal
+                initialItem={chatItem}
+                isOpen={isChatOpen}
+                onClose={() => {
+                    setIsChatOpen(false);
+                    setChatItem(null);
+                }}
+                currentUser={user}
             />
 
             {/* Payment Modal */}

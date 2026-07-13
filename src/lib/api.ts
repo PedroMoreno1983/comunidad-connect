@@ -18,7 +18,9 @@ import {
     MaintenanceServiceRow,
     MaintenanceTask,
     DirectoryNeighbor,
+    MarketplaceConversation,
     MarketplaceItem,
+    MarketplaceMessage,
     NeighborMediationCase,
     ProfileSettings,
     ResidentCasesSummary,
@@ -1624,6 +1626,142 @@ export const MarketplaceService = {
     }
 };
 
+type MarketplaceInboxRow = {
+    conversation_id: string;
+    item_id: string;
+    item_title: string;
+    item_image_url?: string | null;
+    item_status: MarketplaceItem['status'];
+    buyer_id: string;
+    seller_id: string;
+    peer_id: string;
+    peer_name: string;
+    peer_avatar_url?: string | null;
+    last_message?: string | null;
+    last_message_at: string;
+    unread_count?: number | string | null;
+};
+
+type MarketplaceMessageRow = {
+    id: string;
+    conversation_id: string;
+    community_id: string;
+    sender_id: string;
+    content: string;
+    created_at: string;
+    read_at?: string | null;
+};
+
+function mapMarketplaceConversation(row: MarketplaceInboxRow): MarketplaceConversation {
+    return {
+        id: row.conversation_id,
+        itemId: row.item_id,
+        itemTitle: row.item_title,
+        itemImageUrl: row.item_image_url || undefined,
+        itemStatus: row.item_status,
+        buyerId: row.buyer_id,
+        sellerId: row.seller_id,
+        peerId: row.peer_id,
+        peerName: row.peer_name || 'Residente',
+        peerAvatarUrl: row.peer_avatar_url || undefined,
+        lastMessage: row.last_message || undefined,
+        lastMessageAt: row.last_message_at,
+        unreadCount: Number(row.unread_count || 0),
+    };
+}
+
+function mapMarketplaceMessage(row: MarketplaceMessageRow): MarketplaceMessage {
+    return {
+        id: row.id,
+        conversationId: row.conversation_id,
+        communityId: row.community_id,
+        senderId: row.sender_id,
+        content: row.content,
+        createdAt: row.created_at,
+        readAt: row.read_at || undefined,
+    };
+}
+
+export const MarketplaceMessagingService = {
+    async startConversation(itemId: string): Promise<string> {
+        const { data, error } = await supabase.rpc('start_marketplace_conversation', {
+            p_item_id: itemId,
+        });
+
+        if (error) throw error;
+        if (typeof data !== 'string') throw new Error('No se pudo abrir la conversación.');
+        return data;
+    },
+
+    async listConversations(): Promise<MarketplaceConversation[]> {
+        const { data, error } = await supabase.rpc('get_marketplace_inbox');
+        if (error) throw error;
+        return ((data || []) as MarketplaceInboxRow[]).map(mapMarketplaceConversation);
+    },
+
+    async getMessages(conversationId: string): Promise<MarketplaceMessage[]> {
+        const { data, error } = await supabase
+            .from('marketplace_conversation_messages')
+            .select('id,conversation_id,community_id,sender_id,content,created_at,read_at')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return ((data || []) as MarketplaceMessageRow[]).map(mapMarketplaceMessage);
+    },
+
+    async sendMessage(conversationId: string, content: string): Promise<MarketplaceMessage> {
+        const cleanContent = content.trim();
+        if (!cleanContent) throw new Error('Escribe un mensaje antes de enviarlo.');
+        if (cleanContent.length > 2000) throw new Error('El mensaje supera el máximo de 2.000 caracteres.');
+
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw authError || new Error('Debes iniciar sesión para escribir.');
+
+        const { data, error } = await supabase
+            .from('marketplace_conversation_messages')
+            .insert({
+                conversation_id: conversationId,
+                sender_id: authData.user.id,
+                content: cleanContent,
+            })
+            .select('id,conversation_id,community_id,sender_id,content,created_at,read_at')
+            .single();
+
+        if (error) throw error;
+        return mapMarketplaceMessage(data as MarketplaceMessageRow);
+    },
+
+    async markRead(conversationId: string): Promise<void> {
+        const { error } = await supabase.rpc('mark_marketplace_conversation_read', {
+            p_conversation_id: conversationId,
+        });
+        if (error) throw error;
+    },
+
+    subscribeToConversation(
+        conversationId: string,
+        onMessage: (message: MarketplaceMessage) => void,
+    ): () => void {
+        const channel = supabase
+            .channel(`marketplace-conversation-${conversationId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'marketplace_conversation_messages',
+                    filter: `conversation_id=eq.${conversationId}`,
+                },
+                (payload: { new: unknown }) => onMessage(mapMarketplaceMessage(payload.new as MarketplaceMessageRow)),
+            )
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(channel);
+        };
+    },
+};
 // ==========================================
 // AMENITIES & BOOKINGS
 // ==========================================

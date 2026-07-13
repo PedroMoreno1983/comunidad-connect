@@ -42,6 +42,39 @@ export interface MarketplaceItem {
   paymentStatus?: 'pending' | 'completed' | 'none';
 }
 
+export interface MarketplaceConversation {
+  id: string;
+  itemId: string;
+  itemTitle: string;
+  itemImageUrl?: string;
+  itemStatus: MarketplaceItem['status'];
+  buyerId: string;
+  sellerId: string;
+  peerId: string;
+  peerName: string;
+  peerAvatarUrl?: string;
+  lastMessage?: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export interface MarketplaceMessage {
+  id: string;
+  conversationId: string;
+  communityId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  readAt?: string;
+}
+
+export interface MarketplaceChatModalProps {
+  initialItem: MarketplaceItem | null;
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: User | null;
+}
+
 export interface ChatMessage {
   id: string;
   sender_id: string;
