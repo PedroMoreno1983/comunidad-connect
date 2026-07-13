@@ -215,8 +215,8 @@ export function ProviderDashboardClient() {
 
     if (loading && providers.length === 0) {
         return (
-            <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+            <div className="flex items-center justify-center gap-3 rounded-2xl border p-10 text-sm font-bold cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--cc-copper)" }} />
                 Cargando panel del proveedor...
             </div>
         );
@@ -306,7 +306,7 @@ export function ProviderDashboardClient() {
                 )}
             </section>
 
-            <section className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+            <section className="rounded-2xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 cc-text-tertiary" />
