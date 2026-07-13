@@ -906,15 +906,6 @@ export default function MarketplacePage() {
                 item={selectedItem}
                 isOpen={isPaymentOpen}
                 onClose={() => setIsPaymentOpen(false)}
-                onSuccess={() => {
-                    toast({
-                        title: "¡Compra exitosa!",
-                        description: "Te hemos enviado los detalles a tu correo.",
-                    });
-                    if (selectedItem) {
-                        setItems(items.map(i => i.id === selectedItem.id ? { ...i, status: 'reserved' } : i));
-                    }
-                }}
             />
 
             {/* Empty State Premium */}

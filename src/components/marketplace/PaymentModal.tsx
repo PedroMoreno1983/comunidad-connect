@@ -19,11 +19,10 @@ interface PaymentModalProps {
     item: MarketplaceItem | null;
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: () => void;
 }
 
-export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalProps) {
-    const [step, setStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
+export function PaymentModal({ item, isOpen, onClose }: PaymentModalProps) {
+    const [step, setStep] = useState<'checkout' | 'processing'>('checkout');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { onlinePayments } = useProductCapabilities();
 
@@ -140,33 +139,6 @@ export function PaymentModal({ item, isOpen, onClose, onSuccess }: PaymentModalP
                         </motion.div>
                     )}
 
-                    {step === 'success' && (
-                        <motion.div
-                            key="success"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="py-8 flex flex-col items-center justify-center text-center space-y-6"
-                        >
-                            <div className="h-24 w-24 rounded-full bg-success-bg flex items-center justify-center">
-                                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                            </div>
-                            <div className="space-y-2">
-                                <DialogTitle className="text-3xl font-semibold cc-text-primary">¡Pago Exitoso!</DialogTitle>
-                                <p className="text-slate-500 font-medium max-w-[250px] mx-auto">
-                                    Has comprado **{item.title}**. El vendedor ha sido notificado y el artículo ha sido reservado para ti.
-                                </p>
-                            </div>
-                            <Button
-                                onClick={() => {
-                                    onSuccess();
-                                    onClose();
-                                }}
-                                className="w-full h-14 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
-                            >
-                                Volver al Marketplace
-                            </Button>
-                        </motion.div>
-                    )}
                 </AnimatePresence>
             </DialogContent>
         </Dialog>
