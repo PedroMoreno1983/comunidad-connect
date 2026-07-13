@@ -14,6 +14,7 @@
     "qa:production-hardening": "node scripts/production-hardening-qa.js",
     "qa:coco-legal": "node scripts/coco-legal-qa.js",
     "qa:finance-agent": "node scripts/finance-agent-integrity-qa.js",
+    "qa:marketplace-chat": "node scripts/marketplace-messaging-qa.js",
     "qa:training": "node scripts/training-integrity-qa.js",
     "qa:multitenant": "node scripts/multitenant-qa.js",
     "qa:operations": "node scripts/operations-qa.js",

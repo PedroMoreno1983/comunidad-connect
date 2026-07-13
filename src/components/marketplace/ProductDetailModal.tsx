@@ -12,6 +12,7 @@ import {
     Clock,
     CreditCard,
     Home,
+    MessageCircle,
     Repeat,
     ShieldCheck,
     Sparkles,
@@ -24,6 +25,8 @@ interface ProductDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     categoryLabel: string;
+    currentUserId?: string;
+    onMessage: (item: MarketplaceItem) => void;
     onBuy: (item: MarketplaceItem) => void;
 }
 
@@ -38,10 +41,11 @@ function statusLabel(status: MarketplaceItem["status"]) {
     return "Disponible";
 }
 
-export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy }: ProductDetailModalProps) {
+export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, currentUserId, onMessage, onBuy }: ProductDetailModalProps) {
     const capabilities = useProductCapabilities();
     if (!item) return null;
     const canPayOnline = capabilities.onlinePayments && item.allowSale !== false;
+    const canMessageSeller = Boolean(currentUserId) && currentUserId !== item.sellerId && item.status === "available";
 
     const imgSrc = item.imageUrl || (item.images && item.images.length > 0 ? item.images[0] : null);
     const sellerIdentityLabel = getSellerIdentityLabel();
@@ -192,17 +196,29 @@ export function ProductDetailModal({ item, isOpen, onClose, categoryLabel, onBuy
                                 </div>
                             </div>
 
-                            {canPayOnline && (
-                                <div className="flex">
-                                    <button
-                                        type="button"
-                                        onClick={() => onBuy(item)}
-                                        disabled={isUnavailable}
-                                        className="flex h-16 flex-1 items-center justify-center gap-3 rounded-lg bg-blue-600 text-lg font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <CreditCard className="h-6 w-6" />
-                                        Comprar ahora
-                                    </button>
+                            {(canMessageSeller || canPayOnline) && (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {canMessageSeller && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onMessage(item)}
+                                            className="flex h-16 items-center justify-center gap-3 rounded-lg border border-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-base font-semibold text-[var(--cc-copper)] transition-all hover:brightness-95 active:scale-95"
+                                        >
+                                            <MessageCircle className="h-5 w-5" />
+                                            Escribir al vendedor
+                                        </button>
+                                    )}
+                                    {canPayOnline && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onBuy(item)}
+                                            disabled={isUnavailable}
+                                            className="flex h-16 items-center justify-center gap-3 rounded-lg bg-blue-600 text-lg font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <CreditCard className="h-6 w-6" />
+                                            Comprar ahora
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
