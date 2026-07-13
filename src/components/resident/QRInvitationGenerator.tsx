@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarClock, CheckCircle2, Copy, IdCard, Share2, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -224,7 +225,7 @@ export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitati
 
                         <div className="mx-auto aspect-square w-full max-w-[240px] rounded-xl border bg-white p-3" style={{ borderColor: "var(--cc-line)" }}>
                             {qrDataUrl ? (
-                                <img src={qrDataUrl} alt={"Codigo QR de acceso para " + generated.guestName} className="h-full w-full" />
+                                <Image src={qrDataUrl} alt={"Codigo QR de acceso para " + generated.guestName} width={480} height={480} unoptimized className="h-full w-full" />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-sm cc-text-secondary">Generando codigo QR...</div>
                             )}
