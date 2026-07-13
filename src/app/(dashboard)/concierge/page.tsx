@@ -7,21 +7,113 @@ import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
+import { ConciergeService, ConciergeVisitorRow, ConciergePackageRow, ConciergeCaseRow } from "@/lib/services/supabaseServices";
 
-const SHIFT_LOG = [
-    { time: "09:14", type: "Visita", desc: "Juan Gómez ingresó a Depto 102", status: "Registrado" },
-    { time: "09:30", type: "Encomienda", desc: "Paquete MercadoLibre para Depto 8B", status: "Pendiente" },
-    { time: "10:15", type: "Incidencia", desc: "Corte de agua en caldera general", status: "Reportado" },
-    { time: "10:45", type: "Retiro", desc: "Visita retiró llaves de Depto 404", status: "Retirado" },
-];
+type ShiftEvent = {
+    id: string;
+    timestamp: number;
+    time: string;
+    type: string;
+    desc: string;
+    status: string;
+    tone: "sage" | "copper" | "rose" | "neutral";
+};
 
-const PENDING_PACKAGES = [
-    { unit: "Depto 1204", carrier: "MercadoLibre", time: "Hace 10 min" },
-    { unit: "Depto 802", carrier: "Jumbo Delivery", time: "Hace 25 min" },
-    { unit: "Depto 510", carrier: "Starken", time: "Hace 1 hora" },
-];
+function timeLabel(value?: string | null) {
+    if (!value) return "--:--";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "--:--" : date.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function minutesAgo(value?: string | null) {
+    if (!value) return "";
+    const date = new Date(value).getTime();
+    if (Number.isNaN(date)) return "";
+    const minutes = Math.max(0, Math.floor((Date.now() - date) / 60000));
+    if (minutes < 1) return "Recién";
+    if (minutes < 60) return `Hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    return `Hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
+}
+
+function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePackageRow[], cases: ConciergeCaseRow[]): ShiftEvent[] {
+    const events: ShiftEvent[] = [];
+
+    for (const visitor of visitors) {
+        const unit = visitor.units?.number ? `Depto ${visitor.units.number}` : "unidad sin asignar";
+        events.push({
+            id: `visit-${visitor.id}`,
+            timestamp: visitor.entry_time ? new Date(visitor.entry_time).getTime() : 0,
+            time: timeLabel(visitor.entry_time),
+            type: "Visita",
+            desc: `${visitor.visitor_name || "Visitante"} ingresó a ${unit}`,
+            status: visitor.exit_time ? "Retirado" : "En edificio",
+            tone: visitor.exit_time ? "sage" : "copper",
+        });
+    }
+
+    for (const pkg of packages) {
+        events.push({
+            id: `pkg-${pkg.id}`,
+            timestamp: pkg.received_at ? new Date(pkg.received_at).getTime() : 0,
+            time: timeLabel(pkg.received_at),
+            type: "Encomienda",
+            desc: `${pkg.description || "Paquete"} para ${pkg.recipient_unit_id ? `Depto ${pkg.recipient_unit_id}` : "unidad sin asignar"}`,
+            status: pkg.status === "picked-up" ? "Retirado" : "Pendiente",
+            tone: pkg.status === "picked-up" ? "sage" : "copper",
+        });
+    }
+
+    for (const item of cases) {
+        const isCritical = item.urgency === "alta" || item.urgency === "emergencia";
+        events.push({
+            id: `case-${item.id}`,
+            timestamp: item.created_at ? new Date(item.created_at).getTime() : 0,
+            time: timeLabel(item.created_at),
+            type: "Incidencia",
+            desc: item.title || item.category || "Caso reportado por CoCo",
+            status: isCritical ? "Crítico" : "Reportado",
+            tone: isCritical ? "rose" : "neutral",
+        });
+    }
+
+    return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, 8);
+}
 
 export default function ConciergeDashboardPage() {
+    const [loading, setLoading] = React.useState(true);
+    const [visitors, setVisitors] = React.useState<ConciergeVisitorRow[]>([]);
+    const [packages, setPackages] = React.useState<ConciergePackageRow[]>([]);
+    const [cases, setCases] = React.useState<ConciergeCaseRow[]>([]);
+
+    React.useEffect(() => {
+        let cancelled = false;
+
+        const load = async () => {
+            try {
+                const overview = await ConciergeService.getDashboardOverview();
+                if (cancelled) return;
+                setVisitors(overview.visitors);
+                setPackages(overview.packages);
+                setCases(overview.cases);
+            } catch (error) {
+                console.error("[Concierge] dashboard load failed:", error);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+    }, []);
+
+    const today = new Date().toDateString();
+    const visitsToday = visitors.filter(v => v.entry_time && new Date(v.entry_time).toDateString() === today).length;
+    const activeVisitors = visitors.filter(v => !v.exit_time).length;
+    const pendingPackages = packages.filter(p => p.status !== "picked-up");
+    const criticalCases = cases.filter(c => c.urgency === "alta" || c.urgency === "emergencia");
+    const shiftLog = buildShiftLog(visitors, packages, cases);
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col gap-4 border-b border-[var(--cc-line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
@@ -46,46 +138,45 @@ export default function ConciergeDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KpiCard eyebrow="En el edificio" value="12" sub="visitas hoy" icon={<Users size={15} />} tone="amber" />
-                <KpiCard eyebrow="Encomiendas pendientes" value="7" sub="por retirar" icon={<ShoppingBag size={15} />} tone="copper" />
-                <KpiCard eyebrow="Incidencias abiertas" value="1" sub="crítica" icon={<AlertTriangle size={15} />} tone="rose" />
-                <KpiCard eyebrow="Próximos retiros" value="2" sub="llaves y visitas" icon={<Key size={15} />} tone="sage" />
+                <KpiCard eyebrow="Visitas hoy" value={loading ? "--" : String(visitsToday)} sub="ingresos registrados" icon={<Users size={15} />} tone="amber" />
+                <KpiCard eyebrow="Encomiendas pendientes" value={loading ? "--" : String(pendingPackages.length)} sub="por retirar" icon={<ShoppingBag size={15} />} tone="copper" />
+                <KpiCard eyebrow="Incidencias abiertas" value={loading ? "--" : String(cases.length)} sub={`${criticalCases.length} crítica${criticalCases.length === 1 ? "" : "s"}`} icon={<AlertTriangle size={15} />} tone="rose" />
+                <KpiCard eyebrow="Visitas en el edificio" value={loading ? "--" : String(activeVisitors)} sub="sin registrar salida" icon={<Key size={15} />} tone="sage" />
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                 <div className="space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm lg:col-span-2">
                     <Eyebrow>Bitácora del turno</Eyebrow>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left">
-                            <thead>
-                                <tr className="border-b border-[var(--cc-line)]">
-                                    <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Hora</th>
-                                    <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Tipo</th>
-                                    <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Detalle</th>
-                                    <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {SHIFT_LOG.map((log) => {
-                                    let tagTone: "sage" | "copper" | "rose" | "neutral" = "neutral";
-                                    if (log.status === "Registrado" || log.status === "Retirado") tagTone = "sage";
-                                    else if (log.status === "Pendiente") tagTone = "copper";
-                                    else if (log.status === "Reportado") tagTone = "rose";
-
-                                    return (
-                                        <tr key={`${log.time}-${log.type}`} className="border-b border-[var(--cc-line)] transition-colors last:border-b-0 hover:bg-[var(--cc-paper-warm)]/30">
+                    {loading ? (
+                        <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Cargando bitácora...</p>
+                    ) : shiftLog.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Sin movimientos registrados en este turno.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-left">
+                                <thead>
+                                    <tr className="border-b border-[var(--cc-line)]">
+                                        <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Hora</th>
+                                        <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Tipo</th>
+                                        <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Detalle</th>
+                                        <th className="pb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink-tertiary)]">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {shiftLog.map((log) => (
+                                        <tr key={log.id} className="border-b border-[var(--cc-line)] transition-colors last:border-b-0 hover:bg-[var(--cc-paper-warm)]/30">
                                             <td className="py-4 font-mono text-xs text-[var(--cc-ink-secondary)]">{log.time}</td>
                                             <td className="py-4 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink)]">{log.type}</td>
                                             <td className="py-4 text-xs text-[var(--cc-ink-secondary)]">{log.desc}</td>
                                             <td className="py-4">
-                                                <CcTag tone={tagTone} solid>{log.status}</CcTag>
+                                                <CcTag tone={log.tone} solid>{log.status}</CcTag>
                                             </td>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-6">
@@ -112,22 +203,30 @@ export default function ConciergeDashboardPage() {
 
                     <div className="space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm">
                         <Eyebrow>Encomiendas por avisar</Eyebrow>
-                        <div className="divide-y divide-[var(--cc-line)]">
-                            {PENDING_PACKAGES.map((pkg) => (
-                                <div key={`${pkg.unit}-${pkg.carrier}`} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                                    <div>
-                                        <p className="text-xs font-semibold text-[var(--cc-ink)]">{pkg.unit}</p>
-                                        <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.carrier} · {pkg.time}</p>
+                        {loading ? (
+                            <p className="py-4 text-center text-xs text-[var(--cc-ink-tertiary)]">Cargando...</p>
+                        ) : pendingPackages.length === 0 ? (
+                            <p className="py-4 text-center text-xs text-[var(--cc-ink-tertiary)]">No hay encomiendas pendientes.</p>
+                        ) : (
+                            <div className="divide-y divide-[var(--cc-line)]">
+                                {pendingPackages.slice(0, 4).map((pkg) => (
+                                    <div key={pkg.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                                        <div>
+                                            <p className="text-xs font-semibold text-[var(--cc-ink)]">
+                                                {pkg.recipient_unit_id ? `Depto ${pkg.recipient_unit_id}` : "Unidad sin asignar"}
+                                            </p>
+                                            <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.description || "Encomienda"} · {minutesAgo(pkg.received_at)}</p>
+                                        </div>
+                                        <Link
+                                            href="/concierge/packages"
+                                            className="cursor-pointer rounded-lg bg-[var(--cc-copper-tint)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-copper)] transition-all hover:bg-[var(--cc-copper-tint)]/80 active:scale-95"
+                                        >
+                                            Gestionar
+                                        </Link>
                                     </div>
-                                    <Link
-                                        href="/concierge/packages"
-                                        className="cursor-pointer rounded-lg bg-[var(--cc-copper-tint)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-copper)] transition-all hover:bg-[var(--cc-copper-tint)]/80 active:scale-95"
-                                    >
-                                        Gestionar
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

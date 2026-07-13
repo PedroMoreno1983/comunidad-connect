@@ -577,6 +577,71 @@ export const PackageService = {
     },
 };
 
+export interface ConciergeVisitorRow {
+    id: string;
+    visitor_name?: string | null;
+    unit_id?: string | null;
+    entry_time?: string | null;
+    exit_time?: string | null;
+    is_qr?: boolean | null;
+    units?: { number?: string | null } | null;
+}
+
+export interface ConciergePackageRow {
+    id: string;
+    recipient_unit_id?: string | null;
+    description?: string | null;
+    received_at?: string | null;
+    status?: string | null;
+    picked_up_at?: string | null;
+}
+
+export interface ConciergeCaseRow {
+    id: string;
+    title?: string | null;
+    category?: string | null;
+    urgency?: string | null;
+    status?: string | null;
+    created_at?: string | null;
+}
+
+export const ConciergeService = {
+    async getDashboardOverview(): Promise<{
+        visitors: ConciergeVisitorRow[];
+        packages: ConciergePackageRow[];
+        cases: ConciergeCaseRow[];
+    }> {
+        const [visitorsRes, packagesRes, casesRes] = await Promise.all([
+            supabase
+                .from('visitor_logs')
+                .select('id, visitor_name, unit_id, entry_time, exit_time, is_qr, units:unit_id (number)')
+                .order('entry_time', { ascending: false })
+                .limit(20),
+            supabase
+                .from('packages')
+                .select('id, recipient_unit_id, description, received_at, status, picked_up_at')
+                .order('received_at', { ascending: false })
+                .limit(20),
+            supabase
+                .from('coco_cases')
+                .select('id, title, category, urgency, status, created_at')
+                .in('status', ['open', 'in_progress'])
+                .order('created_at', { ascending: false })
+                .limit(10),
+        ]);
+
+        if (visitorsRes.error) throw visitorsRes.error;
+        if (packagesRes.error) throw packagesRes.error;
+        if (casesRes.error) throw casesRes.error;
+
+        return {
+            visitors: (visitorsRes.data || []) as unknown as ConciergeVisitorRow[],
+            packages: packagesRes.data || [],
+            cases: casesRes.data || [],
+        };
+    },
+};
+
 // ==========================================
 // Service Requests
 // ==========================================
