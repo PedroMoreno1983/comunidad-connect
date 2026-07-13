@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
 interface PackageItem {
     id: string;
@@ -164,26 +165,26 @@ export default function PackagesPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 space-y-12">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:py-10 md:px-8 space-y-10 sm:space-y-12">
             {/* Professional Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-2">
-                    <h2 className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.08em]">Operaciones de Conserjería</h2>
-                    <h1 className="text-3xl font-semibold cc-text-primary">Bitácora de Encomiendas</h1>
+                    <Eyebrow>Operaciones de Conserjería</Eyebrow>
+                    <DisplayHeading size={32}>Bitácora de Encomiendas</DisplayHeading>
                 </div>
 
                 <div className="flex items-center gap-4">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-800 transition-all shadow-sm ">
+                            <button className="flex items-center gap-3 px-8 py-4 text-white font-semibold rounded-full transition-all" style={{ background: "var(--cc-ink)" }}>
                                 <Plus className="h-5 w-5" />
                                 Nueva Recepción
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px] bg-surface  border-subtle rounded-lg p-0 overflow-hidden shadow-sm">
+                        <DialogContent className="sm:max-w-[480px] rounded-2xl p-0 overflow-hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                             <div className="p-8 md:p-10 space-y-8">
                                 <DialogHeader>
-                                    <DialogTitle className="text-2xl font-semibold">Registrar Encomienda</DialogTitle>
+                                    <DialogTitle className="text-2xl font-semibold" style={{ fontFamily: "var(--cc-font-display)" }}>Registrar Encomienda</DialogTitle>
                                     <DialogDescription className="font-medium">
                                         Use el escáner para agilizar el registro o ingrese manualmente.
                                     </DialogDescription>
@@ -193,27 +194,28 @@ export default function PackagesPage() {
                                 <button
                                     onClick={handleReadLabel}
                                     disabled={isScanning}
-                                    className={`w-full py-8 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-4 transition-all ${isScanning
-                                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-500/10'
-                                        : 'border-subtle hover:border-blue-500/50 hover:bg-elevated/50'
-                                        }`}
+                                    className="w-full py-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+                                    style={isScanning
+                                        ? { borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }
+                                        : { borderColor: "var(--cc-line-strong)" }}
                                 >
-                                    <div className={`p-4 rounded-lg bg-surface shadow-sm ${isScanning ? 'animate-pulse' : ''}`}>
-                                        <Scan className={`h-8 w-8 ${isScanning ? 'text-blue-500' : 'text-slate-400'}`} />
+                                    <div className="p-4 rounded-full" style={{ background: "var(--cc-paper)", ...(isScanning ? { animation: "pulse 1.5s infinite" } : {}) }}>
+                                        <Scan className="h-8 w-8" style={{ color: isScanning ? "var(--cc-copper)" : "var(--cc-ink-faint)" }} />
                                     </div>
                                     <div className="text-center">
                                         <p className="font-semibold cc-text-primary">
                                             {isScanning ? 'Leyendo etiqueta...' : 'Leer etiqueta'}
                                         </p>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em] mt-1">Completa los datos detectados antes de guardar</p>
+                                        <p className="text-xs font-bold cc-text-tertiary uppercase tracking-[0.08em] mt-1">Completa los datos detectados antes de guardar</p>
                                     </div>
                                 </button>
 
                                 <form onSubmit={handleReceivePackage} className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Unidad Destino</label>
+                                        <label className="text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em] ml-1">Unidad Destino</label>
                                         <select
-                                            className="w-full h-14 rounded-lg border border-subtle bg-surface cc-text-primary px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                                            className="w-full h-14 rounded-xl border px-4 text-sm font-bold cc-text-primary outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/15 focus:border-[var(--cc-copper)] appearance-none cursor-pointer"
+                                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                                             required
                                             value={newPackage.unit}
                                             onChange={(e) => setNewPackage({ ...newPackage, unit: e.target.value })}
@@ -225,17 +227,17 @@ export default function PackagesPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Descripción / Courier</label>
+                                        <label className="text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em] ml-1">Descripción / Courier</label>
                                         <Input
                                             placeholder="Ej: Mercado Libre, Amazon, Sobres..."
-                                            className="h-14 rounded-lg text-lg font-bold"
+                                            className="h-14 rounded-xl text-lg font-bold"
                                             required
                                             value={newPackage.description}
                                             onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })}
                                         />
                                     </div>
                                     <DialogFooter className="pt-4">
-                                        <Button type="submit" className="w-full h-16 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-sm shadow-blue-500/20 transition-all ">
+                                        <Button type="submit" className="w-full h-16 rounded-full font-semibold text-lg transition-all" style={{ background: "var(--cc-copper)" }}>
                                             Registrar y Notificar
                                         </Button>
                                     </DialogFooter>
@@ -246,15 +248,15 @@ export default function PackagesPage() {
                 </div>
             </div>
 
-            <section className="rounded-lg border border-subtle bg-surface p-5 shadow-sm">
+            <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
                         { title: "Recibir", description: "Registrar courier, unidad destino y hora exacta de ingreso a bodega.", icon: <Scan className="h-4 w-4" /> },
                         { title: "Notificar", description: "Avisar al residente y mantener trazabilidad mientras el paquete espera retiro.", icon: <BellRing className="h-4 w-4" /> },
                         { title: "Entregar", description: "Cerrar la encomienda solo cuando el residente retire y quede registro.", icon: <CheckCircle2 className="h-4 w-4" /> },
                     ].map(item => (
-                        <div key={item.title} className="flex gap-4 rounded-lg border border-subtle bg-elevated/40 p-4">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface cc-text-secondary">
+                        <div key={item.title} className="flex gap-4 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper)", color: "var(--cc-copper)" }}>
                                 {item.icon}
                             </div>
                             <div>
@@ -268,40 +270,40 @@ export default function PackagesPage() {
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-surface  p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                <div className="p-8 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-warning-bg rounded-lg">
+                        <div className="p-3 bg-warning-bg rounded-full">
                             <Clock className="h-6 w-6 text-warning-fg" />
                         </div>
-                        <h3 className="font-semibold cc-text-primary">Por Entregar</h3>
+                        <h3 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Por Entregar</h3>
                     </div>
-                    <p className="text-3xl font-semibold cc-text-primary mb-1">{pendingPackages.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em]">Paquetes en Bodega</p>
+                    <p className="text-3xl font-semibold cc-text-primary mb-1" style={{ fontFamily: "var(--cc-font-display)" }}>{pendingPackages.length}</p>
+                    <p className="text-xs font-bold cc-text-tertiary uppercase tracking-[0.08em]">Paquetes en Bodega</p>
                 </div>
 
-                <div className="bg-surface  p-8 rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40">
+                <div className="p-8 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-success-bg rounded-lg">
+                        <div className="p-3 bg-success-bg rounded-full">
                             <CheckCircle2 className="h-6 w-6 text-success-fg" />
                         </div>
-                        <h3 className="font-semibold cc-text-primary">Entregados</h3>
+                        <h3 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Entregados</h3>
                     </div>
-                    <p className="text-3xl font-semibold cc-text-primary mb-1">{deliveredPackages.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.08em]">Hoy Completados</p>
+                    <p className="text-3xl font-semibold cc-text-primary mb-1" style={{ fontFamily: "var(--cc-font-display)" }}>{deliveredPackages.length}</p>
+                    <p className="text-xs font-bold cc-text-tertiary uppercase tracking-[0.08em]">Hoy Completados</p>
                 </div>
 
-                <div className="bg-slate-900/80 dark:bg-slate-950/80  border border-slate-800 p-8 rounded-lg shadow-sm shadow-blue-500/10 relative overflow-hidden group">
+                <div className="p-8 rounded-2xl relative overflow-hidden group" style={{ background: "var(--cc-ink)" }}>
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                        <BellRing className="h-20 w-20 text-blue-500" />
+                        <BellRing className="h-20 w-20" style={{ color: "var(--cc-copper-tint)" }} />
                     </div>
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div className="mb-6">
-                            <h3 className="font-semibold text-white">Estado Alertas</h3>
-                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.08em]">Notificaciones Activas</p>
+                            <h3 className="font-semibold text-white" style={{ fontFamily: "var(--cc-font-display)" }}>Estado Alertas</h3>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--cc-copper-tint)" }}>Notificaciones Activas</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-sm font-bold text-slate-300">Sistema Online</span>
+                            <div className="h-3 w-3 rounded-full animate-pulse" style={{ background: "var(--cc-sage)" }} />
+                            <span className="text-sm font-bold" style={{ color: "var(--cc-ink-muted)" }}>Sistema Online</span>
                         </div>
                     </div>
                 </div>
@@ -309,26 +311,27 @@ export default function PackagesPage() {
 
             {/* Packages Section */}
             <div className="space-y-8">
-                <div className="flex items-center justify-between px-2">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Package2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <div className="p-3 rounded-full" style={{ background: "var(--cc-copper-tint)" }}>
+                            <Package2 className="h-6 w-6" style={{ color: "var(--cc-copper)" }} />
                         </div>
-                        <h2 className="text-2xl font-semibold cc-text-primary">Encomiendas en Bodega</h2>
+                        <h2 className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Encomiendas en Bodega</h2>
                     </div>
-                    <div className="relative hidden md:block w-72">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--cc-ink-faint)" }} />
                         <input
                             placeholder="Buscar por Depto o ID..."
                             value={query}
                             onChange={event => setQuery(event.target.value)}
-                            className="w-full h-12 pl-12 pr-4 bg-elevated border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            className="w-full h-12 pl-12 pr-4 border-none rounded-full text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--cc-copper)]/20 transition-all"
+                            style={{ background: "var(--cc-paper-warm)" }}
                         />
                     </div>
                 </div>
 
                 {pendingPackages.length > 0 && filteredPendingPackages.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
                         <AnimatePresence mode="popLayout">
                             {filteredPendingPackages.map((pkg, idx) => (
                                 <motion.div
@@ -338,34 +341,36 @@ export default function PackagesPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     transition={{ duration: 0.3, delay: idx * 0.05 }}
-                                    className="group bg-surface  rounded-lg border border-subtle shadow-sm shadow-slate-200/20 dark:shadow-black/40 hover:shadow-sm hover:border-white/80 dark:hover:border-slate-600  transition-all duration-300 overflow-hidden"
+                                    className="group rounded-2xl border transition-all duration-300 overflow-hidden hover:border-[var(--cc-copper)]"
+                                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
                                 >
                                     <div className="p-8 space-y-6">
                                         <div className="flex justify-between items-start">
-                                            <div className="h-14 w-14 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                                            <div className="h-14 w-14 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
                                                 <PackageIcon className="h-7 w-7" />
                                             </div>
-                                            <span className="px-3 py-1.5 bg-warning-bg text-warning-fg rounded-xl text-[10px] font-semibold uppercase tracking-wider border border-amber-100 dark:border-amber-500/20">
+                                            <span className="px-3 py-1.5 bg-warning-bg text-warning-fg rounded-full text-[10px] font-semibold uppercase tracking-wider">
                                                 En Bodega
                                             </span>
                                         </div>
 
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Unidad</span>
-                                                <span className="text-xl font-semibold cc-text-primary">{pkg.recipientUnitId}</span>
+                                                <span className="text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Unidad</span>
+                                                <span className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{pkg.recipientUnitId}</span>
                                             </div>
                                             <h3 className="text-lg font-bold cc-text-secondary line-clamp-1">{pkg.description}</h3>
                                         </div>
 
-                                        <div className="pt-6 border-t border-subtle space-y-4">
-                                            <div className="flex items-center gap-3 text-xs text-slate-400 font-bold">
+                                        <div className="pt-6 border-t space-y-4" style={{ borderColor: "var(--cc-line)" }}>
+                                            <div className="flex items-center gap-3 text-xs cc-text-tertiary font-bold">
                                                 <History className="h-4 w-4" />
                                                 <span>{receivedAgoLabel(pkg.receivedAt)}</span>
                                             </div>
                                             <button
                                                 onClick={() => handleMarkDelivered(pkg.id)}
-                                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm shadow-emerald-600/20 transition-all   flex items-center justify-center gap-2"
+                                                className="w-full h-14 text-white font-semibold rounded-full transition-all flex items-center justify-center gap-2"
+                                                style={{ background: "var(--cc-sage)" }}
                                             >
                                                 <Check className="h-5 w-5" />
                                                 Entregar a Residente
@@ -377,21 +382,21 @@ export default function PackagesPage() {
                         </AnimatePresence>
                     </div>
                 ) : pendingPackages.length > 0 ? (
-                    <div className="text-center py-20 bg-surface rounded-lg border border-dashed border-subtle">
-                        <div className="w-16 h-16 mx-auto mb-5 bg-elevated rounded-lg flex items-center justify-center">
-                            <Search className="h-8 w-8 text-slate-400" />
+                    <div className="text-center py-20 rounded-2xl border border-dashed" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}>
+                        <div className="w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center" style={{ background: "var(--cc-paper-warm)" }}>
+                            <Search className="h-8 w-8" style={{ color: "var(--cc-ink-faint)" }} />
                         </div>
-                        <h3 className="text-xl font-semibold cc-text-primary mb-2">Sin resultados</h3>
+                        <h3 className="text-xl font-semibold cc-text-primary mb-2" style={{ fontFamily: "var(--cc-font-display)" }}>Sin resultados</h3>
                         <p className="cc-text-secondary max-w-sm mx-auto font-medium">
                             No hay encomiendas pendientes que coincidan con esa busqueda.
                         </p>
                     </div>
                 ) : (
-                    <div className="text-center py-24 bg-surface  rounded-lg border border-dashed border-subtle">
-                        <div className="w-20 h-20 mx-auto mb-6 bg-elevated rounded-lg flex items-center justify-center">
-                            <CheckCircle2 className="h-10 w-10 text-slate-400" />
+                    <div className="text-center py-24 rounded-2xl border border-dashed" style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper)" }}>
+                        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--cc-paper-warm)" }}>
+                            <CheckCircle2 className="h-10 w-10" style={{ color: "var(--cc-ink-faint)" }} />
                         </div>
-                        <h3 className="text-2xl font-semibold cc-text-primary mb-2">Bodega Vacía</h3>
+                        <h3 className="text-2xl font-semibold cc-text-primary mb-2" style={{ fontFamily: "var(--cc-font-display)" }}>Bodega Vacía</h3>
                         <p className="cc-text-secondary mb-8 max-w-xs mx-auto font-medium">
                             No hay encomiendas pendientes por retirar. El registro está al día.
                         </p>
