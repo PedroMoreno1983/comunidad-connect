@@ -594,6 +594,7 @@ export interface ConciergePackageRow {
     received_at?: string | null;
     status?: string | null;
     picked_up_at?: string | null;
+    units?: { number?: string | null } | null;
 }
 
 export interface ConciergeCaseRow {
@@ -619,7 +620,7 @@ export const ConciergeService = {
                 .limit(20),
             supabase
                 .from('packages')
-                .select('id, recipient_unit_id, description, received_at, status, picked_up_at')
+                .select('id, recipient_unit_id, description, received_at, status, picked_up_at, units:recipient_unit_id (number)')
                 .order('received_at', { ascending: false })
                 .limit(20),
             supabase
@@ -636,7 +637,7 @@ export const ConciergeService = {
 
         return {
             visitors: (visitorsRes.data || []) as unknown as ConciergeVisitorRow[],
-            packages: packagesRes.data || [],
+            packages: (packagesRes.data || []) as unknown as ConciergePackageRow[],
             cases: casesRes.data || [],
         };
     },

@@ -55,12 +55,13 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
     }
 
     for (const pkg of packages) {
+        const unit = pkg.units?.number ? `Depto ${pkg.units.number}` : "unidad sin asignar";
         events.push({
             id: `pkg-${pkg.id}`,
             timestamp: pkg.received_at ? new Date(pkg.received_at).getTime() : 0,
             time: timeLabel(pkg.received_at),
             type: "Encomienda",
-            desc: `${pkg.description || "Paquete"} para ${pkg.recipient_unit_id ? `Depto ${pkg.recipient_unit_id}` : "unidad sin asignar"}`,
+            desc: `${pkg.description || "Paquete"} para ${unit}`,
             status: pkg.status === "picked-up" ? "Retirado" : "Pendiente",
             tone: pkg.status === "picked-up" ? "sage" : "copper",
         });
@@ -191,7 +192,7 @@ export default function ConciergeDashboardPage() {
                                         <tr key={log.id} className="border-b border-[var(--cc-line)] transition-colors last:border-b-0 hover:bg-[var(--cc-paper-warm)]/30">
                                             <td className="py-4 font-mono text-xs text-[var(--cc-ink-secondary)]">{log.time}</td>
                                             <td className="py-4 text-[10px] font-semibold uppercase tracking-wider text-[var(--cc-ink)]">{log.type}</td>
-                                            <td className="py-4 text-xs text-[var(--cc-ink-secondary)]">{log.desc}</td>
+                                            <td className="max-w-[280px] break-words py-4 text-xs text-[var(--cc-ink-secondary)]">{log.desc}</td>
                                             <td className="py-4">
                                                 <CcTag tone={log.tone} solid>{log.status}</CcTag>
                                             </td>
