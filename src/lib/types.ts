@@ -189,11 +189,6 @@ export interface ResidentHomeSummary {
   recentAnnouncement: ResidentHomeAnnouncement | null;
 }
 
-export interface ResidentHomeStatusPillProps {
-  label: string;
-  alert?: boolean;
-}
-
 export interface ResidentHomeQuickActionProps {
   href: string;
   icon: ReactNode;
