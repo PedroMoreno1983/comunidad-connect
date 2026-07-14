@@ -121,7 +121,7 @@ export default function HomePage() {
 
                 {/* Real building photo — only shown to residents of a community that has one configured */}
                 {user.communityCoverPhotoUrl && (
-                    <div className="relative mb-5 overflow-hidden" style={{ borderRadius: 22, height: 140 }}>
+                    <div className="relative mb-5 aspect-[21/9] overflow-hidden" style={{ borderRadius: 22 }}>
                         <Image
                             src={user.communityCoverPhotoUrl}
                             alt="Foto de tu edificio"
