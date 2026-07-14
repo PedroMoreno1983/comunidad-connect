@@ -58,17 +58,23 @@ async function main() {
   }
 
   const whatsapp = await readJson('/api/whatsapp/status');
-  if (!whatsapp.response.ok) {
-    fail(`WhatsApp status endpoint failed: HTTP ${whatsapp.response.status}`);
-  } else if (!whatsapp.data?.configured || !whatsapp.data?.webhookConfigured) {
-    fail('WhatsApp is not fully configured', {
-      configured: Boolean(whatsapp.data?.configured),
-      webhookConfigured: Boolean(whatsapp.data?.webhookConfigured),
-      requiredEnv: whatsapp.data?.requiredEnv || {},
-      webhookUrl: whatsapp.data?.webhookUrl,
+  if ([401, 403].includes(whatsapp.response.status)) {
+    pass('WhatsApp status endpoint requires an authenticated administrator', {
+      status: whatsapp.response.status,
     });
   } else {
-    pass('WhatsApp is configured', { webhookUrl: whatsapp.data.webhookUrl });
+    fail('WhatsApp status endpoint is exposed without administrator authentication', {
+      status: whatsapp.response.status,
+    });
+  }
+
+  if (!health.data?.checks?.communications?.whatsapp || !health.data?.checks?.integrationDetail?.webhooks?.whatsapp) {
+    fail('WhatsApp is not fully configured', {
+      configured: Boolean(health.data?.checks?.communications?.whatsapp),
+      webhookConfigured: Boolean(health.data?.checks?.integrationDetail?.webhooks?.whatsapp),
+    });
+  } else {
+    pass('WhatsApp is configured');
   }
 
   const sitemap = await readText('/sitemap.xml');
