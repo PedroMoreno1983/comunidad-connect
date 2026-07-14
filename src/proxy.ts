@@ -63,13 +63,19 @@ export async function proxy(req: NextRequest) {
     .maybeSingle();
 
   const role = typeof profile?.role === "string" ? profile.role : "resident";
-  const allowed = pathname.startsWith("/admin")
-    ? role === "admin"
-    : pathname.startsWith("/concierge")
-      ? role === "concierge" || role === "admin"
-      : pathname.startsWith("/resident")
-        ? role === "resident" || role === "admin"
-        : true;
+  let allowed = true;
+
+  if (pathname.startsWith("/agent-center")) {
+    allowed = role === "admin";
+  } else if (pathname.startsWith("/resident/training")) {
+    allowed = role === "admin" || role === "concierge";
+  } else if (pathname.startsWith("/admin")) {
+    allowed = role === "admin";
+  } else if (pathname.startsWith("/concierge")) {
+    allowed = role === "concierge" || role === "admin";
+  } else if (pathname.startsWith("/resident")) {
+    allowed = role === "resident" || role === "admin";
+  }
 
   if (!allowed) return NextResponse.redirect(new URL("/home", req.url));
 

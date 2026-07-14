@@ -1446,6 +1446,9 @@ export async function GET(req: NextRequest) {
 
     const profile = await getAuthenticatedAgentProfile();
     if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
+    if (profile.role !== 'admin') {
+        return NextResponse.json({ error: 'Agent Center es exclusivo de administracion.' }, { status: 403 });
+    }
 
     const { data } = await getSupabaseAdmin()
         .from('agent_activity_log')
@@ -1470,6 +1473,9 @@ export async function POST(req: NextRequest) {
     try {
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
+        if (profile.role !== 'admin') {
+            return NextResponse.json({ error: 'Agent Center es exclusivo de administracion.' }, { status: 403 });
+        }
 
         const rawBody = await req.json();
         const body = rawBody && typeof rawBody === 'object' ? rawBody as Record<string, unknown> : {};

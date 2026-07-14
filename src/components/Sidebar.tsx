@@ -63,6 +63,7 @@ export function Sidebar() {
     const { user, logout } = useAuth();
     const router = useRouter();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [hasSuperAdminAccess, setHasSuperAdminAccess] = useState(false);
     const capabilities = useProductCapabilities();
 
     // Close mobile menu on route change
@@ -80,6 +81,22 @@ export function Sidebar() {
         return () => window.removeEventListener('keydown', handleEscape);
     }, []);
 
+    useEffect(() => {
+        if (user?.role !== 'admin' || !user.email) return;
+        let cancelled = false;
+        fetch('/api/superadmin/access', { cache: 'no-store' })
+            .then(response => response.ok)
+            .then(allowed => {
+                if (!cancelled) setHasSuperAdminAccess(allowed);
+            })
+            .catch(() => {
+                if (!cancelled) setHasSuperAdminAccess(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.email, user?.role]);
+
     const isPlatformCreator = isPlatformCreatorEmail(user?.email);
 
     const handleLogout = () => {
@@ -93,7 +110,7 @@ export function Sidebar() {
         {
             title: 'INTELIGENCIA OPERATIVA',
             links: [
-                { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin', 'resident', 'concierge'], premium: true },
+                { href: '/agent-center', label: 'Agent Center', icon: Sparkles, roles: ['admin'], premium: true },
                 { href: '/marketing/reels', label: 'Reels Agent', icon: Clapperboard, roles: ['admin'], premium: true, creatorOnly: true, capability: 'marketingReels' as ProductCapabilityKey },
             ]
         },
@@ -109,7 +126,7 @@ export function Sidebar() {
         {
             title: 'AULA & INTELIGENCIA IA',
             links: [
-                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['resident', 'concierge', 'admin'] },
+                { href: '/resident/training', label: 'Aula Virtual IA', icon: GraduationCap, roles: ['concierge', 'admin'] },
                 { href: '/admin/training', label: 'Generador de Cursos', icon: BookOpen, roles: ['admin'] },
             ]
         },
@@ -124,6 +141,7 @@ export function Sidebar() {
                 { href: '/services/provider-dashboard', label: 'Panel Proveedor', icon: Briefcase, roles: ['resident', 'admin'], feature: 'maintenance' },
                 { href: '/resident/cases', label: 'Mis Casos CoCo', icon: Bot, roles: ['resident', 'admin'], feature: 'coco_ai' },
                 { href: '/resident/invitations', label: 'Mis Invitaciones', icon: QrCode, roles: ['resident', 'admin'] },
+                { href: '/resident/packages', label: 'Mis Encomiendas', icon: Package, roles: ['resident'] },
                 { href: '/votaciones', label: 'Votaciones', icon: Vote, roles: ['resident', 'admin'], feature: 'voting' },
             ]
         },
@@ -139,7 +157,7 @@ export function Sidebar() {
             title: 'CONSERJERÍA',
             links: [
                 { href: '/concierge/visitors', label: 'Visitas', icon: Shield, roles: ['concierge', 'admin'] },
-                { href: '/concierge/packages', label: 'Paquetería', icon: Package, roles: ['concierge', 'admin', 'resident'] },
+                { href: '/concierge/packages', label: 'Paquetería', icon: Package, roles: ['concierge', 'admin'] },
             ]
         },
         {
@@ -165,7 +183,7 @@ export function Sidebar() {
         }
     ];
 
-    if (user.email === 'pedromoreno1983@gmail.com' || user.email.includes('convive')) {
+    if (hasSuperAdminAccess) {
         menuSections.push({
             title: 'SaaS SUPERADMIN',
             links: [

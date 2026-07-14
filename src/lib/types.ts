@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type UserRole = 'admin' | 'resident' | 'concierge';
 
 export interface User {
@@ -284,10 +286,40 @@ export interface VisitorLog {
 export interface Package {
   id: string;
   recipientUnitId: string;
+  recipientUnitNumber?: string;
   description: string;
   receivedAt: string;
   pickedUpAt?: string;
   status: 'pending' | 'picked-up';
+}
+
+export interface PackageDatabaseRow {
+  id: string;
+  recipient_unit_id: string;
+  description: string | null;
+  received_at: string | null;
+  picked_up_at: string | null;
+  status: 'pending' | 'picked-up' | null;
+  community_id?: string | null;
+  units?: { number?: string | null } | null;
+}
+
+export interface PackageUnitLookupRow {
+  id: string;
+  number: string | null;
+}
+
+export interface CreatePackageInput {
+  recipientUnitId: string;
+  description: string;
+  communityId: string;
+}
+
+export interface PackageSummaryCardProps {
+  label: string;
+  value: number;
+  icon: ReactNode;
+  tone: 'copper' | 'sage';
 }
 
 export interface Amenity {
@@ -790,7 +822,12 @@ export type CommercialLeadSource =
   | 'commercial_tour'
   | 'onboarding_preactivation';
 
-export type CommercialLeadStatus = 'notified' | 'delivery_pending';
+export type CommercialLeadStatus =
+  | 'received'
+  | 'notified'
+  | 'delivery_pending'
+  | 'contacted'
+  | 'closed';
 
 export interface CommercialLeadRequest {
   adminName: string;
@@ -823,4 +860,55 @@ export interface EmailDeliveryResult {
   sent: boolean;
   id?: string;
   error?: string;
+}
+
+export interface SuperAdminPricingTier {
+  id: string;
+  name: string;
+  price_per_unit: number;
+  base_price: number;
+  features: Record<string, boolean>;
+}
+
+export type CommunitySubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing';
+
+export interface SuperAdminCommunity {
+  id: string;
+  name: string;
+  address: string;
+  tier_id: string;
+  subscription_status: CommunitySubscriptionStatus;
+  admin_code: string;
+  resident_code: string;
+  created_at: string;
+}
+
+export interface SuperAdminCommercialLead {
+  id: string;
+  admin_name: string;
+  admin_email: string;
+  condo_name: string;
+  message: string | null;
+  source: CommercialLeadSource;
+  status: CommercialLeadStatus;
+  delivery_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SuperAdminDashboardResponse {
+  communities: SuperAdminCommunity[];
+  tiers: SuperAdminPricingTier[];
+  leads: SuperAdminCommercialLead[];
+  error?: string;
+}
+
+export interface ProductionHealthSnapshot {
+  ok: boolean;
+  status: string;
+  runtime?: {
+    productionReady?: boolean;
+    fullPaidProductionReady?: boolean;
+    deferredProduction?: string[];
+  };
 }

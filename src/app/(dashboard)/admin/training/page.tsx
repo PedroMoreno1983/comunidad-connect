@@ -270,7 +270,7 @@ export default function AdminTrainingPage() {
                             Generador de cursos IA
                         </DisplayHeading>
                         <p className="mt-2 max-w-2xl text-sm font-medium cc-text-secondary">
-                            Convierte reglamentos, protocolos y comunicados en clases guiadas para residentes y conserjería.
+                        Convierte reglamentos, protocolos y comunicados en clases guiadas para administración y conserjería.
                         </p>
                     </div>
                     <button
@@ -406,9 +406,9 @@ export default function AdminTrainingPage() {
                                     className="rounded-full border px-3 py-1.5 text-sm"
                                     style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                                 >
-                                    <option value="all">Público: Todos</option>
-                                    <option value="resident">Público: Residentes</option>
-                                    <option value="concierge">Público: Conserjes</option>
+                                            <option value="all">Público: Administración y conserjería</option>
+                                            <option value="concierge">Público: Conserjes</option>
+                                            <option value="admin">Público: Administración</option>
                                 </select>
                                 <button
                                     onClick={handleCreate} disabled={isSaving}

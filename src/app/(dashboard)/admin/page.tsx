@@ -24,8 +24,6 @@ import { DATA_PALETTE, FoldedBar } from "@/components/cc/viz/FoldedBar";
 import { BigDonut } from "@/components/cc/viz/ScoreDonut";
 import { DotMatrix } from "@/components/cc/viz/DotMatrix";
 
-const PERIODS = ["7D", "30D", "90D", "YTD"] as const;
-
 function money(value: number) {
     if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
     return `$${value.toLocaleString("es-CL")}`;
@@ -78,23 +76,6 @@ export default function AdminDashboardPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {PERIODS.map((period, index) => (
-                        <button
-                            key={period}
-                            type="button"
-                            className="font-mono transition-colors"
-                            style={{
-                                padding: "8px 14px",
-                                borderRadius: 10,
-                                fontSize: 12,
-                                background: index === 1 ? "var(--cc-ink)" : "var(--cc-paper)",
-                                color: index === 1 ? "var(--cc-paper)" : "var(--cc-ink-muted)",
-                                border: index === 1 ? "1px solid transparent" : "1px solid var(--cc-line)",
-                            }}
-                        >
-                            {period}
-                        </button>
-                    ))}
                     <Link href="/comunicaciones">
                         <Button variant="copper" size="sm">
                             <Bell size={14} /> Comunicar

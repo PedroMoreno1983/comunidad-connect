@@ -23,40 +23,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
-
-interface PackageItem {
-    id: string;
-    recipientUnitId: string;
-    description: string;
-    receivedAt: string;
-    status: string;
-    pickedUpAt?: string | null;
-}
-
-interface Unit {
-    id: string;
-    number: string;
-}
-
-type PackageRow = {
-    id: string;
-    recipient_unit_id?: string | null;
-    description?: string | null;
-    received_at?: string | null;
-    status?: string | null;
-    picked_up_at?: string | null;
-};
-
-function mapPackageRow(row: PackageRow): PackageItem {
-    return {
-        id: row.id,
-        recipientUnitId: row.recipient_unit_id || "Sin unidad",
-        description: row.description || "Encomienda sin descripcion",
-        receivedAt: row.received_at || new Date().toISOString(),
-        status: row.status || "pending",
-        pickedUpAt: row.picked_up_at || null,
-    };
-}
+import type { Package as CommunityPackage, Unit } from "@/lib/types";
 
 
 function receivedAgoLabel(value: string) {
@@ -70,10 +37,9 @@ function receivedAgoLabel(value: string) {
 
 export default function PackagesPage() {
     const { user } = useAuth();
-    const [packages, setPackages] = useState<PackageItem[]>([]);
+    const [packages, setPackages] = useState<CommunityPackage[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
     const [newPackage, setNewPackage] = useState({ unit: "", description: "" });
     const [query, setQuery] = useState("");
     const { toast } = useToast();
@@ -81,15 +47,14 @@ export default function PackagesPage() {
     const pendingPackages = packages.filter(p => p.status === 'pending');
     const deliveredPackages = packages.filter(p => p.status === 'picked-up');
     const filteredPendingPackages = pendingPackages.filter(pkg =>
-        `${pkg.recipientUnitId} ${pkg.description} ${pkg.id}`.toLowerCase().includes(query.trim().toLowerCase())
+        `${pkg.recipientUnitNumber || pkg.recipientUnitId} ${pkg.description} ${pkg.id}`.toLowerCase().includes(query.trim().toLowerCase())
     );
 
     useEffect(() => {
         const loadData = async () => {
             try {
 
-                const pkgs = await PackageService.getAll();
-                setPackages(((pkgs || []) as PackageRow[]).map(mapPackageRow));
+                setPackages(await PackageService.getAll());
 
                 const uns = await WaterService.getUnits();
                 setUnits(uns);
@@ -104,21 +69,20 @@ export default function PackagesPage() {
     const handleReceivePackage = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-
+            if (!user?.id || !user.communityId) throw new Error("Usuario sin comunidad configurada.");
             const data = await PackageService.register({
-                recipient_unit_id: newPackage.unit,
+                recipientUnitId: newPackage.unit,
                 description: newPackage.description,
-                registered_by: user?.id || 'admin'
+                communityId: user.communityId,
             });
+            const unitNumber = units.find(unit => unit.id === data.recipientUnitId)?.number || data.recipientUnitNumber || "seleccionada";
 
-            const pkg = mapPackageRow(data as PackageRow);
-
-            setPackages([pkg, ...packages]);
+            setPackages([data, ...packages]);
             setIsDialogOpen(false);
             setNewPackage({ unit: "", description: "" });
             toast({
                 title: "Paquete Registrado",
-                description: `Se ha notificado al Residente de la Unidad ${pkg.recipientUnitId}.`,
+                description: `Se notifico al residente de la Unidad ${unitNumber}.`,
                 variant: "success",
             });
         } catch (error) {
@@ -129,17 +93,6 @@ export default function PackagesPage() {
                 variant: "destructive",
             });
         }
-    };
-
-    const handleReadLabel = () => {
-        setIsScanning(true);
-        setTimeout(() => {
-            setIsScanning(false);
-            toast({
-                title: "Lectura OCR no configurada",
-                description: "Ingresa la unidad y descripcion manualmente para mantener la bitacora real.",
-            });
-        }, 900);
     };
 
     const handleMarkDelivered = async (id: string) => {
@@ -186,29 +139,9 @@ export default function PackagesPage() {
                                 <DialogHeader>
                                     <DialogTitle className="text-2xl font-semibold" style={{ fontFamily: "var(--cc-font-display)" }}>Registrar Encomienda</DialogTitle>
                                     <DialogDescription className="font-medium">
-                                        Use el escáner para agilizar el registro o ingrese manualmente.
+                                        Ingresa la unidad y el courier para guardar la recepción y notificar al residente.
                                     </DialogDescription>
                                 </DialogHeader>
-
-                                {/* Scanner Simulation Button */}
-                                <button
-                                    onClick={handleReadLabel}
-                                    disabled={isScanning}
-                                    className="w-full py-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
-                                    style={isScanning
-                                        ? { borderColor: "var(--cc-copper)", background: "var(--cc-copper-tint)" }
-                                        : { borderColor: "var(--cc-line-strong)" }}
-                                >
-                                    <div className="p-4 rounded-full" style={{ background: "var(--cc-paper)", ...(isScanning ? { animation: "pulse 1.5s infinite" } : {}) }}>
-                                        <Scan className="h-8 w-8" style={{ color: isScanning ? "var(--cc-copper)" : "var(--cc-ink-faint)" }} />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-semibold cc-text-primary">
-                                            {isScanning ? 'Leyendo etiqueta...' : 'Leer etiqueta'}
-                                        </p>
-                                        <p className="text-xs font-bold cc-text-tertiary uppercase tracking-[0.08em] mt-1">Completa los datos detectados antes de guardar</p>
-                                    </div>
-                                </button>
 
                                 <form onSubmit={handleReceivePackage} className="space-y-6">
                                     <div className="space-y-2">
@@ -222,7 +155,7 @@ export default function PackagesPage() {
                                         >
                                             <option value="">Seleccionar Departamento</option>
                                             {units.map((u) => (
-                                                <option key={u.id} value={u.number}>Unidad {u.number}</option>
+                                                <option key={u.id} value={u.id}>Unidad {u.number}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -357,7 +290,7 @@ export default function PackagesPage() {
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Unidad</span>
-                                                <span className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{pkg.recipientUnitId}</span>
+                                                <span className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{pkg.recipientUnitNumber || "Sin unidad"}</span>
                                             </div>
                                             <h3 className="text-lg font-bold cc-text-secondary line-clamp-1">{pkg.description}</h3>
                                         </div>

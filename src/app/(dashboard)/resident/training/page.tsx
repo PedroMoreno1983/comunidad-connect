@@ -24,7 +24,7 @@ interface TrainingProgress {
     last_slide_index: number;
 }
 
-export default function ResidentTrainingPage() {
+export default function StaffTrainingPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
@@ -121,7 +121,7 @@ export default function ResidentTrainingPage() {
 
     if (selectedCourseContent !== null) {
         return (
-            <ErrorBoundary name="Resident Training Module">
+            <ErrorBoundary name="Staff Training Module">
                 <div className="mx-auto max-w-[1600px] space-y-4 px-0 py-2 sm:space-y-5 sm:p-6">
                     <button
                         type="button"
@@ -159,7 +159,7 @@ export default function ResidentTrainingPage() {
     }
 
     return (
-        <ErrorBoundary name="Resident Training Module List">
+        <ErrorBoundary name="Staff Training Module List">
             <div className="mx-auto max-w-7xl space-y-5 px-0 py-2 sm:space-y-8 sm:p-6">
                 <section className="rounded-2xl border p-4 sm:p-6" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
@@ -191,14 +191,14 @@ export default function ResidentTrainingPage() {
 
                 <ModuleFlow
                     title="De curso a aprendizaje guiado"
-                    description="El residente elige un curso, entra a una clase con Tutora CoCo, conversa con alumnos virtuales y sale con criterios prácticos para convivir mejor."
+                    description="El equipo de administración o conserjería elige un curso, entra a una clase con Tutora CoCo y sale con criterios prácticos para operar mejor."
                     steps={[
                         "Elegir tema",
                         "Abrir clase guiada",
                         "Resolver dudas con CoCo",
                         "Aplicar acuerdos en comunidad",
                     ]}
-                    outcome="Cierre esperado: residente entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
+                    outcome="Cierre esperado: el equipo entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
                     currentStep={courses.length ? 2 : 1}
                     completedSteps={stats.completed ? 4 : courses.length ? 1 : 0}
                     statusLabel={courses.length ? "Cursos activos" : "Modo libre"}
