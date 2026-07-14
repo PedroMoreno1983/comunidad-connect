@@ -118,7 +118,8 @@ export function Sidebar() {
             title: 'COMUNIDAD',
             links: [
                 { href: '/home', label: 'Inicio', icon: Home, roles: ['admin', 'resident', 'concierge'] },
-                { href: '/comunicaciones', label: 'Comunicaciones', icon: MessageSquare, roles: ['admin', 'resident', 'concierge'] },
+                { href: '/feed', label: 'Comunicaciones', icon: MessageSquare, roles: ['resident'] },
+                { href: '/comunicaciones', label: 'Comunicaciones', icon: MessageSquare, roles: ['admin', 'concierge'] },
                 { href: '/convivencia', label: 'Convivencia', icon: HeartHandshake, roles: ['resident', 'admin', 'concierge'] },
                 { href: '/directorio', label: 'Directorio', icon: Users, roles: ['resident', 'admin'] },
             ]

@@ -12,6 +12,7 @@ import {
     CommercialLeadRequest,
     CommercialLeadResponse,
     CommunityFinance,
+    CreateAnnouncementInput,
     CreateAmenityInput,
     CommunityProject,
     MaintenanceAdminOverview,
@@ -1966,15 +1967,16 @@ export const AnnouncementsService = {
         return data;
     },
 
-    async createAnnouncement(announcementData: { title: string; content: string; priority: 'info' | 'alert' | 'event'; author_id: string; author_name: string }) {
+    async createAnnouncement(announcementData: CreateAnnouncementInput) {
         const { data, error } = await supabase
             .from('announcements')
             .insert([{
                 title: announcementData.title,
                 content: announcementData.content,
                 priority: announcementData.priority,
-                author_id: announcementData.author_id,
-                author_name: announcementData.author_name
+                author_id: announcementData.authorId,
+                author_name: announcementData.authorName,
+                community_id: announcementData.communityId,
             }])
             .select()
             .single();
@@ -1986,7 +1988,7 @@ export const AnnouncementsService = {
             title: data.title,
             content: data.content,
             priority: data.priority,
-            author_name: data.author_name || announcementData.author_name,
+            author_name: data.author_name || announcementData.authorName,
             created_at: data.created_at
         };
     }

@@ -665,9 +665,24 @@ CREATE POLICY "tenant_bookings_select" ON public.bookings FOR SELECT USING (
 );
 CREATE POLICY "tenant_bookings_insert" ON public.bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "tenant_announcements_select" ON public.announcements FOR SELECT USING (true);
+CREATE POLICY "tenant_announcements_select" ON public.announcements FOR SELECT USING (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+);
 CREATE POLICY "tenant_announcements_insert" ON public.announcements FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND author_id = auth.uid()
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+);
+CREATE POLICY "tenant_announcements_update" ON public.announcements FOR UPDATE USING (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+) WITH CHECK (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
+);
+CREATE POLICY "tenant_announcements_delete" ON public.announcements FOR DELETE USING (
+  community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
 );
 
 CREATE POLICY "tenant_polls_select" ON public.polls FOR SELECT USING (true);

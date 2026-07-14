@@ -65,7 +65,7 @@ export default function HomePage() {
 
     return (
         <ErrorBoundary name="Resident Home Screen">
-            <div className="max-w-md mx-auto px-5 pt-3.5 pb-6">
+            <div className="mx-auto max-w-6xl px-5 pb-8 pt-4 sm:px-8 lg:px-10">
                 {/* Top bar */}
                 <div className="flex items-center justify-between mb-8 pt-1">
                     <div className="flex items-center gap-2.5">
@@ -100,14 +100,18 @@ export default function HomePage() {
                     </div>
                 </div>
 
+                <section className={user.communityCoverPhotoUrl ? "grid items-stretch gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]" : "grid"}>
                 {/* Greeting — editorial */}
-                <div className="mb-7">
+                <div
+                    className="flex min-h-[240px] flex-col justify-end border p-7 sm:p-9"
+                    style={{ borderColor: "var(--cc-line)", borderRadius: 22, background: "var(--cc-paper-warm)" }}
+                >
                     <Eyebrow className="mb-3">{dateToday}</Eyebrow>
                     <DisplayHeading size={46}>
                         Buenos días,<br />
                         <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{firstName}.</em>
                     </DisplayHeading>
-                    <p className="mt-3.5 text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+                    <p className="mt-3.5 max-w-2xl text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
                         Tu comunidad está al día. Tienes{" "}
                         <span className="text-ink font-semibold">{statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva" : "reservas"}</span>{" "}
                         esta semana y{" "}
@@ -121,7 +125,7 @@ export default function HomePage() {
 
                 {/* Real building photo — only shown to residents of a community that has one configured */}
                 {user.communityCoverPhotoUrl && (
-                    <div className="relative mb-5 aspect-[21/9] overflow-hidden" style={{ borderRadius: 22 }}>
+                    <div className="relative min-h-[240px] overflow-hidden" style={{ borderRadius: 22 }}>
                         <Image
                             src={user.communityCoverPhotoUrl}
                             alt="Foto de tu edificio"
@@ -139,10 +143,14 @@ export default function HomePage() {
                         </div>
                     </div>
                 )}
+                </section>
+
+                <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+                <div className="space-y-5">
 
                 {/* Featured: pending bill */}
                 <div
-                    className="relative overflow-hidden mb-5"
+                    className="relative overflow-hidden"
                     style={{ borderRadius: 22, padding: 22, background: "var(--cc-ink)", color: "var(--cc-paper)" }}
                 >
                     <div
@@ -182,7 +190,7 @@ export default function HomePage() {
 
                 <Link
                     href="/chat"
-                    className="block border bg-paper mb-5"
+                    className="block border bg-paper"
                     style={{ borderColor: "var(--cc-line-strong)", borderRadius: 18, padding: 16 }}
                 >
                     <div className="flex items-start gap-3">
@@ -209,9 +217,13 @@ export default function HomePage() {
                     </div>
                 </Link>
 
+                </div>
+                <div className="space-y-5">
+
                 {/* Real resident summary */}
-                <Eyebrow className="mt-5 mb-3">Resumen de tu cuenta</Eyebrow>
-                <div className="grid grid-cols-2 gap-3.5 mb-5">
+                <div>
+                <Eyebrow className="mb-3">Resumen de tu cuenta</Eyebrow>
+                <div className="grid grid-cols-2 gap-3.5">
                     <QuickCard
                         icon={<Waves size={14} color="var(--cc-sage)" />}
                         tint="var(--cc-sage-tint)"
@@ -228,12 +240,13 @@ export default function HomePage() {
                         subColor={statsData.pendingExpensesCount > 0 ? "var(--cc-rose)" : "var(--cc-sage)"}
                     />
                 </div>
+                </div>
 
                 {/* Announcement */}
                 {statsData.recentAnnouncement && (
                     <Link
                         href="/feed"
-                        className="flex gap-3 items-start mb-5 bg-paper border rounded-xl"
+                        className="flex gap-3 items-start bg-paper border rounded-xl"
                         style={{ borderColor: "var(--cc-line)", borderRadius: 18, padding: 16 }}
                     >
                         <div
@@ -259,7 +272,7 @@ export default function HomePage() {
                 {/* Coco prompt */}
                 <Link
                     href="/chat"
-                    className="flex items-center gap-3 bg-paper sticky bottom-0 mt-2"
+                    className="flex items-center gap-3 bg-paper"
                     style={{
                         borderRadius: 999,
                         padding: "14px 18px",
@@ -278,6 +291,8 @@ export default function HomePage() {
                     </span>
                     <Mic size={16} color="var(--cc-ink-tertiary)" />
                 </Link>
+                </div>
+                </div>
             </div>
         </ErrorBoundary>
     );

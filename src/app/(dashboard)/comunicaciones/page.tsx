@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
-import { Announcement } from "@/lib/types";
+import type { Announcement, AnnouncementDatabaseRow } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
@@ -11,17 +12,9 @@ import { Tag } from "@/components/cc/Tag";
 import { CheckCircle2, Send, Users } from "lucide-react";
 
 type Priority = 'info' | 'alert' | 'event';
-type AnnouncementRow = {
-    id: string;
-    title: string;
-    content: string;
-    author_name?: string | null;
-    priority: Priority;
-    created_at: string;
-};
-
 export default function ComunicacionesPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -37,10 +30,16 @@ export default function ComunicacionesPage() {
     const [sendWhatsApp, setSendWhatsApp] = useState(false);
 
     useEffect(() => {
+        if (user?.role === "resident") router.replace("/feed");
+    }, [router, user]);
+
+    useEffect(() => {
+        if (!user || user.role === "resident") return;
+
         const fetch = async () => {
             try {
                 const data = await AnnouncementsService.getAnnouncements();
-                const mapped = (data as AnnouncementRow[]).map((ann): Announcement => ({
+                const mapped = (data as AnnouncementDatabaseRow[]).map((ann): Announcement => ({
                     id: ann.id,
                     title: ann.title,
                     content: ann.content,
@@ -54,11 +53,11 @@ export default function ComunicacionesPage() {
             }
         };
         fetch();
-    }, [toast]);
+    }, [toast, user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || user.role === "resident") {
+        if (!user || !user.communityId || user.role === "resident") {
             toast({ title: "Acceso Denegado", description: "No tienes permisos para publicar avisos.", variant: "destructive" });
             return;
         }
@@ -73,8 +72,9 @@ export default function ComunicacionesPage() {
                 title: title.trim(),
                 content: content.trim(),
                 priority,
-                author_id: user.id,
-                author_name: user.name || "Administración",
+                authorId: user.id,
+                authorName: user.name || "Administración",
+                communityId: user.communityId,
             });
 
             const newAnn: Announcement = {
@@ -122,6 +122,8 @@ export default function ComunicacionesPage() {
         }
     };
 
+
+    if (!user || user.role === "resident") return null;
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">

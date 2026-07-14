@@ -54,8 +54,13 @@ function assertStaticRoleBoundaries() {
   );
   assert(sidebar.includes('{ href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin"]'), 'Agent Center navigation is admin-only');
   assert(agentApi.includes("Agent Center es exclusivo de administracion."), 'Agent Center API rejects non-admin profiles');
+  assert(proxy.includes('"/agent-center/:path*"'), 'Agent Center page is covered by the proxy matcher');
   assert(proxy.includes('pathname.startsWith("/resident/training")') && proxy.includes('role === "admin" || role === "concierge"'), 'Aula route is limited to admin and concierge');
   assert(trainingApi.includes("!['admin', 'concierge'].includes(profile.role)"), 'Aula API rejects resident profiles');
+  assert(proxy.includes('pathname.startsWith("/comunicaciones") && role === "resident"') && proxy.includes('new URL("/feed", req.url)'), 'Residents are redirected to the read-only communications feed');
+  assert(proxy.includes('"/feed/:path*"'), 'Read-only communications feed requires authentication');
+  assert(sidebar.includes('{ href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"]'), 'Resident communications navigation opens the read-only feed');
+  assert(sidebar.includes('{ href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"]'), 'Publishing navigation is limited to admin and concierge');
 }
 
 async function main() {
@@ -117,6 +122,44 @@ async function main() {
     }
     assert(residents.length === 2 && residents[0].unitId !== residents[1].unitId, 'Temporary residents have distinct real units');
 
+    const conciergeEmail = `profile-concierge-${runId}@qa.convive.local`;
+    const { data: conciergeAuth, error: conciergeAuthError } = await admin.auth.admin.createUser({
+      email: conciergeEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: 'QA Concierge',
+        invite_code: community.admin_code,
+      },
+    });
+    if (conciergeAuthError || !conciergeAuth.user) throw conciergeAuthError || new Error('Could not create QA concierge');
+    cleanup.userIds.push(conciergeAuth.user.id);
+
+    const { error: conciergeProfileError } = await admin
+      .from('profiles')
+      .update({ role: 'concierge', community_id: communityId })
+      .eq('id', conciergeAuth.user.id);
+    if (conciergeProfileError) throw conciergeProfileError;
+
+    const conciergeClient = await signInAs(conciergeEmail, password);
+    const { data: staffAnnouncement, error: staffAnnouncementError } = await conciergeClient
+      .from('announcements')
+      .insert({
+        title: `QA staff announcement ${runId}`,
+        content: 'Temporary staff-only publication boundary check.',
+        priority: 'info',
+        author_id: conciergeAuth.user.id,
+        author_name: 'QA Concierge',
+        community_id: communityId,
+      })
+      .select('id,community_id,author_id')
+      .single();
+    if (staffAnnouncementError || !staffAnnouncement) throw staffAnnouncementError || new Error('Concierge could not publish an announcement');
+    assert(
+      staffAnnouncement.community_id === communityId && staffAnnouncement.author_id === conciergeAuth.user.id,
+      'Concierge can publish an announcement for their own community',
+    );
+
     const packageIds = [];
     for (const resident of residents) {
       const { data: pkg, error } = await admin
@@ -144,6 +187,23 @@ async function main() {
     for (let index = 0; index < residents.length; index += 1) {
       const resident = residents[index];
       const client = await signInAs(resident.email, password);
+
+      const { data: residentAnnouncement, error: residentAnnouncementError } = await client
+        .from('announcements')
+        .insert({
+          title: `QA forbidden resident announcement ${runId}`,
+          content: 'This row must be rejected by RLS.',
+          priority: 'info',
+          author_id: resident.id,
+          author_name: `QA Resident ${index + 1}`,
+          community_id: communityId,
+        })
+        .select('id');
+      assert(
+        Boolean(residentAnnouncementError) && (!residentAnnouncement || residentAnnouncement.length === 0),
+        `Resident ${index + 1} cannot publish official communications`,
+      );
+
       const { data: visiblePackages, error: packageError } = await client
         .from('packages')
         .select('id,recipient_unit_id')
