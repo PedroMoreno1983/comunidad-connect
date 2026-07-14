@@ -3,8 +3,12 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { recordOperationEvent } from '@/lib/operations/audit';
+import { isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
+import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
+import { buildClarificationAction, buildIndividualDebtAction } from '@/lib/agent-center/intentActions';
 import {
     AGENT_PLAYBOOKS,
+    AGENT_TOOL_NAMES,
     DEFAULT_AGENT_POLICIES,
     DEFAULT_COMMUNITY_ID,
     type AgentAction,
@@ -121,7 +125,7 @@ function timeFromText(text: string) {
 
 function pickAgent(message: string): AgentKey {
     const lower = message.toLowerCase();
-    if (lower.includes('gasto') || lower.includes('pago') || lower.includes('moros')) return 'finance';
+    if (lower.includes('gasto') || lower.includes('pago') || lower.includes('moros') || lower.includes('deuda') || lower.includes('debe') || lower.includes('saldo')) return 'finance';
     if (lower.includes('visita') || lower.includes('visitante') || lower.includes('paquete') || lower.includes('ingreso')) return 'concierge';
     if (lower.includes('marketplace') || lower.includes('vender') || lower.includes('aviso') || lower.includes('comunicado')) return 'community';
     return 'maintenance';
@@ -161,6 +165,8 @@ const TOOL_LABELS: Record<ToolName, string> = {
     create_service_request: 'Preparar solicitud de servicio',
     register_visitor: 'Registrar visita',
     get_my_expenses: 'Consultar gastos comunes',
+    get_resident_expenses: 'Consultar deuda de residente',
+    clarify_intent: 'Solicitar precision',
     run_playbook: 'Preparar revision',
 };
 
@@ -241,7 +247,7 @@ function activitySummaryForStatus(action: AgentAction, status: 'preview' | 'exec
     return `Preparado para revision: ${displayName}`;
 }
 
-function inferActionHeuristic(message: string): AgentAction {
+function inferActionHeuristic(message: string, profile: AgentProfile): AgentAction {
     const lower = message.toLowerCase();
     const agentKey = pickAgent(message);
     const date = dateFromText(message);
@@ -252,6 +258,10 @@ function inferActionHeuristic(message: string): AgentAction {
     const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
     const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
+
+    if (isIndividualDebtQuery(message)) {
+        return buildIndividualDebtAction(message, profile);
+    }
 
     if (wantsResidentOnboarding) {
         const playbook = getPlaybook('onboarding_import_review');
@@ -275,6 +285,9 @@ function inferActionHeuristic(message: string): AgentAction {
     }
 
     if (lower.includes('gasto') || lower.includes('pago') || lower.includes('deuda')) {
+        if (profile.role === 'admin') {
+            return buildClarificationAction(message, 'finance', 'Indica el nombre del residente cuya deuda deseas consultar. No realice ningun cambio.');
+        }
         return {
             agentKey: 'finance',
             toolName: 'get_my_expenses',
@@ -347,15 +360,7 @@ function inferActionHeuristic(message: string): AgentAction {
         };
     }
 
-    return {
-        agentKey,
-        toolName: 'create_service_request',
-        args: { description: message, preferredDate: date, preferredTime: start },
-        requiresConfirmation: true,
-        title: 'Crear ticket de mantenimiento',
-        summary: 'CoCo registrara una solicitud operacional para que quede trazabilidad.',
-        targetHref: '/services/my-requests',
-    };
+    return buildClarificationAction(message, pickAgent(message));
 }
 
 async function getUserUnit(profile: AgentProfile) {
@@ -671,6 +676,13 @@ Definición de agentes y herramientas:
      title: 'Consultar gastos de la unidad'
      summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
 
+   - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda de un residente identificado por nombre.
+     Argumentos: { "residentQuery": "nombre del residente" }
+     requiresConfirmation: false
+     targetHref: '/admin/finanzas'
+     title: 'Consultar deuda de residente'
+     summary: 'CoCo revisara los gastos pendientes del residente dentro de la comunidad del administrador.'
+
 2. Agente 'maintenance':
    - Herramienta 'create_booking': Para reservar un espacio común (ej: quincho, sala multiuso, piscina).
      Argumentos: { "amenityHint": "nombre del espacio", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM" } (Si no se especifica hora, asume 2 horas a partir de las 10:00 o la hora sugerida).
@@ -717,12 +729,15 @@ Definición de agentes y herramientas:
      summary: 'CoCo preparara un proceso guiado con auditoria y confirmacion humana.'
 
 Instrucciones de formato:
+- Una pregunta de lectura nunca puede transformarse en create_service_request ni en otra herramienta de escritura.
+- Si el usuario pregunta si una persona debe algo y su rol es admin, usa get_resident_expenses con el nombre en residentQuery.
+- Si la intencion es ambigua, usa clarify_intent. Nunca uses create_service_request como fallback generico.
 - Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
 - No incluyas bloques de código markdown (\`\`\`json).
 - La interfaz de retorno debe ser:
   {
     "agentKey": "finance" | "maintenance" | "concierge" | "community",
-    "toolName": "get_my_expenses" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
+    "toolName": "get_my_expenses" | "get_resident_expenses" | "clarify_intent" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
     "args": { ... },
     "requiresConfirmation": boolean,
     "title": "Título descriptivo breve de la acción",
@@ -778,26 +793,24 @@ async function callGeminiInference(message: string, profile: AgentProfile): Prom
 }
 
 async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
+    if (isIndividualDebtQuery(message)) {
+        return normalizeAction(buildIndividualDebtAction(message, profile));
+    }
+
     const geminiResult = await callGeminiInference(message, profile);
     if (geminiResult) {
-        return normalizeAction(geminiResult);
+        const normalized = normalizeAction(geminiResult);
+        const mutatingTools: ToolName[] = ['create_booking', 'create_marketplace_item', 'create_announcement', 'create_service_request', 'register_visitor', 'run_playbook'];
+        if (looksReadOnlyRequest(message) && mutatingTools.includes(normalized.toolName)) {
+            return normalizeAction(buildClarificationAction(message, pickAgent(message), 'Entendi que deseas consultar informacion, pero necesito mas detalle para elegir una fuente segura. No realice ningun cambio.'));
+        }
+        return normalized;
     }
-    return normalizeAction(inferActionHeuristic(message));
+    return normalizeAction(inferActionHeuristic(message, profile));
 }
 
-const TOOL_NAMES: ToolName[] = [
-    'get_amenities',
-    'create_booking',
-    'create_marketplace_item',
-    'create_announcement',
-    'create_service_request',
-    'register_visitor',
-    'get_my_expenses',
-    'run_playbook',
-];
-
 function isToolName(value: unknown): value is ToolName {
-    return typeof value === 'string' && TOOL_NAMES.includes(value as ToolName);
+    return typeof value === 'string' && AGENT_TOOL_NAMES.includes(value as ToolName);
 }
 
 function normalizeAction(action: AgentAction): AgentAction {
@@ -810,7 +823,8 @@ function normalizeAction(action: AgentAction): AgentAction {
 
     const safeArgs = action.args && typeof action.args === 'object' ? action.args : {};
     const playbook = action.toolName === 'run_playbook' ? getPlaybook(safeArgs.playbookKey) : null;
-    const writesRequireConfirmation = action.toolName !== 'get_my_expenses';
+    const readOnlyTools: ToolName[] = ['get_my_expenses', 'get_resident_expenses', 'clarify_intent', 'get_amenities'];
+    const writesRequireConfirmation = !readOnlyTools.includes(action.toolName);
 
     return {
         agentKey: playbook?.agentKey || action.agentKey,
@@ -1285,6 +1299,15 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
     const admin = getSupabaseAdmin();
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
 
+    if (action.toolName === 'clarify_intent') {
+        return {
+            entityType: 'agent_clarification',
+            entityId: null,
+            title: 'Necesito mas detalle',
+            message: action.summary || 'Necesito que aclares la consulta. No realice ningun cambio.',
+        };
+    }
+
     if (action.toolName === 'run_playbook') {
         return runPlaybook(action, profile);
     }
@@ -1296,6 +1319,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
             .from('expenses')
             .select('id, month, amount, status, due_date')
             .eq('unit_id', String(unit.id))
+            .eq('community_id', communityId)
             .order('due_date', { ascending: false })
             .limit(6);
         if (error) throw error;
@@ -1309,6 +1333,10 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
             message: `Hay ${pending.length} gasto(s) no pagado(s) por $${amount.toLocaleString('es-CL')}.`,
             data: rows,
         };
+    }
+
+    if (action.toolName === 'get_resident_expenses') {
+        return getResidentExpenseSummary(profile, action.args.residentQuery);
     }
 
     if (action.toolName === 'create_marketplace_item') {
