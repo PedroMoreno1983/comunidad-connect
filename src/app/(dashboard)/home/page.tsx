@@ -52,7 +52,7 @@ export default function HomePage() {
 
     if (!user || user.role !== "resident") return null;
 
-    const firstName = user.name ? user.name.split(" ")[0] : "Martina";
+    const firstName = user.name ? user.name.split(" ")[0] : "vecino";
     const initials = user.name
         ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
         : "U";
@@ -72,20 +72,24 @@ export default function HomePage() {
                         <Brand size={16} withMark />
                     </div>
                     <div className="flex gap-2">
-                        <button
+                        <Link
+                            href="/feed"
+                            aria-label="Ver comunicaciones"
                             className="grid place-items-center relative cursor-pointer"
                             style={{ width: 36, height: 36, borderRadius: 12, border: "1px solid var(--cc-line)", background: "transparent" }}
                         >
                             <Bell size={16} />
-                            <span
-                                className="absolute"
-                                style={{
-                                    top: 9, right: 9,
-                                    width: 6, height: 6,
-                                    borderRadius: 999, background: "var(--cc-copper)",
-                                }}
-                            />
-                        </button>
+                            {statsData.recentAnnouncement && (
+                                <span
+                                    className="absolute"
+                                    style={{
+                                        top: 9, right: 9,
+                                        width: 6, height: 6,
+                                        borderRadius: 999, background: "var(--cc-copper)",
+                                    }}
+                                />
+                            )}
+                        </Link>
                         <Link
                             href="/profile"
                             className="grid place-items-center font-mono text-[12px] font-semibold text-ink"
@@ -205,23 +209,23 @@ export default function HomePage() {
                     </div>
                 </Link>
 
-                {/* For today — grid */}
-                <Eyebrow className="mt-5 mb-3">Para hoy</Eyebrow>
+                {/* Real resident summary */}
+                <Eyebrow className="mt-5 mb-3">Resumen de tu cuenta</Eyebrow>
                 <div className="grid grid-cols-2 gap-3.5 mb-5">
                     <QuickCard
                         icon={<Waves size={14} color="var(--cc-sage)" />}
                         tint="var(--cc-sage-tint)"
-                        eyebrow="Reserva"
-                        title="Piscina"
-                        sub="Sáb · 11:00 – 12:30"
+                        eyebrow="Reservas activas"
+                        title={String(statsData.bookingsCount)}
+                        sub={statsData.bookingsCount === 1 ? "reserva registrada" : "reservas registradas"}
                     />
                     <QuickCard
                         icon={<Droplets size={14} color="#3B82F6" />}
                         tint="rgba(96,165,250,0.12)"
-                        eyebrow="Consumo agua"
-                        title="8.4 m³"
-                        sub="−12% vs abril"
-                        subColor="var(--cc-sage)"
+                        eyebrow="Saldo pendiente"
+                        title={`$${statsData.pendingExpensesAmount.toLocaleString("es-CL")}`}
+                        sub={statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} cobro(s) por pagar` : "sin deuda registrada"}
+                        subColor={statsData.pendingExpensesCount > 0 ? "var(--cc-rose)" : "var(--cc-sage)"}
                     />
                 </div>
 

@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
     try {
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        if (!['admin', 'concierge'].includes(profile.role)) {
+            return NextResponse.json({ error: "Aula Virtual disponible solo para administracion y conserjeria." }, { status: 403 });
+        }
 
         const body = await req.json() as Record<string, unknown>;
         const message = typeof body.message === "string" ? body.message.trim().slice(0, MAX_MESSAGE_LENGTH) : "";

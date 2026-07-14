@@ -68,6 +68,7 @@ function DashboardShell({
             '/services': 'Solicitudes de Servicio',
             '/concierge/visitors': 'Registro de Visitas',
             '/concierge/packages': 'Encomiendas y Paquetes',
+            '/resident/packages': 'Mis Encomiendas',
             '/admin/users': 'Usuarios y Accesos',
             '/admin/units': 'Departamentos y Copropiedad',
             '/admin/consumo': 'Consumo de Agua',

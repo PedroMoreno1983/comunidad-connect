@@ -182,125 +182,6 @@ export const DirectoryService = {
 // Community Collaboration API
 // ==========================================
 
-const COLLAB_STORAGE_KEYS = {
-    mediations: 'convive-community-mediations',
-    timeBank: 'convive-time-bank-offers',
-    collectivePurchases: 'convive-collective-purchases',
-    projects: 'convive-community-projects',
-};
-
-function createLocalId(prefix: string): string {
-    throw new Error(`El modulo de convivencia requiere tablas Supabase reales antes de crear registros (${prefix}).`);
-}
-
-function readStoredList<T>(key: string, _fallback: T[]): T[] {
-    void _fallback;
-    console.warn(`[CommunityCollaborationService] ${key} unavailable; returning empty real-data state.`);
-    return [];
-}
-
-function writeStoredList<T>(key: string, values: T[]) {
-    void values;
-    throw new Error(`El modulo de convivencia requiere tablas Supabase reales antes de escribir ${key}.`);
-}
-
-const DEFAULT_TIME_BANK_OFFERS: TimeBankOffer[] = [
-    {
-        id: 'tb-router',
-        neighborName: 'Martina Rojas',
-        unitLabel: '1204',
-        skill: 'Configurar router y WiFi',
-        description: 'Puedo ayudar a mejorar la senal, ordenar cables y configurar claves seguras.',
-        availability: 'Martes y jueves despues de las 19:00',
-        credits: 2,
-        requestsCount: 3,
-        category: 'digital',
-        createdAt: '2026-06-01T12:00:00.000Z',
-    },
-    {
-        id: 'tb-taladro',
-        neighborName: 'Nicolas Herrera',
-        unitLabel: '804',
-        skill: 'Prestamo de taladro',
-        description: 'Taladro percutor, brocas basicas y ayuda para perforaciones simples.',
-        availability: 'Fines de semana',
-        credits: 1,
-        requestsCount: 6,
-        category: 'tools',
-        createdAt: '2026-06-01T12:05:00.000Z',
-    },
-    {
-        id: 'tb-paquetes',
-        neighborName: 'Ana Valdes',
-        unitLabel: '302',
-        skill: 'Recibir paquetes',
-        description: 'Si viajas o llegas tarde, puedo recibir paquetes pequenos y avisarte por chat interno.',
-        availability: 'Lunes a viernes hasta las 18:30',
-        credits: 1,
-        requestsCount: 4,
-        category: 'care',
-        createdAt: '2026-06-01T12:10:00.000Z',
-    },
-];
-
-const DEFAULT_COLLECTIVE_PURCHASES: CollectivePurchaseCampaign[] = [
-    {
-        id: 'cp-agua',
-        title: 'Bidones de agua purificada 20L',
-        supplier: 'Distribuidora local Quilicura',
-        category: 'water',
-        unitPrice: 3200,
-        retailPrice: 4900,
-        minimumParticipants: 24,
-        participants: 17,
-        deadline: '2026-06-12',
-        status: 'open',
-        organizer: 'Comite de abasto',
-        createdAt: '2026-06-01T13:00:00.000Z',
-    },
-    {
-        id: 'cp-limpieza',
-        title: 'Kit limpieza ecologica para areas comunes',
-        supplier: 'Cooperativa BioLimpio',
-        category: 'eco',
-        unitPrice: 8900,
-        retailPrice: 13900,
-        minimumParticipants: 18,
-        participants: 18,
-        deadline: '2026-06-08',
-        status: 'ready',
-        organizer: 'Administracion',
-        createdAt: '2026-06-01T13:05:00.000Z',
-    },
-];
-
-const DEFAULT_COMMUNITY_PROJECTS: CommunityProject[] = [
-    {
-        id: 'project-huerto',
-        title: 'Huerto comunitario en terraza norte',
-        area: 'huerto',
-        description: 'Organizar turnos de riego, compostaje y cosecha compartida con vecinos voluntarios.',
-        impact: '12 familias inscritas, 3 adultos mayores participando y 18 kg de compost recuperados.',
-        participants: 12,
-        needed: 'Semillas, compostera y 2 turnos semanales de riego',
-        cocoInsight: 'CoCo detecto que varias publicaciones mencionan plantas y compostaje; conviene abrir una cuadrilla estable.',
-        status: 'active',
-        createdAt: '2026-06-01T14:00:00.000Z',
-    },
-    {
-        id: 'project-mascotas',
-        title: 'Red de cuidado mutuo para mascotas pequenas',
-        area: 'mascotas',
-        description: 'Grupo de vecinos que se cubren paseos y alimentacion cuando alguien viaja o se enferma.',
-        impact: '5 vecinos del piso 8 ya tienen mascotas pequenas y horarios compatibles.',
-        participants: 5,
-        needed: 'Calendario de turnos, reglas sanitarias y contacto de emergencia',
-        cocoInsight: 'Martina, he notado que 5 vecinos en tu piso tienen mascotas pequenas. Podrias armar un grupo de cuidado mutuo.',
-        status: 'forming',
-        createdAt: '2026-06-01T14:05:00.000Z',
-    },
-];
-
 function getDraftedCnvMessage(input: {
     reporterName: string;
     targetUnit: string;
@@ -396,20 +277,14 @@ function mapCommunityProjectRow(row: CollaborationRow): CommunityProject {
     };
 }
 
-function shouldUseLocalCollaborationFallback(error: unknown) {
-    const message = error instanceof Error ? error.message : String((error as { message?: string })?.message || error || '');
-    return Boolean(message);
-}
-
 export const CommunityCollaborationService = {
     async getMediationCases(): Promise<NeighborMediationCase[]> {
         const { data, error } = await supabase
             .from('neighbor_mediations')
             .select('*')
             .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapMediationRow);
-        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
-        return [];
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(mapMediationRow);
     },
 
     async createMediationCase(input: Omit<NeighborMediationCase, 'id' | 'draftedMessage' | 'status' | 'createdAt'>): Promise<NeighborMediationCase> {
@@ -430,28 +305,15 @@ export const CommunityCollaborationService = {
             })
             .select('*')
             .single();
-        if (!error && data) return mapMediationRow(data as CollaborationRow);
-
-        const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
-        const mediation: NeighborMediationCase = {
-            ...input,
-            id: createLocalId('mediation'),
-            draftedMessage,
-            status: 'drafted',
-            createdAt: new Date().toISOString(),
-        };
-        writeStoredList(COLLAB_STORAGE_KEYS.mediations, [mediation, ...current]);
-        return mediation;
+        if (error) throw error;
+        if (!data) throw new Error('No se pudo recuperar la mediacion creada.');
+        return mapMediationRow(data as CollaborationRow);
     },
 
     async updateMediationStatus(id: string, status: NeighborMediationCase['status']): Promise<NeighborMediationCase[]> {
         const { error } = await supabase.from('neighbor_mediations').update({ status }).eq('id', id);
-        if (!error) return this.getMediationCases();
-
-        const current = readStoredList<NeighborMediationCase>(COLLAB_STORAGE_KEYS.mediations, []);
-        const updated = current.map(item => item.id === id ? { ...item, status } : item);
-        writeStoredList(COLLAB_STORAGE_KEYS.mediations, updated);
-        return updated;
+        if (error) throw error;
+        return this.getMediationCases();
     },
 
     async getTimeBankOffers(): Promise<TimeBankOffer[]> {
@@ -459,9 +321,8 @@ export const CommunityCollaborationService = {
             .from('time_bank_offers')
             .select('*')
             .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapTimeBankRow);
-        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
-        return DEFAULT_TIME_BANK_OFFERS;
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(mapTimeBankRow);
     },
 
     async createTimeBankOffer(input: Omit<TimeBankOffer, 'id' | 'requestsCount' | 'createdAt'>): Promise<TimeBankOffer[]> {
@@ -476,32 +337,18 @@ export const CommunityCollaborationService = {
             credits: input.credits,
             category: input.category,
         });
-        if (!error) return this.getTimeBankOffers();
-
-        const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
-        const offer: TimeBankOffer = {
-            ...input,
-            id: createLocalId('timebank'),
-            requestsCount: 0,
-            createdAt: new Date().toISOString(),
-        };
-        const updated = [offer, ...current];
-        writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
-        return updated;
+        if (error) throw error;
+        return this.getTimeBankOffers();
     },
 
     async requestTimeBankOffer(id: string): Promise<TimeBankOffer[]> {
-        const { data } = await supabase.from('time_bank_offers').select('requests_count').eq('id', id).maybeSingle();
-        if (data) {
-            const requestsCount = Number((data as { requests_count?: number }).requests_count || 0) + 1;
-            const { error } = await supabase.from('time_bank_offers').update({ requests_count: requestsCount }).eq('id', id);
-            if (!error) return this.getTimeBankOffers();
-        }
-
-        const current = readStoredList<TimeBankOffer>(COLLAB_STORAGE_KEYS.timeBank, DEFAULT_TIME_BANK_OFFERS);
-        const updated = current.map(item => item.id === id ? { ...item, requestsCount: item.requestsCount + 1 } : item);
-        writeStoredList(COLLAB_STORAGE_KEYS.timeBank, updated);
-        return updated;
+        const { data, error: readError } = await supabase.from('time_bank_offers').select('requests_count').eq('id', id).maybeSingle();
+        if (readError) throw readError;
+        if (!data) throw new Error('Oferta de tiempo no encontrada.');
+        const requestsCount = Number((data as { requests_count?: number }).requests_count || 0) + 1;
+        const { error } = await supabase.from('time_bank_offers').update({ requests_count: requestsCount }).eq('id', id);
+        if (error) throw error;
+        return this.getTimeBankOffers();
     },
 
     async getCollectivePurchases(): Promise<CollectivePurchaseCampaign[]> {
@@ -509,9 +356,8 @@ export const CommunityCollaborationService = {
             .from('collective_purchase_campaigns')
             .select('*')
             .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapCollectivePurchaseRow);
-        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
-        return DEFAULT_COLLECTIVE_PURCHASES;
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(mapCollectivePurchaseRow);
     },
 
     async createCollectivePurchase(input: Omit<CollectivePurchaseCampaign, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CollectivePurchaseCampaign[]> {
@@ -528,43 +374,20 @@ export const CommunityCollaborationService = {
             status: input.minimumParticipants <= 1 ? 'ready' : 'open',
             organizer: input.organizer,
         });
-        if (!error) return this.getCollectivePurchases();
-
-        const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
-        const campaign: CollectivePurchaseCampaign = {
-            ...input,
-            id: createLocalId('purchase'),
-            participants: 1,
-            status: input.minimumParticipants <= 1 ? 'ready' : 'open',
-            createdAt: new Date().toISOString(),
-        };
-        const updated = [campaign, ...current];
-        writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
-        return updated;
+        if (error) throw error;
+        return this.getCollectivePurchases();
     },
 
     async joinCollectivePurchase(id: string): Promise<CollectivePurchaseCampaign[]> {
-        const { data } = await supabase.from('collective_purchase_campaigns').select('participants, minimum_participants, status').eq('id', id).maybeSingle();
-        if (data) {
-            const row = data as { participants?: number; minimum_participants?: number; status?: CollectivePurchaseCampaign['status'] };
-            const participants = Number(row.participants || 0) + 1;
-            const status = participants >= Number(row.minimum_participants || 1) ? 'ready' : row.status || 'open';
-            const { error } = await supabase.from('collective_purchase_campaigns').update({ participants, status }).eq('id', id);
-            if (!error) return this.getCollectivePurchases();
-        }
-
-        const current = readStoredList<CollectivePurchaseCampaign>(COLLAB_STORAGE_KEYS.collectivePurchases, DEFAULT_COLLECTIVE_PURCHASES);
-        const updated = current.map(item => {
-            if (item.id !== id) return item;
-            const participants = item.participants + 1;
-            return {
-                ...item,
-                participants,
-                status: participants >= item.minimumParticipants ? 'ready' : item.status,
-            };
-        });
-        writeStoredList(COLLAB_STORAGE_KEYS.collectivePurchases, updated);
-        return updated;
+        const { data, error: readError } = await supabase.from('collective_purchase_campaigns').select('participants, minimum_participants, status').eq('id', id).maybeSingle();
+        if (readError) throw readError;
+        if (!data) throw new Error('Compra colectiva no encontrada.');
+        const row = data as { participants?: number; minimum_participants?: number; status?: CollectivePurchaseCampaign['status'] };
+        const participants = Number(row.participants || 0) + 1;
+        const status = participants >= Number(row.minimum_participants || 1) ? 'ready' : row.status || 'open';
+        const { error } = await supabase.from('collective_purchase_campaigns').update({ participants, status }).eq('id', id);
+        if (error) throw error;
+        return this.getCollectivePurchases();
     },
 
     async getCommunityProjects(): Promise<CommunityProject[]> {
@@ -572,9 +395,8 @@ export const CommunityCollaborationService = {
             .from('community_projects')
             .select('*')
             .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) return (data as CollaborationRow[]).map(mapCommunityProjectRow);
-        if (shouldUseLocalCollaborationFallback(error)) return readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
-        return DEFAULT_COMMUNITY_PROJECTS;
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(mapCommunityProjectRow);
     },
 
     async createCommunityProject(input: Omit<CommunityProject, 'id' | 'participants' | 'status' | 'createdAt'>): Promise<CommunityProject[]> {
@@ -589,33 +411,18 @@ export const CommunityCollaborationService = {
             participants: 1,
             status: 'forming',
         });
-        if (!error) return this.getCommunityProjects();
-
-        const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
-        const project: CommunityProject = {
-            ...input,
-            id: createLocalId('project'),
-            participants: 1,
-            status: 'forming',
-            createdAt: new Date().toISOString(),
-        };
-        const updated = [project, ...current];
-        writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
-        return updated;
+        if (error) throw error;
+        return this.getCommunityProjects();
     },
 
     async joinCommunityProject(id: string): Promise<CommunityProject[]> {
-        const { data } = await supabase.from('community_projects').select('participants').eq('id', id).maybeSingle();
-        if (data) {
-            const participants = Number((data as { participants?: number }).participants || 0) + 1;
-            const { error } = await supabase.from('community_projects').update({ participants, status: 'active' }).eq('id', id);
-            if (!error) return this.getCommunityProjects();
-        }
-
-        const current = readStoredList<CommunityProject>(COLLAB_STORAGE_KEYS.projects, DEFAULT_COMMUNITY_PROJECTS);
-        const updated: CommunityProject[] = current.map(item => item.id === id ? { ...item, participants: item.participants + 1, status: 'active' } : item);
-        writeStoredList(COLLAB_STORAGE_KEYS.projects, updated);
-        return updated;
+        const { data, error: readError } = await supabase.from('community_projects').select('participants').eq('id', id).maybeSingle();
+        if (readError) throw readError;
+        if (!data) throw new Error('Proyecto comunitario no encontrado.');
+        const participants = Number((data as { participants?: number }).participants || 0) + 1;
+        const { error } = await supabase.from('community_projects').update({ participants, status: 'active' }).eq('id', id);
+        if (error) throw error;
+        return this.getCommunityProjects();
     },
 };
 

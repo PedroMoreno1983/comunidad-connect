@@ -4,37 +4,29 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
-import { Building2, Shield, Check, Copy, Search } from "lucide-react";
+import { Activity, Building2, Check, Copy, Search, Shield, UserRoundCheck } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import CommercialOutreach from "@/components/admin/CommercialOutreach";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
-
-interface PricingTier {
-    id: string;
-    name: string;
-    price_per_unit: number;
-    base_price: number;
-    features: Record<string, boolean>;
-}
-
-interface Community {
-    id: string;
-    name: string;
-    address: string;
-    tier_id: string;
-    subscription_status: string;
-    admin_code: string;
-    resident_code: string;
-    created_at: string;
-}
+import type {
+    CommercialLeadStatus,
+    CommunitySubscriptionStatus,
+    ProductionHealthSnapshot,
+    SuperAdminCommercialLead,
+    SuperAdminCommunity,
+    SuperAdminDashboardResponse,
+    SuperAdminPricingTier,
+} from "@/lib/types";
 
 export default function SuperAdminDashboard() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
-    const [communities, setCommunities] = useState<Community[]>([]);
-    const [tiers, setTiers] = useState<PricingTier[]>([]);
+    const [communities, setCommunities] = useState<SuperAdminCommunity[]>([]);
+    const [tiers, setTiers] = useState<SuperAdminPricingTier[]>([]);
+    const [leads, setLeads] = useState<SuperAdminCommercialLead[]>([]);
+    const [health, setHealth] = useState<ProductionHealthSnapshot | null>(null);
     const [loading, setLoading] = useState(true);
     const [accessDenied, setAccessDenied] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -43,8 +35,11 @@ export default function SuperAdminDashboard() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/superadmin/communities', { cache: 'no-store' });
-            const data = await response.json().catch(() => ({}));
+            const [response, healthResponse] = await Promise.all([
+                fetch('/api/superadmin/communities', { cache: 'no-store' }),
+                fetch('/api/health', { cache: 'no-store' }),
+            ]);
+            const data = await response.json().catch(() => ({ communities: [], tiers: [], leads: [] })) as SuperAdminDashboardResponse;
             if (!response.ok) {
                 if (response.status === 403 || response.status === 503) setAccessDenied(true);
                 throw new Error(data.error || 'No se pudo cargar el panel');
@@ -52,6 +47,10 @@ export default function SuperAdminDashboard() {
 
             setCommunities(data.communities || []);
             setTiers(data.tiers || []);
+            setLeads(data.leads || []);
+            if (healthResponse.ok) {
+                setHealth(await healthResponse.json() as ProductionHealthSnapshot);
+            }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "No se pudieron cargar los datos";
             toast({ title: "Error", description: errorMessage, variant: "destructive" });
@@ -88,6 +87,40 @@ export default function SuperAdminDashboard() {
         }
     };
 
+    const handleSubscriptionChange = async (communityId: string, subscriptionStatus: CommunitySubscriptionStatus) => {
+        try {
+            const response = await fetch('/api/superadmin/communities', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ communityId, subscriptionStatus }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Error al actualizar la suscripcion');
+            toast({ title: "Estado actualizado", description: "El ciclo comercial de la comunidad quedo actualizado.", variant: "success" });
+            await fetchData();
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Error al actualizar la suscripcion";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        }
+    };
+
+    const handleLeadStatusChange = async (leadId: string, leadStatus: CommercialLeadStatus) => {
+        try {
+            const response = await fetch('/api/superadmin/communities', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadId, leadStatus }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Error al actualizar el contacto');
+            setLeads(current => current.map(lead => lead.id === leadId ? { ...lead, status: leadStatus } : lead));
+            toast({ title: "Contacto actualizado", description: "El seguimiento comercial quedo guardado.", variant: "success" });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Error al actualizar el contacto";
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        }
+    };
+
     const copyToClipboard = async (value: string, label: string) => {
         await navigator.clipboard.writeText(value);
         setCopiedValue(value);
@@ -113,6 +146,7 @@ export default function SuperAdminDashboard() {
     }
 
     const filteredCommunities = communities.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const pendingLeads = leads.filter(lead => lead.status !== 'closed').length;
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
@@ -155,10 +189,94 @@ export default function SuperAdminDashboard() {
                         </div>
                     </div>
                 </div>
+                <div className="p-6 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 rounded-full" style={{ background: "var(--cc-plum-tint)", color: "var(--cc-plum)" }}>
+                            <UserRoundCheck className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium cc-text-secondary">Contactos por gestionar</p>
+                            <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{pendingLeads}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Outreach Campaign Section */}
             <CommercialOutreach />
+
+            <section className="grid gap-4 rounded-2xl border p-6 md:grid-cols-[1fr_auto] md:items-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="flex items-start gap-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: health?.runtime?.productionReady ? "var(--cc-sage-tint)" : "var(--cc-rose-tint)", color: health?.runtime?.productionReady ? "var(--cc-sage)" : "var(--cc-rose)" }}>
+                        <Activity size={18} />
+                    </div>
+                    <div>
+                        <Eyebrow className="mb-1">Salud de producción</Eyebrow>
+                        <h2 className="text-xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            {health?.runtime?.productionReady ? "Operación principal disponible" : "Revisión operativa requerida"}
+                        </h2>
+                        <p className="mt-2 text-sm cc-text-secondary">
+                            Estado: {health?.status || "sin respuesta"}. Integraciones diferidas: {health?.runtime?.deferredProduction?.length || 0}.
+                        </p>
+                    </div>
+                </div>
+                <a href="/support" className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: "var(--cc-line)", color: "var(--cc-copper)" }}>
+                    Canal de soporte
+                </a>
+            </section>
+
+            <section className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <div className="border-b p-6" style={{ borderColor: "var(--cc-line)" }}>
+                    <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Contactos comerciales</h2>
+                    <p className="mt-1 text-sm cc-text-secondary">Solicitudes reales recibidas desde activación y recorrido comercial.</p>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead style={{ background: "var(--cc-paper-warm)" }}>
+                            <tr className="cc-text-tertiary">
+                                <th className="p-4">Comunidad</th>
+                                <th className="p-4">Contacto</th>
+                                <th className="p-4">Origen</th>
+                                <th className="p-4">Fecha</th>
+                                <th className="p-4">Seguimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--cc-line)]">
+                            {leads.map(lead => (
+                                <tr key={lead.id}>
+                                    <td className="p-4">
+                                        <p className="font-semibold cc-text-primary">{lead.condo_name}</p>
+                                        {lead.message && <p className="mt-1 max-w-xs truncate text-xs cc-text-tertiary" title={lead.message}>{lead.message}</p>}
+                                    </td>
+                                    <td className="p-4">
+                                        <p className="font-medium cc-text-primary">{lead.admin_name}</p>
+                                        <a className="text-xs text-[var(--cc-copper)]" href={`mailto:${lead.admin_email}`}>{lead.admin_email}</a>
+                                    </td>
+                                    <td className="p-4 text-xs cc-text-secondary">{lead.source.replaceAll('_', ' ')}</td>
+                                    <td className="p-4 text-xs cc-text-secondary">{new Date(lead.created_at).toLocaleDateString('es-CL')}</td>
+                                    <td className="p-4">
+                                        <select
+                                            value={lead.status}
+                                            onChange={event => handleLeadStatusChange(lead.id, event.target.value as CommercialLeadStatus)}
+                                            className="rounded-lg border px-3 py-2 text-xs font-semibold outline-none"
+                                            style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                                        >
+                                            <option value="received">Recibido</option>
+                                            <option value="notified">Notificado</option>
+                                            <option value="delivery_pending">Correo pendiente</option>
+                                            <option value="contacted">Contactado</option>
+                                            <option value="closed">Cerrado</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            ))}
+                            {leads.length === 0 && (
+                                <tr><td colSpan={5} className="p-8 text-center cc-text-tertiary">Aún no hay solicitudes comerciales.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             {/* Communities List */}
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
@@ -219,9 +337,17 @@ export default function SuperAdminDashboard() {
                                             </select>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide" style={statusStyle}>
-                                                {community.subscription_status || 'desconocido'}
-                                            </span>
+                                            <select
+                                                value={community.subscription_status}
+                                                onChange={event => handleSubscriptionChange(community.id, event.target.value as CommunitySubscriptionStatus)}
+                                                className="rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide outline-none"
+                                                style={{ ...statusStyle, borderColor: "var(--cc-line)" }}
+                                            >
+                                                <option value="trialing">Prueba</option>
+                                                <option value="active">Activo</option>
+                                                <option value="past_due">Pago pendiente</option>
+                                                <option value="canceled">Cancelado</option>
+                                            </select>
                                         </td>
                                         <td className="p-4 text-center">
                                             {community.admin_code ? (

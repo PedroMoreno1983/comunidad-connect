@@ -26,6 +26,9 @@ export async function POST(request: Request) {
             .select('id, role, community_id')
             .eq('id', user.id)
             .maybeSingle();
+        if (profile?.role !== 'admin' || !profile.community_id) {
+            return NextResponse.json({ error: 'Solo administracion puede generar cursos.' }, { status: 403 });
+        }
 
         const bodyReq = await request.json();
         const { text } = bodyReq;

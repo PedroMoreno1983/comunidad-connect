@@ -13,6 +13,9 @@ export async function GET(req: NextRequest) {
 
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!['admin', 'concierge'].includes(profile.role)) {
+        return NextResponse.json({ error: 'Aula Virtual disponible solo para administracion y conserjeria.' }, { status: 403 });
+    }
 
     let query = getSupabaseAdmin()
         .from('training_modules')
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
     const description = cleanText(body.description, 1_500);
     const content = cleanText(body.content, 100_000);
     const requestedAudience = cleanText(body.target_audience, 20);
-    const targetAudience = ['all', 'resident', 'concierge', 'admin'].includes(requestedAudience) ? requestedAudience : 'all';
+    const targetAudience = ['all', 'concierge', 'admin'].includes(requestedAudience) ? requestedAudience : 'all';
     if (!title || !content) return NextResponse.json({ error: 'Titulo y contenido son obligatorios.' }, { status: 400 });
 
     const supabase = getSupabaseAdmin();

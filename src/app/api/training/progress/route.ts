@@ -8,6 +8,9 @@ export async function GET(req: NextRequest) {
     if (limited) return limited;
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!['admin', 'concierge'].includes(profile.role)) {
+        return NextResponse.json({ error: 'Aula Virtual disponible solo para administracion y conserjeria.' }, { status: 403 });
+    }
 
     const { data, error } = await getSupabaseAdmin()
         .from('user_training_progress')
@@ -23,6 +26,9 @@ export async function POST(req: NextRequest) {
     if (limited) return limited;
     const profile = await getAuthenticatedAgentProfile();
     if (!profile?.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!['admin', 'concierge'].includes(profile.role)) {
+        return NextResponse.json({ error: 'Aula Virtual disponible solo para administracion y conserjeria.' }, { status: 403 });
+    }
 
     const body = await req.json() as Record<string, unknown>;
     const moduleId = typeof body.moduleId === 'string' ? body.moduleId : '';

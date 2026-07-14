@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { 
-    Amenity, ChatMessage, Conversation
+    Amenity, ChatMessage, Conversation, CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow
 } from '../types';
 
 // ==========================================
@@ -526,42 +526,75 @@ export const VisitorService = {
     },
 };
 
-export const PackageService = {
-    async getAll(): Promise<any[]> {
-        const { data, error } = await supabase
-            .from('packages')
-            .select('*')
-            .order('received_at', { ascending: false });
+function mapPackage(row: PackageDatabaseRow): CommunityPackage {
+    return {
+        id: row.id,
+        recipientUnitId: row.recipient_unit_id,
+        recipientUnitNumber: row.units?.number || undefined,
+        description: row.description || 'Encomienda sin descripcion',
+        receivedAt: row.received_at || new Date().toISOString(),
+        pickedUpAt: row.picked_up_at || undefined,
+        status: row.status === 'picked-up' ? 'picked-up' : 'pending',
+    };
+}
 
-        if (error) throw error;
-        return data || [];
+async function loadPackagesForUnit(unitId?: string): Promise<CommunityPackage[]> {
+    let query = supabase
+        .from('packages')
+        .select('id, recipient_unit_id, description, received_at, picked_up_at, status, community_id')
+        .order('received_at', { ascending: false });
+
+    if (unitId) query = query.eq('recipient_unit_id', unitId);
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rows = (data || []) as PackageDatabaseRow[];
+    const unitIds = Array.from(new Set(rows.map(row => row.recipient_unit_id).filter(Boolean)));
+    if (unitIds.length === 0) return rows.map(mapPackage);
+
+    const { data: units, error: unitsError } = await supabase
+        .from('units')
+        .select('id, number')
+        .in('id', unitIds);
+    if (unitsError) throw unitsError;
+
+    const unitNumberById = new Map(
+        ((units || []) as PackageUnitLookupRow[]).map(unit => [unit.id, unit.number || undefined])
+    );
+    return rows.map(row => mapPackage({
+        ...row,
+        units: { number: unitNumberById.get(row.recipient_unit_id) },
+    }));
+}
+
+export const PackageService = {
+    async getAll(): Promise<CommunityPackage[]> {
+        return loadPackagesForUnit();
     },
 
-    async register(pkg: {
-        recipient_unit_id: string;
-        description: string;
-        registered_by: string;
-    }): Promise<any> {
+    async getMine(unitId: string): Promise<CommunityPackage[]> {
+        return loadPackagesForUnit(unitId);
+    },
+
+    async register(input: CreatePackageInput): Promise<CommunityPackage> {
         const { data, error } = await supabase
             .from('packages')
-            .insert(pkg)
-            .select()
+            .insert({
+                recipient_unit_id: input.recipientUnitId,
+                description: input.description,
+                community_id: input.communityId,
+            })
+            .select('id, recipient_unit_id, description, received_at, picked_up_at, status, community_id')
             .single();
 
         if (error) throw error;
 
-        // Internal Notification / Alert for the resident
-        await supabase
-            .from('announcements')
-            .insert({
-                title: '📦 ¡Tienes un paquete nuevo!',
-                content: `El conserje ha recibido una encomienda para ti. Descripción: ${pkg.description}`,
-                author_id: pkg.registered_by,
-                unit_id: pkg.recipient_unit_id,
-                type: 'info'
-            });
-
-        return data;
+        const unit = await supabase.from('units').select('id, number').eq('id', input.recipientUnitId).maybeSingle();
+        if (unit.error) throw unit.error;
+        return mapPackage({
+            ...(data as unknown as PackageDatabaseRow),
+            units: { number: unit.data?.number || undefined },
+        });
     },
 
     async markPickedUp(packageId: string) {
@@ -612,17 +645,13 @@ export const ConciergeService = {
         packages: ConciergePackageRow[];
         cases: ConciergeCaseRow[];
     }> {
-        const [visitorsRes, packagesRes, casesRes] = await Promise.all([
+        const [visitorsRes, packages, casesRes] = await Promise.all([
             supabase
                 .from('visitor_logs')
                 .select('id, visitor_name, unit_id, entry_time, exit_time, is_qr, units:unit_id (number)')
                 .order('entry_time', { ascending: false })
                 .limit(20),
-            supabase
-                .from('packages')
-                .select('id, recipient_unit_id, description, received_at, status, picked_up_at, units:recipient_unit_id (number)')
-                .order('received_at', { ascending: false })
-                .limit(20),
+            PackageService.getAll(),
             supabase
                 .from('coco_cases')
                 .select('id, title, category, urgency, status, created_at')
@@ -632,12 +661,19 @@ export const ConciergeService = {
         ]);
 
         if (visitorsRes.error) throw visitorsRes.error;
-        if (packagesRes.error) throw packagesRes.error;
         if (casesRes.error) throw casesRes.error;
 
         return {
             visitors: (visitorsRes.data || []) as unknown as ConciergeVisitorRow[],
-            packages: (packagesRes.data || []) as unknown as ConciergePackageRow[],
+            packages: packages.slice(0, 20).map(item => ({
+                id: item.id,
+                recipient_unit_id: item.recipientUnitId,
+                description: item.description,
+                received_at: item.receivedAt,
+                status: item.status,
+                picked_up_at: item.pickedUpAt || null,
+                units: { number: item.recipientUnitNumber || null },
+            })),
             cases: casesRes.data || [],
         };
     },
