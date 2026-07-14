@@ -3,23 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Key, Plus, ShoppingBag, Users } from "lucide-react";
-import { Button } from "@/components/cc/Button";
-import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
+import { AlertTriangle, ArrowRight, Key, Plus, QrCode, ShoppingBag, Users } from "lucide-react";
+import { Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { useAuth } from "@/lib/authContext";
 import { ConciergeService, ConciergeVisitorRow, ConciergePackageRow, ConciergeCaseRow } from "@/lib/services/supabaseServices";
-
-type ShiftEvent = {
-    id: string;
-    timestamp: number;
-    time: string;
-    type: string;
-    desc: string;
-    status: string;
-    tone: "sage" | "copper" | "rose" | "neutral";
-};
+import type { ConciergeQuickActionProps, ConciergeShiftEvent } from "@/lib/types";
 
 function timeLabel(value?: string | null) {
     if (!value) return "--:--";
@@ -38,8 +28,8 @@ function minutesAgo(value?: string | null) {
     return `Hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
 }
 
-function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePackageRow[], cases: ConciergeCaseRow[]): ShiftEvent[] {
-    const events: ShiftEvent[] = [];
+function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePackageRow[], cases: ConciergeCaseRow[]): ConciergeShiftEvent[] {
+    const events: ConciergeShiftEvent[] = [];
 
     for (const visitor of visitors) {
         const unit = visitor.units?.number ? `Depto ${visitor.units.number}` : "unidad sin asignar";
@@ -117,50 +107,77 @@ export default function ConciergeDashboardPage() {
     const pendingPackages = packages.filter(p => p.status !== "picked-up");
     const criticalCases = cases.filter(c => c.urgency === "alta" || c.urgency === "emergencia");
     const shiftLog = buildShiftLog(visitors, packages, cases);
+    const dateToday = new Date().toLocaleDateString("es-CL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+    });
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-4 border-b border-[var(--cc-line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <Eyebrow className="mb-2">Recepción</Eyebrow>
-                    <DisplayHeading size={40}>
-                        Turno <em className="font-serif font-normal italic text-[var(--cc-copper)]">activo</em>
-                    </DisplayHeading>
-                </div>
-                <div className="flex gap-2">
-                    <Link href="/concierge/visitors">
-                        <Button variant="ghost" size="sm">
-                            <Plus size={13} /> Nueva visita
-                        </Button>
-                    </Link>
-                    <Link href="/concierge/packages">
-                        <Button variant="copper" size="sm">
-                            Recibir paquete
-                        </Button>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Real building photo — only shown to concierges of a community that has one configured */}
-            {user?.communityCoverPhotoUrl && (
-                <div className="relative aspect-[32/9] overflow-hidden" style={{ borderRadius: 22 }}>
+            {/* Immersive concierge cover */}
+            <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-ink)" }}>
+                {user?.communityCoverPhotoUrl && (
                     <Image
                         src={user.communityCoverPhotoUrl}
                         alt="Foto de tu edificio"
                         fill
-                        sizes="100vw"
+                        priority
+                        sizes="(min-width: 1280px) 1216px, 100vw"
                         className="object-cover"
                     />
-                    <div
-                        aria-hidden
-                        className="absolute inset-0"
-                        style={{ background: "linear-gradient(90deg, rgba(26,22,17,0.8) 0%, rgba(26,22,17,0.15) 70%)" }}
-                    />
-                    <div className="absolute inset-y-0 left-5 flex flex-col justify-center" style={{ color: "var(--cc-paper)" }}>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                )}
+                <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(90deg, rgba(20,17,13,0.94) 0%, rgba(20,17,13,0.7) 50%, rgba(20,17,13,0.2) 100%)" }}
+                />
+                <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "var(--cc-paper)" }}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <Eyebrow style={{ color: "rgba(244,239,230,0.74)" }}>{dateToday}</Eyebrow>
+                        <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium" style={{ borderColor: "rgba(244,239,230,0.3)", background: "rgba(20,17,13,0.35)" }}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#9DB683]" /> Recepción operativa
+                        </span>
+                    </div>
+
+                    <div className="max-w-2xl">
+                        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Control del edificio</p>
+                        <h1 className="text-[44px] leading-[0.96] tracking-[-0.03em] sm:text-[62px]" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Turno <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>activo.</em>
+                        </h1>
+                        <p className="mt-4 max-w-xl text-[14px] leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
+                            Controla accesos, recibe encomiendas y mantén la recepción al día desde un solo lugar.
+                        </p>
+                        <div className="mt-6 flex flex-wrap gap-2">
+                            <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(244,239,230,0.14)" }}>
+                                {loading ? "--" : activeVisitors} {activeVisitors === 1 ? "visita dentro" : "visitas dentro"}
+                            </span>
+                            <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: pendingPackages.length > 0 ? "rgba(190,105,69,0.82)" : "rgba(105,135,84,0.78)" }}>
+                                {loading ? "--" : pendingPackages.length} {pendingPackages.length === 1 ? "encomienda pendiente" : "encomiendas pendientes"}
+                            </span>
+                            {criticalCases.length > 0 && (
+                                <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(177,74,61,0.86)" }}>
+                                    {criticalCases.length} {criticalCases.length === 1 ? "incidencia crítica" : "incidencias críticas"}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
-            )}
+            </section>
+
+            {/* Primary concierge actions */}
+            <section>
+                <div className="mb-3 flex items-center justify-between">
+                    <Eyebrow>¿Qué necesitas registrar?</Eyebrow>
+                    <span className="text-[11px] text-[var(--cc-ink-tertiary)]">Acciones del turno</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <ConciergeQuickAction href="/concierge/visitors?mode=manual" icon={<Plus size={19} />} title="Nueva visita" detail="Ingreso manual" />
+                    <ConciergeQuickAction href="/concierge/visitors?mode=qr" icon={<QrCode size={19} />} title="Validar QR" detail="Acceso preautorizado" />
+                    <ConciergeQuickAction href="/concierge/packages" icon={<ShoppingBag size={19} />} title="Recibir paquete" detail="Nueva encomienda" />
+                    <ConciergeQuickAction href="/concierge/visitors" icon={<Key size={19} />} title="Gestionar accesos" detail="Entradas y salidas" />
+                </div>
+            </section>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KpiCard eyebrow="Visitas hoy" value={loading ? "--" : String(visitsToday)} sub="ingresos registrados" icon={<Users size={15} />} tone="amber" />
@@ -256,5 +273,24 @@ export default function ConciergeDashboardPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+function ConciergeQuickAction({ href, icon, title, detail }: ConciergeQuickActionProps) {
+    return (
+        <Link
+            href={href}
+            className="group flex min-h-[104px] flex-col justify-between border bg-[var(--cc-paper)] p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+            style={{ borderColor: "var(--cc-line)", borderRadius: 18 }}
+        >
+            <div className="flex items-start justify-between">
+                <div className="grid h-9 w-9 place-items-center rounded-[11px] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]">{icon}</div>
+                <ArrowRight size={15} className="text-[var(--cc-ink-faint)] transition-transform group-hover:translate-x-0.5" />
+            </div>
+            <div>
+                <div className="text-[13px] font-semibold text-[var(--cc-ink)]">{title}</div>
+                <div className="mt-1 text-[11px] text-[var(--cc-ink-tertiary)]">{detail}</div>
+            </div>
+        </Link>
     );
 }
