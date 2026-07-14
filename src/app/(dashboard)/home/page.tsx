@@ -6,10 +6,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { HomeService } from "@/lib/api";
-import type { ResidentHomeQuickActionProps, ResidentHomeStatusPillProps, ResidentHomeSummary } from "@/lib/types";
-import { Bell, ChevronRight, ArrowRight, Sparkles, BellRing, Bot, CalendarCheck, CreditCard, Wrench, QrCode, Megaphone } from "lucide-react";
+import type { ResidentHomeQuickActionProps, ResidentHomeSummary } from "@/lib/types";
+import { Bell, ChevronRight, ArrowRight, Sparkles, BellRing, Bot, CalendarCheck, Wrench, QrCode, Megaphone } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
-import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import { Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -65,7 +65,7 @@ export default function HomePage() {
 
     return (
         <ErrorBoundary name="Resident Home Screen">
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-4 sm:px-8 lg:px-10">
+            <div className="mx-auto max-w-7xl px-5 pb-10 pt-4 sm:px-8 lg:px-10">
                 {/* Top bar */}
                 <div className="mb-6 flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2.5">
@@ -100,58 +100,73 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <section className={user.communityCoverPhotoUrl ? "grid items-stretch gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]" : "grid"}>
-                {/* Greeting and today's priorities */}
-                <div
-                    className="flex min-h-[280px] flex-col justify-between border p-7 sm:p-9"
-                    style={{ borderColor: "var(--cc-line)", borderRadius: 22, background: "var(--cc-paper-warm)" }}
-                >
-                    <div>
-                        <Eyebrow className="mb-3">{dateToday}</Eyebrow>
-                        <DisplayHeading size={46}>
-                            Hola, <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{firstName}.</em>
-                        </DisplayHeading>
-                        <p className="mt-3 max-w-xl text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
-                            Todo lo importante de tu hogar y tu comunidad, en un solo lugar.
-                        </p>
-                    </div>
-                    <div className="mt-8 flex flex-wrap gap-2">
-                        {user.unitName && <StatusPill label={user.unitName} />}
-                        <StatusPill label={`${statsData.bookingsCount} ${statsData.bookingsCount === 1 ? "reserva" : "reservas"}`} />
-                        <StatusPill
-                            label={statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al día"}
-                            alert={statsData.pendingExpensesCount > 0}
-                        />
-                    </div>
-                </div>
-
-                {/* Real building photo — only shown to residents of a community that has one configured */}
-                {user.communityCoverPhotoUrl && (
-                    <div className="relative min-h-[250px] overflow-hidden sm:min-h-[300px]" style={{ borderRadius: 22 }}>
+                {/* Immersive resident cover */}
+                <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-ink)" }}>
+                    {user.communityCoverPhotoUrl && (
                         <Image
                             src={user.communityCoverPhotoUrl}
                             alt="Foto de tu edificio"
                             fill
                             priority
-                            sizes="(min-width: 1024px) 460px, 100vw"
+                            sizes="(min-width: 1280px) 1216px, 100vw"
                             className="object-cover"
                         />
-                        <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.72) 0%, transparent 62%)" }} />
-                        <div className="absolute bottom-5 left-5" style={{ color: "var(--cc-paper)" }}>
-                            <Eyebrow style={{ color: "rgba(244,239,230,0.72)", marginBottom: 5 }}>Tu hogar</Eyebrow>
-                            <p className="text-[18px] font-medium">Mi comunidad</p>
+                    )}
+                    <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{ background: "linear-gradient(90deg, rgba(20,17,13,0.92) 0%, rgba(20,17,13,0.68) 48%, rgba(20,17,13,0.18) 100%)" }}
+                    />
+                    <div className="relative flex min-h-[360px] flex-col justify-between p-7 sm:min-h-[400px] sm:p-10 lg:p-12" style={{ color: "var(--cc-paper)" }}>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <Eyebrow style={{ color: "rgba(244,239,230,0.74)" }}>{dateToday}</Eyebrow>
+                            {user.unitName && (
+                                <span className="rounded-full border px-3 py-1.5 text-[11px] font-medium" style={{ borderColor: "rgba(244,239,230,0.3)", background: "rgba(20,17,13,0.35)" }}>
+                                    {user.unitName}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="max-w-2xl">
+                            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Tu día en comunidad</p>
+                            <h1 className="text-[44px] leading-[0.96] tracking-[-0.03em] sm:text-[62px]" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                Hola, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>{firstName}.</em>
+                            </h1>
+                            <p className="mt-4 max-w-xl text-[14px] leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
+                                Revisa lo urgente, resuelve lo cotidiano y sigue conectado con tu edificio.
+                            </p>
+                            <div className="mt-6 flex flex-wrap gap-2">
+                                <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(244,239,230,0.14)" }}>
+                                    {statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva activa" : "reservas activas"}
+                                </span>
+                                <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: statsData.pendingExpensesCount > 0 ? "rgba(190,105,69,0.82)" : "rgba(105,135,84,0.78)" }}>
+                                    {statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al día"}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                )}
                 </section>
 
-                <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
-                <div className="space-y-5">
+                {/* Primary resident actions */}
+                <section className="mt-5">
+                    <div className="mb-3 flex items-center justify-between">
+                        <Eyebrow>¿Qué necesitas hacer?</Eyebrow>
+                        <span className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>Accesos directos</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <QuickAction href="/amenities" icon={<CalendarCheck size={19} />} title="Reservar" detail="Espacios comunes" />
+                        <QuickAction href="/resident/invitations" icon={<QrCode size={19} />} title="Invitar" detail="Generar acceso" />
+                        <QuickAction href="/services" icon={<Wrench size={19} />} title="Solicitar" detail="Servicios para tu hogar" />
+                        <QuickAction href="/feed" icon={<Megaphone size={19} />} title="Informarme" detail="Comunicaciones" />
+                    </div>
+                </section>
+
+                <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
 
                 {/* Featured: pending bill */}
                 <div
-                    className="relative overflow-hidden"
-                    style={{ borderRadius: 22, padding: 22, background: "var(--cc-ink)", color: "var(--cc-paper)" }}
+                    className="relative overflow-hidden p-6 sm:p-8"
+                    style={{ borderRadius: 22, background: "var(--cc-ink)", color: "var(--cc-paper)" }}
                 >
                     <div
                         aria-hidden
@@ -173,7 +188,7 @@ export default function HomePage() {
                         </Tag>
                     </div>
 
-                    <div className="relative mb-5 flex items-baseline gap-1.5">
+                    <div className="relative mb-6 flex items-baseline gap-1.5">
                         <span style={{ fontSize: 14, color: "rgba(244,239,230,0.6)" }}>$</span>
                         <span style={{ fontFamily: "var(--cc-font-display)", fontSize: 54, lineHeight: 1, letterSpacing: "-0.02em" }}>
                             {statsData.pendingExpensesAmount.toLocaleString("es-CL")}
@@ -188,20 +203,6 @@ export default function HomePage() {
                     </Link>
                 </div>
 
-                <div>
-                    <div className="mb-3 flex items-center justify-between">
-                        <Eyebrow>Acciones rápidas</Eyebrow>
-                        <span className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>Lo más usado</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <QuickAction href="/amenities" icon={<CalendarCheck size={18} />} title="Reservar espacio" detail="Amenidades" />
-                        <QuickAction href="/resident/invitations" icon={<QrCode size={18} />} title="Crear invitación" detail="Acceso de visitas" />
-                        <QuickAction href="/services" icon={<Wrench size={18} />} title="Pedir un servicio" detail="Hogar y mantención" />
-                        <QuickAction href="/feed" icon={<Megaphone size={18} />} title="Ver comunicaciones" detail="Noticias del edificio" />
-                    </div>
-                </div>
-
-                </div>
                 <div className="space-y-5">
 
                 {/* Latest community update */}
@@ -274,20 +275,11 @@ export default function HomePage() {
     );
 }
 
-function StatusPill({ label, alert = false }: ResidentHomeStatusPillProps) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-medium" style={{ borderColor: alert ? "rgba(180,83,62,0.28)" : "var(--cc-line)", background: alert ? "rgba(180,83,62,0.08)" : "var(--cc-paper)", color: alert ? "var(--cc-rose)" : "var(--cc-ink-muted)" }}>
-      <span style={{ width: 6, height: 6, borderRadius: 999, background: alert ? "var(--cc-rose)" : "var(--cc-sage)" }} />
-      {label}
-    </span>
-  );
-}
-
 function QuickAction({ href, icon, title, detail }: ResidentHomeQuickActionProps) {
   return (
     <Link
       href={href}
-      className="group flex min-h-[118px] flex-col justify-between border bg-paper p-4 transition-transform hover:-translate-y-0.5"
+      className="group flex min-h-[104px] flex-col justify-between border bg-paper p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm"
       style={{ borderColor: "var(--cc-line)", borderRadius: 18 }}
     >
       <div className="flex items-start justify-between">
