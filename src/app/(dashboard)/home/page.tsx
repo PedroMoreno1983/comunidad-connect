@@ -100,7 +100,29 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <section className={user.communityCoverPhotoUrl ? "grid items-stretch gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]" : "grid"}>
+                <section className="grid gap-5">
+                {/* Real building photo — only shown to residents of a community that has one configured */}
+                {user.communityCoverPhotoUrl && (
+                    <div className="relative h-[300px] overflow-hidden sm:h-[380px] lg:h-[440px]" style={{ borderRadius: 22 }}>
+                        <Image
+                            src={user.communityCoverPhotoUrl}
+                            alt="Foto de tu edificio"
+                            fill
+                            priority
+                            sizes="(min-width: 1280px) 1152px, 100vw"
+                            className="object-cover"
+                        />
+                        <div
+                            aria-hidden
+                            className="absolute inset-0"
+                            style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.75) 0%, rgba(26,22,17,0.05) 60%)" }}
+                        />
+                        <div className="absolute bottom-4 left-5" style={{ color: "var(--cc-paper)" }}>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Greeting — editorial */}
                 <div
                     className="flex min-h-[240px] flex-col justify-end border p-7 sm:p-9"
@@ -122,27 +144,6 @@ export default function HomePage() {
                         )}
                     </p>
                 </div>
-
-                {/* Real building photo — only shown to residents of a community that has one configured */}
-                {user.communityCoverPhotoUrl && (
-                    <div className="relative min-h-[240px] overflow-hidden" style={{ borderRadius: 22 }}>
-                        <Image
-                            src={user.communityCoverPhotoUrl}
-                            alt="Foto de tu edificio"
-                            fill
-                            sizes="(min-width: 768px) 500px, 100vw"
-                            className="object-cover"
-                        />
-                        <div
-                            aria-hidden
-                            className="absolute inset-0"
-                            style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.75) 0%, rgba(26,22,17,0.05) 60%)" }}
-                        />
-                        <div className="absolute bottom-3 left-4" style={{ color: "var(--cc-paper)" }}>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
-                        </div>
-                    </div>
-                )}
                 </section>
 
                 <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
