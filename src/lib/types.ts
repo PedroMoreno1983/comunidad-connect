@@ -189,6 +189,18 @@ export interface ResidentHomeSummary {
   recentAnnouncement: ResidentHomeAnnouncement | null;
 }
 
+export interface ResidentHomeStatusPillProps {
+  label: string;
+  alert?: boolean;
+}
+
+export interface ResidentHomeQuickActionProps {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  detail: string;
+}
+
 export interface AdminDashboardMetricPoint {
   label: string;
   collected: number;

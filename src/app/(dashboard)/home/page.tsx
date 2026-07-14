@@ -6,8 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { HomeService } from "@/lib/api";
-import type { ResidentHomeSummary } from "@/lib/types";
-import { Bell, ChevronRight, ArrowRight, Mic, Sparkles, Droplets, Waves, BellRing, Bot, CalendarCheck, CreditCard, Wrench } from "lucide-react";
+import type { ResidentHomeQuickActionProps, ResidentHomeStatusPillProps, ResidentHomeSummary } from "@/lib/types";
+import { Bell, ChevronRight, ArrowRight, Sparkles, BellRing, Bot, CalendarCheck, CreditCard, Wrench, QrCode, Megaphone } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
@@ -65,9 +65,9 @@ export default function HomePage() {
 
     return (
         <ErrorBoundary name="Resident Home Screen">
-            <div className="mx-auto max-w-6xl px-5 pb-8 pt-4 sm:px-8 lg:px-10">
+            <div className="mx-auto max-w-6xl px-5 pb-10 pt-4 sm:px-8 lg:px-10">
                 {/* Top bar */}
-                <div className="flex items-center justify-between mb-8 pt-1">
+                <div className="mb-6 flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2.5">
                         <Brand size={16} withMark />
                     </div>
@@ -100,53 +100,52 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <section className="grid gap-5">
+                <section className={user.communityCoverPhotoUrl ? "grid items-stretch gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]" : "grid"}>
+                {/* Greeting and today's priorities */}
+                <div
+                    className="flex min-h-[280px] flex-col justify-between border p-7 sm:p-9"
+                    style={{ borderColor: "var(--cc-line)", borderRadius: 22, background: "var(--cc-paper-warm)" }}
+                >
+                    <div>
+                        <Eyebrow className="mb-3">{dateToday}</Eyebrow>
+                        <DisplayHeading size={46}>
+                            Hola, <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{firstName}.</em>
+                        </DisplayHeading>
+                        <p className="mt-3 max-w-xl text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
+                            Todo lo importante de tu hogar y tu comunidad, en un solo lugar.
+                        </p>
+                    </div>
+                    <div className="mt-8 flex flex-wrap gap-2">
+                        {user.unitName && <StatusPill label={user.unitName} />}
+                        <StatusPill label={`${statsData.bookingsCount} ${statsData.bookingsCount === 1 ? "reserva" : "reservas"}`} />
+                        <StatusPill
+                            label={statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al día"}
+                            alert={statsData.pendingExpensesCount > 0}
+                        />
+                    </div>
+                </div>
+
                 {/* Real building photo — only shown to residents of a community that has one configured */}
                 {user.communityCoverPhotoUrl && (
-                    <div className="relative h-[300px] overflow-hidden sm:h-[380px] lg:h-[440px]" style={{ borderRadius: 22 }}>
+                    <div className="relative min-h-[250px] overflow-hidden sm:min-h-[300px]" style={{ borderRadius: 22 }}>
                         <Image
                             src={user.communityCoverPhotoUrl}
                             alt="Foto de tu edificio"
                             fill
                             priority
-                            sizes="(min-width: 1280px) 1152px, 100vw"
+                            sizes="(min-width: 1024px) 460px, 100vw"
                             className="object-cover"
                         />
-                        <div
-                            aria-hidden
-                            className="absolute inset-0"
-                            style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.75) 0%, rgba(26,22,17,0.05) 60%)" }}
-                        />
-                        <div className="absolute bottom-4 left-5" style={{ color: "var(--cc-paper)" }}>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                        <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.72) 0%, transparent 62%)" }} />
+                        <div className="absolute bottom-5 left-5" style={{ color: "var(--cc-paper)" }}>
+                            <Eyebrow style={{ color: "rgba(244,239,230,0.72)", marginBottom: 5 }}>Tu hogar</Eyebrow>
+                            <p className="text-[18px] font-medium">Mi comunidad</p>
                         </div>
                     </div>
                 )}
-
-                {/* Greeting — editorial */}
-                <div
-                    className="flex min-h-[240px] flex-col justify-end border p-7 sm:p-9"
-                    style={{ borderColor: "var(--cc-line)", borderRadius: 22, background: "var(--cc-paper-warm)" }}
-                >
-                    <Eyebrow className="mb-3">{dateToday}</Eyebrow>
-                    <DisplayHeading size={46}>
-                        Buenos días,<br />
-                        <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{firstName}.</em>
-                    </DisplayHeading>
-                    <p className="mt-3.5 max-w-2xl text-[14px] leading-relaxed" style={{ color: "var(--cc-ink-muted)" }}>
-                        Tu comunidad está al día. Tienes{" "}
-                        <span className="text-ink font-semibold">{statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva" : "reservas"}</span>{" "}
-                        esta semana y{" "}
-                        {statsData.pendingExpensesCount > 0 ? (
-                            <span><span className="text-[var(--cc-rose)] font-semibold">{statsData.pendingExpensesCount} cuenta pendiente</span> por pagar.</span>
-                        ) : (
-                            <span><span className="text-ink font-semibold">nada pendiente</span> por pagar.</span>
-                        )}
-                    </p>
-                </div>
                 </section>
 
-                <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+                <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
                 <div className="space-y-5">
 
                 {/* Featured: pending bill */}
@@ -162,7 +161,7 @@ export default function HomePage() {
                             background: "radial-gradient(circle, rgba(156, 86, 54,0.35) 0%, transparent 60%)",
                         }}
                     />
-                    <div className="relative flex justify-between items-start mb-6">
+                    <div className="relative mb-5 flex items-start justify-between">
                         <div>
                             <Eyebrow style={{ color: "rgba(244,239,230,0.55)", marginBottom: 10 }}>Gasto común</Eyebrow>
                             <div style={{ fontSize: 13, color: "rgba(244,239,230,0.75)" }}>
@@ -174,7 +173,7 @@ export default function HomePage() {
                         </Tag>
                     </div>
 
-                    <div className="relative flex items-baseline gap-1.5 mb-5">
+                    <div className="relative mb-5 flex items-baseline gap-1.5">
                         <span style={{ fontSize: 14, color: "rgba(244,239,230,0.6)" }}>$</span>
                         <span style={{ fontFamily: "var(--cc-font-display)", fontSize: 54, lineHeight: 1, letterSpacing: "-0.02em" }}>
                             {statsData.pendingExpensesAmount.toLocaleString("es-CL")}
@@ -189,61 +188,25 @@ export default function HomePage() {
                     </Link>
                 </div>
 
-                <Link
-                    href="/chat"
-                    className="block border bg-paper"
-                    style={{ borderColor: "var(--cc-line-strong)", borderRadius: 18, padding: 16 }}
-                >
-                    <div className="flex items-start gap-3">
-                        <div
-                            className="grid place-items-center shrink-0"
-                            style={{ width: 38, height: 38, borderRadius: 12, background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}
-                        >
-                            <Bot size={17} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="text-[13px] font-semibold cc-text-primary">CoCo puede ejecutarlo contigo</div>
-                                <ChevronRight size={15} color="var(--cc-ink-faint)" className="shrink-0" />
-                            </div>
-                            <p className="mt-1.5 text-[12px] leading-5 cc-text-secondary">
-                                Pide revisar tu cuenta, reservar un espacio, registrar una visita o abrir una solicitud con trazabilidad.
-                            </p>
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                                <AgentChip icon={<CreditCard size={12} />} label="Revisar" />
-                                <AgentChip icon={<CalendarCheck size={12} />} label="Reservar" />
-                                <AgentChip icon={<Wrench size={12} />} label="Ticket" />
-                            </div>
-                        </div>
+                <div>
+                    <div className="mb-3 flex items-center justify-between">
+                        <Eyebrow>Acciones rápidas</Eyebrow>
+                        <span className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>Lo más usado</span>
                     </div>
-                </Link>
+                    <div className="grid grid-cols-2 gap-3">
+                        <QuickAction href="/amenities" icon={<CalendarCheck size={18} />} title="Reservar espacio" detail="Amenidades" />
+                        <QuickAction href="/resident/invitations" icon={<QrCode size={18} />} title="Crear invitación" detail="Acceso de visitas" />
+                        <QuickAction href="/services" icon={<Wrench size={18} />} title="Pedir un servicio" detail="Hogar y mantención" />
+                        <QuickAction href="/feed" icon={<Megaphone size={18} />} title="Ver comunicaciones" detail="Noticias del edificio" />
+                    </div>
+                </div>
 
                 </div>
                 <div className="space-y-5">
 
-                {/* Real resident summary */}
+                {/* Latest community update */}
                 <div>
-                <Eyebrow className="mb-3">Resumen de tu cuenta</Eyebrow>
-                <div className="grid grid-cols-2 gap-3.5">
-                    <QuickCard
-                        icon={<Waves size={14} color="var(--cc-sage)" />}
-                        tint="var(--cc-sage-tint)"
-                        eyebrow="Reservas activas"
-                        title={String(statsData.bookingsCount)}
-                        sub={statsData.bookingsCount === 1 ? "reserva registrada" : "reservas registradas"}
-                    />
-                    <QuickCard
-                        icon={<Droplets size={14} color="#3B82F6" />}
-                        tint="rgba(96,165,250,0.12)"
-                        eyebrow="Saldo pendiente"
-                        title={`$${statsData.pendingExpensesAmount.toLocaleString("es-CL")}`}
-                        sub={statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} cobro(s) por pagar` : "sin deuda registrada"}
-                        subColor={statsData.pendingExpensesCount > 0 ? "var(--cc-rose)" : "var(--cc-sage)"}
-                    />
-                </div>
-                </div>
-
-                {/* Announcement */}
+                <Eyebrow className="mb-3">Lo último en tu comunidad</Eyebrow>
                 {statsData.recentAnnouncement && (
                     <Link
                         href="/feed"
@@ -269,28 +232,40 @@ export default function HomePage() {
                         <ChevronRight size={16} color="var(--cc-ink-faint)" className="shrink-0 self-center" />
                     </Link>
                 )}
+                {!statsData.recentAnnouncement && (
+                    <div className="border p-5 text-[13px]" style={{ borderColor: "var(--cc-line)", borderRadius: 18, color: "var(--cc-ink-muted)" }}>
+                        No hay comunicaciones nuevas por ahora.
+                    </div>
+                )}
+                </div>
 
-                {/* Coco prompt */}
+                {/* CoCo resident assistant */}
                 <Link
                     href="/chat"
-                    className="flex items-center gap-3 bg-paper"
+                    className="block border bg-paper"
                     style={{
-                        borderRadius: 999,
-                        padding: "14px 18px",
-                        border: "1px solid var(--cc-line-strong)",
-                        boxShadow: "var(--cc-shadow-lg)",
+                        borderColor: "var(--cc-line-strong)",
+                        borderRadius: 18,
+                        padding: 18,
                     }}
                 >
-                    <div
-                        className="grid place-items-center"
-                        style={{ width: 26, height: 26, borderRadius: 999, background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}
-                    >
-                        <Sparkles size={12} color="var(--cc-copper-soft)" />
+                    <div className="flex items-start gap-3">
+                        <div className="grid shrink-0 place-items-center" style={{ width: 40, height: 40, borderRadius: 13, background: "var(--cc-ink)", color: "var(--cc-copper-soft)" }}>
+                            <Bot size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-[14px] font-semibold cc-text-primary">Resuélvelo con CoCo</div>
+                                <ChevronRight size={16} color="var(--cc-ink-faint)" />
+                            </div>
+                            <p className="mt-1.5 text-[12px] leading-5 cc-text-secondary">
+                                Revisa cobros, reserva espacios, registra visitas o abre una solicitud.
+                            </p>
+                            <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold" style={{ color: "var(--cc-copper)" }}>
+                                <Sparkles size={13} /> Hablar con CoCo
+                            </div>
+                        </div>
                     </div>
-                    <span className="flex-1 text-left" style={{ fontSize: 13, color: "var(--cc-ink-muted)" }}>
-                        Pregúntale a Coco…
-                    </span>
-                    <Mic size={16} color="var(--cc-ink-tertiary)" />
                 </Link>
                 </div>
                 </div>
@@ -299,31 +274,30 @@ export default function HomePage() {
     );
 }
 
-function QuickCard({
-  icon, tint, eyebrow, title, sub, subColor,
-}: { icon: React.ReactNode; tint: string; eyebrow: string; title: string; sub: string; subColor?: string }) {
+function StatusPill({ label, alert = false }: ResidentHomeStatusPillProps) {
   return (
-    <div className="border rounded-xl" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)", padding: 16, borderRadius: 18 }}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className="grid place-items-center" style={{ width: 28, height: 28, borderRadius: 8, background: tint }}>
-          {icon}
-        </div>
-        <div style={{ fontSize: 11, color: "var(--cc-ink-tertiary)" }}>{eyebrow}</div>
-      </div>
-      <div style={{ fontFamily: "var(--cc-font-display)", fontSize: 20, lineHeight: 1.05, marginBottom: 4, color: "var(--cc-ink)" }}>{title}</div>
-      <div className="font-mono" style={{ fontSize: 11, color: subColor ?? "var(--cc-ink-muted)" }}>{sub}</div>
-    </div>
+    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-medium" style={{ borderColor: alert ? "rgba(180,83,62,0.28)" : "var(--cc-line)", background: alert ? "rgba(180,83,62,0.08)" : "var(--cc-paper)", color: alert ? "var(--cc-rose)" : "var(--cc-ink-muted)" }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: alert ? "var(--cc-rose)" : "var(--cc-sage)" }} />
+      {label}
+    </span>
   );
 }
 
-function AgentChip({ icon, label }: { icon: React.ReactNode; label: string }) {
+function QuickAction({ href, icon, title, detail }: ResidentHomeQuickActionProps) {
   return (
-    <span
-      className="flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-semibold"
-      style={{ borderColor: "var(--cc-line)", color: "var(--cc-ink-muted)" }}
+    <Link
+      href={href}
+      className="group flex min-h-[118px] flex-col justify-between border bg-paper p-4 transition-transform hover:-translate-y-0.5"
+      style={{ borderColor: "var(--cc-line)", borderRadius: 18 }}
     >
-      {icon}
-      {label}
-    </span>
+      <div className="flex items-start justify-between">
+        <div className="grid place-items-center" style={{ width: 36, height: 36, borderRadius: 11, background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>{icon}</div>
+        <ArrowRight size={15} color="var(--cc-ink-faint)" className="transition-transform group-hover:translate-x-0.5" />
+      </div>
+      <div>
+        <div className="text-[13px] font-semibold" style={{ color: "var(--cc-ink)" }}>{title}</div>
+        <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>{detail}</div>
+      </div>
+    </Link>
   );
 }
