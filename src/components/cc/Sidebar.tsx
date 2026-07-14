@@ -132,7 +132,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "INTELIGENCIA OPERATIVA",
       links: [
-        { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "resident", "concierge"], premium: true },
+        { href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin", "concierge"], premium: true },
         { href: "/marketing/reels", label: "Reels Agent", icon: Clapperboard, roles: ["admin"], premium: true, creatorOnly: true, capability: "marketingReels" as ProductCapabilityKey },
       ]
     },
@@ -147,7 +147,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "AULA & INTELIGENCIA IA",
       links: [
-        { href: "/resident/training", label: "Aula Virtual IA", icon: GraduationCap, roles: ["resident", "concierge", "admin"] },
+        { href: "/resident/training", label: "Aula Virtual IA", icon: GraduationCap, roles: ["concierge", "admin"] },
         { href: "/admin/training", label: "Generador de Cursos", icon: BookOpen, roles: ["admin"] },
       ]
     },
@@ -223,6 +223,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     return true;
   };
 
+  const allVisibleHrefs = menuSections.flatMap((section) => section.links.filter(canShowLink).map((l) => l.href));
+
   const avatarSrc = activeUser.photo || activeUser.avatarUrl;
   const displayName = activeUser.name
     ? (activeUser.name.includes("@")
@@ -256,7 +258,11 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
                 {section.title}
               </div>
               {validLinks.map((n) => {
-                const Active = n.href === activeHref || (n.href !== "/home" && activeHref.startsWith(`${n.href}/`));
+                const Active = n.href === activeHref || (
+                  n.href !== "/home" &&
+                  activeHref.startsWith(`${n.href}/`) &&
+                  !allVisibleHrefs.some((h) => h !== n.href && h.length > n.href.length && (h === activeHref || activeHref.startsWith(`${h}/`)))
+                );
                 const Icon = n.icon;
                 const isPremium = "premium" in n && n.premium;
                 return (

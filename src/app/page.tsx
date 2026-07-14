@@ -23,10 +23,10 @@ import type { ContactAdminModalProps } from '@/lib/types';
 /* ── Hand-drawn annotation mark — dot + dashed leader + italic label ── */
 function Annotation({ className = '', label, color = 'var(--cc-copper)' }: { className?: string; label: string; color?: string }) {
   return (
-    <div className={`pointer-events-none hidden items-center gap-0 lg:flex ${className}`}>
-      <div className="h-2 w-2 shrink-0 rounded-full border-[1.5px]" style={{ borderColor: color }} />
-      <div className="h-px w-6 shrink-0 opacity-80" style={{ borderTop: `1px dashed ${color}` }} />
-      <div className="max-w-[190px] text-[13px] italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color }}>{label}</div>
+    <div className={`pointer-events-none hidden items-center gap-2 lg:flex ${className}`}>
+      <div className="h-3 w-3 shrink-0 rounded-full border-2" style={{ borderColor: color }} />
+      <div className="h-px w-10 shrink-0 opacity-80" style={{ borderTop: `1.5px dashed ${color}` }} />
+      <div className="max-w-[320px] text-[26px] italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color }}>{label}</div>
     </div>
   );
 }
@@ -62,9 +62,9 @@ function CoCoWhatsAppThread() {
           ))}
         </div>
       </div>
-      <div className="mt-3 hidden items-center gap-2.5 lg:flex">
-        <div className="h-px w-4 shrink-0" style={{ borderTop: '1px dashed var(--cc-copper-soft)' }} />
-        <span className="text-[13px] italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-copper-soft)' }}>resuelto sin llamar a conserjería</span>
+      <div className="mt-5 hidden items-center gap-3 lg:flex">
+        <div className="h-px w-8 shrink-0" style={{ borderTop: '1.5px dashed var(--cc-copper-soft)' }} />
+        <span className="text-2xl italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-copper-soft)' }}>resuelto sin llamar a conserjería</span>
       </div>
     </div>
   );
@@ -370,9 +370,9 @@ export default function LandingPage() {
                 </div>
                 <div className="mb-2.5 text-xl tracking-tight sm:text-2xl" style={{ fontFamily: 'var(--cc-font-display)' }}>{s.t}</div>
                 <div className="mb-4 max-w-[260px] text-[13.5px] leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{s.d}</div>
-                <div className="flex items-center gap-2.5">
-                  <div className="h-px w-4 shrink-0 opacity-80" style={{ borderTop: '1px dashed var(--cc-copper)' }} />
-                  <span className="text-xs italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-copper)' }}>{s.note}</span>
+                <div className="flex items-center gap-3">
+                  <div className="h-px w-6 shrink-0 opacity-80" style={{ borderTop: '1.5px dashed var(--cc-copper)' }} />
+                  <span className="text-[19px] italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-copper)' }}>{s.note}</span>
                 </div>
               </div>
             ))}
@@ -401,9 +401,9 @@ export default function LandingPage() {
                 </div>
                 <div className="mb-2 text-[19px]" style={{ fontFamily: 'var(--cc-font-display)' }}>{p.title}</div>
                 <p className="mb-4 text-[13px] leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{p.desc}</p>
-                <div className="flex items-center gap-2.5">
-                  <div className="h-px w-4 shrink-0 opacity-80" style={{ borderTop: '1px dashed var(--cc-sage)' }} />
-                  <span className="text-xs italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-sage)' }}>{p.note}</span>
+                <div className="flex items-center gap-3">
+                  <div className="h-px w-6 shrink-0 opacity-80" style={{ borderTop: '1.5px dashed var(--cc-sage)' }} />
+                  <span className="text-[19px] italic leading-tight" style={{ fontFamily: 'var(--cc-font-display)', color: 'var(--cc-sage)' }}>{p.note}</span>
                 </div>
               </div>
             ))}
