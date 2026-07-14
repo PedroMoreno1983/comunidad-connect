@@ -373,6 +373,24 @@ export interface Announcement {
   createdAt: string;
 }
 
+export interface AnnouncementDatabaseRow {
+  id: string;
+  title: string;
+  content: string;
+  author_name?: string | null;
+  priority: 'info' | 'alert' | 'event';
+  created_at: string;
+}
+
+export interface CreateAnnouncementInput {
+  title: string;
+  content: string;
+  priority: 'info' | 'alert' | 'event';
+  authorId: string;
+  authorName: string;
+  communityId: string;
+}
+
 export interface ExpenseBreakdown {
   category: 'water' | 'electricity' | 'salaries' | 'maintenance' | 'security' | 'other';
   label: string;

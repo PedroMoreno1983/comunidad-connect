@@ -65,8 +65,14 @@ export async function proxy(req: NextRequest) {
   const role = typeof profile?.role === "string" ? profile.role : "resident";
   let allowed = true;
 
+  if (pathname.startsWith("/comunicaciones") && role === "resident") {
+    return NextResponse.redirect(new URL("/feed", req.url));
+  }
+
   if (pathname.startsWith("/agent-center")) {
     allowed = role === "admin";
+  } else if (pathname.startsWith("/comunicaciones")) {
+    allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/resident/training")) {
     allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/admin")) {
@@ -85,7 +91,10 @@ export async function proxy(req: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
+    "/agent-center/:path*",
+    "/comunicaciones/:path*",
     "/concierge/:path*",
+    "/feed/:path*",
     "/resident/:path*",
     "/superadmin/:path*",
     "/showcase",

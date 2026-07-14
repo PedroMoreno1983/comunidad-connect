@@ -256,7 +256,9 @@ export interface Database {
                     title: string
                     content: string
                     author_id: string
+                    author_name: string | null
                     priority: 'info' | 'alert' | 'event'
+                    community_id: string
                     created_at: string
                 }
                 Insert: {
@@ -264,7 +266,9 @@ export interface Database {
                     title: string
                     content: string
                     author_id: string
+                    author_name?: string | null
                     priority?: 'info' | 'alert' | 'event'
+                    community_id: string
                     created_at?: string
                 }
                 Update: {
@@ -272,7 +276,9 @@ export interface Database {
                     title?: string
                     content?: string
                     author_id?: string
+                    author_name?: string | null
                     priority?: 'info' | 'alert' | 'event'
+                    community_id?: string
                     created_at?: string
                 }
             }
