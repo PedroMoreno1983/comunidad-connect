@@ -10,7 +10,22 @@ export type ToolName =
     | 'create_service_request'
     | 'register_visitor'
     | 'get_my_expenses'
+    | 'get_resident_expenses'
+    | 'clarify_intent'
     | 'run_playbook';
+
+export const AGENT_TOOL_NAMES: ToolName[] = [
+    'get_amenities',
+    'create_booking',
+    'create_marketplace_item',
+    'create_announcement',
+    'create_service_request',
+    'register_visitor',
+    'get_my_expenses',
+    'get_resident_expenses',
+    'clarify_intent',
+    'run_playbook',
+];
 
 export type PlaybookKey =
     | 'finance_collection_review'
