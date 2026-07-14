@@ -196,6 +196,23 @@ export interface ResidentHomeQuickActionProps {
   detail: string;
 }
 
+export interface ConciergeQuickActionProps {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  detail: string;
+}
+
+export interface ConciergeShiftEvent {
+  id: string;
+  timestamp: number;
+  time: string;
+  type: string;
+  desc: string;
+  status: string;
+  tone: 'sage' | 'copper' | 'rose' | 'neutral';
+}
+
 export interface AdminDashboardMetricPoint {
   label: string;
   collected: number;
