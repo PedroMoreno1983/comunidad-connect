@@ -14,7 +14,7 @@ const PLANNER_TOOL: Anthropic.Tool = {
             toolName: {
                 type: 'string',
                 enum: [
-                    'get_my_expenses', 'get_resident_expenses', 'get_community_snapshot', 'clarify_intent', 'create_booking',
+                    'get_my_expenses', 'get_resident_expenses', 'get_community_snapshot', 'answer_community_question', 'clarify_intent', 'create_booking',
                     'create_marketplace_item', 'create_announcement', 'register_visitor',
                     'create_service_request', 'run_playbook',
                 ],
@@ -47,6 +47,7 @@ Herramientas disponibles:
 - get_resident_expenses: consulta por residentQuery o unitNumber; solo lectura; /admin/finanzas.
 - get_my_expenses: consulta gastos de la unidad propia; solo lectura; /resident/finances.
 - get_community_snapshot: lectura administrativa de indicadores reales; args { focus: finance|maintenance|community|all }; /admin.
+- answer_community_question: investiga preguntas abiertas cruzando fuentes autorizadas; args { question }; /agent-center.
 - create_booking: amenityHint, date YYYY-MM-DD, startTime HH:MM, endTime HH:MM; /amenities.
 - create_service_request: description, preferredDate YYYY-MM-DD, preferredTime HH:MM; /services/my-requests.
 - register_visitor: visitorName, purpose; /concierge/visitors.
@@ -62,6 +63,7 @@ Reglas obligatorias:
 4. Interpreta lenguaje chileno: dpto/depto/departamento/unidad son equivalentes y los montos pueden usar puntos como separador de miles.
 5. Para deuda individual de un administrador usa get_resident_expenses. Para cobranza masiva usa finance_collection_review.
 5a. Para preguntas analiticas o de conteo sobre morosidad, tickets, reservas, residentes o estado general usa get_community_snapshot; no uses un playbook si solo pide informacion.
+5b. Para preguntas abiertas, historicas, comparativas o que requieran localizar y cruzar informacion usa answer_community_question. Es de solo lectura y no requiere confirmacion.
 6. Si la solicitud combina varias operaciones, elige el playbook apropiado; si no existe, aclara el objetivo prioritario.
 7. decision.explanation debe ser una justificacion breve y verificable, no una cadena de pensamiento interna.
 8. La respuesta debe ir exclusivamente en la herramienta propose_agent_action.`;

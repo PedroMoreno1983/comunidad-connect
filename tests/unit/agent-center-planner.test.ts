@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { coercePlannedAction } from '../../src/lib/agent-center/planner';
+import { validateAgentActionArgs } from '../../src/lib/agent-center/actionValidation';
 
 describe('Agent Center planner', () => {
     it('coerces a grounded read-only proposal with decision metadata', () => {
@@ -44,6 +45,22 @@ describe('Agent Center planner', () => {
         });
 
         expect(action).toMatchObject({ toolName: 'get_community_snapshot', args: { focus: 'finance' }, requiresConfirmation: false });
+    });
+
+    it('accepts a traced multi-source research question as a read action', () => {
+        const action = coercePlannedAction({
+            agentKey: 'community',
+            toolName: 'answer_community_question',
+            args: { question: 'Que tickets abiertos se relacionan con los ultimos comunicados?' },
+            requiresConfirmation: false,
+            title: 'Cruzar tickets y comunicados',
+            summary: 'Consultar fuentes operacionales autorizadas.',
+            targetHref: '/agent-center',
+            decision: { intent: 'Investigar fuentes', confidence: 0.91, explanation: 'La pregunta requiere cruzar dos fuentes.' },
+        });
+
+        expect(action?.toolName).toBe('answer_community_question');
+        expect(validateAgentActionArgs(action!)).toEqual({ question: 'Que tickets abiertos se relacionan con los ultimos comunicados?' });
     });
 
     it('clamps model confidence to the supported range', () => {

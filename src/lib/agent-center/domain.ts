@@ -11,6 +11,7 @@ export type ToolName =
     | 'get_my_expenses'
     | 'get_resident_expenses'
     | 'get_community_snapshot'
+    | 'answer_community_question'
     | 'clarify_intent'
     | 'run_playbook';
 
@@ -23,6 +24,7 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'get_my_expenses',
     'get_resident_expenses',
     'get_community_snapshot',
+    'answer_community_question',
     'clarify_intent',
     'run_playbook',
 ];
@@ -35,12 +37,14 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     register_visitor: 'concierge',
     get_my_expenses: 'finance',
     get_resident_expenses: 'finance',
+    answer_community_question: 'community',
 };
 
 export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_my_expenses',
     'get_resident_expenses',
     'get_community_snapshot',
+    'answer_community_question',
     'clarify_intent',
 ];
 
