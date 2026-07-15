@@ -32,6 +32,11 @@ describe('Agent Center intent safety', () => {
         expect(looksReadOnlyRequest('crea un ticket para revisar el ascensor')).toBe(false);
     });
 
+    it.each(['cuantos morosos hay', 'muestrame los tickets abiertos', 'estado de las reservas'])
+    ('recognizes open-ended operational reads: %s', message => {
+        expect(looksReadOnlyRequest(message)).toBe(true);
+    });
+
     it('builds a read-only department lookup for administrators', () => {
         const result = buildIndividualDebtAction('debe algo el depto 1204?', {
             id: 'admin', role: 'admin', community_id: 'community',

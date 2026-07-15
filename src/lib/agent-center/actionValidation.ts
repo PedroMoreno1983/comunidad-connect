@@ -32,6 +32,14 @@ export function validateAgentActionArgs(action: AgentAction): Record<string, unk
         return unitNumber ? { unitNumber } : { residentQuery };
     }
 
+    if (action.toolName === 'get_community_snapshot') {
+        const focus = typeof args.focus === 'string' ? args.focus : 'all';
+        if (!['finance', 'maintenance', 'community', 'all'].includes(focus)) {
+            throw new Error('El foco del resumen operacional no es valido.');
+        }
+        return { focus };
+    }
+
     if (action.toolName === 'create_booking') {
         const date = isoDate(args.date, 'La fecha de reserva');
         const startTime = time(args.startTime, 'La hora de inicio');

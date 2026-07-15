@@ -10,6 +10,7 @@ export type ToolName =
     | 'register_visitor'
     | 'get_my_expenses'
     | 'get_resident_expenses'
+    | 'get_community_snapshot'
     | 'clarify_intent'
     | 'run_playbook';
 
@@ -21,6 +22,7 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'register_visitor',
     'get_my_expenses',
     'get_resident_expenses',
+    'get_community_snapshot',
     'clarify_intent',
     'run_playbook',
 ];
@@ -38,6 +40,7 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
 export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_my_expenses',
     'get_resident_expenses',
+    'get_community_snapshot',
     'clarify_intent',
 ];
 
@@ -62,6 +65,11 @@ export type AgentAction = {
     title: string;
     summary: string;
     targetHref: string;
+    decision?: {
+        intent: string;
+        confidence: number;
+        explanation: string;
+    };
     proposalId?: string | null;
     runId?: string | null;
 };
