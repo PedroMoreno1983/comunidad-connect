@@ -217,7 +217,7 @@ export default function LandingPage() {
             <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
           </h1>
           <p className="mt-6 max-w-md text-base leading-relaxed sm:text-lg" style={{ color: 'rgba(255,255,255,0.78)' }}>
-            Gastos comunes, reservas, conserjería y vecinos: CoCo se encarga de todo para que administrar deje de ser un trabajo de nadie.
+            Gastos comunes, reservas, conserjería y vecinos — todo resuelto en un solo lugar, sin planillas ni WhatsApp perdido.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
@@ -274,7 +274,7 @@ export default function LandingPage() {
         <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 lg:grid-cols-2">
           <div>
             <div className="mb-5 flex items-baseline gap-3">
-              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>02 —</span>
+              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>01 —</span>
               <span className="text-xs uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.55)' }}>Exclusivo de Convive Connect</span>
             </div>
             <h2 className="text-4xl font-normal leading-[0.98] tracking-tight text-white sm:text-5xl" style={{ fontFamily: 'var(--cc-font-display)' }}>
@@ -311,7 +311,7 @@ export default function LandingPage() {
         <div className="relative mb-14">
           <Annotation className="absolute -top-9 left-[58%]" label="cada rol ve solo lo suyo" />
           <div className="mb-4 flex items-baseline gap-3">
-            <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>03 —</span>
+            <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>02 —</span>
             <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--cc-copper)' }}>Tres roles, una sola plataforma</span>
           </div>
           <h2 className="max-w-2xl text-4xl font-normal tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--cc-font-display)' }}>
@@ -358,7 +358,7 @@ export default function LandingPage() {
         <div className="mx-auto w-full max-w-7xl">
           <div className="mb-16">
             <div className="mb-4 flex items-baseline gap-3">
-              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>04 —</span>
+              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>03 —</span>
               <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--cc-copper)' }}>Proceso simple</span>
             </div>
             <h2 className="max-w-xl text-4xl font-normal tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--cc-font-display)' }}>
@@ -390,7 +390,7 @@ export default function LandingPage() {
       {/* ── Apoyo Mutuo ── */}
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:px-12 md:py-24">
         <div className="relative rounded-3xl border p-8 text-center md:p-14" style={{ background: 'var(--cc-paper)', borderColor: 'var(--cc-line)' }}>
-          <Annotation className="absolute -top-16 left-1" label="gestionado con total confidencialidad" color="var(--cc-sage)" />
+          <Annotation className="absolute -top-24 left-1" label="gestionado con total confidencialidad" color="var(--cc-sage)" />
           <span className="inline-flex rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--cc-sage)', background: 'var(--cc-sage-tint)' }}>
             Cohesión comunitaria nativa
           </span>
@@ -430,7 +430,7 @@ export default function LandingPage() {
         <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.6fr]">
           <div>
             <div className="mb-4 flex items-baseline gap-3">
-              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>05 —</span>
+              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper)' }}>04 —</span>
               <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--cc-copper)' }}>Preguntas frecuentes</span>
             </div>
             <h2 className="text-3xl font-normal leading-tight tracking-tight sm:text-4xl" style={{ fontFamily: 'var(--cc-font-display)' }}>Antes de modernizar tu comunidad.</h2>
@@ -455,7 +455,7 @@ export default function LandingPage() {
         <div className="relative mx-auto w-full max-w-7xl">
           <div className="max-w-xl">
             <div className="mb-6 flex items-baseline gap-3">
-              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>06 —</span>
+              <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>05 —</span>
               <span className="text-xs uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.55)' }}>Próximo paso</span>
             </div>
             <h2 className="text-4xl font-normal leading-[1.02] tracking-tight text-white sm:text-5xl" style={{ fontFamily: 'var(--cc-font-display)' }}>
