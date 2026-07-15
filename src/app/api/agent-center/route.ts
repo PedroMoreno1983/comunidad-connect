@@ -11,6 +11,7 @@ import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { evaluateDueAgentTriggers, getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { planAgentAction } from '@/lib/agent-center/planner';
+import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import {
     AGENT_PLAYBOOKS,
     AGENT_TOOL_NAMES,
@@ -171,6 +172,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     get_my_expenses: 'Consultar gastos comunes',
     get_resident_expenses: 'Consultar deuda de residente',
     get_community_snapshot: 'Analizar estado del edificio',
+    answer_community_question: 'Investigar informacion de la comunidad',
     clarify_intent: 'Solicitar precision',
     run_playbook: 'Preparar revision',
 };
@@ -1148,6 +1150,17 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
                     ? `La comunidad tiene ${metrics.residents} residente(s) y ${metrics.upcomingBookings} reserva(s) proximas.`
                     : `Resumen: ${metrics.residents} residentes, ${metrics.delinquentUnits} unidades con deuda por $${pendingAmount.toLocaleString('es-CL')}, ${metrics.openServiceRequests} solicitudes abiertas y ${metrics.upcomingBookings} reservas proximas.`;
         return { entityType: 'community_snapshot', entityId: communityId, title: 'Estado del edificio revisado', message, data: metrics };
+    }
+
+    if (action.toolName === 'answer_community_question') {
+        const research = await researchCommunityQuestion(String(action.args.question || ''), profile);
+        return {
+            entityType: 'community_research',
+            entityId: communityId,
+            title: 'Investigacion completada',
+            message: research.answer,
+            data: { sources: research.trace },
+        };
     }
 
     if (action.toolName === 'create_marketplace_item') {

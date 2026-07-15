@@ -40,6 +40,10 @@ export function validateAgentActionArgs(action: AgentAction): Record<string, unk
         return { focus };
     }
 
+    if (action.toolName === 'answer_community_question') {
+        return { question: text(args.question, 'La pregunta', 4, 1200) };
+    }
+
     if (action.toolName === 'create_booking') {
         const date = isoDate(args.date, 'La fecha de reserva');
         const startTime = time(args.startTime, 'La hora de inicio');
