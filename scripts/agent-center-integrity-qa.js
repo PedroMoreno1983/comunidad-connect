@@ -12,10 +12,15 @@ const taskMigration = read('supabase/migrations/052_agent_tasks.sql');
 const triggerMigration = read('supabase/migrations/054_agent_proactive_triggers.sql');
 const proactiveEngine = read('src/lib/agent-center/proactiveEngine.ts');
 const schedulerRoute = read('src/app/api/agent-center/scheduler/route.ts');
+const planner = read('src/lib/agent-center/planner.ts');
 
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
-  ['Heuristic fallback is protected from read-to-write mutation', route.includes('preventReadOnlyMutation(message, inferActionHeuristic')],
+  ['Anthropic tool-calling is the primary reasoning planner', route.includes('planAgentAction(message, profile)') && planner.includes("tool_choice: { type: 'tool'")],
+  ['Planner decisions carry confidence and a concise explanation', planner.includes('decision:') && route.includes('action.decision?.explanation')],
+  ['Open-ended operational questions use a real read-only snapshot', route.includes("action.toolName === 'get_community_snapshot'") && planner.includes('get_community_snapshot')],
+  ['Invalid planned arguments become a safe clarification', route.includes('finalizeInferredAction') && route.includes('Indica ese dato para continuar. No realice ningun cambio.')],
+  ['Heuristic fallback is protected from read-to-write mutation', route.includes('preventReadOnlyMutation(message, normalizeAction(candidate))') && route.includes('finalizeInferredAction(message, inferActionHeuristic')],
   ['Persisted proposals are claimed atomically', route.includes("claimPersistedProposal(action, 'executed')")],
   ['Executed proposals reuse their original run audit', route.includes('const runId = action.runId ||')],
   ['Executed proposals reuse their original tool-call audit', route.includes('const toolCallId = action.proposalId ||')],

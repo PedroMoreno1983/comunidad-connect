@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
-import { isIndividualDebtQuery } from '@/lib/agent-center/intentSafety';
+import { isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
 import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
 import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
 import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
@@ -10,6 +10,7 @@ import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-cent
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { evaluateDueAgentTriggers, getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
+import { planAgentAction } from '@/lib/agent-center/planner';
 import {
     AGENT_PLAYBOOKS,
     AGENT_TOOL_NAMES,
@@ -169,6 +170,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     register_visitor: 'Registrar visita',
     get_my_expenses: 'Consultar gastos comunes',
     get_resident_expenses: 'Consultar deuda de residente',
+    get_community_snapshot: 'Analizar estado del edificio',
     clarify_intent: 'Solicitar precision',
     run_playbook: 'Preparar revision',
 };
@@ -223,8 +225,9 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
     return [
         {
             kind: 'reasoning',
-            title: 'Accion preparada',
-            detail: `${AGENT_LABELS[action.agentKey]} preparo: ${TOOL_LABELS[action.toolName]}.`,
+            title: action.decision?.intent || 'Accion preparada',
+            detail: action.decision?.explanation || `${AGENT_LABELS[action.agentKey]} preparo: ${TOOL_LABELS[action.toolName]}.`,
+            metadata: action.decision ? { confidence: action.decision.confidence } : undefined,
         },
         {
             kind: 'tool',
@@ -261,9 +264,30 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
     const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
+    const wantsOperationalSnapshot = looksReadOnlyRequest(message) && /\b(resumen|estado|indicadores|cuantos|cuantas|total|morosos|deudas|tickets|reservas|residentes)\b/i.test(normalizeText(message));
 
     if (isIndividualDebtQuery(message)) {
         return buildIndividualDebtAction(message, profile);
+    }
+
+    if (wantsOperationalSnapshot) {
+        const normalized = normalizeText(message);
+        const focus = /\b(moros|deuda|pago|finanz)\b/.test(normalized)
+            ? 'finance'
+            : /\b(ticket|mantencion|mantenimiento|falla)\b/.test(normalized)
+                ? 'maintenance'
+                : /\b(reserva|residente|comunidad)\b/.test(normalized)
+                    ? 'community'
+                    : 'all';
+        return {
+            agentKey: focus === 'all' ? 'community' : focus,
+            toolName: 'get_community_snapshot',
+            args: { focus },
+            requiresConfirmation: false,
+            title: 'Analizar estado del edificio',
+            summary: 'CoCo revisara indicadores operacionales reales de esta comunidad.',
+            targetHref: '/admin',
+        };
     }
 
     if (wantsResidentOnboarding) {
@@ -795,17 +819,41 @@ async function callGeminiInference(message: string, profile: AgentProfile): Prom
     }
 }
 
+function finalizeInferredAction(message: string, candidate: AgentAction) {
+    const action = normalizeAction(preventReadOnlyMutation(message, normalizeAction(candidate)));
+    try {
+        return { ...action, args: validateAgentActionArgs(action) };
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : 'Falta informacion para preparar la accion.';
+        return normalizeAction(buildClarificationAction(
+            message,
+            action.agentKey,
+            `${detail} Indica ese dato para continuar. No realice ningun cambio.`,
+        ));
+    }
+}
+
 async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
     if (isIndividualDebtQuery(message)) {
-        return normalizeAction(buildIndividualDebtAction(message, profile));
+        return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
+    }
+
+    try {
+        const plannedAction = await planAgentAction(message, profile);
+        if (plannedAction) return finalizeInferredAction(message, plannedAction);
+    } catch (error) {
+        console.warn('[AgentCenterPlanner] Anthropic planning failed; using fallback.', error);
     }
 
     const geminiResult = await callGeminiInference(message, profile);
     if (geminiResult) {
-        const normalized = normalizeAction(geminiResult);
-        return normalizeAction(preventReadOnlyMutation(message, normalized));
+        try {
+            return finalizeInferredAction(message, geminiResult);
+        } catch (error) {
+            console.warn('[AgentCenterPlanner] Gemini fallback returned an invalid action; using heuristic.', error);
+        }
     }
-    return normalizeAction(preventReadOnlyMutation(message, inferActionHeuristic(message, profile)));
+    return finalizeInferredAction(message, inferActionHeuristic(message, profile));
 }
 
 function isToolName(value: unknown): value is ToolName {
@@ -833,6 +881,11 @@ function normalizeAction(action: AgentAction): AgentAction {
         title: playbook ? `Preparar revision: ${playbook.name}` : cleanText(action.title, 140) || 'Accion preparada',
         summary: playbook?.description || cleanText(action.summary, 280) || 'CoCo preparo una accion operacional.',
         targetHref: playbook?.targetHref || cleanText(action.targetHref, 120) || '/agent-center',
+        decision: action.decision ? {
+            intent: cleanText(action.decision.intent, 120),
+            confidence: Math.max(0, Math.min(1, Number(action.decision.confidence) || 0)),
+            explanation: cleanText(action.decision.explanation, 280),
+        } : undefined,
         proposalId: action.proposalId || null,
         runId: action.runId || null,
     };
@@ -875,6 +928,7 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
                 summary: action.summary,
                 args: action.args,
                 targetHref: action.targetHref,
+                decision: action.decision,
             },
         },
         completed_at: status === 'preview' ? null : new Date().toISOString(),
@@ -1060,6 +1114,39 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
 
     if (action.toolName === 'get_resident_expenses') {
         return getResidentExpenseSummary(profile, action.args.residentQuery, action.args.unitNumber);
+    }
+
+    if (action.toolName === 'get_community_snapshot') {
+        const today = new Date().toISOString().slice(0, 10);
+        const [expenseQuery, serviceQuery, bookingQuery, residentQuery] = await Promise.all([
+            admin.from('expenses').select('amount, status').eq('community_id', communityId).in('status', ['pending', 'overdue']).limit(2000),
+            admin.from('service_requests').select('id, status').eq('community_id', communityId).in('status', ['pending', 'in_progress']).limit(1000),
+            admin.from('bookings').select('id, status').eq('community_id', communityId).gte('date', today).in('status', ['pending', 'confirmed']).limit(1000),
+            admin.from('profiles').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('role', 'resident'),
+        ]);
+        if (expenseQuery.error) throw expenseQuery.error;
+        if (serviceQuery.error) throw serviceQuery.error;
+        if (bookingQuery.error) throw bookingQuery.error;
+        if (residentQuery.error) throw residentQuery.error;
+
+        const expenses = expenseQuery.data || [];
+        const pendingAmount = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+        const metrics = {
+            pendingExpenses: expenses.length,
+            pendingAmount,
+            openServiceRequests: (serviceQuery.data || []).length,
+            upcomingBookings: (bookingQuery.data || []).length,
+            residents: residentQuery.count || 0,
+        };
+        const focus = String(action.args.focus || 'all');
+        const message = focus === 'finance'
+            ? `Hay ${metrics.pendingExpenses} gasto(s) pendiente(s) por $${pendingAmount.toLocaleString('es-CL')}.`
+            : focus === 'maintenance'
+                ? `Hay ${metrics.openServiceRequests} solicitud(es) de servicio abierta(s).`
+                : focus === 'community'
+                    ? `La comunidad tiene ${metrics.residents} residente(s) y ${metrics.upcomingBookings} reserva(s) proximas.`
+                    : `Resumen: ${metrics.residents} residentes, ${metrics.pendingExpenses} gastos pendientes por $${pendingAmount.toLocaleString('es-CL')}, ${metrics.openServiceRequests} solicitudes abiertas y ${metrics.upcomingBookings} reservas proximas.`;
+        return { entityType: 'community_snapshot', entityId: communityId, title: 'Estado del edificio revisado', message, data: metrics };
     }
 
     if (action.toolName === 'create_marketplace_item') {
