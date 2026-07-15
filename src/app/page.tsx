@@ -212,16 +212,12 @@ export default function LandingPage() {
         />
         <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(23,21,18,0.96) 0%, rgba(23,21,18,0.34) 56%, rgba(23,21,18,0.58) 100%)' }} />
         <div className="relative mx-auto flex min-h-[566px] w-full max-w-7xl flex-col justify-end sm:min-h-[606px] lg:min-h-[652px]">
-          <div className="mb-6 flex items-baseline gap-3">
-            <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>01 —</span>
-            <span className="text-xs uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.7)' }}>Apoyo mutuo y convivencia vecinal</span>
-          </div>
           <h1 className="max-w-5xl text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[6.25rem]" style={{ fontFamily: 'var(--cc-font-display)' }}>
             Tu edificio,<br />
             <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
           </h1>
           <p className="mt-6 max-w-md text-base leading-relaxed sm:text-lg" style={{ color: 'rgba(255,255,255,0.78)' }}>
-            Gastos, reservas, conserjería y vecinos — CoCo lo coordina todo para que administrar deje de ser un trabajo de nadie.
+            Gastos comunes, reservas, conserjería y vecinos: CoCo se encarga de todo para que administrar deje de ser un trabajo de nadie.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
@@ -256,17 +252,19 @@ export default function LandingPage() {
 
       {/* ── Trust strip ── */}
       <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:px-12 md:py-24">
-        <Annotation className="absolute -top-2 left-[64%]" label="cada acción queda documentada" />
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          {trust.map((t, i) => (
-            <div key={i} className="rounded-2xl border p-7" style={{ background: 'var(--cc-paper)', borderColor: 'var(--cc-line)' }}>
-              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: 'var(--cc-copper-tint)' }}>
-                <t.Icon className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />
+        <div className="relative">
+          <Annotation className="absolute -top-8 left-[64%]" label="cada acción queda documentada" />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {trust.map((t, i) => (
+              <div key={i} className="rounded-2xl border p-7" style={{ background: 'var(--cc-paper)', borderColor: 'var(--cc-line)' }}>
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: 'var(--cc-copper-tint)' }}>
+                  <t.Icon className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />
+                </div>
+                <div className="mb-2 text-lg" style={{ fontFamily: 'var(--cc-font-display)' }}>{t.title}</div>
+                <div className="text-[13.5px] leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{t.desc}</div>
               </div>
-              <div className="mb-2 text-lg" style={{ fontFamily: 'var(--cc-font-display)' }}>{t.title}</div>
-              <div className="text-[13.5px] leading-relaxed" style={{ color: 'var(--cc-ink-muted)' }}>{t.desc}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -392,7 +390,7 @@ export default function LandingPage() {
       {/* ── Apoyo Mutuo ── */}
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:px-12 md:py-24">
         <div className="relative rounded-3xl border p-8 text-center md:p-14" style={{ background: 'var(--cc-paper)', borderColor: 'var(--cc-line)' }}>
-          <Annotation className="absolute -top-8 left-1" label="gestionado con total confidencialidad" color="var(--cc-sage)" />
+          <Annotation className="absolute -top-16 left-1" label="gestionado con total confidencialidad" color="var(--cc-sage)" />
           <span className="inline-flex rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--cc-sage)', background: 'var(--cc-sage-tint)' }}>
             Cohesión comunitaria nativa
           </span>
