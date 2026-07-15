@@ -20,7 +20,7 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
     const providerReviews = await reviewsService.getByProvider(provider.id);
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 pb-24 sm:px-6 lg:pb-0">
             {/* Back Button */}
             <Link
                 href="/services"
