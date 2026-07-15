@@ -17,6 +17,8 @@ describe('Agent Center intent safety', () => {
 
     it.each([
         ['necesito saber si el depto 1204 debe algo', '1204'],
+        ['necesito que me digas cuánto debe el dpto 1204', '1204'],
+        ['debe algo el depto 1204?', '1204'],
         ['cuanto adeuda el dpto. N° 1204?', '1204'],
         ['saldo pendiente de la unidad A-302', 'A-302'],
         ['el departamento numero 509 tiene deuda?', '509'],
