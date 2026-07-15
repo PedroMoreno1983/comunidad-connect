@@ -31,7 +31,6 @@ import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button as CcButton } from "@/components/cc/Button";
 import { Tag as CcTag } from "@/components/cc/Tag";
-import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import {
     Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal, MessageCircle
 } from "lucide-react";
@@ -255,13 +254,6 @@ export default function MarketplacePage() {
         modeFilter !== 'all' ? modeFilter : '',
     ].filter(Boolean).length;
 
-    const marketplaceStats = {
-        available: items.filter(item => item.status === 'available').length,
-        reserved: items.filter(item => item.status === 'reserved').length,
-        exchange: items.filter(item => item.allowSwap || item.allowBarter).length,
-        avgPrice: items.length ? Math.round(items.reduce((sum, item) => sum + (Number(item.price) || 0), 0) / items.length) : 0,
-    };
-
     const clearDiscoveryFilters = () => {
         setSearchTerm('');
         setSearchResults(null);
@@ -356,7 +348,7 @@ export default function MarketplacePage() {
     const remainingItems = featuredItem ? filteredItems.filter(item => item.id !== featuredItem.id) : filteredItems;
 
     return (
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
              {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[var(--cc-line)]">
                 <div>
@@ -606,9 +598,9 @@ export default function MarketplacePage() {
 
             {/* Featured Item Section */}
             {featuredItem && (
-                <div className="relative overflow-hidden rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] shadow-sm p-6 md:p-8 flex flex-col md:flex-row gap-8 items-stretch">
+                <div className="relative overflow-hidden border-y py-7 md:py-9 flex flex-col md:flex-row gap-8 lg:gap-12 items-stretch" style={{ borderColor: "var(--cc-line-strong)" }}>
                     {/* Dark striped media placeholder */}
-                    <div className="relative w-full md:w-1/2 min-h-[220px] overflow-hidden rounded-lg bg-[var(--cc-ink)] flex items-center justify-center">
+                    <div className="relative w-full md:w-[56%] min-h-[260px] overflow-hidden bg-[var(--cc-ink)] flex items-center justify-center">
                         <div className="absolute inset-0 opacity-15" style={{ backgroundImage: "repeating-linear-gradient(45deg, var(--cc-copper) 0px, var(--cc-copper) 2px, transparent 2px, transparent 10px)" }} />
                         {featuredItem.imageUrl || (featuredItem.images && featuredItem.images.length > 0) ? (
                             <Image
@@ -629,7 +621,7 @@ export default function MarketplacePage() {
                         </div>
                     </div>
                     
-                    <div className="w-full md:w-1/2 flex flex-col justify-between space-y-6">
+                    <div className="w-full md:flex-1 flex flex-col justify-between space-y-6 py-1 md:py-4">
                         <div className="space-y-3">
                             <div className="flex flex-wrap gap-2">
                                 <CcTag tone="neutral" solid>{categories.find(c => c.id === featuredItem.category)?.label || featuredItem.category}</CcTag>
@@ -668,25 +660,6 @@ export default function MarketplacePage() {
             )}
 
 
-            <ModuleFlow
-                title="Publicación segura entre vecinos"
-                description="El flujo debe terminar con un artículo publicado, moderado y con conversación trazable antes de reservar o vender."
-                statusLabel={`${marketplaceStats.available} disponibles`}
-                completedSteps={items.length > 0 ? 2 : 0}
-                currentStep={items.length > 0 ? 3 : 1}
-                primaryActionLabel={items.length > 0 ? "Explorar artículos" : "Publicar artículo"}
-                primaryActionHref={items.length > 0 ? "#vitrina-marketplace" : "#publicar-articulo"}
-                secondaryActionLabel="Mis publicaciones"
-                secondaryActionHref="/marketplace/my-listings"
-                steps={[
-                    "Publicar con fotos y modalidad",
-                    "Moderación revisa visibilidad",
-                    "Vecino contacta desde la ficha",
-                    "Marcar reservado, vendido u oculto",
-                ]}
-                outcome="Cierre esperado: el artículo queda con estado claro en la vitrina y en Mis Publicaciones, evitando contactos perdidos o anuncios desactualizados."
-            />
-
             {publicationSummary && (
                 <section ref={publicationSummaryRef} className="rounded-lg border border-success-border bg-success-bg p-5 shadow-sm">
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -723,24 +696,6 @@ export default function MarketplacePage() {
 
             {/* Filters & Search Section */}
             <div className="space-y-4">
-                <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.available}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Disponibles</p>
-                    </div>
-                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.reserved}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Reservados</p>
-                    </div>
-                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                        <p className="text-2xl font-semibold cc-text-primary">{marketplaceStats.exchange}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Aceptan trueque</p>
-                    </div>
-                    <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                        <p className="text-2xl font-semibold cc-text-primary">${marketplaceStats.avgPrice.toLocaleString('es-CL')}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] cc-text-secondary">Precio promedio</p>
-                    </div>
-                </section>
                 <div id="vitrina-marketplace" />
                 <ProductFilters
                     searchTerm={searchTerm}
@@ -750,7 +705,7 @@ export default function MarketplacePage() {
                     categories={categories}
                     getCategoryConfig={getCategoryConfigForId}
                 />
-                <div className="mt-4 flex flex-col gap-3 rounded-lg border border-subtle bg-surface p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                <div className="mt-4 flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--cc-line)" }}>
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest cc-text-secondary">
                             <SlidersHorizontal className="h-4 w-4" />
@@ -884,7 +839,7 @@ export default function MarketplacePage() {
             <AnimatePresence mode="popLayout">
                 <motion.div
                     layout
-                    className="grid grid-cols-1 md:grid-cols-2 gap-8 px-1"
+                    className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-x-10 lg:gap-y-12"
                 >
                     {remainingItems.map((item, idx) => (
                         <MarketplaceCard

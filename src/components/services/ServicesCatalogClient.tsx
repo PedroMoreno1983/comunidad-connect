@@ -1,26 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-    ArrowRight,
-    BadgeCheck,
-    BriefcaseBusiness,
-    Clock3,
-    Filter,
-    Search,
-    ShieldCheck,
-    SlidersHorizontal,
-    Star,
-    UsersRound,
-    Wrench,
-    X,
-} from "lucide-react";
-import { ServiceProvider } from "@/lib/types";
-import { ProviderCard } from "@/components/services/ProviderCard";
+import { ArrowRight, BadgeCheck, Clock3, Search, Star, X } from "lucide-react";
+import type { ServiceProvider } from "@/lib/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
+import { getInitials } from "@/lib/utils/avatar";
 
 interface ServiceCategory {
     id: ServiceProvider["category"];
@@ -48,31 +35,24 @@ function normalize(value: string) {
     return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function availabilityLabel(value: ServiceProvider["availability"]) {
+    if (value === "available") return { label: "Disponible hoy", color: "var(--cc-sage)" };
+    if (value === "busy") return { label: "Agenda ocupada", color: "var(--cc-amber)" };
+    return { label: "Sin cupos", color: "var(--cc-rose)" };
+}
+
 export function ServicesCatalogClient({ categories, providers }: ServicesCatalogClientProps) {
-    const [catalogProviders, setCatalogProviders] = useState(providers);
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState<ServiceProvider["category"] | "all">("all");
     const [availability, setAvailability] = useState<"all" | "available" | "verified">("all");
 
-    useEffect(() => {
-        setCatalogProviders(providers);
-    }, [providers]);
-
-    const categoriesWithCounts = useMemo(() => categories.map(item => ({
-        ...item,
-        count: catalogProviders.filter(provider => provider.category === item.id).length,
-    })), [catalogProviders, categories]);
-
     const filteredProviders = useMemo(() => {
         const normalizedQuery = normalize(query.trim());
-
-        return catalogProviders.filter(provider => {
+        return providers.filter(provider => {
             const matchesCategory = category === "all" || provider.category === category;
-            const matchesAvailability =
-                availability === "all"
+            const matchesAvailability = availability === "all"
                 || (availability === "available" && provider.availability === "available")
                 || (availability === "verified" && provider.verified);
-
             const searchable = normalize([
                 provider.name,
                 CATEGORY_LABELS[provider.category],
@@ -80,22 +60,13 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                 ...(provider.specialties || []),
                 ...(provider.certifications || []),
             ].filter(Boolean).join(" "));
-
             return matchesCategory && matchesAvailability && (!normalizedQuery || searchable.includes(normalizedQuery));
         });
-    }, [availability, catalogProviders, category, query]);
+    }, [availability, category, providers, query]);
 
-    const featuredProviders = catalogProviders
-        .filter(provider => provider.rating >= 4.5 || provider.verified)
-        .slice(0, 3);
-    const verifiedCount = catalogProviders.filter(provider => provider.verified).length;
-    const availableCount = catalogProviders.filter(provider => provider.availability === "available").length;
-    const averageRating = catalogProviders.length
-        ? (catalogProviders.reduce((sum, provider) => sum + provider.rating, 0) / catalogProviders.length).toFixed(1)
-        : "0.0";
-    const completedJobs = catalogProviders.reduce((sum, provider) => sum + provider.completedJobs, 0);
+    const availableCount = providers.filter(provider => provider.availability === "available").length;
+    const verifiedCount = providers.filter(provider => provider.verified).length;
     const hasFilters = Boolean(query || category !== "all" || availability !== "all");
-
     const clearFilters = () => {
         setQuery("");
         setCategory("all");
@@ -103,212 +74,119 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
     };
 
     return (
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-            <section className="relative overflow-hidden rounded-xl border bg-ink text-paper shadow-xl" style={{ borderColor: "rgba(250,247,241,0.08)" }}>
-                <div
-                    aria-hidden
-                    className="absolute -right-20 -top-24 h-80 w-80 rounded-full"
-                    style={{ background: "radial-gradient(circle, rgba(156, 86, 54,0.35), transparent 64%)" }}
-                />
-                <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.2fr_0.8fr] lg:p-10">
-                    <div className="relative flex flex-col justify-between gap-8">
-                        <div>
-                            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/82">
-                                <ShieldCheck className="h-3.5 w-3.5 text-[#C99572]" />
-                                Red profesional verificada
-                            </div>
-                            <DisplayHeading size={52} style={{ color: "var(--cc-paper)" }}>
-                                Solicita servicios <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>con contexto</em>.
-                            </DisplayHeading>
-                            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72 md:text-base">
-                                Perfiles con reputación, especialidades, disponibilidad y solicitudes trazables para que la comunidad contrate con más confianza.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-3">
-                            <Link
-                                href="/services/my-requests"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#111827] shadow-sm transition hover:bg-[#F4EFE6]"
-                            >
-                                Mis solicitudes
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                            <Link
-                                href="/services/register"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/18 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/16"
-                            >
-                                Crear perfil proveedor
-                            </Link>
-                        </div>
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
+            <header className="border-b pb-8 sm:pb-10" style={{ borderColor: "var(--cc-line-strong)" }}>
+                <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl">
+                        <Eyebrow className="mb-3">Directorio de servicios</Eyebrow>
+                        <DisplayHeading size={58}>
+                            Contrata con <em className="font-normal italic text-copper">contexto.</em>
+                        </DisplayHeading>
+                        <p className="mt-5 max-w-2xl text-sm leading-6 cc-text-secondary sm:text-base">
+                            Profesionales con reputación, especialidades y disponibilidad visibles antes de solicitar una cotización.
+                        </p>
                     </div>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/services/my-requests"><Button variant="ghost">Mis solicitudes</Button></Link>
+                        <Link href="/services/register"><Button variant="copper">Crear perfil proveedor</Button></Link>
+                    </div>
+                </div>
 
-                    <div className="relative grid gap-3 sm:grid-cols-2">
+                <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 border-t pt-5 text-sm cc-text-secondary" style={{ borderColor: "var(--cc-line)" }}>
+                    <span><strong className="font-mono text-lg cc-text-primary">{providers.length}</strong> profesionales</span>
+                    <span><strong className="font-mono text-lg cc-text-primary">{availableCount}</strong> disponibles hoy</span>
+                    <span><strong className="font-mono text-lg cc-text-primary">{verifiedCount}</strong> verificados</span>
+                </div>
+            </header>
+
+            <section className="py-7 sm:py-9">
+                <div className="relative border-b pb-4" style={{ borderColor: "var(--cc-line-strong)" }}>
+                    <Search className="absolute left-0 top-1 h-5 w-5 cc-text-tertiary" strokeWidth={1.5} />
+                    <input
+                        value={query}
+                        onChange={event => setQuery(event.target.value)}
+                        placeholder="Nombre, especialidad o certificación…"
+                        className="w-full bg-transparent pl-8 pr-9 text-base outline-none placeholder:cc-text-tertiary cc-text-primary sm:text-lg"
+                    />
+                    {query && (
+                        <button type="button" onClick={() => setQuery("")} className="absolute right-0 top-0.5 p-1 cc-text-tertiary" aria-label="Limpiar búsqueda">
+                            <X className="h-5 w-5" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="mt-5 flex gap-6 overflow-x-auto border-b scrollbar-none" style={{ borderColor: "var(--cc-line)" }}>
+                    <button type="button" onClick={() => setCategory("all")} className={`shrink-0 border-b-2 pb-3 text-sm ${category === "all" ? "border-copper font-semibold cc-text-primary" : "border-transparent cc-text-tertiary"}`}>
+                        Todos · {providers.length}
+                    </button>
+                    {categories.map(item => (
+                        <button key={item.id} type="button" onClick={() => setCategory(item.id)} className={`shrink-0 border-b-2 pb-3 text-sm ${category === item.id ? "border-copper font-semibold cc-text-primary" : "border-transparent cc-text-tertiary"}`}>
+                            {item.name} · {providers.filter(provider => provider.category === item.id).length}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-2">
                         {[
-                            { label: "Disponibles hoy", value: availableCount, icon: <Clock3 className="h-5 w-5" /> },
-                            { label: "Verificados", value: verifiedCount, icon: <BadgeCheck className="h-5 w-5" /> },
-                            { label: "Calificacion media", value: averageRating, icon: <Star className="h-5 w-5" /> },
-                            { label: "Trabajos cerrados", value: completedJobs, icon: <BriefcaseBusiness className="h-5 w-5" /> },
-                        ].map(stat => (
-                            <div key={stat.label} className="rounded-xl border border-white/12 bg-white/[0.07] p-4 shadow-sm">
-                                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#C99572]">
-                                    {stat.icon}
-                                </div>
-                                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/56">{stat.label}</p>
-                            </div>
+                            { key: "all", label: "Toda la red" },
+                            { key: "available", label: "Disponibles" },
+                            { key: "verified", label: "Verificados" },
+                        ].map(option => (
+                            <button key={option.key} type="button" onClick={() => setAvailability(option.key as typeof availability)} className={`rounded-full border px-3 py-1.5 text-xs transition ${availability === option.key ? "border-ink bg-ink text-paper" : "cc-text-secondary"}`} style={availability === option.key ? undefined : { borderColor: "var(--cc-line)" }}>
+                                {option.label}
+                            </button>
                         ))}
                     </div>
+                    <p className="text-xs cc-text-tertiary">{filteredProviders.length} perfil{filteredProviders.length === 1 ? "" : "es"}</p>
                 </div>
             </section>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-[290px_1fr]">
-                <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-                    <section className="rounded-xl border bg-paper p-4 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
-                        <div className="mb-4 flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-copper" />
-                            <h2 className="text-sm font-bold cc-text-primary">Especialidades</h2>
-                        </div>
-                        <div className="space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => setCategory("all")}
-                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-                                    category === "all" ? "bg-ink text-paper" : "cc-text-secondary hover:bg-paper-warm"
-                                }`}
-                            >
-                                Toda la red
-                                <span className="text-xs">{catalogProviders.length}</span>
-                            </button>
-                            {categoriesWithCounts.map(item => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => setCategory(item.id)}
-                                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-                                        category === item.id ? "bg-ink text-paper" : "cc-text-secondary hover:bg-paper-warm"
-                                    }`}
-                                >
-                                    <span>{item.name}</span>
-                                    <span className="text-xs">{item.count}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
+            {filteredProviders.length > 0 ? (
+                <section className="grid gap-x-12 lg:grid-cols-2">
+                    {filteredProviders.map(provider => {
+                        const status = availabilityLabel(provider.availability);
+                        return (
+                            <Link key={provider.id} href={`/services/provider/${provider.id}`} className="group border-t py-5 sm:py-6" style={{ borderColor: "var(--cc-line)" }}>
+                                <article className="flex items-center gap-4 sm:gap-5">
+                                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink text-base text-copper-soft sm:h-14 sm:w-14" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                        {getInitials(provider.name)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="truncate text-lg font-normal cc-text-primary sm:text-xl" style={{ fontFamily: "var(--cc-font-display)" }}>{provider.name}</h2>
+                                            {provider.verified && <BadgeCheck className="h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
+                                        </div>
+                                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs cc-text-tertiary">
+                                            <span>{CATEGORY_LABELS[provider.category]}</span>
+                                            <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-copper" /> {provider.rating} ({provider.reviewCount})</span>
+                                            <span className="inline-flex items-center gap-1" style={{ color: status.color }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />{status.label}</span>
+                                        </p>
+                                        <p className="mt-2 line-clamp-1 text-xs cc-text-secondary sm:text-sm">{(provider.specialties || []).slice(0, 3).join(" · ") || provider.bio}</p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <p className="font-mono text-sm font-semibold text-copper sm:text-base">{provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}` : "Cotizar"}</p>
+                                        {provider.hourlyRate && <p className="text-[10px] cc-text-tertiary">por hora</p>}
+                                        <ArrowRight className="ml-auto mt-2 h-4 w-4 transition-transform group-hover:translate-x-1 cc-text-tertiary" />
+                                    </div>
+                                </article>
+                            </Link>
+                        );
+                    })}
+                </section>
+            ) : (
+                <EmptyState
+                    icon={<Search className="h-6 w-6" />}
+                    title="No encontramos perfiles con esos filtros"
+                    description="Prueba con otra especialidad o vuelve a ver toda la red."
+                    action={<Button variant="ghost" onClick={clearFilters}>Limpiar filtros</Button>}
+                />
+            )}
 
-                    <section className="rounded-xl border bg-paper p-4 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
-                        <div className="mb-3 flex items-center gap-2">
-                            <UsersRound className="h-4 w-4 text-copper" />
-                            <h2 className="text-sm font-bold cc-text-primary">Cómo opera</h2>
-                        </div>
-                        <div className="space-y-3 text-sm cc-text-secondary">
-                            <p>1. Revisa reputación y habilidades.</p>
-                            <p>2. Envía una solicitud trazable.</p>
-                            <p>3. Cierra el trabajo y deja evaluación.</p>
-                        </div>
-                    </section>
-                </aside>
-
-                <main className="space-y-6">
-                    <section id="catalogo-servicios" className="scroll-mt-24 rounded-xl border bg-paper p-4 shadow-sm sm:p-5" style={{ borderColor: "var(--cc-line)" }}>
-                        <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-copper" />
-                                <input
-                                    type="text"
-                                    value={query}
-                                    onChange={event => setQuery(event.target.value)}
-                                    placeholder="Buscar por nombre, especialidad o certificación"
-                                    className="w-full rounded-xl border bg-paper-warm py-3.5 pl-12 pr-4 text-sm font-medium cc-text-primary outline-none transition-all placeholder:cc-text-tertiary focus:border-copper focus:ring-4 focus:ring-[rgba(156, 86, 54,0.16)]"
-                                    style={{ borderColor: "var(--cc-line)" }}
-                                />
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 rounded-xl border bg-paper-warm p-1" style={{ borderColor: "var(--cc-line)" }}>
-                                {[
-                                    { key: "all", label: "Todos" },
-                                    { key: "available", label: "Disponibles" },
-                                    { key: "verified", label: "Verificados" },
-                                ].map(option => (
-                                    <button
-                                        key={option.key}
-                                        type="button"
-                                        onClick={() => setAvailability(option.key as typeof availability)}
-                                        className={`rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
-                                            availability === option.key
-                                                ? "bg-ink text-paper shadow-sm"
-                                                : "cc-text-secondary hover:bg-paper"
-                                        }`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                            <p className="inline-flex items-center gap-2 text-xs font-bold cc-text-secondary">
-                                <SlidersHorizontal className="h-4 w-4" />
-                                {filteredProviders.length} perfil(es) encontrados
-                            </p>
-                            {hasFilters && (
-                                <button
-                                    type="button"
-                                    onClick={clearFilters}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-paper-warm px-3 py-2 text-xs font-semibold cc-text-secondary hover:text-copper"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar filtros
-                                </button>
-                            )}
-                        </div>
-                    </section>
-
-                    {!hasFilters && featuredProviders.length > 0 && (
-                        <section className="rounded-xl border bg-paper p-5 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
-                            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                                <div>
-                                    <Eyebrow>Recomendados</Eyebrow>
-                                    <h2 className="mt-1 text-xl font-semibold tracking-normal cc-text-primary">Perfiles destacados de la red</h2>
-                                </div>
-                                <Link href="/services/register" className="inline-flex items-center gap-2 text-sm font-bold text-copper">
-                                    Postular proveedor
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                                {featuredProviders.map(provider => (
-                                    <ProviderCard key={provider.id} provider={provider} showCategory compact />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    <section>
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div>
-                                <Eyebrow>Directorio</Eyebrow>
-                                <h2 className="mt-1 text-2xl font-semibold tracking-normal cc-text-primary">Profesionales y empresas</h2>
-                            </div>
-                            <Wrench className="hidden h-7 w-7 text-copper sm:block" />
-                        </div>
-
-                        {filteredProviders.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                {filteredProviders.map(provider => (
-                                    <ProviderCard key={provider.id} provider={provider} showCategory />
-                                ))}
-                            </div>
-                        ) : (
-                            <EmptyState
-                                icon={<Search className="h-6 w-6" />}
-                                title="No encontramos perfiles con esos filtros"
-                                description="Prueba con otro rubro, amplía la búsqueda o vuelve a ver toda la red disponible."
-                                action={<Button variant="ghost" onClick={clearFilters}>Limpiar filtros</Button>}
-                            />
-                        )}
-                    </section>
-                </main>
-            </div>
+            <footer className="mt-10 flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--cc-line-strong)" }}>
+                <p className="inline-flex items-center gap-2 text-sm cc-text-secondary"><Clock3 className="h-4 w-4 text-copper" /> Solicitudes y respuestas quedan trazadas en tu comunidad.</p>
+                {hasFilters && <button type="button" onClick={clearFilters} className="text-left text-sm font-semibold text-copper">Restablecer directorio</button>}
+            </footer>
         </div>
     );
 }
