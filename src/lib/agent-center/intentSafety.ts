@@ -20,7 +20,6 @@ const MUTATION_HINTS = [
     'registrar',
     'publica',
     'publicar',
-    'reserva',
     'reservar',
     'envia',
     'enviar',
@@ -45,7 +44,7 @@ export function isIndividualDebtQuery(message: string) {
     if (collectionWorkflow) return false;
 
     return /\b(debe algo|adeuda|deuda de|saldo de|saldo pendiente de|gastos pendientes de|pagos pendientes de)\b/.test(normalized)
-        || /\b(residente|vecina|vecino)\b.{2,90}\b(debe|adeuda|tiene deuda|tiene pagos? pendientes?)\b/.test(normalized);
+        || /\b(residente|vecina|vecino|departamento|depto|dpto|unidad)\b.{1,90}\b(debe|adeuda|deuda|tiene deuda|tiene pagos? pendientes?)\b/.test(normalized);
 }
 
 export function extractResidentQuery(message: string) {
@@ -60,6 +59,11 @@ export function extractResidentQuery(message: string) {
         if (candidate) return candidate;
     }
     return '';
+}
+
+export function extractUnitNumber(message: string) {
+    const match = message.match(/\b(?:departamento|depto|dpto|unidad)\.?\s*(?:n(?:[°ºo]|umero)?\.?\s*)?#?\s*([\p{L}\d][\p{L}\d-]{0,14})\b/iu);
+    return match?.[1]?.trim() || '';
 }
 
 export function looksReadOnlyRequest(message: string) {

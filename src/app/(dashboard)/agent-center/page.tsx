@@ -252,12 +252,14 @@ export default function AgentCenterPage() {
       if (data.summary) setSummary(data.summary);
       if (data.playbooks) setPlaybooks(data.playbooks);
       await loadActivity();
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo ejecutar la accion.";
       setMessages((current) => [
         ...current,
         { id: nowId(), role: "agent", content: message, status: "error", steps: [{ kind: "warning", title: "Error controlado", detail: message }] },
       ]);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -273,14 +275,14 @@ export default function AgentCenterPage() {
 
   async function confirmAction(messageId: string, action: AgentAction) {
     if (loading) return;
-    setMessages((current) => current.map((message) => message.id === messageId ? { ...message, status: "executed" } : message));
-    await sendAgentRequest({ message: action.summary, confirmed: true, action });
+    const succeeded = await sendAgentRequest({ message: action.summary, confirmed: true, action });
+    if (succeeded) setMessages((current) => current.map((message) => message.id === messageId ? { ...message, status: "executed" } : message));
   }
 
   async function rejectAction(messageId: string, action: AgentAction) {
     if (loading) return;
-    setMessages((current) => current.map((message) => message.id === messageId ? { ...message, status: "rejected" } : message));
-    await sendAgentRequest({ message: action.summary, rejected: true, action });
+    const succeeded = await sendAgentRequest({ message: action.summary, rejected: true, action });
+    if (succeeded) setMessages((current) => current.map((message) => message.id === messageId ? { ...message, status: "rejected" } : message));
   }
 
   async function requestPlaybook(playbook: AgentPlaybook) {
