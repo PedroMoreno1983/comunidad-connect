@@ -76,10 +76,13 @@ export default function AdminOnboardingPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [confirmingSync, setConfirmingSync] = useState(false);
     const [lastFileName, setLastFileName] = useState("");
+    const [batchId, setBatchId] = useState("");
+    const [failedDocumentCount, setFailedDocumentCount] = useState(0);
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
     const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
     const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
+    const batchLoadedRef = useRef(false);
 
 
     useEffect(() => {
@@ -94,6 +97,32 @@ export default function AdminOnboardingPage() {
         }
     }, [extractedData, syncSuccess]);
 
+    useEffect(() => {
+        if (!user || user.role !== "admin" || batchLoadedRef.current) return;
+        const requestedBatch = new URLSearchParams(window.location.search).get("batch");
+        if (!requestedBatch) return;
+        batchLoadedRef.current = true;
+        setIsExtracting(true);
+        fetch(`/api/onboarding/batches/${encodeURIComponent(requestedBatch)}`)
+            .then(async response => {
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || "batch-load-failed");
+                setBatchId(requestedBatch);
+                setExtractedData(payload.data || []);
+                setLastFileName((payload.documents || []).map((item: { file_name?: string }) => item.file_name).filter(Boolean).join(", "));
+                setFailedDocumentCount((payload.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+                const batch = payload.batch || {};
+                setAgentAssessment({
+                    totalRows: Number(batch.row_count || 0), validRows: Number(batch.valid_row_count || 0),
+                    missingNameRows: 0, missingUnitRows: 0, missingContactRows: 0,
+                    duplicateUnits: [], confidenceScore: batch.row_count ? Math.round((Number(batch.valid_row_count || 0) / Number(batch.row_count)) * 100) : 0,
+                    warnings: Array.isArray(batch.warnings) ? batch.warnings : [],
+                });
+            })
+            .catch(error => toast({ title: "No se pudo abrir el lote", description: friendlyError(error instanceof Error ? error.message : undefined), variant: "destructive" }))
+            .finally(() => setIsExtracting(false));
+    }, [toast, user]);
+
     const quality = useMemo(() => {
         const totalRows = extractedData?.length || 0;
         const validRows = extractedData?.filter(row => row.name.trim() && row.unit_id.trim()).length || 0;
@@ -106,39 +135,8 @@ export default function AdminOnboardingPage() {
     }, [extractedData]);
 
 
-    const extractFileWithApi = async (uploadedFile: File) => {
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
-        const res = await fetch("/api/onboarding/extract", {
-            method: "POST",
-            body: formData,
-        });
-
-        const textResponse = await res.text();
-        let result: { data?: Partial<ExtractedUser>[]; assessment?: OnboardingAssessment; error?: string } | null = null;
-        try {
-            result = JSON.parse(textResponse);
-        } catch {
-            throw new Error("non-json-response");
-        }
-
-        if (!res.ok || !result?.data) {
-            throw new Error(result?.error || "extract-failed");
-        }
-
-        return {
-            rows: result.data.map((row, index) => ({
-                id: `temp-${index}`,
-                name: row.name || "",
-                unit_id: row.unit_id || "",
-                email: row.email || "",
-                phone: row.phone || "",
-            })),
-            assessment: result.assessment || null,
-        };
-    };
-
-    const processFile = async (uploadedFile: File) => {
+    const processFiles = async (uploadedFiles: File[]) => {
+        if (!uploadedFiles.length) return;
         setIsExtracting(true);
         setExtractedData(null);
         setSyncSuccess(false);
@@ -146,15 +144,23 @@ export default function AdminOnboardingPage() {
         setSyncResult(null);
         setSyncedPreview([]);
         setAgentAssessment(null);
-        setLastFileName(uploadedFile.name);
+        setBatchId("");
+        setLastFileName(uploadedFiles.map(file => file.name).join(", "));
 
         try {
-            const extraction = await extractFileWithApi(uploadedFile);
-            setExtractedData(extraction.rows);
-            setAgentAssessment(extraction.assessment);
+            const formData = new FormData();
+            uploadedFiles.forEach(file => formData.append("files", file));
+            formData.append("source", "admin_onboarding");
+            const response = await fetch("/api/onboarding/batches", { method: "POST", body: formData });
+            const extraction = await response.json();
+            if (!response.ok || !Array.isArray(extraction.data)) throw new Error(extraction.error || "batch-extract-failed");
+            setBatchId(extraction.batchId || "");
+            setFailedDocumentCount((extraction.documents || []).filter((item: { status?: string }) => item.status === "failed").length);
+            setExtractedData(extraction.data);
+            setAgentAssessment(extraction.assessment || null);
             toast({
-                title: "Archivo procesado",
-                description: `Detectamos ${extraction.rows.length} registros para revision.`,
+                title: "Lote procesado",
+                description: `${uploadedFiles.length} documento(s) y ${extraction.data.length} registros para revision.`,
                 variant: "success",
             });
         } catch (err: unknown) {
@@ -170,8 +176,8 @@ export default function AdminOnboardingPage() {
     };
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const uploadedFile = event.target.files?.[0];
-        if (uploadedFile) await processFile(uploadedFile);
+        const uploadedFiles = Array.from(event.target.files || []);
+        if (uploadedFiles.length) await processFiles(uploadedFiles);
         event.target.value = "";
     };
 
@@ -180,14 +186,34 @@ export default function AdminOnboardingPage() {
         setIsDragging(false);
         if (isExtracting) return;
 
-        const droppedFile = event.dataTransfer.files?.[0];
-        if (droppedFile) await processFile(droppedFile);
+        const droppedFiles = Array.from(event.dataTransfer.files || []);
+        if (droppedFiles.length) await processFiles(droppedFiles);
     };
 
     const handleFieldChange = (id: string, field: keyof ExtractedUser, value: string) => {
         setExtractedData(prev =>
             prev ? prev.map(row => row.id === id ? { ...row, [field]: value } : row) : null
         );
+    };
+
+    const retryFailedDocuments = async () => {
+        if (!batchId || isExtracting) return;
+        setIsExtracting(true);
+        try {
+            const response = await fetch(`/api/onboarding/batches/${encodeURIComponent(batchId)}`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "retry_failed" }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || "retry-failed");
+            setExtractedData(payload.data || []);
+            setAgentAssessment(payload.assessment || null);
+            setFailedDocumentCount(Number(payload.remaining || 0));
+            toast({ title: "Reintento completado", description: `${payload.recovered || 0} documento(s) recuperados.`, variant: "success" });
+        } catch (error) {
+            toast({ title: "No se pudo reintentar", description: friendlyError(error instanceof Error ? error.message : undefined), variant: "destructive" });
+        } finally {
+            setIsExtracting(false);
+        }
     };
 
     const handleDeleteRow = (id: string) => {
@@ -211,7 +237,7 @@ export default function AdminOnboardingPage() {
             const res = await fetch("/api/onboarding/upsert", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ residents: rowsToSync }),
+                body: JSON.stringify({ residents: rowsToSync, batchId: batchId || undefined }),
             });
 
             if (res.ok) {
@@ -255,6 +281,8 @@ export default function AdminOnboardingPage() {
         setSyncedPreview([]);
         setAgentAssessment(null);
         setLastFileName("");
+        setBatchId("");
+        setFailedDocumentCount(0);
     };
 
     const restoreSyncedRows = () => {
@@ -343,21 +371,22 @@ export default function AdminOnboardingPage() {
                             {isExtracting ? <FileSpreadsheet className="h-8 w-8 animate-pulse" /> : <UploadCloud className="h-8 w-8" />}
                         </div>
                         <h2 className="mt-6 text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-                            {isExtracting ? "Procesando archivo" : "Sube una nómina de residentes"}
+                            {isExtracting ? "Procesando documentos" : "Sube nóminas de residentes"}
                         </h2>
                         <p className="mt-3 text-sm leading-6 font-medium cc-text-secondary">
                             {isExtracting
-                                ? "Estamos extrayendo nombres, unidades, correos y teléfonos. Mantén esta ventana abierta."
-                                : "Acepta PDF, Word, Excel .xls/.xlsx, TXT o CSV. Para mejores resultados usa columnas simples: nombre, unidad, correo y teléfono."}
+                                ? "Estamos guardando y extrayendo nombres, unidades, correos y teléfonos. Mantén esta ventana abierta."
+                                : "Carga hasta 20 PDF, Word, Excel, TXT o CSV por lote. Los originales quedan privados y las filas se deduplican antes de revisar."}
                         </p>
 
                         {!isExtracting && (
                             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                                 <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-colors" style={{ background: "var(--cc-copper)" }}>
                                     <UploadCloud className="h-4 w-4" />
-                                    Seleccionar archivo
+                                    Seleccionar documentos
                                     <input
                                         type="file"
+                                        multiple
                                         accept=".pdf,.docx,.doc,.xls,.xlsx,.txt,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                                         aria-label="Seleccionar nómina en PDF, Word, Excel XLS/XLSX, TXT o CSV"
                                         onChange={handleFileUpload}
@@ -480,6 +509,11 @@ export default function AdminOnboardingPage() {
                                 )}
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row">
+                                {failedDocumentCount > 0 && (
+                                    <Button type="button" variant="secondary" onClick={retryFailedDocuments} disabled={isExtracting}>
+                                        Reintentar {failedDocumentCount} documento(s)
+                                    </Button>
+                                )}
                                 <Button type="button" variant="secondary" onClick={() => setExtractedData(null)}>
                                     Cancelar
                                 </Button>
