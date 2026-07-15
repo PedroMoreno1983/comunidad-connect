@@ -87,7 +87,11 @@ export async function POST(request: Request) {
                     const { error: rowsError } = await admin.from('onboarding_import_rows').upsert(payload, { onConflict: 'batch_id,dedupe_key', ignoreDuplicates: true });
                     if (rowsError) throw rowsError;
                 }
-                await admin.from('onboarding_import_documents').update({ status: 'extracted', checksum: extraction.checksum, extracted_rows: extraction.rows.length, error: null, updated_at: new Date().toISOString() }).eq('id', documentId);
+                await admin.from('onboarding_import_documents').update({
+                    status: 'extracted', checksum: extraction.checksum, extracted_rows: extraction.rows.length,
+                    document_kind: extraction.knowledge.documentKind, summary: extraction.knowledge.summary,
+                    search_text: extraction.knowledge.searchText, error: null, updated_at: new Date().toISOString(),
+                }).eq('id', documentId);
                 documentResults.push({ id: documentId, fileName: file.name, status: 'extracted', rows: extraction.rows.length });
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'No se pudo procesar el documento.';

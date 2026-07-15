@@ -58,6 +58,11 @@ const READ_TOOLS: Anthropic.Tool[] = [
         description: 'Consulta espacios comunes configurados y su estado activo.',
         input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: [], additionalProperties: false },
     },
+    {
+        name: 'search_uploaded_documents',
+        description: 'Busca en documentos privados cargados por administracion: actas, reglamentos, contratos, nominas, comunicados y antecedentes operacionales.',
+        input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false },
+    },
 ];
 
 function clean(value: unknown, max = 100) {
@@ -151,13 +156,31 @@ async function runReadTool(name: string, rawInput: unknown, profile: AgentProfil
         return (data || []).filter(row => !text || contains(row.name, text));
     }
 
+    if (name === 'search_uploaded_documents') {
+        const search = clean(input.query, 160);
+        if (!search) throw new Error('Indica que informacion deseas buscar en los documentos.');
+        const { data, error } = await admin.from('onboarding_import_documents')
+            .select('id, file_name, document_kind, summary, search_text, created_at')
+            .eq('community_id', communityId).eq('status', 'extracted')
+            .textSearch('search_vector', search, { config: 'simple', type: 'websearch' })
+            .order('created_at', { ascending: false }).limit(12);
+        if (error) throw error;
+        return (data || []).map(document => ({
+            fileName: document.file_name,
+            documentKind: document.document_kind,
+            summary: document.summary,
+            excerpt: String(document.search_text || '').slice(0, 6000),
+            uploadedAt: document.created_at,
+        }));
+    }
+
     throw new Error('Fuente de lectura no soportada.');
 }
 
 export async function researchCommunityQuestion(question: string, profile: AgentProfile) {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('El motor de investigacion no esta configurado.');
-    const system = `Eres un analista operacional de condominios. Responde la pregunta usando exclusivamente las herramientas de lectura disponibles y los datos que devuelvan.
-Reglas: consulta al menos una fuente; puedes cruzar varias; nunca inventes datos; distingue cero resultados de fuente no disponible; no propongas ni ejecutes escrituras; responde en español claro con cifras y fechas; menciona brevemente las fuentes consultadas, sin exponer IDs internos ni cadena de pensamiento.`;
+    const system = `Eres un analista operacional de condominios. Responde la pregunta usando exclusivamente las herramientas de lectura disponibles y los datos que devuelvan. Cuando la respuesta pueda estar en actas, contratos, reglamentos, nominas u otros archivos administrativos, busca tambien en los documentos privados cargados.
+Reglas: consulta al menos una fuente; puedes cruzar varias; nunca inventes datos; distingue cero resultados de fuente no disponible; no propongas ni ejecutes escrituras; responde en español claro con cifras y fechas; cita los nombres de los archivos utilizados; no expongas IDs internos ni cadena de pensamiento.`;
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: question }];
     const trace: ResearchTrace[] = [];
     const estimatedPromptTokens = estimateTokensFromText(`${system}\n${question}`);

@@ -21,6 +21,7 @@ const checks = [
   ['Planner decisions carry confidence and a concise explanation', planner.includes('decision:') && route.includes('action.decision?.explanation')],
   ['Open-ended operational questions use a real read-only snapshot', route.includes("action.toolName === 'get_community_snapshot'") && planner.includes('get_community_snapshot')],
   ['Research questions can cross authorized read-only sources', planner.includes('answer_community_question') && communityResearch.includes('MAX_ROUNDS = 4') && communityResearch.includes("name: 'find_residents'") && communityResearch.includes("name: 'read_expenses'")],
+  ['Research can search administrator-uploaded private documents', communityResearch.includes("name: 'search_uploaded_documents'") && communityResearch.includes(".textSearch('search_vector'")],
   ['Research tool calls preserve tenant isolation and a source trace', communityResearch.includes(".eq('community_id', communityId)") && communityResearch.includes('trace.push({ source: toolUse.name')],
   ['Invalid planned arguments become a safe clarification', route.includes('finalizeInferredAction') && route.includes('Indica ese dato para continuar. No realice ningun cambio.')],
   ['Heuristic fallback is protected from read-to-write mutation', route.includes('preventReadOnlyMutation(message, normalizeAction(candidate))') && route.includes('finalizeInferredAction(message, inferActionHeuristic')],

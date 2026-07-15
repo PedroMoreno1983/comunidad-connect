@@ -4,6 +4,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const migration = read('supabase/migrations/20260715133000_onboarding_document_batches.sql');
+const knowledgeMigration = read('supabase/migrations/20260715140000_onboarding_document_knowledge.sql');
 const batchRoute = read('src/app/api/onboarding/batches/route.ts');
 const detailRoute = read('src/app/api/onboarding/batches/[id]/route.ts');
 const syncRoute = read('src/app/api/onboarding/upsert/route.ts');
@@ -13,6 +14,7 @@ const agentPage = read('src/app/(dashboard)/agent-center/page.tsx');
 const checks = [
   ['Persistent batch, document, and row tables exist', ['onboarding_import_batches', 'onboarding_import_documents', 'onboarding_import_rows'].every(name => migration.includes(`CREATE TABLE IF NOT EXISTS public.${name}`))],
   ['Original files use a private storage bucket', migration.includes("'onboarding-documents'") && migration.includes('false, 10485760')],
+  ['Uploaded documents become private searchable knowledge', knowledgeMigration.includes('search_vector tsvector') && knowledgeMigration.includes('USING GIN')],
   ['Batch reads are tenant scoped', batchRoute.includes(".eq('community_id', profile.community_id)") && detailRoute.includes(".eq('community_id', profile.community_id)")],
   ['Batch upload enforces file count and byte limits', batchRoute.includes('MAX_ONBOARDING_BATCH_FILES') && batchRoute.includes('MAX_ONBOARDING_BATCH_BYTES')],
   ['Rows are deduplicated across a batch', batchRoute.includes("onConflict: 'batch_id,dedupe_key'") && batchRoute.includes('residentDedupeKey(row)')],
