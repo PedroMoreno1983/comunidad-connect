@@ -9,6 +9,9 @@ const page = read('src/app/(dashboard)/agent-center/page.tsx');
 const taskEngine = read('src/lib/agent-center/taskEngine.ts');
 const taskPlaybooks = read('src/lib/agent-center/taskPlaybooks.ts');
 const taskMigration = read('supabase/migrations/052_agent_tasks.sql');
+const triggerMigration = read('supabase/migrations/054_agent_proactive_triggers.sql');
+const proactiveEngine = read('src/lib/agent-center/proactiveEngine.ts');
+const schedulerRoute = read('src/app/api/agent-center/scheduler/route.ts');
 
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
@@ -16,7 +19,7 @@ const checks = [
   ['Persisted proposals are claimed atomically', route.includes("claimPersistedProposal(action, 'executed')")],
   ['Executed proposals reuse their original run audit', route.includes('const runId = action.runId ||')],
   ['Executed proposals reuse their original tool-call audit', route.includes('const toolCallId = action.proposalId ||')],
-  ['Proposal run ownership and tenant are checked', route.includes('run.user_id !== profile.id') && route.includes('run.community_id || DEFAULT_COMMUNITY_ID')],
+  ['Proposal tenant ownership is checked', route.includes('run.community_id || DEFAULT_COMMUNITY_ID') && route.includes('toolCall.community_id || DEFAULT_COMMUNITY_ID')],
   ['Configured daily action limits are enforced', route.includes('assertDailyActionLimit(profile, action, policy)')],
   ['Booking overlap is checked before insert', route.includes(".lt('start_time'") && route.includes(".gt('end_time'")],
   ['Maintenance provider is explicit and verified', route.includes(".eq('name', 'Mesa de ayuda interna')")],
@@ -26,6 +29,11 @@ const checks = [
   ['Agent Center returns persistent task progress', route.includes('getRecentAgentTasks(profile)') && page.includes('Tareas vivas de CoCo')],
   ['Operational playbooks verify outcomes', taskPlaybooks.includes('runVerifiedTaskStep') && taskPlaybooks.includes('verify:')],
   ['Escalated tasks can be replanned with approval', page.includes('Replanificar con aprobacion')],
+  ['Proactive rules and deduplicated events are persisted', triggerMigration.includes('agent_trigger_rules') && triggerMigration.includes('dedupe_key TEXT NOT NULL UNIQUE')],
+  ['Signals create proposals instead of direct write execution', proactiveEngine.includes("status: 'awaiting_confirmation'") && proactiveEngine.includes("requires_confirmation: true")],
+  ['Scheduler rejects requests without the configured secret', schedulerRoute.includes('Scheduler no configurado') && schedulerRoute.includes('No autorizado.')],
+  ['Agent Center evaluates tenant rules as a resilient fallback', route.includes('evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID)')],
+  ['Agent Center exposes proactive controls', page.includes('CoCo observa y propone') && page.includes('toggleTrigger(rule)')],
 ];
 
 const failures = checks.filter(([, passed]) => !passed).map(([name]) => name);

@@ -143,6 +143,35 @@ export type AgentTaskSummary = {
     steps: AgentTaskStepSummary[];
 };
 
+export type AgentTriggerSignalKey = 'overdue_expenses' | 'maintenance_backlog' | 'onboarding_gap' | 'emergency_readiness';
+
+export type AgentTriggerRuleSummary = {
+    id: string;
+    agentKey: AgentKey;
+    playbookKey: PlaybookKey;
+    name: string;
+    signalKey: AgentTriggerSignalKey;
+    enabled: boolean;
+    intervalMinutes: number;
+    cooldownMinutes: number;
+    lastEvaluatedAt?: string | null;
+    lastTriggeredAt?: string | null;
+    nextRunAt: string;
+};
+
+export type AgentTriggerRuleRecord = AgentTriggerRuleSummary & {
+    communityId: string;
+    threshold: Record<string, unknown>;
+    context: Record<string, unknown>;
+};
+
+export type AgentSignalEvaluation = {
+    metric: number;
+    shouldTrigger: boolean;
+    evidence: string;
+    payload: Record<string, unknown>;
+};
+
 export const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 
 export const DEFAULT_AGENT_POLICIES: Record<AgentKey, Omit<AgentPolicy, 'agentKey' | 'updatedAt'>> = {

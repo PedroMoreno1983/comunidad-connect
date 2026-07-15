@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
-import type { AgentTaskStatus, AgentTaskSummary } from "@/lib/agent-center/domain";
+import type { AgentTaskStatus, AgentTaskSummary, AgentTriggerRuleSummary } from "@/lib/agent-center/domain";
 
 type AgentKey = "finance" | "maintenance" | "concierge" | "community";
 
@@ -99,6 +99,8 @@ type AgentCenterGetResponse = {
   summary?: AgentSummary;
   playbooks?: AgentPlaybook[];
   tasks?: AgentTaskSummary[];
+  triggers?: AgentTriggerRuleSummary[];
+  proposals?: AgentAction[];
 };
 
 const TASK_STATUS_LABELS: Record<AgentTaskStatus, string> = {
@@ -224,6 +226,7 @@ export default function AgentCenterPage() {
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [tasks, setTasks] = useState<AgentTaskSummary[]>([]);
+  const [triggers, setTriggers] = useState<AgentTriggerRuleSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showBitacora, setShowBitacora] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -237,6 +240,23 @@ export default function AgentCenterPage() {
     setSummary(data.summary || DEFAULT_SUMMARY);
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
     setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+    setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
+    const pending = Array.isArray(data.proposals) ? data.proposals : [];
+    setMessages((current) => {
+      const sessionMessages = current.filter((message) => !message.id.startsWith("proposal-"));
+      const proposalMessages: AgentMessage[] = pending.map((action) => ({
+        id: `proposal-${action.proposalId}`,
+        role: "agent",
+        content: action.summary,
+        status: "awaiting_confirmation",
+        action,
+        steps: [
+          { kind: "reasoning", title: "Senal detectada", detail: action.summary },
+          { kind: "confirmation", title: "Revision humana requerida", detail: "La regla proactiva preparo esta tarea, pero no ejecutara cambios sin tu aprobacion." },
+        ],
+      }));
+      return [...sessionMessages, ...proposalMessages];
+    });
   }
 
   useEffect(() => {
@@ -264,7 +284,7 @@ export default function AgentCenterPage() {
       setMessages((current) => [
         ...current,
         {
-          id: nowId(),
+          id: data.status === "awaiting_confirmation" && data.action?.proposalId ? `proposal-${data.action.proposalId}` : nowId(),
           role: "agent",
           content: typeof data.reply === "string" ? data.reply : "Accion procesada.",
           status: data.status,
@@ -319,6 +339,26 @@ export default function AgentCenterPage() {
     const playbook = playbooks.find((item) => item.key === task.playbookKey);
     if (!playbook || loading) return;
     await sendAgentRequest({ message: `Replanifica esta tarea: ${task.goal}`, type: "playbook_request", playbookKey: playbook.key });
+  }
+
+  async function toggleTrigger(rule: AgentTriggerRuleSummary) {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/agent-center", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "trigger_update", ruleId: rule.id, enabled: !rule.enabled }),
+      });
+      const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & { error?: string };
+      if (!response.ok) throw new Error(data.error || "No se pudo actualizar la regla.");
+      setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo actualizar la regla.";
+      setMessages((current) => [...current, { id: nowId(), role: "agent", content: message, status: "error" }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const queue = messages.filter((message) => message.status === "awaiting_confirmation" && message.action);
@@ -460,6 +500,47 @@ export default function AgentCenterPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {triggers.length > 0 && (
+        <section className="mt-8 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.12em] cc-text-tertiary">Vigilancia proactiva</p>
+              <h2 className="mt-1 text-2xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>CoCo observa y propone</h2>
+              <p className="mt-2 text-[12.5px] cc-text-secondary">Las reglas detectan señales y preparan tareas deduplicadas. Tú mantienes la aprobación final.</p>
+            </div>
+            <span className="rounded-full px-2.5 py-1 text-[11px] font-medium" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
+              {triggers.filter((rule) => rule.enabled).length} activas
+            </span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {triggers.map((rule) => (
+              <div key={rule.id} className="flex items-center gap-3 rounded-xl border p-3.5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: rule.enabled ? AREA_TONE[rule.agentKey] : "var(--cc-line-strong)" }} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium cc-text-primary">{rule.name}</p>
+                  <p className="mt-0.5 text-[11px] cc-text-tertiary">
+                    Cada {rule.intervalMinutes >= 1440 ? `${Math.round(rule.intervalMinutes / 1440)} día(s)` : `${Math.round(rule.intervalMinutes / 60)} hora(s)`}
+                    {rule.lastTriggeredAt ? ` · Última señal ${new Date(rule.lastTriggeredAt).toLocaleDateString("es-CL")}` : " · Sin señales todavía"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={rule.enabled}
+                  aria-label={`${rule.enabled ? "Desactivar" : "Activar"} ${rule.name}`}
+                  disabled={loading}
+                  onClick={() => toggleTrigger(rule)}
+                  className="relative h-6 w-10 shrink-0 rounded-full transition disabled:opacity-50"
+                  style={{ background: rule.enabled ? "var(--cc-sage)" : "var(--cc-line-strong)" }}
+                >
+                  <span className="absolute top-1 h-4 w-4 rounded-full bg-white transition-all" style={{ left: rule.enabled ? "20px" : "4px" }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {tasks.length > 0 && (
