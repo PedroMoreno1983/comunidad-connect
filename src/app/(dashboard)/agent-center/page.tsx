@@ -7,6 +7,7 @@ import {
   Loader2,
   Play,
   Sparkles,
+  UploadCloud,
   XCircle,
 } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
@@ -223,6 +224,7 @@ export default function AgentCenterPage() {
   const [loading, setLoading] = useState(false);
   const [showBitacora, setShowBitacora] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [uploadedBatchId, setUploadedBatchId] = useState("");
 
   async function loadActivity() {
     const response = await fetch("/api/agent-center", { cache: "no-store" });
@@ -326,6 +328,31 @@ export default function AgentCenterPage() {
   async function requestPlaybook(playbook: AgentPlaybook) {
     if (loading) return;
     await sendAgentRequest({ message: `Prepara esta accion: ${playbook.name}`, type: "playbook_request", playbookKey: playbook.key });
+  }
+
+  async function uploadOnboardingBatch(files: File[]) {
+    if (!files.length || loading) return;
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      files.forEach(file => formData.append("files", file));
+      formData.append("source", "agent_center");
+      const response = await fetch("/api/onboarding/batches", { method: "POST", body: formData });
+      const data = await response.json().catch(() => ({})) as { error?: string; batchId?: string; data?: unknown[]; documents?: unknown[] };
+      if (!response.ok || !data.batchId) throw new Error(data.error || "No se pudo procesar el lote.");
+      setUploadedBatchId(data.batchId);
+      setMessages(current => [...current, {
+        id: nowId(), role: "agent", status: "executed",
+        content: `Procesé ${data.documents?.length || files.length} documento(s) y consolidé ${data.data?.length || 0} fila(s). El lote quedó esperando tu revisión antes de sincronizar.`,
+        result: { title: "Lote documental preparado", message: `Procesé ${data.documents?.length || files.length} documento(s) y consolidé ${data.data?.length || 0} fila(s).` },
+      }]);
+      await loadActivity();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo procesar el lote.";
+      setMessages(current => [...current, { id: nowId(), role: "agent", content: message, status: "error" }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function replanTask(task: AgentTaskSummary) {
@@ -588,7 +615,28 @@ export default function AgentCenterPage() {
               {playbook.name}
             </button>
           ))}
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-medium cc-text-secondary transition hover:bg-[var(--cc-paper)]" style={{ borderColor: "var(--cc-line)" }}>
+            <UploadCloud className="h-3.5 w-3.5" />
+            Cargar documentos
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+              className="hidden"
+              disabled={loading}
+              onChange={event => {
+                const files = Array.from(event.target.files || []);
+                event.target.value = "";
+                void uploadOnboardingBatch(files);
+              }}
+            />
+          </label>
         </div>
+        {uploadedBatchId && (
+          <Link href={`/admin/onboarding?batch=${encodeURIComponent(uploadedBatchId)}`} className="mt-3 inline-flex text-[12.5px] font-medium" style={{ color: "var(--cc-copper)" }}>
+            Revisar y aprobar el lote →
+          </Link>
+        )}
         <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
           <input
             value={input}

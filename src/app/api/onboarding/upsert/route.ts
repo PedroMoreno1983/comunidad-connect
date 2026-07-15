@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 
 type IncomingResident = {
+    id?: string;
     name?: string;
     unit_id?: string;
     email?: string;
@@ -13,6 +14,7 @@ type IncomingResident = {
 };
 
 type NormalizedResident = {
+    id: string;
     name: string;
     unit_id: string;
     email: string;
@@ -45,6 +47,7 @@ function normalizeResidents(value: unknown): NormalizedResident[] {
 
     return rows
         .map((resident: IncomingResident) => ({
+            id: cleanText(resident.id),
             name: cleanText(resident.name),
             unit_id: cleanText(resident.unit_id),
             email: cleanText(resident.email).toLowerCase(),
@@ -149,17 +152,16 @@ async function ensureResidentProfile(
 
     if (existingByEmail.error) throw existingByEmail.error;
 
-    const existingByUnit = existingByEmail.data
-        ? { data: existingByEmail.data, error: null }
-        : await supabaseAdmin
-            .from('profiles')
-            .select('id')
-            .eq('community_id', communityId)
-            .eq('role', 'resident')
-            .eq('unit_id', unitId)
-            .maybeSingle();
-
-    if (existingByUnit.error) throw existingByUnit.error;
+    let existingProfile: { id: string; name?: string | null; full_name?: string | null; email?: string | null } | null = existingByEmail.data;
+    if (!existingProfile) {
+        const residentsInUnit = await supabaseAdmin.from('profiles').select('id, name, full_name, email')
+            .eq('community_id', communityId).eq('role', 'resident').eq('unit_id', unitId).limit(20);
+        if (residentsInUnit.error) throw residentsInUnit.error;
+        const normalizedName = resident.name.toLocaleLowerCase('es-CL');
+        existingProfile = (residentsInUnit.data || []).find(candidate =>
+            cleanText(candidate.full_name || candidate.name).toLocaleLowerCase('es-CL') === normalizedName
+        ) || null;
+    }
 
     const baseProfile = {
         name: resident.name,
@@ -172,15 +174,15 @@ async function ensureResidentProfile(
         whatsapp_enabled: Boolean(resident.phone),
     };
 
-    if (existingByUnit.data) {
+    if (existingProfile) {
         const updatePayload = resident.email ? { ...baseProfile, email: resident.email } : baseProfile;
         const { error } = await supabaseAdmin
             .from('profiles')
             .update(updatePayload)
-            .eq('id', String(existingByUnit.data.id));
+            .eq('id', String(existingProfile.id));
 
         if (error) throw error;
-        return String(existingByUnit.data.id);
+        return String(existingProfile.id);
     }
 
     if (!resident.email) return null;
@@ -203,11 +205,11 @@ async function ensureResidentProfile(
         ...baseProfile,
     };
 
-    const { error } = await supabaseAdmin
-        .from('profiles')
-        .upsert(profilePayload, { onConflict: 'id' });
-
-    if (error) throw error;
+    const { error } = await supabaseAdmin.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+    if (error) {
+        await supabaseAdmin.auth.admin.deleteUser(authResult.data.user.id).catch(() => undefined);
+        throw error;
+    }
     return authResult.data.user.id;
 }
 
@@ -230,6 +232,7 @@ export async function POST(request: Request) {
         const residentsPayload = body && typeof body === 'object'
             ? (body as { residents?: unknown }).residents
             : undefined;
+        const batchId = body && typeof body === 'object' ? cleanText((body as { batchId?: unknown }).batchId) : '';
         const residents = normalizeResidents(residentsPayload);
 
         if (residents.length === 0) {
@@ -238,6 +241,24 @@ export async function POST(request: Request) {
 
         const communityId = profile.community_id;
         const supabaseAdmin = getSupabaseAdmin();
+        if (batchId) {
+            const { data: batch, error: batchError } = await supabaseAdmin.from('onboarding_import_batches')
+                .select('id, status').eq('id', batchId).eq('community_id', communityId).maybeSingle();
+            if (batchError || !batch) return NextResponse.json({ error: 'Lote no encontrado o pertenece a otra comunidad.' }, { status: 404 });
+            await supabaseAdmin.from('onboarding_import_batches').update({ status: 'syncing', updated_at: new Date().toISOString() }).eq('id', batchId);
+            const submittedIds = new Set(residents.map(resident => resident.id).filter(Boolean));
+            const { data: stagedRows } = await supabaseAdmin.from('onboarding_import_rows').select('id').eq('batch_id', batchId).eq('community_id', communityId).eq('status', 'staged');
+            for (const resident of residents) {
+                if (!resident.id) continue;
+                await supabaseAdmin.from('onboarding_import_rows').update({
+                    name: resident.name, unit_number: resident.unit_id, email: resident.email, phone: resident.phone,
+                    raw_data: { name: resident.name, unit_id: resident.unit_id, email: resident.email, phone: resident.phone },
+                    updated_at: new Date().toISOString(),
+                }).eq('id', resident.id).eq('batch_id', batchId);
+            }
+            const removedIds = (stagedRows || []).map(row => String(row.id)).filter(id => !submittedIds.has(id));
+            if (removedIds.length) await supabaseAdmin.from('onboarding_import_rows').update({ status: 'skipped', updated_at: new Date().toISOString() }).in('id', removedIds).eq('batch_id', batchId);
+        }
         const { data: community, error: communityError } = await supabaseAdmin
             .from('communities')
             .select('resident_code')
@@ -272,23 +293,34 @@ export async function POST(request: Request) {
                 );
 
                 if (residentProfileId) {
-                    const { error: unitAssignError } = await supabaseAdmin
-                        .from('units')
-                        .update({ owner_id: residentProfileId })
-                        .eq('id', finalUnitId);
+                    const { data: unitOwner, error: ownerReadError } = await supabaseAdmin.from('units').select('owner_id').eq('id', finalUnitId).maybeSingle();
+                    if (ownerReadError) throw ownerReadError;
+                    const { error: unitAssignError } = unitOwner?.owner_id
+                        ? { error: null }
+                        : await supabaseAdmin.from('units').update({ owner_id: residentProfileId }).eq('id', finalUnitId);
 
                     if (unitAssignError) throw unitAssignError;
                     successCount++;
                     rowResults.push({ name: resident.name, unit: resident.unit_id, status: 'synced', detail: 'Perfil residente y unidad sincronizados.' });
+                    if (batchId && resident.id) await supabaseAdmin.from('onboarding_import_rows').update({ status: 'synced', error: null, updated_at: new Date().toISOString() }).eq('id', resident.id).eq('batch_id', batchId);
                 } else {
                     unitOnlyCount++;
                     rowResults.push({ name: resident.name, unit: resident.unit_id, status: 'unit_only', detail: 'Unidad preparada; falta email para crear acceso del residente.' });
+                    if (batchId && resident.id) await supabaseAdmin.from('onboarding_import_rows').update({ status: 'unit_only', error: null, updated_at: new Date().toISOString() }).eq('id', resident.id).eq('batch_id', batchId);
                 }
             } catch (err) {
                 errorCount++;
                 rowResults.push({ name: resident.name, unit: resident.unit_id, status: 'failed', detail: getErrorMessage(err) });
+                if (batchId && resident.id) await supabaseAdmin.from('onboarding_import_rows').update({ status: 'failed', error: getErrorMessage(err), updated_at: new Date().toISOString() }).eq('id', resident.id).eq('batch_id', batchId);
                 console.error('[onboarding/upsert] row failed:', err);
             }
+        }
+
+        if (batchId) {
+            await supabaseAdmin.from('onboarding_import_batches').update({
+                status: errorCount > 0 || unitOnlyCount > 0 ? 'partial' : 'synced',
+                updated_at: new Date().toISOString(),
+            }).eq('id', batchId).eq('community_id', communityId);
         }
 
         await recordOperationEvent({
