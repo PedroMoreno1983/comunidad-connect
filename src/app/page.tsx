@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import {
   Sun, Moon, HelpCircle,
@@ -200,14 +201,22 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden px-4 py-16 sm:px-6 md:px-12 md:py-20" style={{ background: 'var(--cc-carbon)' }}>
-        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, rgba(201,149,114,0.14) 0%, transparent 65%)' }} />
-        <div className="relative mx-auto w-full max-w-7xl">
+      <div className="relative min-h-[660px] overflow-hidden px-4 py-12 sm:min-h-[700px] sm:px-6 md:px-12 md:py-14 lg:min-h-[760px]" style={{ background: 'var(--cc-carbon)' }}>
+        <Image
+          src="/edificio-malaga-exterior.jpg"
+          alt="Edificio Málaga, comunidad conectada con Convive Connect"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[58%_center] sm:object-center"
+        />
+        <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(23,21,18,0.96) 0%, rgba(23,21,18,0.34) 56%, rgba(23,21,18,0.58) 100%)' }} />
+        <div className="relative mx-auto flex min-h-[566px] w-full max-w-7xl flex-col justify-end sm:min-h-[606px] lg:min-h-[652px]">
           <div className="mb-6 flex items-baseline gap-3">
             <span className="text-xs tracking-widest" style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--cc-copper-soft)' }}>01 —</span>
             <span className="text-xs uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.7)' }}>Apoyo mutuo y convivencia vecinal</span>
           </div>
-          <h1 className="max-w-3xl text-5xl font-normal leading-[0.95] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl" style={{ fontFamily: 'var(--cc-font-display)' }}>
+          <h1 className="max-w-5xl text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[6.25rem]" style={{ fontFamily: 'var(--cc-font-display)' }}>
             Tu edificio,<br />
             <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
           </h1>

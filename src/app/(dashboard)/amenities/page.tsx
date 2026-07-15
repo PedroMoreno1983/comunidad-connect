@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from 'react';
+import Image from "next/image";
 import { AmenitiesService } from "@/lib/api";
 import {
     Calendar, Users, Check, ArrowLeft,
@@ -11,7 +12,6 @@ import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/cc/Button";
 import { Booking, Amenity } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -271,7 +271,7 @@ export default function AmenitiesPage() {
 
     return (
         <ErrorBoundary name="Espacios Comunes y Reservas">
-            <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-7 pb-24">
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-12 space-y-8 pb-24">
                 {/* Back Link or Navigation */}
                 {selectedAmenity ? (
                     <button
@@ -282,14 +282,14 @@ export default function AmenitiesPage() {
                         Volver a espacios comunes
                     </button>
                 ) : (
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <ModuleHeader
-                            eyebrow="Reservas"
-                            title="Espacios Comunes"
-                            description="Revisa disponibilidad, compara capacidad y reserva horarios sin pasar por administración."
-                            icon={<Calendar className="h-5 w-5" />}
-                            meta={`${amenities.length} espacios activos · ${userBookings.length} reservas activas`}
-                        />
+                    <div className="flex flex-col gap-6 border-b pb-8 lg:flex-row lg:items-end lg:justify-between" style={{ borderColor: "var(--cc-line-strong)" }}>
+                        <div>
+                            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] cc-text-tertiary">Reservas · tu comunidad</p>
+                            <h1 className="text-5xl font-normal leading-[0.94] tracking-[-0.03em] cc-text-primary sm:text-6xl" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                Espacios <em className="font-normal italic text-copper">comunes.</em>
+                            </h1>
+                            <p className="mt-4 max-w-2xl text-sm leading-6 cc-text-secondary sm:text-base">Elige un lugar, revisa su agenda y confirma tu horario sin pasar por administración.</p>
+                        </div>
                         {isAdmin && (
                             <Button type="button" variant="copper" onClick={() => setShowAmenityForm(value => !value)}>
                                 {showAmenityForm ? <Settings2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -389,23 +389,21 @@ export default function AmenitiesPage() {
                         )}
 
                         {/* Stats Summary Panel */}
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="grid grid-cols-3 gap-4 border-y py-5" style={{ borderColor: "var(--cc-line)" }}>
                             {[
                                 { label: "Espacios Activos", value: amenities.length, tone: "sage" as const },
                                 { label: "Mis Reservas", value: userBookings.length, tone: "copper" as const },
                                 { label: "Turnos Diarios", value: timeSlots.length, tone: "plum" as const }
                             ].map(card => (
-                                <div key={card.label} className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
-                                    <p className="text-2xl font-bold cc-text-primary">{card.value}</p>
-                                    <div className="mt-2">
-                                        <Tag tone={card.tone} solid>{card.label}</Tag>
-                                    </div>
+                                <div key={card.label} className="border-r last:border-r-0" style={{ borderColor: "var(--cc-line)" }}>
+                                    <p className="text-2xl font-normal cc-text-primary sm:text-3xl" style={{ fontFamily: "var(--cc-font-display)" }}>{card.value}</p>
+                                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">{card.label}</p>
                                 </div>
                             ))}
                         </div>
 
                         {/* List of Amenities */}
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="border-b" style={{ borderColor: "var(--cc-line-strong)" }}>
                             {amenities.length === 0 ? (
                                 <div className="col-span-full max-w-md mx-auto my-6 w-full">
                                     <EmptyState
@@ -422,44 +420,19 @@ export default function AmenitiesPage() {
                                     const isFree = amenity.hourlyRate === 0;
 
                                     return (
-                                        <article
-                                            key={amenity.id}
-                                            className="group rounded-xl border border-subtle bg-surface overflow-hidden shadow-sm hover:border-brand-200 transition-all flex flex-col justify-between"
-                                        >
-                                            {/* Dynamic color block banner */}
-                                            <div className="h-2 w-full" style={{ backgroundColor: `var(--cc-${tone})` }} />
-                                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-elevated text-slate-700">
-                                                            <Icon className="h-5 w-5" />
-                                                        </div>
-                                                        <Tag tone={tone} solid>
-                                                            {isFree ? "Gratuito" : `$${amenity.hourlyRate.toLocaleString("es-CL")}/hr`}
-                                                        </Tag>
-                                                    </div>
-                                                    <h3 className="text-lg font-bold cc-text-primary">{amenity.name}</h3>
-                                                    <p className="text-xs cc-text-secondary leading-relaxed line-clamp-3">
-                                                        {amenity.description}
-                                                    </p>
+                                        <article key={amenity.id} className="group grid items-center gap-5 border-t py-6 sm:grid-cols-[72px_1fr_auto] sm:py-7" style={{ borderColor: "var(--cc-line)" }}>
+                                            <div className="hidden h-16 w-16 place-items-center rounded-full sm:grid" style={{ background: `var(--cc-${tone}-tint)`, color: `var(--cc-${tone})` }}><Icon className="h-6 w-6" /></div>
+                                            <div className="min-w-0">
+                                                <div className="mb-2 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.12em] cc-text-tertiary">
+                                                    <span>{isFree ? "Gratuito" : `$${amenity.hourlyRate.toLocaleString("es-CL")}/hora`}</span>
+                                                    <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> Aforo {amenity.maxCapacity}</span>
                                                 </div>
-
-                                                <div className="pt-4 border-t border-subtle space-y-3">
-                                                    <div className="flex items-center justify-between text-xs cc-text-tertiary font-semibold">
-                                                        <span className="flex items-center gap-1">
-                                                            <Users className="h-3.5 w-3.5" /> Máx {amenity.maxCapacity} pers
-                                                        </span>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        block
-                                                        onClick={() => handleSelectAmenity(amenity)}
-                                                    >
-                                                        Reservar ahora
-                                                    </Button>
-                                                </div>
+                                                <h3 className="text-2xl font-normal cc-text-primary sm:text-3xl" style={{ fontFamily: "var(--cc-font-display)" }}>{amenity.name}</h3>
+                                                <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-6 cc-text-secondary">{amenity.description}</p>
                                             </div>
+                                            <button type="button" onClick={() => handleSelectAmenity(amenity)} className="inline-flex items-center justify-center gap-2 border px-5 py-3 text-sm font-semibold transition hover:bg-ink hover:text-paper sm:justify-self-end" style={{ borderColor: "var(--cc-line-strong)" }}>
+                                                Ver agenda <Calendar className="h-4 w-4" />
+                                            </button>
                                         </article>
                                     );
                                 })
@@ -500,36 +473,20 @@ export default function AmenitiesPage() {
                     </>
                 ) : (
                     /* Vista 2: Proceso de Reserva de Amenidad (Flujo Integrado) */
-                    <div className="space-y-6">
-                        {/* Hero con Striped Placeholder */}
-                        <div className="rounded-xl border border-subtle bg-surface overflow-hidden shadow-md relative">
-                            {/* Striped textured pattern on background */}
-                            <div className="h-32 w-full grid-bg relative overflow-hidden" 
-                                 style={{ 
-                                     backgroundColor: `var(--cc-${getAmenityTone(selectedAmenity.name)}-tint)`,
-                                     backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.4) 10px, rgba(255,255,255,0.4) 20px)`
-                                 }}>
-                                <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
-                            </div>
-                            <div className="p-6 relative -mt-10">
-                                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Tag tone={getAmenityTone(selectedAmenity.name)} solid>{selectedAmenity.hourlyRate > 0 ? `$${selectedAmenity.hourlyRate.toLocaleString()}/hr` : "Gratuito"}</Tag>
-                                            <Tag tone="neutral">Aforo {selectedAmenity.maxCapacity} máx</Tag>
-                                        </div>
-                                        <h2 className="text-2xl font-bold cc-text-primary">{selectedAmenity.name}</h2>
-                                        <p className="text-sm cc-text-secondary max-w-3xl leading-relaxed">
-                                            {selectedAmenity.description}
-                                        </p>
-                                    </div>
-                                </div>
+                    <div className="space-y-7">
+                        <div className="relative min-h-[300px] overflow-hidden sm:min-h-[390px] lg:min-h-[460px]">
+                            <Image src="/edificio-malaga-patio.jpg" alt={selectedAmenity.name} fill sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" priority />
+                            <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(26,22,17,0.86) 0%, rgba(26,22,17,0.08) 64%)" }} />
+                            <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8 lg:p-10">
+                                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-white/65">Aforo {selectedAmenity.maxCapacity} · {selectedAmenity.hourlyRate > 0 ? `$${selectedAmenity.hourlyRate.toLocaleString("es-CL")}/hora` : "Gratuito"}</p>
+                                <h2 className="text-4xl font-normal leading-none sm:text-5xl lg:text-6xl" style={{ fontFamily: "var(--cc-font-display)" }}>{selectedAmenity.name}</h2>
+                                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{selectedAmenity.description}</p>
                             </div>
                         </div>
 
                         {/* Stats Row */}
-                        <div className="grid grid-cols-3 gap-4 border border-subtle rounded-xl bg-surface p-4 shadow-sm text-center">
-                            <div>
+                        <div className="grid grid-cols-3 border-b pb-5 text-center" style={{ borderColor: "var(--cc-line)" }}>
+                            <div className="border-x" style={{ borderColor: "var(--cc-line)" }}>
                                 <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Disponibilidad</p>
                                 <p className="mt-1 text-base font-semibold text-emerald-600">85% libre</p>
                             </div>
@@ -547,22 +504,18 @@ export default function AmenitiesPage() {
 
                         {/* Date Strip 7 Días */}
                         <div className="space-y-3">
-                            <p className="text-sm font-semibold cc-text-secondary">Selecciona un día</p>
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Selecciona un día</p>
+                            <div className="flex gap-7 overflow-x-auto border-b scrollbar-none" style={{ borderColor: "var(--cc-line-strong)" }}>
                                 {next7Days.map(day => {
                                     const isSelected = selectedDate === day.dateStr;
                                     return (
                                         <button
                                             key={day.dateStr}
                                             onClick={() => { setSelectedDate(day.dateStr); setSelectedTime(''); }}
-                                            className={`flex-1 min-w-[70px] py-3 rounded-xl border text-center transition-all ${
-                                                isSelected
-                                                    ? 'border-brand-500 bg-brand-50 shadow-sm'
-                                                    : 'border-subtle bg-surface hover:border-brand-200'
-                                            }`}
+                                            className={`min-w-[48px] border-b-2 py-3 text-center transition-all ${isSelected ? 'border-copper' : 'border-transparent'}`}
                                         >
                                             <p className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">{day.dayName}</p>
-                                            <p className={`text-base font-bold mt-1 ${isSelected ? 'text-brand-700' : 'cc-text-primary'}`}>{day.dayNumber}</p>
+                                            <p className={`mt-1 text-xl font-normal ${isSelected ? 'text-copper' : 'cc-text-primary'}`} style={{ fontFamily: "var(--cc-font-display)" }}>{day.dayNumber}</p>
                                         </button>
                                     );
                                 })}
@@ -571,8 +524,8 @@ export default function AmenitiesPage() {
 
                         {/* Slots como cards con estados */}
                         <div className="space-y-3">
-                            <p className="text-sm font-semibold cc-text-secondary">Selecciona un bloque de horario (2 horas por sesión)</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Bloques de dos horas</p>
+                            <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
                                 {timeSlots.map(time => {
                                     const isBooked = bookings.some(b =>
                                         b.amenityId === selectedAmenity.id &&
@@ -586,19 +539,11 @@ export default function AmenitiesPage() {
                                             key={time}
                                             disabled={isBooked}
                                             onClick={() => setSelectedTime(time)}
-                                            className={`p-4 rounded-xl border text-center transition-all ${
-                                                isBooked
-                                                    ? 'bg-elevated/70 border-subtle cc-text-disabled cursor-not-allowed line-through'
-                                                    : isSelected
-                                                        ? 'border-transparent text-white font-bold'
-                                                        : 'border-subtle bg-surface hover:border-brand-200 cc-text-secondary'
-                                            }`}
-                                            style={{
-                                                backgroundColor: isSelected ? 'var(--cc-ink)' : undefined
-                                            }}
+                                            className={`flex items-center justify-between border-t py-4 text-left transition-all ${isBooked ? 'cursor-not-allowed cc-text-disabled' : 'cc-text-primary'} ${isSelected ? 'font-semibold text-copper' : ''}`}
+                                            style={{ borderColor: "var(--cc-line)" }}
                                         >
-                                            <p className="text-sm font-semibold">{time}</p>
-                                            <p className="text-[10px] mt-1 uppercase tracking-wider font-semibold opacity-80">
+                                            <p className="font-mono text-sm">{time}</p>
+                                            <p className="text-[10px] uppercase tracking-wider font-semibold opacity-80">
                                                 {isBooked ? "Reservado" : isSelected ? "Seleccionado" : "Libre"}
                                             </p>
                                         </button>
@@ -609,8 +554,8 @@ export default function AmenitiesPage() {
 
                         {/* Fixed / Floating CTA Bar at Bottom */}
                         {selectedDate && selectedTime && (
-                            <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-subtle py-4 px-6 z-50 shadow-2xl flex items-center justify-between">
-                                <div className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="sticky bottom-3 z-40 border bg-paper px-4 py-4 shadow-xl sm:px-6" style={{ borderColor: "var(--cc-line-strong)" }}>
+                                <div className="mx-auto flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="text-sm font-medium cc-text-primary">
                                         Confirmando <span className="font-bold">{selectedAmenity.name}</span> para el <span className="font-bold">{selectedDate}</span> a las <span className="font-bold">{selectedTime}</span>
                                     </div>
