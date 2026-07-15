@@ -22,8 +22,7 @@ interface MarketplaceCardProps {
     categoryConfig: CategoryConfig;
 }
 
-export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryConfig }: MarketplaceCardProps) {
-    const Icon = categoryConfig.icon;
+export function MarketplaceCard({ item, idx, onClick, categoryLabel }: MarketplaceCardProps) {
     const [imgSrc, setImgSrc] = useState(item.imageUrl || item.images?.[0] || null);
 
     return (
@@ -46,8 +45,8 @@ export function MarketplaceCard({ item, idx, onClick, categoryLabel, categoryCon
                         onError={() => setImgSrc(null)}
                     />
                 ) : (
-                    <div className="flex h-full items-center justify-center bg-ink text-copper-soft">
-                        <Icon className="h-14 w-14 opacity-70" />
+                    <div className="flex h-full items-center justify-center border border-dashed px-6 text-center" style={{ borderColor: "var(--cc-line-strong)" }}>
+                        <p className="max-w-44 text-xs leading-5 cc-text-tertiary">Esta publicación todavía no tiene una foto cargada por el vecino.</p>
                     </div>
                 )}
                 {item.status === "reserved" && (

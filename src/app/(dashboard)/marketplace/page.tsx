@@ -599,22 +599,17 @@ export default function MarketplacePage() {
             {/* Featured Item Section */}
             {featuredItem && (
                 <div className="relative overflow-hidden border-y py-7 md:py-9 flex flex-col md:flex-row gap-8 lg:gap-12 items-stretch" style={{ borderColor: "var(--cc-line-strong)" }}>
-                    {/* Dark striped media placeholder */}
                     <div className="relative w-full md:w-[56%] min-h-[260px] overflow-hidden bg-[var(--cc-ink)] flex items-center justify-center">
-                        <div className="absolute inset-0 opacity-15" style={{ backgroundImage: "repeating-linear-gradient(45deg, var(--cc-copper) 0px, var(--cc-copper) 2px, transparent 2px, transparent 10px)" }} />
                         {featuredItem.imageUrl || (featuredItem.images && featuredItem.images.length > 0) ? (
                             <Image
                                 src={featuredItem.imageUrl || (featuredItem.images?.[0] ?? '')}
                                 alt={featuredItem.title}
                                 fill
-                                className="object-cover opacity-80"
+                                className="object-cover"
                                 unoptimized
                             />
                         ) : (
-                            <div className="flex flex-col items-center gap-2">
-                                <Search className="h-10 w-10 text-[var(--cc-copper)] opacity-70" />
-                                <span className="text-[10px] uppercase tracking-wider text-[var(--cc-copper)] opacity-60">Sin imagen</span>
-                            </div>
+                            <p className="max-w-52 px-6 text-center text-xs leading-5 text-white/60">Esta publicación todavía no tiene una foto cargada por el vecino.</p>
                         )}
                         <div className="absolute top-4 left-4 z-10">
                             <CcTag tone="copper" solid>VERIFICADO</CcTag>
