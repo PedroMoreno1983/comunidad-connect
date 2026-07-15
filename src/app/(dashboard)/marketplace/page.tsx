@@ -30,11 +30,9 @@ import { MarketplaceChatModal } from "@/components/marketplace/MarketplaceChatMo
 import { PaymentModal } from "@/components/marketplace/PaymentModal";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button as CcButton } from "@/components/cc/Button";
-import { Tag as CcTag } from "@/components/cc/Tag";
 import {
-    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, ShoppingCart, Truck, ChefHat, ArrowRight, SlidersHorizontal, MessageCircle
+    Grid3X3, Smartphone, Armchair, Shirt, Package, Search, MessageCircle
 } from "lucide-react";
-import { useProductCapabilities } from "@/hooks/useProductCapabilities";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 // Category config repeated here for components or exported from types
@@ -96,7 +94,6 @@ export default function MarketplacePage() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const capabilities = useProductCapabilities();
 
     const loadItems = useCallback(async () => {
         setLoading(true);
@@ -343,9 +340,6 @@ export default function MarketplacePage() {
     const getCategoryConfigForId = (category: string) => {
         return categoryConfig[category] || categoryConfig.other;
     };
-
-    const featuredItem = filteredItems.find(item => item.status === 'available');
-    const remainingItems = featuredItem ? filteredItems.filter(item => item.id !== featuredItem.id) : filteredItems;
 
     return (
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
@@ -596,65 +590,6 @@ export default function MarketplacePage() {
                 </div>
             </div>
 
-            {/* Featured Item Section */}
-            {featuredItem && (
-                <div className="relative overflow-hidden border-y py-7 md:py-9 flex flex-col md:flex-row gap-8 lg:gap-12 items-stretch" style={{ borderColor: "var(--cc-line-strong)" }}>
-                    <div className="relative w-full md:w-[56%] min-h-[260px] overflow-hidden bg-[var(--cc-ink)] flex items-center justify-center">
-                        {featuredItem.imageUrl || (featuredItem.images && featuredItem.images.length > 0) ? (
-                            <Image
-                                src={featuredItem.imageUrl || (featuredItem.images?.[0] ?? '')}
-                                alt={featuredItem.title}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                            />
-                        ) : (
-                            <p className="max-w-52 px-6 text-center text-xs leading-5 text-white/60">Esta publicación todavía no tiene una foto cargada por el vecino.</p>
-                        )}
-                        <div className="absolute top-4 left-4 z-10">
-                            <CcTag tone="copper" solid>VERIFICADO</CcTag>
-                        </div>
-                    </div>
-                    
-                    <div className="w-full md:flex-1 flex flex-col justify-between space-y-6 py-1 md:py-4">
-                        <div className="space-y-3">
-                            <div className="flex flex-wrap gap-2">
-                                <CcTag tone="neutral" solid>{categories.find(c => c.id === featuredItem.category)?.label || featuredItem.category}</CcTag>
-                                <CcTag tone="copper">Destacado del edificio</CcTag>
-                            </div>
-                            <h2 className="text-2xl font-medium text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                {featuredItem.title}
-                            </h2>
-                            <p className="text-xs text-[var(--cc-ink-secondary)] leading-relaxed line-clamp-3">
-                                {featuredItem.description}
-                            </p>
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-4 border-t border-[var(--cc-line)]">
-                            <div>
-                                <span className="text-[9px] font-medium text-[var(--cc-ink-tertiary)] uppercase tracking-wider block mb-1">
-                                    {featuredItem.allowSale !== false ? 'Precio sugerido' : 'Modalidad'}
-                                </span>
-                                <span className="text-xl font-semibold text-[var(--cc-copper)]">
-                                    {featuredItem.allowSale !== false ? `$${featuredItem.price.toLocaleString('es-CL')}` : 'Intercambio / Trueque'}
-                                </span>
-                            </div>
-                            <CcButton 
-                                variant="primary" 
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedItem(featuredItem);
-                                    setIsDetailOpen(true);
-                                }}
-                            >
-                                Ver detalles
-                            </CcButton>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-
             {publicationSummary && (
                 <section ref={publicationSummaryRef} className="rounded-lg border border-success-border bg-success-bg p-5 shadow-sm">
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -700,12 +635,8 @@ export default function MarketplacePage() {
                     categories={categories}
                     getCategoryConfig={getCategoryConfigForId}
                 />
-                <div className="mt-4 flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--cc-line)" }}>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest cc-text-secondary">
-                            <SlidersHorizontal className="h-4 w-4" />
-                            Modalidad
-                        </span>
+                <div className="mt-4 flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-end lg:justify-between" style={{ borderColor: "var(--cc-line-strong)" }}>
+                    <div className="flex gap-6 overflow-x-auto scrollbar-none">
                         {[
                             { key: 'all', label: 'Todas' },
                             { key: 'sale', label: 'Venta' },
@@ -716,10 +647,10 @@ export default function MarketplacePage() {
                                 key={option.key}
                                 type="button"
                                 onClick={() => setModeFilter(option.key as typeof modeFilter)}
-                                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                                className={`shrink-0 border-b-2 pb-2 text-sm transition-colors ${
                                     modeFilter === option.key
-                                        ? 'bg-ink text-paper shadow-sm'
-                                        : 'bg-paper-warm cc-text-secondary hover:text-copper'
+                                        ? 'border-copper font-semibold cc-text-primary'
+                                        : 'border-transparent cc-text-tertiary hover:text-copper'
                                 }`}
                             >
                                 {option.label}
@@ -731,7 +662,8 @@ export default function MarketplacePage() {
                         <select
                             value={sortMode}
                             onChange={event => setSortMode(event.target.value as typeof sortMode)}
-                            className="h-10 rounded-xl border border-subtle bg-paper-warm px-3 text-xs font-semibold cc-text-secondary outline-none focus:border-copper focus:ring-2 focus:ring-[rgba(156, 86, 54,0.16)]"
+                            className="h-9 border-0 border-b bg-transparent px-1 text-xs cc-text-secondary outline-none focus:border-copper"
+                            style={{ borderColor: "var(--cc-line)" }}
                         >
                             <option value="recent">Más recientes</option>
                             <option value="price_asc">Menor precio</option>
@@ -770,61 +702,7 @@ export default function MarketplacePage() {
                 )}
             </div>
 
-            {/* Servicios de Entrega */}
-            {capabilities.supermarketOrdering && (
-            <section className="px-1">
-                <div className="flex items-center gap-3 mb-5">
-                    <div className="h-8 w-8 rounded-xl bg-role-admin-bg flex items-center justify-center">
-                        <Truck className="h-4 w-4 text-role-admin-fg" />
-                    </div>
-                    <h2 className="text-base font-semibold uppercase tracking-widest cc-text-secondary">Servicios de Entrega</h2>
-                </div>
-                <Link href="/resident/supermercado" className="group block">
-                    <motion.div
-                        whileHover={{ scale: 1.015, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="relative cursor-pointer overflow-hidden rounded-lg border border-subtle bg-slate-950 p-6 shadow-sm md:p-8"
-                    >
-                        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                            <div className="flex items-center gap-5">
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10">
-                                    <ShoppingCart className="h-8 w-8 text-white" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/20 rounded-full text-[10px] font-semibold uppercase tracking-widest text-indigo-200 mb-1">
-                                        <Sparkles className="h-3 w-3" /> Smart Shopping con CoCo IA
-                                    </div>
-                                    <h3 className="text-2xl md:text-3xl font-semibold text-white leading-tight">Supermercado a Domicilio</h3>
-                                    <p className="text-indigo-200/80 text-sm font-medium max-w-md">
-                                        Crea tu lista con ayuda de IA y recíbela en casa. Integraciones con Jumbo Delivery y Líder App.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 shrink-0">
-                                <div className="hidden md:flex flex-col items-center gap-2">
-                                    <div className="flex gap-2">
-                                        <div className="w-9 h-9 rounded-full border-2 border-white/20 flex items-center justify-center" style={{ background: "var(--cc-copper-tint)" }}>
-                                            <ShoppingCart className="h-4 w-4 text-copper" />
-                                        </div>
-                                        <div className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white/20 flex items-center justify-center">
-                                            <ChefHat className="h-4 w-4 text-orange-700" />
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Jumbo · Líder</span>
-                                </div>
-                                <div className="flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition-colors group-hover:bg-brand-50">
-                                    Ir al Supermercado
-                                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                </Link>
-            </section>
-            )}
-
-            {/* Items Grid */}
+            {/* Lista editorial de clasificados */}
             {loading && (
                 <div className="flex items-center justify-center gap-3 rounded-lg border border-subtle bg-surface p-10 text-sm font-bold cc-text-secondary">
                     <Loader2 className="h-5 w-5 animate-spin text-copper" />
@@ -834,9 +712,10 @@ export default function MarketplacePage() {
             <AnimatePresence mode="popLayout">
                 <motion.div
                     layout
-                    className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-x-10 lg:gap-y-12"
+                    className="border-b"
+                    style={{ borderColor: "var(--cc-line)" }}
                 >
-                    {remainingItems.map((item, idx) => (
+                    {filteredItems.map((item, idx) => (
                         <MarketplaceCard
                             key={item.id}
                             item={item}
@@ -846,7 +725,6 @@ export default function MarketplacePage() {
                                 setIsDetailOpen(true);
                             }}
                             categoryLabel={categories.find(c => c.id === item.category)?.label || item.category}
-                            categoryConfig={getCategoryConfigForId(item.category)}
                         />
                     ))}
                 </motion.div>

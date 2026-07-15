@@ -202,7 +202,8 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
     return (
         <>
-            <section className="rounded-2xl border p-6 shadow-sm sm:p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <section className="rounded-[20px] border p-6 sm:p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <p className="mb-3 text-[10px] uppercase tracking-[0.16em] cc-text-tertiary">Red de proveedores de tu comunidad</p>
                 <span
                     className="mb-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
                     style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}
@@ -236,7 +237,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2.5">
+                    <div className="hidden flex-wrap gap-2.5 lg:flex">
                         <Button onClick={() => setIsRequestDialogOpen(true)} className="hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
                             <Calendar className="mr-2 h-4 w-4" />
                             Solicitar servicio
@@ -252,16 +253,16 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </div>
                 </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-4">
+                <div className="mt-6 flex flex-wrap gap-x-7 gap-y-3 border-t pt-5" style={{ borderColor: "var(--cc-line)" }}>
                     {[
                         { label: "Trabajos", value: provider.completedJobs },
                         { label: "Respuesta", value: provider.responseTime },
                         { label: "Tarifa", value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotiza" },
                         { label: "Estado", value: availability.label },
                     ].map(stat => (
-                        <div key={stat.label} className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
-                            <p className="text-2xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{stat.value}</p>
-                            <p className="mt-1.5 text-[10px] uppercase tracking-[0.08em] cc-text-tertiary">{stat.label}</p>
+                        <div key={stat.label} className="flex items-baseline gap-1.5">
+                            <p className="text-xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{stat.value}</p>
+                            <p className="text-[11px] cc-text-tertiary">{stat.label.toLowerCase()}</p>
                         </div>
                     ))}
                 </div>
@@ -269,18 +270,18 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
                 <main className="space-y-6">
-                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                    <section className="rounded-[18px] border border-default bg-surface p-6">
                         <div className="mb-4 flex items-center gap-2">
                             <Briefcase className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                            <h2 className="text-xl font-bold tracking-normal cc-text-primary">Acerca del proveedor</h2>
+                            <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Acerca del proveedor</h2>
                         </div>
                         <p className="text-sm leading-7 cc-text-secondary">{provider.bio}</p>
                     </section>
 
-                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                    <section className="rounded-[18px] border border-default bg-surface p-6">
                         <div className="mb-4 flex items-center gap-2">
                             <Award className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                            <h2 className="text-xl font-bold tracking-normal cc-text-primary">Habilidades principales</h2>
+                            <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Habilidades principales</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {provider.specialties.map((specialty) => (
@@ -296,10 +297,10 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </section>
 
                     {provider.certifications.length > 0 && (
-                        <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                        <section className="rounded-[18px] border border-default bg-surface p-6">
                             <div className="mb-4 flex items-center gap-2">
                                 <ShieldCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                                <h2 className="text-xl font-bold tracking-normal cc-text-primary">Credenciales</h2>
+                                <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Credenciales</h2>
                             </div>
                             <div className="space-y-3">
                                 {provider.certifications.map((cert) => (
@@ -312,11 +313,11 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         </section>
                     )}
 
-                    <section className="rounded-2xl border border-default bg-surface p-6 shadow-sm">
+                    <section className="rounded-[18px] border border-default bg-surface p-6">
                         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                                <h2 className="text-xl font-bold tracking-normal cc-text-primary">Resenas ({reviews.length})</h2>
+                                <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Reseñas ({reviews.length})</h2>
                             </div>
                             <Button variant="outline" size="sm" onClick={() => setIsReviewDialogOpen(true)}>
                                 Dejar resena
@@ -374,7 +375,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 </main>
 
                 <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-                    <section className="rounded-2xl border border-default bg-surface p-5 shadow-sm">
+                    <section className="rounded-[18px] border border-default bg-surface p-5">
                         <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${availability.bg} ${availability.text}`}>
                             <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
                             <span className="text-xs font-bold">{availability.label}</span>
@@ -402,7 +403,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </section>
 
                     {provider.verified && (
-                        <section className="rounded-2xl border p-5" style={{ borderColor: "rgba(156, 86, 54,0.20)", background: "var(--cc-copper-tint)" }}>
+                        <section className="rounded-[18px] border p-5" style={{ borderColor: "rgba(156, 86, 54,0.20)", background: "var(--cc-copper-tint)" }}>
                             <div className="mb-2.5 flex items-center gap-2.5">
                                 <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
                                 <h3 className="text-sm font-semibold cc-text-primary">Proveedor verificado</h3>
@@ -413,6 +414,21 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                         </section>
                     )}
                 </aside>
+            </div>
+
+            <div className="sticky bottom-3 z-30 flex gap-2 rounded-2xl border p-2 shadow-lg lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <Button onClick={() => setIsRequestDialogOpen(true)} className="h-12 flex-1 hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Solicitar servicio
+                </Button>
+                <a
+                    href={`tel:${provider.contactPhone}`}
+                    aria-label={`Llamar a ${provider.name}`}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border cc-text-primary"
+                    style={{ borderColor: "var(--cc-line-strong)" }}
+                >
+                    <Phone className="h-4 w-4" />
+                </a>
             </div>
 
             <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
