@@ -44,7 +44,8 @@ export function isIndividualDebtQuery(message: string) {
     if (collectionWorkflow) return false;
 
     return /\b(debe algo|adeuda|deuda de|saldo de|saldo pendiente de|gastos pendientes de|pagos pendientes de)\b/.test(normalized)
-        || /\b(residente|vecina|vecino|departamento|depto|dpto|unidad)\b.{1,90}\b(debe|adeuda|deuda|tiene deuda|tiene pagos? pendientes?)\b/.test(normalized);
+        || /\b(residente|vecina|vecino|departamento|depto|dpto|unidad)\b.{1,90}\b(debe|adeuda|deuda|tiene deuda|tiene pagos? pendientes?)\b/.test(normalized)
+        || /\b(?:cuanto\s+)?(?:debe|adeuda|tiene deuda|tiene pagos? pendientes?)\b.{1,90}\b(?:el|la)?\s*(?:departamento|depto|dpto|unidad)\b/.test(normalized);
 }
 
 export function extractResidentQuery(message: string) {
