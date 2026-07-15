@@ -17,12 +17,13 @@ export type OnboardingAssessment = {
     confidenceScore: number;
     warnings: string[];
 };
+export type ExtractedDocumentKnowledge = { title: string; documentKind: string; summary: string; searchText: string };
 
 type ExtractionContext = { userId: string; communityId?: string | null; role?: string | null };
 
-const PROMPT = `Eres un extractor de nominas de residentes. Extrae exclusivamente personas residentes, dueños o arrendatarios.
-Devuelve solo un array JSON con objetos {"name":"", "unit_id":"", "email":"", "phone":""}.
-No inventes correos, telefonos, nombres ni unidades. Si un dato no aparece, usa string vacio. Si no hay personas, devuelve [].`;
+const PROMPT = `Analiza documentos administrativos de condominios. Devuelve solo JSON valido con esta forma:
+{"residents":[{"name":"","unit_id":"","email":"","phone":""}],"document":{"title":"","document_kind":"resident_roster|acta|reglamento|contrato|comunicado|finanzas|mantenimiento|otro","summary":"","search_text":""}}.
+Extrae residentes, dueños o arrendatarios cuando existan. No inventes correos, telefonos, nombres ni unidades. document.summary debe resumir hechos verificables. document.search_text debe contener el texto y datos utiles para busqueda, conservando nombres, fechas, montos, obligaciones y acuerdos; maximo 30000 caracteres. Si no hay residentes devuelve residents: [].`;
 
 function clean(value: unknown) {
     return typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\s+/g, ' ').trim() : '';
@@ -75,7 +76,7 @@ async function callGemini(text: string, inlineData: { mimeType: string; data: st
         estimatedPromptTokens: promptTokens, estimatedCompletionTokens: 3000,
     });
     const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
-        { text: 'Extrae la nomina completa, incluso desde tablas, escaneos o texto desordenado.' },
+        { text: 'Extrae la nomina completa y prepara contenido documental consultable, incluso desde tablas, escaneos o texto desordenado.' },
     ];
     if (text) parts.push({ text });
     if (inlineData) parts.push({ inlineData });
@@ -120,7 +121,9 @@ export async function extractResidentsFromBuffer(fileName: string, mimeType: str
     const output = await callGemini(text.slice(0, 400_000), inlineData, context);
     let parsed: unknown;
     try { parsed = JSON.parse(output); } catch { throw new Error('La IA no devolvio datos estructurados validos.'); }
-    const values = Array.isArray(parsed) ? parsed : [parsed];
+    const parsedRecord = record(parsed);
+    const residentValues = Array.isArray(parsed) ? parsed : Array.isArray(parsedRecord.residents) ? parsedRecord.residents : [];
+    const values = residentValues;
     const rows = values.map(value => {
         const row = record(value);
         const unit = clean(row.unit_id ?? row.unit ?? row.department_number);
@@ -131,9 +134,17 @@ export async function extractResidentsFromBuffer(fileName: string, mimeType: str
             phone: clean(row.phone ?? row.phone_number),
         };
     }).filter(row => row.name || row.unit_id || row.email || row.phone);
+    const document = record(parsedRecord.document);
+    const knowledge: ExtractedDocumentKnowledge = {
+        title: clean(document.title) || fileName,
+        documentKind: clean(document.document_kind) || (rows.length ? 'resident_roster' : 'otro'),
+        summary: clean(document.summary).slice(0, 4000),
+        searchText: (text.trim() || clean(document.search_text)).slice(0, 100_000),
+    };
     return {
         rows,
         assessment: assessResidents(rows),
+        knowledge,
         checksum: createHash('sha256').update(buffer).digest('hex'),
         mimeType: mimeType || 'application/octet-stream',
     };

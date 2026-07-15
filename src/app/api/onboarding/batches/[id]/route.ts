@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const admin = getSupabaseAdmin();
     const [{ data: batch, error }, { data: documents }, { data: rows }] = await Promise.all([
         admin.from('onboarding_import_batches').select('*').eq('id', id).eq('community_id', profile.community_id).maybeSingle(),
-        admin.from('onboarding_import_documents').select('id, file_name, status, extracted_rows, error, size_bytes, created_at').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
+        admin.from('onboarding_import_documents').select('id, file_name, document_kind, summary, status, extracted_rows, error, size_bytes, created_at').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
         admin.from('onboarding_import_rows').select('id, name, unit_number, email, phone, status, warnings, error, document_id').eq('batch_id', id).eq('community_id', profile.community_id).order('created_at'),
     ]);
     if (error || !batch) return NextResponse.json({ error: 'Lote no encontrado.' }, { status: 404 });
@@ -49,7 +49,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
                 const { error: rowsError } = await admin.from('onboarding_import_rows').upsert(rows, { onConflict: 'batch_id,dedupe_key', ignoreDuplicates: true });
                 if (rowsError) throw rowsError;
             }
-            await admin.from('onboarding_import_documents').update({ status: 'extracted', extracted_rows: rows.length, checksum: extraction.checksum, error: null, updated_at: new Date().toISOString() }).eq('id', document.id);
+            await admin.from('onboarding_import_documents').update({
+                status: 'extracted', extracted_rows: rows.length, checksum: extraction.checksum,
+                document_kind: extraction.knowledge.documentKind, summary: extraction.knowledge.summary,
+                search_text: extraction.knowledge.searchText, error: null, updated_at: new Date().toISOString(),
+            }).eq('id', document.id);
             recovered++;
         } catch (retryError) {
             await admin.from('onboarding_import_documents').update({ error: retryError instanceof Error ? retryError.message : 'Reintento fallido.', updated_at: new Date().toISOString() }).eq('id', document.id);
