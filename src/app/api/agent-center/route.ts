@@ -1119,7 +1119,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
     if (action.toolName === 'get_community_snapshot') {
         const today = new Date().toISOString().slice(0, 10);
         const [expenseQuery, serviceQuery, bookingQuery, residentQuery] = await Promise.all([
-            admin.from('expenses').select('amount, status').eq('community_id', communityId).in('status', ['pending', 'overdue']).limit(2000),
+            admin.from('expenses').select('unit_id, amount, status').eq('community_id', communityId).in('status', ['pending', 'overdue']).limit(2000),
             admin.from('service_requests').select('id, status').eq('community_id', communityId).in('status', ['pending', 'in_progress']).limit(1000),
             admin.from('bookings').select('id, status').eq('community_id', communityId).gte('date', today).in('status', ['pending', 'confirmed']).limit(1000),
             admin.from('profiles').select('id', { count: 'exact', head: true }).eq('community_id', communityId).eq('role', 'resident'),
@@ -1132,6 +1132,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         const expenses = expenseQuery.data || [];
         const pendingAmount = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
         const metrics = {
+            delinquentUnits: new Set(expenses.map(row => row.unit_id).filter(Boolean)).size,
             pendingExpenses: expenses.length,
             pendingAmount,
             openServiceRequests: (serviceQuery.data || []).length,
@@ -1140,12 +1141,12 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         };
         const focus = String(action.args.focus || 'all');
         const message = focus === 'finance'
-            ? `Hay ${metrics.pendingExpenses} gasto(s) pendiente(s) por $${pendingAmount.toLocaleString('es-CL')}.`
+            ? `Hay ${metrics.delinquentUnits} unidad(es) con deuda, ${metrics.pendingExpenses} gasto(s) pendiente(s) por $${pendingAmount.toLocaleString('es-CL')}.`
             : focus === 'maintenance'
                 ? `Hay ${metrics.openServiceRequests} solicitud(es) de servicio abierta(s).`
                 : focus === 'community'
                     ? `La comunidad tiene ${metrics.residents} residente(s) y ${metrics.upcomingBookings} reserva(s) proximas.`
-                    : `Resumen: ${metrics.residents} residentes, ${metrics.pendingExpenses} gastos pendientes por $${pendingAmount.toLocaleString('es-CL')}, ${metrics.openServiceRequests} solicitudes abiertas y ${metrics.upcomingBookings} reservas proximas.`;
+                    : `Resumen: ${metrics.residents} residentes, ${metrics.delinquentUnits} unidades con deuda por $${pendingAmount.toLocaleString('es-CL')}, ${metrics.openServiceRequests} solicitudes abiertas y ${metrics.upcomingBookings} reservas proximas.`;
         return { entityType: 'community_snapshot', entityId: communityId, title: 'Estado del edificio revisado', message, data: metrics };
     }
 
