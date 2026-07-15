@@ -416,7 +416,7 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 </aside>
             </div>
 
-            <div className="sticky bottom-3 z-30 flex gap-2 rounded-2xl border p-2 shadow-lg lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+            <div className="fixed bottom-4 left-4 right-20 z-30 flex gap-2 rounded-2xl border p-2 shadow-lg lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                 <Button onClick={() => setIsRequestDialogOpen(true)} className="h-12 flex-1 hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
                     <Calendar className="mr-2 h-4 w-4" />
                     Solicitar servicio
