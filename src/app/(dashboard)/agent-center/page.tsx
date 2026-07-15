@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
+import type { AgentTaskStatus, AgentTaskSummary } from "@/lib/agent-center/domain";
 
 type AgentKey = "finance" | "maintenance" | "concierge" | "community";
 
@@ -97,6 +98,27 @@ type AgentCenterGetResponse = {
   policies?: AgentPolicy[];
   summary?: AgentSummary;
   playbooks?: AgentPlaybook[];
+  tasks?: AgentTaskSummary[];
+};
+
+const TASK_STATUS_LABELS: Record<AgentTaskStatus, string> = {
+  planned: "Planificada",
+  running: "En ejecucion",
+  waiting_human: "Espera tu revision",
+  completed: "Verificada",
+  failed: "Reintentando",
+  escalated: "Escalada",
+  cancelled: "Cancelada",
+};
+
+const TASK_STATUS_COLORS: Record<AgentTaskStatus, string> = {
+  planned: "var(--cc-amber)",
+  running: "var(--cc-copper)",
+  waiting_human: "var(--cc-plum)",
+  completed: "var(--cc-sage)",
+  failed: "var(--cc-amber)",
+  escalated: "var(--cc-rose)",
+  cancelled: "var(--cc-rose)",
 };
 
 const AREA_LABELS: Record<AgentKey, string> = {
@@ -124,6 +146,7 @@ const STEPS = [
   { n: "1", title: "CoCo prepara", desc: "Revisa el edificio y arma la propuesta." },
   { n: "2", title: "Tú revisas", desc: "Miras qué hará, en lenguaje simple." },
   { n: "3", title: "Se ejecuta", desc: "Tú apruebas y queda en la bitácora." },
+  { n: "4", title: "CoCo verifica", desc: "Comprueba el resultado, reintenta o escala." },
 ];
 
 const DEFAULT_SUMMARY: AgentSummary = {
@@ -200,6 +223,7 @@ export default function AgentCenterPage() {
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
+  const [tasks, setTasks] = useState<AgentTaskSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showBitacora, setShowBitacora] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -212,6 +236,7 @@ export default function AgentCenterPage() {
     setPolicies(policyListToMap(data.policies));
     setSummary(data.summary || DEFAULT_SUMMARY);
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
+    setTasks(Array.isArray(data.tasks) ? data.tasks : []);
   }
 
   useEffect(() => {
@@ -290,6 +315,12 @@ export default function AgentCenterPage() {
     await sendAgentRequest({ message: `Prepara esta accion: ${playbook.name}`, type: "playbook_request", playbookKey: playbook.key });
   }
 
+  async function replanTask(task: AgentTaskSummary) {
+    const playbook = playbooks.find((item) => item.key === task.playbookKey);
+    if (!playbook || loading) return;
+    await sendAgentRequest({ message: `Replanifica esta tarea: ${task.goal}`, type: "playbook_request", playbookKey: playbook.key });
+  }
+
   const queue = messages.filter((message) => message.status === "awaiting_confirmation" && message.action);
 
   return (
@@ -305,7 +336,7 @@ export default function AgentCenterPage() {
 
       {/* Tira de 3 pasos */}
       <div
-        className="mt-7 grid grid-cols-1 overflow-hidden rounded-2xl border sm:grid-cols-3"
+        className="mt-7 grid grid-cols-1 overflow-hidden rounded-2xl border sm:grid-cols-4"
         style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
       >
         {STEPS.map((step, i) => (
@@ -429,6 +460,57 @@ export default function AgentCenterPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {tasks.length > 0 && (
+        <section className="mt-8">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.12em] cc-text-tertiary">Motor persistente</p>
+              <h2 className="mt-1 text-2xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Tareas vivas de CoCo</h2>
+            </div>
+            <span className="text-[12px] cc-text-tertiary">Plan, ejecucion, verificacion y escalamiento</span>
+          </div>
+          <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+            {tasks.slice(0, 6).map((task) => {
+              const completedSteps = task.steps.filter((step) => step.status === "completed").length;
+              const statusColor = TASK_STATUS_COLORS[task.status];
+              return (
+                <article key={task.id} className="rounded-2xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: AREA_TONE[task.agentKey] }}>{AREA_LABELS[task.agentKey]}</span>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: statusColor }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: statusColor }} />
+                      {TASK_STATUS_LABELS[task.status]}
+                    </span>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-[14px] font-medium leading-snug cc-text-primary">{task.goal}</p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--cc-paper-warm)" }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${task.steps.length ? (completedSteps / task.steps.length) * 100 : 0}%`, background: statusColor }} />
+                  </div>
+                  <div className="mt-2.5 space-y-1.5">
+                    {task.steps.map((step) => (
+                      <div key={step.id} className="flex items-center gap-2 text-[12px] cc-text-secondary">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: step.status === "completed" ? "var(--cc-sage)" : step.status === "failed" ? "var(--cc-rose)" : step.status === "running" ? "var(--cc-copper)" : "var(--cc-line-strong)" }} />
+                        <span className="min-w-0 flex-1 truncate">{step.title}</span>
+                        {step.attempts > 1 && <span className="cc-text-tertiary">{step.attempts} intentos</span>}
+                      </div>
+                    ))}
+                  </div>
+                  {task.lastError && <p className="mt-2.5 text-[12px] leading-snug" style={{ color: "var(--cc-rose)" }}>{task.lastError}</p>}
+                  {task.targetHref && (
+                    <Link href={task.targetHref} className="mt-3 inline-block text-[12px] font-medium" style={{ color: "var(--cc-copper)" }}>Abrir modulo →</Link>
+                  )}
+                  {task.status === "escalated" && task.playbookKey && (
+                    <button type="button" disabled={loading} onClick={() => replanTask(task)} className="ml-3 mt-3 text-[12px] font-medium disabled:opacity-50" style={{ color: "var(--cc-rose)" }}>
+                      Replanificar con aprobacion
+                    </button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {/* Pedir algo nuevo — necesario para poder crear propuestas */}

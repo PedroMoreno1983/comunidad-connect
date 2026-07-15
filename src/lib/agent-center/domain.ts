@@ -115,6 +115,34 @@ export type AgentWorkflow = {
     metrics: Array<{ label: string; value: string; tone: 'success' | 'warning' | 'neutral' }>;
 };
 
+export type AgentTaskStatus = 'planned' | 'running' | 'waiting_human' | 'completed' | 'failed' | 'escalated' | 'cancelled';
+export type AgentTaskStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'waiting_human' | 'skipped';
+
+export type AgentTaskStepSummary = {
+    id: string;
+    position: number;
+    stepKey: string;
+    title: string;
+    status: AgentTaskStepStatus;
+    attempts: number;
+    error?: string | null;
+};
+
+export type AgentTaskSummary = {
+    id: string;
+    agentKey: AgentKey;
+    playbookKey?: string | null;
+    goal: string;
+    status: AgentTaskStatus;
+    currentStep: number;
+    retryCount: number;
+    lastError?: string | null;
+    targetHref?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    steps: AgentTaskStepSummary[];
+};
+
 export const DEFAULT_COMMUNITY_ID = '00000000-0000-0000-0000-000000000000';
 
 export const DEFAULT_AGENT_POLICIES: Record<AgentKey, Omit<AgentPolicy, 'agentKey' | 'updatedAt'>> = {
