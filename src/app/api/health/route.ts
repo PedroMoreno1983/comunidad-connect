@@ -36,6 +36,11 @@ export async function GET() {
     const iotWebhookRequired = isRequired('IOT_WEBHOOKS_REQUIRED');
     const monitoringReady = hasEnv('AI_HEALTH_TOKEN');
     const monitoringRequired = isRequired('AI_HEALTH_TOKEN_REQUIRED');
+    const automation = {
+        agentScheduler: hasEnv('CRON_SECRET'),
+        accessTriggeredFallback: true,
+    };
+    const automationReady = automation.agentScheduler || automation.accessTriggeredFallback;
 
     const paidIntegrations = {
         payments: paymentsReady || !paymentsRequired,
@@ -67,16 +72,18 @@ export async function GET() {
     const aiReady = Object.values(ai).some(Boolean);
     const appReady = coreReady && aiReady;
     const commercialChannelsReady = Object.values(communications).every(Boolean);
-    const productionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean);
+    const productionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean) && automationReady;
     const fullPaidProductionReady = productionReady && paymentsReady && iotWebhookReady && monitoringReady;
     const missingProduction = [
         ...Object.entries(communications).filter(([, value]) => !value).map(([key]) => `communications.${key}`),
         ...Object.entries(paidIntegrations).filter(([, value]) => !value).map(([key]) => `paidIntegrations.${key}`),
+        ...(!automationReady ? ['automation.agentTriggers'] : []),
     ];
     const deferredProduction = [
         ...(!paymentsReady && !paymentsRequired ? ['paidIntegrations.payments'] : []),
         ...(!iotWebhookReady && !iotWebhookRequired ? ['paidIntegrations.iotWebhook'] : []),
         ...(!monitoringReady && !monitoringRequired ? ['paidIntegrations.monitoring'] : []),
+        ...(!automation.agentScheduler ? ['automation.scheduledAgentTriggers'] : []),
     ];
 
     return NextResponse.json({
@@ -95,6 +102,7 @@ export async function GET() {
             ai,
             communications,
             paidIntegrations,
+            automation,
             integrationDetail,
         },
     }, {

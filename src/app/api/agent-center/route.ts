@@ -9,6 +9,7 @@ import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
 import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-center/persistenceSafety';
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
+import { evaluateDueAgentTriggers, getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import {
     AGENT_PLAYBOOKS,
     AGENT_TOOL_NAMES,
@@ -965,7 +966,6 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
         .maybeSingle();
 
     if (toolError || !toolCall) throw new Error('No encontre la propuesta auditada.');
-    if (toolCall.user_id !== profile.id) throw new Error('La propuesta no pertenece a tu usuario.');
     if ((toolCall.community_id || DEFAULT_COMMUNITY_ID) !== (profile.community_id || DEFAULT_COMMUNITY_ID)) {
         throw new Error('La propuesta pertenece a otra comunidad.');
     }
@@ -979,8 +979,8 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
         .maybeSingle();
 
     if (runError || !run) throw new Error('No encontre la corrida asociada.');
-    if (run.user_id !== profile.id || (run.community_id || DEFAULT_COMMUNITY_ID) !== (profile.community_id || DEFAULT_COMMUNITY_ID)) {
-        throw new Error('La corrida auditada no pertenece a este usuario y comunidad.');
+    if ((run.community_id || DEFAULT_COMMUNITY_ID) !== (profile.community_id || DEFAULT_COMMUNITY_ID)) {
+        throw new Error('La corrida auditada no pertenece a esta comunidad.');
     }
     if (!['finance', 'maintenance', 'concierge', 'community'].includes(String(run.agent_key))) {
         throw new Error('Agente no soportado.');
@@ -1199,6 +1199,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Agent Center es exclusivo de administracion.' }, { status: 403 });
     }
 
+    // Resilient fallback: a visit evaluates only this tenant's due rules. The
+    // protected scheduler remains the primary path when CRON_SECRET is active.
+    await evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID).catch(() => undefined);
+
     const { data } = await getSupabaseAdmin()
         .from('agent_activity_log')
         .select('id, agent_key, action, severity, summary, created_at, metadata')
@@ -1206,14 +1210,16 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(12);
 
-    const [policies, summary, workflows, tasks] = await Promise.all([
+    const [policies, summary, workflows, tasks, triggers, proposals] = await Promise.all([
         getAgentPolicies(profile),
         getAgentSummary(profile),
         getAgentWorkflows(profile),
         getRecentAgentTasks(profile),
+        getAgentTriggerRules(profile),
+        getPendingAgentProposals(profile),
     ]);
 
-    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, workflows, tasks, playbooks: AGENT_PLAYBOOKS });
+    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, workflows, tasks, triggers, proposals, playbooks: AGENT_PLAYBOOKS });
 }
 
 export async function POST(req: NextRequest) {
@@ -1297,6 +1303,15 @@ export async function POST(req: NextRequest) {
                 reply: 'Entendido. He cancelado la propuesta de accion y registrado el descarte en la bitacora de auditoria.',
                 action,
                 steps,
+            });
+        }
+
+        if (body.type === 'trigger_update') {
+            await updateAgentTriggerRule(profile, body.ruleId, body.enabled);
+            return NextResponse.json({
+                status: 'trigger_updated',
+                reply: 'Regla proactiva actualizada.',
+                triggers: await getAgentTriggerRules(profile),
             });
         }
 
