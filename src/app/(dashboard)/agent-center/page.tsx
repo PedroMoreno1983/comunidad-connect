@@ -144,13 +144,6 @@ const AREA_TINT: Record<AgentKey, string> = {
   community: "var(--cc-amber-tint)",
 };
 
-const STEPS = [
-  { n: "1", title: "CoCo prepara", desc: "Revisa el edificio y arma la propuesta." },
-  { n: "2", title: "Tú revisas", desc: "Miras qué hará, en lenguaje simple." },
-  { n: "3", title: "Se ejecuta", desc: "Tú apruebas y queda en la bitácora." },
-  { n: "4", title: "CoCo verifica", desc: "Comprueba el resultado, reintenta o escala." },
-];
-
 const DEFAULT_SUMMARY: AgentSummary = {
   totalRuns: 0,
   executedRuns: 0,
@@ -374,33 +367,8 @@ export default function AgentCenterPage() {
         hasta que tú lo apruebes.
       </p>
 
-      {/* Tira de 3 pasos */}
-      <div
-        className="mt-7 grid grid-cols-1 overflow-hidden rounded-2xl border sm:grid-cols-4"
-        style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
-      >
-        {STEPS.map((step, i) => (
-          <div
-            key={step.n}
-            className="flex items-start gap-3.5 p-5"
-            style={i > 0 ? { borderLeft: "1px solid var(--cc-line)" } : undefined}
-          >
-            <div
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[13px]"
-              style={{ background: "var(--cc-ink)", color: "var(--cc-paper)" }}
-            >
-              {step.n}
-            </div>
-            <div>
-              <p className="text-[17px] leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{step.title}</p>
-              <p className="mt-1 text-[13px] leading-snug cc-text-secondary">{step.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Cola de aprobación */}
-      <div className="mt-8 flex items-baseline justify-between">
+      <div className="mt-7 flex items-baseline justify-between">
         <h2 className="text-2xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Listo para tu aprobación</h2>
         <span className="inline-flex items-center gap-1.5 text-[13px] cc-text-secondary">
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--cc-copper)" }} />
@@ -502,8 +470,16 @@ export default function AgentCenterPage() {
         </div>
       )}
 
+      {(triggers.length > 0 || tasks.length > 0) && (
+        <details className="group mt-6 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[13px] font-medium cc-text-primary">
+            <span>Opciones avanzadas <small className="ml-1 font-normal cc-text-tertiary">Automatizaciones y seguimiento</small></span>
+            <span className="text-[12px] font-normal cc-text-tertiary group-open:hidden">Ver detalles</span>
+            <span className="hidden text-[12px] font-normal cc-text-tertiary group-open:inline">Ocultar</span>
+          </summary>
+
       {triggers.length > 0 && (
-        <section className="mt-8 rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+        <section className="border-t p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.12em] cc-text-tertiary">Vigilancia proactiva</p>
@@ -544,7 +520,7 @@ export default function AgentCenterPage() {
       )}
 
       {tasks.length > 0 && (
-        <section className="mt-8">
+        <section className="border-t p-5" style={{ borderColor: "var(--cc-line)" }}>
           <div className="flex items-baseline justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.12em] cc-text-tertiary">Motor persistente</p>
@@ -592,6 +568,8 @@ export default function AgentCenterPage() {
             })}
           </div>
         </section>
+      )}
+        </details>
       )}
 
       {/* Pedir algo nuevo — necesario para poder crear propuestas */}
