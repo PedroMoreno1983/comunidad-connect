@@ -3,7 +3,6 @@ import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
 export type AgentKey = 'finance' | 'maintenance' | 'concierge' | 'community';
 export type AutonomyLevel = 'manual' | 'semi_autonomous' | 'autonomous';
 export type ToolName =
-    | 'get_amenities'
     | 'create_booking'
     | 'create_marketplace_item'
     | 'create_announcement'
@@ -15,7 +14,6 @@ export type ToolName =
     | 'run_playbook';
 
 export const AGENT_TOOL_NAMES: ToolName[] = [
-    'get_amenities',
     'create_booking',
     'create_marketplace_item',
     'create_announcement',
@@ -26,6 +24,26 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'clarify_intent',
     'run_playbook',
 ];
+
+export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
+    create_booking: 'maintenance',
+    create_marketplace_item: 'community',
+    create_announcement: 'community',
+    create_service_request: 'maintenance',
+    register_visitor: 'concierge',
+    get_my_expenses: 'finance',
+    get_resident_expenses: 'finance',
+};
+
+export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
+    'get_my_expenses',
+    'get_resident_expenses',
+    'clarify_intent',
+];
+
+export const MUTATING_AGENT_TOOLS: ToolName[] = AGENT_TOOL_NAMES.filter(
+    toolName => !READ_ONLY_AGENT_TOOLS.includes(toolName),
+);
 
 export type PlaybookKey =
     | 'finance_collection_review'

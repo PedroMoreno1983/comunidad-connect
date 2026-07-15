@@ -3,14 +3,18 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { recordOperationEvent } from '@/lib/operations/audit';
-import { isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
+import { isIndividualDebtQuery } from '@/lib/agent-center/intentSafety';
 import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
-import { buildClarificationAction, buildIndividualDebtAction } from '@/lib/agent-center/intentActions';
+import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
+import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
+import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-center/persistenceSafety';
 import {
     AGENT_PLAYBOOKS,
     AGENT_TOOL_NAMES,
     DEFAULT_AGENT_POLICIES,
     DEFAULT_COMMUNITY_ID,
+    READ_ONLY_AGENT_TOOLS,
+    TOOL_AGENT_KEYS,
     type AgentAction,
     type AgentKey,
     type AgentPlaybook,
@@ -23,7 +27,6 @@ import {
     type PlaybookKey,
     type ToolName,
 } from '@/lib/agent-center/domain';
-
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
@@ -158,7 +161,6 @@ const AGENT_LABELS: Record<AgentKey, string> = {
 };
 
 const TOOL_LABELS: Record<ToolName, string> = {
-    get_amenities: 'Consultar espacios comunes',
     create_booking: 'Preparar reserva',
     create_marketplace_item: 'Preparar publicacion',
     create_announcement: 'Preparar comunicado',
@@ -676,8 +678,8 @@ Definición de agentes y herramientas:
      title: 'Consultar gastos de la unidad'
      summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
 
-   - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda de un residente identificado por nombre.
-     Argumentos: { "residentQuery": "nombre del residente" }
+   - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda por nombre del residente o numero de departamento.
+     Argumentos: { "residentQuery": "nombre" } o { "unitNumber": "numero de departamento" }
      requiresConfirmation: false
      targetHref: '/admin/finanzas'
      title: 'Consultar deuda de residente'
@@ -730,7 +732,7 @@ Definición de agentes y herramientas:
 
 Instrucciones de formato:
 - Una pregunta de lectura nunca puede transformarse en create_service_request ni en otra herramienta de escritura.
-- Si el usuario pregunta si una persona debe algo y su rol es admin, usa get_resident_expenses con el nombre en residentQuery.
+- Si pregunta por deuda y su rol es admin, usa get_resident_expenses con residentQuery o unitNumber, segun lo indicado.
 - Si la intencion es ambigua, usa clarify_intent. Nunca uses create_service_request como fallback generico.
 - Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
 - No incluyas bloques de código markdown (\`\`\`json).
@@ -800,13 +802,9 @@ async function inferAction(message: string, profile: AgentProfile): Promise<Agen
     const geminiResult = await callGeminiInference(message, profile);
     if (geminiResult) {
         const normalized = normalizeAction(geminiResult);
-        const mutatingTools: ToolName[] = ['create_booking', 'create_marketplace_item', 'create_announcement', 'create_service_request', 'register_visitor', 'run_playbook'];
-        if (looksReadOnlyRequest(message) && mutatingTools.includes(normalized.toolName)) {
-            return normalizeAction(buildClarificationAction(message, pickAgent(message), 'Entendi que deseas consultar informacion, pero necesito mas detalle para elegir una fuente segura. No realice ningun cambio.'));
-        }
-        return normalized;
+        return normalizeAction(preventReadOnlyMutation(message, normalized));
     }
-    return normalizeAction(inferActionHeuristic(message, profile));
+    return normalizeAction(preventReadOnlyMutation(message, inferActionHeuristic(message, profile)));
 }
 
 function isToolName(value: unknown): value is ToolName {
@@ -823,11 +821,11 @@ function normalizeAction(action: AgentAction): AgentAction {
 
     const safeArgs = action.args && typeof action.args === 'object' ? action.args : {};
     const playbook = action.toolName === 'run_playbook' ? getPlaybook(safeArgs.playbookKey) : null;
-    const readOnlyTools: ToolName[] = ['get_my_expenses', 'get_resident_expenses', 'clarify_intent', 'get_amenities'];
-    const writesRequireConfirmation = !readOnlyTools.includes(action.toolName);
+    const writesRequireConfirmation = !READ_ONLY_AGENT_TOOLS.includes(action.toolName);
+    const canonicalAgentKey = TOOL_AGENT_KEYS[action.toolName];
 
     return {
-        agentKey: playbook?.agentKey || action.agentKey,
+        agentKey: playbook?.agentKey || canonicalAgentKey || action.agentKey,
         toolName: action.toolName,
         args: safeArgs,
         requiresConfirmation: writesRequireConfirmation ? true : Boolean(action.requiresConfirmation),
@@ -856,7 +854,7 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
     const policies = await getAgentPolicies(profile);
     const displayAction = activityDisplayForAction(action);
     const displaySummary = activitySummaryForStatus(action, status);
-    const runId = await bestEffortInsert('agent_runs', {
+    const runId = action.runId || await bestEffortInsert('agent_runs', {
         user_id: profile.id,
         community_id: communityId,
         agent_key: action.agentKey,
@@ -881,7 +879,7 @@ async function logActivity(profile: AgentProfile, action: AgentAction, status: '
         completed_at: status === 'preview' ? null : new Date().toISOString(),
     });
 
-    const toolCallId = await bestEffortInsert('agent_tool_calls', {
+    const toolCallId = action.proposalId || await bestEffortInsert('agent_tool_calls', {
         run_id: runId,
         user_id: profile.id,
         community_id: communityId,
@@ -976,11 +974,14 @@ async function loadPersistedProposal(incomingAction: AgentAction | null, profile
 
     const { data: run, error: runError } = await admin
         .from('agent_runs')
-        .select('id, agent_key, user_message, summary, metadata')
+        .select('id, user_id, community_id, agent_key, user_message, summary, metadata')
         .eq('id', toolCall.run_id)
         .maybeSingle();
 
     if (runError || !run) throw new Error('No encontre la corrida asociada.');
+    if (run.user_id !== profile.id || (run.community_id || DEFAULT_COMMUNITY_ID) !== (profile.community_id || DEFAULT_COMMUNITY_ID)) {
+        throw new Error('La corrida auditada no pertenece a este usuario y comunidad.');
+    }
     if (!['finance', 'maintenance', 'concierge', 'community'].includes(String(run.agent_key))) {
         throw new Error('Agente no soportado.');
     }
@@ -1298,6 +1299,7 @@ async function runPlaybook(action: AgentAction, profile: AgentProfile) {
 async function executeAction(action: AgentAction, profile: AgentProfile) {
     const admin = getSupabaseAdmin();
     const communityId = profile.community_id || DEFAULT_COMMUNITY_ID;
+    action = { ...action, args: validateAgentActionArgs(action) };
 
     if (action.toolName === 'clarify_intent') {
         return {
@@ -1336,7 +1338,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
     }
 
     if (action.toolName === 'get_resident_expenses') {
-        return getResidentExpenseSummary(profile, action.args.residentQuery);
+        return getResidentExpenseSummary(profile, action.args.residentQuery, action.args.unitNumber);
     }
 
     if (action.toolName === 'create_marketplace_item') {
@@ -1368,6 +1370,18 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         if (amenitiesError) throw amenitiesError;
         const amenity = amenities?.[0];
         if (!amenity) throw new Error('No encontre un espacio comun activo que calce con la solicitud.');
+        const { data: conflict, error: conflictError } = await admin
+            .from('bookings')
+            .select('id')
+            .eq('amenity_id', amenity.id)
+            .eq('date', String(action.args.date))
+            .in('status', ['pending', 'confirmed'])
+            .lt('start_time', String(action.args.endTime))
+            .gt('end_time', String(action.args.startTime))
+            .limit(1)
+            .maybeSingle();
+        if (conflictError) throw conflictError;
+        if (conflict) throw new Error('El espacio ya tiene una reserva que se cruza con ese horario.');
         const { data, error } = await admin
             .from('bookings')
             .insert({
@@ -1423,30 +1437,16 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
     }
 
     if (action.toolName === 'create_service_request') {
-        let { data: provider } = await admin
+        const { data: provider, error: providerError } = await admin
             .from('service_providers')
             .select('id, name')
             .eq('community_id', communityId)
-            .eq('category', 'general')
+            .eq('verified', true)
+            .eq('name', 'Mesa de ayuda interna')
             .limit(1)
             .maybeSingle();
-
-        if (!provider) {
-            const created = await admin
-                .from('service_providers')
-                .insert({
-                    name: 'Equipo de Mantencion Comunidad',
-                    category: 'general',
-                    contact_phone: 'Administracion',
-                    bio: 'Proveedor interno para tickets creados por CoCo.',
-                    community_id: communityId,
-                    verified: true,
-                })
-                .select('id, name')
-                .single();
-            if (created.error) throw created.error;
-            provider = created.data;
-        }
+        if (providerError) throw providerError;
+        if (!provider) throw new Error('No hay una mesa de ayuda interna verificada. Configurala antes de crear tickets desde Agent Center.');
 
         const { data, error } = await admin
             .from('service_requests')
@@ -1553,13 +1553,8 @@ export async function POST(req: NextRequest) {
             : requestedPlaybook
                 ? normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description))
             : await inferAction(message, profile);
-        const policies = await getAgentPolicies(profile);
-        const policy = policies[action.agentKey];
-        if (!policy.active) {
-            throw new Error(`El agente ${action.agentKey} esta desactivado para esta comunidad.`);
-        }
-
         if (rejected) {
+            await claimPersistedProposal(action, 'rejected');
             await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
             await markPersistedProposal(action, 'rejected');
             await logActivity(profile, action, 'rejected');
@@ -1583,6 +1578,13 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        const policies = await getAgentPolicies(profile);
+        const policy = policies[action.agentKey];
+        if (!policy.active) {
+            throw new Error(`El agente ${action.agentKey} esta desactivado para esta comunidad.`);
+        }
+        await assertDailyActionLimit(profile, action, policy);
+        action.args = validateAgentActionArgs(action);
         const steps: AgentStep[] = traceStepsForAction(action);
 
         if (action.requiresConfirmation && !confirmed) {
@@ -1610,6 +1612,7 @@ export async function POST(req: NextRequest) {
 
         let result: Awaited<ReturnType<typeof executeAction>>;
         try {
+            if (confirmed) await claimPersistedProposal(action, 'executed');
             result = await executeAction(action, profile);
         } catch (error) {
             await markPersistedProposal(action, 'failed', {

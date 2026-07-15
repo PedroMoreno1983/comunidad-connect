@@ -6,7 +6,7 @@ function cleanQuery(value: unknown, max = 100) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export async function getResidentExpenseSummary(profile: AgentProfile, rawResidentQuery: unknown) {
+export async function getResidentExpenseSummary(profile: AgentProfile, rawResidentQuery: unknown, rawUnitNumber?: unknown) {
     if (profile.role !== 'admin') {
         throw new Error('Solo administracion puede consultar la deuda de otro residente.');
     }
@@ -15,10 +15,11 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
     }
 
     const residentQuery = cleanQuery(rawResidentQuery);
+    const requestedUnitNumber = cleanQuery(rawUnitNumber, 30);
     const normalizedQuery = normalizeIntentText(residentQuery);
     const queryTokens = normalizedQuery.split(' ').filter(token => token.length > 1);
-    if (queryTokens.length === 0) {
-        throw new Error('Indica el nombre del residente que deseas consultar.');
+    if (queryTokens.length === 0 && !requestedUnitNumber) {
+        throw new Error('Indica el nombre del residente o el numero de departamento que deseas consultar.');
     }
 
     const admin = getSupabaseAdmin();
@@ -31,15 +32,18 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
     if (error) throw error;
 
     const residents = (data || []) as Array<Record<string, unknown>>;
-    const matches = residents.filter(resident => {
-        const candidate = normalizeIntentText(String(resident.full_name || resident.name || resident.email || ''));
-        return candidate === normalizedQuery || queryTokens.every(token => candidate.includes(token));
-    });
+    const normalizedUnitNumber = normalizeIntentText(requestedUnitNumber);
+    const matches = residents.filter(resident => requestedUnitNumber
+        ? normalizeIntentText(String(resident.department_number || '')) === normalizedUnitNumber
+        : (() => {
+            const candidate = normalizeIntentText(String(resident.full_name || resident.name || resident.email || ''));
+            return candidate === normalizedQuery || queryTokens.every(token => candidate.includes(token));
+        })());
 
-    if (matches.length === 0) {
+    if (matches.length === 0 && !requestedUnitNumber) {
         throw new Error(`No encontre un residente llamado "${residentQuery}" en esta comunidad.`);
     }
-    if (matches.length > 1) {
+    if (matches.length > 1 && !requestedUnitNumber) {
         const labels = matches.slice(0, 4).map(resident => {
             const name = String(resident.full_name || resident.name || resident.email || 'Residente');
             const unit = resident.department_number ? ` Depto ${resident.department_number}` : '';
@@ -48,9 +52,30 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         throw new Error(`Encontre mas de un residente. Precisa uno: ${labels.join(', ')}.`);
     }
 
-    const resident = matches[0];
+    const resident = matches[0] || {};
     let unitId = typeof resident.unit_id === 'string' ? resident.unit_id : '';
-    let unitNumber = typeof resident.department_number === 'string' ? resident.department_number : '';
+    let unitNumber = requestedUnitNumber || (typeof resident.department_number === 'string' ? resident.department_number : '');
+
+    if (requestedUnitNumber && !unitId) {
+        const { data: units, error: unitsError } = await admin
+            .from('units')
+            .select('id, number, unit_number')
+            .eq('community_id', profile.community_id)
+            .limit(500);
+        if (unitsError) throw unitsError;
+        const unitMatches = (units || []).filter(unit => {
+            const candidate = String(unit.number || unit.unit_number || '');
+            return normalizeIntentText(candidate) === normalizedUnitNumber;
+        });
+        if (unitMatches.length === 0) {
+            throw new Error(`No encontre el departamento "${requestedUnitNumber}" en esta comunidad.`);
+        }
+        if (unitMatches.length > 1) {
+            throw new Error(`Encontre mas de una unidad con el numero "${requestedUnitNumber}". Revisa la configuracion de unidades.`);
+        }
+        unitId = String(unitMatches[0].id || '');
+        unitNumber = String(unitMatches[0].number || unitMatches[0].unit_number || requestedUnitNumber);
+    }
 
     if (!unitId) {
         const { data: unit, error: unitError } = await admin
@@ -74,9 +99,11 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         unitNumber = String(unit?.number || unit?.unit_number || '');
     }
 
-    const residentName = String(resident.full_name || resident.name || resident.email || 'Residente');
+    const residentName = String(resident.full_name || resident.name || resident.email || '');
     if (!unitId) {
-        throw new Error(`El perfil de ${residentName} no tiene una unidad asociada.`);
+        throw new Error(residentName
+            ? `El perfil de ${residentName} no tiene una unidad asociada.`
+            : `El departamento ${unitNumber} no tiene una unidad asociada.`);
     }
 
     const { data: expenses, error: expensesError } = await admin
@@ -90,18 +117,18 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
 
     const rows = (expenses || []) as Array<Record<string, unknown>>;
     const amount = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const unitLabel = unitNumber ? ` (Depto ${unitNumber})` : '';
+    const subjectLabel = residentName ? `${residentName}${unitNumber ? ` (Depto ${unitNumber})` : ''}` : `Depto ${unitNumber}`;
     const message = rows.length === 0
-        ? `${residentName}${unitLabel} no mantiene gastos comunes pendientes.`
-        : `${residentName}${unitLabel} mantiene ${rows.length} gasto(s) pendiente(s) por $${amount.toLocaleString('es-CL')}.`;
+        ? `${subjectLabel} no mantiene gastos comunes pendientes.`
+        : `${subjectLabel} mantiene ${rows.length} gasto(s) pendiente(s) por $${amount.toLocaleString('es-CL')}.`;
 
     return {
         entityType: 'resident_expenses',
-        entityId: String(resident.id),
-        title: 'Deuda de residente revisada',
+        entityId: String(resident.id || unitId),
+        title: requestedUnitNumber ? 'Deuda de departamento revisada' : 'Deuda de residente revisada',
         message,
         data: {
-            residentId: String(resident.id),
+            residentId: resident.id ? String(resident.id) : null,
             residentName,
             unitId,
             unitNumber,
