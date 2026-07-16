@@ -214,7 +214,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/admin/operations", label: "Centro Operativo", icon: Activity, roles: ["admin"] },
         { href: "/admin/users", label: "Usuarios", icon: Users, roles: ["admin"] },
         { href: "/admin/onboarding", label: "Carga Masiva de Datos", icon: Upload, roles: ["admin"], feature: "coco_ai" },
-        { href: "/admin/whatsapp", label: "WhatsApp CoCo", icon: MessageCircle, roles: ["admin"], feature: "coco_ai" },
+        { href: "/admin/whatsapp", label: "WhatsApp CoCo", icon: MessageCircle, roles: ["admin"], feature: "coco_ai", creatorOnly: true },
       ]
     },
     {
