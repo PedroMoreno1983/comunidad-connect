@@ -170,9 +170,6 @@ export default function LandingPage() {
       {/* ── Nav ── */}
       <nav className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 border-b px-4 py-4 sm:px-6 md:px-12" style={{ borderColor: 'var(--cc-line)' }}>
         <Brand withMark size={20} />
-        <div className="hidden flex-wrap items-center gap-x-7 gap-y-2 text-[13px] lg:flex" style={{ color: 'var(--cc-ink-muted)' }}>
-          <span>Plataforma</span><span>Para administradores</span><span>Para residentes</span><span>Demo</span>
-        </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={() => router.push('/admin-onboarding')}
