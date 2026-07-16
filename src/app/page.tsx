@@ -74,7 +74,7 @@ function CoCoWhatsAppThread() {
 /* ── Trust strip ──────────────────────────────────────── */
 const trust = [
   { Icon: ShieldCheck, title: 'Datos por comunidad', desc: 'Aislamiento por edificio, permisos por rol y sesiones verificadas.' },
-  { Icon: MessageSquare, title: 'Acciones confirmadas', desc: 'Las escrituras de CoCo requieren revisión humana y dejan trazabilidad.' },
+  { Icon: MessageSquare, title: 'Acciones confirmadas', desc: 'Reservas, avisos y despachos requieren tu confirmación; cada interacción queda registrada y es trazable.' },
   { Icon: Layers, title: 'Operación centralizada', desc: 'Gastos, reservas, comunicaciones, cursos y solicitudes en una plataforma.' },
 ];
 

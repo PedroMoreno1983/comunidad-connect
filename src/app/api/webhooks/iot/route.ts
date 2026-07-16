@@ -21,17 +21,10 @@ export async function POST(req: NextRequest) {
 
     try {
         const authHeader = req.headers.get('authorization');
-        const secret = process.env.IOT_WEBHOOK_SECRET;
-        if (!secret) {
-            console.error('[IoT] IOT_WEBHOOK_SECRET env var not set');
-            return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
-        }
-        if (!authHeader || authHeader !== `Bearer ${secret}`) {
-            return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
-        }
+        const globalSecret = process.env.IOT_WEBHOOK_SECRET;
 
         const payload = await req.json() as Record<string, unknown>;
-        
+
         // Payload tipico de un evento IoT (ej. Shelly Flood o boton fisico).
         const sensor_id = cleanText(payload.sensor_id, 120);
         const type = cleanText(payload.type, 80);
@@ -39,9 +32,32 @@ export async function POST(req: NextRequest) {
         const community_id = cleanText(payload.community_id, 120);
         const severity = cleanText(payload.severity, 30) || 'ALTA';
         const location_detail = cleanText(payload.location_detail, 300) || 'No especificada';
+        const timestamp = cleanText(payload.timestamp, 40);
 
         if (!sensor_id || !type || !unit_id || !isUuid(community_id)) {
             return NextResponse.json({ error: 'Faltan campos validos (sensor_id, type, unit_id, community_id)' }, { status: 400 });
+        }
+
+        // Anti-replay: reject events whose timestamp is missing or more than 5 minutes old/skewed.
+        const eventTime = timestamp ? new Date(timestamp).getTime() : NaN;
+        if (!Number.isFinite(eventTime) || Math.abs(Date.now() - eventTime) > 5 * 60_000) {
+            return NextResponse.json({ error: 'Timestamp de evento invalido o expirado' }, { status: 401 });
+        }
+
+        // Per-community secret takes precedence over the legacy global one, so a
+        // secret leaked from one building's gateway can't spoof another community's events.
+        const { data: community } = await getSupabaseAdmin()
+            .from('communities')
+            .select('iot_webhook_secret')
+            .eq('id', community_id)
+            .maybeSingle();
+        const expectedSecret = community?.iot_webhook_secret || globalSecret;
+        if (!expectedSecret) {
+            console.error('[IoT] No webhook secret configured for community', community_id);
+            return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+        }
+        if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+            return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
         }
 
         const unitQuery = getSupabaseAdmin()
