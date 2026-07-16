@@ -259,6 +259,18 @@ export default function CoCoChatPage() {
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-xs font-black text-amber-100">{pending.title}</p>
                                                             <p className="mt-1 text-xs leading-relaxed text-amber-100/80">{pending.summary}</p>
+                                                            {Object.entries(pending.input).filter(([, value]) => value !== undefined && value !== null && value !== "").length > 0 && (
+                                                                <dl className="mt-2 space-y-0.5 rounded-lg bg-black/20 p-2">
+                                                                    {Object.entries(pending.input)
+                                                                        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+                                                                        .map(([key, value]) => (
+                                                                            <div key={key} className="flex gap-1.5 text-[11px] leading-snug">
+                                                                                <dt className="shrink-0 font-mono uppercase tracking-wide text-amber-200/60">{key.replace(/_/g, " ")}:</dt>
+                                                                                <dd className="min-w-0 break-words font-mono text-amber-100/90">{typeof value === "string" || typeof value === "number" ? String(value) : JSON.stringify(value)}</dd>
+                                                                            </div>
+                                                                        ))}
+                                                                </dl>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {!decision ? (

@@ -1478,7 +1478,10 @@ export async function scheduleMarketingReel(profile: MarketingProfile, reelId: s
     requireAdmin(profile);
     const date = new Date(scheduledAt);
     if (Number.isNaN(date.getTime())) throw new Error('Fecha de publicacion invalida.');
-    await loadReelForCommunity(reelId, communityIdFor(profile));
+    const reel = await loadReelForCommunity(reelId, communityIdFor(profile));
+    if (reel.status !== 'approved') {
+        throw new Error('El reel debe estar aprobado antes de programar su publicacion.');
+    }
     return updateReel(reelId, {
         status: 'scheduled',
         scheduled_at: date.toISOString(),
@@ -1549,6 +1552,9 @@ export async function publishMarketingReel(profile: MarketingProfile, reelId: st
     requireAdmin(profile);
     const communityId = communityIdFor(profile);
     const reel = await loadReelForCommunity(reelId, communityId);
+    if (reel.status !== 'approved' && reel.status !== 'scheduled') {
+        throw new Error('El reel debe estar aprobado antes de publicarlo.');
+    }
     await updateReel(reel.id, { status: 'publishing', failure_reason: null });
 
     try {

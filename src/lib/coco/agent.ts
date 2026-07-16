@@ -502,7 +502,13 @@ export async function askCoCo(
     const navigate = navMatch?.[1];
     
     const actMatch = rawText.match(/CMD:([A-Z_]+)/);
-    const action = actMatch?.[1];
+    let action = actMatch?.[1];
+    // LOGOUT ends the user's session — never trust it from model output alone
+    // (a prompt-injection payload in tool-result content could otherwise force
+    // it). Only honor it if the user's own message plausibly asked for it.
+    if (action === 'LOGOUT' && !/cerrar sesi[oó]n|cierra mi sesi[oó]n|me voy|logout|salir de (la cuenta|mi cuenta)/i.test(message)) {
+        action = undefined;
+    }
 
     let reply = rawText
         .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
