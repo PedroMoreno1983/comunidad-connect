@@ -3,12 +3,16 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import { enforceRateLimit } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 // Vercel Hobby allows up to 60s maxDuration for Edge/Serverless functions
-export const maxDuration = 60; 
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'training.generate-slides', { limit: 10, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const cookieStore = await cookies();
         const supabaseUser = createServerClient(
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
         if (!apiKey) throw new Error("GEMINI_API_KEY no configurada.");
 
         // Gemini 2.5 Flash Endpoint
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
         
         const systemPrompt = `Eres un Experto Diseñador Instruccional e IA Educativa ("CoCo").
 Tu tarea es transformar el siguiente documento o texto en una PRESENTACIÓN DE DIAPOSITIVAS altamente efectiva y didáctica.
@@ -100,10 +104,10 @@ ${text}
         });
 
         const startedAt = Date.now();
-        const response = await fetch(url, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(bodyParts) 
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify(bodyParts)
         });
 
         if (!response.ok) {

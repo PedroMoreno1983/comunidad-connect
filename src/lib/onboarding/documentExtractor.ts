@@ -81,8 +81,8 @@ async function callGemini(text: string, inlineData: { mimeType: string; data: st
     if (text) parts.push({ text });
     if (inlineData) parts.push({ inlineData });
     const startedAt = Date.now();
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
             systemInstruction: { role: 'system', parts: [{ text: PROMPT }] },
             contents: [{ role: 'user', parts }],

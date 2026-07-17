@@ -105,11 +105,11 @@ Usuario dice: ${message}`;
             estimatedCompletionTokens,
         });
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const startedAt = Date.now();
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
             body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
@@ -118,6 +118,12 @@ Usuario dice: ${message}`;
             const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
             const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
             const actionMatch = rawText.match(/CMD:([A-Z_]+)/);
+            let fallbackAction = actionMatch?.[1];
+            // Same anti-injection guard as the primary Claude path: LOGOUT can only
+            // come from the model if the user's own message plausibly asked for it.
+            if (fallbackAction === 'LOGOUT' && !/cerrar sesi[oó]n|cierra mi sesi[oó]n|me voy|logout|salir de (la cuenta|mi cuenta)/i.test(message)) {
+                fallbackAction = undefined;
+            }
             const reply = rawText
                 .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
                 .replace(/CMD:[A-Z_]+/g, '')
@@ -148,7 +154,7 @@ Usuario dice: ${message}`;
             return {
                 reply: reply || 'No pude generar una respuesta clara.',
                 navigate: navMatch?.[1],
-                action: actionMatch?.[1],
+                action: fallbackAction,
             };
         }
 
