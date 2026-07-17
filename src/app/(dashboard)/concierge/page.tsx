@@ -255,7 +255,7 @@ export default function ConciergeDashboardPage() {
                                     <div key={pkg.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                         <div>
                                             <p className="text-xs font-semibold text-[var(--cc-ink)]">
-                                                {pkg.recipient_unit_id ? `Depto ${pkg.recipient_unit_id}` : "Unidad sin asignar"}
+                                                {pkg.units?.number ? `Depto ${pkg.units.number}` : "Unidad sin asignar"}
                                             </p>
                                             <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.description || "Encomienda"} · {minutesAgo(pkg.received_at)}</p>
                                         </div>
