@@ -99,11 +99,11 @@ Rutas para Residentes:
 - /votaciones → Votaciones y asambleas
 - /resident/finances → Mis Gastos Comunes (cuánto debo, pagos)
 - /resident/consumo → Mi Consumo de Agua (boletas, lecturas)
-- /resident/training → Aula Virtual IA
 
 Rutas para Conserjes:
 - /concierge/visitors → Registro de visitas
 - /concierge/packages → Recepción de encomiendas y paquetería
+- /staff/training → Aula Virtual IA (tambien disponible para administradores)
 
 Rutas para Administradores:
 - /admin/finanzas → Control de finanzas y cobros (admin)
