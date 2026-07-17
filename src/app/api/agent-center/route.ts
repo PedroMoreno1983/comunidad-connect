@@ -894,10 +894,15 @@ async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile)
         const recipientByUnit = new Map((units || []).map(unit => [String(unit.id), String(unit.owner_id || unit.resident_profile_id || '')]));
         const recipients = new Set(expenses.map(row => recipientByUnit.get(String(row.unit_id))).filter(Boolean));
         const total = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+        const totalLabel = `$${total.toLocaleString('es-CL')}`;
+
+        const preview = recipients.size > 0
+            ? `Se notificara a ${recipients.size} residente(s) por un total aproximado de ${totalLabel} en gastos pendientes.`
+            : `Hay ${totalLabel} en gastos pendientes, pero ninguna de las unidades afectadas tiene un residente u owner vinculado para notificar -- revisa la asignacion de unidades antes de aprobar.`;
 
         return {
             ...action,
-            summary: `${action.summary} Se notificara a ${recipients.size} residente(s) por un total aproximado de $${total.toLocaleString('es-CL')} en gastos pendientes.`,
+            summary: `${action.summary} ${preview}`,
         };
     } catch (error) {
         console.error('[agent-center] Failed to build finance_collection_review preview', error);
