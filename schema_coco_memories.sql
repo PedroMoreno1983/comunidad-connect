@@ -33,7 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_memories_user ON public.agent_memories(condominio
 -- 4. RLS (Row Level Security) - Protegiendo la tabla
 ALTER TABLE public.agent_memories ENABLE ROW LEVEL SECURITY;
 
--- Solo los servicios backend (Service Role) o usuarios autenticados autorizados deberían acceder.
--- Por ahora, permitimos que el backend lo maneje.
+-- Solo el backend (service_role) accede a esta tabla -- sin cláusula TO, la
+-- política original aplicaba a PUBLIC, exponiendo la memoria IA de todos los
+-- usuarios a la anon key sin login alguno.
 DROP POLICY IF EXISTS "Backend has full access to agent_memories" ON public.agent_memories;
-CREATE POLICY "Backend has full access to agent_memories" ON public.agent_memories FOR ALL USING (true);
+CREATE POLICY "Backend has full access to agent_memories" ON public.agent_memories FOR ALL TO service_role USING (true) WITH CHECK (true);
