@@ -120,3 +120,49 @@ export async function enforceDistributedRateLimit(
         return enforceRateLimit(request, scope, options);
     }
 }
+
+function checkLocalBucketBySubject(scope: string, subject: string, options: { limit: number; windowMs: number }) {
+    const now = Date.now();
+    const key = `${scope}:subject:${subject}`;
+    const entry = buckets.get(key);
+
+    if (!entry || now > entry.resetAt) {
+        buckets.set(key, { count: 1, resetAt: now + options.windowMs });
+        return true;
+    }
+    if (entry.count >= options.limit) return false;
+    entry.count += 1;
+    return true;
+}
+
+/**
+ * Like enforceDistributedRateLimit, but keyed by an explicit subject (e.g. a
+ * WhatsApp phone number) instead of the request's source IP. Needed for
+ * webhooks where every request arrives from the same upstream provider IP,
+ * so per-IP limiting would throttle every user behind that provider together.
+ */
+export async function checkDistributedRateLimitBySubject(
+    subject: string,
+    scope: string,
+    options: { limit: number; windowMs: number }
+): Promise<boolean> {
+    const subjectHash = createHash('sha256').update(subject).digest('hex');
+
+    try {
+        const { data, error } = await getSupabaseAdmin().rpc('consume_api_rate_limit', {
+            p_scope: scope,
+            p_subject_hash: subjectHash,
+            p_limit: options.limit,
+            p_window_seconds: Math.max(1, Math.ceil(options.windowMs / 1000)),
+        });
+        if (error) throw error;
+
+        const row = (Array.isArray(data) ? data[0] : data) as { allowed?: boolean } | null;
+        return row?.allowed !== false;
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('[rate-limit] Distributed limiter unavailable; using local fallback.', error);
+        }
+        return checkLocalBucketBySubject(scope, subject, options);
+    }
+}

@@ -491,6 +491,18 @@ export async function askCoCo(
         rounds++;
     } while (response.stop_reason === 'tool_use' && rounds < MAX_TOOL_ROUNDS);
 
+    // Se agotaron las rondas de herramientas sin que el modelo produjera una
+    // respuesta final: mejor un mensaje honesto que un reply vacio y silencioso.
+    if (response.stop_reason === 'tool_use' && rounds >= MAX_TOOL_ROUNDS) {
+        return {
+            reply: 'Estoy procesando varias consultas para responderte bien y me tome mas tiempo del esperado. Intenta reformular tu pregunta de forma mas especifica.',
+            updatedHistory: history.map(historyMessage => ({
+                role: historyMessage.role,
+                content: historyMessage.content as string | object[],
+            })),
+        };
+    }
+
     // 5. Extraer texto final
     const rawText = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
