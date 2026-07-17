@@ -10,12 +10,12 @@ import {
     getSession,
     saveSession,
     deleteSession,
-    checkRateLimit,
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
 import { PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
 import { verifyTwilioSignature } from '@/lib/security/twilioSignature';
+import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
 
 function twiml(text: string): NextResponse {
     const safe = text
@@ -122,11 +122,26 @@ export async function POST(req: NextRequest) {
 
     const message = (formData.get('Body') as string)?.trim();
     const waId    = formData.get('WaId') as string; // número sin +
+    const messageSid = formData.get('MessageSid') as string | null;
 
     if (!message || !waId) return new NextResponse('', { status: 400 });
 
-    // Rate limit: 15 mensajes/min por número
-    if (!checkRateLimit(`wa:${waId}`, 15)) {
+    // Anti-replay: Twilio's signature scheme has no timestamp/nonce, so a captured
+    // valid request could otherwise be replayed indefinitely. MessageSid is unique
+    // per message; a second delivery (replay or Twilio's own retry) is a no-op.
+    if (messageSid) {
+        const { error: dedupError } = await getSupabaseAdmin()
+            .from('whatsapp_processed_messages')
+            .insert({ message_sid: messageSid });
+        if (dedupError) {
+            if (dedupError.code === '23505') return new NextResponse('', { status: 200 });
+            console.error('[CoCo WhatsApp] No se pudo registrar MessageSid para deduplicacion', dedupError);
+        }
+    }
+
+    // Rate limit: 15 mensajes/min por número, exigido entre instancias (no solo en memoria local)
+    const allowed = await checkDistributedRateLimitBySubject(`wa:${waId}`, 'coco.whatsapp.inbound', { limit: 15, windowMs: 60_000 });
+    if (!allowed) {
         return twiml('Demasiados mensajes en poco tiempo. Espera 1 minuto. 🙏');
     }
 
