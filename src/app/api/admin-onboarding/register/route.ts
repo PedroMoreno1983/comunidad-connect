@@ -180,12 +180,23 @@ export async function POST(req: NextRequest) {
         if (password.length < 6) return NextResponse.json({ error: "La contrasena debe tener al menos 6 caracteres." }, { status: 400 });
         if (!communityName) return NextResponse.json({ error: "Ingresa el nombre del edificio." }, { status: 400 });
 
+        // planId is client-supplied; never trust it directly as a real tier entitlement.
+        let validatedTierId: string | null = null;
+        if (planId) {
+            const { data: tier } = await getSupabaseAdmin()
+                .from("pricing_tiers")
+                .select("id")
+                .eq("id", planId)
+                .maybeSingle();
+            validatedTierId = tier?.id ? String(tier.id) : null;
+        }
+
         const communityPayload: Record<string, unknown> = {
             name: communityName,
             subscription_status: "trialing",
         };
         if (address) communityPayload.address = address;
-        if (planId) communityPayload.tier_id = planId;
+        if (validatedTierId) communityPayload.tier_id = validatedTierId;
         if (selectedAddress) {
             communityPayload.address_latitude = selectedAddress.latitude;
             communityPayload.address_longitude = selectedAddress.longitude;

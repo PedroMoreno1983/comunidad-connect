@@ -74,12 +74,22 @@ export async function POST() {
         const unitDetails = inferUnitDetails(unitLabel);
         const { data: existingUnit, error: existingUnitError } = await admin
             .from('units')
-            .select('id, number, tower')
+            .select('id, number, tower, owner_id, resident_profile_id')
             .eq('community_id', communityId)
             .eq('number', unitDetails.number)
             .maybeSingle();
 
         if (existingUnitError) throw existingUnitError;
+
+        // A unit already claimed by someone else must never be silently reassigned --
+        // department_number is user-editable, so this is the only guard against a
+        // resident typing another unit's number and taking over their expenses/data.
+        const claimedBy = cleanText(existingUnit?.owner_id, 80) || cleanText(existingUnit?.resident_profile_id, 80);
+        if (existingUnit && claimedBy && claimedBy !== user.id) {
+            return NextResponse.json({
+                error: 'Esa unidad ya esta vinculada a otro residente. Si crees que es un error, contacta a administracion.',
+            }, { status: 409 });
+        }
 
         let unitId = cleanText(existingUnit?.id, 80);
         if (!unitId) {
