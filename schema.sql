@@ -526,16 +526,34 @@ DECLARE
   v_community_id UUID;
   v_name TEXT;
   v_role TEXT;
+  v_invite_code TEXT;
   v_department TEXT;
   v_unit_id UUID;
   v_tower TEXT;
   v_floor INTEGER;
   v_numeric_part TEXT;
 BEGIN
-  IF (NEW.raw_user_meta_data->>'community_id') IS NOT NULL AND (NEW.raw_user_meta_data->>'community_id') <> '' THEN
-    v_community_id := (NEW.raw_user_meta_data->>'community_id')::UUID;
-  ELSE
-    v_community_id := '00000000-0000-0000-0000-000000000000'::UUID;
+  -- Never trust role or community_id supplied by the browser. The invitation
+  -- code is the only source of truth and is resolved again inside PostgreSQL
+  -- for every auth user creation (fixed in migration 035; this master schema
+  -- previously reverted to the vulnerable client-trusting version).
+  v_invite_code := UPPER(BTRIM(COALESCE(NEW.raw_user_meta_data->>'invite_code', '')));
+
+  SELECT c.id,
+         CASE
+           WHEN c.resident_code = v_invite_code THEN 'resident'
+           WHEN c.concierge_code = v_invite_code THEN 'concierge'
+           WHEN c.admin_code = v_invite_code THEN 'admin'
+         END
+    INTO v_community_id, v_role
+  FROM public.communities c
+  WHERE c.resident_code = v_invite_code
+     OR c.concierge_code = v_invite_code
+     OR c.admin_code = v_invite_code
+  LIMIT 1;
+
+  IF v_community_id IS NULL OR v_role IS NULL THEN
+    RAISE EXCEPTION 'A valid invitation code is required';
   END IF;
 
   v_name := COALESCE(
@@ -543,7 +561,6 @@ BEGIN
     NULLIF(NEW.raw_user_meta_data->>'name', ''),
     NEW.email
   );
-  v_role := COALESCE(NULLIF(NEW.raw_user_meta_data->>'role', ''), 'resident');
   v_department := NULLIF(BTRIM(COALESCE(
     NEW.raw_user_meta_data->>'department_number',
     NEW.raw_user_meta_data->>'unit_number',
@@ -593,7 +610,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Crear trigger de inserción en auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -634,6 +651,34 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 -- Políticas de Acceso Básico para Perfiles (Visualizar todos para el Directorio, actualizar propio)
 CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- profiles_update_own has no WITH CHECK, so USING(auth.uid() = id) alone would let
+-- any resident PATCH their own role/community_id/unit_id to escalate privileges or
+-- hop tenants. Column-level REVOKE + a defensive trigger close that gap without
+-- touching service_role (used by every legitimate signup/admin-action code path).
+REVOKE UPDATE (role, community_id, unit_id) ON public.profiles FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.prevent_profile_privilege_escalation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() = 'authenticated' THEN
+    NEW.role := OLD.role;
+    NEW.community_id := OLD.community_id;
+    NEW.unit_id := OLD.unit_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_profile_privilege_escalation ON public.profiles;
+CREATE TRIGGER trg_prevent_profile_privilege_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_profile_privilege_escalation();
 
 -- Políticas de Multi-Tenant por defecto (Filtro estricto por community_id del perfil del usuario autenticado)
 CREATE POLICY "tenant_communities_select" ON public.communities FOR SELECT USING (
