@@ -222,7 +222,7 @@ function buildLocalCoCoFallback(
 
         return {
             reply: 'Como orientación operativa, CoCo usa la Ley 21.442 de Copropiedad Inmobiliaria, su reglamento y la Ley 21.719 de datos personales. Para administrador: revisar inscripción vigente, rendición de cuentas, cobro y conservación de bienes comunes. Para convivencia: registrar hechos, aplicar reglamento y mantener trazabilidad. Para datos personales: mínimo dato necesario, finalidad clara y acceso por rol. No reemplazo asesoría legal, pero puedo ayudarte a ordenar el caso.',
-            navigate: context.role === 'admin' ? '/admin/training' : '/resident/training',
+            navigate: context.role === 'admin' ? '/admin/training' : context.role === 'concierge' ? '/staff/training' : undefined,
             action: 'OPEN_LEGAL_GUIDANCE',
         };
     }

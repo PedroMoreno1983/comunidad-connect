@@ -168,7 +168,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "AULA & INTELIGENCIA IA",
       links: [
-        { href: "/resident/training", label: "Aula Virtual IA", icon: GraduationCap, roles: ["concierge", "admin"] },
+        { href: "/staff/training", label: "Aula Virtual IA", icon: GraduationCap, roles: ["concierge", "admin"] },
         { href: "/admin/training", label: "Generador de Cursos", icon: BookOpen, roles: ["admin"] },
       ]
     },

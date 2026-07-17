@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { isSuperAdminEmail } from "@/lib/security/superadmin";
 import { resolveProductCapabilities } from "@/lib/productCapabilities";
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const capabilities = resolveProductCapabilities(process.env);
@@ -73,7 +73,7 @@ export async function proxy(req: NextRequest) {
     allowed = role === "admin";
   } else if (pathname.startsWith("/comunicaciones")) {
     allowed = role === "admin" || role === "concierge";
-  } else if (pathname.startsWith("/resident/training")) {
+  } else if (pathname.startsWith("/staff")) {
     allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/admin")) {
     allowed = role === "admin";
@@ -96,6 +96,7 @@ export const config = {
     "/concierge/:path*",
     "/feed/:path*",
     "/resident/:path*",
+    "/staff/:path*",
     "/superadmin/:path*",
     "/showcase",
     "/convive-connect/:path*",
