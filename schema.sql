@@ -648,8 +648,34 @@ ALTER TABLE public.collective_purchase_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.community_projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+-- Funciones SECURITY DEFINER que leen el propio perfil sin re-disparar RLS sobre
+-- profiles -- necesarias porque cualquier policy ON profiles que subconsulte
+-- profiles directamente entra en recursión infinita (Postgres la detecta y
+-- lanza error en cada query que toque profiles/communities/marketplace/etc.).
+CREATE OR REPLACE FUNCTION public.get_my_community_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT community_id FROM public.profiles WHERE id = auth.uid() LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid() LIMIT 1;
+$$;
+
 -- Políticas de Acceso Básico para Perfiles (Visualizar todos para el Directorio, actualizar propio)
-CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- profiles_update_own has no WITH CHECK, so USING(auth.uid() = id) alone would let
@@ -687,13 +713,17 @@ CREATE POLICY "tenant_communities_select" ON public.communities FOR SELECT USING
 CREATE POLICY "tenant_units_select" ON public.units FOR SELECT USING (
   community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
-CREATE POLICY "tenant_marketplace_select" ON public.marketplace_items FOR SELECT USING (true); -- Marketplace es abierto para lectura
+CREATE POLICY "tenant_marketplace_select" ON public.marketplace_items FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
 CREATE POLICY "tenant_marketplace_insert" ON public.marketplace_items FOR INSERT WITH CHECK (
   auth.uid() = seller_id AND community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
 );
 CREATE POLICY "tenant_marketplace_update" ON public.marketplace_items FOR UPDATE USING (auth.uid() = seller_id);
 
-CREATE POLICY "tenant_amenities_select" ON public.amenities FOR SELECT USING (true);
+CREATE POLICY "tenant_amenities_select" ON public.amenities FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
 CREATE POLICY "tenant_amenities_insert" ON public.amenities FOR INSERT WITH CHECK (
   community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
   AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
@@ -730,10 +760,21 @@ CREATE POLICY "tenant_announcements_delete" ON public.announcements FOR DELETE U
   AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'concierge'))
 );
 
-CREATE POLICY "tenant_polls_select" ON public.polls FOR SELECT USING (true);
-CREATE POLICY "tenant_poll_options_select" ON public.poll_options FOR SELECT USING (true);
-CREATE POLICY "tenant_poll_votes_select" ON public.poll_votes FOR SELECT USING (true);
-CREATE POLICY "tenant_poll_votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (true); -- Habilitado para insercion controlada desde cliente
+CREATE POLICY "tenant_polls_select" ON public.polls FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
+CREATE POLICY "tenant_poll_options_select" ON public.poll_options FOR SELECT USING (
+  poll_id IN (SELECT id FROM public.polls WHERE community_id = public.get_my_community_id())
+);
+CREATE POLICY "tenant_poll_votes_select" ON public.poll_votes FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
+-- user_id/community_id must match the caller -- otherwise any authenticated
+-- client could stuff ballots by inserting votes attributed to other residents
+-- or into another tenant's poll (WITH CHECK (true) allowed exactly that).
+CREATE POLICY "tenant_poll_votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (
+  user_id = auth.uid() AND community_id = public.get_my_community_id()
+);
 
 CREATE POLICY "tenant_neighbor_mediations_select" ON public.neighbor_mediations FOR SELECT USING (
   community_id = (SELECT community_id FROM public.profiles WHERE id = auth.uid())
@@ -778,7 +819,9 @@ CREATE POLICY "tenant_community_projects_update" ON public.community_projects FO
 );
 
 -- Políticas de Seguridad para Proveedores de Servicios
-CREATE POLICY "tenant_service_providers_select" ON public.service_providers FOR SELECT USING (true);
+CREATE POLICY "tenant_service_providers_select" ON public.service_providers FOR SELECT USING (
+  community_id = public.get_my_community_id()
+);
 CREATE POLICY "tenant_service_providers_insert" ON public.service_providers FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "tenant_service_providers_update" ON public.service_providers FOR UPDATE USING (auth.uid() = user_id);
 
@@ -791,6 +834,97 @@ CREATE POLICY "tenant_service_requests_insert" ON public.service_requests FOR IN
 CREATE POLICY "tenant_service_requests_update" ON public.service_requests FOR UPDATE USING (
   auth.uid() = user_id 
   OR provider_id IN (SELECT id FROM public.service_providers WHERE user_id = auth.uid())
+);
+
+-- Tablas que quedaban sin RLS habilitado en el maestro (pricing_tiers, reviews,
+-- training_*, coco_cases/events) -- en una instalación desde cero esto las deja
+-- totalmente abiertas a PostgREST (sin política = sin protección alguna).
+ALTER TABLE public.pricing_tiers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_training_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coco_cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coco_case_events ENABLE ROW LEVEL SECURITY;
+
+-- pricing_tiers: catálogo de planes, no es multi-tenant -- lectura pública
+-- (necesaria antes del signup), escritura solo desde el backend.
+CREATE POLICY "pricing_tiers_select_all" ON public.pricing_tiers FOR SELECT USING (true);
+CREATE POLICY "pricing_tiers_service_role_write" ON public.pricing_tiers FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- reviews: visibles para todo autenticado del mismo tenant que el proveedor
+-- (necesario para el directorio de proveedores), solo el propio autor escribe.
+CREATE POLICY "reviews_select_same_tenant" ON public.reviews FOR SELECT USING (
+  provider_id IN (SELECT id FROM public.service_providers WHERE community_id = public.get_my_community_id())
+);
+CREATE POLICY "reviews_insert_own" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "reviews_update_own" ON public.reviews FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "reviews_delete_own" ON public.reviews FOR DELETE USING (auth.uid() = user_id);
+
+-- training_modules: módulos globales (community_id NULL) o del propio tenant.
+CREATE POLICY "training_modules_select" ON public.training_modules FOR SELECT TO authenticated USING (
+  community_id IS NULL OR community_id = public.get_my_community_id()
+);
+CREATE POLICY "training_modules_admin_write" ON public.training_modules FOR ALL TO authenticated USING (
+  public.get_my_role() = 'admin' AND (community_id IS NULL OR community_id = public.get_my_community_id())
+) WITH CHECK (
+  public.get_my_role() = 'admin' AND (community_id IS NULL OR community_id = public.get_my_community_id())
+);
+
+-- training_lessons: heredan la visibilidad del módulo padre.
+CREATE POLICY "training_lessons_select" ON public.training_lessons FOR SELECT TO authenticated USING (
+  module_id IN (
+    SELECT id FROM public.training_modules
+    WHERE community_id IS NULL OR community_id = public.get_my_community_id()
+  )
+);
+CREATE POLICY "training_lessons_admin_write" ON public.training_lessons FOR ALL TO authenticated USING (
+  public.get_my_role() = 'admin'
+) WITH CHECK (
+  public.get_my_role() = 'admin'
+);
+
+-- user_training_progress: cada usuario ve/edita solo su propio progreso; el
+-- admin del tenant puede ver el progreso de su propia comunidad.
+CREATE POLICY "user_training_progress_own" ON public.user_training_progress FOR SELECT USING (
+  user_id = auth.uid()
+  OR (public.get_my_role() = 'admin' AND community_id = public.get_my_community_id())
+);
+CREATE POLICY "user_training_progress_insert_own" ON public.user_training_progress FOR INSERT WITH CHECK (
+  user_id = auth.uid()
+);
+CREATE POLICY "user_training_progress_update_own" ON public.user_training_progress FOR UPDATE USING (
+  user_id = auth.uid()
+);
+
+-- coco_cases / coco_case_events: mismo aislamiento por tenant que la versión
+-- ya endurecida en producción (017_coco_cases.sql), adaptado a las columnas
+-- de esta tabla base (sin unit_id/urgency/category, que se agregan en 017).
+CREATE POLICY "coco_cases_select_community" ON public.coco_cases FOR SELECT USING (
+  community_id = public.get_my_community_id()
+  AND (user_id = auth.uid() OR public.get_my_role() IN ('admin', 'concierge'))
+);
+CREATE POLICY "coco_cases_insert_own" ON public.coco_cases FOR INSERT WITH CHECK (
+  community_id = public.get_my_community_id()
+  AND (user_id = auth.uid() OR public.get_my_role() IN ('admin', 'concierge'))
+);
+CREATE POLICY "coco_cases_update_staff" ON public.coco_cases FOR UPDATE USING (
+  community_id = public.get_my_community_id() AND public.get_my_role() IN ('admin', 'concierge')
+);
+
+CREATE POLICY "coco_case_events_select" ON public.coco_case_events FOR SELECT USING (
+  case_id IN (
+    SELECT id FROM public.coco_cases
+    WHERE community_id = public.get_my_community_id()
+      AND (user_id = auth.uid() OR public.get_my_role() IN ('admin', 'concierge'))
+  )
+);
+CREATE POLICY "coco_case_events_insert" ON public.coco_case_events FOR INSERT WITH CHECK (
+  case_id IN (
+    SELECT id FROM public.coco_cases
+    WHERE community_id = public.get_my_community_id()
+      AND (user_id = auth.uid() OR public.get_my_role() IN ('admin', 'concierge'))
+  )
 );
 
 -- Crear índices de optimización para búsquedas y RLS

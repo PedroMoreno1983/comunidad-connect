@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Esta tarea no está reservada para verificación" }, { status: 400 });
     }
 
-    if (task.pin_code !== pinCode && pinCode !== "1234") {
+    if (task.pin_code !== pinCode) {
       return NextResponse.json({ error: "Código PIN de supervisor incorrecto" }, { status: 403 });
     }
 

@@ -75,3 +75,7 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- Solo el backend (orchestrator server-side) llama a esta función.
+REVOKE EXECUTE ON FUNCTION match_agent_memories(vector, uuid, uuid, float, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION match_agent_memories(vector, uuid, uuid, float, int) TO service_role;
