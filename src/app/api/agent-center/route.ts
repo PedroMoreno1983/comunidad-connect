@@ -1436,7 +1436,7 @@ export async function POST(req: NextRequest) {
         const action = confirmed || rejected
             ? await loadPersistedProposal(incomingAction, profile)
             : requestedPlaybook
-                ? normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description))
+                ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
             : await inferAction(message, profile);
         if (rejected) {
             await claimPersistedProposal(action, 'rejected');

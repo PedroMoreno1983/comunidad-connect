@@ -215,7 +215,7 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         includesAny(text, ['ascensor', 'elevador', 'atrapad']) ? 'ascensor' :
         includesAny(text, ['basura', 'sucio', 'limpieza', 'aseo', 'olor']) ? 'aseo' :
         includesAny(text, ['piscina', 'quincho', 'gimnasio', 'sala multiuso', 'area comun', 'jardin']) ? 'areas_comunes' :
-        includesAny(text, ['gasto comun', 'pago', 'deuda', 'cobro', 'boleta', 'transferencia']) ? 'finanzas' :
+        includesAny(text, ['gasto comun', 'gastos comunes', 'pago', 'deuda', 'debo', 'saldo', 'cobro', 'boleta', 'transferencia']) ? 'finanzas' :
         includesAny(text, ['reglamento', 'acta', 'comite', 'administracion', 'circular']) ? 'administracion' :
         'otro';
 
