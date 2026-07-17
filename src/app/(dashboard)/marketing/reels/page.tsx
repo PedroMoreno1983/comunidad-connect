@@ -747,9 +747,16 @@ export default function MarketingReelsPage() {
                 <div className="rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] p-4 shadow-sm">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
-                      <span className={clsx("inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]", statusClass(selectedReel.status))}>
-                        {STATUS_LABELS[selectedReel.status]}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={clsx("inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]", statusClass(selectedReel.status))}>
+                          {STATUS_LABELS[selectedReel.status]}
+                        </span>
+                        {selectedReel.creativePackage.modelSource === "template" && (
+                          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                            Guion de plantilla (no generado por IA)
+                          </span>
+                        )}
+                      </div>
                       <h2 className="mt-3 max-w-4xl text-2xl font-semibold leading-tight cc-text-primary">{selectedReel.title}</h2>
                       <p className="mt-2 max-w-4xl text-sm leading-6 cc-text-secondary">{selectedReel.creativePackage.angle}</p>
                       <p className="mt-3 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-ivory)] px-3 py-2 text-xs leading-5 cc-text-secondary">
@@ -964,7 +971,17 @@ export default function MarketingReelsPage() {
                     <button type="button" onClick={() => setSelectedReelId(reel.id)} className="min-w-0 text-left">
                       <div className="flex items-center justify-between gap-3">
                         <span className="truncate text-sm font-semibold cc-text-primary">{reel.title}</span>
-                        <span className={clsx("shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold", statusClass(reel.status))}>{STATUS_LABELS[reel.status]}</span>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {reel.creativePackage.modelSource === "template" && (
+                            <span
+                              title="El modelo de IA no estaba disponible al generar este guion; se uso una plantilla de respaldo."
+                              className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700"
+                            >
+                              Plantilla de respaldo
+                            </span>
+                          )}
+                          <span className={clsx("rounded-full border px-2 py-1 text-[10px] font-semibold", statusClass(reel.status))}>{STATUS_LABELS[reel.status]}</span>
+                        </div>
                       </div>
                       <p className="mt-1 text-xs cc-text-tertiary">
                         {reel.scheduledAt ? `Agendado: ${formatDate(reel.scheduledAt)}` : `Creado: ${formatDate(reel.createdAt)}`}

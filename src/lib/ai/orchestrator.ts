@@ -171,7 +171,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
     let errors: string[] = [];
 
     for (const model of models) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const startedAt = Date.now();
         const promptTokens = estimateTokensFromText(systemPrompt) + estimateTokensFromMessages(history);
         const completionBudget = 1000;
@@ -191,7 +191,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
         try {
             const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
                 body: JSON.stringify(body),
             });
 

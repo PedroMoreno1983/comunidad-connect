@@ -785,7 +785,7 @@ async function callGeminiInference(message: string, profile: AgentProfile): Prom
     if (!apiKey) return null;
     
     const model = "gemini-2.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const todayISO = new Date().toISOString().slice(0, 10);
     const systemInstruction = `${GEMINI_SYSTEM_PROMPT}\n\n**Fecha actual del servidor (hoy)**: ${todayISO}\n**Contexto del usuario**: Nombre: ${profile.name || ''} | Rol: ${profile.role || ''} | Unidad ID: ${profile.unit_id || ''}`;
     
@@ -806,10 +806,10 @@ async function callGeminiInference(message: string, profile: AgentProfile): Prom
     try {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify(body)
         });
-        
+
         if (!res.ok) return null;
         const data = await res.json();
         const output = data.candidates?.[0]?.content?.parts?.[0]?.text;

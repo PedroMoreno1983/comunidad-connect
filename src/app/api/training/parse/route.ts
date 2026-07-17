@@ -51,7 +51,7 @@ export async function POST(request: Request) {
             const inlineData = { mimeType: 'application/pdf', data: pdfBase64 };
             const model = 'gemini-2.0-flash';
             const prompt = 'Extrae TODO el texto de este documento de entrenamiento exactamente como esta escrito, sin omitir partes, sin resumir y sin agregar comentarios extras. Solo retorna el contenido puro en texto plano directo, sin usar bloques de codigo Markdown.';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
             const body = {
                 contents: [{
                     role: 'user',
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
             const startedAt = Date.now();
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body: JSON.stringify(body),
             });
 

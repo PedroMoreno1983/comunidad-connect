@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { askCoCo } from '@/lib/coco/agent';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
@@ -9,6 +10,13 @@ function cleanText(value: unknown, maxLength = 200) {
 
 function isUuid(value: string) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function secretMatches(authHeader: string | null, secret: string) {
+    if (!authHeader) return false;
+    const expected = Buffer.from(`Bearer ${secret}`, 'utf8');
+    const provided = Buffer.from(authHeader, 'utf8');
+    return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
 /**
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
             console.error('[IoT] No webhook secret configured for community', community_id);
             return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
         }
-        if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+        if (!secretMatches(authHeader, expectedSecret)) {
             return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
         }
 
