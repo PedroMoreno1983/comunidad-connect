@@ -412,9 +412,14 @@ async function getUserUnit(profile: AgentProfile) {
 
 async function bestEffortInsert(table: string, payload: Record<string, unknown>) {
     try {
-        const { data } = await getSupabaseAdmin().from(table).insert(payload).select('id').maybeSingle();
+        const { data, error } = await getSupabaseAdmin().from(table).insert(payload).select('id').maybeSingle();
+        if (error) {
+            console.error(`[agent-center] bestEffortInsert failed for ${table}`, error);
+            return null;
+        }
         return typeof data?.id === 'string' ? data.id : null;
-    } catch {
+    } catch (error) {
+        console.error(`[agent-center] bestEffortInsert threw for ${table}`, error);
         return null;
     }
 }
@@ -836,6 +841,11 @@ function finalizeInferredAction(message: string, candidate: AgentAction) {
 }
 
 async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
+    const action = await inferActionUnenriched(message, profile);
+    return enrichPlaybookPreview(action, profile);
+}
+
+async function inferActionUnenriched(message: string, profile: AgentProfile): Promise<AgentAction> {
     if (isIndividualDebtQuery(message)) {
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
@@ -856,6 +866,43 @@ async function inferAction(message: string, profile: AgentProfile): Promise<Agen
         }
     }
     return finalizeInferredAction(message, inferActionHeuristic(message, profile));
+}
+
+/**
+ * A batch playbook's approval card otherwise only shows its generic static
+ * description — an admin approving "cobranza" has no idea how many
+ * residents will actually be notified, or for how much, before it fires.
+ */
+async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile): Promise<AgentAction> {
+    if (action.toolName !== 'run_playbook' || action.args.playbookKey !== 'finance_collection_review' || !profile.community_id) {
+        return action;
+    }
+    try {
+        const admin = getSupabaseAdmin();
+        const { data: expenses, error: expensesError } = await admin
+            .from('expenses')
+            .select('unit_id, amount')
+            .eq('community_id', profile.community_id)
+            .in('status', ['pending', 'overdue'])
+            .limit(100);
+        if (expensesError || !expenses?.length) return action;
+
+        const unitIds = Array.from(new Set(expenses.map(row => String(row.unit_id || '')).filter(Boolean)));
+        const { data: units } = unitIds.length
+            ? await admin.from('units').select('id, owner_id, resident_profile_id').in('id', unitIds)
+            : { data: [] };
+        const recipientByUnit = new Map((units || []).map(unit => [String(unit.id), String(unit.owner_id || unit.resident_profile_id || '')]));
+        const recipients = new Set(expenses.map(row => recipientByUnit.get(String(row.unit_id))).filter(Boolean));
+        const total = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+        return {
+            ...action,
+            summary: `${action.summary} Se notificara a ${recipients.size} residente(s) por un total aproximado de $${total.toLocaleString('es-CL')} en gastos pendientes.`,
+        };
+    } catch (error) {
+        console.error('[agent-center] Failed to build finance_collection_review preview', error);
+        return action;
+    }
 }
 
 function isToolName(value: unknown): value is ToolName {
@@ -992,7 +1039,7 @@ async function recordApproval(profile: AgentProfile, action: AgentAction, decisi
 async function markPersistedProposal(action: AgentAction, status: 'executed' | 'rejected' | 'failed', result?: Record<string, unknown>) {
     if (!action.proposalId || !action.runId) return;
     const admin = getSupabaseAdmin();
-    await admin
+    const { error: toolCallError } = await admin
         .from('agent_tool_calls')
         .update({
             status,
@@ -1000,14 +1047,20 @@ async function markPersistedProposal(action: AgentAction, status: 'executed' | '
             executed_at: status === 'executed' ? new Date().toISOString() : null,
         })
         .eq('id', action.proposalId);
+    if (toolCallError) {
+        console.error('[agent-center] Failed to record tool_call status in bitacora', { proposalId: action.proposalId, status, error: toolCallError });
+    }
 
-    await admin
+    const { error: runError } = await admin
         .from('agent_runs')
         .update({
             status,
             completed_at: new Date().toISOString(),
         })
         .eq('id', action.runId);
+    if (runError) {
+        console.error('[agent-center] Failed to record agent_run status in bitacora', { runId: action.runId, status, error: runError });
+    }
 }
 
 async function loadPersistedProposal(incomingAction: AgentAction | null, profile: AgentProfile) {
@@ -1302,7 +1355,10 @@ export async function GET(req: NextRequest) {
 
     // Resilient fallback: a visit evaluates only this tenant's due rules. The
     // protected scheduler remains the primary path when CRON_SECRET is active.
-    await evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID).catch(() => undefined);
+    // Fire-and-forget so a dashboard read never waits on rule evaluation.
+    void evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID).catch(error => {
+        console.error('[agent-center] Resilient trigger evaluation failed', error);
+    });
 
     const { data } = await getSupabaseAdmin()
         .from('agent_activity_log')
