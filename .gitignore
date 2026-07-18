@@ -34,6 +34,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -46,8 +47,9 @@ yarn-error.log*
 next-env.d.ts
 
 # local temp
+tmp/
 .tmp/
-.tmp_plataforma_educacion/
+.tmp_*/
 supabase/.temp/
 compile_errors.txt
 git_status.txt
@@ -56,3 +58,10 @@ seed_amenities.mjs
 insert_amenities.sql
 agente_psicometrico/
 datawise-people-analytics/
+
+# real PII / operational logs that must never be committed
+scripts/envios-completados.json
+
+# android build logs
+android/error*.txt
+android/output*.txt
