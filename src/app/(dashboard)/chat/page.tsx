@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
+import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
 
 interface PendingAction {
     toolUseId: string;
@@ -95,18 +96,18 @@ export default function CoCoChatPage() {
     };
 
     const appendAssistantReply = (data: CoCoApiResponse) => {
+        const safeNavigate = getSafeCoCoNavigation(data.navigate);
         setMsgs(previous => [...previous, {
             id: (Date.now() + 1).toString(),
             role: "assistant",
             text: data.reply || (data.pendingActions?.length ? "" : "No pude responder."),
-            nav: data.navigate,
+            nav: safeNavigate,
             action: data.action,
             pendingActions: data.pendingActions,
         }]);
 
-        if (data.navigate) {
-            const target = data.navigate;
-            setTimeout(() => router.push(target), 800);
+        if (safeNavigate) {
+            setTimeout(() => router.push(safeNavigate), 800);
         }
 
         if (!data.action) return;
