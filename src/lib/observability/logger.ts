@@ -65,3 +65,23 @@ export function logApiError(request: Request, route: string, error: unknown, met
         ...metadata,
     });
 }
+
+/**
+ * Logs the full error server-side (via logApiError) and returns a generic,
+ * client-safe JSON error response instead of forwarding error.message --
+ * provider/DB error text (Resend, Postgres, etc.) can reveal internal
+ * config or schema details to the caller.
+ */
+export function apiErrorResponse(
+    request: Request,
+    route: string,
+    error: unknown,
+    options: { status?: number; publicMessage?: string; metadata?: LogMetadata } = {},
+) {
+    const { status = 500, publicMessage = 'No se pudo procesar la solicitud.', metadata } = options;
+    logApiError(request, route, error, metadata);
+    return Response.json(
+        { error: publicMessage, requestId: resolveRequestId(request) },
+        { status },
+    );
+}
