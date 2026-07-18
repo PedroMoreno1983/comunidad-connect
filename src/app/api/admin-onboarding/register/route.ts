@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
         const { data: userData, error: userError } = await admin.auth.admin.createUser({
             email,
             password,
-            email_confirm: true,
+            email_confirm: false,
             user_metadata: {
                 name: fullName,
                 invite_code: community.adminCode,
