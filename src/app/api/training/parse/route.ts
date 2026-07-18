@@ -4,11 +4,18 @@ import { cookies } from 'next/headers';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
+import { apiErrorResponse } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+const MAX_TRAINING_FILE_BYTES = 10 * 1024 * 1024;
+
 export async function POST(request: Request) {
+    const limited = await enforceDistributedRateLimit(request, 'training.parse', { limit: 10, windowMs: 60_000 });
+    if (limited) return limited;
+
     try {
         const cookieStore = await cookies();
         const supabaseUser = createServerClient(
@@ -35,6 +42,9 @@ export async function POST(request: Request) {
 
         if (!file) {
             return NextResponse.json({ error: 'No se encontro un archivo en la solicitud' }, { status: 400 });
+        }
+        if (file.size > MAX_TRAINING_FILE_BYTES) {
+            return NextResponse.json({ error: 'Archivo demasiado grande. Maximo 10 MB.' }, { status: 413 });
         }
 
         const arrayBuffer = await file.arrayBuffer();
@@ -148,9 +158,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: error.reason }, { status: 429 });
         }
 
-        console.warn('Error parsing document:', error);
-        return NextResponse.json({
-            error: 'Ocurrio un error al procesar el archivo. ' + (error instanceof Error ? error.message : ''),
-        }, { status: 500 });
+        return apiErrorResponse(request, '/api/training/parse', error, {
+            publicMessage: 'Ocurrio un error al procesar el archivo.',
+        });
     }
 }

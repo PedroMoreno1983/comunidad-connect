@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import confetti from "canvas-confetti";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { COCO_NAV_MAP, getSafeCoCoNavigation } from "@/lib/coco/navigation";
 
 interface PendingAction {
     toolUseId: string;
@@ -39,20 +40,6 @@ interface Message {
     };
 }
 
-const NAV_MAP: Record<string, string> = {
-    "/home": "Inicio", "/social": "Muro Social", "/chat": "Comunidad",
-    "/directorio": "Directorio", "/amenities": "Espacios Comunes",
-    "/expenses": "Mis Gastos", "/feed": "Avisos Oficiales",
-    "/profile": "Mi Perfil", "/votaciones": "Votaciones",
-    "/resident/finances": "Mis Gastos", "/resident/supermercado": "Supermercado",
-    "/resident/cases": "Mis Casos CoCo",
-};
-
-const HIDDEN_NAV_ROUTES = new Set(["/resident/supermercado", "/showcase", "/marketing/reels"]);
-
-function getSafeNavigation(target?: string): string | undefined {
-    return target && target in NAV_MAP && !HIDDEN_NAV_ROUTES.has(target) ? target : undefined;
-}
 
 const QUICK = [
     { label: "¿Cómo reservo un espacio?", icon: Calendar },
@@ -160,7 +147,7 @@ export default function CoCo() {
         pendingActions?: PendingAction[];
         case?: Message["case"];
     }) => {
-        const safeNavigate = getSafeNavigation(d.navigate);
+        const safeNavigate = getSafeCoCoNavigation(d.navigate);
         setMsgs(p => [...p, {
             id: (Date.now() + 1).toString(),
             role: "assistant",
@@ -377,7 +364,7 @@ export default function CoCo() {
                                     onClick={() => router.push(msgs[msgs.length - 1]!.nav!)}
                                     className="ml-9 text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-200 hover:bg-brand-100 transition-colors"
                                 >
-                                    Ir a {NAV_MAP[msgs[msgs.length - 1]!.nav!] || msgs[msgs.length - 1]!.nav} →
+                                    Ir a {COCO_NAV_MAP[msgs[msgs.length - 1]!.nav!] || msgs[msgs.length - 1]!.nav} →
                                 </button>
                             )}
                             {loading && (
