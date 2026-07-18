@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendWelcomeEmail } from '@/lib/email';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { apiErrorResponse } from '@/lib/observability/logger';
 
 function clean(value: unknown, max = 200) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -38,12 +39,16 @@ export async function POST(req: NextRequest) {
         });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 502 });
+            return apiErrorResponse(req, '/api/email/welcome', error, {
+                status: 502,
+                publicMessage: 'No se pudo enviar el correo de bienvenida.',
+            });
         }
 
         return NextResponse.json({ ok: true });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Error desconocido';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiErrorResponse(req, '/api/email/welcome', error, {
+            publicMessage: 'No se pudo enviar el correo de bienvenida.',
+        });
     }
 }
