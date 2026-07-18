@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { askCoCo } from '@/lib/coco/agent';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 function cleanText(value: unknown, maxLength = 200) {
@@ -24,7 +24,7 @@ function secretMatches(authHeader: string | null, secret: string) {
  * de forma autónoma con privilegios de sistema.
  */
 export async function POST(req: NextRequest) {
-    const limited = enforceRateLimit(req, 'webhooks.iot', { limit: 120, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(req, 'webhooks.iot', { limit: 120, windowMs: 60_000 });
     if (limited) return limited;
 
     try {

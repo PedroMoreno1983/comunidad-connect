@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { HaulmerService } from '@/lib/services/haulmer';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { PUBLIC_SITE_URL } from '@/lib/config';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { calculateHaulmerServiceFee } from '@/lib/payments/haulmerFees';
 import type { HaulmerFeeCalculation } from '@/lib/types';
 
@@ -212,7 +212,7 @@ async function markPaymentAttempt(
 }
 
 export async function POST(req: NextRequest) {
-    const limited = enforceRateLimit(req, 'payments.create_link', { limit: 20, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(req, 'payments.create_link', { limit: 20, windowMs: 60_000 });
     if (limited) return limited;
 
     try {

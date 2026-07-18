@@ -11,9 +11,9 @@ export async function GET(req: NextRequest) {
     const secret = process.env.CRON_SECRET?.trim();
     if (!secret) return NextResponse.json({ error: 'Cron no configurado.' }, { status: 503 });
 
-    const auth = req.headers.get('authorization') || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : req.nextUrl.searchParams.get('token');
-    if (token !== secret) {
+    // Vercel Cron sends the secret as `Authorization: Bearer $CRON_SECRET` --
+    // no query-string fallback, since query strings end up in access logs.
+    if (req.headers.get('authorization') !== `Bearer ${secret}`) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
