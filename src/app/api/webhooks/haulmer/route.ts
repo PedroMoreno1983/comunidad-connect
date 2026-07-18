@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { signHaulmerParams } from '@/lib/services/haulmer';
 import crypto from 'crypto';
 
@@ -130,7 +130,7 @@ async function processMarketplacePayment(recordId: string, params: CallbackParam
 }
 
 export async function POST(req: Request) {
-    const limited = enforceRateLimit(req, 'webhooks.haulmer', { limit: 180, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(req, 'webhooks.haulmer', { limit: 180, windowMs: 60_000 });
     if (limited) return limited;
 
     const secretKey = process.env.HAULMER_SECRET_KEY?.trim() || process.env.HAULMER_WEBHOOK_SECRET?.trim();

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { assessResidents, extractResidentsFromBuffer, MAX_ONBOARDING_BATCH_BYTES, MAX_ONBOARDING_BATCH_FILES, MAX_ONBOARDING_FILE_BYTES, residentDedupeKey, type ExtractedResident } from '@/lib/onboarding/documentExtractor';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const limited = enforceRateLimit(request, 'onboarding.batch', { limit: 6, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(request, 'onboarding.batch', { limit: 6, windowMs: 60_000 });
     if (limited) return limited;
     const profile = await getAuthenticatedAgentProfile();
     if (!profile || profile.role !== 'admin' || !profile.community_id) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });

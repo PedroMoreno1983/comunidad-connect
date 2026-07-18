@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Map([
@@ -13,7 +13,7 @@ const ALLOWED_TYPES = new Map([
 ]);
 
 export async function POST(req: NextRequest) {
-    const limited = enforceRateLimit(req, 'profile.avatar', { limit: 20, windowMs: 60_000 });
+    const limited = await enforceDistributedRateLimit(req, 'profile.avatar', { limit: 20, windowMs: 60_000 });
     if (limited) return limited;
 
     const cookieStore = await cookies();
