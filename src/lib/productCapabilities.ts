@@ -62,7 +62,7 @@ export function resolveProductCapabilities(environment: Environment): ProductCap
       && professionalAudioReady
       && instagramReady
       && hasValue(environment, 'CRON_SECRET'),
-    iotAutomation: hasValue(environment, 'IOT_WEBHOOK_SECRET'),
+    iotAutomation: true,
     externalMonitoring: hasValue(environment, 'AI_HEALTH_TOKEN'),
     // The current supermarket module has no real retailer or fulfilment integration.
     supermarketOrdering: false,

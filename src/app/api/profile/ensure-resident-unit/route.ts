@@ -137,7 +137,7 @@ export async function POST() {
             unitName: `Depto ${unitDetails.tower !== 'A' ? `${unitDetails.tower}-` : ''}${unitDetails.number}`,
         });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo vincular la unidad.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[profile] unit linkage failed', error);
+        return NextResponse.json({ error: 'No se pudo vincular la unidad.' }, { status: 500 });
     }
 }

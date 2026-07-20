@@ -115,8 +115,8 @@ export default function WaterConsumptionPage() {
                 <h2 className="text-xl font-bold cc-text-secondary">{user?.unitId ? "Sin lecturas cargadas" : "Sin unidad asignada"}</h2>
                 <p className="max-w-md cc-text-tertiary">
                     {user?.unitId
-                        ? "Aun no existen lecturas reales para tu unidad. Cuando administracion cargue el periodo, veras tendencia, alertas y estimacion de costo."
-                        : "Contacta a la administracion para vincular tu usuario a un departamento."}
+                                ? "Aún no existen lecturas reales para tu unidad. Cuando Administración cargue el período, verás la tendencia, alertas y estimación de costo."
+                                : "Contacta a la Administración para vincular tu usuario a un departamento."}
                 </p>
             </div>
         );

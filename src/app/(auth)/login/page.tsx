@@ -28,6 +28,7 @@ function LoginForm() {
     const router = useRouter();
     const { toast } = useToast();
     const nextParam = searchParams.get("next");
+    const checkEmail = searchParams.get("check_email") === "1";
     const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -157,13 +158,21 @@ function LoginForm() {
                             </button>
                         </div>
 
+                        {checkEmail && (
+                            <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                                Revisa tu correo y abre el enlace de verificación antes de iniciar sesión.
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-1.5">
-                                <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                                <label htmlFor="login-identity" className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                                     {activeTab === "mail" ? "CORREO ELECTRÓNICO" : "RUT DE USUARIO"}
                                 </label>
                                 <input
+                                    id="login-identity"
                                     type={activeTab === "mail" ? "email" : "text"}
+                                    inputMode={activeTab === "mail" ? "email" : "text"}
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
                                     placeholder={activeTab === "mail" ? "tu@correo.com" : "12.345.678-9"}
@@ -175,16 +184,18 @@ function LoginForm() {
 
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">CONTRASEÑA</label>
+                                    <label htmlFor="login-password" className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">CONTRASEÑA</label>
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                                     >
                                         {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                     </button>
                                 </div>
                                 <input
+                                    id="login-password"
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(event) => setPassword(event.target.value)}

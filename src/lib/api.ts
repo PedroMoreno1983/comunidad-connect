@@ -25,6 +25,7 @@ import {
     MarketplaceItem,
     MarketplaceMessage,
     NeighborMediationCase,
+    PollVoteRecord,
     ProfileSettings,
     ResidentCasesSummary,
     ResidentHomeSummary,
@@ -589,7 +590,7 @@ export const HomeService = {
         }
 
         const today = new Date().toISOString().split('T')[0];
-        let bookingsQuery = supabase
+        const bookingsQuery = supabase
             .from('bookings')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', user.id)
@@ -1775,6 +1776,20 @@ export const PollsService = {
             return null; // Asumir no votado en caso de error para no bloquear UI brutalmente
         }
         return data;
+    },
+
+    async getUserVotes(pollIds: string[], userId: string): Promise<PollVoteRecord[]> {
+        if (pollIds.length === 0) return [];
+        const { data, error } = await supabase
+            .from('poll_votes')
+            .select('poll_id, option_id')
+            .eq('user_id', userId)
+            .in('poll_id', pollIds);
+        if (error) {
+            console.error('Error loading user votes:', error);
+            throw error;
+        }
+        return (data || []) as PollVoteRecord[];
     }
 };
 

@@ -177,21 +177,21 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
-        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident", "admin"] },
+        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
-        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident", "admin"], feature: "maintenance" },
-        { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident", "admin"], feature: "maintenance" },
-        { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident", "admin"], feature: "coco_ai" },
-        { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident", "admin"] },
+        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
+        { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident"], feature: "maintenance" },
+        { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident"], feature: "coco_ai" },
+        { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
         { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
       ]
     },
     {
-      title: "FINANZAS PERSONALES",
+      title: role === "admin" ? "FONDO SOLIDARIO" : "FINANZAS PERSONALES",
       links: [
-        { href: "/resident/finances", label: "Mis Gastos", icon: DollarSign, roles: ["resident", "admin"] },
-        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident", "admin"] },
+        { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
+        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"] },
         { href: "/expenses/solidaridad", label: "Solidaridad Vecinal", icon: Shield, roles: ["resident", "admin"] },
       ]
     },
@@ -221,7 +221,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "AJUSTES",
       links: [
         { href: "/profile", label: "Mi Perfil", icon: UserCircle, roles: ["admin", "resident", "concierge"] },
-        { href: "/showcase", label: "Lienzo de Diseño", icon: Sparkles, roles: ["admin", "resident", "concierge"] },
+        { href: "/privacy-center", label: "Privacidad", icon: Shield, roles: ["admin", "resident", "concierge"] },
       ]
     }
   ];

@@ -79,6 +79,14 @@ export default function ResidentCasesPage() {
         resolved: cases.filter(item => item.status === "resolved" || item.status === "closed").length,
     }), [cases]);
 
+    const reportWithCoco = () => {
+        window.dispatchEvent(new CustomEvent("coco:compose", {
+            detail: {
+                message: "Quiero reportar un problema en mi comunidad y dejar un caso para seguimiento.",
+            },
+        }));
+    };
+
     if (!user) return null;
 
     return (
@@ -91,14 +99,25 @@ export default function ResidentCasesPage() {
                         Revisa los reportes que CoCo registró desde tus conversaciones y el avance de Administración o Conserjería.
                     </p>
                 </div>
-                <Link
-                    href="/services"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
-                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
-                >
-                    <Wrench className="h-4 w-4" />
-                    Solicitar servicio
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        onClick={reportWithCoco}
+                        className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                        style={{ background: "var(--cc-copper)" }}
+                    >
+                        <Bot className="h-4 w-4" />
+                        Reportar con CoCo
+                    </button>
+                    <Link
+                        href="/services"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)]"
+                        style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                    >
+                        <Wrench className="h-4 w-4" />
+                        Solicitar servicio
+                    </Link>
+                </div>
             </header>
 
             <section className="grid gap-4 sm:grid-cols-3">
@@ -129,9 +148,9 @@ export default function ResidentCasesPage() {
                             <Bot className="h-10 w-10" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Aun no tienes casos CoCo</h2>
+                            <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Aún no tienes casos CoCo</h2>
                             <p className="mt-2 max-w-md text-sm cc-text-secondary">
-                                Cuando le reportes a CoCo una filtracion, ruido, seguridad o mantencion, quedara aqui para seguimiento.
+                                Cuando le reportes a CoCo una filtración, ruido, seguridad o mantención, quedará aquí para seguimiento.
                             </p>
                         </div>
                     </div>
@@ -176,10 +195,10 @@ export default function ResidentCasesPage() {
                                             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
                                             <div>
                                                 <p className="text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
-                                                    Ultimo movimiento
+                                                    Último movimiento
                                                 </p>
                                                 <p className="mt-1 line-clamp-4 text-xs font-medium cc-text-secondary">
-                                                    {latestEvent?.body || item.assistant_reply || "CoCo registro el caso para seguimiento."}
+                                                    {latestEvent?.body || item.assistant_reply || "CoCo registró el caso para seguimiento."}
                                                 </p>
                                                 <p className="mt-2 text-[10px] font-bold cc-text-tertiary">
                                                     {latestEvent

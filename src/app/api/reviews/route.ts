@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
         }
 
-        if (provider.community_id && provider.community_id !== profile.community_id) {
+        if (!profile.community_id || provider.community_id !== profile.community_id) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 
@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (reviewError || !review) {
-            return NextResponse.json({ error: reviewError?.message || 'No se pudo guardar la resena' }, { status: 500 });
+            console.error('[reviews] insert failed', reviewError);
+            return NextResponse.json({ error: 'No se pudo guardar la reseña.' }, { status: 500 });
         }
 
         const { data: reviews } = await supabaseAdmin
@@ -106,8 +107,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ review }, { status: 201 });
     } catch (error) {
+        console.error('[reviews] create failed', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo guardar la reseña.' },
             { status: 500 }
         );
     }

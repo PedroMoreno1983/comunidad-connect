@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         let newItems: CartItemUI[] = [];
         
         if (response.cart?.items) {
-             newItems = response.cart.items.map((item: any) => ({
+             newItems = response.cart.items.map(item => ({
                  id: Math.random().toString(),
                  name: item.name,
                  price: item.price,

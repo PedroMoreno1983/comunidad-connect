@@ -87,11 +87,7 @@ const groups = [
           ? checkKeys(["AI_HEALTH_TOKEN"])
           : [{ key: "AI_HEALTH_TOKEN", present: hasValue("AI_HEALTH_TOKEN"), deferred: !hasValue("AI_HEALTH_TOKEN") }]
       ),
-      ...(
-        isEnabled("IOT_WEBHOOKS_REQUIRED")
-          ? checkKeys(["IOT_WEBHOOK_SECRET"])
-          : [{ key: "IOT_WEBHOOK_SECRET", present: hasValue("IOT_WEBHOOK_SECRET"), deferred: !hasValue("IOT_WEBHOOK_SECRET") }]
-      ),
+      { key: "COMMUNITY_IOT_WEBHOOK_SECRET_PER_TENANT", present: true, scoped: "communities.iot_webhook_secret + iot_autonomous_actions_enabled" },
     ],
   },
 ];

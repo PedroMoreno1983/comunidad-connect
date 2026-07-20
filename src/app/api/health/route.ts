@@ -32,8 +32,8 @@ export async function GET() {
 
     const paymentsReady = hasEnv('HAULMER_ACCOUNT_ID') && hasEnv('HAULMER_SECRET_KEY');
     const paymentsRequired = isRequired('HAULMER_PAYMENTS_REQUIRED');
-    const iotWebhookReady = hasEnv('IOT_WEBHOOK_SECRET');
-    const iotWebhookRequired = isRequired('IOT_WEBHOOKS_REQUIRED');
+    const iotWebhookReady = true;
+    const iotWebhookRequired = false;
     const monitoringReady = hasEnv('AI_HEALTH_TOKEN');
     const monitoringRequired = isRequired('AI_HEALTH_TOKEN_REQUIRED');
     const automation = {
@@ -44,7 +44,7 @@ export async function GET() {
 
     const paidIntegrations = {
         payments: paymentsReady || !paymentsRequired,
-        protectedWebhooks: hasEnv('WHATSAPP_WEBHOOK_SECRET') && (iotWebhookReady || !iotWebhookRequired),
+        protectedWebhooks: hasEnv('WHATSAPP_WEBHOOK_SECRET'),
         monitoring: monitoringReady || !monitoringRequired,
         semanticSearch: hasEnv('VOYAGE_API_KEY'),
     };
@@ -59,7 +59,8 @@ export async function GET() {
             whatsapp: hasEnv('WHATSAPP_WEBHOOK_SECRET'),
             iot: iotWebhookReady,
             iotRequired: iotWebhookRequired,
-            iotDeferred: !iotWebhookReady && !iotWebhookRequired,
+            iotMode: 'community_scoped_secret_and_opt_in',
+            iotDeferred: false,
         },
         monitoring: {
             ready: monitoringReady,
@@ -73,7 +74,7 @@ export async function GET() {
     const appReady = coreReady && aiReady;
     const commercialChannelsReady = Object.values(communications).every(Boolean);
     const productionReady = appReady && commercialChannelsReady && Object.values(paidIntegrations).every(Boolean) && automationReady;
-    const fullPaidProductionReady = productionReady && paymentsReady && iotWebhookReady && monitoringReady;
+    const fullPaidProductionReady = productionReady && paymentsReady && monitoringReady;
     const missingProduction = [
         ...Object.entries(communications).filter(([, value]) => !value).map(([key]) => `communications.${key}`),
         ...Object.entries(paidIntegrations).filter(([, value]) => !value).map(([key]) => `paidIntegrations.${key}`),

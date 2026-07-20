@@ -36,13 +36,13 @@ const steps = [
   },
   {
     title: "Apruebas y activa",
-    description: "La administracion revisa el resumen, corrige dudas y confirma la creacion.",
+    description: "La Administración revisa el resumen, corrige dudas y confirma la creación.",
     icon: ShieldCheck,
   },
 ];
 
 const checklist = [
-  "Tenant propio con direccion georreferenciada",
+  "Comunidad propia con dirección georreferenciada",
   "Unidades, residentes y roles propuestos",
   "Gastos comunes iniciales y brechas visibles",
   "Reglamento resumido para CoCo y aula virtual",
@@ -54,7 +54,7 @@ const documentOptions = [
   "Gastos comunes",
   "Reglamento PDF",
   "Espacios comunes",
-  "Proveedores y conserjeria",
+  "Proveedores y Conserjería",
 ];
 
 export default function OnboardingPage() {
@@ -87,7 +87,7 @@ export default function OnboardingPage() {
         adminName,
         adminEmail,
         condoName,
-        message: `Solicitud activacion inteligente. Telefono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}. Documentos disponibles: ${documents.join(", ") || "No informado"}.`,
+        message: `Solicitud de activación inteligente. Teléfono: ${phone || "No informado"}. Unidades: ${units || "No informado"}. Prioridad: ${priority}. Documentos disponibles: ${documents.join(", ") || "No informado"}.`,
         source: "onboarding_preactivation",
       });
 
@@ -96,13 +96,13 @@ export default function OnboardingPage() {
       if (result.emailSent) {
         toast({
           title: "Activacion solicitada",
-          description: "Registramos el edificio y enviamos la confirmacion por correo.",
+          description: "Registramos el edificio y enviamos la confirmación por correo.",
           variant: "success",
         });
       } else {
         toast({
           title: "Activacion registrada",
-          description: "La solicitud quedo guardada. La confirmacion por correo esta pendiente.",
+          description: "La solicitud quedó guardada. La confirmación por correo está pendiente.",
           variant: "default",
         });
       }
@@ -193,8 +193,8 @@ export default function OnboardingPage() {
                 </p>
                 <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8A8178]">
                   {emailSent
-                    ? `Enviamos la confirmacion a ${adminEmail}.`
-                    : "La solicitud esta segura en nuestro registro; el correo de confirmacion sigue pendiente."}
+                    ? `Enviamos la confirmación a ${adminEmail}.`
+                    : "La solicitud está segura en nuestro registro; el correo de confirmación sigue pendiente."}
                 </p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2">
                   <Link href="/admin-onboarding" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1611] px-4 py-3 text-sm font-bold text-white">
@@ -230,11 +230,11 @@ export default function OnboardingPage() {
                 </Field>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Telefono" icon={<Phone className="h-4 w-4" />}>
-                    <input value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="+56 9 1234 5678" />
+                  <Field label="Teléfono" icon={<Phone className="h-4 w-4" />}>
+                    <input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="+56 9 1234 5678" />
                   </Field>
                   <Field label="Unidades aprox." icon={<MapPin className="h-4 w-4" />}>
-                    <input value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="80" />
+                    <input inputMode="numeric" value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="80" />
                   </Field>
                 </div>
 
@@ -248,7 +248,7 @@ export default function OnboardingPage() {
                     <option>Activacion completa con CoCo</option>
                     <option>Crear comunidad y cargar residentes</option>
                     <option>Cargar gastos comunes y pagos</option>
-                    <option>Ordenar conserjeria y visitas</option>
+                    <option>Ordenar Conserjería y visitas</option>
                     <option>Implementar servicios y proveedores</option>
                     <option>Activar CoCo IA y WhatsApp</option>
                   </select>

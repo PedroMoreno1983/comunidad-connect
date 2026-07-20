@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProviders } from "@/components/ThemeProviders";
 import { AppProviders } from "@/components/AppProviders";
 import { CANONICAL_SITE_URL } from "@/lib/config";
+import { headers } from "next/headers";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -144,11 +145,12 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -156,17 +158,20 @@ export default function RootLayout({
         <meta name="theme-color" content="#1E1E24" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
         />
         {GA_ID ? (
           <>
-            <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+            <script nonce={nonce} async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
             <script
+              nonce={nonce}
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
@@ -180,12 +185,13 @@ export default function RootLayout({
         ) : null}
       </head>
       <body className="antialiased">
-        <ThemeProviders>
+        <ThemeProviders nonce={nonce}>
           <AppProviders>
             {children}
           </AppProviders>
         </ThemeProviders>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

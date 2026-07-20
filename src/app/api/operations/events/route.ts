@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
         const { data: events, error: eventsError } = await query;
 
         if (eventsError) {
-            return NextResponse.json({ error: eventsError.message }, { status: 500 });
+            console.error('[operations events] query failed', eventsError);
+            return NextResponse.json({ error: 'No se pudieron cargar los eventos.' }, { status: 500 });
         }
 
         const { data: lastDayEvents, error: summaryError } = await supabaseAdmin
@@ -63,7 +64,8 @@ export async function GET(request: NextRequest) {
             .gte('created_at', since);
 
         if (summaryError) {
-            return NextResponse.json({ error: summaryError.message }, { status: 500 });
+            console.error('[operations events] summary failed', summaryError);
+            return NextResponse.json({ error: 'No se pudo calcular el resumen.' }, { status: 500 });
         }
 
         const summary = (lastDayEvents || []).reduce((acc, event) => {
@@ -82,7 +84,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('[operations/events] failed:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudieron cargar los eventos.' },
             { status: 500 }
         );
     }

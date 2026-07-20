@@ -70,8 +70,7 @@ export default function ExpensesPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPaying, setIsPaying] = useState<string | null>(null);
-    const [step, setStep] = useState<"review" | "method" | "success">("review");
-    const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+    const [step, setStep] = useState<"review" | "success">("review");
     const [contributionType, setContributionType] = useState<string>("none");
     const [confirmedPayment, setConfirmedPayment] = useState<{ expenseId: string; amount: number; paidAt?: string | null } | null>(null);
 
@@ -108,13 +107,13 @@ export default function ExpensesPage() {
                         setStep("success");
                         toast({
                             title: "Pago verificado",
-                            description: "La pasarela confirmo el pago y el cobro ya figura pagado.",
+                    description: "La pasarela confirmó el pago y el cobro ya figura pagado.",
                             variant: "success",
                         });
                     } else {
                         toast({
-                            title: "Pago en verificacion",
-                            description: "Volviste desde la pasarela, pero aun no recibimos la confirmacion firmada. Tu deuda no se marcara pagada hasta validarla.",
+                    title: "Pago en verificación",
+                    description: "Volviste desde la pasarela, pero aún no recibimos la confirmación firmada. Tu deuda no se marcará pagada hasta validarla.",
                             variant: "default",
                         });
                     }
@@ -282,8 +281,7 @@ export default function ExpensesPage() {
                 <div className="flex items-center justify-between mb-6 pt-1.5">
                     <button 
                         onClick={() => {
-                            if (step === "method") setStep("review");
-                            else if (step === "success") setStep("review");
+                            if (step === "success") setStep("review");
                             else window.history.back();
                         }}
                         className="grid place-items-center cursor-pointer"
@@ -468,12 +466,13 @@ export default function ExpensesPage() {
                         {/* CTA */}
                         {capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid" ? (
                             <div className="mt-auto pt-4 pb-3">
-                                <Button variant="primary" size="lg" block onClick={() => setStep("method")}>
-                                    <span className="flex-1 text-left">Pagar ${totalAmount.toLocaleString("es-CL")}</span>
-                                    <ArrowRight size={16} />
+                                <Button variant="primary" size="lg" block onClick={handlePay} disabled={isPaying !== null}>
+                                    {isPaying ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                                        <><span className="flex-1 text-left">Pagar con Webpay · ${totalAmount.toLocaleString("es-CL")}</span><ArrowRight size={16} /></>
+                                    )}
                                 </Button>
                                 <div className="text-center mt-3 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
-                                    Webpay via Tuu/Haulmer, comision e IVA incluidos
+                                        Webpay vía Tuu/Haulmer, comisión e IVA incluidos
                                 </div>
                             </div>
                         ) : (
@@ -481,67 +480,6 @@ export default function ExpensesPage() {
                                 <Check size={16} /> Estás al día con tus gastos comunes.
                             </div>
                         )}
-                    </>
-                )}
-
-                {step === "method" && (
-                    <>
-                        <Eyebrow className="mb-2">MÉTODO DE PAGO</Eyebrow>
-                        <DisplayHeading size={36} className="mb-6">
-                            Elige cómo <em>pagar</em>
-                        </DisplayHeading>
-
-                        {/* Payment methods list */}
-                        <div className="space-y-3 mb-8">
-                            {[
-                                { id: "webpay", name: "Webpay Plus", desc: "Debito, credito o prepago via Tuu/Haulmer", icon: "WP" },
-                            ].map((m) => {
-                                const selected = selectedMethod === m.id;
-                                return (
-                                    <button
-                                        key={m.id}
-                                        onClick={() => setSelectedMethod(m.id)}
-                                        className="w-full flex items-center gap-4 rounded-xl border p-4 text-left transition-all cursor-pointer"
-                                        style={{
-                                            background: selected ? "var(--cc-ink)" : "var(--cc-paper)",
-                                            color: selected ? "var(--cc-paper)" : "var(--cc-ink)",
-                                            borderColor: selected ? "transparent" : "var(--cc-line-strong)"
-                                        }}
-                                    >
-                                        <span className="text-2xl">{m.icon}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-semibold">{m.name}</div>
-                                            <div className="text-xs" style={{ color: selected ? "rgba(250,247,241,0.6)" : "var(--cc-ink-muted)" }}>
-                                                {m.desc}. Cargo servicio: ${serviceFee.toLocaleString("es-CL")}
-                                            </div>
-                                        </div>
-                                        <div 
-                                          className="w-5 h-5 rounded-full border grid place-items-center shrink-0"
-                                          style={{ borderColor: selected ? "var(--cc-copper-soft)" : "var(--cc-line-strong)" }}
-                                        >
-                                            {selected && <div className="w-2.5 h-2.5 rounded-full bg-copper" style={{ backgroundColor: "var(--cc-copper)" }} />}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* CTA Pay */}
-                        <div className="mt-auto pt-4 pb-3">
-                            <Button 
-                                variant="copper" 
-                                size="lg" 
-                                block 
-                                disabled={!selectedMethod || isPaying !== null}
-                                onClick={handlePay}
-                            >
-                                {isPaying ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                    <>Confirmar y Pagar ${totalAmount.toLocaleString("es-CL")}</>
-                                )}
-                            </Button>
-                        </div>
                     </>
                 )}
 

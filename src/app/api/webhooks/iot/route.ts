@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { askCoCo } from '@/lib/coco/agent';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { requireCommunityIotSecret } from '@/lib/iot/security';
 
 function cleanText(value: unknown, maxLength = 200) {
     return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -29,8 +30,6 @@ export async function POST(req: NextRequest) {
 
     try {
         const authHeader = req.headers.get('authorization');
-        const globalSecret = process.env.IOT_WEBHOOK_SECRET;
-
         const payload = await req.json() as Record<string, unknown>;
 
         // Payload tipico de un evento IoT (ej. Shelly Flood o boton fisico).
@@ -52,20 +51,29 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Timestamp de evento invalido o expirado' }, { status: 401 });
         }
 
-        // Per-community secret takes precedence over the legacy global one, so a
-        // secret leaked from one building's gateway can't spoof another community's events.
+        // Every tenant must have an independent secret. There is intentionally no
+        // global fallback: one leaked gateway credential must never affect others.
         const { data: community } = await getSupabaseAdmin()
             .from('communities')
-            .select('iot_webhook_secret')
+            .select('iot_webhook_secret, iot_autonomous_actions_enabled')
             .eq('id', community_id)
             .maybeSingle();
-        const expectedSecret = community?.iot_webhook_secret || globalSecret;
-        if (!expectedSecret) {
+        let expectedSecret: string;
+        try {
+            expectedSecret = requireCommunityIotSecret(community?.iot_webhook_secret);
+        } catch {
             console.error('[IoT] No webhook secret configured for community', community_id);
             return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
         }
         if (!secretMatches(authHeader, expectedSecret)) {
             return NextResponse.json({ error: 'Unauthorized IoT webhook' }, { status: 401 });
+        }
+        if (community?.iot_autonomous_actions_enabled !== true) {
+            return NextResponse.json({
+                success: true,
+                automated: false,
+                message: 'Evento autenticado. Las acciones autónomas requieren habilitación expresa de la comunidad.',
+            }, { status: 202 });
         }
 
         const unitQuery = getSupabaseAdmin()
@@ -111,6 +119,7 @@ Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejec
 
         return NextResponse.json({
             success: true,
+            automated: true,
             status: 'MITIGATION_PROCESSED',
             message: 'IoT event received and processed by CoCo.',
             reply: agentResponse.reply,
@@ -121,7 +130,6 @@ Reporta los pasos que has tomado de forma secuencial. ¡No hagas preguntas, ejec
 
     } catch (e: unknown) {
         console.error('[IoT Webhook Error]', e);
-        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-        return NextResponse.json({ error: 'Webkhook process failed', details: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Webhook process failed' }, { status: 500 });
     }
 }

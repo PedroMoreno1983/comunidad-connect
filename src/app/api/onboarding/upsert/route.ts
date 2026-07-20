@@ -171,7 +171,8 @@ async function ensureResidentProfile(
         unit_id: unitId,
         department_number: resident.unit_id,
         phone: resident.phone || null,
-        whatsapp_enabled: Boolean(resident.phone),
+        // A phone number is contact data, not consent to receive WhatsApp messages.
+        whatsapp_enabled: false,
     };
 
     if (existingProfile) {
@@ -356,6 +357,6 @@ export async function POST(request: Request) {
         });
     } catch (error: unknown) {
         console.error('Upsert Error:', error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo sincronizar la nómina.' }, { status: 500 });
     }
 }

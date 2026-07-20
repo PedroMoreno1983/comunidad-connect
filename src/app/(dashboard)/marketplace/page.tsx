@@ -134,8 +134,8 @@ export default function MarketplacePage() {
                 description: "La pasarela confirmo el pago y el articulo figura vendido.",
                 variant: "success",
             } : {
-                title: "Pago en verificacion",
-                description: "Aun no recibimos la confirmacion firmada. El articulo no se marcara vendido hasta validarla.",
+                    title: "Pago en verificación",
+                    description: "Aún no recibimos la confirmación firmada. El artículo no se marcará vendido hasta validarla.",
                 variant: "default",
             });
             router.replace('/marketplace');

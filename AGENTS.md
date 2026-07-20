@@ -142,7 +142,7 @@ Services existentes:
 | `resident` | Módulos de residente `/resident` | Residente/propietario |
 | `concierge` | Panel conserje `/concierge` | Conserjería y accesos |
 
-La validación de roles de superadmin ocurre en `src/middleware.ts`.
+La validación de roles de superadmin ocurre en `src/proxy.ts`.
 La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/authContext.tsx`.
 
 ---

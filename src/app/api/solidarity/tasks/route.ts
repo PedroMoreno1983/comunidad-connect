@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { timingSafeEqual } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
-import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { enforceDistributedRateLimit, enforceRateLimit } from "@/lib/security/rateLimit";
 
 async function getSupabaseUserClient() {
   const cookieStore = await cookies();
@@ -50,14 +51,15 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: true });
 
     if (tasksError) {
-      return NextResponse.json({ error: tasksError.message }, { status: 500 });
+      console.error('[solidarity tasks] query failed', tasksError);
+      return NextResponse.json({ error: 'No se pudieron cargar las tareas.' }, { status: 500 });
     }
 
     return NextResponse.json(tasks || []);
   } catch (error) {
     console.error("[solidarity] GET tasks failed:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudieron cargar las tareas." },
       { status: 500 }
     );
   }
@@ -121,14 +123,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error('[solidarity tasks] reserve failed', updateError);
+      return NextResponse.json({ error: 'No se pudo reservar la tarea.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, task: updatedTask });
   } catch (error) {
     console.error("[solidarity] POST reserve task failed:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo reservar la tarea." },
       { status: 500 }
     );
   }
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
 
 // Complete and verify task with PIN
 export async function PUT(request: NextRequest) {
-  const limited = enforceRateLimit(request, "solidarity.tasks.verify", { limit: 30, windowMs: 60_000 });
+  const limited = await enforceDistributedRateLimit(request, "solidarity.tasks.verify", { limit: 5, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
@@ -164,7 +167,7 @@ export async function PUT(request: NextRequest) {
 
     const { taskId, pinCode } = await request.json();
 
-    if (!taskId || !pinCode) {
+    if (!taskId || typeof pinCode !== "string" || !/^\d{4}$/.test(pinCode)) {
       return NextResponse.json({ error: "ID de tarea y código PIN requeridos" }, { status: 400 });
     }
 
@@ -184,7 +187,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Esta tarea no está reservada para verificación" }, { status: 400 });
     }
 
-    if (task.pin_code !== pinCode) {
+    const storedPin = Buffer.from(String(task.pin_code));
+    const suppliedPin = Buffer.from(pinCode);
+    if (storedPin.length !== suppliedPin.length || !timingSafeEqual(storedPin, suppliedPin)) {
       return NextResponse.json({ error: "Código PIN de supervisor incorrecto" }, { status: 403 });
     }
 
@@ -199,7 +204,8 @@ export async function PUT(request: NextRequest) {
       .eq("id", taskId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error('[solidarity tasks] completion failed', updateError);
+      return NextResponse.json({ error: 'No se pudo completar la tarea.' }, { status: 500 });
     }
 
     // 3. Log to ledger (anonymized!)
@@ -249,7 +255,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error("[solidarity] PUT verify task failed:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo completar la tarea." },
       { status: 500 }
     );
   }

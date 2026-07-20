@@ -263,12 +263,14 @@ export default function CoCo() {
 
     return (
         <div
-            className="fixed bottom-4 right-4 z-[2147483647] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
+            className="fixed bottom-4 right-4 z-30 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
         >
             {open && (
                     <div
                         className="flex flex-col overflow-hidden rounded-lg border border-subtle bg-surface"
                         style={{ width: "min(360px, calc(100vw - 32px))", height: "min(500px, calc(100vh - 96px))", boxShadow: "0 18px 48px rgba(17,24,39,0.16)" }}
+                        role="dialog"
+                        aria-label="Asistente CoCo"
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 px-5 py-4 bg-slate-950 flex-shrink-0">
@@ -279,13 +281,18 @@ export default function CoCo() {
                                 <p className="text-sm font-semibold text-white">CoCo</p>
                                 <p className="text-white/70 text-[11px] font-medium">Asistente operativo</p>
                             </div>
-                            <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
+                            <button onClick={() => setOpen(false)} aria-label="Cerrar CoCo" className="p-1.5 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
                                 <ChevronDown className="h-5 w-5 text-white" />
                             </button>
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-canvas">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-canvas" aria-live="polite" aria-relevant="additions text">
+                            {msgs.length === 1 && (
+                                <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-[11px] leading-5 text-sky-900">
+                                    CoCo usa inteligencia artificial. Tus mensajes pueden procesarse con proveedores externos y generar memorias para dar continuidad. Consulta la <a href="/privacy" target="_blank" rel="noreferrer" className="font-bold underline">política de privacidad</a>.
+                                </p>
+                            )}
                             {msgs.map(msg => (
                                 <div key={msg.id} className={`flex gap-2 w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                                     {msg.role === "assistant" && (
@@ -399,6 +406,7 @@ export default function CoCo() {
                                         <img src={selectedImage} alt="Preview" className="h-16 w-16 object-cover" />
                                         <button 
                                             onClick={removeImage}
+                                            aria-label="Quitar imagen adjunta"
                                             className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-black transition-colors"
                                         >
                                             <X className="h-3 w-3" />
@@ -419,6 +427,7 @@ export default function CoCo() {
                                 
                                 <button
                                     type="button"
+                                    aria-label="Adjuntar imagen"
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={loading || hasUnresolvedPending}
                                     className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
@@ -433,6 +442,7 @@ export default function CoCo() {
                                 />
                                 
                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || loading || hasUnresolvedPending}
+                                    aria-label="Enviar mensaje a CoCo"
                                     className="p-2.5 bg-brand-500 rounded-lg text-white disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-md flex-shrink-0">
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
@@ -444,6 +454,7 @@ export default function CoCo() {
             {/* FAB */}
             <button
                 onClick={() => setOpen(o => !o)}
+                aria-label={open ? "Cerrar CoCo" : "Abrir CoCo"}
                 className="relative flex items-center justify-center rounded-lg text-2xl transition-transform hover:scale-105 active:scale-95"
                 style={{
                     width: 56, height: 56,

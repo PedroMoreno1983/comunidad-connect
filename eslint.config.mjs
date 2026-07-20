@@ -7,8 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "prefer-const": "off",
+      "@typescript-eslint/no-explicit-any": "error",
+      "prefer-const": "error",
       "@typescript-eslint/no-unused-vars": "warn"
     }
   },

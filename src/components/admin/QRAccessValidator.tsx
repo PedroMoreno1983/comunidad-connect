@@ -76,12 +76,12 @@ export function QRAccessValidator({ onScanSuccess }: { onScanSuccess?: (log: Vis
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: "var(--cc-copper)" }}>Control de acceso real</p>
                         <h2 className="mt-1 text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Validar pase QR</h2>
-                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Escanea con un lector QR o ingresa el codigo exacto presentado por la visita.</p>
+                        <p className="mt-2 text-sm leading-6 cc-text-secondary">Escanea con un lector QR o ingresa el código exacto presentado por la visita.</p>
                     </div>
                 </div>
 
                 <div className="mt-7 space-y-3">
-                    <label htmlFor="qr-access-code" className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Codigo de invitacion</label>
+                <label htmlFor="qr-access-code" className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Código de invitación</label>
                     <Input id="qr-access-code" value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="INV-XXXXXXXX" autoComplete="off" autoFocus className="h-14 font-mono text-lg uppercase" />
                     <Button type="submit" disabled={isValidating || !code.trim() || !user?.id} className="h-12 w-full">
                         {isValidating ? "Validando..." : "Validar y registrar ingreso"}

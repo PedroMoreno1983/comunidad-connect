@@ -97,6 +97,19 @@ export interface Conversation {
   lastAt: string;
 }
 
+export interface ChatMessageSummary {
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ProfileSummary {
+  id: string;
+  name: string;
+  avatar_url?: string;
+}
+
 export interface DirectoryNeighbor {
   id: string;
   name: string;
@@ -271,6 +284,26 @@ export interface ServiceProvider {
   verified: boolean;
 }
 
+export interface ServiceProviderDatabaseRow {
+  id: string;
+  name: string;
+  category: ServiceProvider['category'];
+  rating: number;
+  review_count: number;
+  contact_phone: string;
+  email?: string;
+  photo?: string;
+  bio: string;
+  years_experience: number;
+  specialties: string[];
+  certifications: string[];
+  hourly_rate?: number;
+  availability: ServiceProvider['availability'];
+  response_time: string;
+  completed_jobs: number;
+  verified: boolean;
+}
+
 export interface Review {
   id: string;
   providerId: string;
@@ -305,6 +338,17 @@ export interface VisitorLog {
   exitTime?: string;
   purpose?: string;
   isQr?: boolean;
+}
+
+export interface VisitorLogDatabaseRow {
+  id: string;
+  visitor_name: string;
+  unit_id: string;
+  entry_time: string;
+  exit_time?: string;
+  purpose?: string;
+  is_qr?: boolean;
+  units?: { number: string } | null;
 }
 
 export interface Package {
@@ -953,4 +997,99 @@ export interface ProductionHealthSnapshot {
     fullPaidProductionReady?: boolean;
     deferredProduction?: string[];
   };
+}
+
+export interface DebugEndpointResult {
+  status?: number;
+  ok?: boolean;
+  time?: string;
+  url_used: string;
+  error?: string;
+}
+
+export interface DebugStatsSnapshot {
+  env: {
+    NEXT_PUBLIC_SITE_URL: string;
+    API_BASE_URL: string;
+    window_origin: string;
+  };
+  endpoints: Record<string, DebugEndpointResult>;
+}
+
+export type PrivacyConsentType = 'terms' | 'privacy_notice' | 'whatsapp' | 'ai_processing' | 'sensitive_data';
+export type PrivacyConsentAction = 'granted' | 'withdrawn';
+export type PrivacyConsentChannel = 'signup' | 'profile' | 'privacy_center' | 'admin_onboarding';
+
+export interface PrivacyConsentEvent {
+  id: string;
+  userId: string | null;
+  communityId: string | null;
+  consentType: PrivacyConsentType;
+  action: PrivacyConsentAction;
+  policyVersion: string;
+  channel: PrivacyConsentChannel;
+  createdAt: string;
+}
+
+export type DataSubjectRequestType = 'access' | 'rectification' | 'deletion' | 'opposition' | 'portability';
+export type DataSubjectRequestStatus = 'received' | 'identity_check' | 'in_progress' | 'completed' | 'rejected' | 'cancelled';
+
+export interface DataSubjectRequest {
+  id: string;
+  requestType: DataSubjectRequestType;
+  status: DataSubjectRequestStatus;
+  details: string | null;
+  responseSummary: string | null;
+  receivedAt: string;
+  dueAt: string;
+  completedAt: string | null;
+}
+
+export interface SignupResponse {
+  ok?: boolean;
+  role?: UserRole;
+  requiresEmailConfirmation?: boolean;
+  error?: string;
+}
+
+export interface DataSubjectRequestRecord {
+  id: string;
+  request_type: DataSubjectRequestType;
+  status: DataSubjectRequestStatus;
+  details: string | null;
+  response_summary: string | null;
+  received_at: string;
+  due_at: string;
+  completed_at: string | null;
+}
+
+export interface PrivacyRequestsResponse {
+  requests?: DataSubjectRequestRecord[];
+  request?: DataSubjectRequestRecord;
+  error?: string;
+}
+
+export interface PrivacyConsentRecord {
+  id: string;
+  consent_type: PrivacyConsentType;
+  action: PrivacyConsentAction;
+  policy_version: string;
+  channel: PrivacyConsentChannel;
+  created_at: string;
+}
+
+export interface PrivacyConsentsResponse {
+  whatsappEnabled?: boolean;
+  events?: PrivacyConsentRecord[];
+  error?: string;
+}
+
+export interface LegacyRedirectPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export interface SolidarityResolutionResult {
+  user_id: string;
+  category: 'unemployment' | 'pensioner' | 'medical' | 'emergency';
+  approved_amount: number;
 }

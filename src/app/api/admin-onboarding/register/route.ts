@@ -4,6 +4,7 @@ import { enforceDistributedRateLimit } from "@/lib/security/rateLimit";
 import { sendWelcomeEmail, resend, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper } from "@/lib/email";
 import { PUBLIC_SITE_URL } from "@/lib/config";
 import { logApiError } from "@/lib/observability/logger";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/privacy";
 
 type GeocodeSelection = {
     label?: string;
@@ -174,11 +175,17 @@ export async function POST(req: NextRequest) {
         const planId = cleanText(body.planId, 80);
         const units = cleanUnitCount(body.units);
         const selectedAddress = selectedAddressFrom(body.selectedAddress);
+        const acceptTerms = body.acceptTerms === true;
+        const acceptPrivacy = body.acceptPrivacy === true;
 
         if (!fullName) return NextResponse.json({ error: "Ingresa tu nombre." }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: "Email invalido." }, { status: 400 });
-        if (password.length < 6) return NextResponse.json({ error: "La contrasena debe tener al menos 6 caracteres." }, { status: 400 });
+        if (password.length < 8) return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres." }, { status: 400 });
         if (!communityName) return NextResponse.json({ error: "Ingresa el nombre del edificio." }, { status: 400 });
+
+        if (!acceptTerms || !acceptPrivacy) {
+            return NextResponse.json({ error: "Debes aceptar los términos y confirmar que leíste la política de privacidad." }, { status: 400 });
+        }
 
         // planId is client-supplied; never trust it directly as a real tier entitlement.
         let validatedTierId: string | null = null;
@@ -225,7 +232,7 @@ export async function POST(req: NextRequest) {
             const loginUrl = `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`;
             return NextResponse.json({
                 code: "EMAIL_ALREADY_REGISTERED",
-                error: "Este correo ya tiene una cuenta. Inicia sesion para continuar con la carga inteligente del edificio.",
+                error: "Este correo ya tiene una cuenta. Inicia sesión para continuar con la carga inteligente del edificio.",
                 loginUrl,
             }, { status: 409 });
         }
@@ -245,6 +252,37 @@ export async function POST(req: NextRequest) {
                 community_id: communityId,
             }, { onConflict: "id" });
         if (profileError) throw profileError;
+
+        const { error: consentError } = await admin.from("privacy_consent_events").insert([
+            {
+                user_id: userId,
+                community_id: communityId,
+                consent_type: "terms",
+                action: "granted",
+                policy_version: TERMS_VERSION,
+                channel: "admin_onboarding",
+                subject_email: email,
+                evidence: { explicit_checkbox: true },
+            },
+            {
+                user_id: userId,
+                community_id: communityId,
+                consent_type: "privacy_notice",
+                action: "granted",
+                policy_version: PRIVACY_POLICY_VERSION,
+                channel: "admin_onboarding",
+                subject_email: email,
+                evidence: { explicit_checkbox: true },
+            },
+        ]);
+        if (consentError) throw consentError;
+
+        const { error: confirmationError } = await admin.auth.resend({
+            type: "signup",
+            email,
+            options: { emailRedirectTo: `${PUBLIC_SITE_URL}/login?confirmed=1&next=%2Fadmin%2Fonboarding` },
+        });
+        if (confirmationError) throw confirmationError;
 
         await createSeedUnits(communityId, units);
 

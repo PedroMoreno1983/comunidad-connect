@@ -72,20 +72,17 @@ function phoneDigits(value: unknown) {
     return typeof value === 'string' ? value.replace(/\D/g, '') : '';
 }
 
-function phoneMatches(savedPhone: unknown, waId: string) {
-    const saved = phoneDigits(savedPhone);
-    const incoming = phoneDigits(formatWhatsAppPhone(waId));
-    const localIncoming = incoming.startsWith('56') ? incoming.slice(2) : incoming;
-    const localSaved = saved.startsWith('56') ? saved.slice(2) : saved;
+function canonicalChileanPhone(value: unknown) {
+    const digits = phoneDigits(value);
+    if (/^56\d{9}$/.test(digits)) return digits;
+    if (/^9\d{8}$/.test(digits)) return `56${digits}`;
+    return '';
+}
 
-    return Boolean(
-        saved &&
-        incoming &&
-        (saved === incoming ||
-            localSaved === localIncoming ||
-            saved.endsWith(localIncoming) ||
-            incoming.endsWith(localSaved))
-    );
+function phoneMatches(savedPhone: unknown, waId: string) {
+    const saved = canonicalChileanPhone(savedPhone);
+    const incoming = canonicalChileanPhone(formatWhatsAppPhone(waId));
+    return Boolean(saved && incoming && saved === incoming);
 }
 
 function unitMatches(input: string, candidates: string[]) {

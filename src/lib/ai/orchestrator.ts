@@ -168,7 +168,7 @@ async function callGemini(apiKey: string, systemPrompt: string, history: {role: 
         },
     };
 
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     for (const model of models) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -335,7 +335,7 @@ export async function runMultiAgentTurn(
             const memories = await MemoryService.getRelevantMemories(communityId, userId, userMessage, 3);
             if (memories && memories.length > 0) {
                 memoryContext = "\n\nRECUERDOS DE ESTE VECINO DE CLASES ANTERIORES:\n" + 
-                    memories.map((m: any) => `- ${m.content}`).join("\n") +
+                    memories.map((m: { content: string }) => `- ${m.content}`).join("\n") +
                     "\nUsa esta información para personalizar tu respuesta si es relevante.";
             }
         } catch (e) {

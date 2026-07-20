@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     try {
         return NextResponse.json(await evaluateDueAgentTriggers());
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudieron evaluar las reglas proactivas.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[agent-center scheduler] evaluation failed', error);
+        return NextResponse.json({ error: 'No se pudieron evaluar las reglas proactivas.' }, { status: 500 });
     }
 }

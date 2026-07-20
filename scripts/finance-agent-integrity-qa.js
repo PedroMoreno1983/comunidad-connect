@@ -31,7 +31,13 @@ expect('Payment attempt update is scoped to unit and community', paymentRoute.in
 expect('Payment token is not returned to the browser', !paymentRoute.includes('token: response.token'));
 expect('Webhook compares the signed callback amount with the expected attempt amount', webhookRoute.includes('expectedAmount') && webhookRoute.includes('Math.abs'));
 expect('Resident expense return requires persisted paid status', expensePage.includes('Pago verificado') && expensePage.includes('expense.status === "paid"') && !expensePage.includes('searchParams.get("status")'));
-expect('Alternate resident finance return requires persisted paid status', residentFinancePage.includes('Pago verificado') && !residentFinancePage.includes("searchParams.get('status')"));
+expect(
+  'Alternate resident finance route delegates to the canonical persisted-status flow',
+  residentFinancePage.includes('redirect(')
+    && residentFinancePage.includes('/expenses')
+    && !residentFinancePage.includes('Pago verificado')
+    && !residentFinancePage.includes('handlePay')
+);
 expect('Marketplace return requires persisted completed status', marketplacePage.includes("item.paymentStatus === 'completed'") && !marketplacePage.includes("searchParams.get('status')"));
 expect('Residents cannot update their own expense status through RLS', migration.includes('DROP POLICY IF EXISTS "expenses_update_own"'));
 expect('CoCo requires a decision for every mutating action', agent.includes('providedResolutionIds.length !== expectedResolutionIds.size') && agent.includes("resolution !== 'approved'"));

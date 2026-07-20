@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import type { SolidarityResolutionResult } from "@/lib/types";
 
 async function getSupabaseUserClient() {
   const cookieStore = await cookies();
@@ -22,11 +23,13 @@ export async function PATCH(
   request: NextRequest,
   props: { params: Promise<{ id: string }> }
 ) {
-  const params = await props.params;
-  const limited = enforceRateLimit(request, "solidarity.applications.status", { limit: 50, windowMs: 60_000 });
+  const limited = enforceRateLimit(request, "solidarity.applications.status", {
+    limit: 50,
+    windowMs: 60_000,
+  });
   if (limited) return limited;
 
-  const { id: applicationId } = params;
+  const { id: applicationId } = await props.params;
 
   try {
     const supabaseUser = await getSupabaseUserClient();
@@ -45,156 +48,88 @@ export async function PATCH(
     if (profileError || !profile) {
       return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
     }
-
     if (profile.role !== "admin") {
-      return NextResponse.json({ error: "Solo la administración puede resolver solicitudes" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Solo la administración puede resolver solicitudes" },
+        { status: 403 }
+      );
     }
 
-    const { status, amountApproved } = await request.json();
-
-    if (!status || !["approved", "rejected"].includes(status)) {
+    const body: Record<string, unknown> = await request.json();
+    const status = typeof body.status === "string" ? body.status : "";
+    if (!['approved', 'rejected'].includes(status)) {
       return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
     }
 
-    // 1. Fetch application details
-    const { data: app, error: appError } = await supabaseAdmin
-      .from("solidarity_applications")
-      .select("*")
-      .eq("id", applicationId)
-      .eq("community_id", profile.community_id)
-      .single();
-
-    if (appError || !app) {
-      return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 });
+    const requestedAmount = body.amountApproved === undefined || body.amountApproved === null
+      ? null
+      : Number(body.amountApproved);
+    if (status === "approved" && requestedAmount !== null && (!Number.isFinite(requestedAmount) || requestedAmount <= 0)) {
+      return NextResponse.json({ error: "Monto aprobado inválido" }, { status: 400 });
     }
 
-    if (app.status !== "pending") {
-      return NextResponse.json({ error: "Esta solicitud ya fue resuelta anteriormente" }, { status: 400 });
-    }
-
-    const approvedAmount = status === "approved" ? Number(amountApproved || app.amount_requested) : 0.00;
-
-    if (status === "approved") {
-      // 2. Fetch current balance
-      const { data: fund, error: fundFetchError } = await supabaseAdmin
-        .from("solidarity_funds")
-        .select("balance")
-        .eq("community_id", profile.community_id)
-        .single();
-
-      if (fundFetchError || !fund) {
-        return NextResponse.json({ error: "Fondo solidario no configurado para esta comunidad" }, { status: 500 });
+    const { data: resolutionData, error: resolutionError } = await supabaseAdmin.rpc(
+      "resolve_solidarity_application",
+      {
+        p_community_id: profile.community_id,
+        p_application_id: applicationId,
+        p_status: status,
+        p_amount_approved: status === "approved" ? requestedAmount : null,
       }
-
-      if (Number(fund.balance) < approvedAmount) {
-        return NextResponse.json({ error: "Fondos insuficientes en el pozo solidario" }, { status: 400 });
-      }
-
-      const newBalance = Number(fund.balance) - approvedAmount;
-
-      // 3. Update fund balance
-      const { error: updateFundError } = await supabaseAdmin
-        .from("solidarity_funds")
-        .update({ balance: newBalance, updated_at: new Date().toISOString() })
-        .eq("community_id", profile.community_id);
-
-      if (updateFundError) {
-        return NextResponse.json({ error: "Error al debitar fondos: " + updateFundError.message }, { status: 500 });
-      }
-
-      // 4. Update application status
-      const { error: updateAppError } = await supabaseAdmin
-        .from("solidarity_applications")
-        .update({
-          status: "approved",
-          amount_approved: approvedAmount,
-          resolved_at: new Date().toISOString()
-        })
-        .eq("id", applicationId);
-
-      if (updateAppError) {
-        return NextResponse.json({ error: "Error al actualizar solicitud: " + updateAppError.message }, { status: 500 });
-      }
-
-      // 5. Log to ledger (anonymized!)
-      const categoryLabels: Record<string, string> = {
-        unemployment: "Subsidio por cesantía temporal",
-        pensioner: "Subsidio de tercera edad",
-        medical: "Subsidio por emergencia médica catastrófica",
-        emergency: "Subsidio por emergencia familiar severa",
-      };
-      const categoryLabel = categoryLabels[app.category] || "Apoyo mutuo de emergencia";
-      const ledgerDescription = `${categoryLabel} aplicado a cubrir saldo de gasto común de una Unidad Anónima (Programa Solidario). Subsidio de $${approvedAmount.toLocaleString("es-CL")} CLP`;
-
-      const { error: ledgerError } = await supabaseAdmin
-        .from("solidarity_ledger")
-        .insert({
-          community_id: profile.community_id,
-          entry_type: "subsidize",
-          amount: approvedAmount,
-          hours: 0.0,
-          description: ledgerDescription
-        });
-
-      if (ledgerError) {
-        console.error("[solidarity] failed to log subsidize to ledger:", ledgerError);
-      }
-
-      // 6. Send notification to resident
-      const { error: notifyError } = await supabaseAdmin
-        .from("notifications")
-        .insert({
-          user_id: app.user_id,
-          type: "success",
-          category: "payment",
-          title: "Solicitud de apoyo aprobada",
-          body: `Tu solicitud de subsidio por $${approvedAmount.toLocaleString("es-CL")} ha sido aprobada. Se aplicará a tu gasto común y puedes programar tus horas de retribución en el módulo Solidaridad Vecinal.`,
-          link: "/expenses/solidaridad",
-          community_id: profile.community_id
-        });
-
-      if (notifyError) {
-        console.error("[solidarity] failed to send success notification:", notifyError);
-      }
-
-    } else {
-      // Reject application
-      const { error: updateAppError } = await supabaseAdmin
-        .from("solidarity_applications")
-        .update({
-          status: "rejected",
-          resolved_at: new Date().toISOString()
-        })
-        .eq("id", applicationId);
-
-      if (updateAppError) {
-        return NextResponse.json({ error: updateAppError.message }, { status: 500 });
-      }
-
-      // Send notification to resident
-      const { error: notifyError } = await supabaseAdmin
-        .from("notifications")
-        .insert({
-          user_id: app.user_id,
-          type: "alert",
-          category: "payment",
-          title: "Solicitud de apoyo rechazada",
-          body: `Tu solicitud de subsidio ha sido revisada por la administración y no fue aprobada en esta ocasión. Comunícate con Administración si tienes dudas.`,
-          link: "/expenses/solidaridad",
-          community_id: profile.community_id
-        });
-
-      if (notifyError) {
-        console.error("[solidarity] failed to send rejection notification:", notifyError);
-      }
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("[solidarity] PATCH application failed:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error desconocido" },
-      { status: 500 }
     );
+
+    if (resolutionError) {
+      console.error("[solidarity application] atomic resolution failed", resolutionError);
+      if (resolutionError.message.includes("application-not-found")) {
+        return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 });
+      }
+      if (resolutionError.message.includes("application-already-resolved")) {
+        return NextResponse.json({ error: "Esta solicitud ya fue resuelta anteriormente" }, { status: 409 });
+      }
+      if (resolutionError.message.includes("invalid-approved-amount")) {
+        return NextResponse.json({ error: "El monto aprobado no es válido" }, { status: 400 });
+      }
+      if (resolutionError.message.includes("insufficient-or-missing-fund")) {
+        return NextResponse.json({ error: "El fondo no existe o no tiene saldo suficiente" }, { status: 400 });
+      }
+      return NextResponse.json({ error: "No se pudo resolver la solicitud" }, { status: 500 });
+    }
+
+    const resolution = (resolutionData?.[0] ?? null) as SolidarityResolutionResult | null;
+    if (!resolution) {
+      return NextResponse.json({ error: "No se pudo confirmar la resolución" }, { status: 500 });
+    }
+
+    const approved = status === "approved";
+    const amount = Number(resolution.approved_amount || 0);
+    const notification = approved
+      ? {
+          type: "success",
+          title: "Solicitud de apoyo aprobada",
+          body: `Tu solicitud de subsidio por $${amount.toLocaleString("es-CL")} ha sido aprobada. Puedes revisar los próximos pasos en Solidaridad Vecinal.`,
+        }
+      : {
+          type: "alert",
+          title: "Solicitud de apoyo rechazada",
+          body: "Tu solicitud fue revisada y no fue aprobada en esta ocasión. Comunícate con Administración si necesitas más información.",
+        };
+
+    const { error: notifyError } = await supabaseAdmin.from("notifications").insert({
+      user_id: resolution.user_id,
+      type: notification.type,
+      category: "payment",
+      title: notification.title,
+      body: notification.body,
+      link: "/expenses/solidaridad",
+      community_id: profile.community_id,
+    });
+    if (notifyError) {
+      console.error("[solidarity application] notification failed", notifyError);
+    }
+
+    return NextResponse.json({ success: true, status, approvedAmount: amount });
+  } catch (error) {
+    console.error("[solidarity application] resolution failed", error);
+    return NextResponse.json({ error: "No se pudo resolver la solicitud" }, { status: 500 });
   }
 }

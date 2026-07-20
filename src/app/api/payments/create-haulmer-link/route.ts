@@ -309,6 +309,9 @@ export async function POST(req: NextRequest) {
             }, { status: 503 });
         }
 
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({
+            error: 'No se pudo iniciar el pago. Inténtalo nuevamente.',
+            code: 'PAYMENT_PROVIDER_ERROR',
+        }, { status: 502 });
     }
 }

@@ -138,7 +138,8 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (pollError || !poll) {
-            return NextResponse.json({ error: pollError?.message || 'No se pudo crear la votacion' }, { status: 500 });
+            console.error('[polls] poll insert failed', pollError);
+            return NextResponse.json({ error: 'No se pudo crear la votación.' }, { status: 500 });
         }
 
         const optionRows = options.map((text, index) => ({
@@ -155,7 +156,8 @@ export async function POST(request: NextRequest) {
 
         if (optionsError) {
             await supabaseAdmin.from('polls').delete().eq('id', poll.id);
-            return NextResponse.json({ error: optionsError.message }, { status: 500 });
+            console.error('[polls] option insert failed', optionsError);
+            return NextResponse.json({ error: 'No se pudieron crear las opciones de la votación.' }, { status: 500 });
         }
 
         const pollUrl = '/votaciones';
@@ -270,7 +272,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('[polls] create failed:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo procesar la votación.' },
             { status: 500 }
         );
     }

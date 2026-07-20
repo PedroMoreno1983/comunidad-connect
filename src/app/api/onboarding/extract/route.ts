@@ -35,6 +35,6 @@ export async function POST(request: Request) {
     } catch (error) {
         if (isAiBudgetExceededError(error)) return NextResponse.json({ error: error.reason }, { status: 429 });
         console.warn('[OnboardingExtract]', error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo extraer el archivo.' }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo extraer el archivo.' }, { status: 500 });
     }
 }

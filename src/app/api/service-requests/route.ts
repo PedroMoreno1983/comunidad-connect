@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (requestError || !request) {
-            return NextResponse.json({ error: requestError?.message || 'No se pudo crear la solicitud' }, { status: 500 });
+            console.error('[service requests] insert failed', requestError);
+            return NextResponse.json({ error: 'No se pudo crear la solicitud.' }, { status: 500 });
         }
 
         if (provider.user_id && provider.user_id !== profile.id) {
@@ -128,8 +129,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ request }, { status: 201 });
     } catch (error) {
+        console.error('[service requests] create failed', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo crear la solicitud.' },
             { status: 500 }
         );
     }

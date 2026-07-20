@@ -47,7 +47,7 @@ try {
   for (const route of requiredRateLimitedRoutes) {
     const source = read(route);
     assert(
-      source.includes('enforceRateLimit('),
+      source.includes('enforceRateLimit(') || source.includes('enforceDistributedRateLimit('),
       `${route} enforces rate limit`
     );
   }

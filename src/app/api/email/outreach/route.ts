@@ -54,10 +54,10 @@ async function deliverEmail(to: string, subject: string, html: string): Promise<
             return { sent: false, error: result.error || 'El canal de correo rechazo la entrega.' };
         }
         return { sent: true, id: result.id };
-    } catch (error) {
+    } catch {
         return {
             sent: false,
-            error: error instanceof Error ? error.message : 'No se pudo entregar el correo.',
+            error: 'No se pudo entregar el correo.',
         };
     }
 }
