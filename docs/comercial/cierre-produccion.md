@@ -28,7 +28,7 @@ Configurar en Production y Preview cuando corresponda:
 - `FROM_EMAIL`
 - `SUPERADMIN_EMAILS`
 - `WHATSAPP_WEBHOOK_SECRET`
-- `IOT_WEBHOOK_SECRET`
+- `communities.iot_webhook_secret` por comunidad + `iot_autonomous_actions_enabled`
 
 Segun modulos contratados:
 

@@ -111,7 +111,8 @@ export async function PATCH(
                 latencyMs: Date.now() - started,
                 error: updateError,
             });
-            return NextResponse.json({ error: updateError?.message || 'No se pudo actualizar' }, { status: 500 });
+            console.error('[case status] update failed', updateError);
+            return NextResponse.json({ error: 'No se pudo actualizar el caso.' }, { status: 500 });
         }
 
         if (currentCase.user_id && currentCase.user_id !== actorProfile.id) {
@@ -187,7 +188,7 @@ export async function PATCH(
             error,
         });
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo actualizar el caso.' },
             { status: 500 }
         );
     }

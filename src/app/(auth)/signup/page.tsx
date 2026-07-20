@@ -4,17 +4,11 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, Home, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Users } from "lucide-react";
 import { Brand } from "@/components/cc/Brand";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-import type { UserRole } from "@/lib/types";
-
-const ROLES = [
-    { id: "resident", label: "Residente", icon: Home },
-    { id: "concierge", label: "Conserje", icon: ShieldCheck },
-    { id: "admin", label: "Admin", icon: Building2 },
-] as const;
+import type { SignupResponse } from "@/lib/types";
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
@@ -25,7 +19,10 @@ export default function SignUpPage() {
     const [departmentNumber, setDepartmentNumber] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [selectedRole, setSelectedRole] = useState<UserRole>("resident");
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+    const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+    const [accessCodeError, setAccessCodeError] = useState("");
     const router = useRouter();
     const { toast } = useToast();
 
@@ -33,20 +30,23 @@ export default function SignUpPage() {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast({ title: "Error", description: "Las contrasenas no coinciden", variant: "destructive" });
+            toast({ title: "Error", description: "Las contraseñas no coinciden", variant: "destructive" });
             return;
         }
 
-        if (password.length < 6) {
-            toast({ title: "Error", description: "La contrasena debe tener al menos 6 caracteres", variant: "destructive" });
+        if (password.length < 8) {
+            toast({ title: "Error", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
             return;
         }
 
         if (!accessCode.trim()) {
-            toast({ title: "Error", description: "Debes ingresar un codigo de invitacion", variant: "destructive" });
+            const message = "Debes ingresar un código de invitación";
+            setAccessCodeError(message);
+            toast({ title: "Error", description: message, variant: "destructive" });
             return;
         }
 
+        setAccessCodeError("");
         setLoading(true);
         try {
             const response = await fetch('/api/auth/signup', {
@@ -57,15 +57,23 @@ export default function SignUpPage() {
                     email,
                     password,
                     accessCode,
-                    role: selectedRole,
                     departmentNumber,
+                    acceptTerms,
+                    acceptPrivacy,
+                    whatsappOptIn,
                 }),
             });
-            const result = await response.json() as { error?: string };
-            if (!response.ok) throw new Error(result.error || 'No se pudo crear la cuenta.');
+            const result = await response.json() as SignupResponse;
+            if (!response.ok) {
+                const message = result.error || 'No se pudo crear la cuenta.';
+                if (message.toLowerCase().includes("código") || message.toLowerCase().includes("invitación")) {
+                    setAccessCodeError(message);
+                }
+                throw new Error(message);
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : "No se pudo crear la cuenta.";
-            const title = message.includes("perfil") ? "Rol no coincide" : "Codigo invalido";
+                const title = message.includes("perfil") ? "Rol no coincide" : "Código inválido";
             toast({ title, description: message, variant: "destructive" });
             setLoading(false);
             return;
@@ -73,10 +81,10 @@ export default function SignUpPage() {
 
         toast({
             title: "Cuenta creada",
-            description: `Tu cuenta quedó lista. Ya puedes iniciar sesión con ${email}.`,
+            description: `Enviamos un enlace de verificación a ${email}. Confirma tu correo antes de iniciar sesión.`,
             variant: "success",
         });
-        router.push("/login");
+        router.push("/login?check_email=1");
     };
 
     return (
@@ -86,7 +94,7 @@ export default function SignUpPage() {
                     <div className="w-full max-w-[360px] space-y-7">
                         <div className="flex justify-between items-start">
                             <div>
-                                <Eyebrow className="mb-2">INVITACION</Eyebrow>
+                        <Eyebrow className="mb-2">INVITACIÓN</Eyebrow>
                                 <DisplayHeading size={36}>
                                     Crear <br />
                                     <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>cuenta.</em>
@@ -98,33 +106,9 @@ export default function SignUpPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">PERFIL DE ACCESO</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {ROLES.map(({ id, label }) => {
-                                        const active = selectedRole === id;
-                                        return (
-                                            <button
-                                                key={id}
-                                                type="button"
-                                                onClick={() => setSelectedRole(id)}
-                                                className="py-2.5 text-center text-xs font-semibold rounded-xl border transition-all"
-                                                style={{
-                                                    background: active ? "var(--cc-ink)" : "var(--cc-paper)",
-                                                    color: active ? "var(--cc-paper)" : "var(--cc-ink-muted)",
-                                                    borderColor: active ? "transparent" : "var(--cc-line-strong)",
-                                                    boxShadow: active ? "var(--cc-shadow-sm)" : "none",
-                                                }}
-                                            >
-                                                {label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <Field label="NOMBRE COMPLETO">
+                            <Field label="NOMBRE COMPLETO" htmlFor="full-name">
                                 <input
+                                    id="full-name"
                                     type="text"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
@@ -135,8 +119,9 @@ export default function SignUpPage() {
                                 />
                             </Field>
 
-                            <Field label="CORREO ELECTRONICO">
+                            <Field label="CORREO ELECTRÓNICO" htmlFor="email">
                                 <input
+                                    id="email"
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -149,64 +134,91 @@ export default function SignUpPage() {
 
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONTRASENA</label>
+                                    <label htmlFor="password" className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">CONTRASEÑA</label>
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="text-xs font-medium text-slate-400 hover:text-slate-600"
-                                        aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                                            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                                     >
                                         {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                     </button>
                                 </div>
                                 <input
+                                    id="password"
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Minimo 6 caracteres"
+                                    placeholder="Mínimo 8 caracteres"
+                                    minLength={8}
                                     required
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </div>
 
-                            <Field label="CONFIRMAR CONTRASENA">
+                            <Field label="CONFIRMAR CONTRASEÑA" htmlFor="confirm-password">
                                 <input
+                                    id="confirm-password"
                                     type={showPassword ? "text" : "password"}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="Repite tu contrasena"
+                                        placeholder="Repite tu contraseña"
                                     required
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
 
-                            <Field label="CODIGO DE INVITACION">
+                            <Field label="CÓDIGO DE INVITACIÓN" htmlFor="access-code">
                                 <input
+                                    id="access-code"
                                     type="text"
                                     value={accessCode}
-                                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                                    onChange={(e) => {
+                                        setAccessCode(e.target.value.toUpperCase());
+                                        setAccessCodeError("");
+                                    }}
                                     placeholder="INV-X93F"
                                     required
+                                    aria-invalid={Boolean(accessCodeError)}
+                                    aria-describedby={accessCodeError ? "access-code-error" : undefined}
                                     className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all font-mono uppercase tracking-[0.16em]"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
+                                />
+                                {accessCodeError && (
+                                    <p id="access-code-error" role="alert" className="text-xs font-medium text-red-700">
+                                        {accessCodeError}
+                                    </p>
+                                )}
+                            </Field>
+
+                            <Field label="DEPARTAMENTO / UNIDAD (SOLO RESIDENTES)" htmlFor="department-number">
+                                <input
+                                    id="department-number"
+                                    type="text"
+                                    value={departmentNumber}
+                                    onChange={(e) => setDepartmentNumber(e.target.value)}
+                                    placeholder="Ej: 501, 3B, 1201"
+                                    className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
                                     style={{ borderColor: "var(--cc-line-strong)" }}
                                 />
                             </Field>
 
-                            {selectedRole === "resident" && (
-                                <Field label="DEPARTAMENTO / UNIDAD">
-                                    <input
-                                        type="text"
-                                        value={departmentNumber}
-                                        onChange={(e) => setDepartmentNumber(e.target.value)}
-                                        placeholder="Ej: 501, 3B, 1201"
-                                        required
-                                        className="w-full px-4 py-3 rounded-xl border bg-[#FAF7F1] text-sm focus:outline-none focus:ring-2 focus:ring-[#9C5636] transition-all"
-                                        style={{ borderColor: "var(--cc-line-strong)" }}
-                                    />
-                                </Field>
-                            )}
+                            <div className="space-y-3 rounded-xl border p-4 text-xs text-slate-600" style={{ borderColor: "var(--cc-line-strong)" }}>
+                                <label className="flex items-start gap-3">
+                                    <input type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} required className="mt-0.5" />
+                                    <span>Acepto los <Link href="/terms" target="_blank" className="font-semibold underline">términos del servicio</Link>.</span>
+                                </label>
+                                <label className="flex items-start gap-3">
+                                    <input type="checkbox" checked={acceptPrivacy} onChange={(event) => setAcceptPrivacy(event.target.checked)} required className="mt-0.5" />
+                                    <span>Confirmo que leí la <Link href="/privacy" target="_blank" className="font-semibold underline">política de privacidad</Link>.</span>
+                                </label>
+                                <label className="flex items-start gap-3">
+                                    <input type="checkbox" checked={whatsappOptIn} onChange={(event) => setWhatsappOptIn(event.target.checked)} className="mt-0.5" />
+                                    <span>Quiero recibir avisos operativos por WhatsApp. Es opcional y puedo retirarlo después.</span>
+                                </label>
+                            </div>
 
                             <button
                                 type="submit"
@@ -221,7 +233,7 @@ export default function SignUpPage() {
 
                         <div className="pt-2 text-center">
                             <Link href="/login" className="text-xs font-semibold text-slate-500 hover:text-slate-700">
-                                Ya tienes cuenta? <span className="text-copper underline">Iniciar sesion</span>
+                            ¿Ya tienes cuenta? <span className="text-copper underline">Iniciar sesión</span>
                             </Link>
                         </div>
                     </div>
@@ -254,7 +266,7 @@ export default function SignUpPage() {
                                 el <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>rol correcto.</em>
                             </DisplayHeading>
                             <p className="text-sm leading-relaxed" style={{ color: "var(--cc-ink-faint)" }}>
-                                Los codigos separan los accesos de residentes, conserjeria y administracion para garantizar que tus datos y acciones se mantengan seguros.
+                            Los códigos separan los accesos de residentes, conserjería y administración para garantizar que tus datos y acciones se mantengan seguros.
                             </p>
                         </div>
 
@@ -286,10 +298,10 @@ export default function SignUpPage() {
     );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <label className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">{label}</label>
+            <label htmlFor={htmlFor} className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase block">{label}</label>
             {children}
         </div>
     );

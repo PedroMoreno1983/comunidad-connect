@@ -108,7 +108,7 @@ export default function ResidentInvitationsPage() {
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
                         { title: "Generar", description: "Crea un pase temporal con nombre, documento y vigencia.", icon: <QrCode className="h-4 w-4" /> },
-                        { title: "Compartir", description: "Envia el codigo al invitado para ingreso controlado por conserjeria.", icon: <Share2 className="h-4 w-4" /> },
+                    { title: "Compartir", description: "Envía el código al invitado para un ingreso controlado por Conserjería.", icon: <Share2 className="h-4 w-4" /> },
                         { title: "Auditar", description: "El uso queda en bitacora para revisar entradas pasadas.", icon: <History className="h-4 w-4" /> },
                     ].map(item => (
                         <div key={item.title} className="flex gap-4 rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>

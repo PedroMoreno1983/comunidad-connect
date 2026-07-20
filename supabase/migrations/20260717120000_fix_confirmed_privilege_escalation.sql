@@ -153,6 +153,8 @@ CREATE POLICY "Backend has full access to agent_memories"
 -- ── 3. service_providers: scope read to the caller's own tenant, restrict write ──
 DROP POLICY IF EXISTS "service_providers_public_read" ON public.service_providers;
 DROP POLICY IF EXISTS "service_providers_authenticated_write" ON public.service_providers;
+DROP POLICY IF EXISTS "service_providers_tenant_read" ON public.service_providers;
+DROP POLICY IF EXISTS "service_providers_service_role_write" ON public.service_providers;
 
 CREATE POLICY "service_providers_tenant_read"
   ON public.service_providers

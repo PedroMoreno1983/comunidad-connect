@@ -2,9 +2,14 @@
 
 import { ThemeProvider } from "next-themes";
 
-export function ThemeProviders({ children }: { children: React.ReactNode }) {
+type ThemeProvidersProps = {
+    children: React.ReactNode;
+    nonce?: string;
+};
+
+export function ThemeProviders({ children, nonce }: ThemeProvidersProps) {
     return (
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
             {children}
         </ThemeProvider>
     );

@@ -151,7 +151,6 @@ export function StatCard({
       <a
         href={href}
         className={baseClasses}
-        {...(props as any)}
       >
         {content}
       </a>

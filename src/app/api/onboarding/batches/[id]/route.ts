@@ -31,7 +31,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (!batch) return NextResponse.json({ error: 'Lote no encontrado.' }, { status: 404 });
     const { data: failedDocuments, error } = await admin.from('onboarding_import_documents')
         .select('id, file_name, storage_path, mime_type').eq('batch_id', id).eq('community_id', profile.community_id).eq('status', 'failed');
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+        console.error('[onboarding batch retry] query failed', error);
+        return NextResponse.json({ error: 'No se pudo preparar el reintento.' }, { status: 500 });
+    }
     let recovered = 0;
     for (const document of failedDocuments || []) {
         try {

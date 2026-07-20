@@ -190,7 +190,7 @@ export const TOOL_DEFINITIONS = [
     // ── MÓDULO: CONSERJERÍA ──────────────────────────────────────────────────
     {
         name: 'register_visitor',
-        description: 'Registra una visita que va a llegar al edificio. Incluye nombre, RUT y a qué depto va.',
+        description: 'Registra una visita usando solo el nombre y el departamento de destino. No solicita RUT.',
         input_schema: {
             type: 'object' as const,
             properties: {

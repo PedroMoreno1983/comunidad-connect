@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
         const dashboard = await getMarketingReelsDashboard(profile);
         return NextResponse.json(dashboard);
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo cargar marketing.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[marketing reels] dashboard load failed', error);
+        return NextResponse.json({ error: 'No se pudo cargar marketing.' }, { status: 500 });
     }
 }
 
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         const dashboard = await getMarketingReelsDashboard(profile);
         return NextResponse.json({ reel, ...dashboard });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo generar el reel.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[marketing reels] generation failed', error);
+        return NextResponse.json({ error: 'No se pudo generar el reel.' }, { status: 500 });
     }
 }

@@ -45,7 +45,7 @@ Despues de configurar, probar creacion de link de pago y retorno controlado.
 
 ### Webhooks y monitoring
 
-- `IOT_WEBHOOK_SECRET`
+- `communities.iot_webhook_secret` por comunidad + `iot_autonomous_actions_enabled`
 - `AI_HEALTH_TOKEN`
 - `IOT_WEBHOOKS_REQUIRED=1` solo cuando el cliente tenga sensores/gateway IoT operativo.
 - `AI_HEALTH_TOKEN_REQUIRED=1` para cierre estricto de monitoreo en produccion pagada completa.

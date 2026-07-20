@@ -79,7 +79,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Solicitud no encontrada' }, { status: 404 });
         }
 
-        if (request.community_id && request.community_id !== actorProfile.community_id) {
+        if (!actorProfile.community_id || request.community_id !== actorProfile.community_id) {
             return NextResponse.json({ error: 'Solicitud pertenece a otra comunidad' }, { status: 403 });
         }
 
@@ -98,7 +98,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
         }
 
-        if (provider?.community_id && provider.community_id !== actorProfile.community_id) {
+        if (provider && provider.community_id !== actorProfile.community_id) {
             return NextResponse.json({ error: 'Proveedor pertenece a otra comunidad' }, { status: 403 });
         }
 
@@ -118,7 +118,8 @@ export async function PATCH(
                 latencyMs: Date.now() - started,
                 error: updateError,
             });
-            return NextResponse.json({ error: updateError?.message || 'No se pudo actualizar' }, { status: 500 });
+            console.error('[service request status] update failed', updateError);
+            return NextResponse.json({ error: 'No se pudo actualizar la solicitud.' }, { status: 500 });
         }
 
         if (updatedRequest.user_id && updatedRequest.user_id !== actorProfile.id) {
@@ -185,7 +186,7 @@ export async function PATCH(
             error,
         });
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo actualizar la solicitud.' },
             { status: 500 }
         );
     }

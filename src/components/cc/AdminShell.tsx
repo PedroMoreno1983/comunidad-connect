@@ -4,6 +4,7 @@
 import * as React from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { ResidentBottomNav } from "./ResidentBottomNav";
 
 type AdminShellProps = {
   activeHref: string;
@@ -38,10 +39,11 @@ export function AdminShell({
           rightSubtitle={rightSubtitle}
           cta={cta}
         />
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <div className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 ${role === "resident" ? "pb-24 lg:pb-8" : ""}`}>
           {children}
         </div>
       </main>
+      {role === "resident" && <ResidentBottomNav />}
     </div>
   );
 }

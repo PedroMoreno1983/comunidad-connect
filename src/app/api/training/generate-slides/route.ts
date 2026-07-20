@@ -156,7 +156,7 @@ ${text}
 
         console.error('Error generating slides:', error);
         return NextResponse.json({ 
-            error: 'Ocurrió un error al diseñar la presentación. ' + (error instanceof Error ? error.message : '') 
+            error: 'Ocurrió un error al diseñar la presentación.'
         }, { status: 500 });
     }
 }

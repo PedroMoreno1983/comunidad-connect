@@ -4,6 +4,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { sendWelcomeEmail } from '@/lib/email';
 import type { UserRole } from '@/lib/types';
 import { logApiError, logger, resolveRequestId } from '@/lib/observability/logger';
+import { PUBLIC_SITE_URL } from '@/lib/config';
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '@/lib/privacy';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -42,14 +44,20 @@ export async function POST(req: NextRequest) {
         const email = cleanText(body.email, 180).toLowerCase();
         const password = cleanText(body.password, 200);
         const accessCode = cleanText(body.accessCode, 40).toUpperCase();
-        const requestedRole = cleanText(body.role, 20);
         const departmentNumber = cleanText(body.departmentNumber, 40);
+        const acceptTerms = body.acceptTerms === true;
+        const acceptPrivacy = body.acceptPrivacy === true;
+        const whatsappOptIn = body.whatsappOptIn === true;
 
         if (!fullName) return NextResponse.json({ error: 'Ingresa tu nombre.' }, { status: 400 });
         if (!isEmail(email)) return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
         if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
         if (!/^[A-Z0-9_-]{4,40}$/.test(accessCode)) {
             return NextResponse.json({ error: 'Código de invitación inválido.' }, { status: 400 });
+        }
+
+        if (!acceptTerms || !acceptPrivacy) {
+            return NextResponse.json({ error: 'Debes aceptar los términos y confirmar que leíste la política de privacidad.' }, { status: 400 });
         }
 
         const admin = getSupabaseAdmin();
@@ -62,8 +70,8 @@ export async function POST(req: NextRequest) {
 
         const community = communities?.[0];
         const resolvedRole = community ? roleForCode(community, accessCode) : null;
-        if (!community || !resolvedRole || resolvedRole !== requestedRole) {
-            return NextResponse.json({ error: 'El código no corresponde al perfil seleccionado.' }, { status: 403 });
+        if (!community || !resolvedRole) {
+            return NextResponse.json({ error: 'El código de invitación no es válido.' }, { status: 403 });
         }
         if (resolvedRole === 'resident' && !departmentNumber) {
             return NextResponse.json({ error: 'Ingresa tu departamento o unidad.' }, { status: 400 });
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
         const { data: created, error: createError } = await admin.auth.admin.createUser({
             email,
             password,
-            email_confirm: true,
+            email_confirm: false,
             user_metadata: {
                 name: fullName,
                 invite_code: accessCode,
@@ -97,10 +105,59 @@ export async function POST(req: NextRequest) {
             role: resolvedRole,
             community_id: community.id,
             department_number: resolvedRole === 'resident' ? departmentNumber : null,
+            whatsapp_enabled: whatsappOptIn,
         }, { onConflict: 'id' });
         if (profileError) {
             await admin.auth.admin.deleteUser(userId);
             throw profileError;
+        }
+
+        const consentEvents = [
+            {
+                user_id: userId,
+                community_id: community.id,
+                consent_type: 'terms',
+                action: 'granted',
+                policy_version: TERMS_VERSION,
+                channel: 'signup',
+                subject_email: email,
+                evidence: { explicit_checkbox: true },
+            },
+            {
+                user_id: userId,
+                community_id: community.id,
+                consent_type: 'privacy_notice',
+                action: 'granted',
+                policy_version: PRIVACY_POLICY_VERSION,
+                channel: 'signup',
+                subject_email: email,
+                evidence: { explicit_checkbox: true },
+            },
+            ...(whatsappOptIn ? [{
+                user_id: userId,
+                community_id: community.id,
+                consent_type: 'whatsapp',
+                action: 'granted',
+                policy_version: PRIVACY_POLICY_VERSION,
+                channel: 'signup',
+                subject_email: email,
+                evidence: { explicit_checkbox: true },
+            }] : []),
+        ];
+        const { error: consentError } = await admin.from('privacy_consent_events').insert(consentEvents);
+        if (consentError) {
+            await admin.auth.admin.deleteUser(userId);
+            throw consentError;
+        }
+
+        const { error: confirmationError } = await admin.auth.resend({
+            type: 'signup',
+            email,
+            options: { emailRedirectTo: `${PUBLIC_SITE_URL}/login?confirmed=1` },
+        });
+        if (confirmationError) {
+            await admin.auth.admin.deleteUser(userId);
+            throw confirmationError;
         }
 
         await sendWelcomeEmail({
@@ -113,7 +170,7 @@ export async function POST(req: NextRequest) {
             error,
         }));
 
-        return NextResponse.json({ ok: true, role: resolvedRole });
+        return NextResponse.json({ ok: true, role: resolvedRole, requiresEmailConfirmation: true });
     } catch (error) {
         logApiError(req, '/api/auth/signup', error);
         return NextResponse.json({ error: 'No se pudo crear la cuenta.' }, { status: 500 });

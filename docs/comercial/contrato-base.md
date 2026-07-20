@@ -22,13 +22,17 @@ No incluye hardware, conectividad del edificio, servicios legales, servicios con
 
 El cliente declara tener autorizacion para cargar datos de residentes, unidades, proveedores y operaciones. Convive Connect actuara como encargado tecnologico del tratamiento de datos, siguiendo instrucciones del cliente y medidas razonables de seguridad.
 
-Los datos no se venderan a terceros. Los proveedores subprocesadores se limitaran a infraestructura, correo, mensajeria, IA, analitica y almacenamiento necesarios para operar el servicio.
+Los datos no se venderán a terceros. Según los módulos contratados, los subprocesadores pueden incluir Supabase, Vercel, Anthropic, OpenAI, Google Gemini, Voyage AI, Resend, Twilio, Haulmer/Tuu y Google Analytics. El contrato final debe identificar finalidad, ubicación o transferencia internacional, medidas de seguridad y mecanismo de actualización de esta lista.
+
+Convive Connect asistirá al cliente para atender solicitudes de acceso, rectificación, supresión, oposición y portabilidad; aplicar retención, devolución o eliminación al término; y mantener confidencialidad y trazabilidad del personal autorizado.
+
+Convive Connect notificará al cliente sin demora indebida cuando confirme una brecha que afecte sus datos, entregará la información disponible para evaluar riesgo y cooperará en notificaciones regulatorias o a titulares. El plazo contractual exacto debe validarse legalmente.
 
 ## 5. IA y automatizacion
 
 CoCo IA entrega asistencia, clasificacion, resumen, busqueda y recomendaciones. No reemplaza decisiones legales, contables, de emergencia ni decisiones formales del comite o administracion.
 
-Las acciones destructivas o envios reales pueden requerir confirmacion humana segun configuracion del cliente.
+Las acciones con efectos reales requieren confirmación humana, salvo automatización IoT expresamente habilitada por la comunidad, con alcance documentado, secreto independiente y registro de auditoría.
 
 ## 6. Disponibilidad y soporte
 

@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ reel: updated });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo guardar el video.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[marketing reels] upload failed', error);
+        return NextResponse.json({ error: 'No se pudo guardar el video.' }, { status: 500 });
     }
 }

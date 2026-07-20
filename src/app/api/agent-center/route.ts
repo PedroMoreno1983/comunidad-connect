@@ -257,7 +257,6 @@ function activitySummaryForStatus(action: AgentAction, status: 'preview' | 'exec
 
 function inferActionHeuristic(message: string, profile: AgentProfile): AgentAction {
     const lower = message.toLowerCase();
-    const agentKey = pickAgent(message);
     const date = dateFromText(message);
     const { start, end } = timeFromText(message);
     const wantsWorkflow = lower.includes('playbook') || lower.includes('workflow') || lower.includes('flujo') || lower.includes('proceso') || lower.includes('prepara');
@@ -1357,6 +1356,9 @@ export async function GET(req: NextRequest) {
     if (profile.role !== 'admin') {
         return NextResponse.json({ error: 'Agent Center es exclusivo de administracion.' }, { status: 403 });
     }
+    if (!profile.community_id) {
+        return NextResponse.json({ error: 'El administrador no tiene comunidad asignada.' }, { status: 409 });
+    }
 
     // Resilient fallback: a visit evaluates only this tenant's due rules. The
     // protected scheduler remains the primary path when CRON_SECRET is active.
@@ -1393,6 +1395,9 @@ export async function POST(req: NextRequest) {
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         if (profile.role !== 'admin') {
             return NextResponse.json({ error: 'Agent Center es exclusivo de administracion.' }, { status: 403 });
+        }
+        if (!profile.community_id) {
+            return NextResponse.json({ error: 'El administrador no tiene comunidad asignada.' }, { status: 409 });
         }
 
         const rawBody = await req.json();
@@ -1540,7 +1545,7 @@ export async function POST(req: NextRequest) {
             steps,
         });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'No se pudo ejecutar la accion.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[agent-center] request failed', error);
+        return NextResponse.json({ error: 'No se pudo ejecutar la acción.' }, { status: 500 });
     }
 }

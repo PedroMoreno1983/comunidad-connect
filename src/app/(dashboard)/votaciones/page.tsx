@@ -10,6 +10,7 @@ import type { PollVoteRecord, PollWithVoteState, SupabasePollRow } from "@/lib/t
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function VotacionesPage() {
     const { user } = useAuth();
@@ -89,16 +90,8 @@ export default function VotacionesPage() {
 
             const activeRows = (active || []) as SupabasePollRow[];
             const closedRows = (closed || []) as SupabasePollRow[];
-            const checkVotesPromises = [...activeRows, ...closedRows].map((poll) =>
-                PollsService.hasUserVoted(poll.id, user!.id).then(res => ({
-                    poll_id: poll.id,
-                    vote: res as { option_id?: string } | null,
-                }))
-            );
-            const userVotesResults = await Promise.all(checkVotesPromises);
-            const validUserVotes: PollVoteRecord[] = userVotesResults
-                .filter((result): result is { poll_id: string; vote: { option_id: string } } => Boolean(result.vote?.option_id))
-                .map((result) => ({ poll_id: result.poll_id, option_id: result.vote.option_id }));
+            const pollIds = [...activeRows, ...closedRows].map(poll => poll.id);
+            const validUserVotes = await PollsService.getUserVotes(pollIds, user!.id);
 
             setActivePolls(activeRows.map((poll) => mapSupabasePoll(poll, validUserVotes)));
             setClosedPolls(closedRows.map((poll) => mapSupabasePoll(poll, validUserVotes)));
@@ -117,6 +110,7 @@ export default function VotacionesPage() {
 
             await PollsService.submitVote(pollId, optionId, user.id);
             await loadPolls();
+            toast({ title: "Tu voto quedó registrado", description: "Gracias por participar en tu comunidad.", variant: "success" });
         } catch (error: unknown) {
             console.error("Error voting:", error);
             const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
@@ -131,7 +125,15 @@ export default function VotacionesPage() {
     };
 
     if (loading) {
-        return <div className="flex items-center justify-center p-20 text-sm cc-text-secondary">Cargando consultas...</div>;
+        return (
+            <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" aria-label="Cargando votaciones">
+                <Skeleton className="h-24 w-full" />
+                <div className="grid gap-5 lg:grid-cols-2">
+                    <Skeleton className="h-72 w-full" />
+                    <Skeleton className="h-72 w-full" />
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -150,7 +152,13 @@ export default function VotacionesPage() {
                     <p className="text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">Estado actual</p>
                     <div className="mt-2 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-brand-600 animate-pulse" />
-                        <span className="text-sm font-semibold cc-text-primary">{stats.pendingVotes} votación(es) pendientes</span>
+                        <span className="text-sm font-semibold cc-text-primary">
+                            {stats.pendingVotes === 0
+                                ? "No tienes votaciones pendientes"
+                                : stats.pendingVotes === 1
+                                    ? "Tienes 1 votación pendiente"
+                                    : `Tienes ${stats.pendingVotes} votaciones pendientes`}
+                        </span>
                     </div>
                 </div>
             </header>

@@ -68,6 +68,8 @@ export default function AdminOnboardingPage() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
 
@@ -112,12 +114,16 @@ export default function AdminOnboardingPage() {
             toast({ title: "Error", description: "Las contraseñas no coinciden", variant: "destructive" });
             return;
         }
-        if (password.length < 6) {
-            toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
+        if (password.length < 8) {
+            toast({ title: "Error", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
             return;
         }
         if (!communityName.trim()) {
             toast({ title: "Error", description: "Debes ingresar el nombre del condominio", variant: "destructive" });
+            return;
+        }
+        if (!acceptTerms || !acceptPrivacy) {
+            toast({ title: "Falta tu confirmación", description: "Acepta los términos y confirma que leíste la política de privacidad.", variant: "destructive" });
             return;
         }
 
@@ -136,6 +142,8 @@ export default function AdminOnboardingPage() {
                     fullName,
                     email,
                     password,
+                    acceptTerms,
+                    acceptPrivacy,
                 }),
             });
 
@@ -144,7 +152,7 @@ export default function AdminOnboardingPage() {
                 if (response.status === 409 && data.code === "EMAIL_ALREADY_REGISTERED") {
                     toast({
                         title: "Cuenta existente",
-                        description: data.error || "Este correo ya tiene cuenta. Inicia sesion para continuar.",
+                        description: data.error || "Este correo ya tiene cuenta. Inicia sesión para continuar.",
                         variant: "default",
                     });
                     router.push(data.loginUrl || `/login?next=%2Fadmin%2Fonboarding&email=${encodeURIComponent(email)}`);
@@ -155,10 +163,10 @@ export default function AdminOnboardingPage() {
 
             toast({
                 title: "Comunidad creada",
-                description: `Ahora inicia sesion para administrar ${communityName}.`,
+                description: `Revisa ${email} para confirmar tu correo antes de administrar ${communityName}.`,
                 variant: "success",
             });
-            router.push("/login?next=%2Fadmin%2Fonboarding");
+            router.push("/login?check_email=1&next=%2Fadmin%2Fonboarding");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Ocurrió un error inesperado";
             toast({ title: "Error en el registro", description: message, variant: "destructive" });
@@ -195,7 +203,7 @@ export default function AdminOnboardingPage() {
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Registro</p>
                             <h2 className="mt-2 text-3xl font-semibold cc-text-primary">Activa tu edificio</h2>
-                            <p className="mt-2 text-sm cc-text-secondary">Elige plan, georreferencia la direccion y crea la cuenta que aprobara la carga inteligente.</p>
+                        <p className="mt-2 text-sm cc-text-secondary">Elige plan, georreferencia la dirección y crea la cuenta que aprobará la carga inteligente.</p>
                         </div>
                         <Link href="/login" className="rounded-lg border border-subtle p-2.5 cc-text-secondary transition-colors hover:bg-elevated" aria-label="Volver al login">
                             <ArrowLeft className="h-5 w-5" />
@@ -311,7 +319,7 @@ export default function AdminOnboardingPage() {
                                 ) : null}
                             </Field>
                             <Field label="Número de unidades">
-                                <Input type="number" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="80" min="1" />
+                                <Input type="number" inputMode="numeric" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="80" min="1" />
                             </Field>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(0)}>Volver</Button>
@@ -329,7 +337,7 @@ export default function AdminOnboardingPage() {
                                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="pl-10" />
                             </IconField>
                             <IconField icon={<Lock className="h-5 w-5" />}>
-                                <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña, mínimo 6 caracteres" required className="pl-10 pr-10" />
+                                <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña, mínimo 8 caracteres" minLength={8} required className="pl-10 pr-10" />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
@@ -342,6 +350,17 @@ export default function AdminOnboardingPage() {
                                 <p className="font-semibold cc-text-primary">{communityName || "Condominio por definir"}</p>
                                 {address && <p className="mt-1 cc-text-secondary">{address}</p>}
                                 <p className="mt-1 cc-text-secondary">Plan: {PLANS.find(p => p.id === selectedPlan)?.name || "Por definir"}</p>
+                            </div>
+
+                            <div className="space-y-3 rounded-lg border border-subtle bg-canvas p-4 text-sm">
+                                <label className="flex items-start gap-3">
+                                    <input type="checkbox" checked={acceptTerms} onChange={event => setAcceptTerms(event.target.checked)} required className="mt-1" />
+                                    <span>Acepto los <Link href="/terms" target="_blank" className="font-semibold underline">términos del servicio</Link>.</span>
+                                </label>
+                                <label className="flex items-start gap-3">
+                                    <input type="checkbox" checked={acceptPrivacy} onChange={event => setAcceptPrivacy(event.target.checked)} required className="mt-1" />
+                                    <span>Confirmo que leí la <Link href="/privacy" target="_blank" className="font-semibold underline">política de privacidad</Link>.</span>
+                                </label>
                             </div>
 
                             <div className="grid gap-3 sm:grid-cols-2">

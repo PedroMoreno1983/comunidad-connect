@@ -43,7 +43,11 @@ async function signInAs(email, password) {
 }
 
 function assertStaticRoleBoundaries() {
-  const proxy = fs.readFileSync(path.join(process.cwd(), 'src/proxy.ts'), 'utf8');
+  const middlewarePath = ['src/proxy.ts', 'src/middleware.ts']
+    .map(file => path.join(process.cwd(), file))
+    .find(file => fs.existsSync(file));
+  if (!middlewarePath) throw new Error('No role-protection middleware was found');
+  const proxy = fs.readFileSync(middlewarePath, 'utf8');
   const sidebar = fs.readFileSync(path.join(process.cwd(), 'src/components/cc/Sidebar.tsx'), 'utf8');
   const agentApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/agent-center/route.ts'), 'utf8');
   const trainingApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/training/modules/route.ts'), 'utf8');
@@ -54,11 +58,11 @@ function assertStaticRoleBoundaries() {
   );
   assert(sidebar.includes('{ href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin"]'), 'Agent Center navigation is admin-only');
   assert(agentApi.includes("Agent Center es exclusivo de administracion."), 'Agent Center API rejects non-admin profiles');
-  assert(proxy.includes('"/agent-center/:path*"'), 'Agent Center page is covered by the proxy matcher');
+  assert(proxy.includes('"/agent-center"'), 'Agent Center page is covered by the protected route matcher');
   assert(proxy.includes('pathname.startsWith("/resident/training")') && proxy.includes('role === "admin" || role === "concierge"'), 'Aula route is limited to admin and concierge');
   assert(trainingApi.includes("!['admin', 'concierge'].includes(profile.role)"), 'Aula API rejects resident profiles');
   assert(proxy.includes('pathname.startsWith("/comunicaciones") && role === "resident"') && proxy.includes('new URL("/feed", req.url)'), 'Residents are redirected to the read-only communications feed');
-  assert(proxy.includes('"/feed/:path*"'), 'Read-only communications feed requires authentication');
+  assert(proxy.includes('"/feed"'), 'Read-only communications feed requires authentication');
   assert(sidebar.includes('{ href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"]'), 'Resident communications navigation opens the read-only feed');
   assert(sidebar.includes('{ href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"]'), 'Publishing navigation is limited to admin and concierge');
 }

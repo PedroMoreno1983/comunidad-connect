@@ -11,6 +11,7 @@ import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -481,7 +482,12 @@ export async function POST(req: NextRequest) {
 
         const cocoCase = await maybeCreateCoCoCase(message, caseContext, reply);
 
-        return NextResponse.json({ reply, navigate, action, case: cocoCase }, { status: 200 });
+        return NextResponse.json({
+            reply,
+            navigate: getSafeCoCoNavigation(navigate),
+            action,
+            case: cocoCase,
+        }, { status: 200 });
 
     } catch (err) {
         if (isAiBudgetExceededError(err)) {

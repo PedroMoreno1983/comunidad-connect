@@ -218,7 +218,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push('/admin-onboarding')}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium transition-all hover:opacity-90"
               style={{ color: 'var(--cc-ink)' }}
             >
@@ -463,7 +463,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
-                onClick={() => router.push('/onboarding')}
+                onClick={() => router.push('/admin-onboarding')}
                 className="rounded-xl bg-white px-6 py-3.5 text-sm font-medium transition-all hover:opacity-90"
                 style={{ color: 'var(--cc-ink)' }}
               >
@@ -540,13 +540,13 @@ function ContactAdminFormModal({ onClose }: ContactAdminModalProps) {
       if (result.emailSent) {
         toast({
           title: "Solicitud registrada",
-          description: "Te enviamos la confirmacion y el equipo comercial ya fue notificado.",
+                    description: "Te enviamos la confirmación y el equipo comercial ya fue notificado.",
           variant: "success",
         });
       } else {
         toast({
           title: "Solicitud guardada",
-          description: "Tus datos quedaron registrados. La confirmacion por correo esta pendiente.",
+                    description: "Tus datos quedaron registrados. La confirmación por correo está pendiente.",
           variant: "default",
         });
       }
@@ -554,7 +554,7 @@ function ContactAdminFormModal({ onClose }: ContactAdminModalProps) {
       console.warn("Contact send failed:", err instanceof Error ? err.message : err);
       toast({
         title: "No se pudo registrar",
-        description: err instanceof Error ? err.message : "Revisa tu conexion e intentalo nuevamente.",
+        description: err instanceof Error ? err.message : "Revisa tu conexión e inténtalo nuevamente.",
         variant: "destructive",
       });
     } finally {
@@ -592,8 +592,8 @@ function ContactAdminFormModal({ onClose }: ContactAdminModalProps) {
             <h3 className="text-lg font-semibold">¡Solicitud Recibida!</h3>
             <p className="mx-auto max-w-sm text-xs leading-relaxed" style={{ color: 'var(--cc-ink-tertiary)' }}>
               {confirmationSent
-                ? <>Registramos tus datos y enviamos la confirmacion a <strong>{email}</strong>.</>
-                : <>Registramos tus datos de forma segura. La confirmacion a <strong>{email}</strong> esta pendiente.</>}
+                                    ? <>Registramos tus datos y enviamos la confirmación a <strong>{email}</strong>.</>
+                                    : <>Registramos tus datos de forma segura. La confirmación a <strong>{email}</strong> está pendiente.</>}
             </p>
             <button
               onClick={onClose}

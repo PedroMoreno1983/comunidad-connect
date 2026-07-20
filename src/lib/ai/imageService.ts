@@ -35,7 +35,7 @@ export class ImageService {
 
     const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
     // La familia dall-e usa quality "standard"/"hd"; gpt-image usa "low"/"medium"/"high"/"auto".
-    const quality = model.startsWith("dall-e") ? "hd" : "high";
+    const quality: "hd" | "high" = model.startsWith("dall-e") ? "hd" : "high";
     const startedAt = Date.now();
 
     try {
@@ -61,7 +61,7 @@ export class ImageService {
         n: 1,
         size: "1024x1024",
         quality,
-      } as any);
+      });
 
       const image = response.data?.[0];
       const imageUrl = image?.url || (image?.b64_json ? `data:image/png;base64,${image.b64_json}` : null);

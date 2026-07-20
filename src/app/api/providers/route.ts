@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
         if (insertError || !provider) {
             return NextResponse.json(
-                { error: insertError?.message || 'No se pudo crear proveedor' },
+                { error: 'No se pudo crear el proveedor.' },
                 { status: 500 }
             );
         }
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     } catch (error: unknown) {
         console.warn('Error in POST /api/providers:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error interno del servidor al crear proveedor' },
+            { error: 'No se pudo crear el proveedor.' },
             { status: 500 }
         );
     }

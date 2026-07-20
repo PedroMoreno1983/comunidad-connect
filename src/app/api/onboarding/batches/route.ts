@@ -31,7 +31,10 @@ export async function GET() {
     const { data, error } = await getSupabaseAdmin().from('onboarding_import_batches')
         .select('id, source, status, document_count, row_count, valid_row_count, warning_count, created_at, updated_at')
         .eq('community_id', profile.community_id).order('created_at', { ascending: false }).limit(20);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+        console.error('[onboarding batches] query failed', error);
+        return NextResponse.json({ error: 'No se pudieron cargar los lotes.' }, { status: 500 });
+    }
     return NextResponse.json({ batches: data || [] });
 }
 
@@ -125,6 +128,6 @@ export async function POST(request: Request) {
         const message = error instanceof Error ? error.message : 'No se pudo procesar el lote.';
         if (batchId) await admin.from('onboarding_import_batches').update({ status: 'failed', warnings: [message], updated_at: new Date().toISOString() }).eq('id', batchId);
         console.error('[OnboardingBatch]', error);
-        return NextResponse.json({ error: message, batchId: batchId || null }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo procesar el lote.', batchId: batchId || null }, { status: 500 });
     }
 }

@@ -47,11 +47,11 @@ export function CommercialLeadForm({ source }: CommercialLeadFormProps) {
                 <h2 className="mt-6 text-2xl font-semibold">Solicitud comercial registrada</h2>
                 <p className="mt-3 text-sm leading-6" style={{ color: "var(--cc-ink-muted)" }}>
                     {result.emailSent
-                        ? `La confirmacion fue enviada a ${adminEmail} y el equipo comercial ya recibio el aviso.`
-                        : "La solicitud quedo guardada de forma segura. La confirmacion por correo esta pendiente y el equipo puede recuperarla desde el registro comercial."}
+                        ? `La confirmación fue enviada a ${adminEmail} y el equipo comercial ya recibió el aviso.`
+                    : "La solicitud quedó guardada de forma segura. La confirmación por correo está pendiente y el equipo puede recuperarla desde el registro comercial."}
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <Link href="/onboarding" className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white" style={{ background: "var(--cc-sage)" }}>
+                    <Link href="/admin-onboarding" className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white" style={{ background: "var(--cc-sage)" }}>
                         Activar con CoCo <ArrowRight className="h-4 w-4" />
                     </Link>
                     <button type="button" onClick={() => setResult(null)} className="rounded-xl border px-5 py-3 text-sm font-semibold" style={{ borderColor: "var(--cc-line-strong)" }}>

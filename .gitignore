@@ -62,6 +62,9 @@ datawise-people-analytics/
 # real PII / operational logs that must never be committed
 scripts/envios-completados.json
 
+# local infrastructure access helpers (must never contain tracked credentials)
+download_scrapp*.py
+
 # android build logs
 android/error*.txt
 android/output*.txt

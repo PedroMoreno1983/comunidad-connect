@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { 
-    Amenity, ChatMessage, Conversation, CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow
+    Amenity, ChatMessage, ChatMessageSummary, Conversation, CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow, ProfileSummary, VisitorLogDatabaseRow
 } from '../types';
 
 // ==========================================
@@ -450,7 +450,7 @@ export const InvitationService = {
 // Visitor & Package Services (Concierge)
 // ==========================================
 export const VisitorService = {
-    async getAll(): Promise<any[]> {
+    async getAll(): Promise<VisitorLogDatabaseRow[]> {
         const { data, error } = await supabase
             .from('visitor_logs')
             .select(`
@@ -915,7 +915,7 @@ export const ChatService = {
                     table: 'chat_messages',
                     filter: 'receiver_id=is.null' // Only listen to global chat
                 },
-                async (payload: { new: any }) => {
+                async (payload: { new: ChatMessage }) => {
                     const newMsg = payload.new;
                     const { data: profile } = await supabase
                         .from('profiles')
@@ -961,7 +961,7 @@ export const ChatService = {
                     schema: 'public',
                     table: 'chat_messages',
                 },
-                async (payload: { new: any }) => {
+                async (payload: { new: ChatMessage }) => {
                     const msg = payload.new;
                     // Only act on messages relevant to this conversation
                     const isRelevant = (
@@ -999,7 +999,7 @@ export const ChatService = {
         // Collect unique peer IDs
         const seen = new Set<string>();
         const peerIds: string[] = [];
-        const rawMessages = (data as any[] || []);
+        const rawMessages = (data as ChatMessageSummary[] || []);
         
         for (const msg of rawMessages) {
             const peerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
@@ -1017,7 +1017,7 @@ export const ChatService = {
                 .select('id, name, avatar_url')
                 .in('id', peerIds);
             
-            (profiles || []).forEach((p: any) => { 
+            (profiles as ProfileSummary[] || []).forEach(p => {
                 profileMap[p.id] = { name: p.name, avatar_url: p.avatar_url }; 
             });
         }

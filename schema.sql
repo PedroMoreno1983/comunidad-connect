@@ -1390,3 +1390,126 @@ ALTER TABLE public.whatsapp_processed_messages ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.whatsapp_processed_messages FROM anon;
 REVOKE ALL ON public.whatsapp_processed_messages FROM authenticated;
 GRANT SELECT, INSERT, DELETE ON public.whatsapp_processed_messages TO service_role;
+
+-- Privacy compliance foundation (Ley 21.719).
+CREATE TABLE IF NOT EXISTS public.privacy_consent_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  community_id UUID REFERENCES public.communities(id) ON DELETE SET NULL,
+  consent_type TEXT NOT NULL CHECK (consent_type IN ('terms', 'privacy_notice', 'whatsapp', 'ai_processing', 'sensitive_data')),
+  action TEXT NOT NULL CHECK (action IN ('granted', 'withdrawn')),
+  policy_version TEXT NOT NULL,
+  channel TEXT NOT NULL CHECK (channel IN ('signup', 'profile', 'privacy_center', 'admin_onboarding')),
+  subject_email TEXT,
+  evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS privacy_consent_events_user_idx ON public.privacy_consent_events (user_id, consent_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS privacy_consent_events_community_idx ON public.privacy_consent_events (community_id, created_at DESC);
+ALTER TABLE public.privacy_consent_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "privacy_consent_events_select_own" ON public.privacy_consent_events FOR SELECT TO authenticated USING (user_id = auth.uid());
+REVOKE INSERT, UPDATE, DELETE ON public.privacy_consent_events FROM anon, authenticated;
+GRANT SELECT ON public.privacy_consent_events TO authenticated;
+GRANT SELECT, INSERT ON public.privacy_consent_events TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.data_subject_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  community_id UUID REFERENCES public.communities(id) ON DELETE SET NULL,
+  request_type TEXT NOT NULL CHECK (request_type IN ('access', 'rectification', 'deletion', 'opposition', 'portability')),
+  status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'identity_check', 'in_progress', 'completed', 'rejected', 'cancelled')),
+  subject_email TEXT NOT NULL,
+  details TEXT,
+  response_summary TEXT,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  due_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days'),
+  completed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS data_subject_requests_user_idx ON public.data_subject_requests (user_id, received_at DESC);
+CREATE INDEX IF NOT EXISTS data_subject_requests_status_idx ON public.data_subject_requests (status, due_at);
+ALTER TABLE public.data_subject_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "data_subject_requests_select_own" ON public.data_subject_requests FOR SELECT TO authenticated USING (user_id = auth.uid());
+REVOKE INSERT, UPDATE, DELETE ON public.data_subject_requests FROM anon, authenticated;
+GRANT SELECT ON public.data_subject_requests TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.data_subject_requests TO service_role;
+ALTER TABLE public.profiles ALTER COLUMN whatsapp_enabled SET DEFAULT FALSE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS solidarity_round_up_expense_unique
+  ON public.solidarity_contributions (expense_id)
+  WHERE type = 'round_up' AND expense_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.apply_verified_solidarity_round_up(
+  p_community_id UUID, p_user_id UUID, p_expense_id UUID, p_amount NUMERIC
+) RETURNS NUMERIC LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_balance NUMERIC;
+BEGIN
+  IF p_amount <= 0 OR p_amount > 999 THEN RAISE EXCEPTION 'invalid-round-up-amount'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.expenses e JOIN public.profiles p ON p.unit_id = e.unit_id
+    WHERE e.id = p_expense_id AND e.community_id = p_community_id AND e.status = 'paid'
+      AND p.id = p_user_id AND p.community_id = p_community_id
+  ) THEN RAISE EXCEPTION 'expense-not-paid-or-not-owned'; END IF;
+  INSERT INTO public.solidarity_contributions (community_id, user_id, amount, type, expense_id)
+    VALUES (p_community_id, p_user_id, p_amount, 'round_up', p_expense_id);
+  INSERT INTO public.solidarity_funds (community_id, balance) VALUES (p_community_id, p_amount)
+    ON CONFLICT (community_id) DO UPDATE SET balance = public.solidarity_funds.balance + EXCLUDED.balance, updated_at = NOW()
+    RETURNING balance INTO v_balance;
+  INSERT INTO public.solidarity_ledger (community_id, entry_type, amount, hours, description)
+    VALUES (p_community_id, 'contribution', p_amount, 0, 'Redondeo verificado de gasto común pagado');
+  RETURN v_balance;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.apply_verified_solidarity_round_up(UUID, UUID, UUID, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_verified_solidarity_round_up(UUID, UUID, UUID, NUMERIC) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.resolve_solidarity_application(
+  p_community_id UUID,
+  p_application_id UUID,
+  p_status TEXT,
+  p_amount_approved NUMERIC DEFAULT NULL
+)
+RETURNS TABLE (user_id UUID, category TEXT, approved_amount NUMERIC)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_application public.solidarity_applications%ROWTYPE;
+  v_amount NUMERIC;
+BEGIN
+  IF p_status NOT IN ('approved', 'rejected') THEN RAISE EXCEPTION 'invalid-status'; END IF;
+  SELECT * INTO v_application FROM public.solidarity_applications
+    WHERE id = p_application_id AND community_id = p_community_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'application-not-found'; END IF;
+  IF v_application.status <> 'pending' THEN RAISE EXCEPTION 'application-already-resolved'; END IF;
+  IF p_status = 'approved' THEN
+    v_amount := COALESCE(p_amount_approved, v_application.amount_requested);
+    IF v_amount <= 0 OR v_amount > v_application.amount_requested THEN RAISE EXCEPTION 'invalid-approved-amount'; END IF;
+    UPDATE public.solidarity_funds SET balance = balance - v_amount, updated_at = NOW()
+      WHERE community_id = p_community_id AND balance >= v_amount;
+    IF NOT FOUND THEN RAISE EXCEPTION 'insufficient-or-missing-fund'; END IF;
+    UPDATE public.solidarity_applications SET status = 'approved', amount_approved = v_amount, resolved_at = NOW()
+      WHERE id = p_application_id;
+    INSERT INTO public.solidarity_ledger (community_id, entry_type, amount, hours, description)
+      VALUES (p_community_id, 'subsidize', v_amount, 0, 'Subsidio solidario aprobado para una unidad anonimizada');
+  ELSE
+    v_amount := 0;
+    UPDATE public.solidarity_applications SET status = 'rejected', amount_approved = 0, resolved_at = NOW()
+      WHERE id = p_application_id;
+  END IF;
+  RETURN QUERY SELECT v_application.user_id, v_application.category, v_amount;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.resolve_solidarity_application(UUID, UUID, TEXT, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resolve_solidarity_application(UUID, UUID, TEXT, NUMERIC) TO service_role;
+
+ALTER TABLE public.solidarity_applications
+  ADD COLUMN IF NOT EXISTS sensitive_consent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sensitive_consent_version TEXT,
+  ADD COLUMN IF NOT EXISTS sensitive_consent_scope TEXT;
+
+ALTER TABLE public.communities
+  ADD COLUMN IF NOT EXISTS iot_autonomous_actions_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS iot_autonomy_enabled_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS iot_autonomy_enabled_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;

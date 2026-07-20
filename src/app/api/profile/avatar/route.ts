@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
         });
 
     if (uploadError) {
-        return NextResponse.json({ error: uploadError.message }, { status: 500 });
+        console.error('[profile avatar] upload failed', uploadError);
+        return NextResponse.json({ error: 'No se pudo subir la imagen.' }, { status: 500 });
     }
 
     const { data: { publicUrl } } = admin.storage
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
         .eq('id', user.id);
 
     if (profileError) {
-        return NextResponse.json({ error: profileError.message }, { status: 500 });
+        console.error('[profile avatar] profile update failed', profileError);
+        return NextResponse.json({ error: 'No se pudo actualizar el perfil.' }, { status: 500 });
     }
 
     return NextResponse.json({ avatarUrl: publicUrl });

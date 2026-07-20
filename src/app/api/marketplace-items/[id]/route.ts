@@ -94,7 +94,8 @@ export async function PATCH(
             .single();
 
         if (error || !item) {
-            return NextResponse.json({ error: error?.message || 'No se pudo actualizar' }, { status: 500 });
+            console.error('[marketplace item] update failed', error);
+            return NextResponse.json({ error: 'No se pudo actualizar la publicación.' }, { status: 500 });
         }
 
         if (context.isAdmin && context.item.seller_id && context.item.seller_id !== context.actor?.id) {
@@ -129,8 +130,9 @@ export async function PATCH(
 
         return NextResponse.json({ item }, { status: 200 });
     } catch (error) {
+        console.error('[marketplace item] update failed', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo actualizar la publicación.' },
             { status: 500 }
         );
     }
@@ -152,7 +154,8 @@ export async function DELETE(
             .eq('id', id);
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error('[marketplace item] delete failed', error);
+            return NextResponse.json({ error: 'No se pudo eliminar la publicación.' }, { status: 500 });
         }
 
         await recordOperationEvent({
@@ -174,8 +177,9 @@ export async function DELETE(
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
+        console.error('[marketplace item] delete failed', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo eliminar la publicación.' },
             { status: 500 }
         );
     }

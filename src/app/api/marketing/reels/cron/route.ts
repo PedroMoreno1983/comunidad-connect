@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         const result = await publishDueMarketingReels();
         return NextResponse.json(result);
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo procesar la agenda de reels.';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('[marketing reels cron] processing failed', error);
+        return NextResponse.json({ error: 'No se pudo procesar la agenda de reels.' }, { status: 500 });
     }
 }

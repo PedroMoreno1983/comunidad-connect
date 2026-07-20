@@ -1,11 +1,9 @@
-import { createClient } from '@/lib/supabase/client';
-import type { ServiceProvider, Review } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import type { ServiceProvider, ServiceProviderDatabaseRow, Review } from '@/lib/types';
 
-// Standard client that works in both client and server (without cookies auto-handling on server)
-const getSupabase = () => createClient();
+const getSupabase = () => supabase;
 
-
-function mapProvider(p: any): ServiceProvider {
+function mapProvider(p: ServiceProviderDatabaseRow): ServiceProvider {
     return {
         id: p.id,
         name: p.name,
@@ -33,7 +31,6 @@ function mapProvider(p: any): ServiceProvider {
 export const providersService = {
     async getAll(): Promise<ServiceProvider[]> {
         try {
-            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from('service_providers')
                 .select('*')
@@ -49,7 +46,6 @@ export const providersService = {
 
     async getByCategory(category: string): Promise<ServiceProvider[]> {
         try {
-            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from('service_providers')
                 .select('*')
@@ -67,7 +63,6 @@ export const providersService = {
     async getById(id: string): Promise<ServiceProvider | null> {
         if (!id || id === 'undefined') return null;
 
-        const supabase = getSupabase();
         const { data: p, error } = await supabase
             .from('service_providers')
             .select('*')
@@ -99,7 +94,6 @@ export const providersService = {
 
     async getByUser(userId: string): Promise<ServiceProvider[]> {
         if (!userId) return [];
-        const supabase = getSupabase();
         const { data, error } = await supabase
             .from('service_providers')
             .select('*')
@@ -108,29 +102,10 @@ export const providersService = {
 
         if (error) throw error;
 
-        return (data || []).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            category: p.category,
-            rating: p.rating,
-            reviewCount: p.review_count,
-            contactPhone: p.contact_phone,
-            email: p.email,
-            photo: p.photo,
-            bio: p.bio,
-            yearsExperience: p.years_experience,
-            specialties: p.specialties,
-            certifications: p.certifications,
-            hourlyRate: p.hourly_rate,
-            availability: p.availability,
-            responseTime: p.response_time,
-            completedJobs: p.completed_jobs,
-            verified: p.verified
-        }));
+        return (data || []).map(mapProvider);
     },
 
     async getFeatured(limit: number = 6): Promise<ServiceProvider[]> {
-        const supabase = getSupabase();
         const { data, error } = await supabase
             .from('service_providers')
             .select('*')
@@ -139,29 +114,10 @@ export const providersService = {
             .limit(limit);
         if (error) throw error;
         
-        return (data || []).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            category: p.category,
-            rating: p.rating,
-            reviewCount: p.review_count,
-            contactPhone: p.contact_phone,
-            email: p.email,
-            photo: p.photo,
-            bio: p.bio,
-            yearsExperience: p.years_experience,
-            specialties: p.specialties,
-            certifications: p.certifications,
-            hourlyRate: p.hourly_rate,
-            availability: p.availability,
-            responseTime: p.response_time,
-            completedJobs: p.completed_jobs,
-            verified: p.verified
-        }));
+        return (data || []).map(mapProvider);
     },
 
     async search(query: string): Promise<ServiceProvider[]> {
-        const supabase = getSupabase();
         const { data, error } = await supabase
             .from('service_providers')
             .select('*')

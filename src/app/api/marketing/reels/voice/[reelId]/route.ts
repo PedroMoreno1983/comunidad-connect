@@ -54,7 +54,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ reelId:
         .eq('id', reelId)
         .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+        console.error('[reels voice] query failed', error);
+        return NextResponse.json({ error: 'No se pudo cargar el reel.' }, { status: 500 });
+    }
     if (!data) return NextResponse.json({ error: 'Reel no encontrado.' }, { status: 404 });
 
     const reel = mapReel(data as Record<string, unknown>);

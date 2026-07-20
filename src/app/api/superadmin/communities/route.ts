@@ -43,13 +43,16 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (communitiesRes.error) {
-        return NextResponse.json({ error: communitiesRes.error.message }, { status: 500 });
+        console.error('[superadmin] communities query failed', communitiesRes.error);
+        return NextResponse.json({ error: 'No se pudieron cargar las comunidades.' }, { status: 500 });
     }
     if (tiersRes.error) {
-        return NextResponse.json({ error: tiersRes.error.message }, { status: 500 });
+        console.error('[superadmin] tiers query failed', tiersRes.error);
+        return NextResponse.json({ error: 'No se pudieron cargar los planes.' }, { status: 500 });
     }
     if (leadsRes.error) {
-        return NextResponse.json({ error: leadsRes.error.message }, { status: 500 });
+        console.error('[superadmin] leads query failed', leadsRes.error);
+        return NextResponse.json({ error: 'No se pudieron cargar los contactos.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -89,7 +92,8 @@ export async function PATCH(request: NextRequest) {
             .single();
 
         if (leadError || !lead) {
-            return NextResponse.json({ error: leadError?.message || 'No se pudo actualizar el contacto' }, { status: 500 });
+            console.error('[superadmin] lead update failed', leadError);
+            return NextResponse.json({ error: 'No se pudo actualizar el contacto.' }, { status: 500 });
         }
 
         return NextResponse.json({ lead });
@@ -116,7 +120,8 @@ export async function PATCH(request: NextRequest) {
         .single();
 
     if (updateError || !community) {
-        return NextResponse.json({ error: updateError?.message || 'No se pudo actualizar el plan' }, { status: 500 });
+        console.error('[superadmin] plan update failed', updateError);
+        return NextResponse.json({ error: 'No se pudo actualizar el plan.' }, { status: 500 });
     }
 
     const { data: actorProfile } = await supabaseAdmin

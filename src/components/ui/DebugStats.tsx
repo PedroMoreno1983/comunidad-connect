@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { getApiUrl, API_BASE_URL } from "@/lib/config";
+import type { DebugStatsSnapshot } from "@/lib/types";
 
 export function DebugStats() {
-    const [stats, setStats] = useState<Record<string, any> | null>(null);
+    const [stats, setStats] = useState<DebugStatsSnapshot | null>(null);
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -22,7 +23,7 @@ export function DebugStats() {
         if (!isVisible) return;
 
         const checkApis = async () => {
-            const results: Record<string, any> = {
+            const results: DebugStatsSnapshot = {
                 env: {
                     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "not set",
                     API_BASE_URL: API_BASE_URL,

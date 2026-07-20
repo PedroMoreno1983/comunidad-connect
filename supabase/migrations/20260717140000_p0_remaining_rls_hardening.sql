@@ -21,6 +21,7 @@ DROP POLICY IF EXISTS "profiles_public_read" ON public.profiles;
 -- marketplace_items has no community_id column; sellers are always profiles,
 -- so we scope via the seller's own community instead of altering the schema.
 DROP POLICY IF EXISTS "marketplace_select_all" ON public.marketplace_items;
+DROP POLICY IF EXISTS "marketplace_select_community" ON public.marketplace_items;
 CREATE POLICY "marketplace_select_community"
   ON public.marketplace_items
   FOR SELECT

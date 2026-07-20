@@ -14,6 +14,7 @@ import { Booking, Amenity } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Tag } from "@/components/cc/Tag";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Calendar,
@@ -69,6 +70,7 @@ export default function AmenitiesPage() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [amenities, setAmenities] = useState<Amenity[]>([]);
     const [bookingLoading, setBookingLoading] = useState(false);
+    const [dataLoading, setDataLoading] = useState(true);
     
     // Booking flow state
     const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
@@ -92,7 +94,7 @@ export default function AmenitiesPage() {
     ];
 
     const loadData = useCallback(async () => {
-
+        setDataLoading(true);
         try {
             const [amenitiesData, bookingsData] = await Promise.all([
                 AmenitiesService.getAmenities(),
@@ -106,6 +108,8 @@ export default function AmenitiesPage() {
             console.error("Error loading amenities data:", error);
             setAmenities([]);
             setBookings([]);
+        } finally {
+            setDataLoading(false);
         }
     }, []);
 
@@ -404,7 +408,11 @@ export default function AmenitiesPage() {
 
                         {/* List of Amenities */}
                         <div className="border-b" style={{ borderColor: "var(--cc-line-strong)" }}>
-                            {amenities.length === 0 ? (
+                            {dataLoading ? (
+                                <div className="space-y-4 py-6">
+                                    {[1, 2, 3].map(item => <Skeleton key={item} className="h-24 w-full rounded-xl" />)}
+                                </div>
+                            ) : amenities.length === 0 ? (
                                 <div className="col-span-full max-w-md mx-auto my-6 w-full">
                                     <EmptyState
                                         icon={<Calendar className="h-6 w-6" />}
@@ -487,8 +495,10 @@ export default function AmenitiesPage() {
                         {/* Stats Row */}
                         <div className="grid grid-cols-3 border-b pb-5 text-center" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="border-x" style={{ borderColor: "var(--cc-line)" }}>
-                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Disponibilidad</p>
-                                <p className="mt-1 text-base font-semibold text-emerald-600">85% libre</p>
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Turnos libres</p>
+                                <p className="mt-1 text-base font-semibold text-emerald-600">
+                                    {timeSlots.filter(time => !bookings.some(booking => booking.amenityId === selectedAmenity.id && booking.date === selectedDate && booking.startTime.startsWith(time.split(':')[0]))).length} de {timeSlots.length}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Tarifa</p>
@@ -497,8 +507,8 @@ export default function AmenitiesPage() {
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Mín-Máx Hora</p>
-                                <p className="mt-1 text-base font-semibold cc-text-primary">1 - 4 hrs</p>
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Duración</p>
+                                <p className="mt-1 text-base font-semibold cc-text-primary">Bloques de 2 horas</p>
                             </div>
                         </div>
 
@@ -557,7 +567,7 @@ export default function AmenitiesPage() {
                             <div className="sticky bottom-3 z-40 border bg-paper px-4 py-4 shadow-xl sm:px-6" style={{ borderColor: "var(--cc-line-strong)" }}>
                                 <div className="mx-auto flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="text-sm font-medium cc-text-primary">
-                                        Confirmando <span className="font-bold">{selectedAmenity.name}</span> para el <span className="font-bold">{selectedDate}</span> a las <span className="font-bold">{selectedTime}</span>
+                                        Confirmando <span className="font-bold">{selectedAmenity.name}</span> para el <span className="font-bold">{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}</span> a las <span className="font-bold">{selectedTime}</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button variant="ghost" onClick={() => setSelectedAmenity(null)}>Cancelar</Button>

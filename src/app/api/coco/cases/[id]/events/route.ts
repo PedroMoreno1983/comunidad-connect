@@ -73,7 +73,8 @@ export async function GET(
         .order('created_at', { ascending: false });
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[case events] query failed', error);
+        return NextResponse.json({ error: 'No se pudieron cargar los eventos del caso.' }, { status: 500 });
     }
 
     return NextResponse.json({ events: data || [] }, { status: 200 });
@@ -129,7 +130,8 @@ export async function POST(
                 latencyMs: Date.now() - started,
                 error: eventError,
             });
-            return NextResponse.json({ error: eventError?.message || 'No se pudo comentar' }, { status: 500 });
+            console.error('[case events] comment insert failed', eventError);
+            return NextResponse.json({ error: 'No se pudo comentar el caso.' }, { status: 500 });
         }
 
         if (currentCase.user_id && currentCase.user_id !== actorProfile.id) {
@@ -177,7 +179,7 @@ export async function POST(
             error,
         });
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Error desconocido' },
+            { error: 'No se pudo actualizar el caso.' },
             { status: 500 }
         );
     }

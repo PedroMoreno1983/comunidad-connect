@@ -108,6 +108,7 @@ export default function SolidarityHubPage() {
   const [postulateAmount, setPostulateAmount] = useState("");
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
   const [submittingApp, setSubmittingApp] = useState(false);
+  const [sensitiveConsent, setSensitiveConsent] = useState(false);
 
   // Admin resolution modal state
   const [resolvingApp, setResolvingApp] = useState<SolidarityApplication | null>(null);
@@ -177,6 +178,14 @@ export default function SolidarityHubPage() {
       });
       return;
     }
+    if (!sensitiveConsent) {
+      toast({
+        title: "Falta tu autorización",
+        description: "Debes autorizar expresamente el tratamiento confidencial de los datos sensibles incluidos.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setSubmittingApp(true);
@@ -186,7 +195,8 @@ export default function SolidarityHubPage() {
         body: JSON.stringify({
           category: postulateCategory,
           description: postulateDesc,
-          amountRequested: parsedAmount
+          amountRequested: parsedAmount,
+          sensitiveConsent,
         })
       });
 
@@ -205,6 +215,7 @@ export default function SolidarityHubPage() {
       setPostulateDesc("");
       setPostulateAmount("");
       setAttachedFileName(null);
+      setSensitiveConsent(false);
       
       // Refresh
       fetchData();
@@ -587,10 +598,11 @@ export default function SolidarityHubPage() {
                 <form onSubmit={handlePostulate} className="space-y-5">
                   {/* Category selection */}
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-500">
+                    <label htmlFor="solidarity-category" className="mb-2 block text-sm font-semibold text-slate-500">
                       Categoría de Emergencia
                     </label>
                     <select
+                      id="solidarity-category"
                       value={postulateCategory}
                       onChange={(e) => setPostulateCategory(e.target.value)}
                       className="w-full rounded-xl border bg-paper p-4 text-sm focus:border-[#9C5636] focus:outline-none"
@@ -605,13 +617,15 @@ export default function SolidarityHubPage() {
 
                   {/* Amount requested */}
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-500">
+                    <label htmlFor="solidarity-amount" className="mb-2 block text-sm font-semibold text-slate-500">
                       Monto Solicitado (CLP)
                     </label>
                     <div className="relative">
                       <span className="absolute left-4 top-4 font-mono text-sm text-slate-400">$</span>
                       <input
+                        id="solidarity-amount"
                         type="number"
+                        inputMode="numeric"
                         placeholder="Ej. 120000"
                         value={postulateAmount}
                         onChange={(e) => setPostulateAmount(e.target.value)}
@@ -624,10 +638,11 @@ export default function SolidarityHubPage() {
 
                   {/* Description */}
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-500">
+                    <label htmlFor="solidarity-description" className="mb-2 block text-sm font-semibold text-slate-500">
                       Descripción de la situación
                     </label>
                     <textarea
+                      id="solidarity-description"
                       placeholder="Describe brevemente el contexto y cómo el fondo te ayudará temporalmente…"
                       value={postulateDesc}
                       onChange={(e) => setPostulateDesc(e.target.value)}
@@ -636,6 +651,11 @@ export default function SolidarityHubPage() {
                       required
                     />
                   </div>
+
+                  <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950">
+                    <input type="checkbox" checked={sensitiveConsent} onChange={event => setSensitiveConsent(event.target.checked)} required className="mt-1" />
+                    <span>Autorizo expresamente el tratamiento confidencial de los datos sensibles que incluya en esta postulación, exclusivamente para evaluar y gestionar el apoyo solicitado. Puedo retirar esta autorización, sujeto a las obligaciones de conservación aplicables.</span>
+                  </label>
                   {/* Document upload */}
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-slate-500">
