@@ -2,6 +2,7 @@
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 import { resolveResidentExpenseTarget } from '@/lib/agent-center/financeQueries';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { sendWhatsAppNotificationForUser, type WhatsAppNotificationResult } from '@/lib/server/whatsappNotify';
 
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -19,6 +20,16 @@ async function bestEffortInsert(table: string, payload: Record<string, unknown>)
         console.error(`[agent-center] bestEffortInsert threw for ${table}`, error);
         return null;
     }
+}
+
+function describeWhatsAppResult(result: WhatsAppNotificationResult | null) {
+    if (!result) return 'WhatsApp no se intento.';
+    if (result.status === 'sent') return 'Tambien envie WhatsApp al residente.';
+    if (result.status === 'failed') return `No pude enviar WhatsApp: ${result.reason || 'error de proveedor'}.`;
+    if (result.reason === 'twilio_not_configured') return 'WhatsApp esta pendiente: Twilio no esta configurado.';
+    if (result.reason === 'resident_without_whatsapp_opt_in') return 'WhatsApp omitido: el residente no tiene opt-in activo.';
+    if (result.reason === 'resident_without_phone_number') return 'WhatsApp omitido: el residente no tiene telefono registrado.';
+    return `WhatsApp omitido: ${result.reason || 'sin detalle'}.`;
 }
 
 function stableNotificationId(...parts: string[]) {
@@ -69,6 +80,7 @@ export async function executeCreateUnitExpense(action: AgentAction, profile: Age
     });
 
     let notificationId: string | null = null;
+    let whatsappResult: WhatsAppNotificationResult | null = null;
     if (target.residentId) {
         const notification = {
             id: stableNotificationId('unit_expense_created', communityId, target.residentId, String(expense.id)),
@@ -87,15 +99,25 @@ export async function executeCreateUnitExpense(action: AgentAction, profile: Age
             .single();
         if (notificationError) throw notificationError;
         notificationId = String(notificationRow.id);
+        whatsappResult = await sendWhatsAppNotificationForUser({
+            userId: target.residentId,
+            title: notification.title,
+            body: notification.body,
+            type: 'warning',
+            communityId,
+            actorId: profile.id,
+            metadata: { source: 'agent-center.create_unit_expense', notificationId, expenseId: String(expense.id) },
+        });
     }
 
     const recipientText = target.residentId ? 'y notifique al residente vinculado' : 'pero no hay residente vinculado para notificar';
+    const whatsappText = target.residentId ? ` ${describeWhatsAppResult(whatsappResult)}` : '';
     return {
         entityType: 'expense',
         entityId: String(expense.id),
         title: 'Cobro creado',
-        message: `Cree un cobro pendiente para Depto ${target.unitNumber} por $${amount.toLocaleString('es-CL')} (${month}) ${recipientText}.`,
-        data: { expense, notificationId, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId },
+        message: `Cree un cobro pendiente para Depto ${target.unitNumber} por $${amount.toLocaleString('es-CL')} (${month}) ${recipientText}.${whatsappText}`,
+        data: { expense, notificationId, whatsapp: whatsappResult, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId },
     };
 }
 
@@ -133,10 +155,11 @@ export async function executeSendUnitPaymentReminder(action: AgentAction, profil
     const body = customMessage
         ? `${customMessage}\n\nSaldo pendiente registrado: $${pendingAmount.toLocaleString('es-CL')} en ${rows.length} gasto(s).`
         : `Tu unidad ${target.unitNumber} registra ${rows.length} gasto(s) comun(es) pendiente(s) por $${pendingAmount.toLocaleString('es-CL')}. Puedes revisarlos en Finanzas.`;
+    const notificationType = rows.some(row => row.status === 'overdue') ? 'alert' : 'warning';
     const notification = {
         id: stableNotificationId('unit_payment_reminder', communityId, target.residentId, expenseIds),
         user_id: target.residentId,
-        type: rows.some(row => row.status === 'overdue') ? 'alert' : 'warning',
+        type: notificationType,
         category: 'finance_collection',
         title: 'Recordatorio de gasto comun',
         body,
@@ -150,11 +173,21 @@ export async function executeSendUnitPaymentReminder(action: AgentAction, profil
         .single();
     if (notificationError) throw notificationError;
 
+    const whatsappResult = await sendWhatsAppNotificationForUser({
+        userId: target.residentId,
+        title: notification.title,
+        body: notification.body,
+        type: notificationType,
+        communityId,
+        actorId: profile.id,
+        metadata: { source: 'agent-center.send_unit_payment_reminder', notificationId: String(notificationRow.id), expenseIds },
+    });
+
     return {
         entityType: 'notification',
         entityId: String(notificationRow.id),
-        title: 'Recordatorio enviado',
-        message: `Envie un recordatorio privado a Depto ${target.unitNumber} por $${pendingAmount.toLocaleString('es-CL')} pendiente(s).`,
-        data: { notificationId: notificationRow.id, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId, pendingCount: rows.length, pendingAmount },
+        title: whatsappResult.status === 'sent' ? 'Recordatorio enviado por WhatsApp' : 'Recordatorio registrado',
+        message: `Envie un recordatorio privado a Depto ${target.unitNumber} por $${pendingAmount.toLocaleString('es-CL')} pendiente(s). ${describeWhatsAppResult(whatsappResult)}`,
+        data: { notificationId: notificationRow.id, whatsapp: whatsappResult, unitId: target.unitId, unitNumber: target.unitNumber, residentId: target.residentId, pendingCount: rows.length, pendingAmount },
     };
 }

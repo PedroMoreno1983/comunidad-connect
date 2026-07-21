@@ -1,89 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
-import { formatWhatsAppPhone } from "@/lib/whatsapp";
+import { sendWhatsAppNotificationForUser } from "@/lib/server/whatsappNotify";
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
-
-// Shared secret for internal/webhook calls — set WHATSAPP_WEBHOOK_SECRET in Vercel env vars
 const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET;
 
-async function sendWhatsApp(to: string, message: string) {
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-        throw new Error("Twilio credentials not configured");
-    }
-    const formattedTo = `whatsapp:${formatWhatsAppPhone(to)}`;
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-    const params = new URLSearchParams({ From: TWILIO_FROM, To: formattedTo, Body: message });
-
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64")}`,
-        },
-        body: params.toString(),
-    });
-
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Twilio error");
-    }
-    return res.json();
-}
-
 // POST /api/whatsapp-notify
-// Requires: Authorization: Bearer <WHATSAPP_WEBHOOK_SECRET>
+// Requires in production: Authorization: Bearer <WHATSAPP_WEBHOOK_SECRET>
 // Body: { user_id, title, body, type }
 export async function POST(req: NextRequest) {
     const limited = enforceRateLimit(req, 'whatsapp.notify', { limit: 60, windowMs: 60_000 });
     if (limited) return limited;
 
     try {
-        // ─── Auth gate: validate internal webhook secret ───
         if (WEBHOOK_SECRET) {
             const token = req.headers.get('authorization')?.replace('Bearer ', '');
             if (token !== WEBHOOK_SECRET) {
                 return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
             }
         } else if (process.env.NODE_ENV === 'production') {
-            // In production, always require the secret
             return NextResponse.json({ error: 'WHATSAPP_WEBHOOK_SECRET no configurado' }, { status: 500 });
         }
-        // ──────────────────────────────────────────────────
 
         const { user_id, title, body: notifBody, type } = await req.json();
-
         if (!user_id || !title) {
-            return NextResponse.json({ error: "Missing user_id or title" }, { status: 400 });
+            return NextResponse.json({ error: 'Missing user_id or title' }, { status: 400 });
         }
 
-        const { data: profile, error } = await getSupabaseAdmin()
-            .from("profiles")
-            .select("phone_number, whatsapp_enabled, name")
-            .eq("id", user_id)
-            .single();
+        const result = await sendWhatsAppNotificationForUser({
+            userId: String(user_id),
+            title: String(title),
+            body: typeof notifBody === 'string' ? notifBody : '',
+            type: type === 'alert' || type === 'success' || type === 'warning' || type === 'info' ? type : 'info',
+            metadata: { source: 'api.whatsapp-notify' },
+        });
 
-        if (error || !profile) {
-            return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+        if (result.status === 'failed') {
+            return NextResponse.json({ success: false, ...result }, { status: 502 });
         }
-
-        if (!profile.whatsapp_enabled || !profile.phone_number) {
-            return NextResponse.json({ skipped: true, reason: "WhatsApp not enabled or no phone number" });
-        }
-
-        const emoji = type === "alert" ? "🚨" : type === "success" ? "✅" : type === "warning" ? "⚠️" : "📢";
-        const message = [`${emoji} *Convive Connect*`, ``, `*${title}*`, notifBody || "", ``, `👉 Revisa tu cuenta en la plataforma.`].join("\n");
-
-        await sendWhatsApp(profile.phone_number, message);
-
-        // NOTE: Do NOT return phone number — unnecessary data exposure
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: result.status === 'sent', ...result });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Error desconocido';
-        console.error("WhatsApp notify error:", message);
+        console.error('WhatsApp notify error:', message);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
