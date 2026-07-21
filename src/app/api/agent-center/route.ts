@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -11,7 +11,7 @@ import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-cent
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
-import { planAgentAction } from '@/lib/agent-center/planner';
+import { getAgentPlannerModel, planAgentAction } from '@/lib/agent-center/planner';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import {
     AGENT_PLAYBOOKS,
@@ -41,43 +41,6 @@ function normalizeText(value: string) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .trim();
-}
-
-function isSmallTalk(message: string) {
-    const normalized = normalizeText(message).replace(/[!?.\s]+$/g, '');
-    return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|gracias|ok|oka|dale)$/.test(normalized);
-}
-
-function isTooAmbiguousForAction(message: string) {
-    const normalized = normalizeText(message);
-    if (normalized.length > 18) return false;
-    const actionHints = [
-        'gasto',
-        'pago',
-        'deuda',
-        'moros',
-        'visita',
-        'visitante',
-        'paquete',
-        'ingreso',
-        'marketplace',
-        'vender',
-        'publica',
-        'aviso',
-        'comunicado',
-        'reserva',
-        'quincho',
-        'sala',
-        'ticket',
-        'reclamo',
-        'falla',
-        'mantencion',
-        'ascensor',
-        'luz',
-        'filtracion',
-        'playbook',
-    ];
-    return !actionHints.some(hint => normalized.includes(hint));
 }
 
 function moneyFromText(text: string) {
@@ -772,150 +735,6 @@ async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unk
     });
 }
 
-const GEMINI_SYSTEM_PROMPT = `
-Eres el motor de inferencia de intenciones del Agent Center de Convive Connect.
-Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acción de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
-
-Definición de agentes y herramientas:
-1. Agente 'finance':
-   - Herramienta 'get_my_expenses': Para consultar cobros, deudas o estado de pago de gastos comunes del residente.
-     Argumentos: {}
-     requiresConfirmation: false
-     targetHref: '/resident/finances'
-     title: 'Consultar gastos de la unidad'
-     summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
-
-   - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda por nombre del residente o numero de departamento.
-     Argumentos: { "residentQuery": "nombre" } o { "unitNumber": "numero de departamento" }
-     requiresConfirmation: false
-     targetHref: '/admin/finanzas'
-     title: 'Consultar deuda de residente'
-     summary: 'CoCo revisara los gastos pendientes del residente dentro de la comunidad del administrador.'
-
-   - Herramienta 'create_unit_expense': Solo para administradores que creen un cobro puntual para un departamento.
-     Argumentos: { "unitNumber": "numero", "amount": numero, "month": "YYYY-MM", "dueDate": "YYYY-MM-DD", "label": "glosa opcional" }
-     requiresConfirmation: true
-     targetHref: '/admin/finanzas'
-     title: 'Crear cobro de gasto comun'
-     summary: 'CoCo creara un gasto comun pendiente para esa unidad despues de aprobacion humana.'
-
-   - Herramienta 'send_unit_payment_reminder': Solo para administradores que pidan enviar/mandar/notificar un recordatorio privado de pago a un departamento o residente.
-     Argumentos: { "unitNumber": "numero" } o { "residentQuery": "nombre" }, con "message" opcional
-     requiresConfirmation: true
-     targetHref: '/admin/finanzas'
-     title: 'Enviar recordatorio de cobro'
-     summary: 'CoCo enviara una notificacion privada al residente vinculado con gastos pendientes.'
-2. Agente 'maintenance':
-   - Herramienta 'create_booking': Para reservar un espacio común (ej: quincho, sala multiuso, piscina).
-     Argumentos: { "amenityHint": "nombre del espacio", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM" } (Si no se especifica hora, asume 2 horas a partir de las 10:00 o la hora sugerida).
-     requiresConfirmation: true
-     targetHref: '/amenities'
-     title: 'Reservar espacio común'
-     summary: 'CoCo buscará el espacio por nombre y creará una reserva.'
-   - Herramienta 'create_service_request': Para reportar fallas, luces parpadeando, mantenciones o problemas de infraestructura.
-     Argumentos: { "description": "detalle de la falla", "preferredDate": "YYYY-MM-DD", "preferredTime": "HH:MM" }
-     requiresConfirmation: true
-     targetHref: '/services/my-requests'
-     title: 'Crear ticket de mantenimiento'
-     summary: 'CoCo registrará una solicitud operacional para que quede trazabilidad.'
-
-3. Agente 'concierge':
-   - Herramienta 'register_visitor': Para autorizar e ingresar visitas, amigos, repartidores o familiares.
-     Argumentos: { "visitorName": "nombre de la visita", "purpose": "motivo de la visita" }
-     requiresConfirmation: true
-     targetHref: '/concierge/visitors'
-     title: 'Registrar visita'
-     summary: 'Se creará una entrada en la bitácora de visitas de la comunidad.'
-
-4. Agente 'community':
-   - Herramienta 'create_marketplace_item': Para vender, permutar o publicar un objeto en el mercado de vecinos.
-     Argumentos: { "title": "nombre breve del producto", "description": "descripción", "price": número, "category": "electronics" | "furniture" | "clothing" | "other" }
-     requiresConfirmation: true
-     targetHref: '/marketplace/my-listings'
-     title: 'Publicar en Marketplace'
-     summary: 'El artículo quedará publicado en el marketplace vecinal.'
-   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administración. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
-     Argumentos: { "title": "título del aviso", "content": "contenido completo", "priority": "info" | "alert" }
-     requiresConfirmation: true
-     targetHref: '/comunicaciones'
-     title: 'Publicar comunicado oficial'
-     summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
-
-5. Acciones frecuentes:
-   - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar una respuesta de emergencia o preparar un comunicado guiado.
-   - Herramienta 'run_playbook': Para preparar una tarea guiada con aprobacion humana.
-     Argumentos: { "playbookKey": "finance_collection_review" | "maintenance_ticket_triage" | "onboarding_import_review" | "iot_emergency_readiness" | "community_broadcast", "requestedText": "texto original del usuario" }
-     requiresConfirmation: true
-     targetHref: usa el targetHref del playbook.
-     title: 'Preparar revision'
-     summary: 'CoCo preparara un proceso guiado con auditoria y confirmacion humana.'
-
-Instrucciones de formato:
-- Una pregunta de lectura nunca puede transformarse en create_service_request ni en otra herramienta de escritura.
-- Si pregunta por deuda y su rol es admin, usa get_resident_expenses con residentQuery o unitNumber, segun lo indicado.
-- Si pide crear/generar/emitir/cargar un cobro puntual para un departamento, usa create_unit_expense y exige monto, unitNumber, month y dueDate.
-- Si pide enviar/mandar/notificar un recordatorio de cobro o pago a un departamento/residente, usa send_unit_payment_reminder.
-- Si la intencion es ambigua, usa clarify_intent. Nunca uses create_service_request como fallback generico.
-- Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
-- No incluyas bloques de código markdown (\`\`\`json).
-- La interfaz de retorno debe ser:
-  {
-    "agentKey": "finance" | "maintenance" | "concierge" | "community",
-    "toolName": "get_my_expenses" | "get_resident_expenses" | "create_unit_expense" | "send_unit_payment_reminder" | "clarify_intent" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
-    "args": { ... },
-    "requiresConfirmation": boolean,
-    "title": "Título descriptivo breve de la acción",
-    "summary": "Resumen en una frase de lo que ocurrirá",
-    "targetHref": "href correspondiente"
-  }
-`;
-
-async function callGeminiInference(message: string, profile: AgentProfile): Promise<AgentAction | null> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return null;
-    
-    const model = "gemini-2.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const systemInstruction = `${GEMINI_SYSTEM_PROMPT}\n\n**Fecha actual del servidor (hoy)**: ${todayISO}\n**Contexto del usuario**: Nombre: ${profile.name || ''} | Rol: ${profile.role || ''} | Unidad ID: ${profile.unit_id || ''}`;
-    
-    const body = {
-        systemInstruction: {
-            role: "system",
-            parts: [{ text: systemInstruction }]
-        },
-        contents: [
-            { role: "user", parts: [{ text: message }] }
-        ],
-        generationConfig: {
-            temperature: 0.1,
-            responseMimeType: "application/json",
-        },
-    };
-
-    try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify(body)
-        });
-
-        if (!res.ok) return null;
-        const data = await res.json();
-        const output = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!output) return null;
-
-        const parsed = JSON.parse(output) as AgentAction;
-        if (parsed && parsed.agentKey && parsed.toolName) {
-            return parsed;
-        }
-        return null;
-    } catch (err) {
-        console.warn("[Gemini Inference Fallback triggered]", err);
-        return null;
-    }
-}
-
 function finalizeInferredAction(message: string, candidate: AgentAction) {
     const action = normalizeAction(preventReadOnlyMutation(message, normalizeAction(candidate)));
     try {
@@ -944,17 +763,9 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
         const plannedAction = await planAgentAction(message, profile);
         if (plannedAction) return finalizeInferredAction(message, plannedAction);
     } catch (error) {
-        console.warn('[AgentCenterPlanner] Anthropic planning failed; using fallback.', error);
+        console.warn('[AgentCenterPlanner] Claude planning failed; using deterministic heuristic.', error);
     }
 
-    const geminiResult = await callGeminiInference(message, profile);
-    if (geminiResult) {
-        try {
-            return finalizeInferredAction(message, geminiResult);
-        } catch (error) {
-            console.warn('[AgentCenterPlanner] Gemini fallback returned an invalid action; using heuristic.', error);
-        }
-    }
     return finalizeInferredAction(message, inferActionHeuristic(message, profile));
 }
 
@@ -1475,7 +1286,21 @@ export async function GET(req: NextRequest) {
         getPendingAgentProposals(profile),
     ]);
 
-    return NextResponse.json({ activity: data || [], policies: Object.values(policies), summary, workflows, tasks, triggers, proposals, playbooks: AGENT_PLAYBOOKS });
+    return NextResponse.json({
+        activity: data || [],
+        policies: Object.values(policies),
+        summary,
+        workflows,
+        tasks,
+        triggers,
+        proposals,
+        playbooks: AGENT_PLAYBOOKS,
+        engine: {
+            provider: 'anthropic',
+            model: getAgentPlannerModel(),
+            reasoning: 'claude_tool_planning_with_authorized_sources',
+        },
+    });
 }
 
 export async function POST(req: NextRequest) {
@@ -1521,15 +1346,15 @@ export async function POST(req: NextRequest) {
             throw new Error('Accion no soportada.');
         }
 
-        if (!confirmed && !rejected && !requestedPlaybook && (isSmallTalk(message) || isTooAmbiguousForAction(message))) {
+        if (!confirmed && !rejected && !requestedPlaybook && !message) {
             return NextResponse.json({
                 status: 'executed',
-                reply: 'Hola. Puedo ayudarte con acciones concretas: cargar residentes, preparar cobranza, crear un comunicado, registrar una visita, reservar espacios o abrir tickets. Elige una accion guiada o escribeme lo que necesitas y te mostrare una propuesta antes de ejecutarla.',
+                reply: 'Escríbeme una instrucción o una pregunta sobre el edificio para que Claude pueda razonar con las fuentes autorizadas.',
                 steps: [
                     {
                         kind: 'reasoning',
-                        title: 'Sin accion detectada',
-                        detail: 'El mensaje no incluye una instruccion operativa suficiente, por lo que no se ejecuto ninguna herramienta.',
+                        title: 'Esperando instrucción',
+                        detail: 'No se recibió un mensaje operativo, por lo que no se consultó ni ejecutó ninguna herramienta.',
                     },
                 ],
             });
