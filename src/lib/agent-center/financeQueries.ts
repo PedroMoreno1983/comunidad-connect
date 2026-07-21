@@ -1,4 +1,4 @@
-import { normalizeIntentText } from '@/lib/agent-center/intentSafety';
+﻿import { normalizeIntentText } from '@/lib/agent-center/intentSafety';
 import type { AgentProfile } from '@/lib/agent-center/domain';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -6,9 +6,48 @@ function cleanQuery(value: unknown, max = 100) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export async function getResidentExpenseSummary(profile: AgentProfile, rawResidentQuery: unknown, rawUnitNumber?: unknown) {
+type ResidentRecord = Record<string, unknown>;
+
+export type ResidentExpenseTarget = {
+    residentId: string | null;
+    residentName: string;
+    unitId: string;
+    unitNumber: string;
+};
+
+function residentLabel(resident: ResidentRecord) {
+    return String(resident.full_name || resident.name || resident.email || '');
+}
+
+async function findResidentForUnit(profile: AgentProfile, unitId: string, unitNumber: string) {
+    const admin = getSupabaseAdmin();
+    const { data: linkedResident, error: linkedResidentError } = await admin
+        .from('profiles')
+        .select('id, name, full_name, email, unit_id, department_number, community_id')
+        .eq('community_id', profile.community_id || '')
+        .eq('role', 'resident')
+        .eq('unit_id', unitId)
+        .limit(1)
+        .maybeSingle();
+    if (linkedResidentError) throw linkedResidentError;
+    if (linkedResident) return linkedResident as ResidentRecord;
+
+    if (!unitNumber) return null;
+    const { data: unitNumberResident, error: unitNumberResidentError } = await admin
+        .from('profiles')
+        .select('id, name, full_name, email, unit_id, department_number, community_id')
+        .eq('community_id', profile.community_id || '')
+        .eq('role', 'resident')
+        .eq('department_number', unitNumber)
+        .limit(1)
+        .maybeSingle();
+    if (unitNumberResidentError) throw unitNumberResidentError;
+    return (unitNumberResident as ResidentRecord | null) || null;
+}
+
+export async function resolveResidentExpenseTarget(profile: AgentProfile, rawResidentQuery: unknown, rawUnitNumber?: unknown): Promise<ResidentExpenseTarget> {
     if (profile.role !== 'admin') {
-        throw new Error('Solo administracion puede consultar la deuda de otro residente.');
+        throw new Error('Solo administracion puede gestionar cobros de otro residente.');
     }
     if (!profile.community_id) {
         throw new Error('El administrador no tiene una comunidad asignada.');
@@ -19,7 +58,7 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
     const normalizedQuery = normalizeIntentText(residentQuery);
     const queryTokens = normalizedQuery.split(' ').filter(token => token.length > 1);
     if (queryTokens.length === 0 && !requestedUnitNumber) {
-        throw new Error('Indica el nombre del residente o el numero de departamento que deseas consultar.');
+        throw new Error('Indica el nombre del residente o el numero de departamento.');
     }
 
     const admin = getSupabaseAdmin();
@@ -31,7 +70,7 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         .limit(500);
     if (error) throw error;
 
-    const residents = (data || []) as Array<Record<string, unknown>>;
+    const residents = (data || []) as ResidentRecord[];
     const normalizedUnitNumber = normalizeIntentText(requestedUnitNumber);
     const matches = residents.filter(resident => requestedUnitNumber
         ? normalizeIntentText(String(resident.department_number || '')) === normalizedUnitNumber
@@ -45,16 +84,16 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
     }
     if (matches.length > 1 && !requestedUnitNumber) {
         const labels = matches.slice(0, 4).map(resident => {
-            const name = String(resident.full_name || resident.name || resident.email || 'Residente');
+            const name = residentLabel(resident) || 'Residente';
             const unit = resident.department_number ? ` Depto ${resident.department_number}` : '';
             return `${name}${unit}`;
         });
         throw new Error(`Encontre mas de un residente. Precisa uno: ${labels.join(', ')}.`);
     }
 
-    const resident = matches[0] || {};
-    let unitId = typeof resident.unit_id === 'string' ? resident.unit_id : '';
-    let unitNumber = requestedUnitNumber || (typeof resident.department_number === 'string' ? resident.department_number : '');
+    let resident: ResidentRecord | null = matches[0] || null;
+    let unitId = resident && typeof resident.unit_id === 'string' ? resident.unit_id : '';
+    let unitNumber = requestedUnitNumber || (resident && typeof resident.department_number === 'string' ? resident.department_number : '');
 
     if (requestedUnitNumber && !unitId) {
         const { data: units, error: unitsError } = await admin
@@ -77,7 +116,7 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         unitNumber = String(unitMatches[0].number || unitMatches[0].unit_number || requestedUnitNumber);
     }
 
-    if (!unitId) {
+    if (!unitId && resident) {
         const { data: unit, error: unitError } = await admin
             .from('units')
             .select('id, number, unit_number')
@@ -88,7 +127,7 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         if (unitError) throw unitError;
         unitId = typeof unit?.id === 'string' ? unit.id : '';
         unitNumber = String(unit?.number || unit?.unit_number || unitNumber || '');
-    } else if (!unitNumber) {
+    } else if (unitId && !unitNumber) {
         const { data: unit, error: unitError } = await admin
             .from('units')
             .select('number, unit_number')
@@ -99,39 +138,55 @@ export async function getResidentExpenseSummary(profile: AgentProfile, rawReside
         unitNumber = String(unit?.number || unit?.unit_number || '');
     }
 
-    const residentName = String(resident.full_name || resident.name || resident.email || '');
+    if (unitId && !resident) {
+        resident = await findResidentForUnit(profile, unitId, unitNumber);
+    }
+
+    const residentName = resident ? residentLabel(resident) : '';
     if (!unitId) {
         throw new Error(residentName
             ? `El perfil de ${residentName} no tiene una unidad asociada.`
             : `El departamento ${unitNumber} no tiene una unidad asociada.`);
     }
 
+    return {
+        residentId: resident?.id ? String(resident.id) : null,
+        residentName,
+        unitId,
+        unitNumber,
+    };
+}
+
+export async function getResidentExpenseSummary(profile: AgentProfile, rawResidentQuery: unknown, rawUnitNumber?: unknown) {
+    const target = await resolveResidentExpenseTarget(profile, rawResidentQuery, rawUnitNumber);
+    const admin = getSupabaseAdmin();
+
     const { data: expenses, error: expensesError } = await admin
         .from('expenses')
         .select('id, month, amount, status, due_date')
-        .eq('unit_id', unitId)
-        .eq('community_id', profile.community_id)
+        .eq('unit_id', target.unitId)
+        .eq('community_id', profile.community_id || '')
         .in('status', ['pending', 'overdue'])
         .order('due_date', { ascending: false });
     if (expensesError) throw expensesError;
 
     const rows = (expenses || []) as Array<Record<string, unknown>>;
     const amount = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const subjectLabel = residentName ? `${residentName}${unitNumber ? ` (Depto ${unitNumber})` : ''}` : `Depto ${unitNumber}`;
+    const subjectLabel = target.residentName ? `${target.residentName}${target.unitNumber ? ` (Depto ${target.unitNumber})` : ''}` : `Depto ${target.unitNumber}`;
     const message = rows.length === 0
         ? `${subjectLabel} no mantiene gastos comunes pendientes.`
         : `${subjectLabel} mantiene ${rows.length} gasto(s) pendiente(s) por $${amount.toLocaleString('es-CL')}.`;
 
     return {
         entityType: 'resident_expenses',
-        entityId: String(resident.id || unitId),
-        title: requestedUnitNumber ? 'Deuda de departamento revisada' : 'Deuda de residente revisada',
+        entityId: target.residentId || target.unitId,
+        title: rawUnitNumber ? 'Deuda de departamento revisada' : 'Deuda de residente revisada',
         message,
         data: {
-            residentId: resident.id ? String(resident.id) : null,
-            residentName,
-            unitId,
-            unitNumber,
+            residentId: target.residentId,
+            residentName: target.residentName,
+            unitId: target.unitId,
+            unitNumber: target.unitNumber,
             pendingCount: rows.length,
             pendingAmount: amount,
             expenses: rows,

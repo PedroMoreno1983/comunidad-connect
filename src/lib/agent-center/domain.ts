@@ -1,4 +1,4 @@
-import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
+﻿import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
 
 export type AgentKey = 'finance' | 'maintenance' | 'concierge' | 'community';
 export type AutonomyLevel = 'manual' | 'semi_autonomous' | 'autonomous';
@@ -10,6 +10,8 @@ export type ToolName =
     | 'register_visitor'
     | 'get_my_expenses'
     | 'get_resident_expenses'
+    | 'create_unit_expense'
+    | 'send_unit_payment_reminder'
     | 'get_community_snapshot'
     | 'answer_community_question'
     | 'clarify_intent'
@@ -23,6 +25,8 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'register_visitor',
     'get_my_expenses',
     'get_resident_expenses',
+    'create_unit_expense',
+    'send_unit_payment_reminder',
     'get_community_snapshot',
     'answer_community_question',
     'clarify_intent',
@@ -37,12 +41,16 @@ export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
     register_visitor: 'concierge',
     get_my_expenses: 'finance',
     get_resident_expenses: 'finance',
+    create_unit_expense: 'finance',
+    send_unit_payment_reminder: 'finance',
     answer_community_question: 'community',
 };
 
 export const READ_ONLY_AGENT_TOOLS: ToolName[] = [
     'get_my_expenses',
     'get_resident_expenses',
+    'create_unit_expense',
+    'send_unit_payment_reminder',
     'get_community_snapshot',
     'answer_community_question',
     'clarify_intent',

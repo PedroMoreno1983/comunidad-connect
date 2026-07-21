@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+﻿import Anthropic from '@anthropic-ai/sdk';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 
@@ -14,7 +14,7 @@ const PLANNER_TOOL: Anthropic.Tool = {
             toolName: {
                 type: 'string',
                 enum: [
-                    'get_my_expenses', 'get_resident_expenses', 'get_community_snapshot', 'answer_community_question', 'clarify_intent', 'create_booking',
+                    'get_my_expenses', 'get_resident_expenses', 'create_unit_expense', 'send_unit_payment_reminder', 'get_community_snapshot', 'answer_community_question', 'clarify_intent', 'create_booking',
                     'create_marketplace_item', 'create_announcement', 'register_visitor',
                     'create_service_request', 'run_playbook',
                 ],
@@ -54,14 +54,14 @@ Herramientas disponibles:
 - create_marketplace_item: title, description, price numerico, category electronics|furniture|clothing|other; /marketplace/my-listings.
 - create_announcement: title, content, priority info|alert; /comunicaciones.
 - run_playbook: playbookKey y requestedText. Claves: finance_collection_review, maintenance_ticket_triage, onboarding_import_review, iot_emergency_readiness, community_broadcast.
-- clarify_intent: requestedText; úsala solo cuando falte un dato imprescindible o haya dos interpretaciones materiales.
+- clarify_intent: requestedText; Ãºsala solo cuando falte un dato imprescindible o haya dos interpretaciones materiales.
 
 Reglas obligatorias:
 1. Una consulta nunca se transforma en escritura. Las lecturas no requieren confirmacion.
 2. Toda escritura y todo playbook requieren confirmacion humana.
 3. No inventes nombres, unidades, fechas, horas, montos ni destinatarios. Si falta un dato imprescindible, pregunta solo por ese dato con clarify_intent.
 4. Interpreta lenguaje chileno: dpto/depto/departamento/unidad son equivalentes y los montos pueden usar puntos como separador de miles.
-5. Para deuda individual de un administrador usa get_resident_expenses. Para cobranza masiva usa finance_collection_review.
+5. Para deuda individual de un administrador usa get_resident_expenses. Para crear un cobro puntual de un departamento usa create_unit_expense. Para recordar pago a un departamento usa send_unit_payment_reminder. Para cobranza masiva usa finance_collection_review.
 5a. Para preguntas analiticas o de conteo sobre morosidad, tickets, reservas, residentes o estado general usa get_community_snapshot; no uses un playbook si solo pide informacion.
 5b. Para preguntas abiertas, historicas, comparativas o que requieran localizar y cruzar informacion usa answer_community_question. Es de solo lectura y no requiere confirmacion.
 6. Si la solicitud combina varias operaciones, elige el playbook apropiado; si no existe, aclara el objetivo prioritario.
