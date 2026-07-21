@@ -84,6 +84,12 @@ type AgentSummary = {
   estimatedMinutesSaved: number;
 };
 
+type AgentEngine = {
+  provider: string;
+  model: string;
+  reasoning: string;
+};
+
 type AgentPlaybook = {
   key: string;
   agentKey: AgentKey;
@@ -98,6 +104,7 @@ type AgentCenterGetResponse = {
   activity?: ActivityRow[];
   policies?: AgentPolicy[];
   summary?: AgentSummary;
+  engine?: AgentEngine;
   playbooks?: AgentPlaybook[];
   tasks?: AgentTaskSummary[];
   triggers?: AgentTriggerRuleSummary[];
@@ -152,6 +159,12 @@ const DEFAULT_SUMMARY: AgentSummary = {
   failedRuns: 0,
   successRate: 0,
   estimatedMinutesSaved: 0,
+};
+
+const DEFAULT_ENGINE: AgentEngine = {
+  provider: "anthropic",
+  model: "claude-sonnet-4-5",
+  reasoning: "claude_tool_planning_with_authorized_sources",
 };
 
 const DEFAULT_POLICIES: Record<AgentKey, AgentPolicy> = {
@@ -217,6 +230,7 @@ export default function AgentCenterPage() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
+  const [engine, setEngine] = useState<AgentEngine>(DEFAULT_ENGINE);
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [tasks, setTasks] = useState<AgentTaskSummary[]>([]);
@@ -233,6 +247,7 @@ export default function AgentCenterPage() {
     setActivity(Array.isArray(data.activity) ? data.activity : []);
     setPolicies(policyListToMap(data.policies));
     setSummary(data.summary || DEFAULT_SUMMARY);
+    setEngine(data.engine || DEFAULT_ENGINE);
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
     setTasks(Array.isArray(data.tasks) ? data.tasks : []);
     setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
@@ -403,9 +418,17 @@ export default function AgentCenterPage() {
         CoCo prepara. <em style={{ color: "var(--cc-ink)", fontStyle: "italic" }}>Tú decides.</em>
       </DisplayHeading>
       <p className="mt-3.5 max-w-xl text-[15px] leading-relaxed cc-text-secondary">
-        CoCo revisa el edificio y deja las acciones listas para ti. Nada se envía ni se ejecuta
+        CoCo razona con Claude sobre los datos autorizados del edificio y deja acciones listas para ti. Nada se envía ni se ejecuta
         hasta que tú lo apruebes.
       </p>
+      <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-medium">
+        <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)", color: "var(--cc-copper)" }}>
+          Claude activo · {engine.model}
+        </span>
+        <span className="rounded-full border px-2.5 py-1 cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+          Lectura autorizada: residentes, unidades, finanzas, tickets, reservas, documentos, visitas, encomiendas, marketplace, votaciones y bitácora
+        </span>
+      </div>
 
       {/* Cola de aprobación */}
       <div className="mt-7 flex items-baseline justify-between">
@@ -654,7 +677,7 @@ export default function AgentCenterPage() {
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Ej: registra una visita, revisa morosos, crea un ticket..."
+            placeholder="Ej: analiza la morosidad, cruza tickets con comunicados, crea un cobro para el depto 504..."
             className="min-h-11 flex-1 rounded-xl border px-4 text-sm outline-none transition focus:border-[var(--cc-copper)]"
             style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
           />

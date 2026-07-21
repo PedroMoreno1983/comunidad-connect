@@ -18,9 +18,13 @@ const communityResearch = read('src/lib/agent-center/communityResearch.ts');
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
   ['Anthropic tool-calling is the primary reasoning planner', route.includes('planAgentAction(message, profile)') && planner.includes("tool_choice: { type: 'tool'")],
+  ['Agent Center exposes Claude model metadata in the API and UI', route.includes('getAgentPlannerModel()') && page.includes('Claude activo')],
+  ['Agent Center planning does not fall back to Gemini', !route.includes('GEMINI_SYSTEM_PROMPT') && !route.includes('callGeminiInference') && !route.includes('geminiResult')],
+  ['Operational prompts reach Claude instead of a canned menu reply', !route.includes('Hola. Puedo ayudarte con acciones concretas') && route.includes('Esperando instrucci')],
   ['Planner decisions carry confidence and a concise explanation', planner.includes('decision:') && route.includes('action.decision?.explanation')],
   ['Open-ended operational questions use a real read-only snapshot', route.includes("action.toolName === 'get_community_snapshot'") && planner.includes('get_community_snapshot')],
   ['Research questions can cross authorized read-only sources', planner.includes('answer_community_question') && communityResearch.includes('MAX_ROUNDS = 4') && communityResearch.includes("name: 'find_residents'") && communityResearch.includes("name: 'read_expenses'")],
+  ['Research can read the full authorized condominium context', communityResearch.includes("name: 'read_units'") && communityResearch.includes("name: 'read_visitors'") && communityResearch.includes("name: 'read_packages'") && communityResearch.includes("name: 'read_marketplace_items'") && communityResearch.includes("name: 'read_polls'") && communityResearch.includes("name: 'read_operation_events'") && communityResearch.includes("name: 'read_coco_cases'")],
   ['Research can search administrator-uploaded private documents', communityResearch.includes("name: 'search_uploaded_documents'") && communityResearch.includes(".textSearch('search_vector'")],
   ['Research tool calls preserve tenant isolation and a source trace', communityResearch.includes(".eq('community_id', communityId)") && communityResearch.includes('trace.push({ source: toolUse.name')],
   ['Invalid planned arguments become a safe clarification', route.includes('finalizeInferredAction') && route.includes('Indica ese dato para continuar. No realice ningun cambio.')],
