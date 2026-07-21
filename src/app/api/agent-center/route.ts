@@ -9,7 +9,7 @@ import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
 import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-center/persistenceSafety';
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
-import { evaluateDueAgentTriggers, getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
+import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { planAgentAction } from '@/lib/agent-center/planner';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import {
@@ -1360,12 +1360,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'El administrador no tiene comunidad asignada.' }, { status: 409 });
     }
 
-    // Resilient fallback: a visit evaluates only this tenant's due rules. The
-    // protected scheduler remains the primary path when CRON_SECRET is active.
-    // Fire-and-forget so a dashboard read never waits on rule evaluation.
-    void evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID).catch(error => {
-        console.error('[agent-center] Resilient trigger evaluation failed', error);
-    });
 
     const { data } = await getSupabaseAdmin()
         .from('agent_activity_log')

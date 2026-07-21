@@ -143,6 +143,7 @@ export async function getRecentAgentTasks(profile: AgentProfile): Promise<AgentT
         .from('agent_tasks')
         .select('id, agent_key, playbook_key, goal, status, current_step, retry_count, last_error, context, created_at, updated_at, agent_task_steps(id, position, step_key, title, status, attempts, error)')
         .eq('community_id', profile.community_id)
+        .neq('status', 'cancelled')
         .order('updated_at', { ascending: false })
         .limit(8);
     if (error) throw error;

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { AGENT_PLAYBOOKS, type AgentAction, type AgentProfile, type PlaybookKey } from '@/lib/agent-center/domain';
 import {
     completeAgentTask,
@@ -14,6 +14,12 @@ function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
+
+function stableNotificationId(...parts: string[]) {
+    const hash = createHash('sha256').update(parts.join(':')).digest('hex');
+    const variant = ((parseInt(hash.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0');
+    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-${variant}${hash.slice(18, 20)}-${hash.slice(20, 32)}`;
+}
 function playbook(key: PlaybookKey) {
     const result = AGENT_PLAYBOOKS.find(item => item.key === key);
     if (!result) throw new Error('Accion no soportada.');
@@ -63,7 +69,7 @@ async function runFinanceCollectionTask(profile: AgentProfile, goal: string) {
                 if (!recipientId) return [];
                 const unitLabel = String(unit?.unit_number || unit?.number || row.unit_id);
                 return [{
-                    id: randomUUID(),
+                    id: stableNotificationId('finance_collection', communityId, recipientId, String(row.id || row.month || row.due_date || row.amount || 'pending')),
                     user_id: recipientId,
                     type: row.status === 'overdue' ? 'alert' : 'warning',
                     category: 'finance_collection',
