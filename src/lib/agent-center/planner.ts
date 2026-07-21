@@ -54,7 +54,7 @@ Herramientas disponibles:
 - create_marketplace_item: title, description, price numerico, category electronics|furniture|clothing|other; /marketplace/my-listings.
 - create_announcement: title, content, priority info|alert; /comunicaciones.
 - run_playbook: playbookKey y requestedText. Claves: finance_collection_review, maintenance_ticket_triage, onboarding_import_review, iot_emergency_readiness, community_broadcast.
-- clarify_intent: requestedText; Ãºsala solo cuando falte un dato imprescindible o haya dos interpretaciones materiales.
+- clarify_intent: requestedText; úsala solo cuando falte un dato imprescindible o haya dos interpretaciones materiales.
 
 Reglas obligatorias:
 1. Una consulta nunca se transforma en escritura. Las lecturas no requieren confirmacion.
