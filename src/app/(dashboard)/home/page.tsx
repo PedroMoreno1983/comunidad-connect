@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ export default function HomePage() {
         recentAnnouncement: null,
     });
 
-    // ── Role Redirects ──
+    // â”€â”€ Role Redirects â”€â”€
     useEffect(() => {
         if (user) {
             if (user.role === "admin") {
@@ -35,7 +35,7 @@ export default function HomePage() {
         }
     }, [user, router]);
 
-    // ── Fetch Resident Data ──
+    // â”€â”€ Fetch Resident Data â”€â”€
     useEffect(() => {
         if (!user || user.role !== "resident") return;
 
@@ -56,6 +56,7 @@ export default function HomePage() {
     const initials = user.name
         ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
         : "U";
+    const buildingCoverSrc = user.communityCoverPhotoUrl || "/edificio-malaga-exterior.jpg";
 
     const dateToday = new Date().toLocaleDateString("es-CL", {
         weekday: "long",
@@ -102,16 +103,14 @@ export default function HomePage() {
 
                 {/* Immersive resident cover */}
                 <section className="relative min-h-[360px] overflow-hidden sm:min-h-[400px]" style={{ borderRadius: 26, background: "var(--cc-ink)" }}>
-                    {user.communityCoverPhotoUrl && (
-                        <Image
-                            src={user.communityCoverPhotoUrl}
-                            alt="Foto de tu edificio"
-                            fill
-                            priority
-                            sizes="(min-width: 1280px) 1216px, 100vw"
-                            className="object-cover"
-                        />
-                    )}
+                    <Image
+                        src={buildingCoverSrc}
+                        alt="Foto de tu edificio"
+                        fill
+                        priority
+                        sizes="(min-width: 1280px) 1216px, 100vw"
+                        className="object-cover"
+                    />
                     <div
                         aria-hidden
                         className="absolute inset-0"
@@ -128,7 +127,7 @@ export default function HomePage() {
                         </div>
 
                         <div className="max-w-2xl">
-                            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Tu día en comunidad</p>
+                            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--cc-copper-soft)" }}>Tu dÃ­a en comunidad</p>
                             <h1 className="text-[44px] leading-[0.96] tracking-[-0.03em] sm:text-[62px]" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 Hola, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>{firstName}.</em>
                             </h1>
@@ -140,7 +139,7 @@ export default function HomePage() {
                                     {statsData.bookingsCount} {statsData.bookingsCount === 1 ? "reserva activa" : "reservas activas"}
                                 </span>
                                 <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: statsData.pendingExpensesCount > 0 ? "rgba(190,105,69,0.82)" : "rgba(105,135,84,0.78)" }}>
-                                    {statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al día"}
+                                    {statsData.pendingExpensesCount > 0 ? `${statsData.pendingExpensesCount} pago pendiente` : "Pagos al dÃ­a"}
                                 </span>
                             </div>
                         </div>
@@ -150,7 +149,7 @@ export default function HomePage() {
                 {/* Primary resident actions */}
                 <section className="mt-5">
                     <div className="mb-3 flex items-center justify-between">
-                        <Eyebrow>¿Qué necesitas hacer?</Eyebrow>
+                        <Eyebrow>Â¿QuÃ© necesitas hacer?</Eyebrow>
                         <span className="text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>Accesos directos</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -178,13 +177,13 @@ export default function HomePage() {
                     />
                     <div className="relative mb-5 flex items-start justify-between">
                         <div>
-                            <Eyebrow style={{ color: "rgba(244,239,230,0.55)", marginBottom: 10 }}>Gasto común</Eyebrow>
+                            <Eyebrow style={{ color: "rgba(244,239,230,0.55)", marginBottom: 10 }}>Gasto comÃºn</Eyebrow>
                             <div style={{ fontSize: 13, color: "rgba(244,239,230,0.75)" }}>
-                                {statsData.pendingExpensesCount > 0 ? "Mes actual · vence pronto" : "Al día · sin deuda"}
+                                {statsData.pendingExpensesCount > 0 ? "Mes actual Â· vence pronto" : "Al dÃ­a Â· sin deuda"}
                             </div>
                         </div>
                         <Tag tone="ink" solid dot={statsData.pendingExpensesCount > 0}>
-                            {statsData.pendingExpensesCount > 0 ? "Por pagar" : "Al día"}
+                            {statsData.pendingExpensesCount > 0 ? "Por pagar" : "Al dÃ­a"}
                         </Tag>
                     </div>
 
@@ -207,7 +206,7 @@ export default function HomePage() {
 
                 {/* Latest community update */}
                 <div>
-                <Eyebrow className="mb-3">Lo último en tu comunidad</Eyebrow>
+                <Eyebrow className="mb-3">Lo Ãºltimo en tu comunidad</Eyebrow>
                 {statsData.recentAnnouncement && (
                     <Link
                         href="/feed"
@@ -256,7 +255,7 @@ export default function HomePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="text-[14px] font-semibold cc-text-primary">Resuélvelo con CoCo</div>
+                                <div className="text-[14px] font-semibold cc-text-primary">ResuÃ©lvelo con CoCo</div>
                                 <ChevronRight size={16} color="var(--cc-ink-faint)" />
                             </div>
                             <p className="mt-1.5 text-[12px] leading-5 cc-text-secondary">

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { validateAgentActionArgs } from '../../src/lib/agent-center/actionValidation';
 import type { AgentAction, ToolName } from '../../src/lib/agent-center/domain';
 
@@ -10,6 +10,27 @@ describe('Agent Center action validation', () => {
     it('accepts a department debt lookup and strips unrelated args', () => {
         expect(validateAgentActionArgs(action('get_resident_expenses', { unitNumber: ' 1204 ', description: 'ignore' })))
             .toEqual({ unitNumber: '1204' });
+    });
+
+    it('accepts a one-unit expense creation with strict billing fields', () => {
+        expect(validateAgentActionArgs(action('create_unit_expense', {
+            unitNumber: ' 504 ',
+            amount: '120000',
+            month: '2026-07',
+            dueDate: '2026-07-31',
+            label: 'Gasto comun julio',
+        }))).toEqual({
+            unitNumber: '504',
+            amount: 120000,
+            month: '2026-07',
+            dueDate: '2026-07-31',
+            label: 'Gasto comun julio',
+        });
+    });
+
+    it('requires a target before sending a payment reminder', () => {
+        expect(() => validateAgentActionArgs(action('send_unit_payment_reminder', { message: 'recordar pago' })))
+            .toThrow('departamento o residente');
     });
 
     it('rejects invalid booking time ranges', () => {

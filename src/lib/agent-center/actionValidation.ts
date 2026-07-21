@@ -1,8 +1,16 @@
-import type { AgentAction } from '@/lib/agent-center/domain';
+﻿import type { AgentAction } from '@/lib/agent-center/domain';
 
 function text(value: unknown, label: string, min: number, max: number) {
     const cleaned = typeof value === 'string' ? value.trim().slice(0, max) : '';
     if (cleaned.length < min) throw new Error(`${label} es obligatorio.`);
+    return cleaned;
+}
+
+function month(value: unknown, label: string) {
+    const cleaned = text(value, label, 7, 7);
+    if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(cleaned)) {
+        throw new Error(`${label} debe tener formato YYYY-MM.`);
+    }
     return cleaned;
 }
 
@@ -32,6 +40,28 @@ export function validateAgentActionArgs(action: AgentAction): Record<string, unk
         return unitNumber ? { unitNumber } : { residentQuery };
     }
 
+
+    if (action.toolName === 'create_unit_expense') {
+        const amount = Number(args.amount);
+        if (!Number.isFinite(amount) || amount <= 0 || amount > 50_000_000) throw new Error('El monto del cobro no es valido.');
+        return {
+            unitNumber: text(args.unitNumber, 'El numero de departamento', 1, 30),
+            amount,
+            month: month(args.month, 'El mes de cobro'),
+            dueDate: isoDate(args.dueDate, 'La fecha de vencimiento'),
+            label: typeof args.label === 'string' ? args.label.trim().slice(0, 120) : 'Gasto común generado desde Agent Center',
+        };
+    }
+
+    if (action.toolName === 'send_unit_payment_reminder') {
+        const unitNumber = typeof args.unitNumber === 'string' ? args.unitNumber.trim().slice(0, 30) : '';
+        const residentQuery = typeof args.residentQuery === 'string' ? args.residentQuery.trim().slice(0, 100) : '';
+        if (!unitNumber && !residentQuery) throw new Error('Indica el departamento o residente destinatario del recordatorio.');
+        return {
+            ...(unitNumber ? { unitNumber } : { residentQuery }),
+            message: typeof args.message === 'string' ? args.message.trim().slice(0, 500) : '',
+        };
+    }
     if (action.toolName === 'get_community_snapshot') {
         const focus = typeof args.focus === 'string' ? args.focus : 'all';
         if (!['finance', 'maintenance', 'community', 'all'].includes(focus)) {

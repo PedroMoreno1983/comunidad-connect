@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
-import { isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
+import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
 import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
+import { executeCreateUnitExpense, executeSendUnitPaymentReminder } from '@/lib/agent-center/unitFinanceActions';
 import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
 import { validateAgentActionArgs } from '@/lib/agent-center/actionValidation';
 import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-center/persistenceSafety';
@@ -97,10 +98,10 @@ function getNextWeekdayDate(targetWeekday: number) {
 }
 
 function dateFromText(text: string) {
-    const lower = text.toLowerCase();
+    const lower = normalizeText(text);
     const iso = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
     if (iso) return iso[1];
-    if (lower.includes('mañana') || lower.includes('manana')) {
+    if (lower.includes('manana')) {
         const date = new Date();
         date.setDate(date.getDate() + 1);
         return date.toISOString().slice(0, 10);
@@ -110,16 +111,35 @@ function dateFromText(text: string) {
         lunes: 1,
         martes: 2,
         miercoles: 3,
-        miércoles: 3,
         jueves: 4,
         viernes: 5,
         sabado: 6,
-        sábado: 6,
     };
     const found = Object.entries(weekdays).find(([name]) => lower.includes(name));
     return found ? getNextWeekdayDate(found[1]) : new Date().toISOString().slice(0, 10);
 }
 
+function currentMonth() {
+    return new Date().toISOString().slice(0, 7);
+}
+
+function monthFromText(text: string) {
+    const match = text.match(/\b(20\d{2}-(?:0[1-9]|1[0-2]))\b/);
+    return match?.[1] || currentMonth();
+}
+
+function defaultDueDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 10);
+    return date.toISOString().slice(0, 10);
+}
+
+function dueDateForExpense(text: string) {
+    const iso = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+    if (iso) return iso[1];
+    if (/\b(venc|vence|vencimiento|hasta|pagar antes)\b/i.test(text)) return dateFromText(text);
+    return defaultDueDate();
+}
 function timeFromText(text: string) {
     const match = text.match(/\b([01]?\d|2[0-3])(?::([0-5]\d))?\b/);
     const hour = match ? Number(match[1]) : 10;
@@ -171,6 +191,8 @@ const TOOL_LABELS: Record<ToolName, string> = {
     register_visitor: 'Registrar visita',
     get_my_expenses: 'Consultar gastos comunes',
     get_resident_expenses: 'Consultar deuda de residente',
+    create_unit_expense: 'Crear cobro de gasto comun',
+    send_unit_payment_reminder: 'Enviar recordatorio de cobro',
     get_community_snapshot: 'Analizar estado del edificio',
     answer_community_question: 'Investigar informacion de la comunidad',
     clarify_intent: 'Solicitar precision',
@@ -180,10 +202,15 @@ const TOOL_LABELS: Record<ToolName, string> = {
 function humanizeArgKey(key: string) {
     const labels: Record<string, string> = {
         amenityHint: 'Espacio',
+        amount: 'Monto',
         category: 'Categoria',
         date: 'Fecha',
         description: 'Descripcion',
+        dueDate: 'Vencimiento',
         endTime: 'Termino',
+        label: 'Glosa',
+        month: 'Mes',
+        message: 'Mensaje',
         playbookKey: 'Accion',
         preferredDate: 'Fecha preferida',
         preferredTime: 'Hora preferida',
@@ -191,6 +218,7 @@ function humanizeArgKey(key: string) {
         requestedText: 'Solicitud original',
         startTime: 'Inicio',
         title: 'Titulo',
+        unitNumber: 'Departamento',
         visitorName: 'Visitante',
     };
     return labels[key] || key;
@@ -200,7 +228,7 @@ function summarizeArgs(args: Record<string, unknown>) {
     const summary = Object.entries(args)
         .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
         .map(([key, value]) => `${humanizeArgKey(key)}: ${String(value).slice(0, 90)}`)
-        .join(' · ');
+        .join(' Â· ');
 
     return summary || 'Sin parametros adicionales.';
 }
@@ -291,6 +319,54 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
         };
     }
 
+    const normalized = normalizeText(message);
+    const unitNumber = extractUnitNumber(message);
+    const residentQuery = extractResidentQuery(message);
+    const amount = moneyFromText(message);
+    const mentionsFinance = /\b(cobro|gasto|cargo|pago|deuda)\b/.test(normalized);
+    const wantsCreateUnitCharge = profile.role === 'admin'
+        && amount > 0
+        && Boolean(unitNumber)
+        && mentionsFinance
+        && /\b(crea|crear|genera|generar|emite|emitir|carga|cargar|agrega|agregar)\b/.test(normalized);
+    const wantsPaymentReminder = profile.role === 'admin'
+        && mentionsFinance
+        && Boolean(unitNumber || residentQuery)
+        && /\b(envia|enviar|manda|mandar|notifica|notificar|recuerda|recordatorio|avisa|avisale)\b/.test(normalized);
+
+    if (wantsCreateUnitCharge) {
+        const month = monthFromText(message);
+        const dueDate = dueDateForExpense(message);
+        return {
+            agentKey: 'finance',
+            toolName: 'create_unit_expense',
+            args: {
+                unitNumber,
+                amount,
+                month,
+                dueDate,
+                label: cleanText(message.replace(/\s+/g, ' '), 120) || 'Gasto comun generado desde Agent Center',
+            },
+            requiresConfirmation: true,
+            title: `Crear cobro para Depto ${unitNumber}`,
+            summary: `Se creara un gasto comun pendiente por $${amount.toLocaleString('es-CL')} para el periodo ${month}, con vencimiento ${dueDate}.`,
+            targetHref: '/admin/finanzas',
+        };
+    }
+
+    if (wantsPaymentReminder) {
+        return {
+            agentKey: 'finance',
+            toolName: 'send_unit_payment_reminder',
+            args: unitNumber
+                ? { unitNumber, message: cleanText(message, 500) }
+                : { residentQuery, message: cleanText(message, 500) },
+            requiresConfirmation: true,
+            title: unitNumber ? `Enviar recordatorio a Depto ${unitNumber}` : `Enviar recordatorio a ${residentQuery}`,
+            summary: 'Se enviara una notificacion privada al residente vinculado con sus gastos pendientes. No se expondra la deuda a otros vecinos.',
+            targetHref: '/admin/finanzas',
+        };
+    }
     if (wantsResidentOnboarding) {
         const playbook = getPlaybook('onboarding_import_review');
         if (playbook) return playbookAction(playbook, message);
@@ -362,7 +438,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     if (lower.includes('visita') || lower.includes('visitante') || lower.includes('ingreso')) {
-        const nameMatch = message.match(/(?:visita|visitante|ingreso de|registrar a)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,60})/i);
+        const nameMatch = message.match(/(?:visita|visitante|ingreso de|registrar a)\s+([A-Za-zÃÃ‰ÃÃ“ÃšÃ¡Ã©Ã­Ã³ÃºÃ‘Ã±\s]{2,60})/i);
         const visitorName = cleanText(nameMatch?.[1], 60) || 'Visitante registrado por CoCo';
         return {
             agentKey: 'concierge',
@@ -698,16 +774,16 @@ async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unk
 
 const GEMINI_SYSTEM_PROMPT = `
 Eres el motor de inferencia de intenciones del Agent Center de Convive Connect.
-Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acción de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
+Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acciÃ³n de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
 
-Definición de agentes y herramientas:
+DefiniciÃ³n de agentes y herramientas:
 1. Agente 'finance':
    - Herramienta 'get_my_expenses': Para consultar cobros, deudas o estado de pago de gastos comunes del residente.
      Argumentos: {}
      requiresConfirmation: false
      targetHref: '/resident/finances'
      title: 'Consultar gastos de la unidad'
-     summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
+     summary: 'CoCo revisarÃ¡ los gastos comunes pendientes asociados a tu unidad.'
 
    - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda por nombre del residente o numero de departamento.
      Argumentos: { "residentQuery": "nombre" } o { "unitNumber": "numero de departamento" }
@@ -716,19 +792,32 @@ Definición de agentes y herramientas:
      title: 'Consultar deuda de residente'
      summary: 'CoCo revisara los gastos pendientes del residente dentro de la comunidad del administrador.'
 
+   - Herramienta 'create_unit_expense': Solo para administradores que creen un cobro puntual para un departamento.
+     Argumentos: { "unitNumber": "numero", "amount": numero, "month": "YYYY-MM", "dueDate": "YYYY-MM-DD", "label": "glosa opcional" }
+     requiresConfirmation: true
+     targetHref: '/admin/finanzas'
+     title: 'Crear cobro de gasto comun'
+     summary: 'CoCo creara un gasto comun pendiente para esa unidad despues de aprobacion humana.'
+
+   - Herramienta 'send_unit_payment_reminder': Solo para administradores que pidan enviar/mandar/notificar un recordatorio privado de pago a un departamento o residente.
+     Argumentos: { "unitNumber": "numero" } o { "residentQuery": "nombre" }, con "message" opcional
+     requiresConfirmation: true
+     targetHref: '/admin/finanzas'
+     title: 'Enviar recordatorio de cobro'
+     summary: 'CoCo enviara una notificacion privada al residente vinculado con gastos pendientes.'
 2. Agente 'maintenance':
-   - Herramienta 'create_booking': Para reservar un espacio común (ej: quincho, sala multiuso, piscina).
+   - Herramienta 'create_booking': Para reservar un espacio comÃºn (ej: quincho, sala multiuso, piscina).
      Argumentos: { "amenityHint": "nombre del espacio", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM" } (Si no se especifica hora, asume 2 horas a partir de las 10:00 o la hora sugerida).
      requiresConfirmation: true
      targetHref: '/amenities'
-     title: 'Reservar espacio común'
-     summary: 'CoCo buscará el espacio por nombre y creará una reserva.'
+     title: 'Reservar espacio comÃºn'
+     summary: 'CoCo buscarÃ¡ el espacio por nombre y crearÃ¡ una reserva.'
    - Herramienta 'create_service_request': Para reportar fallas, luces parpadeando, mantenciones o problemas de infraestructura.
      Argumentos: { "description": "detalle de la falla", "preferredDate": "YYYY-MM-DD", "preferredTime": "HH:MM" }
      requiresConfirmation: true
      targetHref: '/services/my-requests'
      title: 'Crear ticket de mantenimiento'
-     summary: 'CoCo registrará una solicitud operacional para que quede trazabilidad.'
+     summary: 'CoCo registrarÃ¡ una solicitud operacional para que quede trazabilidad.'
 
 3. Agente 'concierge':
    - Herramienta 'register_visitor': Para autorizar e ingresar visitas, amigos, repartidores o familiares.
@@ -736,21 +825,21 @@ Definición de agentes y herramientas:
      requiresConfirmation: true
      targetHref: '/concierge/visitors'
      title: 'Registrar visita'
-     summary: 'Se creará una entrada en la bitácora de visitas de la comunidad.'
+     summary: 'Se crearÃ¡ una entrada en la bitÃ¡cora de visitas de la comunidad.'
 
 4. Agente 'community':
    - Herramienta 'create_marketplace_item': Para vender, permutar o publicar un objeto en el mercado de vecinos.
-     Argumentos: { "title": "nombre breve del producto", "description": "descripción", "price": número, "category": "electronics" | "furniture" | "clothing" | "other" }
+     Argumentos: { "title": "nombre breve del producto", "description": "descripciÃ³n", "price": nÃºmero, "category": "electronics" | "furniture" | "clothing" | "other" }
      requiresConfirmation: true
      targetHref: '/marketplace/my-listings'
      title: 'Publicar en Marketplace'
-     summary: 'El artículo quedará publicado en el marketplace vecinal.'
-   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administración. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
-     Argumentos: { "title": "título del aviso", "content": "contenido completo", "priority": "info" | "alert" }
+     summary: 'El artÃ­culo quedarÃ¡ publicado en el marketplace vecinal.'
+   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administraciÃ³n. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
+     Argumentos: { "title": "tÃ­tulo del aviso", "content": "contenido completo", "priority": "info" | "alert" }
      requiresConfirmation: true
      targetHref: '/comunicaciones'
      title: 'Publicar comunicado oficial'
-     summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
+     summary: 'El aviso quedarÃ¡ visible para todos los vecinos en el feed oficial.'
 
 5. Acciones frecuentes:
    - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar una respuesta de emergencia o preparar un comunicado guiado.
@@ -764,17 +853,19 @@ Definición de agentes y herramientas:
 Instrucciones de formato:
 - Una pregunta de lectura nunca puede transformarse en create_service_request ni en otra herramienta de escritura.
 - Si pregunta por deuda y su rol es admin, usa get_resident_expenses con residentQuery o unitNumber, segun lo indicado.
+- Si pide crear/generar/emitir/cargar un cobro puntual para un departamento, usa create_unit_expense y exige monto, unitNumber, month y dueDate.
+- Si pide enviar/mandar/notificar un recordatorio de cobro o pago a un departamento/residente, usa send_unit_payment_reminder.
 - Si la intencion es ambigua, usa clarify_intent. Nunca uses create_service_request como fallback generico.
-- Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
-- No incluyas bloques de código markdown (\`\`\`json).
+- Debes responder EXCLUSIVAMENTE con un objeto JSON vÃ¡lido que calce con la interfaz AgentAction.
+- No incluyas bloques de cÃ³digo markdown (\`\`\`json).
 - La interfaz de retorno debe ser:
   {
     "agentKey": "finance" | "maintenance" | "concierge" | "community",
-    "toolName": "get_my_expenses" | "get_resident_expenses" | "clarify_intent" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
+    "toolName": "get_my_expenses" | "get_resident_expenses" | "create_unit_expense" | "send_unit_payment_reminder" | "clarify_intent" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
     "args": { ... },
     "requiresConfirmation": boolean,
-    "title": "Título descriptivo breve de la acción",
-    "summary": "Resumen en una frase de lo que ocurrirá",
+    "title": "TÃ­tulo descriptivo breve de la acciÃ³n",
+    "summary": "Resumen en una frase de lo que ocurrirÃ¡",
     "targetHref": "href correspondiente"
   }
 `;
@@ -869,7 +960,7 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
 
 /**
  * A batch playbook's approval card otherwise only shows its generic static
- * description — an admin approving "cobranza" has no idea how many
+ * description â€” an admin approving "cobranza" has no idea how many
  * residents will actually be notified, or for how much, before it fires.
  */
 async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile): Promise<AgentAction> {
@@ -1175,6 +1266,13 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         return getResidentExpenseSummary(profile, action.args.residentQuery, action.args.unitNumber);
     }
 
+    if (action.toolName === 'create_unit_expense') {
+        return executeCreateUnitExpense(action, profile, communityId);
+    }
+
+    if (action.toolName === 'send_unit_payment_reminder') {
+        return executeSendUnitPaymentReminder(action, profile, communityId);
+    }
     if (action.toolName === 'get_community_snapshot') {
         const today = new Date().toISOString().slice(0, 10);
         const [expenseQuery, serviceQuery, bookingQuery, residentQuery] = await Promise.all([
@@ -1488,7 +1586,7 @@ export async function POST(req: NextRequest) {
         if (action.requiresConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
             if (!audit.runId || !audit.toolCallId) {
-                throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
+                throw new Error('La auditoria agÃ©ntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
             }
             const persistedAction = {
                 ...action,
@@ -1540,6 +1638,6 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         console.error('[agent-center] request failed', error);
-        return NextResponse.json({ error: 'No se pudo ejecutar la acción.' }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo ejecutar la acciÃ³n.' }, { status: 500 });
     }
 }

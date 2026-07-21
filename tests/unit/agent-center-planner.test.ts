@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { coercePlannedAction } from '../../src/lib/agent-center/planner';
 import { validateAgentActionArgs } from '../../src/lib/agent-center/actionValidation';
 
@@ -61,6 +61,26 @@ describe('Agent Center planner', () => {
 
         expect(action?.toolName).toBe('answer_community_question');
         expect(validateAgentActionArgs(action!)).toEqual({ question: 'Que tickets abiertos se relacionan con los ultimos comunicados?' });
+    });
+
+    it('accepts a confirmed one-unit billing action from the planner', () => {
+        const action = coercePlannedAction({
+            agentKey: 'finance',
+            toolName: 'create_unit_expense',
+            args: { unitNumber: '504', amount: 120000, month: '2026-07', dueDate: '2026-07-31' },
+            requiresConfirmation: true,
+            title: 'Crear cobro para Depto 504',
+            summary: 'Crear un gasto comun pendiente para la unidad.',
+            targetHref: '/admin/finanzas',
+            decision: { intent: 'Crear cobro puntual', confidence: 0.95, explanation: 'La solicitud trae unidad, monto y periodo.' },
+        });
+
+        expect(action).toMatchObject({
+            agentKey: 'finance',
+            toolName: 'create_unit_expense',
+            requiresConfirmation: true,
+        });
+        expect(validateAgentActionArgs(action!)).toMatchObject({ unitNumber: '504', amount: 120000 });
     });
 
     it('clamps model confidence to the supported range', () => {
