@@ -62,30 +62,19 @@ export default function AdminDashboardPage() {
     const data = summary;
     const residentsFilled = data ? Math.min(data.residentsActive, 96) : 0;
     const hasRequests = Boolean(data?.activeRequests.length);
-    const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-exterior.jpg";
+    const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-patio.jpg";
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <Eyebrow className="mb-2">Panel administrador</Eyebrow>
-                    <DisplayHeading size={42}>
-                        Tu edificio, <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>de un vistazo</em>
-                    </DisplayHeading>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 cc-text-secondary">
-                        OperaciÃ³n, cobranza y actividad comunitaria en una vista ejecutiva conectada a datos reales.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Link href="/comunicaciones">
-                        <Button variant="copper" size="sm">
-                            <Bell size={14} /> Comunicar
-                        </Button>
-                    </Link>
-                </div>
+            <div className="flex justify-end">
+                <Link href="/comunicaciones">
+                    <Button variant="copper" size="sm">
+                        <Bell size={14} /> Comunicar
+                    </Button>
+                </Link>
             </div>
 
-            <div className="relative aspect-[32/9] overflow-hidden" style={{ borderRadius: 22 }}>
+            <div className="relative aspect-[32/9] min-h-[260px] overflow-hidden" style={{ borderRadius: 22 }}>
                 <Image
                     src={buildingCoverSrc}
                     alt="Foto de tu edificio"
@@ -97,10 +86,16 @@ export default function AdminDashboardPage() {
                 <div
                     aria-hidden
                     className="absolute inset-0"
-                    style={{ background: "linear-gradient(90deg, rgba(26,22,17,0.8) 0%, rgba(26,22,17,0.15) 70%)" }}
+                    style={{ background: "linear-gradient(90deg, rgba(26,22,17,0.86) 0%, rgba(26,22,17,0.58) 42%, rgba(26,22,17,0.12) 100%)" }}
                 />
-                <div className="absolute inset-y-0 left-5 flex flex-col justify-center" style={{ color: "var(--cc-paper)" }}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(244,239,230,0.7)" }}>Tu edificio</p>
+                <div className="absolute inset-y-0 left-6 flex max-w-2xl flex-col justify-center pr-8 sm:left-9 lg:left-11" style={{ color: "var(--cc-paper)" }}>
+                    <Eyebrow className="mb-3" style={{ color: "rgba(244,239,230,0.74)" }}>Panel administrador</Eyebrow>
+                    <DisplayHeading size={42} style={{ color: "var(--cc-paper)" }}>
+                        Tu edificio, <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>de un vistazo</em>
+                    </DisplayHeading>
+                    <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
+                        Operación, cobranza y actividad comunitaria en una vista ejecutiva conectada a datos reales.
+                    </p>
                 </div>
             </div>
 
@@ -132,13 +127,13 @@ export default function AdminDashboardPage() {
                         <KpiCard
                             eyebrow="Solicitudes abiertas"
                             value={data?.openRequests || 0}
-                            sub={`${data?.criticalRequests || 0} crÃ­ticas`}
+                            sub={`${data?.criticalRequests || 0} críticas`}
                             trend={{ value: `${data?.cocoCasesOpen || 0} casos CoCo`, direction: data?.criticalRequests ? "down" : "up" }}
                             icon={<Wrench size={15} />}
                             tone={data?.criticalRequests ? "rose" : "amber"}
                         />
                         <KpiCard
-                            eyebrow="QuÃ³rum estimado"
+                            eyebrow="Quórum estimado"
                             value={`${data?.quorumPct || 0}%`}
                             sub="base de unidades"
                             trend={{ value: data?.quorumPct && data.quorumPct >= 75 ? "listo" : "faltan firmas", direction: data?.quorumPct && data.quorumPct >= 75 ? "up" : "neutral" }}
@@ -151,7 +146,7 @@ export default function AdminDashboardPage() {
                         <section className="rounded-xl border bg-paper p-5 shadow-sm" style={{ borderColor: "var(--cc-line)" }}>
                             <div className="mb-6 flex items-start justify-between gap-4">
                                 <div>
-                                    <Eyebrow className="mb-2">RecaudaciÃ³n mensual</Eyebrow>
+                                    <Eyebrow className="mb-2">Recaudación mensual</Eyebrow>
                                     <h2 className="text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                         Cobranza vs. emitido
                                     </h2>
@@ -175,7 +170,7 @@ export default function AdminDashboardPage() {
                                     })}
                                 </div>
                             ) : (
-                                <EmptyDashboardState title="Sin recaudaciÃ³n visible" detail="Cuando existan gastos comunes emitidos, el grÃ¡fico se completarÃ¡ automÃ¡ticamente." />
+                                <EmptyDashboardState title="Sin recaudación visible" detail="Cuando existan gastos comunes emitidos, el gráfico se completará automáticamente." />
                             )}
                         </section>
 
@@ -186,7 +181,7 @@ export default function AdminDashboardPage() {
                             </h2>
                             <BigDonut
                                 value={`${data?.assetsOptimalPct || 0}%`}
-                                label="Activos Ã³ptimos"
+                                label="Activos óptimos"
                                 sub={`${data?.openRequests || 0} solicitudes abiertas`}
                                 color={DATA_PALETTE.green}
                                 pct={data?.assetsOptimalPct || 0}
@@ -203,9 +198,9 @@ export default function AdminDashboardPage() {
 
                     <div className="grid gap-4 xl:grid-cols-3">
                         <section className="rounded-xl border bg-paper p-5 shadow-sm xl:col-span-1" style={{ borderColor: "var(--cc-line)" }}>
-                            <Eyebrow className="mb-2">Por categorÃ­a</Eyebrow>
+                            <Eyebrow className="mb-2">Por categoría</Eyebrow>
                             <h2 className="mb-5 text-2xl cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                Gasto comÃºn
+                                Gasto común
                             </h2>
                             {data?.expenseCategories.length ? (
                                 <div className="space-y-4">
@@ -220,7 +215,7 @@ export default function AdminDashboardPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <EmptyDashboardState title="Sin desglose" detail="El detalle aparece cuando los gastos comunes incluyen Ã­tems." compact />
+                                <EmptyDashboardState title="Sin desglose" detail="El detalle aparece cuando los gastos comunes incluyen ítems." compact />
                             )}
                         </section>
 
@@ -248,7 +243,7 @@ export default function AdminDashboardPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <EmptyDashboardState title="Sin solicitudes abiertas" detail="La operaciÃ³n no registra tareas pendientes relevantes." compact />
+                                <EmptyDashboardState title="Sin solicitudes abiertas" detail="La operación no registra tareas pendientes relevantes." compact />
                             )}
                         </section>
 
@@ -264,21 +259,21 @@ export default function AdminDashboardPage() {
                                     <Sparkles size={16} color="var(--cc-copper-soft)" />
                                 </div>
                                 <h2 className="text-3xl leading-none" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                    QuÃ³rum para la prÃ³xima decisiÃ³n
+                                    Quórum para la próxima decisión
                                 </h2>
                                 <p className="mt-3 text-sm leading-6 text-[rgba(250,247,241,0.72)]">
-                                    CoCo puede preparar convocatoria, recordatorios y resumen de votos para acelerar la participaciÃ³n.
+                                    CoCo puede preparar convocatoria, recordatorios y resumen de votos para acelerar la participación.
                                 </p>
                                 <div className="mt-6">
                                     <div className="mb-2 flex items-center justify-between text-xs text-[rgba(250,247,241,0.68)]">
-                                        <span>ParticipaciÃ³n estimada</span>
+                                        <span>Participación estimada</span>
                                         <span className="font-mono">{data?.quorumPct || 0}%</span>
                                     </div>
                                     <FoldedBar pct={data?.quorumPct || 0} color={DATA_PALETTE.copper} orientation="horizontal" thickness={12} rounded={999} />
                                 </div>
                                 <Link href="/votaciones" className="mt-6 inline-flex">
                                     <Button variant="copper" size="sm">
-                                        Gestionar votaciÃ³n <ArrowRight size={14} />
+                                        Gestionar votación <ArrowRight size={14} />
                                     </Button>
                                 </Link>
                             </div>

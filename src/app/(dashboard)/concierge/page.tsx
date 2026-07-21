@@ -22,7 +22,7 @@ function minutesAgo(value?: string | null) {
     const date = new Date(value).getTime();
     if (Number.isNaN(date)) return "";
     const minutes = Math.max(0, Math.floor((Date.now() - date) / 60000));
-    if (minutes < 1) return "ReciÃ©n";
+    if (minutes < 1) return "Recién";
     if (minutes < 60) return `Hace ${minutes} min`;
     const hours = Math.floor(minutes / 60);
     return `Hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
@@ -38,7 +38,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
             timestamp: visitor.entry_time ? new Date(visitor.entry_time).getTime() : 0,
             time: timeLabel(visitor.entry_time),
             type: "Visita",
-            desc: `${visitor.visitor_name || "Visitante"} ingresÃ³ a ${unit}`,
+            desc: `${visitor.visitor_name || "Visitante"} ingresó a ${unit}`,
             status: visitor.exit_time ? "Retirado" : "En edificio",
             tone: visitor.exit_time ? "sage" : "copper",
         });
@@ -65,7 +65,7 @@ function buildShiftLog(visitors: ConciergeVisitorRow[], packages: ConciergePacka
             time: timeLabel(item.created_at),
             type: "Incidencia",
             desc: item.title || item.category || "Caso reportado por CoCo",
-            status: isCritical ? "CrÃ­tico" : "Reportado",
+            status: isCritical ? "Crítico" : "Reportado",
             tone: isCritical ? "rose" : "neutral",
         });
     }
@@ -112,7 +112,7 @@ export default function ConciergeDashboardPage() {
         day: "numeric",
         month: "long",
     });
-    const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-exterior.jpg";
+    const buildingCoverSrc = user?.communityCoverPhotoUrl || "/edificio-malaga-patio.jpg";
 
     return (
         <div className="space-y-8">
@@ -135,7 +135,7 @@ export default function ConciergeDashboardPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <Eyebrow style={{ color: "rgba(244,239,230,0.74)" }}>{dateToday}</Eyebrow>
                         <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium" style={{ borderColor: "rgba(244,239,230,0.3)", background: "rgba(20,17,13,0.35)" }}>
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#9DB683]" /> RecepciÃ³n operativa
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#9DB683]" /> Recepción operativa
                         </span>
                     </div>
 
@@ -145,7 +145,7 @@ export default function ConciergeDashboardPage() {
                             Turno <em style={{ color: "var(--cc-copper-soft)", fontStyle: "italic" }}>activo.</em>
                         </h1>
                         <p className="mt-4 max-w-xl text-[14px] leading-6" style={{ color: "rgba(244,239,230,0.78)" }}>
-                            Controla accesos, recibe encomiendas y mantÃ©n la recepciÃ³n al dÃ­a desde un solo lugar.
+                            Controla accesos, recibe encomiendas y mantén la recepción al día desde un solo lugar.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-2">
                             <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(244,239,230,0.14)" }}>
@@ -156,7 +156,7 @@ export default function ConciergeDashboardPage() {
                             </span>
                             {criticalCases.length > 0 && (
                                 <span className="rounded-full px-3 py-2 text-[11px] font-medium" style={{ background: "rgba(177,74,61,0.86)" }}>
-                                    {criticalCases.length} {criticalCases.length === 1 ? "incidencia crÃ­tica" : "incidencias crÃ­ticas"}
+                                    {criticalCases.length} {criticalCases.length === 1 ? "incidencia crítica" : "incidencias críticas"}
                                 </span>
                             )}
                         </div>
@@ -167,7 +167,7 @@ export default function ConciergeDashboardPage() {
             {/* Primary concierge actions */}
             <section>
                 <div className="mb-3 flex items-center justify-between">
-                    <Eyebrow>Â¿QuÃ© necesitas registrar?</Eyebrow>
+                    <Eyebrow>¿Qué necesitas registrar?</Eyebrow>
                     <span className="text-[11px] text-[var(--cc-ink-tertiary)]">Acciones del turno</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -181,15 +181,15 @@ export default function ConciergeDashboardPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KpiCard eyebrow="Visitas hoy" value={loading ? "--" : String(visitsToday)} sub="ingresos registrados" icon={<Users size={15} />} tone="amber" />
                 <KpiCard eyebrow="Encomiendas pendientes" value={loading ? "--" : String(pendingPackages.length)} sub="por retirar" icon={<ShoppingBag size={15} />} tone="copper" />
-                <KpiCard eyebrow="Incidencias abiertas" value={loading ? "--" : String(cases.length)} sub={`${criticalCases.length} crÃ­tica${criticalCases.length === 1 ? "" : "s"}`} icon={<AlertTriangle size={15} />} tone="rose" />
+                <KpiCard eyebrow="Incidencias abiertas" value={loading ? "--" : String(cases.length)} sub={`${criticalCases.length} crítica${criticalCases.length === 1 ? "" : "s"}`} icon={<AlertTriangle size={15} />} tone="rose" />
                 <KpiCard eyebrow="Visitas en el edificio" value={loading ? "--" : String(activeVisitors)} sub="sin registrar salida" icon={<Key size={15} />} tone="sage" />
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                 <div className="space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm lg:col-span-2">
-                    <Eyebrow>BitÃ¡cora del turno</Eyebrow>
+                    <Eyebrow>Bitácora del turno</Eyebrow>
                     {loading ? (
-                        <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Cargando bitÃ¡cora...</p>
+                        <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Cargando bitácora...</p>
                     ) : shiftLog.length === 0 ? (
                         <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Sin movimientos registrados en este turno.</p>
                     ) : (
@@ -222,7 +222,7 @@ export default function ConciergeDashboardPage() {
 
                 <div className="space-y-6">
                     <div className="space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm">
-                        <Eyebrow>Acceso rÃ¡pido</Eyebrow>
+                        <Eyebrow>Acceso rápido</Eyebrow>
                         <h3 className="text-base font-medium text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>
                             Registrar nueva visita
                         </h3>
@@ -256,7 +256,7 @@ export default function ConciergeDashboardPage() {
                                             <p className="text-xs font-semibold text-[var(--cc-ink)]">
                                                 {pkg.units?.number ? `Depto ${pkg.units.number}` : "Unidad sin asignar"}
                                             </p>
-                                            <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.description || "Encomienda"} Â· {minutesAgo(pkg.received_at)}</p>
+                                            <p className="mt-0.5 text-[10px] text-[var(--cc-ink-tertiary)]">{pkg.description || "Encomienda"} · {minutesAgo(pkg.received_at)}</p>
                                         </div>
                                         <Link
                                             href="/concierge/packages"

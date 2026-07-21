@@ -228,7 +228,7 @@ function summarizeArgs(args: Record<string, unknown>) {
     const summary = Object.entries(args)
         .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
         .map(([key, value]) => `${humanizeArgKey(key)}: ${String(value).slice(0, 90)}`)
-        .join(' Â· ');
+        .join(' · ');
 
     return summary || 'Sin parametros adicionales.';
 }
@@ -438,7 +438,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     if (lower.includes('visita') || lower.includes('visitante') || lower.includes('ingreso')) {
-        const nameMatch = message.match(/(?:visita|visitante|ingreso de|registrar a)\s+([A-Za-zÃÃ‰ÃÃ“ÃšÃ¡Ã©Ã­Ã³ÃºÃ‘Ã±\s]{2,60})/i);
+        const nameMatch = message.match(/(?:visita|visitante|ingreso de|registrar a)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,60})/i);
         const visitorName = cleanText(nameMatch?.[1], 60) || 'Visitante registrado por CoCo';
         return {
             agentKey: 'concierge',
@@ -774,16 +774,16 @@ async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unk
 
 const GEMINI_SYSTEM_PROMPT = `
 Eres el motor de inferencia de intenciones del Agent Center de Convive Connect.
-Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acciÃ³n de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
+Tu tarea es analizar el mensaje del usuario y traducirlo a una propuesta de acción de base de datos en formato JSON que calce exactamente con una de las siguientes herramientas soportadas.
 
-DefiniciÃ³n de agentes y herramientas:
+Definición de agentes y herramientas:
 1. Agente 'finance':
    - Herramienta 'get_my_expenses': Para consultar cobros, deudas o estado de pago de gastos comunes del residente.
      Argumentos: {}
      requiresConfirmation: false
      targetHref: '/resident/finances'
      title: 'Consultar gastos de la unidad'
-     summary: 'CoCo revisarÃ¡ los gastos comunes pendientes asociados a tu unidad.'
+     summary: 'CoCo revisará los gastos comunes pendientes asociados a tu unidad.'
 
    - Herramienta 'get_resident_expenses': Solo para administradores que consulten la deuda por nombre del residente o numero de departamento.
      Argumentos: { "residentQuery": "nombre" } o { "unitNumber": "numero de departamento" }
@@ -806,18 +806,18 @@ DefiniciÃ³n de agentes y herramientas:
      title: 'Enviar recordatorio de cobro'
      summary: 'CoCo enviara una notificacion privada al residente vinculado con gastos pendientes.'
 2. Agente 'maintenance':
-   - Herramienta 'create_booking': Para reservar un espacio comÃºn (ej: quincho, sala multiuso, piscina).
+   - Herramienta 'create_booking': Para reservar un espacio común (ej: quincho, sala multiuso, piscina).
      Argumentos: { "amenityHint": "nombre del espacio", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM" } (Si no se especifica hora, asume 2 horas a partir de las 10:00 o la hora sugerida).
      requiresConfirmation: true
      targetHref: '/amenities'
-     title: 'Reservar espacio comÃºn'
-     summary: 'CoCo buscarÃ¡ el espacio por nombre y crearÃ¡ una reserva.'
+     title: 'Reservar espacio común'
+     summary: 'CoCo buscará el espacio por nombre y creará una reserva.'
    - Herramienta 'create_service_request': Para reportar fallas, luces parpadeando, mantenciones o problemas de infraestructura.
      Argumentos: { "description": "detalle de la falla", "preferredDate": "YYYY-MM-DD", "preferredTime": "HH:MM" }
      requiresConfirmation: true
      targetHref: '/services/my-requests'
      title: 'Crear ticket de mantenimiento'
-     summary: 'CoCo registrarÃ¡ una solicitud operacional para que quede trazabilidad.'
+     summary: 'CoCo registrará una solicitud operacional para que quede trazabilidad.'
 
 3. Agente 'concierge':
    - Herramienta 'register_visitor': Para autorizar e ingresar visitas, amigos, repartidores o familiares.
@@ -825,21 +825,21 @@ DefiniciÃ³n de agentes y herramientas:
      requiresConfirmation: true
      targetHref: '/concierge/visitors'
      title: 'Registrar visita'
-     summary: 'Se crearÃ¡ una entrada en la bitÃ¡cora de visitas de la comunidad.'
+     summary: 'Se creará una entrada en la bitácora de visitas de la comunidad.'
 
 4. Agente 'community':
    - Herramienta 'create_marketplace_item': Para vender, permutar o publicar un objeto en el mercado de vecinos.
-     Argumentos: { "title": "nombre breve del producto", "description": "descripciÃ³n", "price": nÃºmero, "category": "electronics" | "furniture" | "clothing" | "other" }
+     Argumentos: { "title": "nombre breve del producto", "description": "descripción", "price": número, "category": "electronics" | "furniture" | "clothing" | "other" }
      requiresConfirmation: true
      targetHref: '/marketplace/my-listings'
      title: 'Publicar en Marketplace'
-     summary: 'El artÃ­culo quedarÃ¡ publicado en el marketplace vecinal.'
-   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administraciÃ³n. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
-     Argumentos: { "title": "tÃ­tulo del aviso", "content": "contenido completo", "priority": "info" | "alert" }
+     summary: 'El artículo quedará publicado en el marketplace vecinal.'
+   - Herramienta 'create_announcement': Para publicar avisos, comunicados o noticias de administración. (Nota: Solo permitida si el usuario es 'admin' o 'concierge').
+     Argumentos: { "title": "título del aviso", "content": "contenido completo", "priority": "info" | "alert" }
      requiresConfirmation: true
      targetHref: '/comunicaciones'
      title: 'Publicar comunicado oficial'
-     summary: 'El aviso quedarÃ¡ visible para todos los vecinos en el feed oficial.'
+     summary: 'El aviso quedará visible para todos los vecinos en el feed oficial.'
 
 5. Acciones frecuentes:
    - Usa run_playbook cuando el usuario pida cargar residentes, activar un edificio, revisar morosos, preparar cobranza, ordenar tickets abiertos, preparar una respuesta de emergencia o preparar un comunicado guiado.
@@ -856,16 +856,16 @@ Instrucciones de formato:
 - Si pide crear/generar/emitir/cargar un cobro puntual para un departamento, usa create_unit_expense y exige monto, unitNumber, month y dueDate.
 - Si pide enviar/mandar/notificar un recordatorio de cobro o pago a un departamento/residente, usa send_unit_payment_reminder.
 - Si la intencion es ambigua, usa clarify_intent. Nunca uses create_service_request como fallback generico.
-- Debes responder EXCLUSIVAMENTE con un objeto JSON vÃ¡lido que calce con la interfaz AgentAction.
-- No incluyas bloques de cÃ³digo markdown (\`\`\`json).
+- Debes responder EXCLUSIVAMENTE con un objeto JSON válido que calce con la interfaz AgentAction.
+- No incluyas bloques de código markdown (\`\`\`json).
 - La interfaz de retorno debe ser:
   {
     "agentKey": "finance" | "maintenance" | "concierge" | "community",
     "toolName": "get_my_expenses" | "get_resident_expenses" | "create_unit_expense" | "send_unit_payment_reminder" | "clarify_intent" | "create_booking" | "create_marketplace_item" | "create_announcement" | "register_visitor" | "create_service_request" | "run_playbook",
     "args": { ... },
     "requiresConfirmation": boolean,
-    "title": "TÃ­tulo descriptivo breve de la acciÃ³n",
-    "summary": "Resumen en una frase de lo que ocurrirÃ¡",
+    "title": "Título descriptivo breve de la acción",
+    "summary": "Resumen en una frase de lo que ocurrirá",
     "targetHref": "href correspondiente"
   }
 `;
@@ -960,7 +960,7 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
 
 /**
  * A batch playbook's approval card otherwise only shows its generic static
- * description â€” an admin approving "cobranza" has no idea how many
+ * description — an admin approving "cobranza" has no idea how many
  * residents will actually be notified, or for how much, before it fires.
  */
 async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile): Promise<AgentAction> {
@@ -1586,7 +1586,7 @@ export async function POST(req: NextRequest) {
         if (action.requiresConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
             if (!audit.runId || !audit.toolCallId) {
-                throw new Error('La auditoria agÃ©ntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
+                throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
             }
             const persistedAction = {
                 ...action,
@@ -1638,6 +1638,6 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         console.error('[agent-center] request failed', error);
-        return NextResponse.json({ error: 'No se pudo ejecutar la acciÃ³n.' }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo ejecutar la acción.' }, { status: 500 });
     }
 }
