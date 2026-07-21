@@ -41,7 +41,7 @@ const checks = [
   ['Proactive rules and deduplicated events are persisted', triggerMigration.includes('agent_trigger_rules') && triggerMigration.includes('dedupe_key TEXT NOT NULL UNIQUE')],
   ['Signals create proposals instead of direct write execution', proactiveEngine.includes("status: 'awaiting_confirmation'") && proactiveEngine.includes("requires_confirmation: true")],
   ['Scheduler rejects requests without the configured secret', schedulerRoute.includes('Scheduler no configurado') && schedulerRoute.includes('No autorizado.')],
-  ['Agent Center evaluates tenant rules as a resilient fallback', route.includes('evaluateDueAgentTriggers(profile.community_id || DEFAULT_COMMUNITY_ID)')],
+  ['Agent Center reads are side-effect free; scheduler owns trigger evaluation', !route.includes('evaluateDueAgentTriggers(') && schedulerRoute.includes('evaluateDueAgentTriggers()')],
   ['Agent Center exposes proactive controls', page.includes('CoCo observa y propone') && page.includes('toggleTrigger(rule)')],
 ];
 

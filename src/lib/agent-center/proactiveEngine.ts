@@ -125,6 +125,30 @@ async function evaluateSignal(rule: AgentTriggerRuleRecord) {
     throw new Error('Senal proactiva no soportada.');
 }
 
+
+function proposalArgs(value: unknown) {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : {};
+}
+
+async function findPendingProactiveProposal(rule: AgentTriggerRuleRecord) {
+    const { data, error } = await getSupabaseAdmin()
+        .from('agent_tool_calls')
+        .select('id, run_id, args, agent_runs!inner(id, status, community_id, agent_key, summary, metadata)')
+        .eq('community_id', rule.communityId)
+        .eq('tool_name', 'run_playbook')
+        .eq('status', 'proposed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+    if (error) throw error;
+
+    const existing = (data || []).find(row => {
+        const args = proposalArgs(row.args);
+        return args.triggerRuleId === rule.id
+            || (args.playbookKey === rule.playbookKey && String(args.requestedText || '').startsWith(`${rule.name}:`));
+    });
+    if (!existing) return null;
+    return { runId: String(existing.run_id), toolCallId: String(existing.id) };
+}
 async function createProactiveProposal(rule: AgentTriggerRuleRecord, signal: AgentSignalEvaluation, eventId: string) {
     const definition = playbook(rule.playbookKey);
     if (!definition) throw new Error('Playbook proactivo no soportado.');
@@ -141,7 +165,9 @@ async function createProactiveProposal(rule: AgentTriggerRuleRecord, signal: Age
     if (!actor) throw new Error('La comunidad no tiene un administrador para recibir la propuesta.');
 
     const summary = `${rule.name}: ${signal.evidence}`;
-    const args = { playbookKey: rule.playbookKey, requestedText: summary, triggerEventId: eventId };
+    const args = { playbookKey: rule.playbookKey, requestedText: summary, triggerEventId: eventId, triggerRuleId: rule.id };
+    const existingProposal = await findPendingProactiveProposal(rule);
+    if (existingProposal) return existingProposal;
     const proposedAction = {
         agentKey: rule.agentKey,
         toolName: 'run_playbook',

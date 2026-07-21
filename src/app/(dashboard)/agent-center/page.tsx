@@ -236,7 +236,20 @@ export default function AgentCenterPage() {
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
     setTasks(Array.isArray(data.tasks) ? data.tasks : []);
     setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
-    const pending = Array.isArray(data.proposals) ? data.proposals : [];
+    const rawPending = Array.isArray(data.proposals) ? data.proposals : [];
+    const seenPending = new Set<string>();
+    const pending = rawPending.filter((action) => {
+      const dedupeKey = [
+        action.agentKey,
+        action.toolName,
+        String(action.args?.triggerRuleId || action.args?.playbookKey || ""),
+        action.title,
+        action.summary,
+      ].join("|");
+      if (seenPending.has(dedupeKey)) return false;
+      seenPending.add(dedupeKey);
+      return true;
+    });
     setMessages((current) => {
       const sessionMessages = current.filter((message) => !message.id.startsWith("proposal-"));
       const proposalMessages: AgentMessage[] = pending.map((action) => ({
