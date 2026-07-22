@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         if (result.status === 'failed') {
             return NextResponse.json({ success: false, ...result }, { status: 502 });
         }
-        return NextResponse.json({ success: result.status === 'sent', ...result });
+        return NextResponse.json({ success: result.status === 'sent' || result.status === 'queued', ...result });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Error desconocido';
         console.error('WhatsApp notify error:', message);
