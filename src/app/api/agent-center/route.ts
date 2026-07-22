@@ -292,10 +292,10 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
         && Boolean(unitNumber)
         && mentionsFinance
         && /\b(crea|crear|genera|generar|emite|emitir|carga|cargar|agrega|agregar)\b/.test(normalized);
-    const wantsPaymentReminder = profile.role === 'admin'
+    const wantsPaymentReminderIntent = profile.role === 'admin'
         && mentionsFinance
-        && Boolean(unitNumber || residentQuery)
-        && /\b(envia|enviar|manda|mandar|notifica|notificar|recuerda|recordatorio|avisa|avisale)\b/.test(normalized);
+        && /\b(envia|enviar|manda|mandar|notifica|notificar|recuerda|recordatorio|avisa|avisale|enviale)\b/.test(normalized);
+    const wantsPaymentReminder = wantsPaymentReminderIntent && Boolean(unitNumber || residentQuery);
 
     if (wantsCreateUnitCharge) {
         const month = monthFromText(message);
@@ -329,6 +329,13 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
             summary: 'Se enviara una notificacion privada al residente vinculado con sus gastos pendientes. No se expondra la deuda a otros vecinos.',
             targetHref: '/admin/finanzas',
         };
+    }
+    if (wantsPaymentReminderIntent) {
+        return buildClarificationAction(
+            message,
+            'finance',
+            'Indica el departamento o el nombre del residente que debe recibir el recordatorio de cobro. No realice ningun cambio.'
+        );
     }
     if (wantsResidentOnboarding) {
         const playbook = getPlaybook('onboarding_import_review');
@@ -388,7 +395,12 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     if (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio')) {
-        const title = cleanText(message.replace(/(crea|crear|publica|publicar|comunicado|aviso|anuncio)/gi, ''), 90) || 'Comunicado de administracion';
+        const title = cleanText(
+            message
+                .replace(/^(?:crea|crear|publica|publicar|envia|enviar|env[ií]ale)\s+(?:un|una|el|la)?\s*(?:comunicado|aviso|anuncio)(?:\s+(?:de|sobre|acerca de|por|para))?\s*/i, '')
+                .replace(/\s+/g, ' '),
+            90
+        ) || 'Comunicado de administracion';
         return {
             agentKey: 'community',
             toolName: 'create_announcement',
