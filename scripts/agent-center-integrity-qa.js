@@ -17,6 +17,9 @@ const communityResearch = read('src/lib/agent-center/communityResearch.ts');
 const unitFinanceActions = read('src/lib/agent-center/unitFinanceActions.ts');
 const whatsappNotifyRoute = read('src/app/api/whatsapp-notify/route.ts');
 const whatsappNotify = read('src/lib/server/whatsappNotify.ts');
+const whatsappStatusRoute = read('src/app/api/whatsapp/status/route.ts');
+const whatsappStatusCallback = read('src/app/api/whatsapp/status-callback/route.ts');
+const twilioContentTemplate = read('src/lib/server/twilioContentTemplate.ts');
 
 const checks = [
   ['Department number extraction is supported', intentSafety.includes('extractUnitNumber')],
@@ -24,6 +27,9 @@ const checks = [
   ['Agent Center exposes Claude model metadata in the API and UI', route.includes('getAgentPlannerModel()') && page.includes('Claude activo')],
   ['Finance Agent can send audited WhatsApp when residents opted in', unitFinanceActions.includes('sendWhatsAppNotificationForUser') && unitFinanceActions.includes('agent-center.send_unit_payment_reminder') && unitFinanceActions.includes('agent-center.create_unit_expense')],
   ['WhatsApp outbound endpoint uses the shared audited sender', whatsappNotifyRoute.includes('sendWhatsAppNotificationForUser') && whatsappNotify.includes("action: 'whatsapp.notification.send'")],
+  ['Finance reminders use an approved-template ContentSid instead of free-form Body', unitFinanceActions.includes("templateKey: 'payment_reminder'") && whatsappNotify.includes("params.set('ContentSid'") && whatsappNotify.includes("params.set('ContentVariables'")],
+  ['Platform-only setup can create and submit the utility template', whatsappStatusRoute.includes('ensurePaymentReminderTemplate') && twilioContentTemplate.includes('ApprovalRequests/whatsapp') && twilioContentTemplate.includes("category: 'UTILITY'")],
+  ['Twilio delivery callbacks are signed and update audited final status', whatsappNotify.includes("params.set('StatusCallback'") && whatsappStatusCallback.includes('verifyTwilioSignature') && whatsappStatusCallback.includes('deliveryStatus')],
   ['Agent Center planning does not fall back to Gemini', !route.includes('GEMINI_SYSTEM_PROMPT') && !route.includes('callGeminiInference') && !route.includes('geminiResult')],
   ['Operational prompts reach Claude instead of a canned menu reply', !route.includes('Hola. Puedo ayudarte con acciones concretas') && route.includes('Esperando instrucci')],
   ['Planner decisions carry confidence and a concise explanation', planner.includes('decision:') && route.includes('action.decision?.explanation')],
