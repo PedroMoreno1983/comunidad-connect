@@ -68,9 +68,7 @@ export async function proxy(req: NextRequest) {
 
   const capabilities = resolveProductCapabilities(process.env);
   const alwaysHidden = pathname === "/showcase"
-    || pathname.startsWith("/convive-connect")
-    || pathname.startsWith("/resident/supermercado")
-    || pathname.startsWith("/api/supermarket");
+    || pathname.startsWith("/convive-connect");
   const unavailableIntegration = (
     pathname.startsWith("/marketing/reels")
     || pathname.startsWith("/api/marketing/reels")
