@@ -18,6 +18,8 @@
     "qa:onboarding-batches": "node scripts/onboarding-batch-integrity-qa.js",
     "qa:marketplace-chat": "node scripts/marketplace-messaging-qa.js",
     "qa:training": "node scripts/training-integrity-qa.js",
+    "qa:agents-wholesale": "node scripts/agents-wholesale-integrity-qa.js",
+    "qa:supermarket-group-live": "node scripts/supermarket-group-live-qa.js",
     "qa:multitenant": "node scripts/multitenant-qa.js",
     "qa:operations": "node scripts/operations-qa.js",
     "qa:workflows": "node scripts/operations-qa.js",

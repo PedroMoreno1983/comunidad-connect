@@ -6,12 +6,14 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
 const STORE_URLS: Record<string, string> = {
   Jumbo: 'https://www.jumbo.cl',
   Lider: 'https://super.lider.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
   Unimarc: 'https://www.unimarc.cl',
+  aCuenta: 'https://www.acuenta.cl',
+  Irurzun: 'https://irurzun.cl',
 };
 
 export async function POST(req: NextRequest) {

@@ -96,6 +96,25 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'No se pudo actualizar el contacto.' }, { status: 500 });
         }
 
+        const { error: auditError } = await supabaseAdmin
+            .from('platform_operation_events')
+            .insert({
+                actor_id: auth.user.id,
+                actor_email: auth.user.email,
+                action: 'superadmin.commercial_lead_status_changed',
+                entity_type: 'commercial_lead',
+                entity_id: lead.id,
+                summary: `Contacto comercial actualizado a ${lead.status}`,
+                metadata: { leadStatus: lead.status, requestId: getRequestId(request) },
+            });
+        if (auditError) {
+            console.error('[superadmin] commercial lead audit failed', auditError);
+            return NextResponse.json(
+                { error: 'El contacto cambió, pero la auditoría global no pudo certificarse.' },
+                { status: 500 },
+            );
+        }
+
         return NextResponse.json({ lead });
     }
 

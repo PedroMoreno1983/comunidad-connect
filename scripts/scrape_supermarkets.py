@@ -74,6 +74,9 @@ class Product:
     product_url: str | None = None
     image_url: str | None = None
     scraped_at: str | None = None
+    channel_type: str = "retail"
+    pack_units: int = 1
+    minimum_packs: int = 1
 
 
 @dataclass(frozen=True)
@@ -310,6 +313,105 @@ def scrape_lider(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
         return [], SourceStatus("Lider", query, "error", str(error))
 
 
+def decode_next_text(value: str) -> str:
+    try:
+        return json.loads(f'"{value}"')
+    except json.JSONDecodeError:
+        return value.replace(r"\"", '"').replace(r"\u0026", "&")
+
+
+def pack_units_from_name(name: str) -> int:
+    normalized = normalize(name)
+    patterns = (
+        r"\b(?:manga|caja|pack|display)\s+(?:de\s+)?(\d{1,3})\s*(?:unidades?|un|uds?)?\b",
+        r"\b(\d{1,3})\s*x\s*\d+(?:[.,]\d+)?\s*(?:kg|g|l|ml|cc)\b",
+        r"\b(\d{1,3})\s*(?:unidades?|un|uds?)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, normalized, flags=re.I)
+        if match:
+            return max(1, min(10000, int(match.group(1))))
+    return 1
+
+
+ACUENTA_PRODUCT_RE = re.compile(
+    r'\\"product\\":\{\\"name\\":\\"(?P<name>.*?)\\",'
+    r'\\"price\\":(?P<price>\d+),'
+    r'\\"photosUrl\\":\[(?P<photos>.*?)\],'
+    r'.*?\\"sku\\":\\"(?P<sku>\d+)\\"'
+    r'.*?\\"ean\\":\[(?P<ean>.*?)\]'
+    r'.*?\\"slug\\":\\"(?P<slug>.*?)\\"'
+    r'.*?\\"brand\\":\\"(?P<brand>.*?)\\"'
+    r'.*?\\"stock\\":(?P<stock>\d+)',
+    flags=re.I | re.S,
+)
+
+
+def scrape_acuenta(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
+    url = f"https://www.acuenta.cl/search?name={quote_plus(query)}"
+    try:
+        page = fetch(url)
+        products: list[Product] = []
+        seen: set[str] = set()
+        for match in ACUENTA_PRODUCT_RE.finditer(page):
+            sku = match.group("sku")
+            if sku in seen:
+                continue
+            seen.add(sku)
+            name = decode_next_text(match.group("name"))
+            price = as_int(match.group("price"))
+            stock = as_int(match.group("stock"))
+            if not name or price <= 0:
+                continue
+            photos_match = re.search(r'\\"(?P<url>https?[^"]+?)\\"', match.group("photos"))
+            ean_match = re.search(r'\\"(?P<ean>\d{8,14})\\"', match.group("ean"))
+            slug = decode_next_text(match.group("slug"))
+            products.append(Product(
+                store="aCuenta",
+                query=query,
+                name=name,
+                price=price,
+                list_price=None,
+                in_stock=stock > 0,
+                brand=decode_next_text(match.group("brand")) or None,
+                sku=sku,
+                ean=ean_match.group("ean") if ean_match else None,
+                product_url=f"https://www.acuenta.cl/p/{slug}" if slug else url,
+                image_url=decode_next_text(photos_match.group("url")) if photos_match else None,
+                scraped_at=utc_now(),
+                channel_type="wholesale",
+                pack_units=pack_units_from_name(name),
+                minimum_packs=1,
+            ))
+        relevant = limit_relevant(products, query, limit)
+        status = "ok" if relevant else "no_results"
+        return relevant, SourceStatus("aCuenta", query, status, count=len(relevant))
+    except (HTTPError, URLError, TimeoutError) as error:
+        return [], SourceStatus("aCuenta", query, "error", str(error))
+
+
+def scrape_irurzun(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
+    del limit
+    url = f"https://irurzun.cl/search?q={quote_plus(query)}"
+    try:
+        page = fetch(url)
+        handles = re.findall(r'href=["\']/products/([^"\'?]+)', page, flags=re.I)
+        if not handles:
+            return [], SourceStatus("Irurzun", query, "no_results", count=0)
+        # Irurzun publishes pack descriptions and availability, but its public
+        # Shopify JSON currently returns price=0. Exclude those rows rather
+        # than presenting an invented or quote-only value as a real price.
+        return [], SourceStatus(
+            "Irurzun",
+            query,
+            "no_public_prices",
+            "Catalog available; public product prices are currently zero/quote-only",
+            count=0,
+        )
+    except (HTTPError, URLError, TimeoutError) as error:
+        return [], SourceStatus("Irurzun", query, "error", str(error))
+
+
 def scrape_unimarc(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
     # The public web app currently renders prices for users, but its BFF rejects
     # server-side requests from this environment. Keep this explicit so we do
@@ -330,6 +432,8 @@ SCRAPERS = {
     "santaisabel": scrape_santa_isabel,
     "lider": scrape_lider,
     "unimarc": scrape_unimarc,
+    "acuenta": scrape_acuenta,
+    "irurzun": scrape_irurzun,
 }
 
 
@@ -339,8 +443,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=8, help="Max products per store/query")
     parser.add_argument(
         "--stores",
-        default="jumbo,santaisabel,lider,unimarc",
-        help="Comma-separated stores: jumbo,santaisabel,lider,unimarc",
+        default="jumbo,santaisabel,lider,unimarc,acuenta,irurzun",
+        help="Comma-separated stores: jumbo,santaisabel,lider,unimarc,acuenta,irurzun",
     )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
     return parser.parse_args()
