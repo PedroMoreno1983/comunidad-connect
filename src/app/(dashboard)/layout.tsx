@@ -56,6 +56,7 @@ function DashboardShell({
             '/agent-center': 'Agent Center',
             '/marketing/reels': 'Reels Agent',
             '/marketplace': 'Marketplace',
+            '/resident/supermercado': 'Supermercado y Compras Grupales',
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',
             '/votaciones': 'Votaciones',
