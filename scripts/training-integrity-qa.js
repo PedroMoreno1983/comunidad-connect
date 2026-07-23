@@ -8,7 +8,9 @@ const expect = (label, condition) => { checks.push(label); if (!condition) failu
 
 const modulesRoute = read('src/app/api/training/modules/route.ts');
 const progressRoute = read('src/app/api/training/progress/route.ts');
-const residentPage = read('src/app/(dashboard)/resident/training/page.tsx');
+const multiAgentRoute = read('src/app/api/training/multi-agent/route.ts');
+const orchestrator = read('src/lib/ai/orchestrator.ts');
+const staffPage = read('src/app/(dashboard)/staff/training/page.tsx');
 const classroom = read('src/components/training/MultiAgentClassroom.tsx');
 const migration = read('supabase/migrations/043_training_multitenant_progress.sql');
 
@@ -18,7 +20,10 @@ expect('Course writes require admin role', modulesRoute.includes("profile.role !
 expect('Official global courses cannot be deleted', modulesRoute.includes('Los cursos oficiales no se pueden eliminar'));
 expect('Progress API derives user and community server-side', progressRoute.includes('profile.id') && progressRoute.includes('profile.community_id'));
 expect('Progress target course is checked against community', progressRoute.includes('Curso no disponible para tu comunidad'));
-expect('Resident page loads and writes persisted progress', residentPage.includes('/api/training/progress') && residentPage.includes('saveProgress'));
+expect('Staff page loads and writes persisted progress', staffPage.includes('/api/training/progress') && staffPage.includes('saveProgress'));
+expect('Classroom route requires admin or concierge', multiAgentRoute.includes("['admin', 'concierge'].includes(profile.role)"));
+expect('Classroom passes the authenticated role to the orchestrator', multiAgentRoute.includes('profile.role'));
+expect('AI budget uses the authenticated staff role', orchestrator.includes('role: userRole') && !orchestrator.includes("role: 'resident'"));
 expect('Classroom exposes explicit completion action', classroom.includes('onComplete') && classroom.includes('Completar curso'));
 expect('Training modules have tenant RLS', migration.includes('training_modules_admin_delete') && migration.includes('current_profile_community_id'));
 expect('Training progress has own-user RLS', migration.includes('user_training_progress_read_own') && migration.includes('user_id = auth.uid()'));

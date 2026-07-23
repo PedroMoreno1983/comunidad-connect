@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
             courseContent,
             profile.id,
             profile.community_id || undefined,
-            profile.name || undefined
+            profile.name || undefined,
+            profile.role as 'admin' | 'concierge',
         );
 
         return NextResponse.json({ responses }, { status: 200 });

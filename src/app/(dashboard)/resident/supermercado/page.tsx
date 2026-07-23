@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
+import { GroupBuyPanel } from "@/components/resident/supermarket/GroupBuyPanel";
 
 interface CartItem {
     id: string;
@@ -41,6 +42,8 @@ const STORE_URLS: Record<string, string> = {
     Lider: "https://super.lider.cl",
     Jumbo: "https://www.jumbo.cl",
     Unimarc: "https://www.unimarc.cl",
+    aCuenta: "https://www.acuenta.cl",
+    Irurzun: "https://irurzun.cl",
     "Santa Isabel": "https://www.santaisabel.cl",
 };
 
@@ -248,6 +251,8 @@ export default function SupermarketPage() {
                     </div>
                 </div>
             </section>
+
+            <GroupBuyPanel />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* List Management */}
