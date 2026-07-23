@@ -13,6 +13,7 @@ import {
   Activity,
   Home,
   ShoppingBag,
+  Store,
   Wrench,
   Users,
   LogOut,
@@ -177,6 +178,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
+        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident", "admin"] },
         { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
         { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
