@@ -194,6 +194,15 @@ export interface SupermarketGroupOrderMember {
   joinedAt: string;
 }
 
+export interface SupermarketGroupSettlement {
+  userId: string;
+  memberName: string;
+  amount: number;
+  payeeUserId: string;
+  payeeName: string;
+  isOrganizer: boolean;
+}
+
 export interface SupermarketGroupOrder {
   id: string;
   communityId: string;
@@ -208,6 +217,7 @@ export interface SupermarketGroupOrder {
   selectedItems: SupermarketGroupComparisonItem[];
   members: SupermarketGroupOrderMember[];
   items: SupermarketGroupOrderItem[];
+  settlements: SupermarketGroupSettlement[];
   canManage: boolean;
   createdAt: string;
   updatedAt: string;
@@ -237,6 +247,53 @@ export interface SupermarketGroupComparison {
   retailerUrl: string;
 }
 
+export interface SupermarketSearchCandidate {
+  id: string;
+  name: string;
+  brand?: string;
+  requestedTerm: string;
+  requestedQuantity: number;
+  quantity: number;
+  packUnits: number;
+  suppliedQuantity: number;
+  price: number;
+  lineTotal: number;
+  store?: string;
+  productUrl?: string;
+  originalPrice?: number;
+  isOffer?: boolean;
+  fetchedAt?: string;
+}
+
+export interface SupermarketShoppingItem extends SupermarketSearchCandidate {
+  checked: boolean;
+  available: boolean;
+  source: 'catalog' | 'live' | 'missing' | 'manual';
+}
+
+export interface SupermarketSearchResponse {
+  error?: string;
+  message: string;
+  items: SupermarketShoppingItem[];
+  fetchedAt?: string;
+  mode?: string;
+  recommendedStore?: string | null;
+  basketSubtotal?: number;
+  basketReady: boolean;
+  requestedCount: number;
+  foundCount: number;
+  missingTerms: string[];
+  alternativesByTerm?: Record<string, SupermarketSearchCandidate[]>;
+  checkout?: {
+    status: string;
+    store?: string;
+    storeUrl?: string;
+    productUrls: string[];
+    requiresRetailerSession: boolean;
+    cartPreloaded: boolean;
+    detail: string;
+  };
+}
 export interface CommunityProject {
   id: string;
   communityId?: string;
