@@ -1,7 +1,7 @@
 import type { CartItem } from '@/lib/agentBrain';
 
 const REQUEST_TIMEOUT_MS = 12_000;
-const MAX_SEARCH_TERMS = 6;
+const MAX_SEARCH_TERMS = 20;
 const SEARCH_HEADERS = {
   Accept: 'text/html,application/xhtml+xml',
   'Accept-Language': 'es-CL,es;q=0.9',
@@ -96,7 +96,7 @@ function pickComparableBest(items: CartItem[]): CartItem | undefined {
 
 export function extractSupermarketTerms(message: string): string[] {
   const cleaned = message
-    .slice(0, 300)
+    .slice(0, 1_500)
     .replace(/^(?:hola[,.!\s]*)/i, '')
     .replace(/^(?:necesito|quiero|deseo)\s+(?:comprar|agregar|añadir)?\s*:*/i, '')
     .replace(/^(?:comprar|agregar|añadir)\s*:*/i, '')
@@ -254,10 +254,13 @@ export async function searchLiveSupermarkets(message: string) {
   const results = await Promise.all(terms.map(async term => {
     const settled = await Promise.allSettled(stores.map(store => searchOneRetailer(store, term)));
     const candidates = settled.flatMap(result => result.status === 'fulfilled' && result.value ? [result.value] : []);
-    return pickComparableBest(candidates);
+    const selected = pickComparableBest(candidates);
+    return selected ? { ...selected, requestedTerm: term } : undefined;
   }));
 
-  const items = results.filter((item): item is CartItem => item !== undefined);
+  const items = results.filter(
+    (item): item is CartItem & { requestedTerm: string } => item !== undefined,
+  );
   const storeNames = [...new Set(items.map(item => item.store))];
   const coverage = storeNames.length > 0 ? ` Fuentes con resultados: ${storeNames.join(', ')}.` : '';
 

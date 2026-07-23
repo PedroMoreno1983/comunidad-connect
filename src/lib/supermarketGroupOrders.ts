@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { parseGroupShoppingList, type GroupItemInput } from '@/lib/supermarketGroupDomain';
+import {
+  allocateGroupCosts,
+  parseGroupShoppingList,
+  type GroupItemInput,
+} from '@/lib/supermarketGroupDomain';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type {
   SupermarketChannelType,
@@ -10,6 +14,7 @@ import type {
   SupermarketGroupOrder,
   SupermarketGroupOrderItem,
   SupermarketGroupOrderMember,
+  SupermarketGroupSettlement,
   SupermarketStore,
   UserRole,
 } from '@/lib/types';
@@ -114,6 +119,7 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
 
   return rawOrders.map(row => {
     const orderId = asString(row.id);
+    const createdBy = asString(row.created_by);
     const members: SupermarketGroupOrderMember[] = (membersResult.data || [])
       .filter(member => asString(member.order_id) === orderId)
       .map(member => ({
@@ -133,11 +139,40 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
         createdAt: asString(item.created_at),
         updatedAt: asString(item.updated_at),
       }));
+    const selectedItems = asSelectedItems(row.selected_items);
+    const allocation = allocateGroupCosts(
+      items.map(item => ({
+        userId: item.userId,
+        term: item.requestedTerm,
+        quantity: item.quantity,
+      })),
+      selectedItems.map(item => ({
+        requestedTerm: item.requestedTerm,
+        lineTotal: item.lineTotal,
+      })),
+      createdBy,
+    );
+    const participantIds = [...new Set([
+      ...members.map(member => member.userId),
+      ...items.map(item => item.userId),
+      createdBy,
+    ].filter(Boolean))];
+    const payeeName = names.get(createdBy)
+      || members.find(member => member.userId === createdBy)?.name
+      || 'Organizador';
+    const settlements: SupermarketGroupSettlement[] = participantIds.map(userId => ({
+      userId,
+      memberName: names.get(userId) || members.find(member => member.userId === userId)?.name || 'Vecino',
+      amount: allocation[userId] || 0,
+      payeeUserId: createdBy,
+      payeeName,
+      isOrganizer: userId === createdBy,
+    }));
 
     return {
       id: orderId,
       communityId: asString(row.community_id),
-      createdBy: asString(row.created_by),
+      createdBy,
       title: asString(row.title),
       status: asString(row.status) as SupermarketGroupOrder['status'],
       closesAt: asString(row.closes_at),
@@ -145,10 +180,11 @@ async function hydrateOrders(profile: GroupProfile, rawOrders: Record<string, un
       selectedTotal: row.selected_total === null ? null : asNumber(row.selected_total),
       selectedChannelType: (asString(row.selected_channel_type) || null) as SupermarketChannelType | null,
       retailerUrl: asString(row.retailer_url) || null,
-      selectedItems: asSelectedItems(row.selected_items),
+      selectedItems,
       members,
       items,
-      canManage: asString(row.created_by) === profile.id || profile.role === 'admin',
+      canManage: createdBy === profile.id || profile.role === 'admin',
+      settlements,
       createdAt: asString(row.created_at),
       updatedAt: asString(row.updated_at),
     };

@@ -45,7 +45,7 @@ function selectComparableRows(rows: Record<string, unknown>[]) {
     ))[0]?.rows ?? [];
 }
 
-function mapProduct(row: Record<string, unknown>, requestedTerm: string, requestedQuantity: number) {
+export function buildSupermarketCandidate(row: Record<string, unknown>, requestedTerm: string, requestedQuantity: number) {
   const price = asNumber(row.price);
   const listPrice = asNumber(row.list_price);
   const productUrl = asString(row.product_url);
@@ -91,7 +91,7 @@ export function buildBasketComparison(
     const items = comparableByTerm.flatMap(({ term, rows }) => {
       const candidate = rows
         .filter(row => asString(row.store) === store)
-        .map(row => mapProduct(
+        .map(row => buildSupermarketCandidate(
           row,
           term,
           Math.min(MAX_REQUESTED_QUANTITY, Math.max(1, Math.round(requestedQuantities[term] || 1))),

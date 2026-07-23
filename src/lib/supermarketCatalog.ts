@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { buildBasketComparison } from '@/lib/supermarketBasket';
+import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 const MAX_PRICE_AGE_MS = 24 * 60 * 60 * 1000;
@@ -36,7 +36,25 @@ export async function comparePersistedSupermarkets(
     return [term, rows] as const;
   }));
 
-  return buildBasketComparison(terms, Object.fromEntries(entries), requestedQuantities);
+  const rowsByTerm = Object.fromEntries(entries);
+  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities);
+  const alternativesByTerm = Object.fromEntries(entries.map(([term, rows]) => {
+    const requestedQuantity = Math.min(500, Math.max(1, Math.round(requestedQuantities[term] || 1)));
+    const seen = new Set<string>();
+    const alternatives = rows
+      .map(row => buildSupermarketCandidate(row, term, requestedQuantity))
+      .filter(candidate => {
+        const key = `${candidate.store}:${candidate.name}:${candidate.lineTotal}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => left.lineTotal - right.lineTotal || left.store.localeCompare(right.store))
+      .slice(0, 8);
+    return [term, alternatives] as const;
+  }));
+
+  return { ...comparison, alternativesByTerm };
 }
 
 export async function searchPersistedSupermarkets(terms: string[]) {
