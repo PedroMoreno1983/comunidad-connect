@@ -235,6 +235,9 @@ function requiredMutationTool(message: string, role?: string) {
     if (role === 'system') return undefined;
     if (/\b(c[oó]mo|como)\b/.test(text)) return undefined;
 
+    if (/\b(cierra|cerrar|prepara|preparar|finaliza|finalizar)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'lock_supermarket_group_order';
+    if (/\b(s[uú]mame|sumarme|agrega|agregar|a[nñ]ade|a[nñ]adir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'join_supermarket_group_order';
+    if (/\b(crea|crear|abre|abrir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'create_supermarket_group_order';
     if (/\b(reserva|reservar|res[eé]rvame|agenda|agendar)\b/.test(text)) return 'create_reservation';
     if (/\b(registra|registrar|anota|anotar)\b.*\b(visita|visitante)\b|\bva a llegar\b/.test(text)) return 'register_visitor';
     if ((role === 'admin' || role === 'concierge') && /\b(registra|registrar|recib[ií]|lleg[oó])\b.*\b(paquete|encomienda)\b/.test(text)) return 'register_package';

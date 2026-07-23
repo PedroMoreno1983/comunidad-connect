@@ -1,9 +1,25 @@
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const path = require('node:path');
-const dotenv = require('dotenv');
 const { createClient } = require('@supabase/supabase-js');
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local'), quiet: true });
+function loadEnvFile(file) {
+    if (!fs.existsSync(file)) return;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const separator = trimmed.indexOf('=');
+        if (separator < 1) continue;
+        const key = trimmed.slice(0, separator).trim();
+        let value = trimmed.slice(separator + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+        }
+        if (!(key in process.env)) process.env[key] = value;
+    }
+}
+
+loadEnvFile(path.join(process.cwd(), '.env.local'));
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

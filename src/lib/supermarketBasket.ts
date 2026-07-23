@@ -1,4 +1,8 @@
-const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
+
+export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
+
+const MAX_REQUESTED_QUANTITY = 500;
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -41,20 +45,29 @@ function selectComparableRows(rows: Record<string, unknown>[]) {
     ))[0]?.rows ?? [];
 }
 
-function mapProduct(row: Record<string, unknown>, requestedTerm: string) {
+function mapProduct(row: Record<string, unknown>, requestedTerm: string, requestedQuantity: number) {
   const price = asNumber(row.price);
   const listPrice = asNumber(row.list_price);
   const productUrl = asString(row.product_url);
   const imageUrl = asString(row.image_url);
+  const packUnits = Math.max(1, Math.round(asNumber(row.pack_units) || 1));
+  const minimumPacks = Math.max(1, Math.round(asNumber(row.minimum_packs) || 1));
+  const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
+  const store = asString(row.store);
 
   return {
     id: asString(row.id),
     requestedTerm,
     name: asString(row.name),
     brand: asString(row.brand),
-    quantity: 1,
+    quantity: packs,
+    requestedQuantity,
+    packUnits,
+    suppliedQuantity: packs * packUnits,
     price,
-    store: asString(row.store),
+    lineTotal: price * packs,
+    store,
+    channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
     originalPrice: listPrice > price ? listPrice : undefined,
     isOffer: listPrice > price,
     checked: false,
@@ -67,26 +80,33 @@ function mapProduct(row: Record<string, unknown>, requestedTerm: string) {
 export function buildBasketComparison(
   terms: string[],
   rowsByTerm: Record<string, Record<string, unknown>[]>,
+  requestedQuantities: Record<string, number> = {},
 ) {
   const comparableByTerm = terms.map(term => ({
     term,
     rows: selectComparableRows(rowsByTerm[term] ?? []),
   }));
 
-  const comparisons = STORES.map(store => {
+  const comparisons = SUPERMARKET_STORES.map(store => {
     const items = comparableByTerm.flatMap(({ term, rows }) => {
       const candidate = rows
         .filter(row => asString(row.store) === store)
-        .sort((left, right) => asNumber(left.price) - asNumber(right.price))[0];
-      return candidate ? [mapProduct(candidate, term)] : [];
+        .map(row => mapProduct(
+          row,
+          term,
+          Math.min(MAX_REQUESTED_QUANTITY, Math.max(1, Math.round(requestedQuantities[term] || 1))),
+        ))
+        .sort((left, right) => left.lineTotal - right.lineTotal || left.suppliedQuantity - right.suppliedQuantity)[0];
+      return candidate ? [candidate] : [];
     });
     const coveredTerms = new Set(items.map(item => item.requestedTerm));
     const missingTerms = terms.filter(term => !coveredTerms.has(term));
 
     return {
       store,
+      channelType: WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail',
       items,
-      subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
       coveredCount: items.length,
       requestedCount: terms.length,
       coveragePercent: terms.length > 0 ? Math.round(items.length * 100 / terms.length) : 0,

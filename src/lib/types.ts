@@ -166,6 +166,77 @@ export interface CollectivePurchaseCampaign {
   createdAt: string;
 }
 
+export type SupermarketStore =
+  | 'Jumbo'
+  | 'Santa Isabel'
+  | 'Lider'
+  | 'Unimarc'
+  | 'aCuenta'
+  | 'Irurzun';
+
+export type SupermarketChannelType = 'retail' | 'wholesale';
+export type SupermarketGroupOrderStatus = 'open' | 'ready' | 'locked' | 'completed' | 'cancelled';
+
+export interface SupermarketGroupOrderItem {
+  id: string;
+  orderId: string;
+  userId: string;
+  memberName: string;
+  requestedTerm: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupermarketGroupOrderMember {
+  userId: string;
+  name: string;
+  joinedAt: string;
+}
+
+export interface SupermarketGroupOrder {
+  id: string;
+  communityId: string;
+  createdBy: string;
+  title: string;
+  status: SupermarketGroupOrderStatus;
+  closesAt: string;
+  selectedStore?: SupermarketStore | null;
+  selectedTotal?: number | null;
+  selectedChannelType?: SupermarketChannelType | null;
+  retailerUrl?: string | null;
+  selectedItems: SupermarketGroupComparisonItem[];
+  members: SupermarketGroupOrderMember[];
+  items: SupermarketGroupOrderItem[];
+  canManage: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupermarketGroupComparisonItem {
+  requestedTerm: string;
+  requestedQuantity: number;
+  name: string;
+  store: SupermarketStore;
+  price: number;
+  quantity: number;
+  packUnits: number;
+  suppliedQuantity: number;
+  lineTotal: number;
+  productUrl?: string;
+}
+
+export interface SupermarketGroupComparison {
+  orderId: string;
+  store: SupermarketStore;
+  channelType: SupermarketChannelType;
+  subtotal: number;
+  complete: boolean;
+  missingTerms: string[];
+  items: SupermarketGroupComparisonItem[];
+  retailerUrl: string;
+}
+
 export interface CommunityProject {
   id: string;
   communityId?: string;

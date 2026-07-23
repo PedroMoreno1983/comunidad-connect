@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from scrape_jumbo_products import scrape as scrape_jumbo
-from scrape_supermarkets import parse_terms, scrape_lider, scrape_santa_isabel, scrape_unimarc
+from scrape_supermarkets import parse_terms, scrape_acuenta, scrape_irurzun, scrape_lider, scrape_santa_isabel, scrape_unimarc
 
 
 def utc_now() -> str:
@@ -50,7 +50,7 @@ def main() -> int:
         all_products.extend(jumbo_products)
         source_status.append(jumbo_status)
 
-        for scraper in (scrape_santa_isabel, scrape_lider, scrape_unimarc):
+        for scraper in (scrape_santa_isabel, scrape_lider, scrape_unimarc, scrape_acuenta, scrape_irurzun):
             products, status = scraper(query, args.limit)
             all_products.extend(asdict(product) for product in products)
             source_status.append(asdict(status))
