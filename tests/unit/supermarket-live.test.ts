@@ -15,6 +15,20 @@ describe('supermarket live catalog parsers', () => {
     ]);
   });
 
+  it('extracts fifteen independent products instead of truncating the list', () => {
+    const products = [
+      'arroz', 'leche', 'huevos', 'aceite', 'pan',
+      'tomates', 'cebolla', 'papas', 'detergente', 'papel higienico',
+      'cafe', 'azucar', 'sal', 'yogurt', 'avena',
+    ];
+
+    const result = extractSupermarketTerms(products.join(', '));
+
+    expect(result).toHaveLength(15);
+    expect(result[0]).toBe('arroz');
+    expect(result[14]).toBe('avena');
+  });
+
   it('reads Jumbo prices and offers from the public page state', () => {
     const state = {
       dehydratedState: {

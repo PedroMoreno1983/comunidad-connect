@@ -17,6 +17,9 @@ const migration = read('supabase/migrations/20260723120000_supermarket_group_who
 const selectedBasketMigration = read('supabase/migrations/20260723143000_supermarket_group_selected_basket.sql');
 const superadmin = read('src/app/api/superadmin/communities/route.ts');
 const sidebar = read('src/components/cc/Sidebar.tsx');
+const supermarketPage = read('src/app/(dashboard)/resident/supermercado/page.tsx');
+const supermarketApi = read('src/app/api/supermarket/route.ts');
+const supermarketLive = read('src/lib/supermarketLive.ts');
 
 expect('CoCo exposes the supermarket route', navigation.includes('"/resident/supermercado": "Supermercado"') && !navigation.includes('new Set(["/resident/supermercado"'));
 expect('Resident and admin sidebars expose the supermarket route', sidebar.includes('{ href: "/resident/supermercado", label: "Supermercado"') && sidebar.includes('roles: ["resident", "admin"]'));
@@ -33,6 +36,13 @@ expect('Wholesale comparison aggregates requested quantities', groupDomain.inclu
 expect('Prepared group orders remain visible after they are locked', groupUi.includes('visibleOrders') && groupUi.includes("order.status === 'locked'"));
 expect('The exact selected basket is persisted when an order is locked', selectedBasketMigration.includes('selected_items JSONB') && groupDomain.includes('selected_items: selected.items'));
 expect('Prepared group orders expose persisted direct product links', groupUi.includes('order.selectedItems') && groupUi.includes('Productos listos para abrir') && groupUi.includes('item.productUrl'));
+expect('Personal and community purchases are separate explicit flows', supermarketPage.includes('Comparar mi lista') && supermarketPage.includes('Comprar en comunidad') && supermarketPage.includes("mode === 'group' ? <GroupBuyPanel />"));
+expect('The personal flow reports complete request coverage', supermarketPage.includes('Encontramos {foundCount} de {requestedCount} productos') && supermarketApi.includes('requestedCount: requestedItems.length') && supermarketApi.includes('foundCount'));
+expect('Missing products remain visible instead of disappearing', supermarketPage.includes('Sin precio vigente') && supermarketApi.includes("source: 'missing'"));
+expect('Lists support at least fifteen independent search terms', supermarketLive.includes('MAX_SEARCH_TERMS = 20'));
+expect('Quantities and optional brands are explained to the shopper', supermarketPage.includes('Si no indicas cantidad') && supermarketPage.includes('Si no escribes una marca'));
+expect('Group orders provide a direct invitation link', groupUi.includes('?mode=group&order=') && groupUi.includes('Invitar'));
+expect('Prepared group orders expose a per-person settlement', groupDomain.includes('allocateGroupCosts') && groupUi.includes('Quién paga cuánto') && groupUi.includes('Debe pagar a'));
 expect('RLS isolates orders, members and items by community', ['supermarket_group_orders_read_community', 'supermarket_group_members_read_community', 'supermarket_group_items_read_community'].every(policy => migration.includes(policy)));
 expect('Platform audit is inaccessible to normal authenticated users', migration.includes('REVOKE ALL ON public.platform_operation_events FROM anon, authenticated'));
 expect('SuperAdmin lead changes are globally audited', superadmin.includes('superadmin.commercial_lead_status_changed'));
