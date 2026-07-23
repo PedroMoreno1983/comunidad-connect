@@ -282,7 +282,8 @@ export async function runMultiAgentTurn(
     courseContent?: string,
     userId?: string,
     communityId?: string,
-    userName?: string
+    userName?: string,
+    userRole: 'admin' | 'concierge' = 'concierge',
 ): Promise<ChatMessage[]> {
     const newResponses: ChatMessage[] = [];
     const geminiHistory: {role: MessageRole, text: string}[] = [];
@@ -389,7 +390,7 @@ export async function runMultiAgentTurn(
         const budgetContext = {
             communityId,
             userId,
-            role: 'resident',
+            role: userRole,
             module: 'training.multi_agent',
             actionType: 'chat' as const,
         };

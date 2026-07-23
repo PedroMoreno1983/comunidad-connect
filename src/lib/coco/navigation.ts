@@ -38,7 +38,7 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/feed": "Avisos Oficiales",
 };
 
-const COCO_HIDDEN_NAV_ROUTES = new Set(["/resident/supermercado", "/showcase", "/marketing/reels"]);
+const COCO_HIDDEN_NAV_ROUTES = new Set(["/showcase", "/marketing/reels"]);
 
 export function getSafeCoCoNavigation(target?: string): string | undefined {
     return target && target in COCO_NAV_MAP && !COCO_HIDDEN_NAV_ROUTES.has(target) ? target : undefined;

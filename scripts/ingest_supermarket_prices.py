@@ -15,7 +15,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from scrape_jumbo_products import scrape as scrape_jumbo
-from scrape_supermarkets import scrape_lider, scrape_santa_isabel, scrape_unimarc
+from scrape_supermarkets import scrape_acuenta, scrape_irurzun, scrape_lider, scrape_santa_isabel, scrape_unimarc
 
 
 DEFAULT_TERMS = (
@@ -68,7 +68,7 @@ def collect_snapshot(terms: list[str], limit: int) -> dict[str, Any]:
             "count": len(normalized_jumbo),
         })
 
-        for scraper in (scrape_santa_isabel, scrape_lider, scrape_unimarc):
+        for scraper in (scrape_santa_isabel, scrape_lider, scrape_unimarc, scrape_acuenta, scrape_irurzun):
             scraped_products, status = scraper(query, limit)
             products.extend(asdict(product) for product in scraped_products)
             source_status.append(asdict(status))

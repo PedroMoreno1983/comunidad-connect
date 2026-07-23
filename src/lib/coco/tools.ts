@@ -7,6 +7,15 @@
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { maybeCreateCoCoCase } from './caseService';
 import { PUBLIC_SITE_URL } from '@/lib/config';
+import {
+    compareSupermarketGroupOrder,
+    createSupermarketGroupOrder,
+    joinSupermarketGroupOrder,
+    listSupermarketGroupOrders,
+    lockSupermarketGroupOrder,
+    parseGroupShoppingList,
+} from '@/lib/supermarketGroupOrders';
+import type { UserRole } from '@/lib/types';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -310,6 +319,55 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    {
+        name: 'list_supermarket_group_orders',
+        description: 'Lista las compras grupales reales y sus aportes dentro de la comunidad autenticada.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'compare_supermarket_group_order',
+        description: 'Consolida cantidades de una compra grupal y compara canastas vigentes retail y mayoristas.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { order_id: { type: 'string', description: 'ID de la compra grupal.' } },
+            required: ['order_id'],
+        },
+    },
+    {
+        name: 'create_supermarket_group_order',
+        description: 'Crea una compra grupal real para la comunidad. Requiere confirmacion del usuario.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                title: { type: 'string', description: 'Nombre corto de la compra.' },
+                closes_at: { type: 'string', description: 'Fecha de cierre YYYY-MM-DD.' },
+                shopping_list: { type: 'string', description: 'Productos y cantidades, por ejemplo: arroz 2, leche 6.' },
+            },
+            required: ['title', 'closes_at', 'shopping_list'],
+        },
+    },
+    {
+        name: 'join_supermarket_group_order',
+        description: 'Suma productos y cantidades del usuario a una compra grupal abierta. Requiere confirmacion.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                order_id: { type: 'string' },
+                shopping_list: { type: 'string', description: 'Productos y cantidades que aporta el usuario.' },
+            },
+            required: ['order_id', 'shopping_list'],
+        },
+    },
+    {
+        name: 'lock_supermarket_group_order',
+        description: 'Cierra una compra grupal usando la mejor canasta completa vigente. Solo organizador o admin; requiere confirmacion.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { order_id: { type: 'string' } },
+            required: ['order_id'],
+        },
+    },
+
 ] as const;
 
 // ── Herramientas que mutan datos reales ──────────────────────────────────────
@@ -329,6 +387,9 @@ export const MUTATING_TOOLS = new Set<string>([
     'update_unit_data',
     'request_urgent_access_approval',
     'dispatch_provider',
+    'create_supermarket_group_order',
+    'join_supermarket_group_order',
+    'lock_supermarket_group_order',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -336,6 +397,8 @@ const RESIDENT_TOOLS = new Set([
     'search_marketplace', 'create_claim', 'get_claim_status', 'list_my_claims',
     'check_availability', 'create_reservation', 'create_social_post', 'list_active_polls',
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
+    'list_supermarket_group_orders', 'compare_supermarket_group_order',
+    'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -393,6 +456,12 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
             return { title: 'Proponer proveedor de emergencia', summary: str('details') || 'Identificar un proveedor y notificar al equipo para que confirme el despacho.' };
+        case 'create_supermarket_group_order':
+            return { title: 'Crear compra grupal', summary: `${str('title')}. Lista: ${str('shopping_list')}.` };
+        case 'join_supermarket_group_order':
+            return { title: 'Sumarme a la compra grupal', summary: str('shopping_list') || 'Agregar mis productos y cantidades.' };
+        case 'lock_supermarket_group_order':
+            return { title: 'Preparar compra grupal final', summary: 'Seleccionar la mejor canasta completa vigente y cerrar nuevos aportes.' };
         default:
             return { title: name, summary: 'Acción propuesta por CoCo.' };
     }
@@ -1122,6 +1191,69 @@ export async function executeTool(
                     message: provider
                         ? `Proveedor disponible sugerido: ${provider.name} (${provider.contact_phone}). Staff notificado para confirmar despacho.`
                         : `No encontré proveedor disponible para ${input.category}; staff notificado para gestión manual.`
+                };
+            }
+
+            case 'list_supermarket_group_orders': {
+                return listSupermarketGroupOrders({
+                    id: userCtx.user_id || '',
+                    role: (userCtx.role || 'resident') as UserRole,
+                    community_id: userCtx.community_id,
+                });
+            }
+
+            case 'compare_supermarket_group_order': {
+                return compareSupermarketGroupOrder({
+                    id: userCtx.user_id || '',
+                    role: (userCtx.role || 'resident') as UserRole,
+                    community_id: userCtx.community_id,
+                }, input.order_id);
+            }
+
+            case 'create_supermarket_group_order': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                const order = await createSupermarketGroupOrder({
+                    id: userCtx.user_id,
+                    role: (userCtx.role || 'resident') as UserRole,
+                    community_id: userCtx.community_id,
+                }, {
+                    title: input.title,
+                    closesAt: input.closes_at,
+                    items: parseGroupShoppingList(input.shopping_list),
+                });
+                return { success: true, order_id: order.id, title: order.title, members: order.members.length, items: order.items.length };
+            }
+
+            case 'join_supermarket_group_order': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                const order = await joinSupermarketGroupOrder({
+                    id: userCtx.user_id,
+                    role: (userCtx.role || 'resident') as UserRole,
+                    community_id: userCtx.community_id,
+                }, input.order_id, parseGroupShoppingList(input.shopping_list));
+                return { success: true, order_id: order.id, title: order.title, members: order.members.length, items: order.items.length };
+            }
+
+            case 'lock_supermarket_group_order': {
+                if (!userCtx.user_id) return forbidden('No pude identificar al usuario.');
+                const order = await lockSupermarketGroupOrder({
+                    id: userCtx.user_id,
+                    role: (userCtx.role || 'resident') as UserRole,
+                    community_id: userCtx.community_id,
+                }, input.order_id);
+                return {
+                    success: true,
+                    order_id: order.id,
+                    selected_store: order.selectedStore || '',
+                    selected_total: String(order.selectedTotal || ''),
+                    retailer_url: order.retailerUrl || '',
+                    selected_items: order.selectedItems.map(item => ({
+                        name: item.name,
+                        requested_quantity: item.requestedQuantity,
+                        packs: item.quantity,
+                        pack_units: item.packUnits,
+                        product_url: item.productUrl || '',
+                    })),
                 };
             }
 

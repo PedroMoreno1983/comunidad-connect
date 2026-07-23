@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
+const { loadEnvFile } = require('./load-env');
 const { createClient } = require('@supabase/supabase-js');
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local'), quiet: true });
+loadEnvFile();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
