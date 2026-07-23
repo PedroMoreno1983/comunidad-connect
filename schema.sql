@@ -541,15 +541,15 @@ BEGIN
 
   SELECT c.id,
          CASE
-           WHEN c.resident_code = v_invite_code THEN 'resident'
-           WHEN c.concierge_code = v_invite_code THEN 'concierge'
-           WHEN c.admin_code = v_invite_code THEN 'admin'
+           WHEN UPPER(c.resident_code) = v_invite_code THEN 'resident'
+           WHEN UPPER(c.concierge_code) = v_invite_code THEN 'concierge'
+           WHEN UPPER(c.admin_code) = v_invite_code THEN 'admin'
          END
     INTO v_community_id, v_role
   FROM public.communities c
-  WHERE c.resident_code = v_invite_code
-     OR c.concierge_code = v_invite_code
-     OR c.admin_code = v_invite_code
+  WHERE UPPER(c.resident_code) = v_invite_code
+     OR UPPER(c.concierge_code) = v_invite_code
+     OR UPPER(c.admin_code) = v_invite_code
   LIMIT 1;
 
   IF v_community_id IS NULL OR v_role IS NULL THEN

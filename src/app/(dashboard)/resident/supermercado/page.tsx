@@ -32,11 +32,13 @@ interface CartItem {
     store?: string;
     originalPrice?: number;
     isOffer?: boolean;
+    productUrl?: string;
+    requestedTerm?: string;
     checked: boolean;
 }
 
 const STORE_URLS: Record<string, string> = {
-    Lider: "https://www.lider.cl",
+    Lider: "https://super.lider.cl",
     Jumbo: "https://www.jumbo.cl",
     Unimarc: "https://www.unimarc.cl",
     "Santa Isabel": "https://www.santaisabel.cl",
@@ -55,6 +57,10 @@ export default function SupermarketPage() {
     const [newItem, setNewItem] = useState("");
     const [loading, setLoading] = useState(false);
     const [aiInput, setAiInput] = useState("");
+    const [recommendedStore, setRecommendedStore] = useState<string | null>(null);
+    const [basketReady, setBasketReady] = useState(false);
+    const [basketSubtotal, setBasketSubtotal] = useState(0);
+    const [checkoutIndex, setCheckoutIndex] = useState(0);
 
     const addItem = (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -83,16 +89,25 @@ export default function SupermarketPage() {
             const data = await response.json();
             
             if (data.items && data.items.length > 0) {
-                // Remove duplicates and append new
-                const existingNames = list.map(i => i.name.toLowerCase());
-                const filteredNewItems = data.items.filter((i: CartItem) => !existingNames.includes(i.name.toLowerCase()));
-                
-                setList([...list, ...filteredNewItems]);
+                setList(data.items);
+                setRecommendedStore(data.recommendedStore ?? null);
+                setBasketReady(Boolean(data.basketReady));
+                setBasketSubtotal(data.basketSubtotal ?? 0);
+                setCheckoutIndex(0);
                 setAiInput("");
+
+                if (!data.basketReady) {
+                    toast({
+                        title: "Canasta incompleta",
+                        description: data.message,
+                    });
+                    return;
+                }
+
                 toast({
-                    title: "Lista Inteligente Generada",
-                    description: "Encontré los mejores precios para ti.",
-                    variant: "success"
+                    title: "Canasta completa recomendada",
+                    description: data.message,
+                    variant: "success",
                 });
             } else {
                 toast({
@@ -114,6 +129,11 @@ export default function SupermarketPage() {
     const totalAmount = list.reduce((sum, item) => sum + (item.price || 0), 0);
     const exportDisabled = list.length === 0;
     const usedStores = Array.from(new Set(list.map(item => item.store).filter((store): store is string => !!store && store in STORE_URLS)));
+    const checkoutItems = list.filter(
+        (item): item is CartItem & { productUrl: string } => Boolean(item.productUrl),
+    );
+    const checkoutFinished = checkoutItems.length > 0 && checkoutIndex >= checkoutItems.length;
+    const checkoutUrl = checkoutFinished ? (recommendedStore ? STORE_URLS[recommendedStore] : undefined) : checkoutItems[checkoutIndex]?.productUrl;
 
     const buildListText = () => [
         "Lista de compras Convive Connect",
@@ -142,6 +162,26 @@ export default function SupermarketPage() {
             }
         }
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    };
+
+    const handleCheckoutStep = () => {
+        if (checkoutFinished || !basketReady || !recommendedStore || checkoutItems.length === 0) return;
+
+        const openedPosition = checkoutIndex + 1;
+        setCheckoutIndex(openedPosition);
+        if (checkoutIndex === 0 && navigator.clipboard) {
+            void navigator.clipboard.writeText(buildListText()).catch(() => {
+                // The product link remains useful if clipboard permission is denied.
+            });
+        }
+
+        toast({
+            title: `Producto ${openedPosition} de ${checkoutItems.length}`,
+            description: openedPosition === checkoutItems.length
+                ? `Último producto abierto. Agrégalo y continúa en ${recommendedStore} para revisar el carrito.`
+                : "Agrégalo en el supermercado, vuelve a Convive y abre el siguiente.",
+            variant: "success",
+        });
     };
 
     const handleExportList = () => {
@@ -278,6 +318,16 @@ export default function SupermarketPage() {
                                                         )}
                                                     </div>
                                                 )}
+                                                {item.productUrl && (
+                                                    <a
+                                                        href={item.productUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[var(--cc-copper)] hover:underline"
+                                                    >
+                                                        Abrir producto <ExternalLink className="h-3 w-3" />
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                         <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-[var(--cc-ink-faint)] hover:text-[var(--cc-rose)] transition-colors">
@@ -371,6 +421,36 @@ export default function SupermarketPage() {
                             </div>
                         </div>
                         <div className="space-y-4">
+                            {recommendedStore && basketReady && (
+                                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--cc-sage)" }}>
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Mejor canasta completa</p>
+                                        <p className="text-lg font-bold cc-text-primary">{recommendedStore}</p>
+                                        <p className="text-sm font-semibold text-success-fg">${basketSubtotal.toLocaleString("es-CL")} en productos</p>
+                                    </div>
+                                    {checkoutUrl && (
+                                        <a
+                                            href={checkoutUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={handleCheckoutStep}
+                                            aria-disabled={loading}
+                                            className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold text-white ${loading ? "pointer-events-none opacity-50" : ""}`}
+                                            style={{ background: "var(--cc-ink)" }}
+                                        >
+                                            {checkoutFinished
+                                                ? `Continuar en ${recommendedStore}`
+                                                : `Abrir producto ${checkoutIndex + 1} de ${checkoutItems.length}`}
+                                            <ExternalLink className="ml-2 h-4 w-4" />
+                                        </a>
+                                    )}
+                                    <p className="text-xs cc-text-tertiary">
+                                        {checkoutFinished
+                                            ? "Ya recorriste todos los productos. Revisa el carrito y confirma disponibilidad antes de pagar."
+                                            : "Agrega el producto abierto, vuelve aquí y continúa con el siguiente. No necesitas buscarlo."}
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--cc-paper-warm)" }}>
                                 <div className="h-8 w-8 rounded-lg" style={{ background: "var(--cc-copper-tint)" }} />
                                 <span className="text-sm font-bold cc-text-secondary">Canal supermercado comunidad</span>
@@ -386,7 +466,7 @@ export default function SupermarketPage() {
                                             className="flex-1 min-w-[45%] rounded-xl border p-3 text-center text-sm font-bold cc-text-secondary transition-colors hover:bg-[var(--cc-paper-warm)] flex items-center justify-center gap-1.5"
                                             style={{ borderColor: "var(--cc-line)" }}
                                         >
-                                            Ir a {store} <ExternalLink className="h-3.5 w-3.5" />
+                                            Continuar en {store} <ExternalLink className="h-3.5 w-3.5" />
                                         </a>
                                     ))}
                                 </div>

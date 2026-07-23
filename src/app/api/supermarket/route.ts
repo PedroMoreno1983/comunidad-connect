@@ -1,53 +1,126 @@
-import { NextRequest, NextResponse } from "next/server";
-import { agent } from "@/lib/agentBrain";
+import { randomUUID } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
+import { extractSupermarketTerms, searchLiveSupermarkets } from '@/lib/supermarketLive';
+import { createClient } from '@/lib/supabase/server';
 
-interface CartItemUI {
-    id: string;
-    name: string;
-    price: number;
-    store: string;
-    originalPrice?: number;
-    isOffer?: boolean;
-    checked: boolean;
-}
+export const runtime = 'nodejs';
+
+const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+const STORE_URLS: Record<string, string> = {
+  Jumbo: 'https://www.jumbo.cl',
+  Lider: 'https://super.lider.cl',
+  'Santa Isabel': 'https://www.santaisabel.cl',
+  Unimarc: 'https://www.unimarc.cl',
+};
 
 export async function POST(req: NextRequest) {
-    try {
-        const body = await req.json();
-        const { message } = body;
-
-        // Process message with the supermarket agent
-        // The agent currently has a processMessage method that looks for products in the text
-        const response = await agent.processMessage(message);
-
-        // We use the agent to get suggested items, but since its interface might be limited
-        // let's do a direct keyword search here too to ensure robustness for the frontend 
-        // Find products from the catalog that match keywords in the message
-        let newItems: CartItemUI[] = [];
-        
-        if (response.cart?.items) {
-             newItems = response.cart.items.map(item => ({
-                 id: Math.random().toString(),
-                 name: item.name,
-                 price: item.price,
-                 store: item.store,
-                 originalPrice: item.originalPrice,
-                 isOffer: item.isOffer,
-                 checked: false
-             }));
-        }
-
-        return NextResponse.json({
-            message: response.message,
-            items: newItems,
-            rawCart: response.cart
-        });
-        
-    } catch (error) {
-        console.error("Supermarket API Error:", error);
-        return NextResponse.json(
-            { error: "Error procesando la lista de supermercado" },
-            { status: 500 }
-        );
+  try {
+    const supabaseUser = await createClient();
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
+
+    const body: unknown = await req.json();
+    const message = body !== null && typeof body === 'object' && 'message' in body
+      ? (body as Record<string, unknown>).message
+      : undefined;
+
+    if (typeof message !== 'string' || message.trim().length < 2 || message.length > 300) {
+      return NextResponse.json(
+        { error: 'Escribe entre 2 y 300 caracteres para buscar productos.' },
+        { status: 400 },
+      );
+    }
+
+    const terms = extractSupermarketTerms(message.trim());
+    if (terms.length === 0) {
+      return NextResponse.json({
+        message: 'Indica uno o más productos para buscar precios reales.',
+        items: [],
+      });
+    }
+
+    try {
+      const comparison = await comparePersistedSupermarkets(terms);
+      const selected = comparison.recommended ?? comparison.bestAvailable;
+      if (selected) {
+        const ready = selected.complete;
+        return NextResponse.json({
+          message: ready
+            ? `Canasta completa seleccionada en ${selected.store} por $${selected.subtotal.toLocaleString('es-CL')}.`
+            : `${selected.store} cubre ${selected.coveredCount} de ${selected.requestedCount} productos; ninguna tienda cubre todavía la lista completa.`,
+          items: selected.items,
+          fetchedAt: selected.fetchedAt ?? new Date().toISOString(),
+          mode: 'persisted_basket',
+          recommendedStore: ready ? selected.store : null,
+          basketSubtotal: selected.subtotal,
+          basketReady: ready,
+          missingTerms: selected.missingTerms,
+          basketComparison: comparison.comparisons.map(basket => ({
+            store: basket.store,
+            subtotal: basket.subtotal,
+            coveredCount: basket.coveredCount,
+            requestedCount: basket.requestedCount,
+            coveragePercent: basket.coveragePercent,
+            missingTerms: basket.missingTerms,
+            complete: basket.complete,
+          })),
+          checkout: {
+            status: ready ? 'ready_for_assisted_checkout' : 'missing_products',
+            store: selected.store,
+            storeUrl: STORE_URLS[selected.store],
+            productUrls: selected.items.flatMap(item => item.productUrl ? [item.productUrl] : []),
+            requiresRetailerSession: true,
+            cartPreloaded: false,
+            detail: 'El supermercado exige que las acciones Agregar se ejecuten dentro de la sesión del comprador.',
+          },
+          sources: STORES.map(store => ({
+            store,
+            status: comparison.comparisons.some(basket => basket.store === store)
+              ? 'ok'
+              : store === 'Unimarc' ? 'unavailable' : 'no_results',
+          })),
+        });
+      }
+    } catch (error) {
+      console.warn('[supermarket] persisted catalog unavailable, using live fallback:', error);
+    }
+
+    const result = await searchLiveSupermarkets(message.trim());
+    const fetchedAt = new Date().toISOString();
+    const items = result.items.map(item => ({
+      id: randomUUID(),
+      name: item.name,
+      brand: item.brand,
+      quantity: item.quantity,
+      price: item.price,
+      store: item.store,
+      originalPrice: item.originalPrice,
+      isOffer: item.isOffer ?? false,
+      checked: false,
+      fetchedAt,
+    }));
+
+    return NextResponse.json({
+      message: `${result.message} No fue posible comparar una canasta completa con datos persistidos.`,
+      items,
+      fetchedAt,
+      mode: 'live_fallback',
+      basketReady: false,
+      sources: STORES.map(store => ({
+        store,
+        status: items.some(item => item.store === store)
+          ? 'ok'
+          : store === 'Unimarc' ? 'unavailable' : 'no_results',
+      })),
+    });
+  } catch (error) {
+    console.error('Supermarket search error:', error);
+    return NextResponse.json(
+      { error: 'No fue posible consultar los supermercados en este momento.' },
+      { status: 502 },
+    );
+  }
 }
