@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { resolveProductCapabilities } from '../../src/lib/productCapabilities';
 
 describe('resolveProductCapabilities', () => {
-  it('hides every deferred commercial surface by default', () => {
+  it('exposes the operational IoT capability while hiding deferred commercial surfaces', () => {
     expect(resolveProductCapabilities({})).toEqual({
       onlinePayments: false,
       marketingReels: false,
-      iotAutomation: false,
+      iotAutomation: true,
       externalMonitoring: false,
       supermarketOrdering: false,
     });
