@@ -1,15 +1,62 @@
 import { describe, expect, it } from 'vitest';
 import { buildBasketComparison } from '@/lib/supermarketBasket';
-import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { allocateGroupCosts, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 
 describe('supermarket group orders', () => {
-  it('parses and consolidates quantities without trusting arbitrary values', () => {
+  it('parses and consolidates mixed quantity formats without dropping unquantified products', () => {
     expect(parseGroupShoppingList('arroz 2, leche x 6, arroz 3, aceite')).toEqual([
       { term: 'arroz', quantity: 5 },
       { term: 'leche', quantity: 6 },
       { term: 'aceite', quantity: 1 },
     ]);
+    expect(parseGroupShoppingList('2 arroz\n3 x huevos\npan (4)\nyogurt')).toEqual([
+      { term: 'arroz', quantity: 2 },
+      { term: 'huevos', quantity: 3 },
+      { term: 'pan', quantity: 4 },
+      { term: 'yogurt', quantity: 1 },
+    ]);
     expect(parseGroupShoppingList('arroz 9999, x, leche 0')).toEqual([]);
+  });
+
+  it('keeps all fifteen requested products and defaults missing quantities to one', () => {
+    const result = parseGroupShoppingList([
+      '2 arroz',
+      'leche',
+      'huevos x 12',
+      'aceite',
+      'pan 2',
+      'tomates',
+      'cebolla 3',
+      'papas',
+      'detergente',
+      'papel higiénico 2',
+      'café',
+      'azúcar',
+      'sal',
+      'yogurt 6',
+      'avena',
+    ].join('\n'));
+
+    expect(result).toHaveLength(15);
+    expect(result).toContainEqual({ term: 'arroz', quantity: 2 });
+    expect(result).toContainEqual({ term: 'leche', quantity: 1 });
+    expect(result).toContainEqual({ term: 'huevos', quantity: 12 });
+    expect(result).toContainEqual({ term: 'avena', quantity: 1 });
+  });
+
+  it('allocates the prepared basket exactly by each participant contribution', () => {
+    const allocation = allocateGroupCosts([
+      { userId: 'ana', term: 'arroz', quantity: 2 },
+      { userId: 'bea', term: 'arroz', quantity: 1 },
+      { userId: 'ana', term: 'leche', quantity: 1 },
+      { userId: 'bea', term: 'leche', quantity: 3 },
+    ], [
+      { requestedTerm: 'arroz', lineTotal: 3000 },
+      { requestedTerm: 'leche', lineTotal: 4000 },
+    ], 'ana');
+
+    expect(allocation).toEqual({ ana: 3000, bea: 4000 });
+    expect(Object.values(allocation).reduce((sum, amount) => sum + amount, 0)).toBe(7000);
   });
 
   it('compares total packs for an aggregated group quantity', () => {
