@@ -16,8 +16,10 @@ const groupUi = read('src/components/resident/supermarket/GroupBuyPanel.tsx');
 const migration = read('supabase/migrations/20260723120000_supermarket_group_wholesale.sql');
 const selectedBasketMigration = read('supabase/migrations/20260723143000_supermarket_group_selected_basket.sql');
 const superadmin = read('src/app/api/superadmin/communities/route.ts');
+const sidebar = read('src/components/cc/Sidebar.tsx');
 
 expect('CoCo exposes the supermarket route', navigation.includes('"/resident/supermercado": "Supermercado"') && !navigation.includes('new Set(["/resident/supermercado"'));
+expect('Resident and admin sidebars expose the supermarket route', sidebar.includes('{ href: "/resident/supermercado", label: "Supermercado"') && sidebar.includes('roles: ["resident", "admin"]'));
 expect('CoCo states the external purchase boundary', prompt.includes('Nunca digas que Convive realizo la compra'));
 expect('Group mutations require CoCo confirmation', ['create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order'].every(name => tools.includes(`'${name}'`)));
 expect('Group route authenticates a stored profile', groupRoute.includes('getAuthenticatedAgentProfile'));
