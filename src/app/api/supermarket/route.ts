@@ -1,18 +1,80 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { extractSupermarketTerms, buildLiveBasketComparison } from '@/lib/supermarketLive';
+import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
+import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
-const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
 const STORE_URLS: Record<string, string> = {
   Jumbo: 'https://www.jumbo.cl',
   Lider: 'https://super.lider.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
   Unimarc: 'https://www.unimarc.cl',
+  aCuenta: 'https://www.acuenta.cl',
+  Irurzun: 'https://irurzun.cl',
 };
+
+type SupermarketResultItem = {
+  id: string;
+  name: string;
+  brand?: string;
+  requestedTerm: string;
+  requestedQuantity: number;
+  quantity: number;
+  packUnits: number;
+  suppliedQuantity: number;
+  price: number;
+  lineTotal: number;
+  store?: string;
+  productUrl?: string;
+  originalPrice?: number;
+  isOffer?: boolean;
+  checked: boolean;
+  available: boolean;
+  source: 'catalog' | 'live' | 'missing';
+  fetchedAt?: string;
+};
+
+interface RequestedItem {
+  term: string;
+  quantity: number;
+}
+
+function toSupermarketResultItem(
+  item: Record<string, unknown>,
+  requested: RequestedItem,
+  source: SupermarketResultItem['source'],
+): SupermarketResultItem {
+  const price = typeof item.price === 'number' ? item.price : 0;
+  const requestedQuantity = requested.quantity;
+  const packUnits = typeof item.packUnits === 'number' ? item.packUnits : 1;
+  const packs = Math.max(1, Math.ceil(requestedQuantity / packUnits));
+  const suppliedQuantity = packs * packUnits;
+  return {
+    id: typeof item.id === 'string' ? item.id : randomUUID(),
+    name: typeof item.name === 'string' ? item.name : requested.term,
+    brand: typeof item.brand === 'string' ? item.brand : undefined,
+    requestedTerm: requested.term,
+    requestedQuantity,
+    quantity: packs,
+    packUnits,
+    suppliedQuantity,
+    price,
+    lineTotal: price * packs,
+    store: typeof item.store === 'string' ? item.store : undefined,
+    productUrl: typeof item.productUrl === 'string' ? item.productUrl : undefined,
+    originalPrice: typeof item.originalPrice === 'number' ? item.originalPrice : undefined,
+    isOffer: typeof item.isOffer === 'boolean' ? item.isOffer : undefined,
+    checked: false,
+    available: source !== 'missing',
+    source,
+    fetchedAt: typeof item.fetchedAt === 'string' ? item.fetchedAt : undefined,
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,38 +89,96 @@ export async function POST(req: NextRequest) {
       ? (body as Record<string, unknown>).message
       : undefined;
 
-    if (typeof message !== 'string' || message.trim().length < 2 || message.length > 300) {
+    if (typeof message !== 'string' || message.trim().length < 2 || message.length > 1_500) {
       return NextResponse.json(
-        { error: 'Escribe entre 2 y 300 caracteres para buscar productos.' },
+        { error: 'Escribe entre 2 y 1.500 caracteres para buscar productos.' },
         { status: 400 },
       );
     }
 
-    const termInfos = extractSupermarketTerms(message.trim());
-    if (termInfos.length === 0) {
+    const requestedItems = parseGroupShoppingList(message.trim());
+    const terms = requestedItems.map((item: RequestedItem) => item.term);
+    const requestedQuantities = Object.fromEntries(requestedItems.map((item: RequestedItem) => [item.term, item.quantity]));
+    if (terms.length === 0) {
       return NextResponse.json({
         message: 'Indica uno o más productos para buscar precios reales.',
         items: [],
       });
     }
-    const terms = termInfos.map(t => t.term);
 
     try {
-      const comparison = await comparePersistedSupermarkets(terms);
+      const comparison = await comparePersistedSupermarkets(terms, requestedQuantities);
       const selected = comparison.recommended ?? comparison.bestAvailable;
       if (selected) {
         const ready = selected.complete;
+        const persistedByTerm = new Map<string, SupermarketResultItem>(
+          selected.items.map((item: Record<string, unknown>) => {
+            const term = typeof item.requestedTerm === 'string' ? item.requestedTerm : '';
+            const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
+            return [term, toSupermarketResultItem(item, req, 'catalog')];
+          })
+        );
+        const liveItems = selected.missingTerms.length > 0
+          ? (await searchLiveSupermarkets(selected.missingTerms.join(', '))).items
+          : [];
+        const liveByTerm = new Map<string, SupermarketResultItem>(
+          liveItems.map(item => {
+            const term = item.requestedTerm || item.query || '';
+            const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
+            return [term, toSupermarketResultItem({
+              id: randomUUID(),
+              name: item.name,
+              brand: item.brand,
+              price: item.price,
+              store: item.store,
+              productUrl: item.productUrl,
+              originalPrice: item.originalPrice,
+              isOffer: item.isOffer,
+              fetchedAt: new Date().toISOString(),
+            }, req, 'live')];
+          })
+        );
+        const items: SupermarketResultItem[] = requestedItems.map((requested: RequestedItem) => (
+          persistedByTerm.get(requested.term)
+          || liveByTerm.get(requested.term)
+          || {
+            id: randomUUID(),
+            name: requested.term,
+            brand: '',
+            requestedTerm: requested.term,
+            requestedQuantity: requested.quantity,
+            quantity: requested.quantity,
+            packUnits: 1,
+            suppliedQuantity: requested.quantity,
+            price: 0,
+            lineTotal: 0,
+            store: undefined,
+            productUrl: undefined,
+            originalPrice: undefined,
+            isOffer: false,
+            checked: false,
+            available: false,
+            source: 'missing',
+          }
+        ));
+        const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
+        const foundCount = items.length - missingTerms.length;
+        const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
         return NextResponse.json({
           message: ready
             ? `Canasta completa seleccionada en ${selected.store} por $${selected.subtotal.toLocaleString('es-CL')}.`
-            : `${selected.store} cubre ${selected.coveredCount} de ${selected.requestedCount} productos; ninguna tienda cubre todavía la lista completa.`,
-          items: selected.items,
+            : `Encontré ${foundCount} de ${requestedItems.length} productos. Los faltantes siguen visibles para que puedas corregirlos o intentar otra descripción.`,
+          items,
           fetchedAt: selected.fetchedAt ?? new Date().toISOString(),
-          mode: 'persisted_basket',
+          mode: ready ? 'persisted_basket' : 'mixed_catalog_live',
           recommendedStore: ready ? selected.store : null,
-          basketSubtotal: selected.subtotal,
+          basketSubtotal: subtotal,
           basketReady: ready,
-          missingTerms: selected.missingTerms,
+          requestedCount: requestedItems.length,
+          foundCount,
+          missingTerms,
+          requestedItems,
+          alternativesByTerm: comparison.alternativesByTerm,
           basketComparison: comparison.comparisons.map(basket => ({
             store: basket.store,
             subtotal: basket.subtotal,
@@ -72,14 +192,14 @@ export async function POST(req: NextRequest) {
             status: ready ? 'ready_for_assisted_checkout' : 'missing_products',
             store: selected.store,
             storeUrl: STORE_URLS[selected.store],
-            productUrls: selected.items.flatMap(item => item.productUrl ? [item.productUrl] : []),
+            productUrls: items.flatMap(item => item.productUrl ? [item.productUrl] : []),
             requiresRetailerSession: true,
             cartPreloaded: false,
             detail: 'El supermercado exige que las acciones Agregar se ejecuten dentro de la sesión del comprador.',
           },
           sources: STORES.map(store => ({
             store,
-            status: comparison.comparisons.some(basket => basket.store === store)
+            status: items.some(item => item.store === store) || comparison.comparisons.some(basket => basket.store === store)
               ? 'ok'
               : store === 'Unimarc' ? 'unavailable' : 'no_results',
           })),
@@ -89,49 +209,104 @@ export async function POST(req: NextRequest) {
       console.warn('[supermarket] persisted catalog unavailable, using live fallback:', error);
     }
 
+    // Fallback live con buildLiveBasketComparison para obtener canastas por tienda
     const result = await buildLiveBasketComparison(message.trim());
     const fetchedAt = new Date().toISOString();
     const best = result.recommendedBasket;
 
     if (!best) {
+      // Legacy fallback con searchLiveSupermarkets
+      const legacyResult = await searchLiveSupermarkets(terms.join(', '));
+      const liveByTerm = new Map(legacyResult.items.map(item => [item.requestedTerm || item.query || '', item]));
+      const items: SupermarketResultItem[] = requestedItems.map((requested: RequestedItem) => {
+        const item = liveByTerm.get(requested.term);
+        if (!item) {
+          return {
+            id: randomUUID(),
+            name: requested.term,
+            brand: '',
+            requestedTerm: requested.term,
+            requestedQuantity: requested.quantity,
+            quantity: requested.quantity,
+            packUnits: 1,
+            suppliedQuantity: requested.quantity,
+            price: 0,
+            lineTotal: 0,
+            store: undefined,
+            productUrl: undefined,
+            originalPrice: undefined,
+            isOffer: false,
+            checked: false,
+            available: false,
+            source: 'missing',
+            fetchedAt,
+          };
+        }
+        return toSupermarketResultItem({
+          id: randomUUID(),
+          name: item.name,
+          brand: item.brand,
+          price: item.price,
+          store: item.store,
+          productUrl: item.productUrl,
+          originalPrice: item.originalPrice,
+          isOffer: item.isOffer,
+          fetchedAt,
+        }, requested, 'live');
+      });
+      const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
+
       return NextResponse.json({
-        message: result.message,
-        items: [],
+        message: `Encontré ${items.length - missingTerms.length} de ${items.length} productos en fuentes públicas. No hay una canasta completa de una sola tienda.`,
+        items,
         fetchedAt,
         mode: 'live_fallback',
         basketReady: false,
+        requestedCount: requestedItems.length,
+        foundCount: items.length - missingTerms.length,
+        missingTerms,
+        requestedItems,
         sources: STORES.map(store => ({
           store,
-          status: store === 'Unimarc' ? 'unavailable' : 'no_results',
+          status: legacyResult.items.some(i => i.store === store)
+            ? 'ok'
+            : store === 'Unimarc' ? 'unavailable' : 'no_results',
         })),
       });
     }
 
+    // Construir respuesta con formato de master usando la canasta de buildLiveBasketComparison
     const ready = best.complete;
-    const items = best.items.map(item => ({
-      id: randomUUID(),
-      name: item.name,
-      brand: item.brand,
-      quantity: item.quantity,
-      userQuantity: item.userQuantity,
-      totalPrice: item.totalPrice,
-      price: item.price,
-      store: item.store,
-      originalPrice: item.originalPrice,
-      isOffer: item.isOffer ?? false,
-      checked: false,
-      fetchedAt,
-    }));
+    const items: SupermarketResultItem[] = best.items.map(item => {
+      const req = requestedItems.find((r: RequestedItem) => r.term === item.query) ?? { term: item.query, quantity: item.userQuantity ?? 1 };
+      return toSupermarketResultItem({
+        id: randomUUID(),
+        name: item.name,
+        brand: item.brand,
+        price: item.price,
+        store: item.store,
+        productUrl: item.productUrl,
+        originalPrice: item.originalPrice,
+        isOffer: item.isOffer,
+        fetchedAt,
+      }, req, 'live');
+    });
+
+    const missingTerms = best.missingTerms;
+    const foundCount = items.length;
 
     return NextResponse.json({
       message: result.message,
       items,
       fetchedAt,
-      mode: 'live_fallback',
+      mode: 'live_basket',
       recommendedStore: ready ? best.store : null,
       basketSubtotal: best.subtotal,
       basketReady: ready,
-      missingTerms: best.missingTerms,
+      requestedCount: requestedItems.length,
+      foundCount,
+      missingTerms,
+      requestedItems,
       basketComparison: result.basketComparison?.map(basket => ({
         store: basket.store,
         subtotal: basket.subtotal,
