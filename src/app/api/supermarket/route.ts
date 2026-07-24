@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { extractSupermarketTerms, searchLiveSupermarkets } from '@/lib/supermarketLive';
+import { extractSupermarketTerms, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -34,13 +34,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const terms = extractSupermarketTerms(message.trim());
-    if (terms.length === 0) {
+    const termInfos = extractSupermarketTerms(message.trim());
+    if (termInfos.length === 0) {
       return NextResponse.json({
         message: 'Indica uno o más productos para buscar precios reales.',
         items: [],
       });
     }
+    const terms = termInfos.map(t => t.term);
 
     try {
       const comparison = await comparePersistedSupermarkets(terms);
@@ -88,13 +89,32 @@ export async function POST(req: NextRequest) {
       console.warn('[supermarket] persisted catalog unavailable, using live fallback:', error);
     }
 
-    const result = await searchLiveSupermarkets(message.trim());
+    const result = await buildLiveBasketComparison(message.trim());
     const fetchedAt = new Date().toISOString();
-    const items = result.items.map(item => ({
+    const best = result.recommendedBasket;
+
+    if (!best) {
+      return NextResponse.json({
+        message: result.message,
+        items: [],
+        fetchedAt,
+        mode: 'live_fallback',
+        basketReady: false,
+        sources: STORES.map(store => ({
+          store,
+          status: store === 'Unimarc' ? 'unavailable' : 'no_results',
+        })),
+      });
+    }
+
+    const ready = best.complete;
+    const items = best.items.map(item => ({
       id: randomUUID(),
       name: item.name,
       brand: item.brand,
       quantity: item.quantity,
+      userQuantity: item.userQuantity,
+      totalPrice: item.totalPrice,
       price: item.price,
       store: item.store,
       originalPrice: item.originalPrice,
@@ -104,14 +124,36 @@ export async function POST(req: NextRequest) {
     }));
 
     return NextResponse.json({
-      message: `${result.message} No fue posible comparar una canasta completa con datos persistidos.`,
+      message: result.message,
       items,
       fetchedAt,
       mode: 'live_fallback',
-      basketReady: false,
+      recommendedStore: ready ? best.store : null,
+      basketSubtotal: best.subtotal,
+      basketReady: ready,
+      missingTerms: best.missingTerms,
+      basketComparison: result.basketComparison?.map(basket => ({
+        store: basket.store,
+        subtotal: basket.subtotal,
+        coveredCount: basket.coveredCount,
+        requestedCount: basket.requestedCount,
+        coveragePercent: basket.coveragePercent,
+        missingTerms: basket.missingTerms,
+        complete: basket.complete,
+      })),
+      degradedStores: result.degradedStores,
+      checkout: {
+        status: ready ? 'ready_for_assisted_checkout' : 'missing_products',
+        store: best.store,
+        storeUrl: STORE_URLS[best.store],
+        productUrls: best.items.flatMap(item => item.productUrl ? [item.productUrl] : []),
+        requiresRetailerSession: true,
+        cartPreloaded: false,
+        detail: 'El supermercado exige que las acciones Agregar se ejecuten dentro de la sesión del comprador.',
+      },
       sources: STORES.map(store => ({
         store,
-        status: items.some(item => item.store === store)
+        status: result.basketComparison?.some(b => b.store === store)
           ? 'ok'
           : store === 'Unimarc' ? 'unavailable' : 'no_results',
       })),
