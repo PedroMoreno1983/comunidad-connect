@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractSupermarketTerms,
+  extractQuantity,
   parseJumboProducts,
   parseLiderProducts,
   parseSantaIsabelProducts,
@@ -8,11 +9,34 @@ import {
 
 describe('supermarket live catalog parsers', () => {
   it('extracts a bounded shopping list from natural language', () => {
-    expect(extractSupermarketTerms('Necesito comprar: arroz, leche y huevos')).toEqual([
-      'arroz',
-      'leche',
-      'huevos',
-    ]);
+    const terms = extractSupermarketTerms('Necesito comprar: arroz, leche y huevos');
+    expect(terms.map(t => t.term)).toEqual(['arroz', 'leche', 'huevos']);
+    expect(terms.every(t => t.quantity === 1)).toBe(true);
+  });
+
+  it('extracts quantities from natural language', () => {
+    const terms = extractSupermarketTerms('5 kilos de arroz, 2 litros de leche');
+    expect(terms[0].term).toBe('arroz');
+    expect(terms[0].quantity).toBe(5);
+    expect(terms[0].unit).toBe('kg');
+    expect(terms[1].term).toBe('leche');
+    expect(terms[1].quantity).toBe(2);
+    expect(terms[1].unit).toBe('l');
+  });
+
+  it('extracts explicit brands and prioritizes them', () => {
+    const terms = extractSupermarketTerms('leche Soprole, arroz Tucapel');
+    expect(terms[0].term).toBe('leche');
+    expect(terms[0].explicitBrand).toBe('soprole');
+    expect(terms[1].term).toBe('arroz');
+    expect(terms[1].explicitBrand).toBe('tucapel');
+  });
+
+  it('extractQuantity parses various formats', () => {
+    expect(extractQuantity('5 kilos de arroz')).toEqual({ quantity: 5, unit: 'kg', cleanTerm: 'arroz' });
+    expect(extractQuantity('2 litros de leche')).toEqual({ quantity: 2, unit: 'l', cleanTerm: 'leche' });
+    expect(extractQuantity('3 unidades de pan')).toEqual({ quantity: 3, unit: 'un', cleanTerm: 'pan' });
+    expect(extractQuantity('arroz')).toEqual({ quantity: 1, unit: 'un', cleanTerm: 'arroz' });
   });
 
   it('extracts fifteen independent products instead of truncating the list', () => {
@@ -46,7 +70,7 @@ describe('supermarket live catalog parsers', () => {
     };
     const html = `<script type="application/json" id="__REACT_QUERY_STATE__">${JSON.stringify(state)}</script>`;
 
-    expect(parseJumboProducts(html)).toEqual([{
+    expect(parseJumboProducts(html, 'arroz')).toEqual([{
       name: 'Arroz Banquete 1 kg',
       brand: 'Banquete',
       quantity: 1,
@@ -54,6 +78,7 @@ describe('supermarket live catalog parsers', () => {
       store: 'Jumbo',
       isOffer: true,
       originalPrice: 2530,
+      query: 'arroz',
     }]);
   });
 
@@ -76,7 +101,7 @@ describe('supermarket live catalog parsers', () => {
     const serialized = JSON.stringify(JSON.stringify(renderData));
     const html = `<script>window.__renderData = ${serialized}</script>`;
 
-    expect(parseSantaIsabelProducts(html)[0]).toMatchObject({
+    expect(parseSantaIsabelProducts(html, 'leche')[0]).toMatchObject({
       name: 'Leche Entera 1 L',
       brand: 'Soprole',
       price: 990,
@@ -101,7 +126,7 @@ describe('supermarket live catalog parsers', () => {
     };
     const html = `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
-    expect(parseLiderProducts(html)[0]).toMatchObject({
+    expect(parseLiderProducts(html, 'huevos')[0]).toMatchObject({
       name: 'Huevos blancos 12 un Lider',
       price: 2990,
       store: 'Lider',

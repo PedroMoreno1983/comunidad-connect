@@ -7,6 +7,10 @@
     {
       "path": "/api/marketing/reels/cron",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/supermarket/refresh",
+      "schedule": "0 7,19 * * *"
     }
   ]
 }
