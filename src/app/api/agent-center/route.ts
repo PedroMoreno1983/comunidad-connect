@@ -13,6 +13,9 @@ import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { getAgentPlannerModel, planAgentAction } from '@/lib/agent-center/planner';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
+import { dateFromText, dueDateForExpense, moneyFromText, monthFromText, normalizeText, timeFromText } from '@/lib/agent-center/textParsing';
+import { bestEffortInsert } from '@/lib/agent-center/utils';
 import {
     AGENT_PLAYBOOKS,
     AGENT_TOOL_NAMES,
@@ -35,82 +38,6 @@ function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-function normalizeText(value: string) {
-    return value
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim();
-}
-
-function moneyFromText(text: string) {
-    const compact = text.toLowerCase().replace(/\./g, '');
-    const match = compact.match(/(?:\$|a\s+)?(\d{1,8})(?:\s*(mil|k))?/);
-    if (!match) return 0;
-    const amount = Number(match[1]);
-    return match[2] ? amount * 1000 : amount;
-}
-
-function getNextWeekdayDate(targetWeekday: number) {
-    const now = new Date();
-    const current = now.getDay();
-    const delta = (targetWeekday + 7 - current) % 7 || 7;
-    const date = new Date(now);
-    date.setDate(now.getDate() + delta);
-    return date.toISOString().slice(0, 10);
-}
-
-function dateFromText(text: string) {
-    const lower = normalizeText(text);
-    const iso = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
-    if (iso) return iso[1];
-    if (lower.includes('manana')) {
-        const date = new Date();
-        date.setDate(date.getDate() + 1);
-        return date.toISOString().slice(0, 10);
-    }
-    const weekdays: Record<string, number> = {
-        domingo: 0,
-        lunes: 1,
-        martes: 2,
-        miercoles: 3,
-        jueves: 4,
-        viernes: 5,
-        sabado: 6,
-    };
-    const found = Object.entries(weekdays).find(([name]) => lower.includes(name));
-    return found ? getNextWeekdayDate(found[1]) : new Date().toISOString().slice(0, 10);
-}
-
-function currentMonth() {
-    return new Date().toISOString().slice(0, 7);
-}
-
-function monthFromText(text: string) {
-    const match = text.match(/\b(20\d{2}-(?:0[1-9]|1[0-2]))\b/);
-    return match?.[1] || currentMonth();
-}
-
-function defaultDueDate() {
-    const date = new Date();
-    date.setDate(date.getDate() + 10);
-    return date.toISOString().slice(0, 10);
-}
-
-function dueDateForExpense(text: string) {
-    const iso = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
-    if (iso) return iso[1];
-    if (/\b(venc|vence|vencimiento|hasta|pagar antes)\b/i.test(text)) return dateFromText(text);
-    return defaultDueDate();
-}
-function timeFromText(text: string) {
-    const match = text.match(/\b([01]?\d|2[0-3])(?::([0-5]\d))?\b/);
-    const hour = match ? Number(match[1]) : 10;
-    const minute = match?.[2] || '00';
-    const start = `${String(hour).padStart(2, '0')}:${minute}`;
-    const endHour = Math.min(23, hour + 2);
-    return { start, end: `${String(endHour).padStart(2, '0')}:${minute}` };
-}
 
 function pickAgent(message: string): AgentKey {
     const lower = message.toLowerCase();
@@ -359,18 +286,9 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     if (lower.includes('gasto') || lower.includes('pago') || lower.includes('deuda')) {
-        if (profile.role === 'admin') {
-            return buildClarificationAction(message, 'finance', 'Indica el nombre del residente cuya deuda deseas consultar. No realice ningun cambio.');
-        }
-        return {
-            agentKey: 'finance',
-            toolName: 'get_my_expenses',
-            args: {},
-            requiresConfirmation: false,
-            title: 'Consultar gastos de la unidad',
-            summary: 'CoCo revisara gastos comunes pendientes asociados a tu unidad.',
-            targetHref: '/resident/finances',
-        };
+        // Agent Center es exclusivo de administracion: una consulta generica de
+        // finanzas sin residente/departamento identificable siempre se aclara.
+        return buildClarificationAction(message, 'finance', 'Indica el nombre del residente o el departamento cuya deuda deseas consultar. No realice ningun cambio.');
     }
 
     if (lower.includes('vender') || lower.includes('publica') || lower.includes('marketplace')) {
@@ -458,20 +376,6 @@ async function getUserUnit(profile: AgentProfile) {
         .eq('owner_id', profile.id)
         .maybeSingle();
     return (data as Record<string, unknown> | null) || null;
-}
-
-async function bestEffortInsert(table: string, payload: Record<string, unknown>) {
-    try {
-        const { data, error } = await getSupabaseAdmin().from(table).insert(payload).select('id').maybeSingle();
-        if (error) {
-            console.error(`[agent-center] bestEffortInsert failed for ${table}`, error);
-            return null;
-        }
-        return typeof data?.id === 'string' ? data.id : null;
-    } catch (error) {
-        console.error(`[agent-center] bestEffortInsert threw for ${table}`, error);
-        return null;
-    }
 }
 
 function normalizeAutonomyLevel(value: unknown): AutonomyLevel {
@@ -645,7 +549,7 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
             metrics: [
                 { label: 'Tickets abiertos', value: String(requestCount), tone: requestCount > 0 ? 'warning' : 'success' },
                 { label: 'Proveedores verificados', value: String(providerCount), tone: providerCount > 0 ? 'success' : 'warning' },
-                { label: 'Ahorro potencial', value: `${requestCount * 18} min`, tone: 'neutral' },
+                { label: 'Ahorro estimado', value: `${requestCount * 18} min`, tone: 'neutral' },
             ],
         },
         {
@@ -663,7 +567,7 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
             metrics: [
                 { label: 'Cobros pendientes', value: String(expenseCount), tone: expenseCount > 0 ? 'warning' : 'success' },
                 { label: 'Propuestas por aprobar', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'neutral' },
-                { label: 'Ahorro potencial', value: `${expenseCount * 5} min`, tone: 'neutral' },
+                { label: 'Ahorro estimado', value: `${expenseCount * 5} min`, tone: 'neutral' },
             ],
         },
         {
@@ -699,7 +603,7 @@ async function getAgentWorkflows(profile: AgentProfile): Promise<AgentWorkflow[]
             metrics: [
                 { label: 'Propuestas pendientes', value: String(pendingAuditActions), tone: pendingAuditActions > 0 ? 'warning' : 'success' },
                 { label: 'Modo', value: 'Aprobacion', tone: 'neutral' },
-                { label: 'Ahorro potencial', value: `${pendingAuditActions * 3} min`, tone: 'neutral' },
+                { label: 'Ahorro estimado', value: `${pendingAuditActions * 3} min`, tone: 'neutral' },
             ],
         },
     ];
@@ -1097,7 +1001,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         return executeSendUnitPaymentReminder(action, profile, communityId);
     }
     if (action.toolName === 'get_community_snapshot') {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = chileTodayISO();
         const [expenseQuery, serviceQuery, bookingQuery, residentQuery] = await Promise.all([
             admin.from('expenses').select('unit_id, amount, status').eq('community_id', communityId).in('status', ['pending', 'overdue']).limit(2000),
             admin.from('service_requests').select('id, status').eq('community_id', communityId).in('status', ['pending', 'in_progress']).limit(1000),
@@ -1349,6 +1253,15 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        if (body.type === 'trigger_update') {
+            await updateAgentTriggerRule(profile, body.ruleId, body.enabled);
+            return NextResponse.json({
+                status: 'trigger_updated',
+                reply: 'Regla proactiva actualizada.',
+                triggers: await getAgentTriggerRules(profile),
+            });
+        }
+
         const message = cleanText(body.message, 1200);
         const incomingAction = body.action && typeof body.action === 'object' ? body.action as AgentAction : null;
         const confirmed = Boolean(body.confirmed);
@@ -1399,15 +1312,6 @@ export async function POST(req: NextRequest) {
                 reply: 'Entendido. He cancelado la propuesta de accion y registrado el descarte en la bitacora de auditoria.',
                 action,
                 steps,
-            });
-        }
-
-        if (body.type === 'trigger_update') {
-            await updateAgentTriggerRule(profile, body.ruleId, body.enabled);
-            return NextResponse.json({
-                status: 'trigger_updated',
-                reply: 'Regla proactiva actualizada.',
-                triggers: await getAgentTriggerRules(profile),
             });
         }
 

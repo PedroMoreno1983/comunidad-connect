@@ -1,25 +1,11 @@
-import { createHash } from 'node:crypto';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 import { resolveResidentExpenseTarget } from '@/lib/agent-center/financeQueries';
+import { bestEffortInsert, stableNotificationId } from '@/lib/agent-center/utils';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { sendWhatsAppNotificationForUser, type WhatsAppNotificationResult } from '@/lib/server/whatsappNotify';
 
 function cleanText(value: unknown, max = 500) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
-}
-
-async function bestEffortInsert(table: string, payload: Record<string, unknown>) {
-    try {
-        const { data, error } = await getSupabaseAdmin().from(table).insert(payload).select('id').maybeSingle();
-        if (error) {
-            console.error(`[agent-center] bestEffortInsert failed for ${table}`, error);
-            return null;
-        }
-        return typeof data?.id === 'string' ? data.id : null;
-    } catch (error) {
-        console.error(`[agent-center] bestEffortInsert threw for ${table}`, error);
-        return null;
-    }
 }
 
 function describeWhatsAppResult(result: WhatsAppNotificationResult | null) {
@@ -31,12 +17,6 @@ function describeWhatsAppResult(result: WhatsAppNotificationResult | null) {
     if (result.reason === 'resident_without_whatsapp_opt_in') return 'WhatsApp omitido: el residente no tiene opt-in activo.';
     if (result.reason === 'resident_without_phone_number') return 'WhatsApp omitido: el residente no tiene telefono registrado.';
     return `WhatsApp omitido: ${result.reason || 'sin detalle'}.`;
-}
-
-function stableNotificationId(...parts: string[]) {
-    const hash = createHash('sha256').update(parts.join(':')).digest('hex');
-    const variant = ((parseInt(hash.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0');
-    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-${variant}${hash.slice(18, 20)}-${hash.slice(20, 32)}`;
 }
 
 export async function executeCreateUnitExpense(action: AgentAction, profile: AgentProfile, communityId: string) {

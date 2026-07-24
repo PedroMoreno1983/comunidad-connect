@@ -22,32 +22,24 @@ export function buildClarificationAction(
 }
 
 export function buildIndividualDebtAction(message: string, profile: AgentProfile): AgentAction {
-    if (profile.role === 'admin') {
-        const residentQuery = extractResidentQuery(message);
-        const unitNumber = extractUnitNumber(message);
-        if (!residentQuery && !unitNumber) {
-            return buildClarificationAction(message, 'finance', 'Indica el nombre del residente o el numero de departamento cuya deuda deseas consultar. No realice ningun cambio.');
-        }
-        const subject = unitNumber ? `Depto ${unitNumber}` : residentQuery;
-        return {
-            agentKey: 'finance',
-            toolName: 'get_resident_expenses',
-            args: unitNumber ? { unitNumber } : { residentQuery },
-            requiresConfirmation: false,
-            title: `Consultar deuda de ${subject}`,
-            summary: `CoCo revisara los gastos comunes pendientes de ${subject} dentro de esta comunidad.`,
-            targetHref: '/admin/finanzas',
-        };
+    // Agent Center es exclusivo de administracion; los residentes usan /resident/finances.
+    if (profile.role !== 'admin') {
+        return buildClarificationAction(message, 'finance', 'La gestion de deudas de residentes es exclusiva de administracion. No realice ningun cambio.');
     }
-
+    const residentQuery = extractResidentQuery(message);
+    const unitNumber = extractUnitNumber(message);
+    if (!residentQuery && !unitNumber) {
+        return buildClarificationAction(message, 'finance', 'Indica el nombre del residente o el numero de departamento cuya deuda deseas consultar. No realice ningun cambio.');
+    }
+    const subject = unitNumber ? `Depto ${unitNumber}` : residentQuery;
     return {
         agentKey: 'finance',
-        toolName: 'get_my_expenses',
-        args: {},
+        toolName: 'get_resident_expenses',
+        args: unitNumber ? { unitNumber } : { residentQuery },
         requiresConfirmation: false,
-        title: 'Consultar gastos de la unidad',
-        summary: 'CoCo revisara los gastos comunes pendientes asociados a tu unidad.',
-        targetHref: '/resident/finances',
+        title: `Consultar deuda de ${subject}`,
+        summary: `CoCo revisara los gastos comunes pendientes de ${subject} dentro de esta comunidad.`,
+        targetHref: '/admin/finanzas',
     };
 }
 
