@@ -37,6 +37,7 @@ export interface CartItem {
     store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
     isOffer?: boolean;
     originalPrice?: number;
+    requestedTerm?: string;
 }
 
 export interface MarketplaceOffer {

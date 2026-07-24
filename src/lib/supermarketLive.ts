@@ -1,3 +1,5 @@
+import type { CartItem } from '@/lib/agentBrain';
+
 export interface ScrapedItem {
   name: string;
   brand: string;
@@ -8,6 +10,8 @@ export interface ScrapedItem {
   originalPrice?: number;
   /** The search query that produced this item. */
   query: string;
+  /** requestedTerm para compatibilidad con CartItem */
+  requestedTerm?: string;
   /** Public product page URL, when available. */
   productUrl?: string;
   /** Product image URL, when available. */
@@ -53,7 +57,7 @@ export interface QuantityInfo {
 }
 
 const REQUEST_TIMEOUT_MS = 12_000;
-const MAX_SEARCH_TERMS = 6;
+const MAX_SEARCH_TERMS = 20;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1_000;
 const CIRCUIT_BREAKER_THRESHOLD = 3;
@@ -142,7 +146,6 @@ function checkCircuitBreaker(store: string): boolean {
   if (!state) return false;
   if (state.open) {
     if (Date.now() - state.lastFailure > CIRCUIT_BREAKER_RESET_MS) {
-      // Reset after cooldown
       CIRCUIT_BREAKER.delete(store);
       return false;
     }
@@ -204,7 +207,6 @@ function normalize(value: string): string {
 
 /** Extrae cantidad, unidad y término limpio de un string como "5 kilos de arroz" */
 export function extractQuantity(term: string): QuantityInfo {
-  // Patrón: número + unidad + opcional "de" + resto
   const pattern = /(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilos|g|gr|gramo|gramos|l|lt|litro|litros|ml|cc|un|unid|unidad|unidades|pack|packs|botella|botellas|lata|latas|caja|cajas|bolsa|bolsas)\s+(?:de\s+)?(.+)/i;
   const match = term.match(pattern);
   if (match) {
@@ -220,12 +222,10 @@ export function extractQuantity(term: string): QuantityInfo {
 /** Detecta si el usuario mencionó una marca explícita en el término. */
 function extractExplicitBrand(term: string): { brand: string | null; cleanTerm: string } {
   const normalized = normalize(term);
-  // Ordenar marcas de más larga a más corta para evitar matching parcial
   const brands = Object.keys(BRAND_TIERS).sort((a, b) => b.length - a.length);
   for (const brand of brands) {
     const nb = normalize(brand);
     if (normalized.includes(nb)) {
-      // Remover la marca del término para que la búsqueda sea más limpia
       const regex = new RegExp(brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       const cleanTerm = term.replace(regex, '').replace(/\s+/g, ' ').trim();
       return { brand: nb, cleanTerm: cleanTerm || term };
@@ -237,16 +237,12 @@ function extractExplicitBrand(term: string): { brand: string | null; cleanTerm: 
 function brandScore(brand: string, explicitBrand: string | null = null): number {
   if (!brand) return 0;
   const key = normalize(brand);
-
-  // Si el usuario pidió una marca explícita, darle prioridad absoluta
   if (explicitBrand) {
     if (key === explicitBrand || key.includes(explicitBrand) || explicitBrand.includes(key)) {
-      return 1_000_000; // Score masivo para forzar la marca solicitada
+      return 1_000_000;
     }
-    return -100; // Penalizar otras marcas cuando se pidió una específica
+    return -100;
   }
-
-  // Busca coincidencia exacta o parcial
   for (const [tierBrand, score] of Object.entries(BRAND_TIERS)) {
     if (key === tierBrand || key.includes(tierBrand)) return score;
     if (tierBrand.includes(key) && key.length > 2) return score;
@@ -269,7 +265,7 @@ function scoreMatch(productName: string, query: string): number {
   return score;
 }
 
-function pickRelevant(items: ScrapedItem[], query: string): ScrapedItem | undefined {
+function pickRelevant(items: CartItem[], query: string): CartItem | undefined {
   return items
     .map((item, index) => ({ item, index, score: scoreMatch(item.name, query) }))
     .filter(candidate => candidate.score >= 0)
@@ -284,9 +280,9 @@ function formatSignature(name: string): string {
   return `${match[1].replace(',', '.')}${unit}`;
 }
 
-function pickComparableBest(items: ScrapedItem[]): ScrapedItem | undefined {
+function pickComparableBest(items: CartItem[]): CartItem | undefined {
   if (items.length === 0) return undefined;
-  const groups = new Map<string, ScrapedItem[]>();
+  const groups = new Map<string, CartItem[]>();
 
   for (const item of items) {
     const signature = formatSignature(item.name);
@@ -305,7 +301,7 @@ function pickComparableBest(items: ScrapedItem[]): ScrapedItem | undefined {
  */
 export function extractSupermarketTerms(message: string): Array<{ term: string; quantity: number; unit: string; explicitBrand: string | null }> {
   const cleaned = message
-    .slice(0, 300)
+    .slice(0, 1_500)
     .replace(/^(?:hola[,!.\s]*)/i, '')
     .replace(/^(?:necesito|quiero|deseo)\s+(?:comprar|agregar|añadir)?\s*:*/i, '')
     .replace(/^(?:comprar|agregar|añadir)\s*:*/i, '')
@@ -416,11 +412,6 @@ function collectLiderItems(value: unknown): Record<string, unknown>[] {
 }
 
 function detectLiderOffer(html: string, productName: string): { isOffer: boolean; originalPrice?: number } {
-  // Buscar en el HTML badges de oferta cerca del nombre del producto
-  // Lider usa clases como .offer-badge, .discount-percent, data de offers
-  const normalizedName = productName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-  // Regex simple: buscar el producto en el HTML y ver si hay un listPrice > price cercano
-  // O si hay texto como "Oferta", "% OFF", etc.
   const offerPatterns = [
     /oferta/i,
     /\d+%\s*off/i,
@@ -472,7 +463,6 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
 
 /** Parser para Unimarc (basado en VTEX, estructura similar a Santa Isabel) */
 export function parseUnimarcProducts(html: string, query: string): ScrapedItem[] {
-  // Intento 1: window.__renderData (VTEX)
   const renderMatch = html.match(/window\.__renderData\s*=\s*("(?:\\.|[^"\\])*")/);
   if (renderMatch) {
     try {
@@ -515,7 +505,6 @@ export function parseUnimarcProducts(html: string, query: string): ScrapedItem[]
     }
   }
 
-  // Intento 2: JSON-LD
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   const ldProducts = scripts.flatMap(script => {
     try {
@@ -591,7 +580,6 @@ async function fetchRetailerHtml(url: string, store: ScrapedItem['store']): Prom
         throw new Error(`${store} no respondió después de ${MAX_RETRIES + 1} intentos: ${errorMessage}`);
       }
 
-      // Exponential backoff
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * Math.pow(2, attempt)));
     }
   }
@@ -599,9 +587,7 @@ async function fetchRetailerHtml(url: string, store: ScrapedItem['store']): Prom
   throw new Error('Unreachable');
 }
 
-/**
- * Scrapea TODOS los productos de una tienda para un término de búsqueda.
- */
+/** Scrapea TODOS los productos de una tienda para un término de búsqueda. */
 async function searchAllRetailerProducts(store: ScrapedItem['store'], query: string): Promise<ScrapedItem[]> {
   try {
     if (store === 'Jumbo') {
@@ -626,6 +612,23 @@ async function searchAllRetailerProducts(store: ScrapedItem['store'], query: str
   return [];
 }
 
+/** Legacy: busca el mejor producto de UNA tienda para UN término. */
+async function searchOneRetailer(store: CartItem['store'], query: string): Promise<CartItem | undefined> {
+  const items = await searchAllRetailerProducts(store as ScrapedItem['store'], query);
+  const best = pickRelevant(items, query);
+  if (!best) return undefined;
+  return {
+    name: best.name,
+    brand: best.brand,
+    quantity: best.quantity,
+    price: best.price,
+    store: best.store,
+    isOffer: best.isOffer,
+    originalPrice: best.originalPrice,
+    requestedTerm: query,
+  };
+}
+
 /** Busca sustitutos por categoría cuando no hay match exacto. */
 function findSubstitute(
   products: ScrapedItem[],
@@ -633,8 +636,6 @@ function findSubstitute(
   explicitBrand: string | null,
 ): ScrapedItem | undefined {
   const normalizedTerm = normalize(term);
-
-  // Encontrar categoría del término
   let termCategory: string | null = null;
   for (const [category, synonyms] of Object.entries(CATEGORIES)) {
     if (synonyms.some(s => normalizedTerm.includes(normalize(s)))) {
@@ -642,10 +643,8 @@ function findSubstitute(
       break;
     }
   }
-
   if (!termCategory) return undefined;
 
-  // Buscar productos de la misma categoría
   const categorySynonyms = CATEGORIES[termCategory];
   const substitutes = products.filter(item => {
     const normalizedName = normalize(item.name);
@@ -654,7 +653,6 @@ function findSubstitute(
 
   if (substitutes.length === 0) return undefined;
 
-  // Ordenar por marca y precio
   const scored = substitutes
     .map(item => ({
       item,
@@ -665,11 +663,6 @@ function findSubstitute(
   return scored[0]?.item;
 }
 
-/**
- * Selecciona el mejor producto para un término en una tienda específica,
- * considerando relevancia, marca reconocida, marca explícita, y precio.
- * Si no hay match exacto, busca sustitutos por categoría.
- */
 function selectBestForStore(
   items: ScrapedItem[],
   query: string,
@@ -682,25 +675,19 @@ function selectBestForStore(
       const relevance = scoreMatch(item.name, query);
       const bScore = brandScore(item.brand, explicitBrand);
       const effectivePrice = item.isOffer && item.originalPrice ? item.price : item.price;
-      // Score compuesto: relevancia primero, luego marca, luego precio (inverso)
       const compositeScore = relevance * 10 + bScore - (effectivePrice / 100);
       return { item, relevance, compositeScore };
     })
     .filter(s => s.relevance >= 0)
     .sort((a, b) => b.compositeScore - a.compositeScore);
 
-  if (scored.length > 0) {
-    return scored[0].item;
-  }
-
-  // Fallback: buscar sustituto por categoría
+  if (scored.length > 0) return scored[0].item;
   return findSubstitute(items, query, explicitBrand);
 }
 
 /**
  * Compara canastas completas por tienda.
  * Para cada término, selecciona el mejor producto disponible en CADA tienda.
- * Luego compara las canastas: prioriza completitud, luego cantidad, luego precio.
  */
 export async function buildLiveBasketComparison(message: string): Promise<LiveSearchResult> {
   const termInfos = extractSupermarketTerms(message);
@@ -710,7 +697,6 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
 
   const stores: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'];
 
-  // Por cada término, scrapear TODOS los productos de TODAS las tiendas
   const termResults = await Promise.all(
     termInfos.map(async (info) => {
       const allProducts = await Promise.all(
@@ -729,7 +715,6 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
     })
   );
 
-  // Construir canasta por tienda
   const baskets: BasketComparison[] = stores.map(store => {
     const items: ScrapedItem[] = [];
     const missingTerms: string[] = [];
@@ -739,22 +724,12 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
       const storeProducts = productsByStore.get(store) ?? [];
       const best = selectBestForStore(storeProducts, term, explicitBrand);
       if (best) {
-        // Aplicar cantidad solicitada por el usuario
-        const itemWithQty: ScrapedItem = {
-          ...best,
-          userQuantity: quantity,
-          totalPrice: best.price * quantity,
-        };
-        items.push(itemWithQty);
+        items.push({ ...best, userQuantity: quantity, totalPrice: best.price * quantity });
       } else {
         missingTerms.push(term);
-        if (failedStores.includes(store)) {
-          failedForStore.push(store);
-        }
+        if (failedStores.includes(store)) failedForStore.push(store);
       }
     }
-
-    const uniqueFailed = [...new Set(failedForStore)];
 
     return {
       store,
@@ -765,7 +740,7 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
       coveragePercent: termInfos.length > 0 ? Math.round(items.length * 100 / termInfos.length) : 0,
       missingTerms,
       complete: missingTerms.length === 0 && termInfos.length > 0,
-      failedStores: uniqueFailed.length > 0 ? uniqueFailed : undefined,
+      failedStores: [...new Set(failedForStore)].length > 0 ? [...new Set(failedForStore)] : undefined,
     };
   }).filter(basket => basket.coveredCount > 0)
     .sort((left, right) => (
@@ -777,10 +752,7 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
   const bestBasket = baskets[0];
 
   if (!bestBasket) {
-    return {
-      items: [],
-      message: 'No fue posible encontrar esos productos en las fuentes disponibles.',
-    };
+    return { items: [], message: 'No fue posible encontrar esos productos en las fuentes disponibles.' };
   }
 
   const ready = bestBasket.complete;
@@ -793,7 +765,6 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
   if (bestBasket.missingTerms.length > 0) {
     resultMessage += `\n❌ No encontré: ${bestBasket.missingTerms.join(', ')}.`;
   }
-
   if (degradedStores.length > 0) {
     resultMessage += `\n⚠️ ${degradedStores.join(', ')} no respondió; resultados pueden estar incompletos.`;
   }
@@ -808,9 +779,33 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
 }
 
 /**
- * @deprecated Usar buildLiveBasketComparison para obtener canastas por tienda.
- * Esta función mantiene compatibilidad con código que espera items individuales.
+ * Legacy compat: busca productos individuales (no agrupa por canasta).
+ * Mantiene compatibilidad con código que espera items individuales.
  */
 export async function searchLiveSupermarkets(message: string): Promise<LiveSearchResult> {
-  return buildLiveBasketComparison(message);
+  const termInfos = extractSupermarketTerms(message);
+  if (termInfos.length === 0) {
+    return { items: [], message: 'Indica uno o más productos para buscar precios reales.' };
+  }
+
+  const stores: CartItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider'];
+  const results = await Promise.all(termInfos.map(async info => {
+    const settled = await Promise.allSettled(stores.map(store => searchOneRetailer(store, info.term)));
+    const candidates = settled.flatMap(result => result.status === 'fulfilled' && result.value ? [result.value] : []);
+    const selected = pickComparableBest(candidates);
+    return selected ? { ...selected, requestedTerm: info.term } : undefined;
+  }));
+
+  const items = results.filter(
+    (item): item is CartItem & { requestedTerm: string } => item !== undefined,
+  );
+  const storeNames = [...new Set(items.map(item => item.store))];
+  const coverage = storeNames.length > 0 ? ` Fuentes con resultados: ${storeNames.join(', ')}.` : '';
+
+  return {
+    items: items.map(i => ({ ...i, query: i.requestedTerm || '' })),
+    message: items.length > 0
+      ? `Encontré ${items.length} producto(s) en fuentes públicas.${coverage}`
+      : 'No encontré resultados en las fuentes disponibles.',
+  };
 }

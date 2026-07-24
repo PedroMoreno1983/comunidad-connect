@@ -1,12 +1,9 @@
 import 'server-only';
 
-import { buildBasketComparison } from '@/lib/supermarketBasket';
+import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
-/** TTL dinámico: 6h para ofertas, 12h para productos normales.
- *  Como simplificación práctica, usamos 12h de cutoff general
- *  y el refresh cron corre 2 veces al día para mantener frescura.
- */
+/** TTL dinámico: 12h para mantener frescura con cron 2x/día. */
 const MAX_PRICE_AGE_MS = 12 * 60 * 60 * 1000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -15,14 +12,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-export async function comparePersistedSupermarkets(terms: string[]) {
+export async function comparePersistedSupermarkets(
+  terms: string[],
+  requestedQuantities: Record<string, number> = {},
+) {
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
   const entries = await Promise.all(terms.map(async term => {
     const pattern = `%${term.split(' ').join('%')}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')
-      .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at')
+      .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
       .eq('in_stock', true)
       .gte('last_seen_at', cutoff)
       .ilike('name', pattern)
@@ -37,7 +37,25 @@ export async function comparePersistedSupermarkets(terms: string[]) {
     return [term, rows] as const;
   }));
 
-  return buildBasketComparison(terms, Object.fromEntries(entries));
+  const rowsByTerm = Object.fromEntries(entries);
+  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities);
+  const alternativesByTerm = Object.fromEntries(entries.map(([term, rows]) => {
+    const requestedQuantity = Math.min(500, Math.max(1, Math.round(requestedQuantities[term] || 1)));
+    const seen = new Set<string>();
+    const alternatives = rows
+      .map(row => buildSupermarketCandidate(row, term, requestedQuantity))
+      .filter(candidate => {
+        const key = `${candidate.store}:${candidate.name}:${candidate.lineTotal}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => left.lineTotal - right.lineTotal || left.store.localeCompare(right.store))
+      .slice(0, 8);
+    return [term, alternatives] as const;
+  }));
+
+  return { ...comparison, alternativesByTerm };
 }
 
 export async function searchPersistedSupermarkets(terms: string[]) {
