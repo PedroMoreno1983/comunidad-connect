@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { AGENT_PLAYBOOKS, type AgentAction, type AgentProfile, type PlaybookKey } from '@/lib/agent-center/domain';
+import { stableNotificationId } from '@/lib/agent-center/utils';
 import {
     completeAgentTask,
     createAgentTask,
@@ -14,12 +14,6 @@ function cleanText(value: unknown, max = 700) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-
-function stableNotificationId(...parts: string[]) {
-    const hash = createHash('sha256').update(parts.join(':')).digest('hex');
-    const variant = ((parseInt(hash.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0');
-    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-${variant}${hash.slice(18, 20)}-${hash.slice(20, 32)}`;
-}
 function playbook(key: PlaybookKey) {
     const result = AGENT_PLAYBOOKS.find(item => item.key === key);
     if (!result) throw new Error('Accion no soportada.');

@@ -10,6 +10,7 @@ import {
     type AgentTriggerSignalKey,
     type PlaybookKey,
 } from '@/lib/agent-center/domain';
+import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 function objectValue(value: unknown) {
@@ -45,7 +46,7 @@ function mapRule(row: Record<string, unknown>): AgentTriggerRuleRecord {
 }
 
 async function evaluateOverdueExpenses(rule: AgentTriggerRuleRecord): Promise<AgentSignalEvaluation> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = chileTodayISO();
     const { data, error } = await getSupabaseAdmin()
         .from('expenses')
         .select('id, amount, due_date, status')
@@ -65,7 +66,7 @@ async function evaluateOverdueExpenses(rule: AgentTriggerRuleRecord): Promise<Ag
 }
 
 async function evaluateMaintenanceBacklog(rule: AgentTriggerRuleRecord): Promise<AgentSignalEvaluation> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = chileTodayISO();
     const { data, error } = await getSupabaseAdmin()
         .from('service_requests')
         .select('id, preferred_date, status')
@@ -280,6 +281,13 @@ export async function evaluateDueAgentTriggers(communityId?: string) {
         try {
             results.push(await evaluateRule(rule));
         } catch (ruleError) {
+            // Avanza next_run_at para que una regla con error no se re-evalue en
+            // cada corrida del scheduler; quedara para su proximo intervalo.
+            const retryAt = new Date(Date.now() + rule.intervalMinutes * 60_000).toISOString();
+            await getSupabaseAdmin()
+                .from('agent_trigger_rules')
+                .update({ next_run_at: retryAt, updated_at: new Date().toISOString() })
+                .eq('id', rule.id);
             results.push({ ruleId: rule.id, status: 'failed', error: ruleError instanceof Error ? ruleError.message : 'Error desconocido' });
         }
     }
