@@ -9,18 +9,74 @@ import { AudioMessage } from "./AudioMessage";
 import { OrderPreviewBubble } from "./OrderPreviewBubble";
 import { RecipeBubble } from "./RecipeBubble";
 import { motion } from "framer-motion";
-import { agent } from "@/lib/agentBrain"; // Importar el cerebro del agente
+import { agent } from "@/lib/agentBrain";
+
+interface ApiCartItem {
+    id?: string;
+    name: string;
+    brand?: string;
+    quantity: number;
+    userQuantity?: number;
+    totalPrice?: number;
+    price: number;
+    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
+    originalPrice?: number;
+    isOffer?: boolean;
+    productUrl?: string;
+    requestedTerm?: string;
+    checked?: boolean;
+}
+
+interface BasketComparisonItem {
+    store: string;
+    subtotal: number;
+    coveredCount: number;
+    requestedCount: number;
+    coveragePercent: number;
+    missingTerms: string[];
+    complete: boolean;
+}
+
+interface ApiSupermarketResponse {
+    message: string;
+    error?: string;
+    items?: ApiCartItem[];
+    fetchedAt?: string;
+    mode?: string;
+    recommendedStore?: string | null;
+    basketReady?: boolean;
+    basketSubtotal?: number;
+    missingTerms?: string[];
+    basketComparison?: BasketComparisonItem[];
+    degradedStores?: string[];
+    checkout?: {
+        status: string;
+        store: string;
+        storeUrl: string;
+        productUrls: string[];
+        requiresRetailerSession: boolean;
+        cartPreloaded: boolean;
+        detail: string;
+    };
+    sources?: { store: string; status: string }[];
+}
 
 interface Message {
     id: string;
-    type: 'text' | 'audio' | 'order' | 'recipe' | 'system';
+    type: 'text' | 'audio' | 'order' | 'recipe' | 'system' | 'basket_choice';
     content?: string;
     audioDuration?: string;
-    orderData?: { items: import('@/lib/agentBrain').CartItem[]; total: number; savings: number };
+    orderData?: { items: ApiCartItem[]; total: number; savings: number };
+    basketChoices?: BasketComparisonItem[];
     recipeData?: import('@/lib/agentBrain').RecipeSuggestion;
     isSender: boolean;
     timestamp: string;
     status: 'sent' | 'delivered' | 'read';
+}
+
+function isRecipeIntent(text: string): boolean {
+    const lower = text.toLowerCase();
+    return lower.includes("tengo") || lower.includes("receta") || lower.includes("cocinar") || lower.includes("ingredientes");
 }
 
 export function WhatsAppChat() {
@@ -36,7 +92,7 @@ export function WhatsAppChat() {
         {
             id: '2',
             type: 'text',
-            content: '¡Hola! 😊 Soy CoCo Supermercado, tu asistente de compras y cocina. Cuéntame qué tienes en casa (ej: "tengo arroz y cebolla") y te sugiero una receta, o dime qué necesitas comprar y comparo precios en Jumbo, Lider, Unimarc y Santa Isabel.',
+            content: '¡Hola! Soy CoCo Supermercado. Cuéntame qué tienes en casa (ej: tengo arroz y cebolla) y te sugiero una receta, o dime qué necesitas comprar y armo tu lista completa en una sola tienda al mejor precio. Comparo Jumbo, Lider, Santa Isabel y Unimarc por canasta, no por producto suelto.',
             isSender: false,
             timestamp: '10:00',
             status: 'read'
@@ -70,18 +126,49 @@ export function WhatsAppChat() {
         processAgentResponse(textToProcess);
     };
 
+    const handleSwitchBasket = (basket: BasketComparisonItem, allItems: ApiCartItem[]) => {
+        const storeItems = allItems.filter(i => i.store === basket.store);
+        const total = storeItems.reduce((sum, item) => sum + (item.totalPrice ?? item.price), 0);
+        const savings = storeItems.reduce((sum, item) => sum + ((item.originalPrice && item.originalPrice > item.price) ? (item.originalPrice - item.price) * (item.userQuantity ?? 1) : 0), 0);
+
+        addMessage({
+            type: 'text',
+            content: `Cambiaste a **${basket.store}**: ${basket.coveredCount}/${basket.requestedCount} productos por $${basket.subtotal.toLocaleString('es-CL')}.`,
+            isSender: false,
+        });
+
+        addMessage({
+            type: 'order',
+            isSender: false,
+            orderData: {
+                items: storeItems.map(item => ({
+                    id: item.id || Math.random().toString(),
+                    name: item.name,
+                    brand: item.brand || '',
+                    quantity: item.quantity || 1,
+                    userQuantity: item.userQuantity,
+                    totalPrice: item.totalPrice,
+                    price: item.price,
+                    store: item.store,
+                    isOffer: item.isOffer ?? false,
+                    originalPrice: item.originalPrice,
+                })),
+                total,
+                savings,
+            },
+            status: 'read'
+        });
+    };
+
     const processAgentResponse = async (userText: string) => {
         setIsProcessing(true);
 
         try {
-            // Llamar al cerebro del agente
-            const response = await agent.processMessage(userText);
-
-            // Simular delay de "pensando" (adicional al tiempo de red)
-            setTimeout(() => {
+            // Si es una intención de receta, usar el agente local
+            if (isRecipeIntent(userText)) {
+                const response = await agent.processMessage(userText);
                 setIsProcessing(false);
 
-                // 1. Respuesta de Texto del Agente
                 addMessage({
                     type: 'text',
                     content: response.message,
@@ -89,19 +176,6 @@ export function WhatsAppChat() {
                     status: 'read'
                 });
 
-                // 2. Si hay carrito, mostrar burbuja de pedido
-                if (response.cart) {
-                    setTimeout(() => {
-                        addMessage({
-                            type: 'order',
-                            isSender: false,
-                            orderData: response.cart,
-                            status: 'read'
-                        });
-                    }, 800);
-                }
-
-                // 3. Si hay sugerencia de receta, mostrar burbuja de receta
                 if (response.recipeSuggestion) {
                     setTimeout(() => {
                         addMessage({
@@ -110,10 +184,94 @@ export function WhatsAppChat() {
                             recipeData: response.recipeSuggestion,
                             status: 'read'
                         });
-                    }, 800);
+                    }, 600);
+                }
+                return;
+            }
+
+            // Para compras o cualquier otro mensaje, usar la API real de supermercado
+            const apiResponse = await fetch("/api/supermarket", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userText }),
+            });
+
+            const data: ApiSupermarketResponse = await apiResponse.json();
+            setIsProcessing(false);
+
+            if (!apiResponse.ok || data.error) {
+                addMessage({
+                    type: 'text',
+                    content: data.message || "Lo siento, no pude consultar los precios en este momento. 😥",
+                    isSender: false,
+                    status: 'read'
+                });
+                return;
+            }
+
+            // Mensaje descriptivo de la API
+            addMessage({
+                type: 'text',
+                content: data.message,
+                isSender: false,
+                status: 'read'
+            });
+
+            // Si hay items, mostrar burbuja de orden
+            if (data.items && data.items.length > 0) {
+                const total = data.items.reduce((sum, item) => sum + (item.totalPrice ?? item.price), 0);
+                const savings = data.items.reduce((sum, item) => sum + ((item.originalPrice && item.originalPrice > item.price) ? (item.originalPrice - item.price) * (item.userQuantity ?? 1) : 0), 0);
+
+                setTimeout(() => {
+                    addMessage({
+                        type: 'order',
+                        isSender: false,
+                        orderData: {
+                            items: data.items!.map(item => ({
+                                id: item.id || Math.random().toString(),
+                                name: item.name,
+                                brand: item.brand || '',
+                                quantity: item.quantity || 1,
+                                userQuantity: item.userQuantity,
+                                totalPrice: item.totalPrice,
+                                price: item.price,
+                                store: item.store as 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel',
+                                isOffer: item.isOffer ?? false,
+                                originalPrice: item.originalPrice,
+                            })),
+                            total,
+                            savings,
+                        },
+                        status: 'read'
+                    });
+                }, 600);
+
+                // Si hay canastas alternativas, mostrar opciones
+                const alternatives = data.basketComparison?.filter(b => b.store !== data.recommendedStore && b.coveredCount > 0);
+                if (alternatives && alternatives.length > 0 && data.items) {
+                    setTimeout(() => {
+                        addMessage({
+                            type: 'basket_choice',
+                            isSender: false,
+                            basketChoices: alternatives,
+                            status: 'read'
+                        });
+                    }, 1200);
                 }
 
-            }, 500);
+                // Si hay productos faltantes, mostrar alerta
+                if (data.missingTerms && data.missingTerms.length > 0) {
+                    setTimeout(() => {
+                        addMessage({
+                            type: 'text',
+                            content: `⚠️ En ${data.recommendedStore || 'esta tienda'} no encontré: ${data.missingTerms!.join(', ')}. Puedes agregarlos manualmente o probar en otra tienda.`,
+                            isSender: false,
+                            status: 'read'
+                        });
+                    }, 1400);
+                }
+            }
+
         } catch (error) {
             setIsProcessing(false);
             console.error("Agent error:", error);
@@ -130,7 +288,7 @@ export function WhatsAppChat() {
         setMessages(prev => [...prev, {
             id: Date.now().toString(),
             timestamp: getCurrentTime(),
-            status: 'sent', // Start as sent
+            status: 'sent',
             type: 'text',
             content: '',
             isSender: true,
@@ -209,6 +367,37 @@ export function WhatsAppChat() {
                                         total={msg.orderData.total}
                                         savings={msg.orderData.savings}
                                     />
+                                )}
+
+                                {msg.type === 'basket_choice' && msg.basketChoices && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-semibold cc-text-secondary mb-2">📊 Otras canastas disponibles:</p>
+                                        {msg.basketChoices.map(basket => (
+                                            <button
+                                                key={basket.store}
+                                                onClick={() => {
+                                                    // Reconstruir items de la canasta seleccionada
+                                                    // Necesitamos los items originales; como no los tenemos en este mensaje,
+                                                    // mostramos un mensaje indicando que debe volver a consultar
+                                                    addMessage({
+                                                        type: 'text',
+                                                        content: `Para comprar en ${basket.store}, escríbeme de nuevo tu lista y especifica "en ${basket.store}".`,
+                                                        isSender: false,
+                                                    });
+                                                }}
+                                                className="w-full text-left p-2 rounded-lg border border-subtle hover:bg-canvas transition-all"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm font-semibold">{basket.store}</span>
+                                                    <span className="text-sm font-bold">${basket.subtotal.toLocaleString('es-CL')}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[10px] text-slate-400">
+                                                    <span>{basket.coveredCount}/{basket.requestedCount} productos</span>
+                                                    {basket.complete ? <span className="text-emerald-500">✓ Completa</span> : <span className="text-amber-500">Incompleta</span>}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
 
                                 {msg.type === 'recipe' && msg.recipeData && (

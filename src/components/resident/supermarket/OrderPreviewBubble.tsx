@@ -4,8 +4,10 @@ import { ShoppingCart, Share2, ExternalLink } from "lucide-react";
 
 interface ProductItem {
     name: string;
-    brand: string;
+    brand?: string;
     quantity: number;
+    userQuantity?: number;
+    totalPrice?: number;
     price: number;
     store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
     isOffer?: boolean;
@@ -26,7 +28,11 @@ const STORE_URLS: Record<ProductItem["store"], string> = {
 };
 
 function buildShareText(items: ProductItem[], total: number) {
-    const lines = items.map(item => `• ${item.quantity}x ${item.name} (${item.store}) — $${item.price.toLocaleString("es-CL")}`);
+    const lines = items.map(item => {
+        const qty = item.userQuantity && item.userQuantity > 1 ? `${item.userQuantity}x ` : '';
+        const price = item.totalPrice && item.totalPrice > item.price ? item.totalPrice : item.price;
+        return `• ${qty}${item.name} (${item.store}) — $${price.toLocaleString("es-CL")}`;
+    });
     return [`Mi lista de compras CoCo 🛒`, ...lines, `Total estimado: $${total.toLocaleString("es-CL")}`].join("\n");
 }
 
@@ -64,14 +70,18 @@ export function OrderPreviewBubble({ items, total, savings }: OrderPreviewBubble
                 {items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-start text-sm border-b border-slate-50 dark:border-slate-700 last:border-0 pb-2 last:pb-0">
                         <div className="flex gap-2">
-                            <div className={`mt-0.5 h-3 w-3 rounded-full ${item.store === 'Jumbo' ? 'bg-green-600' : 'bg-blue-600'}`} title={item.store} />
+                            <div className={`mt-0.5 h-3 w-3 rounded-full ${item.store === 'Jumbo' ? 'bg-green-600' : item.store === 'Santa Isabel' ? 'bg-red-500' : item.store === 'Unimarc' ? 'bg-orange-500' : 'bg-blue-600'}`} title={item.store} />
                             <div>
-                                <p className="font-semibold cc-text-secondary">{item.quantity}x {item.name}</p>
-                                <p className="text-xs text-slate-400">{item.brand}</p>
+                                <p className="font-semibold cc-text-secondary">
+                                    {item.userQuantity && item.userQuantity > 1 ? `${item.userQuantity}x ` : ''}{item.name}
+                                </p>
+                                {item.brand && <p className="text-xs text-slate-400">{item.brand}</p>}
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="font-bold cc-text-secondary">${item.price.toLocaleString('es-CL')}</p>
+                            <p className="font-bold cc-text-secondary">
+                                ${(item.totalPrice ?? item.price).toLocaleString('es-CL')}
+                            </p>
                             {item.isOffer && (
                                 <p className="text-[10px] text-emerald-500 font-bold line-through decoration-slate-300">
                                     ${item.originalPrice?.toLocaleString('es-CL')}

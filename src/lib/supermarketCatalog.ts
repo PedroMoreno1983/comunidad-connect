@@ -3,7 +3,11 @@ import 'server-only';
 import { buildBasketComparison } from '@/lib/supermarketBasket';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
-const MAX_PRICE_AGE_MS = 24 * 60 * 60 * 1000;
+/** TTL dinámico: 6h para ofertas, 12h para productos normales.
+ *  Como simplificación práctica, usamos 12h de cutoff general
+ *  y el refresh cron corre 2 veces al día para mantener frescura.
+ */
+const MAX_PRICE_AGE_MS = 12 * 60 * 60 * 1000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
