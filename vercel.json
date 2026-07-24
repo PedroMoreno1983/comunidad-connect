@@ -10,7 +10,11 @@
     },
     {
       "path": "/api/supermarket/refresh",
-      "schedule": "0 7,19 * * *"
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/supermarket/refresh",
+      "schedule": "0 19 * * *"
     }
   ]
 }
