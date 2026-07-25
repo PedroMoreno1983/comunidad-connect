@@ -15,10 +15,24 @@ export const maxDuration = 60;
 
 /** Delay entre términos para no saturar los servidores (ms). */
 const TERM_DELAY_MS = 800;
+/** Presupuesto de tiempo: se deja de abrir términos nuevos antes del límite. */
+const TIME_BUDGET_MS = 45_000;
 /** Tiendas a trackear en sourceStatus. */
 const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
 /** Tiendas que efectivamente se scrapean por término. */
 const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'];
+
+/**
+ * Rotación diaria de términos: el catálogo completo no cabe en una sola
+ * ejecución serverless, así que cada corrida empieza en un offset distinto
+ * (día del año) y en ~2-3 días todos los términos quedan refrescados.
+ * El TTL de lectura del catálogo (96h) cubre esa rotación.
+ */
+function rotatedTerms(terms: string[]): string[] {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86_400_000);
+    const offset = dayOfYear % terms.length;
+    return [...terms.slice(offset), ...terms.slice(0, offset)];
+}
 
 /**
  * Catálogo base de términos de búsqueda para mantener precios actualizados.
@@ -91,18 +105,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const terms: string[] = Array.isArray(body.terms) && body.terms.length > 0
+    const requestedTerms: string[] = Array.isArray(body.terms) && body.terms.length > 0
       ? body.terms
-      : BASE_CATALOG_TERMS;
+      : rotatedTerms(BASE_CATALOG_TERMS);
 
     const allItems: ScrapedItem[] = [];
     const sourceStatus: { store: string; status: string; term: string; error?: string }[] = [];
+    const startedAt = Date.now();
+    const terms: string[] = [];
 
     // Scrapear cada término con throttling para no saturar.
     // Se ingieren TODOS los productos encontrados por tienda (no solo el mejor
     // match) para que el catálogo persistido crezca a miles de productos.
-    for (let i = 0; i < terms.length; i++) {
-      const term = terms[i];
+    // Al acercarse al límite de tiempo se ingiere lo recolectado: el resto de
+    // los términos queda para la siguiente corrida (rotación diaria).
+    for (let i = 0; i < requestedTerms.length; i++) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+      const term = requestedTerms[i];
+      terms.push(term);
       try {
         const perStore = await Promise.all(REFRESH_STORES.map(store => searchAllRetailerProducts(store, term)));
         const items = perStore.flat();
@@ -174,6 +194,8 @@ export async function POST(req: NextRequest) {
       status: 'completed',
       ...ingestResult,
       scrapedCount: allItems.length,
+      termsProcessed: terms.length,
+      termsRequested: requestedTerms.length,
       sourceStatus,
     });
 

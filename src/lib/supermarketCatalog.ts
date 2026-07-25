@@ -4,8 +4,8 @@ import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermar
 import { significantWords, termMatchesProductName } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
-/** TTL dinámico: 12h para mantener frescura con cron 2x/día. */
-const MAX_PRICE_AGE_MS = 12 * 60 * 60 * 1000;
+/** TTL dinámico: 96h para cubrir la rotación diaria de términos del refresh. */
+const MAX_PRICE_AGE_MS = 96 * 60 * 60 * 1000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
