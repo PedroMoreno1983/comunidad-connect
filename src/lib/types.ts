@@ -262,6 +262,8 @@ export interface SupermarketSearchCandidate {
   productUrl?: string;
   originalPrice?: number;
   isOffer?: boolean;
+  /** Por qué CoCo eligió esta marca/presentación (visible para el usuario). */
+  selectionReason?: string;
   fetchedAt?: string;
 }
 

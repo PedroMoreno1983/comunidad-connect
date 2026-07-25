@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,7 @@ type SupermarketResultItem = {
   productUrl?: string;
   originalPrice?: number;
   isOffer?: boolean;
+  selectionReason?: string;
   checked: boolean;
   available: boolean;
   source: 'catalog' | 'live' | 'missing';
@@ -48,16 +50,22 @@ function toSupermarketResultItem(
   item: Record<string, unknown>,
   requested: RequestedItem,
   source: SupermarketResultItem['source'],
+  optionCount = 1,
 ): SupermarketResultItem {
   const price = typeof item.price === 'number' ? item.price : 0;
   const requestedQuantity = requested.quantity;
   const packUnits = typeof item.packUnits === 'number' ? item.packUnits : 1;
   const packs = Math.max(1, Math.ceil(requestedQuantity / packUnits));
   const suppliedQuantity = packs * packUnits;
+  const name = typeof item.name === 'string' ? item.name : requested.term;
+  const brand = typeof item.brand === 'string' ? item.brand : undefined;
+  const store = typeof item.store === 'string' ? item.store : undefined;
+  const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
+  const rawProductUrl = typeof item.productUrl === 'string' && item.productUrl.trim() ? item.productUrl : undefined;
   return {
     id: typeof item.id === 'string' ? item.id : randomUUID(),
-    name: typeof item.name === 'string' ? item.name : requested.term,
-    brand: typeof item.brand === 'string' ? item.brand : undefined,
+    name,
+    brand,
     requestedTerm: requested.term,
     requestedQuantity,
     quantity: packs,
@@ -65,10 +73,15 @@ function toSupermarketResultItem(
     suppliedQuantity,
     price,
     lineTotal: price * packs,
-    store: typeof item.store === 'string' ? item.store : undefined,
-    productUrl: typeof item.productUrl === 'string' ? item.productUrl : undefined,
+    store,
+    // Todo producto encontrado queda linkeable: ficha exacta si existe, o la
+    // búsqueda del nombre exacto dentro del sitio de la tienda como respaldo.
+    productUrl: rawProductUrl || storeSearchUrl(store, name),
     originalPrice: typeof item.originalPrice === 'number' ? item.originalPrice : undefined,
-    isOffer: typeof item.isOffer === 'boolean' ? item.isOffer : undefined,
+    isOffer,
+    selectionReason: typeof item.selectionReason === 'string' && item.selectionReason
+      ? item.selectionReason
+      : buildSelectionReason({ brand, explicitBrand: null, optionCount, store, isOffer }),
     checked: false,
     available: source !== 'missing',
     source,
@@ -115,7 +128,8 @@ export async function POST(req: NextRequest) {
           selected.items.map((item: Record<string, unknown>) => {
             const term = typeof item.requestedTerm === 'string' ? item.requestedTerm : '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
-            return [term, toSupermarketResultItem(item, req, 'catalog')];
+            const optionCount = (comparison.alternativesByTerm?.[term] || []).length || 1;
+            return [term, toSupermarketResultItem(item, req, 'catalog', optionCount)];
           })
         );
         const liveItems = selected.missingTerms.length > 0
@@ -135,7 +149,7 @@ export async function POST(req: NextRequest) {
               originalPrice: item.originalPrice,
               isOffer: item.isOffer,
               fetchedAt: new Date().toISOString(),
-            }, req, 'live')];
+            }, req, 'live', 0)];
           })
         );
         const items: SupermarketResultItem[] = requestedItems.map((requested: RequestedItem) => (
@@ -164,10 +178,14 @@ export async function POST(req: NextRequest) {
         const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
         const foundCount = items.length - missingTerms.length;
         const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+        const distinctStores = new Set(items.filter(item => item.available && item.store).map(item => item.store));
+        const mixedNote = !ready && distinctStores.size > 1
+          ? ' Ninguna tienda cubrió toda tu lista: algunos productos vienen de tiendas distintas y cada uno muestra su tienda abajo.'
+          : '';
         return NextResponse.json({
           message: ready
             ? `Canasta completa seleccionada en ${selected.store} por $${selected.subtotal.toLocaleString('es-CL')}.`
-            : `Encontré ${foundCount} de ${requestedItems.length} productos. Los faltantes siguen visibles para que puedas corregirlos o intentar otra descripción.`,
+            : `Encontré ${foundCount} de ${requestedItems.length} productos. Los faltantes siguen visibles para que puedas corregirlos o intentar otra descripción.${mixedNote}`,
           items,
           fetchedAt: selected.fetchedAt ?? new Date().toISOString(),
           mode: ready ? 'persisted_basket' : 'mixed_catalog_live',
@@ -252,7 +270,7 @@ export async function POST(req: NextRequest) {
           originalPrice: item.originalPrice,
           isOffer: item.isOffer,
           fetchedAt,
-        }, requested, 'live');
+        }, requested, 'live', 0);
       });
       const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
 
@@ -288,8 +306,9 @@ export async function POST(req: NextRequest) {
         productUrl: item.productUrl,
         originalPrice: item.originalPrice,
         isOffer: item.isOffer,
+        selectionReason: item.selectionReason,
         fetchedAt,
-      }, req, 'live');
+      }, req, 'live', 0);
     });
 
     const missingTerms = best.missingTerms;

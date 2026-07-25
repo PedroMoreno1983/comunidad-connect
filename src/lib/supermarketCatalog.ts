@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
+import { significantWords, termMatchesProductName } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 /** TTL dinámico: 12h para mantener frescura con cron 2x/día. */
@@ -19,7 +20,11 @@ export async function comparePersistedSupermarkets(
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
   const entries = await Promise.all(terms.map(async term => {
-    const pattern = `%${term.split(' ').join('%')}%`;
+    // Postgres ILIKE es sensible a acentos: buscamos por la primera palabra
+    // significativa (sin acentos) y refinamos en JS, donde "queso en laminas"
+    // sí calza con "Queso en Láminas Colun".
+    const anchor = significantWords(term)[0] || term.trim().split(/\s+/)[0] || term;
+    const pattern = `%${anchor}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')
       .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
@@ -27,14 +32,16 @@ export async function comparePersistedSupermarkets(
       .gte('last_seen_at', cutoff)
       .ilike('name', pattern)
       .order('price', { ascending: true })
-      .limit(100);
+      .limit(200);
 
     if (error) throw error;
     const rawData: unknown = data;
     const rows = Array.isArray(rawData)
       ? rawData.map(asRecord).filter((row): row is Record<string, unknown> => row !== null)
       : [];
-    return [term, rows] as const;
+    const refined = rows.filter(row => termMatchesProductName(term, String(row.name || '')));
+    // Si el refinamiento deja todo fuera (término raro), conservamos el ancla.
+    return [term, refined.length > 0 ? refined : rows] as const;
   }));
 
   const rowsByTerm = Object.fromEntries(entries);

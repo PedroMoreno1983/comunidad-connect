@@ -47,4 +47,12 @@ describe("classifyCoCoMessage", () => {
         expect(decision.category).toBe("administracion");
         expect(decision.shouldCreateCase).toBe(false);
     });
+
+    it("does not create junk cases for unmatched chit-chat like supermarket help", () => {
+        // Regression: "del supermercado me puedes ayudar" fell into the generic
+        // incident bucket (category 'otro') and opened a spurious 'Caso CoCo'.
+        const decision = classifyCoCoMessage("del supermercado me puedes ayudar");
+        expect(decision.category).toBe("otro");
+        expect(decision.shouldCreateCase).toBe(false);
+    });
 });

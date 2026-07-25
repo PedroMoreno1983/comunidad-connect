@@ -7,15 +7,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { searchLiveSupermarkets } from '@/lib/supermarketLive';
+import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import type { ScrapedItem } from '@/lib/supermarketLive';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 /** Delay entre términos para no saturar los servidores (ms). */
 const TERM_DELAY_MS = 800;
 /** Tiendas a trackear en sourceStatus. */
 const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+/** Tiendas que efectivamente se scrapean por término. */
+const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'];
 
 /**
  * Catálogo base de términos de búsqueda para mantener precios actualizados.
@@ -25,19 +28,21 @@ const BASE_CATALOG_TERMS = [
   // Abarrotes
   'arroz', 'fideos', 'aceite', 'azucar', 'sal', 'tomate triturado', 'lentejas',
   'harina', 'avena', 'azucar flor', 'sal fina', 'aceite de oliva',
+  'vinagre', 'mayonesa', 'ketchup', 'mostaza', 'manjar', 'miel', 'jalea',
   // Lácteos y huevos
   'huevos', 'leche', 'mantequilla', 'queso', 'yogurt', 'leche descremada',
-  // Carnes
-  'pollo', 'carne molida', 'atun', 'jamon', 'salchichas',
+  'queso laminado', 'queso crema',
+  // Carnes y fríos
+  'pollo', 'carne molida', 'atun', 'jamon', 'salchichas', 'pate', 'hamburguesa',
   // Verduras y frutas
   'tomate', 'cebolla', 'papa', 'limon', 'palta', 'manzana', 'platano', 'zanahoria',
   // Panadería
-  'pan molde', 'pan integral', 'tortillas',
+  'pan molde', 'pan integral', 'tortillas', 'galletas',
   // Bebidas
-  'agua mineral', 'jugo naranja', 'coca cola', 'bebida light',
+  'agua mineral', 'jugo naranja', 'coca cola', 'bebida light', 'cafe', 'te',
   // Higiene y limpieza
   'papel higienico', 'detergente', 'shampoo', 'pasta dental', 'lavandina',
-  'jabon liquido', 'suavizante', 'desodorante',
+  'jabon liquido', 'suavizante', 'desodorante', 'papel toalla', 'lavalozas',
 ];
 
 interface IngestProduct {
@@ -93,17 +98,20 @@ export async function POST(req: NextRequest) {
     const allItems: ScrapedItem[] = [];
     const sourceStatus: { store: string; status: string; term: string; error?: string }[] = [];
 
-    // Scrapear cada término con throttling para no saturar
+    // Scrapear cada término con throttling para no saturar.
+    // Se ingieren TODOS los productos encontrados por tienda (no solo el mejor
+    // match) para que el catálogo persistido crezca a miles de productos.
     for (let i = 0; i < terms.length; i++) {
       const term = terms[i];
       try {
-        const result = await searchLiveSupermarkets(term);
-        if (result.items && result.items.length > 0) {
-          allItems.push(...result.items);
+        const perStore = await Promise.all(REFRESH_STORES.map(store => searchAllRetailerProducts(store, term)));
+        const items = perStore.flat();
+        if (items.length > 0) {
+          allItems.push(...items);
         }
-        
+
         // Registrar status por tienda
-        const storesFound = new Set(result.items.map(i => i.store));
+        const storesFound = new Set(items.map(item => item.store));
         TRACKED_STORES.forEach(store => {
           sourceStatus.push({
             store,
@@ -111,11 +119,6 @@ export async function POST(req: NextRequest) {
             term,
           });
         });
-
-        // Reportar tiendas degradadas (circuit breaker)
-        if (result.degradedStores && result.degradedStores.length > 0) {
-          console.warn(`[supermarket refresh] Degraded stores for "${term}": ${result.degradedStores.join(', ')}`);
-        }
       } catch (termError) {
         console.error(`[supermarket refresh] Error scraping term "${term}":`, termError);
         TRACKED_STORES.forEach(store => {
