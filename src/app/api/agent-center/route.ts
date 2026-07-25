@@ -1505,6 +1505,13 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         console.error('[agent-center] request failed', error);
-        return NextResponse.json({ error: 'No se pudo ejecutar la acción.' }, { status: 500 });
+        // Los errores de negocio del Agent Center (validacion, pasos de mision,
+        // datos faltantes) ya vienen redactados para el usuario en español.
+        const detail = error instanceof Error && error.message && !/stack|undefined|null/i.test(error.message)
+            ? error.message.slice(0, 280)
+            : '';
+        return NextResponse.json({
+            error: detail ? `No se pudo ejecutar la acción: ${detail}` : 'No se pudo ejecutar la acción.',
+        }, { status: 500 });
     }
 }
