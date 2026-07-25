@@ -1,4 +1,6 @@
-﻿import type { AgentAction } from '@/lib/agent-center/domain';
+import { AGENT_TOOL_NAMES, MAX_MISSION_STEPS, type AgentAction, type AgentKey, type ToolName } from '@/lib/agent-center/domain';
+
+const AGENT_KEYS: AgentKey[] = ['finance', 'maintenance', 'concierge', 'community'];
 
 function text(value: unknown, label: string, min: number, max: number) {
     const cleaned = typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -118,6 +120,40 @@ export function validateAgentActionArgs(action: AgentAction): Record<string, unk
             preferredDate: isoDate(args.preferredDate, 'La fecha preferida'),
             preferredTime: time(args.preferredTime, 'La hora preferida'),
         };
+    }
+
+    if (action.toolName === 'run_mission') {
+        const goal = typeof args.goal === 'string' ? args.goal.trim().slice(0, 280) : '';
+        const rawSteps = Array.isArray(args.steps) ? args.steps : [];
+        if (rawSteps.length < 2 || rawSteps.length > MAX_MISSION_STEPS) {
+            throw new Error(`La mision debe tener entre 2 y ${MAX_MISSION_STEPS} pasos.`);
+        }
+        const steps = rawSteps.map((raw, index) => {
+            const step = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+            const agentKey = String(step.agentKey || '') as AgentKey;
+            const toolName = String(step.toolName || '') as ToolName;
+            if (!AGENT_KEYS.includes(agentKey)) throw new Error(`Paso ${index + 1}: agente no soportado.`);
+            if (!AGENT_TOOL_NAMES.includes(toolName) || toolName === 'run_mission' || toolName === 'run_playbook') {
+                throw new Error(`Paso ${index + 1}: herramienta no permitida dentro de una mision.`);
+            }
+            const innerArgs = validateAgentActionArgs({
+                agentKey,
+                toolName,
+                args: step.args && typeof step.args === 'object' ? step.args as Record<string, unknown> : {},
+                requiresConfirmation: false,
+                title: '',
+                summary: '',
+                targetHref: '',
+            });
+            return {
+                agentKey,
+                toolName,
+                args: innerArgs,
+                title: typeof step.title === 'string' ? step.title.trim().slice(0, 140) : `Paso ${index + 1}`,
+                rationale: typeof step.rationale === 'string' ? step.rationale.trim().slice(0, 280) : '',
+            };
+        });
+        return { goal: goal || 'Mision multi-agente', steps };
     }
 
     return args;
