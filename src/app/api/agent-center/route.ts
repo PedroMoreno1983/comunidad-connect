@@ -22,6 +22,7 @@ import {
     AGENT_TOOL_NAMES,
     DEFAULT_AGENT_POLICIES,
     DEFAULT_COMMUNITY_ID,
+    MAX_MISSION_STEPS,
     READ_ONLY_AGENT_TOOLS,
     TOOL_AGENT_KEYS,
     effectiveRequiresConfirmation,
@@ -195,6 +196,25 @@ function activitySummaryForStatus(action: AgentAction, status: 'preview' | 'exec
     return `Preparado para revision: ${displayName}`;
 }
 
+function buildAnnouncementAction(message: string): AgentAction {
+    const lower = message.toLowerCase();
+    const title = cleanText(
+        message
+            .replace(/^(?:crea|crear|publica|publicar|envia|enviar|env[ií]ale)\s+(?:un|una|el|la)?\s*(?:comunicado|aviso|anuncio)(?:\s+(?:de|sobre|acerca de|por|para))?\s*/i, '')
+            .replace(/\s+/g, ' '),
+        90
+    ) || 'Comunicado de administracion';
+    return {
+        agentKey: 'community',
+        toolName: 'create_announcement',
+        args: { title, content: message, priority: lower.includes('urgente') ? 'alert' : 'info' },
+        requiresConfirmation: true,
+        title: `Publicar comunicado: ${title}`,
+        summary: 'Accion disponible solo para administracion o conserjeria.',
+        targetHref: '/comunicaciones',
+    };
+}
+
 function inferActionHeuristic(message: string, profile: AgentProfile): AgentAction {
     const lower = message.toLowerCase();
     const date = dateFromText(message);
@@ -235,12 +255,12 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const unitNumber = extractUnitNumber(message);
     const residentQuery = extractResidentQuery(message);
     const amount = moneyFromText(message);
-    const mentionsFinance = /\b(cobro|gasto|cargo|pago|deuda)\b/.test(normalized);
+    const mentionsFinance = /\b(cobro|cobra|cobrar|cobranza|gasto|cargo|pago|deuda)\b/.test(normalized);
     const wantsCreateUnitCharge = profile.role === 'admin'
         && amount > 0
         && Boolean(unitNumber)
         && mentionsFinance
-        && /\b(crea|crear|genera|generar|emite|emitir|carga|cargar|agrega|agregar)\b/.test(normalized);
+        && /\b(crea|crear|genera|generar|emite|emitir|carga|cargar|agrega|agregar|cobra|cobrar)\b/.test(normalized);
     const wantsPaymentReminderIntent = profile.role === 'admin'
         && mentionsFinance
         && /\b(envia|enviar|manda|mandar|notifica|notificar|recuerda|recordatorio|avisa|avisale|enviale)\b/.test(normalized);
@@ -313,7 +333,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
         return buildClarificationAction(message, 'finance', 'Indica el nombre del residente o el departamento cuya deuda deseas consultar. No realice ningun cambio.');
     }
 
-    if (lower.includes('vender') || lower.includes('publica') || lower.includes('marketplace')) {
+    if ((lower.includes('vender') || lower.includes('publica') || lower.includes('marketplace')) && !lower.includes('comunicado')) {
         const price = moneyFromText(message);
         const title = cleanText(
             message
@@ -335,21 +355,7 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     if (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio')) {
-        const title = cleanText(
-            message
-                .replace(/^(?:crea|crear|publica|publicar|envia|enviar|env[ií]ale)\s+(?:un|una|el|la)?\s*(?:comunicado|aviso|anuncio)(?:\s+(?:de|sobre|acerca de|por|para))?\s*/i, '')
-                .replace(/\s+/g, ' '),
-            90
-        ) || 'Comunicado de administracion';
-        return {
-            agentKey: 'community',
-            toolName: 'create_announcement',
-            args: { title, content: message, priority: lower.includes('urgente') ? 'alert' : 'info' },
-            requiresConfirmation: true,
-            title: `Publicar comunicado: ${title}`,
-            summary: 'Accion disponible solo para administracion o conserjeria.',
-            targetHref: '/comunicaciones',
-        };
+        return buildAnnouncementAction(message);
     }
 
     if (lower.includes('visita') || lower.includes('visitante') || lower.includes('ingreso')) {
@@ -380,6 +386,83 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     }
 
     return buildClarificationAction(message, pickAgent(message));
+}
+
+// ---------------------------------------------------------------------------
+// Fallback determinístico de orquestación: cuando Claude no está disponible,
+// una solicitud multi-dominio se divide en cláusulas y cada una se resuelve
+// con el heurístico normal, componiendo una misión multi-agente auditable.
+// ---------------------------------------------------------------------------
+function splitMissionClauses(message: string): string[] {
+    return message
+        .split(/(?:\.\s+|;\s+|,\s+y\s+|\s+y\s+|\s+luego\s+|\s+despues\s+|\s+después\s+)/i)
+        .map(part => part.replace(/^[,.\s]+|[,.\s]+$/g, '').trim())
+        .filter(part => part.length >= 8);
+}
+
+function inferClauseAction(clause: string, fullMessage: string, profile: AgentProfile): AgentAction | null {
+    const lower = clause.toLowerCase();
+    // Los comunicados ganan sobre el heurístico general, que podría mapear la
+    // cláusula a un playbook batch (p. ej. "avisando de la cobranza").
+    if (/\b(comunicado|anuncio)\b/.test(lower) && !/\b(marketplace|vendo|vender)\b/.test(lower)) {
+        return buildAnnouncementAction(clause);
+    }
+
+    // Hereda el departamento/residente del mensaje completo cuando la cláusula
+    // no lo repite ("...y envía un recordatorio de pago").
+    let enriched = clause;
+    const unitNumber = extractUnitNumber(fullMessage);
+    if (unitNumber && !extractUnitNumber(clause)) enriched = `${clause} depto ${unitNumber}`;
+    const action = inferActionHeuristic(enriched, profile);
+    if (action.toolName === 'clarify_intent' || action.toolName === 'run_playbook' || action.toolName === 'run_mission') {
+        return null;
+    }
+    return action;
+}
+
+function buildHeuristicMission(message: string, profile: AgentProfile): AgentAction | null {
+    const clauses = splitMissionClauses(message);
+    if (clauses.length < 2) return null;
+
+    const steps: AgentMissionStep[] = [];
+    for (const clause of clauses) {
+        if (steps.length >= MAX_MISSION_STEPS) break;
+        const action = inferClauseAction(clause, message, profile);
+        if (!action) continue;
+        try {
+            const validatedArgs = validateAgentActionArgs(action);
+            const duplicated = steps.some(step => step.toolName === action.toolName && JSON.stringify(step.args) === JSON.stringify(validatedArgs));
+            if (duplicated) continue;
+            steps.push({
+                agentKey: action.agentKey,
+                toolName: action.toolName,
+                args: validatedArgs,
+                title: cleanText(action.title, 140) || `Paso ${steps.length + 1}`,
+                rationale: cleanText(action.summary, 280),
+            });
+        } catch {
+            // Cláusula sin datos suficientes: se omite del plan.
+        }
+    }
+
+    const distinctAgents = new Set(steps.map(step => step.agentKey));
+    if (steps.length < 2 || distinctAgents.size < 2) return null;
+
+    const goal = cleanText(message, 280);
+    return {
+        agentKey: steps[0].agentKey,
+        toolName: 'run_mission',
+        args: { goal, steps },
+        requiresConfirmation: true,
+        title: `Mision multi-agente: ${goal.slice(0, 80)}`,
+        summary: `CoCo coordinara ${steps.length} pasos en ${distinctAgents.size} agentes: ${steps.map((step, index) => `${index + 1}. ${step.title}`).join(' · ')}.`,
+        targetHref: '/agent-center',
+        decision: {
+            intent: 'Orquestacion multi-agente',
+            confidence: 0.7,
+            explanation: 'Claude no estuvo disponible; la mision se descompuso con reglas deterministicas y requiere tu aprobacion.',
+        },
+    };
 }
 
 async function getUserUnit(profile: AgentProfile) {
@@ -704,6 +787,8 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
         } catch (error) {
             console.warn('[AgentCenterMission] Claude mission planning failed; falling back to single planner.', error);
         }
+        const heuristicMission = buildHeuristicMission(message, profile);
+        if (heuristicMission) return finalizeInferredAction(message, heuristicMission);
     }
 
     try {
