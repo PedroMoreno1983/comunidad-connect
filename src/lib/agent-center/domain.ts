@@ -15,7 +15,8 @@ export type ToolName =
     | 'get_community_snapshot'
     | 'answer_community_question'
     | 'clarify_intent'
-    | 'run_playbook';
+    | 'run_playbook'
+    | 'run_mission';
 
 export const AGENT_TOOL_NAMES: ToolName[] = [
     'create_booking',
@@ -31,6 +32,7 @@ export const AGENT_TOOL_NAMES: ToolName[] = [
     'answer_community_question',
     'clarify_intent',
     'run_playbook',
+    'run_mission',
 ];
 
 export const TOOL_AGENT_KEYS: Partial<Record<ToolName, AgentKey>> = {
@@ -60,12 +62,62 @@ export const MUTATING_AGENT_TOOLS: ToolName[] = AGENT_TOOL_NAMES.filter(
     toolName => !READ_ONLY_AGENT_TOOLS.includes(toolName),
 );
 
+// ---------------------------------------------------------------------------
+// Niveles de riesgo por herramienta — base de la graduacion de autonomia.
+// read:       nunca escribe; nunca requiere confirmacion.
+// write_low:  escritura reversible y de bajo impacto (reservas, avisos propios,
+//             tickets, bitacora de visitas).
+// write_high: escritura con impacto financiero, difusion a terceros o batch
+//             (cobros, recordatorios con WhatsApp, comunicados, playbooks).
+// ---------------------------------------------------------------------------
+export type ToolRiskLevel = 'read' | 'write_low' | 'write_high';
+
+export const TOOL_RISK_LEVELS: Record<ToolName, ToolRiskLevel> = {
+    get_my_expenses: 'read',
+    get_resident_expenses: 'read',
+    get_community_snapshot: 'read',
+    answer_community_question: 'read',
+    clarify_intent: 'read',
+    create_booking: 'write_low',
+    create_marketplace_item: 'write_low',
+    create_service_request: 'write_low',
+    register_visitor: 'write_low',
+    create_unit_expense: 'write_high',
+    send_unit_payment_reminder: 'write_high',
+    create_announcement: 'write_high',
+    run_playbook: 'write_high',
+    run_mission: 'write_high',
+};
+
+/**
+ * Decide si una accion requiere confirmacion humana segun la politica del
+ * agente responsable. Reglas:
+ * - Las lecturas nunca requieren confirmacion.
+ * - run_playbook siempre requiere confirmacion (operaciones batch).
+ * - manual:           toda escritura requiere confirmacion.
+ * - semi_autonomous:  solo write_high requiere confirmacion.
+ * - autonomous:       write_low y write_high corren sin confirmacion (playbooks
+ *                   excluidos); todo queda auditado igual.
+ */
+export function effectiveRequiresConfirmation(
+    toolName: ToolName,
+    policy: Pick<AgentPolicy, 'autonomyLevel'>,
+): boolean {
+    const risk = TOOL_RISK_LEVELS[toolName];
+    if (risk === 'read') return false;
+    if (toolName === 'run_playbook') return true;
+    if (policy.autonomyLevel === 'autonomous') return false;
+    if (policy.autonomyLevel === 'semi_autonomous') return risk === 'write_high';
+    return true;
+}
+
 export type PlaybookKey =
     | 'finance_collection_review'
     | 'maintenance_ticket_triage'
     | 'onboarding_import_review'
     | 'iot_emergency_readiness'
-    | 'community_broadcast';
+    | 'community_broadcast'
+    | 'multi_agent_mission';
 
 export type AgentProfile = ServerAgentProfile;
 
@@ -92,6 +144,40 @@ export type AgentStep = {
     detail: string;
     metadata?: Record<string, unknown>;
 };
+
+// ---------------------------------------------------------------------------
+// Orquestacion multi-agente: una mision descompone un objetivo en pasos
+// ejecutados por agentes distintos, con contexto compartido y una sola
+// tarjeta de aprobacion humana.
+// ---------------------------------------------------------------------------
+export const MAX_MISSION_STEPS = 4;
+
+export type AgentMissionStep = {
+    agentKey: AgentKey;
+    toolName: ToolName;
+    args: Record<string, unknown>;
+    title: string;
+    rationale: string;
+};
+
+export type AgentMissionPlan = {
+    goal: string;
+    steps: AgentMissionStep[];
+};
+
+/**
+ * Una mision requiere confirmacion si ALGUNO de sus pasos la requiere segun la
+ * politica del agente de ese paso. Los pasos de lectura nunca la piden.
+ */
+export function missionRequiresConfirmation(
+    steps: AgentMissionStep[],
+    policies: Record<AgentKey, Pick<AgentPolicy, 'autonomyLevel'>>,
+): boolean {
+    return steps.some(step => {
+        const policy = policies[step.agentKey];
+        return effectiveRequiresConfirmation(step.toolName, policy || { autonomyLevel: 'manual' });
+    });
+}
 
 export type AgentPolicy = {
     agentKey: AgentKey;

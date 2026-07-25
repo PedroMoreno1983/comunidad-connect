@@ -12,6 +12,7 @@ import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { getAgentPlannerModel, planAgentAction } from '@/lib/agent-center/planner';
+import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
 import { dateFromText, dueDateForExpense, moneyFromText, monthFromText, normalizeText, timeFromText } from '@/lib/agent-center/textParsing';
@@ -23,8 +24,11 @@ import {
     DEFAULT_COMMUNITY_ID,
     READ_ONLY_AGENT_TOOLS,
     TOOL_AGENT_KEYS,
+    effectiveRequiresConfirmation,
+    missionRequiresConfirmation,
     type AgentAction,
     type AgentKey,
+    type AgentMissionStep,
     type AgentPlaybook,
     type AgentPolicy,
     type AgentProfile,
@@ -87,6 +91,7 @@ const TOOL_LABELS: Record<ToolName, string> = {
     answer_community_question: 'Investigar informacion de la comunidad',
     clarify_intent: 'Solicitar precision',
     run_playbook: 'Preparar revision',
+    run_mission: 'Mision multi-agente',
 };
 
 function humanizeArgKey(key: string) {
@@ -139,6 +144,23 @@ function traceStepsForAction(action: AgentAction): AgentStep[] {
                 detail: playbook.steps.join(' -> '),
                 metadata: action.args,
             },
+        ];
+    }
+
+    if (action.toolName === 'run_mission') {
+        const missionSteps = Array.isArray(action.args.steps) ? (action.args.steps as AgentMissionStep[]) : [];
+        return [
+            {
+                kind: 'reasoning',
+                title: 'Mision planificada',
+                detail: cleanText(action.args.goal, 280) || 'CoCo descompuso el objetivo en pasos ejecutados por varios agentes.',
+            },
+            ...missionSteps.map((step, index): AgentStep => ({
+                kind: 'tool',
+                title: `Paso ${index + 1}: ${step.title || TOOL_LABELS[step.toolName] || step.toolName}`,
+                detail: `${AGENT_LABELS[step.agentKey] || step.agentKey} — ${step.rationale || TOOL_LABELS[step.toolName] || 'Paso de la mision.'} ${summarizeArgs(step.args || {})}`,
+                metadata: step.args,
+            })),
         ];
     }
 
@@ -675,6 +697,15 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
 
+    if (detectMultiIntent(message)) {
+        try {
+            const missionPlan = await planAgentMission(message, profile);
+            if (missionPlan) return finalizeInferredAction(message, buildMissionAction(missionPlan));
+        } catch (error) {
+            console.warn('[AgentCenterMission] Claude mission planning failed; falling back to single planner.', error);
+        }
+    }
+
     try {
         const plannedAction = await planAgentAction(message, profile);
         if (plannedAction) return finalizeInferredAction(message, plannedAction);
@@ -1169,6 +1200,10 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         return { entityType: 'service_request', entityId: data.id, title: 'Ticket creado', message: `Solicitud enviada a ${provider.name}.`, data };
     }
 
+    if (action.toolName === 'run_mission') {
+        return executeAgentMission(action, profile, executeAction);
+    }
+
     throw new Error('Herramienta no soportada.');
 }
 
@@ -1322,9 +1357,15 @@ export async function POST(req: NextRequest) {
         }
         await assertDailyActionLimit(profile, action, policy);
         action.args = validateAgentActionArgs(action);
+        // La confirmacion efectiva depende de la politica de autonomia del agente
+        // (o de la combinacion de agentes, en el caso de una mision multi-agente).
+        const needsConfirmation = action.toolName === 'run_mission'
+            ? missionRequiresConfirmation((action.args.steps as AgentMissionStep[]) || [], policies)
+            : effectiveRequiresConfirmation(action.toolName, policy);
+        action.requiresConfirmation = needsConfirmation;
         const steps: AgentStep[] = traceStepsForAction(action);
 
-        if (action.requiresConfirmation && !confirmed) {
+        if (needsConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
             if (!audit.runId || !audit.toolCallId) {
                 throw new Error('La auditoria agéntica no esta configurada. Aplica la migracion 029_agent_center_audit.sql antes de confirmar acciones reales.');
