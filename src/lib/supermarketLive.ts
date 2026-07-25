@@ -1,4 +1,5 @@
 import type { CartItem } from '@/lib/agentBrain';
+import { buildSelectionReason } from '@/lib/supermarketText';
 
 export interface ScrapedItem {
   name: string;
@@ -20,6 +21,8 @@ export interface ScrapedItem {
   sku?: string;
   /** EAN, when available. */
   ean?: string;
+  /** Explicación del criterio de selección de marca/presentación. */
+  selectionReason?: string;
   /** Cantidad solicitada por el usuario (ej: 5 kilos → 5). */
   userQuantity?: number;
   /** Precio total = price × userQuantity. */
@@ -342,7 +345,8 @@ export function parseJumboProducts(html: string, query: string): ScrapedItem[] {
     const name = asString(item?.name);
     const images = asArray(item?.images);
     const imageUrl = images.length > 0 ? asString((images[0] as Record<string, unknown>)?.imageUrl) : undefined;
-    const productUrl = asString(item?.link) || asString(product?.link);
+    const productUrl = asString(item?.link) || asString(product?.link)
+      || (asString(product?.linkText) ? `/${asString(product?.linkText)}/p` : '');
     if (!product || !item || !name || price <= 0 || item.stock === false) return [];
 
     return [{
@@ -380,7 +384,8 @@ export function parseSantaIsabelProducts(html: string, query: string): ScrapedIt
     const name = asString(product?.productName) || asString(item?.name);
     const images = asArray(item?.images);
     const imageUrl = images.length > 0 ? asString((images[0] as Record<string, unknown>)?.imageUrl) : undefined;
-    const productUrl = asString(item?.link) || asString(product?.link);
+    const productUrl = asString(item?.link) || asString(product?.link)
+      || (asString(product?.linkText) ? `/${asString(product?.linkText)}/p` : '');
     if (!product || !item || !offer || !name || price <= 0 || asNumber(offer.AvailableQuantity) <= 0) return [];
 
     return [{
@@ -445,6 +450,7 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
 
     const offerInfo = detectLiderOffer(html, name);
     const listPrice = asNumber(offer?.priceValidUntil ? offer?.price : undefined);
+    const productUrl = asString(product.url) || undefined;
 
     return [{
       name,
@@ -455,6 +461,7 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
       isOffer: offerInfo.isOffer || listPrice > price,
       originalPrice: listPrice > price ? listPrice : undefined,
       query,
+      productUrl,
       sku,
       imageUrl,
     }];
@@ -481,7 +488,8 @@ export function parseUnimarcProducts(html: string, query: string): ScrapedItem[]
             const name = asString(product?.productName) || asString(item?.name);
             const images = asArray(item?.images);
             const imageUrl = images.length > 0 ? asString((images[0] as Record<string, unknown>)?.imageUrl) : undefined;
-            const productUrl = asString(item?.link) || asString(product?.link);
+            const productUrl = asString(item?.link) || asString(product?.link)
+              || (asString(product?.linkText) ? `/${asString(product?.linkText)}/p` : '');
             if (!product || !item || !offer || !name || price <= 0 || asNumber(offer.AvailableQuantity) <= 0) return [];
 
             return [{
@@ -588,7 +596,7 @@ async function fetchRetailerHtml(url: string, store: ScrapedItem['store']): Prom
 }
 
 /** Scrapea TODOS los productos de una tienda para un término de búsqueda. */
-async function searchAllRetailerProducts(store: ScrapedItem['store'], query: string): Promise<ScrapedItem[]> {
+export async function searchAllRetailerProducts(store: ScrapedItem['store'], query: string): Promise<ScrapedItem[]> {
   try {
     if (store === 'Jumbo') {
       const html = await fetchRetailerHtml(`https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`, store);
@@ -724,7 +732,18 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
       const storeProducts = productsByStore.get(store) ?? [];
       const best = selectBestForStore(storeProducts, term, explicitBrand);
       if (best) {
-        items.push({ ...best, userQuantity: quantity, totalPrice: best.price * quantity });
+        items.push({
+          ...best,
+          userQuantity: quantity,
+          totalPrice: best.price * quantity,
+          selectionReason: buildSelectionReason({
+            brand: best.brand,
+            explicitBrand,
+            optionCount: storeProducts.length,
+            store,
+            isOffer: best.isOffer,
+          }),
+        });
       } else {
         missingTerms.push(term);
         if (failedStores.includes(store)) failedForStore.push(store);

@@ -298,8 +298,16 @@ function buildLocalCoCoFallback(
         };
     }
 
+    if (text.includes('supermercado') || text.includes('mercado') || text.includes('compra') || text.includes('abarrote') || page.includes('supermercado')) {
+        return {
+            reply: 'Para el supermercado: entra a Supermercado en tu menú, pega tu lista (una línea por producto) y CoCo compara precios reales entre Jumbo, Lider, Santa Isabel y Unimarc. Cada producto muestra su tienda, el criterio con que elegimos la marca y un enlace directo para comprarlo. Si alguno falta, prueba otra descripción (tipo, tamaño o marca).',
+            navigate: '/resident/supermercado',
+            action: 'OPEN_SUPERMARKET',
+        };
+    }
+
     return {
-        reply: `Estoy en modo operativo local, ${context.name || 'vecino/a'}. Puedo orientarte por módulo, crear criterios de priorización y llevarte a la sección correcta mientras el motor IA principal no está disponible.`,
+        reply: `Puedo orientarte en modo local, ${context.name || 'vecino/a'}: dime si tu tema es gastos, reservas, mantenimiento, supermercado, convivencia o visitas y te llevo al módulo correcto. El motor IA principal no está disponible ahora, así que respondo con reglas locales.`,
         action: 'LOCAL_FALLBACK',
     };
 }

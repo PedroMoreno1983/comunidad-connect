@@ -447,6 +447,9 @@ export default function SupermarketPage() {
                                         </span>
                                       )}
                                     </div>
+                                    {item.selectionReason && (
+                                      <p className="mt-1 text-xs italic cc-text-tertiary">{item.selectionReason}</p>
+                                    )}
                                   </>
                                 ) : (
                                   <>
@@ -480,7 +483,7 @@ export default function SupermarketPage() {
 
                           {item.productUrl && (
                             <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-bold hover:underline" style={{ color: 'var(--cc-copper)' }}>
-                              Abrir producto exacto <ExternalLink className="h-3 w-3" />
+                              Ver en {item.store || 'el supermercado'} <ExternalLink className="h-3 w-3" />
                             </a>
                           )}
                         </motion.div>

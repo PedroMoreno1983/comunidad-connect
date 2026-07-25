@@ -49,8 +49,8 @@ describe('supermarket live catalog parsers', () => {
     const result = extractSupermarketTerms(products.join(', '));
 
     expect(result).toHaveLength(15);
-    expect(result[0]).toBe('arroz');
-    expect(result[14]).toBe('avena');
+    expect(result[0].term).toBe('arroz');
+    expect(result[14].term).toBe('avena');
   });
 
   it('reads Jumbo prices and offers from the public page state', () => {

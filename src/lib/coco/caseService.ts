@@ -259,7 +259,7 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         action = 'crear_ticket';
         shouldCreateCase = true;
         reason = 'Administración está solicitando una gestión operativa.';
-    } else if (category !== 'finanzas' && category !== 'administracion' && !pureGreeting) {
+    } else if (category !== 'otro' && category !== 'finanzas' && category !== 'administracion' && !pureGreeting) {
         type = recurring ? 'reclamo' : 'incidencia';
         urgency = high ? 'alta' : recurring ? 'media' : 'media';
         action = recurring ? 'escalar_admin' : high ? 'escalar_conserjeria' : 'crear_ticket';
