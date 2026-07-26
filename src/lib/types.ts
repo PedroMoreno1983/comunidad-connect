@@ -224,9 +224,12 @@ export interface SupermarketGroupOrder {
   updatedAt: string;
 }
 
+export type SupermarketMeasurementUnit = 'kg' | 'g' | 'l' | 'ml';
+
 export interface SupermarketGroupComparisonItem {
   requestedTerm: string;
   requestedQuantity: number;
+  requestedUnit?: SupermarketMeasurementUnit;
   name: string;
   store: SupermarketStore;
   price: number;
@@ -254,6 +257,7 @@ export interface SupermarketSearchCandidate {
   brand?: string;
   requestedTerm: string;
   requestedQuantity: number;
+  requestedUnit?: SupermarketMeasurementUnit;
   quantity: number;
   packUnits: number;
   suppliedQuantity: number;

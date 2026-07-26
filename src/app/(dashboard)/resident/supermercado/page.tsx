@@ -183,7 +183,7 @@ export default function SupermarketPage() {
     '',
     ...list.map((item, index) => {
       const status = item.checked ? '[x]' : '[ ]';
-      const quantity = `x${item.requestedQuantity}`;
+      const quantity = item.requestedUnit ? `${item.requestedQuantity} ${item.requestedUnit}` : `x${item.requestedQuantity}`;
       const match = item.available ? `${item.name}${item.brand ? ` · ${item.brand}` : ''}` : 'sin precio vigente';
       const price = item.available ? ` · ${money(item.lineTotal)}` : '';
       const store = item.store ? ` · ${item.store}` : '';
@@ -418,7 +418,7 @@ export default function SupermarketPage() {
                               </button>
                               <div className="min-w-0">
                                 <p className="text-xs font-bold uppercase cc-text-tertiary">
-                                  Pediste: {item.requestedTerm} · cantidad {item.requestedQuantity}
+                                  Pediste: {item.requestedTerm} · cantidad {item.requestedQuantity}{item.requestedUnit ? ` ${item.requestedUnit}` : ''}
                                 </p>
                                 {item.available ? (
                                   <>
@@ -428,7 +428,9 @@ export default function SupermarketPage() {
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                                       <span className="font-bold text-success-fg">{money(item.lineTotal)}</span>
                                       <span className="cc-text-tertiary">
-                                        {item.quantity} {item.packUnits > 1 ? `pack(s) de ${item.packUnits}` : 'unidad(es)'}
+                                        {item.requestedUnit
+                                          ? `${item.quantity} pack(s) · entrega ${item.suppliedQuantity} ${item.requestedUnit}`
+                                          : `${item.quantity} ${item.packUnits > 1 ? `pack(s) de ${item.packUnits}` : 'unidad(es)'}`}
                                       </span>
                                       {item.store && (
                                         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase cc-text-tertiary" style={{ background: 'var(--cc-paper-warm)' }}>
