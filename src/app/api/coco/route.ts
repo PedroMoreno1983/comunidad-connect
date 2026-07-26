@@ -214,7 +214,7 @@ function buildLocalCoCoFallback(
         if (text.includes('ruido') || text.includes('fiesta') || text.includes('molestia')) {
             return {
                 reply: 'Como orientación operativa, la Ley 21.442 art. 27 protege la tranquilidad de la comunidad, pero antes de escalar a multa conviene intentar mediación activa. Te propongo ordenar el mensaje con Comunicación No Violenta: observación concreta, cómo te afecta, qué necesitas y una petición amable. Si hay reincidencia o riesgo, Administración puede aplicar reglamento y dejar trazabilidad. Esto no reemplaza asesoría jurídica.',
-                navigate: '/convivencia',
+                navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
                 action: 'OPEN_MEDIATION_CNV',
             };
         }
@@ -237,7 +237,7 @@ function buildLocalCoCoFallback(
     if (text.includes('mediacion') || text.includes('mediación') || text.includes('cnv') || text.includes('convivencia') || text.includes('vecino dificil') || text.includes('vecino difícil')) {
         return {
             reply: 'Podemos resolverlo desde convivencia activa. En vez de partir con denuncia, usa el flujo CNV: hecho observable, sentimiento, necesidad y petición privada. CoCo puede redactar el mensaje para bajar defensividad y dejar trazabilidad si luego hace falta escalar.',
-            navigate: '/convivencia',
+            navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
             action: 'OPEN_MEDIATION_CNV',
         };
     }
@@ -245,7 +245,7 @@ function buildLocalCoCoFallback(
     if (text.includes('taladro') || text.includes('ayuda mutua') || text.includes('banco de tiempo') || text.includes('apoyo mutuo') || text.includes('habilidad') || text.includes('router') || text.includes('paquete')) {
         return {
             reply: 'Eso calza con el Banco de Tiempo: vecinos que ofrecen ayuda no monetaria como herramientas, paquetes, apoyo digital o cuidados. Puedes publicar una oferta o pedir apoyo sin convertir todo en compra externa.',
-            navigate: '/convivencia',
+            navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
             action: 'OPEN_TIME_BANK',
         };
     }
@@ -253,7 +253,7 @@ function buildLocalCoCoFallback(
     if (text.includes('compra colectiva') || text.includes('abasto') || text.includes('mayorista') || text.includes('gas') || text.includes('bidon') || text.includes('bidón') || text.includes('limpieza')) {
         return {
             reply: 'Para eso está Abasto Comunitario: campañas de compra colectiva para ahorrar por volumen y coordinar entregas con menos fricción. Te puedo llevar a crear una campaña con proveedor, precio retail, precio comunitario y mínimo de participantes.',
-            navigate: '/convivencia',
+            navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
             action: 'OPEN_COLLECTIVE_PURCHASES',
         };
     }
@@ -261,7 +261,7 @@ function buildLocalCoCoFallback(
     if (text.includes('huerto') || text.includes('reciclaje') || text.includes('mascota') || text.includes('proyecto comunitario') || text.includes('adulto mayor') || text.includes('tercera edad')) {
         return {
             reply: 'Eso pertenece a la Plaza Social: proyectos colectivos con impacto visible, participantes, necesidades y señales que CoCo puede detectar para formar grupos útiles. La idea es destacar cooperación, no solo quejas individuales.',
-            navigate: '/convivencia',
+            navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
             action: 'OPEN_COMMUNITY_PROJECTS',
         };
     }
@@ -299,9 +299,17 @@ function buildLocalCoCoFallback(
     }
 
     if (text.includes('supermercado') || text.includes('mercado') || text.includes('compra') || text.includes('abarrote') || page.includes('supermercado')) {
+        if (context.role === 'admin') {
+            return {
+                reply: 'Como administrador no necesitas comprar ni armar un carro. En Gestion de Convivencia puedes supervisar compras comunitarias, su avance, proveedor y fecha de cierre.',
+                navigate: '/admin/convivencia',
+                action: 'OPEN_COLLECTIVE_PURCHASE_MANAGEMENT',
+            };
+        }
+
         return {
             reply: 'Para el supermercado: entra a Supermercado en tu menú, pega tu lista (una línea por producto) y CoCo compara precios reales entre Jumbo, Lider, Santa Isabel y Unimarc. Cada producto muestra su tienda, el criterio con que elegimos la marca y un enlace directo para comprarlo. Si alguno falta, prueba otra descripción (tipo, tamaño o marca).',
-            navigate: '/resident/supermercado',
+            navigate: context.role === 'resident' ? '/resident/supermercado' : undefined,
             action: 'OPEN_SUPERMARKET',
         };
     }

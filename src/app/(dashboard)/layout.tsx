@@ -63,6 +63,7 @@ function DashboardShell({
             '/notifications': 'Notificaciones',
             '/feed': 'Avisos y Comunicaciones',
             '/convivencia': 'Convivencia',
+            '/admin/convivencia': 'Gestion de Convivencia',
             '/chat': 'CoCo AI Chat',
             '/social': 'Red Social',
             '/directorio': 'Directorio de Vecinos',

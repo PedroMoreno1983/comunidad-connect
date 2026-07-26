@@ -292,6 +292,17 @@ export const CommunityCollaborationService = {
         return ((data || []) as CollaborationRow[]).map(mapMediationRow);
     },
 
+    async getAdminMediationCases(): Promise<NeighborMediationCase[]> {
+        const { data, error } = await supabase
+            .from('neighbor_mediations')
+            .select('*')
+            .in('status', ['escalated', 'agreement'])
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return ((data || []) as CollaborationRow[]).map(mapMediationRow);
+    },
+
+
     async createMediationCase(input: Omit<NeighborMediationCase, 'id' | 'draftedMessage' | 'status' | 'createdAt'>): Promise<NeighborMediationCase> {
         const draftedMessage = getDraftedCnvMessage(input);
         const { data, error } = await supabase

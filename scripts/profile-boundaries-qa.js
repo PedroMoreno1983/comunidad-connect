@@ -53,6 +53,7 @@ function assertStaticRoleBoundaries() {
   const trainingApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/training/modules/route.ts'), 'utf8');
   const operationsApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/operations/events/route.ts'), 'utf8');
   const amenitiesPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/amenities/page.tsx'), 'utf8');
+  const convivenciaMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260726234956_admin_convivencia_privacy.sql'), 'utf8');
 
   assert(
     /if\s*\(pathname\.startsWith\("\/agent-center"\)\)\s*\{\s*allowed\s*=\s*role\s*===\s*"admin";\s*\}/.test(proxy),
@@ -67,8 +68,12 @@ function assertStaticRoleBoundaries() {
   assert(proxy.includes('"/feed"'), 'Read-only communications feed requires authentication');
   assert(sidebar.includes('{ href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"]'), 'Resident communications navigation opens the read-only feed');
   assert(sidebar.includes('{ href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"]'), 'Publishing navigation is limited to admin and concierge');
-  assert(sidebar.includes('{ href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["admin", "resident"]'), 'Convivencia navigation is limited to admin and resident');
-  assert(proxy.includes('pathname.startsWith("/convivencia")') && proxy.includes('allowed = role === "admin" || role === "resident"'), 'Convivencia route rejects concierge');
+  assert(sidebar.includes('{ href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"]'), 'Resident convivencia navigation is resident-only');
+  assert(sidebar.includes('{ href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"]'), 'Admin receives a distinct convivencia management route');
+  assert(proxy.includes('pathname.startsWith("/convivencia")') && proxy.includes('allowed = role === "resident"'), 'Resident convivencia route rejects staff profiles');
+  assert(proxy.includes('pathname.startsWith("/resident/supermercado")') && proxy.includes('allowed = role === "resident"'), 'Personal supermarket route is resident-only');
+  assert(sidebar.includes('{ href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"]'), 'Personal supermarket navigation is resident-only');
+  assert(convivenciaMigration.includes("get_my_role() = 'admin' AND status IN ('escalated', 'agreement')") && !convivenciaMigration.includes("'concierge'"), 'Mediation RLS exposes only escalated cases to administrators');
   assert(sidebar.includes('title: "MI TURNO"') && sidebar.includes('label: "Entrega de turno"') && sidebar.includes('label: "Bitácora"'), 'Concierge receives the shift-specific navigation');
   assert(sidebar.includes('title: role === "conserje" ? "RECEPCIÓN" : "CONSERJERÍA"') && sidebar.includes('label: "Incidencias"'), 'Concierge receives the reception-specific navigation');
   assert(sidebar.includes('requiresMarketplaceListing: true') && sidebar.includes('requiresServiceProvider: true'), 'Resident provider tools are conditional on real activity');
@@ -135,6 +140,28 @@ async function main() {
       residents.push({ email, id: data.user.id, unitId: profile.unit_id });
     }
     assert(residents.length === 2 && residents[0].unitId !== residents[1].unitId, 'Temporary residents have distinct real units');
+
+    const adminEmail = `profile-admin-${runId}@qa.convive.local`;
+    const { data: adminAuth, error: adminAuthError } = await admin.auth.admin.createUser({
+      email: adminEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: 'QA Administrator',
+        invite_code: community.admin_code,
+      },
+    });
+    if (adminAuthError || !adminAuth.user) throw adminAuthError || new Error('Could not create QA administrator');
+    cleanup.userIds.push(adminAuth.user.id);
+
+    const { error: adminProfileError } = await admin
+      .from('profiles')
+      .update({ role: 'admin', community_id: communityId })
+      .eq('id', adminAuth.user.id);
+    if (adminProfileError) throw adminProfileError;
+
+    const adminClient = await signInAs(adminEmail, password);
+
 
     const conciergeEmail = `profile-concierge-${runId}@qa.convive.local`;
     const { data: conciergeAuth, error: conciergeAuthError } = await admin.auth.admin.createUser({
@@ -247,6 +274,76 @@ async function main() {
         `Resident ${index + 1} receives a private package notification`
       );
     }
+
+    const residentAClient = await signInAs(residents[0].email, password);
+    const residentBClient = await signInAs(residents[1].email, password);
+    const { data: mediationCases, error: mediationInsertError } = await residentAClient
+      .from('neighbor_mediations')
+      .insert([
+        {
+          reporter_id: residents[0].id,
+          reporter_name: 'QA Resident A',
+          target_unit: departmentB,
+          observation: 'Draft visible only to its author.',
+          feeling: 'concerned',
+          need: 'privacy',
+          request: 'keep this draft private',
+          drafted_message: 'Private draft.',
+          status: 'drafted',
+          community_id: communityId,
+        },
+        {
+          reporter_id: residents[0].id,
+          reporter_name: 'QA Resident A',
+          target_unit: departmentB,
+          observation: 'Case explicitly escalated for administration.',
+          feeling: 'concerned',
+          need: 'mediation',
+          request: 'help reach an agreement',
+          drafted_message: 'Escalated case.',
+          status: 'escalated',
+          community_id: communityId,
+        },
+      ])
+      .select('id,status');
+    if (mediationInsertError || mediationCases?.length !== 2) throw mediationInsertError || new Error('Could not create mediation privacy fixtures');
+
+    const mediationIds = mediationCases.map(item => item.id);
+    const escalatedCase = mediationCases.find(item => item.status === 'escalated');
+    if (!escalatedCase) throw new Error('Escalated mediation fixture is missing');
+
+    const { data: otherResidentCases, error: otherResidentCasesError } = await residentBClient
+      .from('neighbor_mediations')
+      .select('id,status')
+      .in('id', mediationIds);
+    if (otherResidentCasesError) throw otherResidentCasesError;
+    assert(otherResidentCases.length === 0, 'Residents cannot read mediation drafts or escalations created by another resident');
+
+    const { data: administratorCases, error: administratorCasesError } = await adminClient
+      .from('neighbor_mediations')
+      .select('id,status')
+      .in('id', mediationIds);
+    if (administratorCasesError) throw administratorCasesError;
+    assert(
+      administratorCases.length === 1 && administratorCases[0].id === escalatedCase.id,
+      'Administrator reads the escalated case but not the private draft',
+    );
+
+    const { data: agreedCase, error: agreementError } = await adminClient
+      .from('neighbor_mediations')
+      .update({ status: 'agreement' })
+      .eq('id', escalatedCase.id)
+      .select('id,status')
+      .single();
+    if (agreementError) throw agreementError;
+    assert(agreedCase.status === 'agreement', 'Administrator can register an agreement for an escalated case');
+
+    const { data: ownerCases, error: ownerCasesError } = await residentAClient
+      .from('neighbor_mediations')
+      .select('id,status')
+      .in('id', mediationIds);
+    if (ownerCasesError) throw ownerCasesError;
+    assert(ownerCases.length === 2, 'Resident retains access to all of their own mediation cases');
 
     report.passed = true;
   } finally {
