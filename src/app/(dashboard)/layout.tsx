@@ -69,6 +69,7 @@ function DashboardShell({
             '/profile': 'Mi Perfil',
             '/showcase': 'Lienzo de Diseño',
             '/services': 'Solicitudes de Servicio',
+            '/concierge': 'Turno activo',
             '/concierge/visitors': 'Registro de Visitas',
             '/concierge/packages': 'Encomiendas y Paquetes',
             '/resident/packages': 'Mis Encomiendas',

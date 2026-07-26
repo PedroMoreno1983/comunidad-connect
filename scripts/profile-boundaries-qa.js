@@ -51,6 +51,8 @@ function assertStaticRoleBoundaries() {
   const sidebar = fs.readFileSync(path.join(process.cwd(), 'src/components/cc/Sidebar.tsx'), 'utf8');
   const agentApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/agent-center/route.ts'), 'utf8');
   const trainingApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/training/modules/route.ts'), 'utf8');
+  const operationsApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/operations/events/route.ts'), 'utf8');
+  const amenitiesPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/amenities/page.tsx'), 'utf8');
 
   assert(
     /if\s*\(pathname\.startsWith\("\/agent-center"\)\)\s*\{\s*allowed\s*=\s*role\s*===\s*"admin";\s*\}/.test(proxy),
@@ -65,6 +67,14 @@ function assertStaticRoleBoundaries() {
   assert(proxy.includes('"/feed"'), 'Read-only communications feed requires authentication');
   assert(sidebar.includes('{ href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"]'), 'Resident communications navigation opens the read-only feed');
   assert(sidebar.includes('{ href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"]'), 'Publishing navigation is limited to admin and concierge');
+  assert(sidebar.includes('{ href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["admin", "resident"]'), 'Convivencia navigation is limited to admin and resident');
+  assert(proxy.includes('pathname.startsWith("/convivencia")') && proxy.includes('allowed = role === "admin" || role === "resident"'), 'Convivencia route rejects concierge');
+  assert(sidebar.includes('title: "MI TURNO"') && sidebar.includes('label: "Entrega de turno"') && sidebar.includes('label: "Bitácora"'), 'Concierge receives the shift-specific navigation');
+  assert(sidebar.includes('title: role === "conserje" ? "RECEPCIÓN" : "CONSERJERÍA"') && sidebar.includes('label: "Incidencias"'), 'Concierge receives the reception-specific navigation');
+  assert(sidebar.includes('requiresMarketplaceListing: true') && sidebar.includes('requiresServiceProvider: true'), 'Resident provider tools are conditional on real activity');
+  assert(amenitiesPage.includes('const isConcierge = user?.role === "concierge"') && amenitiesPage.includes('disabled={isBooked || isConcierge}'), 'Concierge amenities access is read-only');
+  assert(operationsApi.includes("!['admin', 'concierge'].includes(profile.role)") && operationsApi.includes("action: 'concierge.shift_handover'"), 'Shift handover API is limited to operational staff and audited');
+  assert(proxy.includes('pathname.startsWith("/marketplace")') && proxy.includes('pathname.startsWith("/services")'), 'Resident and admin service routes have explicit role boundaries');
 }
 
 async function main() {

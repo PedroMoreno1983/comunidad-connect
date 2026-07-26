@@ -29,6 +29,7 @@ import {
     ProfileSettings,
     ResidentCasesSummary,
     ResidentHomeSummary,
+    ResidentNavigationContext,
     ResidentFinanceExpense,
     ServiceRequestQueueItem,
     SupermarketGroupComparison,
@@ -2011,6 +2012,30 @@ export const AnnouncementsService = {
     }
 };
 
+export const NavigationService = {
+    async getResidentContext(userId: string): Promise<ResidentNavigationContext> {
+        if (!userId) return { hasMarketplaceListings: false, isServiceProvider: false };
+
+        const [listingsResult, providerResult] = await Promise.all([
+            supabase
+                .from('marketplace_items')
+                .select('id', { count: 'exact', head: true })
+                .eq('seller_id', userId),
+            supabase
+                .from('service_providers')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId),
+        ]);
+
+        if (listingsResult.error) console.warn('[Navigation] listings context unavailable:', listingsResult.error.message);
+        if (providerResult.error) console.warn('[Navigation] provider context unavailable:', providerResult.error.message);
+
+        return {
+            hasMarketplaceListings: !listingsResult.error && (listingsResult.count || 0) > 0,
+            isServiceProvider: !providerResult.error && (providerResult.count || 0) > 0,
+        };
+    },
+};
 export const ProductCapabilitiesService = {
     async getCapabilities(): Promise<ProductCapabilities> {
         const response = await fetch('/api/product-capabilities', {

@@ -88,6 +88,7 @@ export default function AmenitiesPage() {
     });
     const { toast } = useToast();
     const isAdmin = user?.role === "admin";
+    const isConcierge = user?.role === "concierge";
 
     const timeSlots = [
         '08:00', '10:00', '12:00', '14:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
@@ -155,6 +156,10 @@ export default function AmenitiesPage() {
     const handleBook = async () => {
         if (!user) {
             toast({ title: "Acceso Denegado", description: "Debes iniciar sesión para reservar.", variant: "destructive" });
+            return;
+        }
+        if (isConcierge) {
+            toast({ title: "Agenda de consulta", description: "Conserjería puede revisar ocupación, pero no crear reservas.", variant: "default" });
             return;
         }
         if (!selectedAmenity) return;
@@ -512,6 +517,12 @@ export default function AmenitiesPage() {
                             </div>
                         </div>
 
+                        {isConcierge && (
+                            <div className="rounded-xl border border-[var(--cc-amber)]/25 bg-[var(--cc-amber-tint)] px-4 py-3 text-sm text-[var(--cc-ink-secondary)]">
+                                Vista de Conserjería: consulta la ocupación por día y horario. Las reservas solo pueden crearlas residentes y administración.
+                            </div>
+                        )}
+
                         {/* Date Strip 7 Días */}
                         <div className="space-y-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] cc-text-tertiary">Selecciona un día</p>
@@ -547,14 +558,14 @@ export default function AmenitiesPage() {
                                     return (
                                         <button
                                             key={time}
-                                            disabled={isBooked}
+                                            disabled={isBooked || isConcierge}
                                             onClick={() => setSelectedTime(time)}
                                             className={`flex items-center justify-between border-t py-4 text-left transition-all ${isBooked ? 'cursor-not-allowed cc-text-disabled' : 'cc-text-primary'} ${isSelected ? 'font-semibold text-copper' : ''}`}
                                             style={{ borderColor: "var(--cc-line)" }}
                                         >
                                             <p className="font-mono text-sm">{time}</p>
                                             <p className="text-[10px] uppercase tracking-wider font-semibold opacity-80">
-                                                {isBooked ? "Reservado" : isSelected ? "Seleccionado" : "Libre"}
+                                                {isBooked ? "Reservado" : isConcierge ? "Libre" : isSelected ? "Seleccionado" : "Libre"}
                                             </p>
                                         </button>
                                     );
@@ -563,7 +574,7 @@ export default function AmenitiesPage() {
                         </div>
 
                         {/* Fixed / Floating CTA Bar at Bottom */}
-                        {selectedDate && selectedTime && (
+                        {!isConcierge && selectedDate && selectedTime && (
                             <div className="sticky bottom-3 z-40 border bg-paper px-4 py-4 shadow-xl sm:px-6" style={{ borderColor: "var(--cc-line-strong)" }}>
                                 <div className="mx-auto flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="text-sm font-medium cc-text-primary">
