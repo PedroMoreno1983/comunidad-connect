@@ -140,4 +140,18 @@ describe('buildBasketComparison', () => {
       lineTotal: 11370,
     });
   });
+
+  it('rejects incompatible or unprovable package units for measured requests', () => {
+    const result = buildBasketComparison(['yogur'], {
+      yogur: [
+        row('Tottus', 'Yogur griego 150 g', 570),
+        row('Tottus', 'Yogur bebible 1 L', 2500),
+        row('Lider', 'Yogur familiar', 1200),
+      ],
+    }, { yogur: 1 }, { yogur: 'l' });
+
+    expect(result.recommended?.store).toBe('Tottus');
+    expect(result.recommended?.items[0].name).toBe('Yogur bebible 1 L');
+    expect(result.comparisons.some(basket => basket.store === 'Lider')).toBe(false);
+  });
 });

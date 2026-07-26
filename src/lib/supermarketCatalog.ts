@@ -3,6 +3,7 @@ import 'server-only';
 import {
   buildBasketComparison,
   buildSupermarketCandidate,
+  isProductMeasurementCompatible,
   normalizeRequestedQuantity,
   SUPERMARKET_STORES,
 } from '@/lib/supermarketBasket';
@@ -114,6 +115,7 @@ export async function comparePersistedSupermarkets(
     );
     const seen = new Set<string>();
     const alternatives = rows
+      .filter(row => isProductMeasurementCompatible(String(row.name || ''), requestedUnits[term]))
       .map(row => buildSupermarketCandidate(row, term, requestedQuantity, requestedUnits[term]))
       .filter(candidate => {
         const key = `${candidate.store}:${candidate.name}:${candidate.lineTotal}`;
