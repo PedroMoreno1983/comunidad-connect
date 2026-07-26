@@ -1,3 +1,5 @@
+import type { SupermarketMeasurementUnit } from '@/lib/types';
+
 export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
 
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
@@ -30,6 +32,55 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
   return match ? Math.max(1, Number(match[1])) : 1;
 }
 
+type QuantitySelection = { packs: number; suppliedQuantity: number };
+
+function normalizedProductUnit(value: string): SupermarketMeasurementUnit {
+  if (value === 'kg') return 'kg';
+  if (value === 'g' || value === 'gr') return 'g';
+  if (value === 'l' || value === 'lt') return 'l';
+  return 'ml';
+}
+
+function unitBaseFactor(unit: SupermarketMeasurementUnit): number {
+  return unit === 'kg' || unit === 'l' ? 1_000 : 1;
+}
+
+function unitDimension(unit: SupermarketMeasurementUnit): 'mass' | 'volume' {
+  return unit === 'kg' || unit === 'g' ? 'mass' : 'volume';
+}
+
+export function calculateProductQuantity(
+  name: string,
+  requestedQuantity: number,
+  requestedUnit: SupermarketMeasurementUnit | undefined,
+  packUnits: number,
+  minimumPacks = 1,
+): QuantitySelection {
+  if (requestedUnit) {
+    const normalizedName = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const match = normalizedName.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/);
+    if (match) {
+      const productUnit = normalizedProductUnit(match[2]);
+      if (unitDimension(productUnit) === unitDimension(requestedUnit)) {
+        const amount = Number(match[1].replace(',', '.'));
+        const productInRequestedUnits = amount * unitBaseFactor(productUnit) / unitBaseFactor(requestedUnit);
+        if (productInRequestedUnits > 0) {
+          const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / productInRequestedUnits));
+          return {
+            packs,
+            suppliedQuantity: Number((packs * productInRequestedUnits).toFixed(3)),
+          };
+        }
+      }
+    }
+  }
+
+  const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
+  return { packs, suppliedQuantity: packs * packUnits };
+}
 function formatSignature(name: string): string {
   const normalized = name
     .normalize('NFD')
@@ -65,7 +116,12 @@ function selectComparableRows(rows: Record<string, unknown>[]) {
     ))[0]?.rows ?? [];
 }
 
-export function buildSupermarketCandidate(row: Record<string, unknown>, requestedTerm: string, requestedQuantity: number) {
+export function buildSupermarketCandidate(
+  row: Record<string, unknown>,
+  requestedTerm: string,
+  requestedQuantity: number,
+  requestedUnit?: SupermarketMeasurementUnit,
+) {
   const price = asNumber(row.price);
   const listPrice = asNumber(row.list_price);
   const productUrl = asString(row.product_url);
@@ -76,7 +132,13 @@ export function buildSupermarketCandidate(row: Record<string, unknown>, requeste
     inferredCountPackUnits(asString(row.name), requestedTerm),
   );
   const minimumPacks = Math.max(1, Math.round(asNumber(row.minimum_packs) || 1));
-  const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
+  const selection = calculateProductQuantity(
+    asString(row.name),
+    requestedQuantity,
+    requestedUnit,
+    packUnits,
+    minimumPacks,
+  );
   const store = asString(row.store);
   const matchRelevance = asNumber(row.match_relevance);
 
@@ -85,12 +147,13 @@ export function buildSupermarketCandidate(row: Record<string, unknown>, requeste
     requestedTerm,
     name: asString(row.name),
     brand: asString(row.brand),
-    quantity: packs,
+    quantity: selection.packs,
     requestedQuantity,
+    requestedUnit,
     packUnits,
-    suppliedQuantity: packs * packUnits,
+    suppliedQuantity: selection.suppliedQuantity,
     price,
-    lineTotal: price * packs,
+    lineTotal: price * selection.packs,
     store,
     matchRelevance,
     channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
@@ -107,6 +170,7 @@ export function buildBasketComparison(
   terms: string[],
   rowsByTerm: Record<string, Record<string, unknown>[]>,
   requestedQuantities: Record<string, number> = {},
+  requestedUnits: Record<string, SupermarketMeasurementUnit | undefined> = {},
 ) {
   const comparableByTerm = terms.map(term => ({
     term,
@@ -121,6 +185,7 @@ export function buildBasketComparison(
           row,
           term,
           Math.min(MAX_REQUESTED_QUANTITY, Math.max(1, Math.round(requestedQuantities[term] || 1))),
+          requestedUnits[term],
         ))
         .sort((left, right) => (
           right.matchRelevance - left.matchRelevance
