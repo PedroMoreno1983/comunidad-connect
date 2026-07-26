@@ -94,4 +94,18 @@ describe('buildBasketComparison', () => {
 
     expect(result.recommended?.items[0].name).toBe('Pechuga de pollo deshuesada 700 g');
   });
+
+  it('buys enough measured packs to cover requested kilograms', () => {
+    const result = buildBasketComparison(['papas'], {
+      papas: [{ ...row('Tottus', 'Papa Mix Bolsa 650 g', 1790), match_relevance: 140 }],
+    }, { papas: 3 }, { papas: 'kg' });
+
+    expect(result.recommended?.items[0]).toMatchObject({
+      requestedQuantity: 3,
+      requestedUnit: 'kg',
+      quantity: 5,
+      suppliedQuantity: 3.25,
+      lineTotal: 8950,
+    });
+  });
 });

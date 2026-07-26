@@ -1,4 +1,6 @@
-export type GroupItemInput = { term: string; quantity: number };
+import type { SupermarketMeasurementUnit } from '@/lib/types';
+
+export type GroupItemInput = { term: string; quantity: number; unit?: SupermarketMeasurementUnit };
 export type GroupSettlementContribution = { userId: string; term: string; quantity: number };
 export type GroupSettlementBasketItem = { requestedTerm: string; lineTotal: number };
 
@@ -12,8 +14,15 @@ function normalizeTerm(value: string): string {
     .slice(0, 80);
 }
 
+function normalizeMeasurementUnit(value: string): SupermarketMeasurementUnit {
+  const unit = value.toLowerCase();
+  if (/^(?:kg|kgs|kilo|kilos|kilogramo|kilogramos)$/.test(unit)) return 'kg';
+  if (/^(?:g|gr|gramo|gramos)$/.test(unit)) return 'g';
+  if (/^(?:l|lt|litro|litros)$/.test(unit)) return 'l';
+  return 'ml';
+}
 export function parseGroupShoppingList(value: string): GroupItemInput[] {
-  const consolidated = new Map<string, number>();
+  const consolidated = new Map<string, GroupItemInput>();
   for (const [index, rawEntry] of value.slice(0, 1_500).split(/[,;\n]+/).entries()) {
     let entry = rawEntry
       .trim()
@@ -31,11 +40,12 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
 
     let quantity = 1;
     let rawTerm = entry;
+    let unit: SupermarketMeasurementUnit | undefined;
     const leadingMeasure = entry.match(
-      /^(\d{1,3})\s*(?:kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?)\s+(?:de\s+)?(.+)$/i,
+      /^(\d{1,3})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
     );
     const trailingMeasure = entry.match(
-      /^(.+?)\s+(\d{1,3})\s*(?:kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?)\s*$/i,
+      /^(.+?)\s+(\d{1,3})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
     );
     const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|unidades?|uds?|u)?\s+(.+)$/i)
       || entry.match(/^(\d{1,3})\s*[xX]\s*(.+)$/);
@@ -45,9 +55,11 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
 
     if (leadingMeasure) {
       quantity = Number(leadingMeasure[1]);
-      rawTerm = leadingMeasure[2];
+      unit = normalizeMeasurementUnit(leadingMeasure[2]);
+      rawTerm = leadingMeasure[3];
     } else if (trailingMeasure) {
       quantity = Number(trailingMeasure[2]);
+      unit = normalizeMeasurementUnit(trailingMeasure[3]);
       rawTerm = trailingMeasure[1];
     } else if (leadingQuantity) {
       quantity = Number(leadingQuantity[1]);
@@ -59,11 +71,11 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
 
     const term = normalizeTerm(rawTerm);
     if (term.length < 2 || quantity < 1 || quantity > 500) continue;
-    consolidated.set(term, Math.min(500, (consolidated.get(term) || 0) + quantity));
+    const existing = consolidated.get(term);
+    const nextQuantity = Math.min(500, (existing?.quantity || 0) + quantity);
+    consolidated.set(term, { term, quantity: nextQuantity, unit: existing?.unit ?? unit });
   }
-  return [...consolidated.entries()]
-    .slice(0, 30)
-    .map(([term, quantity]) => ({ term, quantity }));
+  return [...consolidated.values()].slice(0, 30);
 }
 
 export function allocateGroupCosts(

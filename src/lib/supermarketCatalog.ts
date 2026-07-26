@@ -3,6 +3,7 @@ import 'server-only';
 import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
 import { matchAnchor, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import type { SupermarketMeasurementUnit } from '@/lib/types';
 
 /** TTL dinámico: 96h para cubrir la rotación diaria de términos del refresh. */
 const MAX_PRICE_AGE_MS = 96 * 60 * 60 * 1000;
@@ -16,6 +17,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 export async function comparePersistedSupermarkets(
   terms: string[],
   requestedQuantities: Record<string, number> = {},
+  requestedUnits: Record<string, SupermarketMeasurementUnit | undefined> = {},
 ) {
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
@@ -65,12 +67,12 @@ export async function comparePersistedSupermarkets(
   }));
 
   const rowsByTerm = Object.fromEntries(entries);
-  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities);
+  const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities, requestedUnits);
   const alternativesByTerm = Object.fromEntries(entries.map(([term, rows]) => {
     const requestedQuantity = Math.min(500, Math.max(1, Math.round(requestedQuantities[term] || 1)));
     const seen = new Set<string>();
     const alternatives = rows
-      .map(row => buildSupermarketCandidate(row, term, requestedQuantity))
+      .map(row => buildSupermarketCandidate(row, term, requestedQuantity, requestedUnits[term]))
       .filter(candidate => {
         const key = `${candidate.store}:${candidate.name}:${candidate.lineTotal}`;
         if (seen.has(key)) return false;
