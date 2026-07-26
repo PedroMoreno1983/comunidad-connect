@@ -11,6 +11,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from full_catalog import (
     extract_santa_render_data,
+    extract_next_flight_stream,
+    parse_acuenta_categories,
+    parse_acuenta_category_page,
+    parse_irurzun_products,
     parse_jumbo_payload,
     parse_lider_page,
     parse_santa_render_data,
@@ -273,6 +277,86 @@ class FullCatalogParserTests(unittest.TestCase):
         product = parse_santa_render_data(render_data, "lacteos")[0]
         self.assertEqual(len(list(unique_products([product, product]))), 1)
 
+
+    def test_acuenta_next_flight_categories_and_products(self) -> None:
+        category_tree = (
+            '{"active":true,"boost":1,"hasChildren":true,'
+            '"categoryNamesPath":"/Despensa","isAvailableInHome":true,'
+            '"level":1,"name":"Despensa","path":"/05","reference":"05",'
+            '"slug":"despensa/05"}'
+        )
+        product = (
+            'a1:{"name":"Arroz Caja 10 unidades","price":1590,'
+            '"photosUrl":"$a2","sku":"123","ean":"$a3",'
+            '"slug":"arroz-123","brand":"Acuenta","stock":8,'
+            '"promotion":"$a4","promotionPricePerSubUnit":129,'
+            '"__typename":"CatalogProductModel"}\n'
+            'a2:["https://img/arroz.jpg"]\n'
+            'a3:["7800000000123"]\n'
+            'a4:{"type":"specialPrice","isActive":true,"conditions":"$a5"}\n'
+            'a5:["$a6"]\n'
+            'a6:{"quantity":0,"price":1290}\n'
+        )
+        pagination = (
+            '"pagination":{"page":1,"pages":3,'
+            '"total":{"value":120,"relation":"eq"}}'
+        )
+        stream = category_tree + "\n" + product + pagination
+        encoded = json.dumps(stream, ensure_ascii=False)
+        page_html = f"<script>self.__next_f.push([1,{encoded}])</script>"
+        self.assertIn("CatalogProductModel", extract_next_flight_stream(page_html))
+        self.assertEqual(parse_acuenta_categories(page_html), [("Despensa", "despensa/05")])
+        products, pages, total = parse_acuenta_category_page(page_html, "Despensa")
+        self.assertEqual((pages, total), (3, 120))
+        self.assertEqual(products[0].store, "aCuenta")
+        self.assertEqual(products[0].price, 1290)
+        self.assertEqual(products[0].list_price, 1590)
+        self.assertEqual(products[0].pack_units, 10)
+        self.assertEqual(products[0].ean, "7800000000123")
+        self.assertEqual(products[0].image_url, "https://img/arroz.jpg")
+
+    def test_irurzun_only_accepts_available_positive_prices(self) -> None:
+        payload = json.dumps(
+            {
+                "products": [
+                    {
+                        "id": 1,
+                        "title": "Canasta Mayorista",
+                        "handle": "canasta-mayorista",
+                        "vendor": "Irurzun",
+                        "images": [{"src": "https://img/irurzun.jpg"}],
+                        "variants": [
+                            {
+                                "id": 11,
+                                "title": "Default Title",
+                                "price": "14990",
+                                "sku": "",
+                                "barcode": None,
+                                "available": True,
+                            }
+                        ],
+                    },
+                    {
+                        "id": 2,
+                        "title": "Producto a cotizar",
+                        "handle": "producto-cotizar",
+                        "variants": [
+                            {
+                                "id": 22,
+                                "title": "Caja 12",
+                                "price": "0",
+                                "available": True,
+                            }
+                        ],
+                    },
+                ]
+            }
+        )
+        products = parse_irurzun_products(payload)
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0].store, "Irurzun")
+        self.assertEqual(products[0].price, 14990)
+        self.assertEqual(products[0].sku, "11")
 
 if __name__ == "__main__":
     unittest.main()
