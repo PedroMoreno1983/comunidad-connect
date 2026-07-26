@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Users } from "lucide-react";
@@ -242,10 +243,23 @@ export default function SignUpPage() {
                 <section
                     className="hidden lg:flex flex-col relative overflow-hidden p-12 justify-between"
                     style={{
-                        background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
+                        background: "var(--cc-carbon)",
                         color: "var(--cc-paper)",
                     }}
                 >
+                    <Image
+                        src="/edificio-malaga-exterior.jpg"
+                        alt="Fachada de una comunidad conectada con Convive Connect"
+                        fill
+                        priority
+                        sizes="50vw"
+                        className="object-cover"
+                    />
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{ background: "linear-gradient(225deg, rgba(20,17,13,0.94) 0%, rgba(20,17,13,0.74) 54%, rgba(20,17,13,0.9) 100%)" }}
+                    />
                     <div
                         aria-hidden
                         className="absolute top-1/4 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none"

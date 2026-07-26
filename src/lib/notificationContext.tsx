@@ -3,17 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useAuth } from './authContext';
 import { NotificationService, DbNotification } from './services/notificationService';
-
-// The Notification type used by the UI (maps from DbNotification)
-export interface Notification {
-    id: string;
-    type: 'info' | 'success' | 'warning' | 'alert';
-    title: string;
-    message: string;
-    timestamp: Date;
-    read: boolean;
-    link?: string;
-}
+import type { Notification } from './types';
 
 interface NotificationContextType {
     notifications: Notification[];

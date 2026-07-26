@@ -44,8 +44,8 @@ export function WhatsNew() {
             title: "Pagos con Boleta SII",
             desc: "Integración con Haulmer para facturación electrónica automática.",
             icon: ReceiptText,
-            color: "text-[#C8705A]",
-            bg: "bg-[#C8705A]/10",
+            color: "text-[#9C5636]",
+            bg: "bg-[#9C5636]/10",
             link: "/resident/finances"
         }
     ];

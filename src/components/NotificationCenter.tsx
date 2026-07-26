@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, AlertTriangle, Bell, CheckCheck, CheckCircle, Info, Trash2, X } from "lucide-react";
-import { Notification, useNotifications } from "@/lib/notificationContext";
+import { useNotifications } from "@/lib/notificationContext";
+import type { Notification } from "@/lib/types";
 
 const iconMap = {
     info: Info,
@@ -13,7 +14,7 @@ const iconMap = {
 };
 
 const colorMap = {
-    info: "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+    info: "bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]",
     success: "bg-success-bg text-success-fg",
     warning: "bg-warning-bg text-warning-fg",
     alert: "bg-danger-bg text-danger-fg",
@@ -140,7 +141,7 @@ export function NotificationCenter() {
             >
                 <Bell className="h-5 w-5 cc-text-secondary" />
                 {unreadCount > 0 && (
-                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white">
+                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--cc-copper)] px-1 text-xs font-bold leading-none text-white">
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
@@ -149,12 +150,12 @@ export function NotificationCenter() {
             {isOpen && (
                 <div className="absolute right-0 top-12 z-50 max-h-[min(72vh,620px)] w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-subtle bg-surface shadow-2xl shadow-slate-200/60 dark:shadow-slate-950/50 sm:w-[22rem]">
                     <div className="flex items-center justify-between border-b border-subtle p-4">
-                        <div>
+                        <Link href="/notifications" onClick={() => setIsOpen(false)} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
                             <h3 className="text-base font-semibold cc-text-primary">Notificaciones</h3>
                             <p className="text-xs cc-text-secondary">
                                 {unreadCount > 0 ? `${unreadCount} sin leer` : "Todo al día"}
                             </p>
-                        </div>
+                        </Link>
 
                         <div className="flex items-center gap-1">
                             {unreadCount > 0 && (
@@ -215,7 +216,7 @@ export function NotificationBell() {
         <div className="relative">
             <Bell className="h-5 w-5 cc-text-secondary" />
             {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--cc-copper)] text-[10px] font-bold text-white">
                     {unreadCount > 9 ? "9" : unreadCount}
                 </span>
             )}

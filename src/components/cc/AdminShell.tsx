@@ -37,6 +37,8 @@ export function AdminShell({
           building={building}
           roleLabel={user.roleLabel}
           rightSubtitle={rightSubtitle}
+          searchHref={role === "conserje" ? "/concierge/visitors" : "/directorio"}
+          searchPlaceholder={role === "conserje" ? "Buscar visitas y accesos…" : undefined}
           cta={cta}
         />
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 ${role === "resident" ? "pb-24 lg:pb-8" : ""}`}>

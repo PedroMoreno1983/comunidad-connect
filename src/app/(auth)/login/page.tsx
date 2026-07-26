@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
@@ -61,10 +62,23 @@ function LoginForm() {
                 <section
                     className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex"
                     style={{
-                        background: "linear-gradient(135deg, #1A1611 0%, #2D241D 100%)",
+                        background: "var(--cc-carbon)",
                         color: "var(--cc-paper)",
                     }}
                 >
+                    <Image
+                        src="/edificio-malaga-exterior.jpg"
+                        alt="Fachada de una comunidad conectada con Convive Connect"
+                        fill
+                        priority
+                        sizes="50vw"
+                        className="object-cover"
+                    />
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{ background: "linear-gradient(135deg, rgba(20,17,13,0.92) 0%, rgba(20,17,13,0.72) 52%, rgba(20,17,13,0.9) 100%)" }}
+                    />
                     <div
                         aria-hidden
                         className="pointer-events-none absolute right-0 top-1/4 h-[400px] w-[400px] rounded-full blur-3xl"

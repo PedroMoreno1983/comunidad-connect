@@ -61,13 +61,13 @@ function renderExpenseEmail(input: {
           <table width="100%" cellpadding="0" cellspacing="0">${itemRows}</table>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;background:#f4e8df;border-radius:12px">
             <tr>
-              <td style="padding:18px;font-weight:700;color:#974c3c">Total a pagar</td>
-              <td style="padding:18px;text-align:right;font-size:22px;font-weight:800;color:#974c3c">${formatCLP(input.amount)}</td>
+              <td style="padding:18px;font-weight:700;color:#733D24">Total a pagar</td>
+              <td style="padding:18px;text-align:right;font-size:22px;font-weight:800;color:#733D24">${formatCLP(input.amount)}</td>
             </tr>
           </table>
           ${dueDate ? `<p style="margin:18px 0 0;color:#7a5b21"><strong>Vencimiento:</strong> ${escapeHtml(dueDate)}</p>` : ''}
           <p style="margin:28px 0 0;text-align:center"><a href="${PUBLIC_SITE_URL}/expenses" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#b5664e;color:#fff;text-decoration:none;font-weight:700">Revisar y pagar</a></p>
-          <p style="margin:24px 0 0;color:#8a8179;font-size:12px;line-height:1.5">El pago solo se registra cuando la pasarela envia una confirmacion firmada. Consultas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#974c3c">${SUPPORT_EMAIL}</a>.</p>
+          <p style="margin:24px 0 0;color:#8a8179;font-size:12px;line-height:1.5">El pago solo se registra cuando la pasarela envia una confirmacion firmada. Consultas: <a href="mailto:${SUPPORT_EMAIL}" style="color:#733D24">${SUPPORT_EMAIL}</a>.</p>
         </td></tr>
       </table>
     </td></tr>

@@ -30,9 +30,9 @@ export default function SupportPage() {
   const whatsappWebhook = `https://conviveconnect.com${WHATSAPP_WEBHOOK_PATH}`;
 
   return (
-    <main className="min-h-screen bg-[#FBF8F1] px-5 py-10 text-[#1A1611] md:px-12">
+    <main className="min-h-screen bg-ivory px-5 py-10 text-[#1A1611] md:px-12">
       <div className="mx-auto max-w-6xl space-y-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#B45F4B] hover:text-[#974C3C]">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#733D24] hover:text-[#562D1B]">
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
 
@@ -48,18 +48,18 @@ export default function SupportPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#E4D8CA] bg-white/70 p-6 shadow-sm">
+          <div className="rounded-2xl border border-[var(--cc-line-strong)] bg-white/70 p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#B45F4B] text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#733D24] text-white">
                 <Mail className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm font-bold">Contacto directo</p>
-                <a className="text-sm font-semibold text-[#B45F4B]" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+                <a className="text-sm font-semibold text-[#733D24]" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               </div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-[#524A40]">
-              <p className="flex gap-2"><Clock className="mt-0.5 h-4 w-4 text-[#B45F4B]" /> Recepcion y triage por prioridad operacional.</p>
+              <p className="flex gap-2"><Clock className="mt-0.5 h-4 w-4 text-[#733D24]" /> Recepcion y triage por prioridad operacional.</p>
               <p className="flex gap-2"><Shield className="mt-0.5 h-4 w-4 text-[#5F7A46]" /> Tratamiento de datos con finalidad, minimizacion y acceso por rol.</p>
               <p className="flex gap-2"><Smartphone className="mt-0.5 h-4 w-4 text-[#5C4868]" /> Activacion guiada de CoCo IA por WhatsApp.</p>
             </div>
@@ -68,7 +68,7 @@ export default function SupportPage() {
 
         <section className="grid gap-4 md:grid-cols-3">
           {supportLanes.map((lane) => (
-            <div key={lane.title} className="rounded-2xl border border-[#E4D8CA] bg-white/70 p-6 shadow-sm">
+            <div key={lane.title} className="rounded-2xl border border-[var(--cc-line-strong)] bg-white/70 p-6 shadow-sm">
               <CheckCircle2 className="h-5 w-5 text-[#5F7A46]" />
               <h2 className="mt-4 text-xl font-semibold">{lane.title}</h2>
               <p className="mt-3 text-sm leading-7 text-[#524A40]">{lane.detail}</p>

@@ -38,7 +38,8 @@ import {
   Bot,
   Briefcase,
   Clapperboard,
-  Sparkles
+  Sparkles,
+  Bell
 } from "lucide-react";
 import { Brand } from "./Brand";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
@@ -161,6 +162,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "COMUNIDAD",
       links: [
         { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident", "concierge"] },
+        { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident", "concierge"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
