@@ -41,5 +41,10 @@ jobs:
           echo "SSL_CERT_FILE=$RUNNER_TEMP/supermarket-ca-bundle.pem" >> "$GITHUB_ENV"
           python -m playwright install --with-deps chromium
 
+      - name: Refresh Unimarc and Tottus category fronts
+        run: |
+          python scripts/ingest_full_supermarket_catalog.py --store unimarc --max-pages 1 --pretty
+          python scripts/ingest_full_supermarket_catalog.py --store tottus --max-pages 1 --pretty
+
       - name: Scrape and persist current prices
         run: python scripts/ingest_supermarket_prices.py --limit 5 --pretty
