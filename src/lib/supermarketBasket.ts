@@ -12,6 +12,24 @@ function asNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
+function inferredCountPackUnits(name: string, requestedTerm: string): number {
+  const normalizedName = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const normalizedTerm = requestedTerm
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  // "12 huevos" means twelve units, not twelve trays. Keep this inference
+  // narrow so "2 arroz" still means two products, not units inside a pack.
+  if (!/\bhuevos?\b/.test(normalizedTerm)) return 1;
+  if (/\bdocena\b/.test(normalizedName)) return 12;
+  const match = normalizedName.match(/\b(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/);
+  return match ? Math.max(1, Number(match[1])) : 1;
+}
+
 function formatSignature(name: string): string {
   const normalized = name
     .normalize('NFD')
@@ -50,7 +68,11 @@ export function buildSupermarketCandidate(row: Record<string, unknown>, requeste
   const listPrice = asNumber(row.list_price);
   const productUrl = asString(row.product_url);
   const imageUrl = asString(row.image_url);
-  const packUnits = Math.max(1, Math.round(asNumber(row.pack_units) || 1));
+  const packUnits = Math.max(
+    1,
+    Math.round(asNumber(row.pack_units) || 1),
+    inferredCountPackUnits(asString(row.name), requestedTerm),
+  );
   const minimumPacks = Math.max(1, Math.round(asNumber(row.minimum_packs) || 1));
   const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
   const store = asString(row.store);

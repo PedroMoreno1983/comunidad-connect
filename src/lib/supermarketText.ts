@@ -7,7 +7,7 @@
 export function foldAccents(value: string): string {
     return value
         .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
+        .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
 }
@@ -19,16 +19,71 @@ const MATCH_STOP_WORDS = new Set([
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
 export function significantWords(term: string): string[] {
     return foldAccents(term)
-        .split(/[^a-z0-9ñ]+/i)
+        .split(/[^a-z0-9]+/i)
         .map(word => word.trim())
         .filter(word => word.length >= 3 && !MATCH_STOP_WORDS.has(word));
 }
 
 /** Raíz tolerante a plurales simples: "laminas"→"lamina", "jaleas"→"jalea". */
 function stem(word: string): string {
-    if (word.endsWith('es') && word.length > 4) return word.slice(0, -2);
     if (word.endsWith('s') && word.length > 3) return word.slice(0, -1);
     return word;
+}
+
+const PACKAGE_PREFIXES = new Set([
+    'bandeja', 'bolsa', 'caja', 'malla', 'pack', 'paquete',
+]);
+
+const FRESH_PRODUCE = new Set([
+    'ajo', 'apio', 'cebolla', 'lechuga', 'limon', 'manzana', 'naranja',
+    'palta', 'papa', 'pepino', 'pera', 'platano', 'tomate', 'zanahoria',
+]);
+
+const PROCESSED_PRODUCE_MARKERS = new Set([
+    'bebida', 'chips', 'conserva', 'crema', 'deshidratado', 'frita',
+    'galleta', 'jugo', 'pure', 'salsa', 'snack', 'sopa',
+]);
+
+function stemmedWords(value: string): string[] {
+    return significantWords(value).map(stem);
+}
+
+/**
+ * Lexical relevance for catalog results. Matching is done with complete words.
+ * Generic fresh-produce requests reject derivatives such as tomato sauce or
+ * potato chips; reporting a missing item is safer than charging another type.
+ */
+export function productMatchScore(term: string, productName: string): number {
+    const termWords = stemmedWords(term);
+    const nameWords = stemmedWords(productName);
+    if (termWords.length === 0 || nameWords.length === 0) return -1;
+    if (!termWords.every(word => nameWords.includes(word))) return -1;
+
+    const firstTerm = termWords[0];
+    const firstPosition = nameWords.indexOf(firstTerm);
+    if (firstPosition < 0) return -1;
+
+    if (termWords.length === 1) {
+        const packagePrefixed = firstPosition === 1 && PACKAGE_PREFIXES.has(nameWords[0]);
+        if (firstPosition !== 0 && !packagePrefixed) return -1;
+        if (
+            FRESH_PRODUCE.has(firstTerm)
+            && nameWords.some(word => PROCESSED_PRODUCE_MARKERS.has(word))
+        ) {
+            return -1;
+        }
+    }
+
+    const phrasePosition = nameWords.findIndex((_, index) => (
+        termWords.every((word, offset) => nameWords[index + offset] === word)
+    ));
+    const directBonus = firstPosition === 0 ? 100 : 70;
+    const phraseBonus = phrasePosition >= 0 ? 30 : 0;
+    const compactnessPenalty = termWords.reduce((sum, word) => (
+        sum + Math.max(0, nameWords.indexOf(word) - firstPosition)
+    ), 0);
+
+    return directBonus + phraseBonus + termWords.length * 5 - compactnessPenalty;
 }
 
 /**
@@ -47,15 +102,7 @@ export function matchAnchor(term: string): string {
  * calza con "Queso en Láminas Colun 200g".
  */
 export function termMatchesProductName(term: string, productName: string): boolean {
-    const foldedName = foldAccents(productName);
-    const words = significantWords(term);
-    if (words.length === 0) return false;
-    return words.every(word => {
-        const wordStem = stem(word);
-        if (foldedName.includes(wordStem)) return true;
-        // El usuario puede escribir singular y el catálogo plural ("jalea" → "jaleas").
-        return foldedName.split(/[^a-z0-9ñ]+/i).some(nameWord => stem(nameWord) === wordStem);
-    });
+    return productMatchScore(term, productName) >= 0;
 }
 
 const STORE_SEARCH_URLS: Record<string, (query: string) => string> = {

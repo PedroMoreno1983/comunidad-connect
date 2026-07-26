@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
-import { matchAnchor, termMatchesProductName } from '@/lib/supermarketText';
+import { matchAnchor, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 /** TTL dinámico: 96h para cubrir la rotación diaria de términos del refresh. */
@@ -39,9 +39,19 @@ export async function comparePersistedSupermarkets(
     const rows = Array.isArray(rawData)
       ? rawData.map(asRecord).filter((row): row is Record<string, unknown> => row !== null)
       : [];
-    const refined = rows.filter(row => termMatchesProductName(term, String(row.name || '')));
-    // Si el refinamiento deja todo fuera (término raro), conservamos el ancla.
-    return [term, refined.length > 0 ? refined : rows] as const;
+    const refined = rows
+      .map((row): Record<string, unknown> & { match_relevance: number } => ({
+        ...row,
+        match_relevance: productMatchScore(term, String(row.name || '')),
+      }))
+      .filter(row => row.match_relevance >= 0)
+      .sort((left, right) => (
+        right.match_relevance - left.match_relevance
+        || Number(left.price || 0) - Number(right.price || 0)
+      ));
+    // Never fall back to the broad anchor: an honest missing item is safer
+    // than presenting tomato sauce as tomato or a sugar-free yogurt as sugar.
+    return [term, refined] as const;
   }));
 
   const rowsByTerm = Object.fromEntries(entries);
