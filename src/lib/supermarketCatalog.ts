@@ -39,12 +39,22 @@ export async function comparePersistedSupermarkets(
     const rows = Array.isArray(rawData)
       ? rawData.map(asRecord).filter((row): row is Record<string, unknown> => row !== null)
       : [];
-    const refined = rows
+    const scored = rows
       .map((row): Record<string, unknown> & { match_relevance: number } => ({
         ...row,
         match_relevance: productMatchScore(term, String(row.name || '')),
       }))
-      .filter(row => row.match_relevance >= 0)
+      .filter(row => row.match_relevance >= 0);
+    const bestRelevanceByStore = new Map<string, number>();
+    for (const row of scored) {
+      const store = String(row.store || '');
+      bestRelevanceByStore.set(
+        store,
+        Math.max(bestRelevanceByStore.get(store) ?? -1, row.match_relevance),
+      );
+    }
+    const refined = scored
+      .filter(row => row.match_relevance >= (bestRelevanceByStore.get(String(row.store || '')) ?? 0) - 15)
       .sort((left, right) => (
         right.match_relevance - left.match_relevance
         || Number(left.price || 0) - Number(right.price || 0)
@@ -67,7 +77,11 @@ export async function comparePersistedSupermarkets(
         seen.add(key);
         return true;
       })
-      .sort((left, right) => left.lineTotal - right.lineTotal || left.store.localeCompare(right.store))
+      .sort((left, right) => (
+        right.matchRelevance - left.matchRelevance
+        || left.lineTotal - right.lineTotal
+        || left.store.localeCompare(right.store)
+      ))
       .slice(0, 8);
     return [term, alternatives] as const;
   }));
