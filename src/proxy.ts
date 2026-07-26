@@ -129,9 +129,21 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/comunicaciones") && role === "resident") {
     return secureResponse(NextResponse.redirect(new URL("/feed", req.url)), nonce);
   }
+  if (pathname.startsWith("/feed") && role !== "resident") {
+    return secureResponse(NextResponse.redirect(new URL("/comunicaciones", req.url)), nonce);
+  }
 
   if (pathname.startsWith("/agent-center")) {
     allowed = role === "admin";
+  } else if (pathname.startsWith("/convivencia")) {
+    allowed = role === "admin" || role === "resident";
+  } else if (
+    pathname.startsWith("/marketplace")
+    || pathname.startsWith("/services")
+    || pathname.startsWith("/votaciones")
+    || pathname.startsWith("/expenses")
+  ) {
+    allowed = role === "admin" || role === "resident";
   } else if (pathname.startsWith("/resident/training")) {
     allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/comunicaciones")) {

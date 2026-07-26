@@ -1,15 +1,21 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Key, Plus, QrCode, ShoppingBag, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, ClipboardCheck, Key, Plus, QrCode, Send, ShoppingBag, Users } from "lucide-react";
 import { Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { useAuth } from "@/lib/authContext";
 import { ConciergeService, ConciergeVisitorRow, ConciergePackageRow, ConciergeCaseRow } from "@/lib/services/supabaseServices";
-import type { ConciergeQuickActionProps, ConciergeShiftEvent } from "@/lib/types";
+import type {
+    ConciergeHandoverForm,
+    ConciergeOperationEvent,
+    ConciergeOperationsResponse,
+    ConciergeQuickActionProps,
+    ConciergeShiftEvent,
+} from "@/lib/types";
 
 function timeLabel(value?: string | null) {
     if (!value) return "--:--";
@@ -79,17 +85,33 @@ export default function ConciergeDashboardPage() {
     const [visitors, setVisitors] = React.useState<ConciergeVisitorRow[]>([]);
     const [packages, setPackages] = React.useState<ConciergePackageRow[]>([]);
     const [cases, setCases] = React.useState<ConciergeCaseRow[]>([]);
+    const [handoverHistory, setHandoverHistory] = React.useState<ConciergeOperationEvent[]>([]);
+    const [handoverSaving, setHandoverSaving] = React.useState(false);
+    const [handoverMessage, setHandoverMessage] = React.useState<string | null>(null);
+    const [handoverForm, setHandoverForm] = React.useState<ConciergeHandoverForm>({
+        pendingVisitors: false,
+        pendingPackages: false,
+        criticalIncidents: false,
+        note: "",
+    });
 
     React.useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
             try {
-                const overview = await ConciergeService.getDashboardOverview();
+                const [overview, handoversResponse] = await Promise.all([
+                    ConciergeService.getDashboardOverview(),
+                    fetch("/api/operations/events?action=concierge.shift_handover&limit=5", { cache: "no-store" }),
+                ]);
+                const handoversPayload: ConciergeOperationsResponse = handoversResponse.ok
+                    ? await handoversResponse.json()
+                    : { events: [] };
                 if (cancelled) return;
                 setVisitors(overview.visitors);
                 setPackages(overview.packages);
                 setCases(overview.cases);
+                setHandoverHistory(handoversPayload.events || []);
             } catch (error) {
                 console.error("[Concierge] dashboard load failed:", error);
             } finally {
@@ -100,6 +122,28 @@ export default function ConciergeDashboardPage() {
         load();
         return () => { cancelled = true; };
     }, []);
+
+    const submitHandover = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setHandoverSaving(true);
+        setHandoverMessage(null);
+        try {
+            const response = await fetch("/api/operations/events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(handoverForm),
+            });
+            const payload: ConciergeOperationsResponse = await response.json();
+            if (!response.ok || !payload.event) throw new Error(payload.error || "No se pudo registrar la entrega.");
+            setHandoverHistory(current => [payload.event as ConciergeOperationEvent, ...current].slice(0, 5));
+            setHandoverForm({ pendingVisitors: false, pendingPackages: false, criticalIncidents: false, note: "" });
+            setHandoverMessage("Entrega registrada en la bitácora operativa.");
+        } catch (error) {
+            setHandoverMessage(error instanceof Error ? error.message : "No se pudo registrar la entrega.");
+        } finally {
+            setHandoverSaving(false);
+        }
+    };
 
     const today = new Date().toDateString();
     const visitsToday = visitors.filter(v => v.entry_time && new Date(v.entry_time).toDateString() === today).length;
@@ -186,7 +230,7 @@ export default function ConciergeDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                <div className="space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm lg:col-span-2">
+                <div id="bitacora" className="scroll-mt-24 space-y-4 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm lg:col-span-2">
                     <Eyebrow>Bitácora del turno</Eyebrow>
                     {loading ? (
                         <p className="py-8 text-center text-sm text-[var(--cc-ink-tertiary)]">Cargando bitácora...</p>
@@ -271,6 +315,96 @@ export default function ConciergeDashboardPage() {
                     </div>
                 </div>
             </div>
+
+            <section id="incidencias" className="scroll-mt-24 rounded-2xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <Eyebrow>Incidencias del edificio</Eyebrow>
+                        <h2 className="mt-2 text-3xl font-normal text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Casos que requieren seguimiento.
+                        </h2>
+                    </div>
+                    <Link href="/chat" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--cc-ink)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--cc-paper)]">
+                        Reportar con CoCo <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+                {loading ? (
+                    <p className="py-8 text-sm text-[var(--cc-ink-tertiary)]">Cargando incidencias...</p>
+                ) : cases.length === 0 ? (
+                    <p className="mt-6 rounded-xl border border-dashed border-[var(--cc-line-strong)] p-6 text-sm text-[var(--cc-ink-tertiary)]">No hay incidencias abiertas en este momento.</p>
+                ) : (
+                    <div className="mt-6 divide-y divide-[var(--cc-line)] border-t border-[var(--cc-line-strong)]">
+                        {cases.slice(0, 6).map(item => (
+                            <div key={item.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                                <div>
+                                    <p className="font-medium text-[var(--cc-ink)]">{item.title || item.category || "Incidencia reportada"}</p>
+                                    <p className="mt-1 text-xs text-[var(--cc-ink-tertiary)]">{item.category || "General"} · {timeLabel(item.created_at)}</p>
+                                </div>
+                                <CcTag tone={item.urgency === "alta" || item.urgency === "emergencia" ? "rose" : "neutral"} solid>
+                                    {item.urgency || "media"}
+                                </CcTag>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section id="handover" className="scroll-mt-24 grid gap-6 rounded-2xl border border-[var(--cc-line)] bg-[var(--cc-paper)] p-6 shadow-sm sm:p-8 lg:grid-cols-[0.9fr_1.1fr]">
+                <form onSubmit={submitHandover} className="space-y-5">
+                    <div>
+                        <Eyebrow>Entrega de turno</Eyebrow>
+                        <h2 className="mt-2 text-3xl font-normal text-[var(--cc-ink)]" style={{ fontFamily: "var(--cc-font-display)" }}>Deja el relevo por escrito.</h2>
+                        <p className="mt-2 text-sm leading-6 text-[var(--cc-ink-secondary)]">La administración y el siguiente turno podrán revisar este registro auditado.</p>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="flex items-start gap-3 rounded-xl border border-[var(--cc-line)] p-3 text-sm text-[var(--cc-ink-secondary)]">
+                            <input type="checkbox" checked={handoverForm.pendingVisitors} onChange={event => setHandoverForm(current => ({ ...current, pendingVisitors: event.target.checked }))} className="mt-0.5" />
+                            Quedan visitas dentro o salidas por confirmar
+                        </label>
+                        <label className="flex items-start gap-3 rounded-xl border border-[var(--cc-line)] p-3 text-sm text-[var(--cc-ink-secondary)]">
+                            <input type="checkbox" checked={handoverForm.pendingPackages} onChange={event => setHandoverForm(current => ({ ...current, pendingPackages: event.target.checked }))} className="mt-0.5" />
+                            Quedan encomiendas pendientes de retiro
+                        </label>
+                        <label className="flex items-start gap-3 rounded-xl border border-[var(--cc-line)] p-3 text-sm text-[var(--cc-ink-secondary)]">
+                            <input type="checkbox" checked={handoverForm.criticalIncidents} onChange={event => setHandoverForm(current => ({ ...current, criticalIncidents: event.target.checked }))} className="mt-0.5" />
+                            Hay incidencias críticas que requieren seguimiento
+                        </label>
+                    </div>
+                    <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cc-ink-tertiary)]">Novedades para el siguiente turno</span>
+                        <textarea required maxLength={1200} value={handoverForm.note} onChange={event => setHandoverForm(current => ({ ...current, note: event.target.value }))} rows={5} placeholder="Describe accesos pendientes, entregas, llamados o situaciones relevantes." className="mt-2 w-full rounded-xl border border-[var(--cc-line-strong)] bg-transparent p-4 text-sm text-[var(--cc-ink)] outline-none focus:border-[var(--cc-amber)]" />
+                    </label>
+                    <button type="submit" disabled={handoverSaving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--cc-ink)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--cc-paper)] disabled:opacity-60">
+                        {handoverSaving ? "Registrando..." : "Entregar turno"} {handoverSaving ? null : <Send className="h-4 w-4" />}
+                    </button>
+                    {handoverMessage && <p className="text-sm text-[var(--cc-ink-secondary)]">{handoverMessage}</p>}
+                </form>
+
+                <div className="rounded-xl bg-[var(--cc-paper-warm)] p-5 sm:p-6">
+                    <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--cc-amber-tint)] text-[var(--cc-amber)]"><ClipboardCheck className="h-5 w-5" /></span>
+                        <div>
+                            <Eyebrow>Historial reciente</Eyebrow>
+                            <p className="mt-1 text-sm text-[var(--cc-ink-secondary)]">Últimas entregas registradas</p>
+                        </div>
+                    </div>
+                    {handoverHistory.length === 0 ? (
+                        <p className="mt-6 rounded-xl border border-dashed border-[var(--cc-line-strong)] p-5 text-sm text-[var(--cc-ink-tertiary)]">Todavía no hay entregas de turno registradas.</p>
+                    ) : (
+                        <div className="mt-6 divide-y divide-[var(--cc-line)]">
+                            {handoverHistory.map(item => (
+                                <article key={item.id} className="py-4 first:pt-0">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--cc-ink-tertiary)]">{new Date(item.created_at).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                                        <CcTag tone={item.severity === "warning" ? "amber" : "sage"} solid>{item.severity === "warning" ? "Con pendientes" : "Sin pendientes"}</CcTag>
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-[var(--cc-ink-secondary)]">{item.summary}</p>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

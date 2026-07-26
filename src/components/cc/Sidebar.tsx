@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
+import { NavigationService } from "@/lib/api";
 import { clsx } from "clsx";
 import {
   Activity,
@@ -44,7 +45,7 @@ import {
 } from "lucide-react";
 import { Brand } from "./Brand";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
-import type { ProductCapabilityKey } from "@/lib/types";
+import type { ProductCapabilityKey, ResidentNavigationContext } from "@/lib/types";
 
 type Role = "admin" | "conserje" | "resident";
 type ActiveSidebarUser = {
@@ -90,6 +91,8 @@ type SidebarLink = {
   premium?: boolean;
   creatorOnly?: boolean;
   capability?: ProductCapabilityKey;
+  requiresMarketplaceListing?: boolean;
+  requiresServiceProvider?: boolean;
 };
 
 export function Sidebar({ role: propRole, activeHref: propActiveHref, user: propUser }: SidebarProps) {
@@ -98,6 +101,10 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
   const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasSuperAdminAccess, setHasSuperAdminAccess] = useState(false);
+  const [residentNavigation, setResidentNavigation] = useState<ResidentNavigationContext>({
+    hasMarketplaceListings: false,
+    isServiceProvider: false,
+  });
   const capabilities = useProductCapabilities();
 
   // Close mobile menu on route change
@@ -145,6 +152,22 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       cancelled = true;
     };
   }, [activeUser.email, activeUser.role]);
+  useEffect(() => {
+    if (activeUser.role !== "resident" || !authUser?.id) return;
+
+    let cancelled = false;
+    NavigationService.getResidentContext(authUser.id)
+      .then(context => {
+        if (!cancelled) setResidentNavigation(context);
+      })
+      .catch(() => {
+        if (!cancelled) setResidentNavigation({ hasMarketplaceListings: false, isServiceProvider: false });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUser.role, authUser?.id]);
 
   const role: Role = (activeUser.role === "concierge" ? "conserje" : activeUser.role === "resident" ? "resident" : "admin") as Role;
   const accent = ACCENT[role];
@@ -160,14 +183,23 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       ]
     },
     {
+      title: "MI TURNO",
+      links: [
+        { href: "/concierge", label: "Turno activo", icon: Home, roles: ["concierge"] },
+        { href: "/concierge#bitacora", label: "Bitácora", icon: Activity, roles: ["concierge"] },
+        { href: "/concierge#handover", label: "Entrega de turno", icon: ClipboardList, roles: ["concierge"] },
+      ]
+    },
+    {
       title: "COMUNIDAD",
       links: [
-        { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident", "concierge"] },
+        { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident"] },
         { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident", "concierge"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
         { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["admin", "resident"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
+        { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["concierge"], feature: "amenities" },
       ]
     },
     {
@@ -178,34 +210,41 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       ]
     },
     {
-      title: "MIS SERVICIOS",
+      title: "MI HOGAR",
+      links: [
+        { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
+        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"] },
+        { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
+        { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
+        { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident"], feature: "coco_ai" },
+      ]
+    },
+    {
+      title: "SERVICIOS DE LA COMUNIDAD",
       links: [
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident", "admin"] },
-        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
-        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
-        { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident"], feature: "maintenance" },
-        { href: "/resident/cases", label: "Mis Casos CoCo", icon: Bot, roles: ["resident"], feature: "coco_ai" },
-        { href: "/resident/invitations", label: "Mis Invitaciones", icon: QrCode, roles: ["resident"] },
-        { href: "/resident/packages", label: "Mis Encomiendas", icon: Package, roles: ["resident"] },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
-      ]
-    },
-    {
-      title: role === "admin" ? "FONDO SOLIDARIO" : "FINANZAS PERSONALES",
-      links: [
-        { href: "/expenses", label: "Mis Gastos", icon: DollarSign, roles: ["resident"] },
-        { href: "/resident/consumo", label: "Mi Consumo de Agua", icon: Waves, roles: ["resident"] },
         { href: "/expenses/solidaridad", label: "Solidaridad Vecinal", icon: Shield, roles: ["resident", "admin"] },
       ]
     },
     {
-      title: "CONSERJERÍA",
+      title: "SI OFREZCO SERVICIOS",
+      links: [
+        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"], requiresMarketplaceListing: true },
+        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
+        { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident"], feature: "maintenance", requiresServiceProvider: true },
+      ]
+    },
+    {
+      title: role === "conserje" ? "RECEPCIÓN" : "CONSERJERÍA",
       links: [
         { href: "/concierge/visitors", label: "Visitas", icon: Shield, roles: ["concierge", "admin"] },
         { href: "/concierge/packages", label: "Paquetería", icon: Package, roles: ["concierge", "admin"] },
+        { href: "/concierge#incidencias", label: "Incidencias", icon: Wrench, roles: ["concierge"] },
+        { href: "/directorio", label: "Directorio", icon: Users, roles: ["concierge"] },
       ]
     },
     {
@@ -246,6 +285,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     if (link.creatorOnly && !isPlatformCreator) return false;
     if (link.href === "/showcase") return false;
     if (link.capability && !capabilities[link.capability]) return false;
+    if (link.requiresMarketplaceListing && !residentNavigation.hasMarketplaceListings) return false;
+    if (link.requiresServiceProvider && !residentNavigation.isServiceProvider) return false;
     if (link.feature && activeUser.features) {
       if (activeUser.features[link.feature] === false) return false;
     }

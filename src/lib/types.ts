@@ -1254,3 +1254,29 @@ export interface NotificationRowProps {
   onRead: () => void;
   onRemove: () => void;
 }
+export interface ResidentNavigationContext {
+  hasMarketplaceListings: boolean;
+  isServiceProvider: boolean;
+}
+
+export interface ConciergeOperationEvent {
+  id: string;
+  action: string;
+  summary: string;
+  severity: 'info' | 'success' | 'warning' | 'error';
+  status: 'success' | 'error' | 'blocked' | 'pending';
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ConciergeHandoverForm {
+  pendingVisitors: boolean;
+  pendingPackages: boolean;
+  criticalIncidents: boolean;
+  note: string;
+}
+export interface ConciergeOperationsResponse {
+  events?: ConciergeOperationEvent[];
+  event?: ConciergeOperationEvent;
+  error?: string;
+}

@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
-        if (profile.role !== 'admin') {
-            return NextResponse.json({ error: 'Solo administracion puede revisar el centro operativo' }, { status: 403 });
+        if (!['admin', 'concierge'].includes(profile.role)) {
+            return NextResponse.json({ error: 'El perfil no puede revisar la bitacora operativa' }, { status: 403 });
         }
 
         const searchParams = request.nextUrl.searchParams;
@@ -48,7 +48,14 @@ export async function GET(request: NextRequest) {
 
         if (severity) query = query.eq('severity', severity);
         if (status) query = query.eq('status', status);
-        if (action) query = query.eq('action', action);
+        if (profile.role === 'concierge') {
+            if (action && !action.startsWith('concierge.')) {
+                return NextResponse.json({ error: 'Conserjeria solo puede revisar eventos de turno' }, { status: 403 });
+            }
+            query = action ? query.eq('action', action) : query.like('action', 'concierge.%');
+        } else if (action) {
+            query = query.eq('action', action);
+        }
 
         const { data: events, error: eventsError } = await query;
 
@@ -57,11 +64,13 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'No se pudieron cargar los eventos.' }, { status: 500 });
         }
 
-        const { data: lastDayEvents, error: summaryError } = await supabaseAdmin
+        let summaryQuery = supabaseAdmin
             .from('operation_events')
             .select('severity,status')
             .eq('community_id', profile.community_id)
             .gte('created_at', since);
+        if (profile.role === 'concierge') summaryQuery = summaryQuery.like('action', 'concierge.%');
+        const { data: lastDayEvents, error: summaryError } = await summaryQuery;
 
         if (summaryError) {
             console.error('[operations events] summary failed', summaryError);
@@ -87,5 +96,60 @@ export async function GET(request: NextRequest) {
             { error: 'No se pudieron cargar los eventos.' },
             { status: 500 }
         );
+    }
+}
+export async function POST(request: NextRequest) {
+    try {
+        const supabaseUser = await createClient();
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, role, community_id')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError || !profile?.community_id || !['admin', 'concierge'].includes(profile.role)) {
+            return NextResponse.json({ error: 'El perfil no puede entregar un turno' }, { status: 403 });
+        }
+
+        const body = await request.json() as Record<string, unknown>;
+        const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1200) : '';
+        if (!note) return NextResponse.json({ error: 'Describe las novedades del turno.' }, { status: 400 });
+
+        const metadata = {
+            pendingVisitors: body.pendingVisitors === true,
+            pendingPackages: body.pendingPackages === true,
+            criticalIncidents: body.criticalIncidents === true,
+        };
+        const pendingCount = Object.values(metadata).filter(Boolean).length;
+        const { data: event, error: insertError } = await supabaseAdmin
+            .from('operation_events')
+            .insert({
+                community_id: profile.community_id,
+                actor_id: profile.id,
+                actor_role: profile.role,
+                action: 'concierge.shift_handover',
+                entity_type: 'concierge_shift',
+                severity: pendingCount > 0 ? 'warning' : 'success',
+                status: 'success',
+                summary: note,
+                metadata: { ...metadata, pendingCount },
+                request_id: request.headers.get('x-request-id') || crypto.randomUUID(),
+            })
+            .select('id, action, summary, severity, status, metadata, created_at')
+            .single();
+
+        if (insertError || !event) {
+            console.error('[operations events] handover insert failed', insertError);
+            return NextResponse.json({ error: 'No se pudo registrar la entrega de turno.' }, { status: 500 });
+        }
+
+        return NextResponse.json({ event }, { status: 201 });
+    } catch (error) {
+        console.error('[operations/events] handover failed:', error);
+        return NextResponse.json({ error: 'No se pudo registrar la entrega de turno.' }, { status: 500 });
     }
 }
