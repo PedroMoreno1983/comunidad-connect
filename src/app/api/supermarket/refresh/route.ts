@@ -18,9 +18,9 @@ const TERM_DELAY_MS = 800;
 /** Presupuesto de tiempo: se deja de abrir términos nuevos antes del límite. */
 const TIME_BUDGET_MS = 45_000;
 /** Tiendas a trackear en sourceStatus. */
-const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'] as const;
+const TRACKED_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'] as const;
 /** Tiendas que efectivamente se scrapean por término. */
-const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'];
+const REFRESH_STORES: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'];
 
 /**
  * Rotación diaria de términos: el catálogo completo no cabe en una sola
@@ -124,7 +124,9 @@ export async function POST(req: NextRequest) {
       const term = requestedTerms[i];
       terms.push(term);
       try {
-        const perStore = await Promise.all(REFRESH_STORES.map(store => searchAllRetailerProducts(store, term)));
+        const perStore = await Promise.all(REFRESH_STORES.map(store => searchAllRetailerProducts(
+          store, term, { pages: store === 'Unimarc' || store === 'Tottus' ? 2 : 1 },
+        )));
         const items = perStore.flat();
         if (items.length > 0) {
           allItems.push(...items);
@@ -152,7 +154,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Throttling: esperar entre términos (excepto el último)
-      if (i < terms.length - 1) {
+      if (i < requestedTerms.length - 1) {
         await delay(TERM_DELAY_MS);
       }
     }

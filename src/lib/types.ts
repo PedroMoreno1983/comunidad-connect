@@ -171,6 +171,7 @@ export type SupermarketStore =
   | 'Santa Isabel'
   | 'Lider'
   | 'Unimarc'
+  | 'Tottus'
   | 'aCuenta'
   | 'Irurzun';
 
@@ -273,6 +274,16 @@ export interface SupermarketShoppingItem extends SupermarketSearchCandidate {
   source: 'catalog' | 'live' | 'missing' | 'manual';
 }
 
+export interface SupermarketBasketSummary {
+  store: string;
+  subtotal: number;
+  coveredCount: number;
+  requestedCount: number;
+  coveragePercent: number;
+  missingTerms: string[];
+  complete: boolean;
+}
+
 export interface SupermarketSearchResponse {
   error?: string;
   message: string;
@@ -286,6 +297,7 @@ export interface SupermarketSearchResponse {
   foundCount: number;
   missingTerms: string[];
   alternativesByTerm?: Record<string, SupermarketSearchCandidate[]>;
+  basketComparison?: SupermarketBasketSummary[];
   checkout?: {
     status: string;
     store?: string;
