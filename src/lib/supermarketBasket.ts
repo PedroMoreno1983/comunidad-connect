@@ -58,6 +58,30 @@ function unitDimension(unit: SupermarketMeasurementUnit): 'mass' | 'volume' {
   return unit === 'kg' || unit === 'g' ? 'mass' : 'volume';
 }
 
+function parseProductMeasurement(name: string) {
+  const normalizedName = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const match = normalizedName.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/);
+  if (!match) return null;
+  return {
+    amount: Number(match[1].replace(',', '.')),
+    unit: normalizedProductUnit(match[2]),
+  };
+}
+
+export function isProductMeasurementCompatible(
+  name: string,
+  requestedUnit: SupermarketMeasurementUnit | undefined,
+): boolean {
+  if (!requestedUnit) return true;
+  const measurement = parseProductMeasurement(name);
+  return measurement !== null
+    && measurement.amount > 0
+    && unitDimension(measurement.unit) === unitDimension(requestedUnit);
+}
+
 export function calculateProductQuantity(
   name: string,
   requestedQuantity: number,
@@ -66,23 +90,17 @@ export function calculateProductQuantity(
   minimumPacks = 1,
 ): QuantitySelection {
   if (requestedUnit) {
-    const normalizedName = name
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-    const match = normalizedName.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/);
-    if (match) {
-      const productUnit = normalizedProductUnit(match[2]);
-      if (unitDimension(productUnit) === unitDimension(requestedUnit)) {
-        const amount = Number(match[1].replace(',', '.'));
-        const productInRequestedUnits = amount * unitBaseFactor(productUnit) / unitBaseFactor(requestedUnit);
-        if (productInRequestedUnits > 0) {
-          const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / productInRequestedUnits));
-          return {
-            packs,
-            suppliedQuantity: Number((packs * productInRequestedUnits).toFixed(3)),
-          };
-        }
+    const measurement = parseProductMeasurement(name);
+    if (measurement && unitDimension(measurement.unit) === unitDimension(requestedUnit)) {
+      const productInRequestedUnits = measurement.amount
+        * unitBaseFactor(measurement.unit)
+        / unitBaseFactor(requestedUnit);
+      if (productInRequestedUnits > 0) {
+        const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / productInRequestedUnits));
+        return {
+          packs,
+          suppliedQuantity: Number((packs * productInRequestedUnits).toFixed(3)),
+        };
       }
     }
   }
@@ -194,6 +212,7 @@ export function buildBasketComparison(
     const items = comparableByTerm.flatMap(({ term, rows }) => {
       const candidate = rows
         .filter(row => asString(row.store) === store)
+        .filter(row => isProductMeasurementCompatible(asString(row.name), requestedUnits[term]))
         .map(row => buildSupermarketCandidate(
           row,
           term,
