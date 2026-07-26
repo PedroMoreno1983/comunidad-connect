@@ -83,4 +83,15 @@ describe('buildBasketComparison', () => {
       lineTotal: 3000,
     });
   });
+
+  it('prefers the relevant product over a cheaper secondary mention', () => {
+    const result = buildBasketComparison(['pechuga de pollo'], {
+      'pechuga de pollo': [
+        { ...row('Unimarc', 'Alimento gato sabor pechuga de pollo 85 g', 500), match_relevance: 70 },
+        { ...row('Unimarc', 'Pechuga de pollo deshuesada 700 g', 5000), match_relevance: 140 },
+      ],
+    });
+
+    expect(result.recommended?.items[0].name).toBe('Pechuga de pollo deshuesada 700 g');
+  });
 });
