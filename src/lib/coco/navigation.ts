@@ -8,6 +8,7 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/home": "Inicio",
     "/comunicaciones": "Comunidad",
     "/convivencia": "Convivencia",
+    "/admin/convivencia": "Gestion de Convivencia",
     "/directorio": "Directorio",
     "/profile": "Mi Perfil",
     "/amenities": "Espacios Comunes",

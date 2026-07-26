@@ -136,7 +136,9 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/agent-center")) {
     allowed = role === "admin";
   } else if (pathname.startsWith("/convivencia")) {
-    allowed = role === "admin" || role === "resident";
+    allowed = role === "resident";
+  } else if (pathname.startsWith("/resident/supermercado")) {
+    allowed = role === "resident";
   } else if (
     pathname.startsWith("/marketplace")
     || pathname.startsWith("/services")

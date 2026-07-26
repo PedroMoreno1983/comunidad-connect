@@ -100,6 +100,9 @@ Rutas para Residentes:
 - /resident/finances → Mis Gastos Comunes (cuánto debo, pagos)
 - /resident/consumo → Mi Consumo de Agua (boletas, lecturas)
 
+Rutas para Administradores:
+- /admin/convivencia -> Gestion de casos escalados, compras comunitarias, banco de tiempo y proyectos. El administrador supervisa y resuelve; no compra ni participa como residente.
+
 Rutas para Conserjes:
 - /concierge/visitors → Registro de visitas
 - /concierge/packages → Recepción de encomiendas y paquetería

@@ -189,6 +189,9 @@ export default function ConvivenciaPage() {
         try {
             const updated = await CommunityCollaborationService.updateMediationStatus(id, status);
             setMediations(updated);
+            if (lastDraft?.id === id) {
+                setLastDraft(updated.find(item => item.id === id) || null);
+            }
             toast({ title: status === "sent" ? "Mensaje enviado" : "Estado actualizado", description: "El caso quedo registrado en mediacion activa.", variant: "success" });
         } catch (error) {
             showCollaborationError(error);
@@ -392,7 +395,13 @@ export default function ConvivenciaPage() {
                                 <Button type="button" variant="copper" disabled={!lastDraft} onClick={() => lastDraft && updateMediation(lastDraft.id, "sent")}>
                                     Enviar privado <Send className="h-4 w-4" />
                                 </Button>
+                                <Button type="button" variant="ghost" disabled={!lastDraft} onClick={() => lastDraft && updateMediation(lastDraft.id, "escalated")}>
+                                    Escalar a administracion <ArrowRight className="h-4 w-4" />
+                                </Button>
                             </div>
+                            <p className="mt-3 text-xs text-white/55">
+                                Administracion solo podra ver el contenido si eliges escalarlo expresamente.
+                            </p>
                         </div>
                         <div className="grid gap-3">
                             {mediations.slice(0, 3).map(item => (
@@ -404,6 +413,11 @@ export default function ConvivenciaPage() {
                                         </div>
                                         <Tag tone={item.status === "sent" ? "sage" : "neutral"}>{item.status}</Tag>
                                     </div>
+                                        {item.status === "sent" && (
+                                            <Button type="button" variant="ghost" size="sm" onClick={() => updateMediation(item.id, "escalated")}>
+                                                Escalar a administracion <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                 </div>
                             ))}
                         </div>

@@ -197,7 +197,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident", "concierge"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
-        { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["admin", "resident"] },
+        { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["concierge"], feature: "amenities" },
       ]
@@ -224,7 +224,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
-        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident", "admin"] },
+        { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
         { href: "/expenses/solidaridad", label: "Solidaridad Vecinal", icon: Shield, roles: ["resident", "admin"] },
@@ -254,6 +254,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/admin/units", label: "Unidades", icon: Home, roles: ["admin"] },
         { href: "/admin/consumo", label: "Control Hídrico", icon: Waves, roles: ["admin"] },
         { href: "/admin/marketplace", label: "Marketplace Admin", icon: ShoppingBag, roles: ["admin"] },
+        { href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"] },
         { href: "/admin/mantenimiento", label: "Mantenimiento", icon: Wrench, roles: ["admin"], feature: "maintenance" },
         { href: "/admin/votaciones", label: "Gestión Votos", icon: BarChart3, roles: ["admin"], feature: "voting" },
         { href: "/admin/operations", label: "Centro Operativo", icon: Activity, roles: ["admin"] },
