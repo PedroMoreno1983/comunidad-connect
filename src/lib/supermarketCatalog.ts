@@ -49,7 +49,7 @@ export async function comparePersistedSupermarkets(
     // (primera significativa, sin acentos y con stem: "jaleas"→"jalea") y
     // refinamos en JS, donde "queso en laminas" calza con "Queso en Láminas Colun".
     const anchor = matchAnchor(term);
-    const pattern = `%${anchor}%`;
+    const pattern = anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')
       .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')

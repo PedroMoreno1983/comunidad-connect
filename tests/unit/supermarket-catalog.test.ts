@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ calls: [] as string[] }));
+const state = vi.hoisted(() => ({
+  calls: [] as string[],
+  patterns: [] as string[],
+}));
 
 vi.mock('server-only', () => ({}));
 
@@ -15,7 +18,10 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
           return query;
         },
         gte: () => query,
-        ilike: () => query,
+        ilike: (_column: string, pattern: string) => {
+          state.patterns.push(pattern);
+          return query;
+        },
         order: () => query,
         limit: async () => {
           state.calls.push(store ?? 'global');
@@ -86,6 +92,7 @@ import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
 describe('comparePersistedSupermarkets', () => {
   beforeEach(() => {
     state.calls.length = 0;
+    state.patterns.length = 0;
   });
 
   it('queries a store again when the global limit contains only irrelevant matches for it', async () => {
@@ -95,5 +102,12 @@ describe('comparePersistedSupermarkets', () => {
     expect(state.calls).toContain('Lider');
     expect(comparison.recommended?.store).toBe('Lider');
     expect(comparison.recommended?.coveragePercent).toBe(100);
+  });
+
+  it('uses a prefix query for short product names so generic substrings do not exhaust the limit', async () => {
+    await comparePersistedSupermarkets(['te']);
+
+    expect(state.patterns.length).toBeGreaterThan(0);
+    expect(new Set(state.patterns)).toEqual(new Set(['te%']));
   });
 });
