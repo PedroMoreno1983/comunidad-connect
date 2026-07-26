@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     buildSelectionReason,
     foldAccents,
+    matchAnchor,
     significantWords,
     storeSearchUrl,
     termMatchesProductName,
@@ -16,6 +17,21 @@ describe('supermarketText foldAccents / significantWords', () => {
     it('keeps only meaningful words of 3+ letters', () => {
         expect(significantWords('queso en laminas')).toEqual(['queso', 'laminas']);
         expect(significantWords('arroz de grado 1')).toEqual(['arroz', 'grado']);
+    });
+});
+
+describe('supermarketText matchAnchor', () => {
+    it('applies the plural stem so ILIKE finds singular product names', () => {
+        // "Jalea Soprole Guinda" NO contiene el substring "jaleas": el ancla
+        // debe ser "jalea" o el término queda vacío aunque el catálogo lo tenga.
+        expect(matchAnchor('jaleas')).toBe('jalea');
+        expect(matchAnchor('queso en laminas')).toBe('queso');
+        expect(matchAnchor('lentejas')).toBe('lenteja');
+    });
+
+    it('strips accents and keeps non-plural words intact', () => {
+        expect(matchAnchor('Atún')).toBe('atun');
+        expect(matchAnchor('arroz')).toBe('arroz');
     });
 });
 
