@@ -7,7 +7,7 @@ export interface Product {
     category: string;
     keywords: string[];
     prices: {
-        store: 'Lider' | 'Jumbo' | 'Unimarc' | 'Santa Isabel';
+        store: 'Lider' | 'Jumbo' | 'Unimarc' | 'Santa Isabel' | 'Tottus';
         price: number;
         offerPrice?: number;
     }[];
@@ -34,7 +34,7 @@ export interface CartItem {
     brand: string;
     quantity: number;
     price: number;
-    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
+    store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus';
     isOffer?: boolean;
     originalPrice?: number;
     requestedTerm?: string;

@@ -5,6 +5,8 @@ import {
   parseJumboProducts,
   parseLiderProducts,
   parseSantaIsabelProducts,
+  parseTottusProducts,
+  parseUnimarcProducts,
 } from '@/lib/supermarketLive';
 
 describe('supermarket live catalog parsers', () => {
@@ -130,6 +132,54 @@ describe('supermarket live catalog parsers', () => {
       name: 'Huevos blancos 12 un Lider',
       price: 2990,
       store: 'Lider',
+    });
+  });
+
+  it('reads current Unimarc search cards and ignores bundle-only discounts', () => {
+    const html = `
+      <section id="shelf__vertical--arroz-oferta">
+        <a href="/product/arroz-oferta"><img class="Shelf_defaultImgStyle__abc" src="https://img/arroz.jpg"></a>
+        <p class="Shelf_brandText__abc">Nuestra Cocina</p>
+        <p class="Shelf_nameProduct__abc">Arroz largo 1 kg</p>
+        <p id="listPrice__offerPrice--discountprice-arroz">2 x $3.000</p>
+        <p id="listPrice__offerPrice--listprice-arroz">$1.790 c/u</p>
+      </section>`;
+
+    expect(parseUnimarcProducts(html, 'arroz')[0]).toMatchObject({
+      name: 'Arroz largo 1 kg',
+      brand: 'Nuestra Cocina',
+      price: 1790,
+      store: 'Unimarc',
+      isOffer: false,
+      productUrl: 'https://www.unimarc.cl/product/arroz-oferta',
+    });
+  });
+
+  it('reads Tottus prices from its public browse endpoint', () => {
+    const payload = JSON.stringify({
+      data: {
+        results: [{
+          displayName: 'Arroz Tottus G2 1 Kg',
+          brand: 'TOTTUS',
+          skuId: '110607035',
+          url: 'https://www.tottus.cl/tottus-cl/articulo/110607034/arroz-tottus',
+          mediaUrls: ['https://media.tottus.cl/arroz'],
+          prices: [
+            { type: 'internetPrice', crossed: false, price: ['890'] },
+            { type: 'normalPrice', crossed: true, price: ['1.190'] },
+          ],
+        }],
+      },
+    });
+
+    expect(parseTottusProducts(payload, 'arroz')[0]).toMatchObject({
+      name: 'Arroz Tottus G2 1 Kg',
+      brand: 'TOTTUS',
+      price: 890,
+      originalPrice: 1190,
+      store: 'Tottus',
+      isOffer: true,
+      sku: '110607035',
     });
   });
 });
