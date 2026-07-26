@@ -42,10 +42,10 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     let rawTerm = entry;
     let unit: SupermarketMeasurementUnit | undefined;
     const leadingMeasure = entry.match(
-      /^(\d{1,3})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
+      /^(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
     );
     const trailingMeasure = entry.match(
-      /^(.+?)\s+(\d{1,3})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
+      /^(.+?)\s+(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
     );
     const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|unidades?|uds?|u)?\s+(.+)$/i)
       || entry.match(/^(\d{1,3})\s*[xX]\s*(.+)$/);
@@ -70,10 +70,14 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     }
 
     const term = normalizeTerm(rawTerm);
-    if (term.length < 2 || quantity < 1 || quantity > 500) continue;
     const existing = consolidated.get(term);
-    const nextQuantity = Math.min(500, (existing?.quantity || 0) + quantity);
-    consolidated.set(term, { term, quantity: nextQuantity, unit: existing?.unit ?? unit });
+    const effectiveUnit = existing?.unit ?? unit;
+    const maxQuantity = effectiveUnit === 'g' || effectiveUnit === 'ml'
+      ? 50_000
+      : 500;
+    if (term.length < 2 || quantity < 1 || quantity > maxQuantity) continue;
+    const nextQuantity = Math.min(maxQuantity, (existing?.quantity || 0) + quantity);
+    consolidated.set(term, { term, quantity: nextQuantity, unit: effectiveUnit });
   }
   return [...consolidated.values()].slice(0, 30);
 }

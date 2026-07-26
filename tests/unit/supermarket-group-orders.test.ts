@@ -50,6 +50,13 @@ describe('supermarket group orders', () => {
       { term: 'tomates', quantity: 2, unit: 'kg' },
       { term: 'cebollas', quantity: 4, unit: 'kg' },
     ]);
+    expect(parseGroupShoppingList(
+      'leche en polvo 800 g, detergente en polvo 700 g, jugo 1500 ml',
+    )).toEqual([
+      { term: 'leche en polvo', quantity: 800, unit: 'g' },
+      { term: 'detergente en polvo', quantity: 700, unit: 'g' },
+      { term: 'jugo', quantity: 1500, unit: 'ml' },
+    ]);
   });
 
   it('allocates the prepared basket exactly by each participant contribution', () => {
