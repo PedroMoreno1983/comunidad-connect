@@ -39,7 +39,8 @@ import {
   Briefcase,
   Clapperboard,
   Sparkles,
-  Bell
+  Bell,
+  HeartHandshake
 } from "lucide-react";
 import { Brand } from "./Brand";
 import { useProductCapabilities } from "@/hooks/useProductCapabilities";
@@ -165,6 +166,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident", "concierge"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
+        { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["admin", "resident"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
       ]
     },
