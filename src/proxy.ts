@@ -17,6 +17,7 @@ const PROTECTED_DASHBOARD_PREFIXES = [
   "/home",
   "/marketing",
   "/marketplace",
+  "/notifications",
   "/payment-sandbox",
   "/privacy-center",
   "/profile",

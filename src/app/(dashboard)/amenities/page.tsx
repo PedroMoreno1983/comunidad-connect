@@ -84,7 +84,7 @@ export default function AmenitiesPage() {
         maxCapacity: 12,
         hourlyRate: 0,
         iconName: "Calendar",
-        gradient: "from-[#B45F4B] to-[#8E3F31]",
+        gradient: "from-[#9C5636] to-[#733D24]",
     });
     const { toast } = useToast();
     const isAdmin = user?.role === "admin";
@@ -246,7 +246,7 @@ export default function AmenitiesPage() {
                 maxCapacity: 12,
                 hourlyRate: 0,
                 iconName: "Calendar",
-                gradient: "from-[#B45F4B] to-[#8E3F31]",
+                gradient: "from-[#9C5636] to-[#733D24]",
             });
             setShowAmenityForm(false);
             toast({ title: "Espacio creado", description: "El nuevo espacio común ya está disponible para reservas.", variant: "success" });
@@ -373,7 +373,7 @@ export default function AmenitiesPage() {
                                             onChange={(event) => setAmenityForm(form => ({ ...form, gradient: event.target.value }))}
                                             className="w-full rounded-lg border border-subtle bg-elevated px-4 py-3 text-sm cc-text-primary outline-none focus:border-brand-400"
                                         >
-                                            <option value="from-[#B45F4B] to-[#8E3F31]">Cobre</option>
+                                            <option value="from-[#9C5636] to-[#733D24]">Cobre</option>
                                             <option value="from-[#3F8F6B] to-[#1F5F4A]">Sage</option>
                                             <option value="from-[#6D5BD0] to-[#3B2F84]">Plum</option>
                                             <option value="from-[#D8A83A] to-[#9B6B16]">Ámbar</option>

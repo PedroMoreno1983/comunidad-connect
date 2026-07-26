@@ -130,7 +130,7 @@ export async function POST(request: Request) {
                 El equipo de Convive Connect ya recibio el aviso. Puedes comenzar de inmediato la creacion de la comunidad y dejar preparada la carga asistida por CoCo.
             </p>
             <div style="background:#fff7ed;border-radius:12px;padding:18px;margin-bottom:24px;border:1px solid #fed7aa;">
-                <p style="margin:0 0 8px;font-weight:700;color:#974C3C;">Detalle recibido</p>
+                <p style="margin:0 0 8px;font-weight:700;color:#733D24;">Detalle recibido</p>
                 <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">${safeMessage}</p>
             </div>
             <div style="margin:28px 0;">

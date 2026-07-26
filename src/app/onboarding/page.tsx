@@ -118,17 +118,17 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F4EFE6] text-[#1A1611]">
+    <main className="min-h-screen bg-ivory text-[#1A1611]">
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(26,22,17,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(26,22,17,0.035)_1px,transparent_1px)] bg-[size:40px_40px]" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 md:px-12">
         <header className="flex items-center justify-between gap-4">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#C8705A] text-white shadow-lg shadow-[#C8705A]/25">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#9C5636] text-white shadow-lg shadow-[#9C5636]/25">
               <Building2 className="h-5 w-5" />
             </span>
-            <BrandWordmark className="text-lg text-[#C8705A]" />
+            <BrandWordmark className="text-lg text-[#9C5636]" />
           </Link>
-          <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-[#E4D8CA] bg-white/70 px-4 py-2.5 text-sm font-bold text-[#5F5A54] transition hover:bg-white">
+          <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-[var(--cc-line-strong)] bg-white/70 px-4 py-2.5 text-sm font-bold text-[#5F5A54] transition hover:bg-white">
             <ArrowLeft className="h-4 w-4" />
             Volver
           </Link>
@@ -154,18 +154,18 @@ export default function OnboardingPage() {
               {steps.map((step) => {
                 const Icon = step.icon;
                 return (
-                  <article key={step.title} className="rounded-2xl border border-[#E4D8CA] bg-white/72 p-4 shadow-sm">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8705A]/10 text-[#B45F4B]">
+                  <article key={step.title} className="rounded-2xl border border-[var(--cc-line-strong)] bg-white/72 p-4 shadow-sm">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#9C5636]/10 text-[#733D24]">
                       <Icon className="h-5 w-5" />
                     </div>
                     <h2 className="text-sm font-bold">{step.title}</h2>
-                    <p className="mt-2 text-xs leading-5 text-[#6F665D]">{step.description}</p>
+                    <p className="mt-2 text-xs leading-5 cc-text-secondary">{step.description}</p>
                   </article>
                 );
               })}
             </div>
 
-            <div className="rounded-3xl border border-[#E4D8CA] bg-[#1A1611] p-6 text-white shadow-xl">
+            <div className="rounded-3xl border border-[var(--cc-line-strong)] bg-[#1A1611] p-6 text-white shadow-xl">
               <div className="mb-4 flex items-center gap-2 text-[#C99572]">
                 <Sparkles className="h-5 w-5" />
                 <p className="text-xs font-bold uppercase tracking-[0.16em]">Entregable del arranque</p>
@@ -181,14 +181,14 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <section className="rounded-[2rem] border border-[#E4D8CA] bg-white p-6 shadow-2xl shadow-[#1A1611]/10 sm:p-8">
+          <section className="rounded-[2rem] border border-[var(--cc-line-strong)] bg-white p-6 shadow-2xl shadow-[#1A1611]/10 sm:p-8">
             {sent ? (
               <div className="flex min-h-[520px] flex-col justify-center text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#5F7A46]/12 text-[#5F7A46]">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
                 <h2 className="text-3xl font-semibold tracking-tight">Solicitud recibida</h2>
-                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#6F665D]">
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 cc-text-secondary">
                   Dejamos registrada la activacion para {condoName}. El siguiente paso es crear el condominio y entrar al centro de carga asistida.
                 </p>
                 <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8A8178]">
@@ -201,7 +201,7 @@ export default function OnboardingPage() {
                     Crear condominio
                     <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <Link href="/" className="inline-flex items-center justify-center rounded-xl border border-[#E4D8CA] px-4 py-3 text-sm font-bold text-[#5F5A54]">
+                  <Link href="/" className="inline-flex items-center justify-center rounded-xl border border-[var(--cc-line-strong)] px-4 py-3 text-sm font-bold text-[#5F5A54]">
                     Volver al inicio
                   </Link>
                 </div>
@@ -211,30 +211,30 @@ export default function OnboardingPage() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5F7A46]">Preactivacion IA</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-tight">Cuéntanos qué puede leer CoCo</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#6F665D]">
+                  <p className="mt-2 text-sm leading-6 cc-text-secondary">
                     Con estos datos el flujo queda preparado para crear comunidad, cargar archivos y revisar brechas sin partir desde cero.
                   </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Nombre administrador" icon={<Users className="h-4 w-4" />}>
-                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Pedro Moreno" />
+                    <input value={adminName} onChange={(event) => setAdminName(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Pedro Moreno" />
                   </Field>
                   <Field label="Correo" icon={<Mail className="h-4 w-4" />}>
-                    <input type="email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="admin@condominio.cl" />
+                    <input type="email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="admin@condominio.cl" />
                   </Field>
                 </div>
 
                 <Field label="Nombre del condominio" icon={<Building2 className="h-4 w-4" />}>
-                  <input value={condoName} onChange={(event) => setCondoName(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Edificio Plaza Mayor" />
+                  <input value={condoName} onChange={(event) => setCondoName(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="Edificio Plaza Mayor" />
                 </Field>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Teléfono" icon={<Phone className="h-4 w-4" />}>
-                    <input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="+56 9 1234 5678" />
+                    <input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="+56 9 1234 5678" />
                   </Field>
                   <Field label="Unidades aprox." icon={<MapPin className="h-4 w-4" />}>
-                    <input inputMode="numeric" value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="80" />
+                    <input inputMode="numeric" value={units} onChange={(event) => setUnits(event.target.value)} className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition placeholder:text-[#A39A91] focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12" placeholder="80" />
                   </Field>
                 </div>
 
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
                   <select
                     value={priority}
                     onChange={(event) => setPriority(event.target.value)}
-                    className="w-full rounded-xl border border-[#E4D8CA] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12"
+                    className="w-full rounded-xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#9C5636] focus:ring-4 focus:ring-[#9C5636]/12"
                   >
                     <option>Activacion completa con CoCo</option>
                     <option>Crear comunidad y cargar residentes</option>
@@ -267,7 +267,7 @@ export default function OnboardingPage() {
                           key={item}
                           type="button"
                           onClick={() => setDocuments(prev => checked ? prev.filter(doc => doc !== item) : [...prev, item])}
-                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition ${checked ? "border-[#5F7A46] bg-[#5F7A46]/10 text-[#516A4F]" : "border-[#E4D8CA] bg-[#FAF7F1] text-[#6F665D]"}`}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition ${checked ? "border-[#5F7A46] bg-[#5F7A46]/10 text-[#516A4F]" : "border-[var(--cc-line-strong)] bg-[#FAF7F1] cc-text-secondary"}`}
                         >
                           <CheckCircle2 className={`h-4 w-4 ${checked ? "text-[#5F7A46]" : "text-[#A39A91]"}`} />
                           {item}
@@ -286,9 +286,9 @@ export default function OnboardingPage() {
                   Solicitar activacion inteligente
                 </button>
 
-                <div className="rounded-2xl border border-[#E4D8CA] bg-[#FAF7F1] p-4 text-sm leading-6 text-[#6F665D]">
+                <div className="rounded-2xl border border-[var(--cc-line-strong)] bg-[#FAF7F1] p-4 text-sm leading-6 cc-text-secondary">
                   ¿Ya quieres crear la cuenta y subir archivos ahora?{" "}
-                  <Link href="/admin-onboarding" className="font-bold text-[#B45F4B] underline underline-offset-4">
+                  <Link href="/admin-onboarding" className="font-bold text-[#733D24] underline underline-offset-4">
                     Ir a Activacion Inteligente
                   </Link>
                 </div>

@@ -1239,3 +1239,18 @@ export interface SolidarityResolutionResult {
   category: 'unemployment' | 'pensioner' | 'medical' | 'emergency';
   approved_amount: number;
 }
+export interface Notification {
+  id: string;
+  type: 'info' | 'success' | 'warning' | 'alert';
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  link?: string;
+}
+
+export interface NotificationRowProps {
+  notification: Notification;
+  onRead: () => void;
+  onRemove: () => void;
+}

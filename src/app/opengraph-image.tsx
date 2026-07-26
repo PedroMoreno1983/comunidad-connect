@@ -24,7 +24,7 @@ export default function Image() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <div style={{ width: 54, height: 54, borderRadius: 14, background: "#B45F4B", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>C</div>
+          <div style={{ width: 54, height: 54, borderRadius: 14, background: "#9C5636", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>C</div>
           <div style={{ fontSize: 30, fontWeight: 800 }}>Convive Connect</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -35,7 +35,7 @@ export default function Image() {
             Gestion comunitaria, CoCo IA, WhatsApp, apoyo mutuo y convivencia vecinal para condominios en Chile.
           </div>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 22, color: "#B45F4B", fontWeight: 700 }}>
+        <div style={{ display: "flex", gap: 14, fontSize: 22, color: "#9C5636", fontWeight: 700 }}>
           <span>Activacion IA</span>
           <span>|</span>
           <span>Ley 21.442</span>

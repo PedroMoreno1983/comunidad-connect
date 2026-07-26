@@ -74,7 +74,7 @@ export function emailWrapper(content: string, title: string): string {
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
         <!-- Header -->
         <tr>
-          <td style="background:linear-gradient(135deg,#C8705A,#974C3C);padding:32px 40px;text-align:center;">
+          <td style="background:linear-gradient(135deg,#9C5636,#733D24);padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">
               Convive Connect
             </p>
@@ -89,7 +89,7 @@ export function emailWrapper(content: string, title: string): string {
           <td style="padding:24px 40px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
               Convive Connect — Sistema de Gestión Inmobiliaria<br/>
-              Si tienes dudas, escribenos a <a href="mailto:${SUPPORT_EMAIL}" style="color:#974C3C;">${SUPPORT_EMAIL}</a>
+              Si tienes dudas, escribenos a <a href="mailto:${SUPPORT_EMAIL}" style="color:#733D24;">${SUPPORT_EMAIL}</a>
             </p>
           </td>
         </tr>
@@ -270,7 +270,7 @@ export async function sendWelcomeEmail({
       </td></tr>
     </table>` : ''}
     <a href="${PUBLIC_SITE_URL}"
-       style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#C8705A,#974C3C);color:#fff;font-weight:700;font-size:15px;border-radius:12px;text-decoration:none;">
+       style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#9C5636,#733D24);color:#fff;font-weight:700;font-size:15px;border-radius:12px;text-decoration:none;">
       Entrar a la plataforma →
     </a>`;
 

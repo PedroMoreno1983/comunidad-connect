@@ -60,6 +60,7 @@ function DashboardShell({
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',
             '/votaciones': 'Votaciones',
+            '/notifications': 'Notificaciones',
             '/feed': 'Avisos y Comunicaciones',
             '/chat': 'CoCo AI Chat',
             '/social': 'Red Social',

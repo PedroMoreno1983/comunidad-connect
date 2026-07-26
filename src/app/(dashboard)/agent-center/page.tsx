@@ -84,11 +84,6 @@ type AgentSummary = {
   estimatedMinutesSaved: number;
 };
 
-type AgentEngine = {
-  provider: string;
-  model: string;
-  reasoning: string;
-};
 
 type AgentPlaybook = {
   key: string;
@@ -104,7 +99,7 @@ type AgentCenterGetResponse = {
   activity?: ActivityRow[];
   policies?: AgentPolicy[];
   summary?: AgentSummary;
-  engine?: AgentEngine;
+
   playbooks?: AgentPlaybook[];
   tasks?: AgentTaskSummary[];
   triggers?: AgentTriggerRuleSummary[];
@@ -138,6 +133,12 @@ const AREA_LABELS: Record<AgentKey, string> = {
   community: "Comunicados",
 };
 
+const REVIEW_STEPS = [
+  { number: "1", title: "CoCo prepara", description: "Revisa el edificio y arma una propuesta." },
+  { number: "2", title: "Tú revisas", description: "Ves qué hará, explicado en lenguaje simple." },
+  { number: "3", title: "Se ejecuta", description: "Apruebas y el resultado queda en la bitácora." },
+] as const;
+
 const AREA_TONE: Record<AgentKey, string> = {
   finance: "var(--cc-sage)",
   maintenance: "var(--cc-copper)",
@@ -145,12 +146,6 @@ const AREA_TONE: Record<AgentKey, string> = {
   community: "var(--cc-amber)",
 };
 
-const AREA_TINT: Record<AgentKey, string> = {
-  finance: "var(--cc-sage-tint)",
-  maintenance: "var(--cc-copper-tint)",
-  concierge: "var(--cc-plum-tint)",
-  community: "var(--cc-amber-tint)",
-};
 
 const DEFAULT_SUMMARY: AgentSummary = {
   totalRuns: 0,
@@ -161,11 +156,6 @@ const DEFAULT_SUMMARY: AgentSummary = {
   estimatedMinutesSaved: 0,
 };
 
-const DEFAULT_ENGINE: AgentEngine = {
-  provider: "anthropic",
-  model: "claude-sonnet-4-5",
-  reasoning: "claude_tool_planning_with_authorized_sources",
-};
 
 const DEFAULT_POLICIES: Record<AgentKey, AgentPolicy> = {
   finance: { agentKey: "finance", autonomyLevel: "semi_autonomous", active: true, maxDailyActions: 120 },
@@ -230,7 +220,7 @@ export default function AgentCenterPage() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
-  const [engine, setEngine] = useState<AgentEngine>(DEFAULT_ENGINE);
+
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
   const [playbooks, setPlaybooks] = useState<AgentPlaybook[]>(DEFAULT_PLAYBOOKS);
   const [tasks, setTasks] = useState<AgentTaskSummary[]>([]);
@@ -247,7 +237,7 @@ export default function AgentCenterPage() {
     setActivity(Array.isArray(data.activity) ? data.activity : []);
     setPolicies(policyListToMap(data.policies));
     setSummary(data.summary || DEFAULT_SUMMARY);
-    setEngine(data.engine || DEFAULT_ENGINE);
+
     setPlaybooks(data.playbooks?.length ? data.playbooks : DEFAULT_PLAYBOOKS);
     setTasks(Array.isArray(data.tasks) ? data.tasks : []);
     setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
@@ -418,16 +408,28 @@ export default function AgentCenterPage() {
         CoCo prepara. <em style={{ color: "var(--cc-ink)", fontStyle: "italic" }}>Tú decides.</em>
       </DisplayHeading>
       <p className="mt-3.5 max-w-xl text-[15px] leading-relaxed cc-text-secondary">
-        CoCo razona con Claude sobre los datos autorizados del edificio y deja acciones listas para ti. Nada se envía ni se ejecuta
+        CoCo revisa los datos autorizados del edificio y deja acciones listas para ti. Nada se envía ni se ejecuta
         hasta que tú lo apruebes.
       </p>
-      <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-medium">
-        <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)", color: "var(--cc-copper)" }}>
-          Claude activo · {engine.model}
-        </span>
-        <span className="rounded-full border px-2.5 py-1 cc-text-secondary" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-          Lectura autorizada: residentes, unidades, finanzas, tickets, reservas, documentos, visitas, encomiendas, marketplace, votaciones y bitácora
-        </span>
+
+      <div className="mt-7 grid overflow-hidden rounded-2xl border sm:grid-cols-3" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+        {REVIEW_STEPS.map((step) => (
+          <div
+            key={step.number}
+            className="flex gap-4 border-t p-5 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0"
+            style={{ borderColor: "var(--cc-line)" }}
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-carbon font-mono text-xs text-paper">
+              {step.number}
+            </span>
+            <div>
+              <p className="text-lg leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                {step.title}
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-5 cc-text-secondary">{step.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Cola de aprobación */}
@@ -447,17 +449,15 @@ export default function AgentCenterPage() {
         ) : (
           queue.map((message, i) => {
             const action = message.action as AgentAction;
-            const tone = AREA_TONE[action.agentKey];
-            const tint = AREA_TINT[action.agentKey];
+
             const expanded = expandedId === message.id;
             return (
               <div key={message.id} style={i > 0 ? { borderTop: "1px solid var(--cc-line)" } : undefined}>
                 <div className="flex flex-col gap-3.5 p-5 sm:flex-row sm:items-center">
                   <span
-                    className="inline-flex w-[118px] shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
-                    style={{ background: tint, color: tone }}
+                    className="inline-flex w-[118px] shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-medium cc-text-secondary"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} />
                     {AREA_LABELS[action.agentKey]}
                   </span>
 
