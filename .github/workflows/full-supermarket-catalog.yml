@@ -8,7 +8,7 @@ on:
       - "scripts/test_full_catalog.py"
       - ".github/workflows/full-supermarket-catalog.yml"
   schedule:
-    - cron: "27 3 * * 0,3,6"
+    - cron: "27 3 * * *"
   workflow_dispatch:
     inputs:
       store:
@@ -99,6 +99,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install current CA bundle
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          python -m pip install --disable-pip-version-check certifi==2026.7.22
+          cat "$(python -m certifi)" .github/certificates/globalsign-rsa-ov-ssl-ca-2018.pem > "$RUNNER_TEMP/supermarket-ca-bundle.pem"
+          echo "SSL_CERT_FILE=$RUNNER_TEMP/supermarket-ca-bundle.pem" >> "$GITHUB_ENV"
 
       - name: Install browser runtime
         if: steps.selection.outputs.run == 'true' && (matrix.store == 'unimarc' || matrix.store == 'jumbo')
