@@ -117,6 +117,8 @@ def crawl_store(
         "unimarc": "Unimarc",
         "jumbo": "Jumbo",
         "lider": "Lider",
+        "acuenta": "aCuenta",
+        "irurzun": "Irurzun",
     }[store]
     seen: set[str] = set()
     batch: list[dict[str, Any]] = []

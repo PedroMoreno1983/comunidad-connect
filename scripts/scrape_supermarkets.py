@@ -391,26 +391,52 @@ def scrape_acuenta(query: str, limit: int) -> tuple[list[Product], SourceStatus]
 
 
 def scrape_irurzun(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
-    del limit
-    url = f"https://irurzun.cl/search?q={quote_plus(query)}"
+    url = "https://irurzun.cl/collections/all/products.json?limit=250&page=1"
     try:
-        page = fetch(url)
-        handles = re.findall(r'href=["\']/products/([^"\'?]+)', page, flags=re.I)
-        if not handles:
-            return [], SourceStatus("Irurzun", query, "no_results", count=0)
-        # Irurzun publishes pack descriptions and availability, but its public
-        # Shopify JSON currently returns price=0. Exclude those rows rather
-        # than presenting an invented or quote-only value as a real price.
-        return [], SourceStatus(
-            "Irurzun",
-            query,
-            "no_public_prices",
-            "Catalog available; public product prices are currently zero/quote-only",
-            count=0,
-        )
-    except (HTTPError, URLError, TimeoutError) as error:
+        root = json.loads(fetch(url))
+        products: list[Product] = []
+        for raw in root.get("products") or []:
+            title = str(raw.get("title") or "").strip()
+            handle = str(raw.get("handle") or "").strip()
+            vendor = str(raw.get("vendor") or "").strip() or None
+            images = raw.get("images") or []
+            image = images[0] if images else {}
+            for variant in raw.get("variants") or []:
+                price = as_int(variant.get("price"))
+                if not title or not handle or price <= 0 or variant.get("available") is not True:
+                    continue
+                variant_title = str(variant.get("title") or "").strip()
+                name = title
+                if variant_title and variant_title.casefold() != "default title":
+                    name = f"{title} - {variant_title}"
+                public_sku = str(variant.get("sku") or "").strip() or None
+                sku = public_sku or str(variant.get("id") or "").strip() or None
+                barcode = str(variant.get("barcode") or "").strip() or None
+                ean = barcode or (
+                    public_sku if public_sku and re.fullmatch(r"\d{8,14}", public_sku) else None
+                )
+                products.append(Product(
+                    store="Irurzun",
+                    query=query,
+                    name=name,
+                    price=price,
+                    list_price=None,
+                    in_stock=True,
+                    brand=vendor,
+                    sku=sku,
+                    ean=ean,
+                    product_url=f"https://irurzun.cl/products/{handle}",
+                    image_url=str(image.get("src") or "").strip() or None,
+                    scraped_at=utc_now(),
+                    channel_type="wholesale",
+                    pack_units=pack_units_from_name(name),
+                    minimum_packs=1,
+                ))
+        relevant = limit_relevant(products, query, limit)
+        status = "ok" if relevant else "no_results"
+        return relevant, SourceStatus("Irurzun", query, status, count=len(relevant))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
         return [], SourceStatus("Irurzun", query, "error", str(error))
-
 
 def scrape_unimarc(query: str, limit: int) -> tuple[list[Product], SourceStatus]:
     # The public web app currently renders prices for users, but its BFF rejects
