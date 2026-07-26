@@ -47,11 +47,11 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     const trailingMeasure = entry.match(
       /^(.+?)\s+(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s*$/i,
     );
-    const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|unidades?|uds?|u)?\s+(.+)$/i)
+    const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|un(?:idad(?:es)?)?|uds?|u)?\s+(.+)$/i)
       || entry.match(/^(\d{1,3})\s*[xX]\s*(.+)$/);
-    const trailingQuantity = entry.match(/^(.+?)\s+[xX]\s*(\d{1,3})(?:\s*(?:unidades?|uds?|u))?\s*$/i)
+    const trailingQuantity = entry.match(/^(.+?)\s+[xX]\s*(\d{1,3})(?:\s*(?:un(?:idad(?:es)?)?|uds?|u))?\s*$/i)
       || entry.match(/^(.+?)\s*\((\d{1,3})\)\s*$/)
-      || entry.match(/^(.+?)\s+(\d{1,3})(?:\s*(?:unidades?|uds?|u))?\s*$/i);
+      || entry.match(/^(.+?)\s+(\d{1,3})(?:\s*(?:un(?:idad(?:es)?)?|uds?|u))?\s*$/i);
 
     if (leadingMeasure) {
       quantity = Number(leadingMeasure[1]);
