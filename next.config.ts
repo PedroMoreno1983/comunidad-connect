@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  serverExternalPackages: ['pdf-parse', 'mammoth'],
+  serverExternalPackages: ['pdf-parse', 'mammoth', 'exceljs'],
   outputFileTracingRoot: __dirname,
   images: {
     remotePatterns: [
