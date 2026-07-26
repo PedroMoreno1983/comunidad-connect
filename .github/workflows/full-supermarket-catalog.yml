@@ -1,0 +1,139 @@
+name: Full supermarket catalog
+
+on:
+  pull_request:
+    paths:
+      - "scripts/full_catalog.py"
+      - "scripts/ingest_full_supermarket_catalog.py"
+      - "scripts/test_full_catalog.py"
+      - ".github/workflows/full-supermarket-catalog.yml"
+  schedule:
+    - cron: "27 3 * * 0,3,6"
+  workflow_dispatch:
+    inputs:
+      store:
+        description: "Store to crawl"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - tottus
+          - santaisabel
+          - unimarc
+          - jumbo
+          - lider
+      max_pages:
+        description: "Optional pages per category for a smoke run; leave blank for full catalog"
+        required: false
+        type: string
+      dry_run:
+        description: "Scrape without persisting"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run catalog parser tests
+        run: python -m unittest scripts/test_full_catalog.py -v
+
+  crawl:
+    if: github.event_name != 'pull_request'
+    needs: parser-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        store:
+          - tottus
+          - santaisabel
+          - unimarc
+          - jumbo
+          - lider
+    concurrency:
+      group: full-catalog-${{ matrix.store }}
+      cancel-in-progress: false
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Check selected store
+        id: selection
+        shell: bash
+        env:
+          REQUESTED_STORE: ${{ inputs.store || 'all' }}
+        run: |
+          if [ "$REQUESTED_STORE" = "all" ] || [ "$REQUESTED_STORE" = "${{ matrix.store }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.selection.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.selection.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser runtime
+        if: steps.selection.outputs.run == 'true' && (matrix.store == 'unimarc' || matrix.store == 'jumbo')
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.58.0
+          python -m playwright install --with-deps chromium
+
+      - name: Crawl and persist full catalog
+        if: steps.selection.outputs.run == 'true'
+        id: crawl
+        shell: bash
+        env:
+          MAX_PAGES: ${{ inputs.max_pages }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          args=(--store "${{ matrix.store }}" --pretty)
+          if [ -n "$MAX_PAGES" ]; then
+            args+=(--max-pages "$MAX_PAGES")
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+
+          set +e
+          python scripts/ingest_full_supermarket_catalog.py "${args[@]}" | tee "full-catalog-${{ matrix.store }}.json"
+          exit_code=${PIPESTATUS[0]}
+          set -e
+
+          if [ "${{ matrix.store }}" = "lider" ] && [ "$exit_code" -eq 2 ]; then
+            echo "Lider remains explicitly blocked by its human-verification challenge." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$exit_code"
+
+      - name: Upload catalog report
+        if: always() && steps.selection.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-catalog-${{ matrix.store }}-${{ github.run_id }}
+          path: full-catalog-${{ matrix.store }}.json
+          if-no-files-found: warn
+          retention-days: 30
