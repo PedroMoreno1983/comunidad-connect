@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { GroupBuyPanel } from '@/components/resident/supermarket/GroupBuyPanel';
 import type {
+  SupermarketBasketSummary,
   SupermarketSearchCandidate,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
@@ -35,6 +36,7 @@ const STORE_URLS: Record<string, string> = {
   Lider: 'https://super.lider.cl',
   Jumbo: 'https://www.jumbo.cl',
   Unimarc: 'https://www.unimarc.cl',
+  Tottus: 'https://www.tottus.cl/tottus-cl',
   aCuenta: 'https://www.acuenta.cl',
   Irurzun: 'https://irurzun.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
@@ -60,11 +62,11 @@ export default function SupermarketPage() {
   const [recommendedStore, setRecommendedStore] = useState<string | null>(null);
   const [basketReady, setBasketReady] = useState(false);
   const [basketSubtotal, setBasketSubtotal] = useState(0);
-  const [checkoutIndex, setCheckoutIndex] = useState(0);
   const [requestedCount, setRequestedCount] = useState(0);
   const [foundCount, setFoundCount] = useState(0);
   const [missingTerms, setMissingTerms] = useState<string[]>([]);
   const [alternatives, setAlternatives] = useState<Record<string, SupermarketSearchCandidate[]>>({});
+  const [basketComparisons, setBasketComparisons] = useState<SupermarketBasketSummary[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -129,11 +131,11 @@ export default function SupermarketPage() {
       setRecommendedStore(data.recommendedStore ?? null);
       setBasketReady(Boolean(data.basketReady));
       setBasketSubtotal(data.basketSubtotal ?? 0);
-      setCheckoutIndex(0);
       setRequestedCount(data.requestedCount);
       setFoundCount(data.foundCount);
       setMissingTerms(data.missingTerms);
       setAlternatives(data.alternativesByTerm || {});
+      setBasketComparisons(data.basketComparison || []);
 
       toast({
         title: data.foundCount === data.requestedCount ? 'Lista completa procesada' : 'Lista procesada con faltantes visibles',
@@ -168,21 +170,12 @@ export default function SupermarketPage() {
     setRecommendedStore(null);
     setBasketReady(false);
     setBasketSubtotal(0);
-    setCheckoutIndex(0);
+    setBasketComparisons([]);
   };
 
   const totalAmount = list.reduce((sum, item) => sum + item.lineTotal, 0);
   const exportDisabled = list.length === 0;
-  const usedStores = Array.from(new Set(list.map(item => item.store).filter(
-    (store): store is string => Boolean(store && store in STORE_URLS),
-  )));
-  const checkoutItems = list.filter(
-    (item): item is SupermarketShoppingItem & { productUrl: string } => Boolean(item.available && item.productUrl),
-  );
-  const checkoutFinished = checkoutItems.length > 0 && checkoutIndex >= checkoutItems.length;
-  const checkoutUrl = checkoutFinished
-    ? (recommendedStore ? STORE_URLS[recommendedStore] : undefined)
-    : checkoutItems[checkoutIndex]?.productUrl;
+  const winningStoreUrl = recommendedStore ? STORE_URLS[recommendedStore] : undefined;
 
   const buildListText = () => [
     'Lista de compras Convive Connect',
@@ -216,18 +209,14 @@ export default function SupermarketPage() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
-  const handleCheckoutStep = () => {
-    if (checkoutFinished || !basketReady || !recommendedStore || checkoutItems.length === 0) return;
-    const openedPosition = checkoutIndex + 1;
-    setCheckoutIndex(openedPosition);
-    if (checkoutIndex === 0 && navigator.clipboard) {
+  const handleOpenWinningStore = () => {
+    if (!basketReady || !recommendedStore) return;
+    if (navigator.clipboard) {
       void navigator.clipboard.writeText(buildListText()).catch(() => undefined);
     }
     toast({
-      title: `Producto ${openedPosition} de ${checkoutItems.length}`,
-      description: openedPosition === checkoutItems.length
-        ? `Último producto abierto. Agrégalo y continúa en ${recommendedStore} para revisar el carrito.`
-        : 'Agrégalo en el supermercado, vuelve a Convive y abre el siguiente.',
+      title: `Lista copiada para ${recommendedStore}`,
+      description: 'Abrimos una sola pestaña. Pega o consulta la lista sin volver a escribir los productos.',
       variant: 'success',
     });
   };
@@ -480,12 +469,6 @@ export default function SupermarketPage() {
                               </select>
                             </label>
                           )}
-
-                          {item.productUrl && (
-                            <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-bold hover:underline" style={{ color: 'var(--cc-copper)' }}>
-                              Ver en {item.store || 'el supermercado'} <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
                         </motion.div>
                       );
                     })}
@@ -543,6 +526,33 @@ export default function SupermarketPage() {
                   </div>
                 </div>
 
+                {basketComparisons.length > 0 && (
+                  <div className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--cc-line)' }}>
+                    <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Comparación por total de la canasta</p>
+                    <div className="mt-3 space-y-2">
+                      {basketComparisons.slice(0, 5).map((basket, index) => (
+                        <div
+                          key={basket.store}
+                          className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
+                          style={{ background: basket.store === recommendedStore ? 'var(--cc-paper-warm)' : 'transparent' }}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold cc-text-primary">
+                              {index + 1}. {basket.store}
+                              {basket.store === recommendedStore ? ' · mejor total completo' : ''}
+                            </p>
+                            <p className="text-xs cc-text-tertiary">
+                              {basket.coveredCount} de {basket.requestedCount} productos
+                              {!basket.complete ? ' · canasta incompleta' : ''}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold cc-text-primary">{money(basket.subtotal)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {recommendedStore && basketReady ? (
                   <div className="mt-5 space-y-3 rounded-xl border p-4" style={{ borderColor: 'var(--cc-sage)' }}>
                     <div>
@@ -550,43 +560,31 @@ export default function SupermarketPage() {
                       <p className="text-lg font-bold cc-text-primary">{recommendedStore}</p>
                       <p className="text-sm font-semibold text-success-fg">{money(basketSubtotal)} en productos</p>
                     </div>
-                    {checkoutUrl && (
+                    {winningStoreUrl && (
                       <a
-                        href={checkoutUrl}
+                        href={winningStoreUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={handleCheckoutStep}
+                        onClick={handleOpenWinningStore}
                         className="inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold text-white"
                         style={{ background: 'var(--cc-ink)' }}
                       >
-                        {checkoutFinished
-                          ? `Continuar en ${recommendedStore}`
-                          : `Abrir producto ${checkoutIndex + 1} de ${checkoutItems.length}`}
+                        Copiar lista y abrir {recommendedStore}
                         <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                     )}
                     <p className="text-xs cc-text-tertiary">
-                      CoCo abre cada producto exacto. Debes agregarlo dentro de tu sesión del supermercado y confirmar stock y pago.
+                      Se abre una sola pestaña. Convive no afirma que el carro esté precargado: hasta tener convenio, la tienda exige que agregues y pagues dentro de tu propia sesión.
                     </p>
                   </div>
                 ) : list.length > 0 ? (
                   <div className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}>
                     <p className="text-sm font-bold cc-text-primary">Aún no hay una canasta completa de una sola tienda</p>
                     <p className="mt-1 text-xs cc-text-secondary">
-                      Puedes abrir los productos encontrados por separado o ajustar los faltantes. No presentamos una selección parcial como compra lista.
+                      Ajusta los faltantes y vuelve a comparar. No abriremos veinte fichas ni presentaremos una selección parcial como compra lista.
                     </p>
                   </div>
                 ) : null}
-
-                {usedStores.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {usedStores.map(store => (
-                      <a key={store} href={STORE_URLS[store]} target="_blank" rel="noopener noreferrer" className="min-w-[45%] flex-1 rounded-xl border p-3 text-center text-sm font-bold cc-text-secondary hover:bg-[var(--cc-paper-warm)]" style={{ borderColor: 'var(--cc-line)' }}>
-                        Abrir {store} <ExternalLink className="ml-1 inline h-3.5 w-3.5" />
-                      </a>
-                    ))}
-                  </div>
-                )}
 
                 <p className="mt-5 text-center text-[10px] font-semibold uppercase tracking-widest cc-text-tertiary">
                   Precios reales consultados; disponibilidad y pago se confirman en el comercio

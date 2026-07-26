@@ -1,4 +1,4 @@
-export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
+export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
 
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
 

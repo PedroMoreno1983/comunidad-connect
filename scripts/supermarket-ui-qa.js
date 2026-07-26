@@ -190,7 +190,7 @@ async function main() {
     if (order.error || !order.data) throw order.error || new Error('No se recuperó la compra QA.');
     cleanup.orderIds.push(order.data.id);
 
-    await page.getByRole('article').filter({ hasText: title }).getByRole('button', { name: 'Invitar' }).click();
+    await page.getByRole('article').filter({ hasText: title }).getByRole('button', { name: 'Invitar' }).first().click();
     await page.waitForTimeout(300);
     const sharedText = await page.evaluate(() => navigator.clipboard.readText());
     assert(

@@ -31,6 +31,7 @@ const STORE_URLS: Record<SupermarketStore, string> = {
   Lider: 'https://super.lider.cl',
   Unimarc: 'https://www.unimarc.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
+  Tottus: 'https://www.tottus.cl/tottus-cl',
   aCuenta: 'https://www.acuenta.cl',
   Irurzun: 'https://irurzun.cl',
 };

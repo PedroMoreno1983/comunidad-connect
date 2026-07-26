@@ -59,4 +59,14 @@ describe('buildBasketComparison', () => {
     expect(result.recommended?.store).toBe('Lider');
     expect(result.recommended?.items[0].name).toContain('1 L');
   });
+
+  it('includes Tottus when it has the cheapest complete basket', () => {
+    const result = buildBasketComparison(['arroz', 'leche'], {
+      arroz: [row('Jumbo', 'Arroz 1 kg', 1500), row('Tottus', 'Arroz 1 kg', 900)],
+      leche: [row('Jumbo', 'Leche 1 L', 1200), row('Tottus', 'Leche 1 L', 1000)],
+    });
+
+    expect(result.recommended?.store).toBe('Tottus');
+    expect(result.recommended?.subtotal).toBe(1900);
+  });
 });

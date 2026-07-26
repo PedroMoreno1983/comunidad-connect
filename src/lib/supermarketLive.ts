@@ -6,7 +6,7 @@ export interface ScrapedItem {
   brand: string;
   quantity: number;
   price: number;
-  store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel';
+  store: 'Jumbo' | 'Lider' | 'Unimarc' | 'Santa Isabel' | 'Tottus';
   isOffer?: boolean;
   originalPrice?: number;
   /** The search query that produced this item. */
@@ -67,7 +67,7 @@ const CIRCUIT_BREAKER_THRESHOLD = 3;
 const CIRCUIT_BREAKER_RESET_MS = 60_000;
 
 const SEARCH_HEADERS = {
-  Accept: 'text/html,application/xhtml+xml',
+  Accept: 'text/html,application/xhtml+xml,application/json',
   'Accept-Language': 'es-CL,es;q=0.9',
   'User-Agent': 'Mozilla/5.0 (compatible; ConviveConnect/1.0; +https://conviveconnect.com)',
 };
@@ -93,7 +93,7 @@ const BRAND_TIERS: Record<string, number> = {
   nestle: 15, maggi: 15, knorr: 15, 'coca-cola': 15, pepsi: 15,
   ariel: 15, omo: 15, 'head & shoulders': 15, pantene: 15,
   // Tier -20: Private labels (se penalizan para evitar "leche Lider" por defecto)
-  lider: -20, jumbo: -20, unimarc: -20, 'first price': -20,
+  lider: -20, jumbo: -20, unimarc: -20, tottus: -20, 'first price': -20,
   selecta: -20, economico: -20, 'santa isabel': -20, 'master dog': -20,
   'top house': -20, 'home care': -20,
 };
@@ -468,75 +468,111 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
   });
 }
 
-/** Parser para Unimarc (basado en VTEX, estructura similar a Santa Isabel) */
-export function parseUnimarcProducts(html: string, query: string): ScrapedItem[] {
-  const renderMatch = html.match(/window\.__renderData\s*=\s*("(?:\\.|[^"\\])*")/);
-  if (renderMatch) {
-    try {
-      const serialized = JSON.parse(renderMatch[1]);
-      if (typeof serialized === 'string') {
-        const root = asRecord(JSON.parse(serialized));
-        const products = asArray(getPath(root, ['plp', 'plp_products', 'products']));
-        if (products.length > 0) {
-          return products.flatMap(productValue => {
-            const product = asRecord(productValue);
-            const item = asRecord(asArray(product?.items)[0]);
-            const seller = asRecord(asArray(item?.sellers)[0]);
-            const offer = asRecord(seller?.commertialOffer);
-            const price = asNumber(offer?.Price);
-            const listPrice = asNumber(offer?.ListPrice);
-            const name = asString(product?.productName) || asString(item?.name);
-            const images = asArray(item?.images);
-            const imageUrl = images.length > 0 ? asString((images[0] as Record<string, unknown>)?.imageUrl) : undefined;
-            const productUrl = asString(item?.link) || asString(product?.link)
-              || (asString(product?.linkText) ? `/${asString(product?.linkText)}/p` : '');
-            if (!product || !item || !offer || !name || price <= 0 || asNumber(offer.AvailableQuantity) <= 0) return [];
+function decodeHtmlText(value: string): string {
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-            return [{
-              name,
-              brand: asString(product.brand),
-              quantity: 1,
-              price,
-              store: 'Unimarc' as const,
-              isOffer: listPrice > price,
-              originalPrice: listPrice > price ? listPrice : undefined,
-              query,
-              productUrl: productUrl ? `https://www.unimarc.cl${productUrl}` : undefined,
-              imageUrl,
-              sku: asString(item?.itemId) || undefined,
-            }];
-          });
-        }
+function parseChileanPrice(value: string): number {
+  const match = decodeHtmlText(value).match(/\$\s*([\d.]+)/);
+  if (!match) return 0;
+  const parsed = Number(match[1].replace(/\./g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function extractCardText(card: string, classFragment: string): string {
+  const expression = new RegExp(
+    `<[^>]+class=["'][^"']*${classFragment}[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`,
+    'i',
+  );
+  return decodeHtmlText(card.match(expression)?.[1] ?? '');
+}
+
+/**
+ * Parser para el buscador actual de Unimarc.
+ * La tienda entrega hasta 50 tarjetas SSR por consulta bajo /search?q=.
+ */
+export function parseUnimarcProducts(html: string, query: string): ScrapedItem[] {
+  const nextDataMatch = html.match(
+    /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (nextDataMatch) {
+    try {
+      const root = asRecord(JSON.parse(nextDataMatch[1]));
+      const queries = asArray(getPath(root, ['props', 'pageProps', 'dehydratedState', 'queries']));
+      const products = queries.flatMap(entry => (
+        asArray(getPath(entry, ['state', 'data', 'availableProducts']))
+      ));
+      if (products.length > 0) {
+        return products.flatMap(productValue => {
+          const product = asRecord(productValue);
+          if (!product) return [];
+          const seller = asRecord(asArray(product.sellers)[0]);
+          const price = asNumber(seller?.price);
+          const listPrice = asNumber(seller?.listPrice);
+          const availableQuantity = asNumber(seller?.availableQuantity);
+          const name = asString(product.name) || asString(product.nameComplete);
+          const rawSlug = asString(product.slug) || asString(product.detailUrl);
+          const slug = rawSlug.replace(/^\/+/, '').replace(/\/p\/?$/, '');
+          const imageUrl = asArray(product.images).find(
+            (value): value is string => typeof value === 'string',
+          );
+          if (!name || price <= 0 || availableQuantity <= 0) return [];
+
+          return [{
+            name,
+            brand: asString(product.brand),
+            quantity: 1,
+            price,
+            store: 'Unimarc' as const,
+            isOffer: listPrice > price,
+            originalPrice: listPrice > price ? listPrice : undefined,
+            query,
+            productUrl: slug ? `https://www.unimarc.cl/product/${slug}` : undefined,
+            imageUrl,
+            sku: asString(product.itemId) || asString(product.sku) || undefined,
+            ean: asString(product.ean) || undefined,
+          }];
+        });
       }
     } catch {
-      // fallthrough
+      // Continúa al parser de tarjetas como respaldo ante cambios parciales.
     }
   }
 
-  const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
-  const ldProducts = scripts.flatMap(script => {
-    try {
-      const data = JSON.parse(script[1]);
-      if (data['@type'] === 'ItemList') {
-        return asArray(data.itemListElement)
-          .map((el: unknown) => asRecord(asRecord(el)?.item))
-          .filter((item): item is Record<string, unknown> => item !== null);
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
+  const starts = [...html.matchAll(/<section[^>]+id=["']shelf__vertical--[^"']+["'][^>]*>/gi)]
+    .map(match => match.index)
+    .filter((index): index is number => typeof index === 'number');
 
-  return ldProducts.flatMap(product => {
-    const offer = asRecord(product.offers);
-    const price = asNumber(offer?.price);
-    const name = asString(product.name);
-    const brand = asString(asRecord(product.brand)?.name) || asString(product.brand);
-    const sku = asString(product.sku) || undefined;
-    const image = asArray(product.image)[0];
-    const imageUrl = typeof image === 'string' ? image : undefined;
-    if (product['@type'] !== 'Product' || !name || price <= 0) return [];
+  return starts.flatMap((start, index) => {
+    const card = html.slice(start, starts[index + 1] ?? html.length);
+    const name = extractCardText(card, 'Shelf_nameProduct');
+    const brand = extractCardText(card, 'Shelf_brandText');
+    const href = card.match(/<a[^>]+href=["']([^"']*\/product\/[^"']+)["']/i)?.[1];
+    const imageUrl = card.match(/<img[^>]+class=["'][^"']*Shelf_defaultImgStyle[^"']*["'][^>]+src=["']([^"']+)["']/i)?.[1]
+      ?? card.match(/<img[^>]+src=["']([^"']+)["'][^>]+class=["'][^"']*Shelf_defaultImgStyle/i)?.[1];
+    const priceEntries = [...card.matchAll(
+      /<p[^>]+id=["']listPrice__offerPrice--([^"']+)["'][^>]*>([\s\S]*?)<\/p>/gi,
+    )].map(match => ({
+      id: match[1].toLowerCase(),
+      text: decodeHtmlText(match[2]),
+      value: parseChileanPrice(match[2]),
+    }));
+    const discount = priceEntries.find(entry => entry.id.includes('discountprice'));
+    const list = priceEntries.find(entry => entry.id.includes('listprice'));
+    const simpleDiscount = discount && !/^\d+\s*x\b/i.test(discount.text) ? discount : undefined;
+    const price = simpleDiscount?.value || list?.value || 0;
+    const originalPrice = simpleDiscount && list && list.value > price ? list.value : undefined;
+    if (!name || !href || price <= 0) return [];
 
     return [{
       name,
@@ -544,10 +580,64 @@ export function parseUnimarcProducts(html: string, query: string): ScrapedItem[]
       quantity: 1,
       price,
       store: 'Unimarc' as const,
-      isOffer: false,
+      isOffer: Boolean(originalPrice),
+      originalPrice,
       query,
-      sku,
+      productUrl: href.startsWith('http') ? href : `https://www.unimarc.cl${href}`,
       imageUrl,
+    }];
+  });
+}
+
+/** Parser del endpoint público JSON que usa el buscador de Tottus. */
+export function parseTottusProducts(payload: string, query: string): ScrapedItem[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    return [];
+  }
+  const root = asRecord(parsed);
+  const data = asRecord(root?.data) ?? root;
+  const products = asArray(data?.results);
+
+  return products.flatMap(productValue => {
+    const product = asRecord(productValue);
+    if (!product) return [];
+    const name = asString(product.displayName);
+    const prices = asArray(product.prices).map(asRecord).filter(
+      (price): price is Record<string, unknown> => price !== null,
+    );
+    const current = prices.find(price => price.crossed !== true && asString(price.type) === 'internetPrice')
+      ?? prices.find(price => price.crossed !== true);
+    const regular = prices.find(price => price.crossed === true || asString(price.type) === 'normalPrice');
+    const parsePriceArray = (price: Record<string, unknown> | undefined): number => {
+      const value = asArray(price?.price)[0];
+      if (typeof value === 'number') return value;
+      if (typeof value !== 'string') return 0;
+      const parsedPrice = Number(value.replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(parsedPrice) ? parsedPrice : 0;
+    };
+    const price = parsePriceArray(current);
+    const listPrice = parsePriceArray(regular);
+    const baseUrl = asString(product.url);
+    const sku = asString(product.skuId) || asString(product.offeringId);
+    const productUrl = baseUrl && sku && !baseUrl.endsWith(`/${sku}`) ? `${baseUrl}/${sku}` : baseUrl;
+    const imageUrl = asArray(product.mediaUrls).find((value): value is string => typeof value === 'string');
+    if (!name || price <= 0) return [];
+
+    return [{
+      name,
+      brand: asString(product.brand),
+      quantity: 1,
+      price,
+      store: 'Tottus' as const,
+      isOffer: listPrice > price,
+      originalPrice: listPrice > price ? listPrice : undefined,
+      query,
+      productUrl: productUrl || undefined,
+      imageUrl,
+      sku: sku || undefined,
     }];
   });
 }
@@ -595,8 +685,23 @@ async function fetchRetailerHtml(url: string, store: ScrapedItem['store']): Prom
   throw new Error('Unreachable');
 }
 
+function uniqueScrapedItems(items: ScrapedItem[]): ScrapedItem[] {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    const key = item.sku || item.ean || item.productUrl || `${item.store}:${item.name}:${item.price}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** Scrapea TODOS los productos de una tienda para un término de búsqueda. */
-export async function searchAllRetailerProducts(store: ScrapedItem['store'], query: string): Promise<ScrapedItem[]> {
+export async function searchAllRetailerProducts(
+  store: ScrapedItem['store'],
+  query: string,
+  options: { pages?: number } = {},
+): Promise<ScrapedItem[]> {
+  const pages = Math.min(2, Math.max(1, Math.round(options.pages ?? 1)));
   try {
     if (store === 'Jumbo') {
       const html = await fetchRetailerHtml(`https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`, store);
@@ -611,8 +716,22 @@ export async function searchAllRetailerProducts(store: ScrapedItem['store'], que
       return parseLiderProducts(html, query);
     }
     if (store === 'Unimarc') {
-      const html = await fetchRetailerHtml(`https://www.unimarc.cl/busqueda?ft=${encodeURIComponent(query)}`, store);
-      return parseUnimarcProducts(html, query);
+      const payloads = await Promise.all(Array.from({ length: pages }, (_, index) => (
+        fetchRetailerHtml(
+          `https://www.unimarc.cl/search?q=${encodeURIComponent(query)}&suggestions=true&page=${index + 1}`,
+          store,
+        )
+      )));
+      return uniqueScrapedItems(payloads.flatMap(payload => parseUnimarcProducts(payload, query)));
+    }
+    if (store === 'Tottus') {
+      const payloads = await Promise.all(Array.from({ length: pages }, (_, index) => (
+        fetchRetailerHtml(
+          `https://www.tottus.cl/s/browse/v1/search/cl?Ntt=${encodeURIComponent(query)}&store=to_com&subdomain=tottus&pgid=34&pid=9e635d19-b626-4171-8beb-d92e58c2a417&page=${index + 1}`,
+          store,
+        )
+      )));
+      return uniqueScrapedItems(payloads.flatMap(payload => parseTottusProducts(payload, query)));
     }
   } catch (error) {
     console.warn(`[supermarket] Error buscando en ${store} para "${query}":`, error);
@@ -703,7 +822,7 @@ export async function buildLiveBasketComparison(message: string): Promise<LiveSe
     return { items: [], message: 'Indica uno o más productos para buscar precios reales.' };
   }
 
-  const stores: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc'];
+  const stores: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'];
 
   const termResults = await Promise.all(
     termInfos.map(async (info) => {
@@ -807,7 +926,7 @@ export async function searchLiveSupermarkets(message: string): Promise<LiveSearc
     return { items: [], message: 'Indica uno o más productos para buscar precios reales.' };
   }
 
-  const stores: CartItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider'];
+  const stores: ScrapedItem['store'][] = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus'];
   const results = await Promise.all(termInfos.map(async info => {
     const settled = await Promise.allSettled(stores.map(store => searchOneRetailer(store, info.term)));
     const candidates = settled.flatMap(result => result.status === 'fulfilled' && result.value ? [result.value] : []);

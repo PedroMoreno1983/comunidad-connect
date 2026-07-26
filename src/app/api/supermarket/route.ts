@@ -9,12 +9,13 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'aCuenta', 'Irurzun'] as const;
+const STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
 const STORE_URLS: Record<string, string> = {
   Jumbo: 'https://www.jumbo.cl',
   Lider: 'https://super.lider.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
   Unimarc: 'https://www.unimarc.cl',
+  Tottus: 'https://www.tottus.cl/tottus-cl',
   aCuenta: 'https://www.acuenta.cl',
   Irurzun: 'https://irurzun.cl',
 };
@@ -213,13 +214,13 @@ export async function POST(req: NextRequest) {
             productUrls: items.flatMap(item => item.productUrl ? [item.productUrl] : []),
             requiresRetailerSession: true,
             cartPreloaded: false,
-            detail: 'El supermercado exige que las acciones Agregar se ejecuten dentro de la sesión del comprador.',
+            detail: 'Convive abre una sola vez el supermercado ganador y copia la lista exacta. El carro no se precarga porque la tienda exige la sesión del comprador.',
           },
           sources: STORES.map(store => ({
             store,
             status: items.some(item => item.store === store) || comparison.comparisons.some(basket => basket.store === store)
               ? 'ok'
-              : store === 'Unimarc' ? 'unavailable' : 'no_results',
+              : 'no_results',
           })),
         });
       }
@@ -288,7 +289,7 @@ export async function POST(req: NextRequest) {
           store,
           status: legacyResult.items.some(i => i.store === store)
             ? 'ok'
-            : store === 'Unimarc' ? 'unavailable' : 'no_results',
+            : 'no_results',
         })),
       });
     }
@@ -343,13 +344,13 @@ export async function POST(req: NextRequest) {
         productUrls: best.items.flatMap(item => item.productUrl ? [item.productUrl] : []),
         requiresRetailerSession: true,
         cartPreloaded: false,
-        detail: 'El supermercado exige que las acciones Agregar se ejecuten dentro de la sesión del comprador.',
+        detail: 'Convive abre una sola vez el supermercado ganador y copia la lista exacta. El carro no se precarga porque la tienda exige la sesión del comprador.',
       },
       sources: STORES.map(store => ({
         store,
         status: result.basketComparison?.some(b => b.store === store)
           ? 'ok'
-          : store === 'Unimarc' ? 'unavailable' : 'no_results',
+          : 'no_results',
       })),
     });
   } catch (error) {
