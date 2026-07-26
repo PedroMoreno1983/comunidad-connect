@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from http.client import IncompleteRead
 from typing import Any
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -112,11 +112,14 @@ def fetch_text(
             last_error = error
             if attempt < 2:
                 time.sleep(2**attempt)
-    detail = (
-        f"HTTP {last_error.code}"
-        if isinstance(last_error, HTTPError)
-        else type(last_error).__name__ if last_error is not None else "unknown error"
-    )
+    if isinstance(last_error, HTTPError):
+        detail = f"HTTP {last_error.code}"
+    elif isinstance(last_error, URLError):
+        detail = f"URLError: {last_error.reason}"
+    elif last_error is not None:
+        detail = type(last_error).__name__
+    else:
+        detail = "unknown error"
     raise RuntimeError(
         f"Public catalog request failed after 3 attempts ({detail}): {url}"
     ) from last_error
