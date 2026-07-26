@@ -3,6 +3,7 @@ import {
     buildSelectionReason,
     foldAccents,
     matchAnchor,
+    productMatchScore,
     significantWords,
     storeSearchUrl,
     termMatchesProductName,
@@ -53,6 +54,23 @@ describe('supermarketText termMatchesProductName', () => {
 
     it('rejects empty or stop-word-only terms', () => {
         expect(termMatchesProductName('de la en', 'Cualquier producto')).toBe(false);
+    });
+
+    it('uses complete words instead of matching a term inside a brand', () => {
+        expect(termMatchesProductName('leche', 'Yogurt Loncoleche Frutilla 140 g')).toBe(false);
+        expect(termMatchesProductName('leche', 'Leche entera Colun 1 L')).toBe(true);
+    });
+
+    it('rejects processed products for generic fresh produce requests', () => {
+        expect(productMatchScore('tomates', 'Salsa de tomate natural 200 g')).toBe(-1);
+        expect(productMatchScore('tomates', 'Tomate larga vida 1 kg')).toBeGreaterThan(0);
+        expect(productMatchScore('papas', 'Papas fritas corte americano 400 g')).toBe(-1);
+        expect(productMatchScore('papas', 'Papa malla 2 kg')).toBeGreaterThan(0);
+    });
+
+    it('does not treat products labelled sin azucar as sugar', () => {
+        expect(termMatchesProductName('az\u00facar', 'Yogurt Colun sin az\u00facar vainilla')).toBe(false);
+        expect(termMatchesProductName('az\u00facar', 'Az\u00facar blanca granulada 1 kg')).toBe(true);
     });
 });
 
