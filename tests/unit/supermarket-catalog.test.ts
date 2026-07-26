@@ -22,13 +22,27 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
           if (!store) {
             return {
               data: [{
-                id: 'jumbo-arroz',
+                id: 'jumbo-leche-polvo',
                 store: 'Jumbo',
-                name: 'Arroz grano largo 1 kg',
+                name: 'Leche en polvo entera 800 g',
                 brand: null,
-                product_url: 'https://www.jumbo.cl/arroz',
+                product_url: 'https://www.jumbo.cl/leche-polvo',
                 image_url: null,
-                price: 1800,
+                price: 7800,
+                list_price: null,
+                in_stock: true,
+                last_seen_at: new Date().toISOString(),
+                channel_type: 'retail',
+                pack_units: 1,
+                minimum_packs: 1,
+              }, {
+                id: 'lider-irrelevant',
+                store: 'Lider',
+                name: 'Chocolate con leche 100 g',
+                brand: null,
+                product_url: 'https://super.lider.cl/chocolate',
+                image_url: null,
+                price: 500,
                 list_price: null,
                 in_stock: true,
                 last_seen_at: new Date().toISOString(),
@@ -42,13 +56,13 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
           if (store === 'Lider') {
             return {
               data: [{
-                id: 'lider-arroz',
+                id: 'lider-leche-polvo',
                 store: 'Lider',
-                name: 'Arroz grado 2 1 kg',
+                name: 'Leche en polvo entera 900 g',
                 brand: null,
-                product_url: 'https://super.lider.cl/arroz',
+                product_url: 'https://super.lider.cl/leche-polvo',
                 image_url: null,
-                price: 1200,
+                price: 7200,
                 list_price: null,
                 in_stock: true,
                 last_seen_at: new Date().toISOString(),
@@ -74,8 +88,8 @@ describe('comparePersistedSupermarkets', () => {
     state.calls.length = 0;
   });
 
-  it('queries an absent store separately so the global price limit cannot hide Lider', async () => {
-    const comparison = await comparePersistedSupermarkets(['arroz']);
+  it('queries a store again when the global limit contains only irrelevant matches for it', async () => {
+    const comparison = await comparePersistedSupermarkets(['leche en polvo']);
 
     expect(state.calls).toContain('global');
     expect(state.calls).toContain('Lider');
