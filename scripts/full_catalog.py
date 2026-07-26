@@ -17,7 +17,7 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from scrape_supermarkets import Product, utc_now
+from scrape_supermarkets import Product, pack_units_from_name, utc_now
 
 
 USER_AGENT = "Mozilla/5.0 (compatible; ConviveConnect/1.0; +https://conviveconnect.com)"
@@ -60,6 +60,8 @@ JUMBO_CATEGORIES = (
     "cuidado-personal-y-bebe",
     "mascotas",
 )
+ACUENTA_HOME_URL = "https://www.acuenta.cl/"
+IRURZUN_PRODUCTS_URL = "https://irurzun.cl/collections/all/products.json?limit=250"
 
 
 def fetch_text(
@@ -130,6 +132,178 @@ def unique_products(products: Iterable[Product]) -> Iterator[Product]:
         seen.add(key)
         yield product
 
+
+def extract_next_flight_stream(page_html: str) -> str:
+    chunks: list[str] = []
+    for match in re.finditer(
+        r'self\.__next_f\.push\(\[1,("(?:\\.|[^"\\])*")\]\)</script>',
+        page_html,
+    ):
+        chunk = json.loads(match.group(1))
+        if isinstance(chunk, str):
+            chunks.append(chunk)
+    return "".join(chunks)
+
+
+def parse_acuenta_categories(page_html: str) -> list[tuple[str, str]]:
+    stream = extract_next_flight_stream(page_html)
+    pattern = re.compile(
+        r'\{"active":true,"boost":(?:null|\d+),'
+        r'"hasChildren":(?:true|false),'
+        r'"categoryNamesPath":"[^"]+",'
+        r'"isAvailableInHome":true,"level":1,'
+        r'"name":"(?P<name>[^"]+)",'
+        r'"path":"[^"]+","reference":"[^"]+",'
+        r'"slug":"(?P<slug>[^"]+)"'
+    )
+    categories: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for match in pattern.finditer(stream):
+        slug = match.group("slug")
+        if slug in seen:
+            continue
+        seen.add(slug)
+        categories.append((match.group("name"), slug))
+    return categories
+
+
+def parse_acuenta_category_page(
+    page_html: str,
+    query: str,
+) -> tuple[list[Product], int, int]:
+    stream = extract_next_flight_stream(page_html)
+    references: dict[str, Any] = {}
+    for reference in re.finditer(r'(?m)^([0-9a-z]+):(.+)$', stream):
+        try:
+            references[reference.group(1)] = json.loads(reference.group(2))
+        except json.JSONDecodeError:
+            continue
+
+    def resolve(value: Any) -> Any:
+        if isinstance(value, str) and value.startswith("$"):
+            return references.get(value[1:])
+        return value
+
+    products: list[Product] = []
+    observed_at = utc_now()
+    for match in re.finditer(
+        r'(?m)^[0-9a-z]+:(\{.*?"__typename":"CatalogProductModel"\})$',
+        stream,
+    ):
+        raw = json.loads(match.group(1))
+        name = str(raw.get("name") or "").strip()
+        regular_price = parse_price(raw.get("price"))
+        promotion_price = 0
+        promotion = resolve(raw.get("promotion"))
+        if (
+            isinstance(promotion, dict)
+            and promotion.get("type") == "specialPrice"
+            and promotion.get("isActive") is not False
+        ):
+            conditions = resolve(promotion.get("conditions"))
+            if isinstance(conditions, list):
+                for condition_reference in conditions:
+                    condition = resolve(condition_reference)
+                    if not isinstance(condition, dict):
+                        continue
+                    quantity = parse_price(condition.get("quantity"))
+                    candidate = parse_price(condition.get("price"))
+                    if quantity in (0, 1) and 0 < candidate < regular_price:
+                        promotion_price = candidate
+                        break
+        price = promotion_price or regular_price
+        stock = parse_price(raw.get("stock"))
+        sku = str(raw.get("sku") or "").strip() or None
+        slug = str(raw.get("slug") or "").strip()
+        if not name or price <= 0 or stock <= 0:
+            continue
+        photos = resolve(raw.get("photosUrl"))
+        eans = resolve(raw.get("ean"))
+        photos = photos if isinstance(photos, list) else []
+        eans = eans if isinstance(eans, list) else []
+        ean = next(
+            (
+                value
+                for value in eans
+                if isinstance(value, str) and re.fullmatch(r"\d{8,14}", value)
+            ),
+            None,
+        )
+        products.append(
+            Product(
+                store="aCuenta",
+                query=query,
+                name=name,
+                price=price,
+                list_price=regular_price if regular_price > price else None,
+                in_stock=True,
+                brand=str(raw.get("brand") or "").strip() or None,
+                sku=sku,
+                ean=ean,
+                product_url=f"https://www.acuenta.cl/p/{slug}" if slug else None,
+                image_url=photos[0] if photos else None,
+                scraped_at=observed_at,
+                channel_type="wholesale",
+                pack_units=pack_units_from_name(name),
+                minimum_packs=1,
+            )
+        )
+
+    pagination = re.search(
+        r'"pagination":\{"page":(?P<page>\d+),"pages":(?P<pages>\d+),'
+        r'"total":\{"value":(?P<total>\d+)',
+        stream,
+    )
+    if pagination is None:
+        return products, 1, len(products)
+    return products, int(pagination.group("pages")), int(pagination.group("total"))
+
+
+def parse_irurzun_products(payload: str, query: str = "catalogo") -> list[Product]:
+    root = json.loads(payload)
+    products: list[Product] = []
+    observed_at = utc_now()
+    for raw in root.get("products") or []:
+        title = str(raw.get("title") or "").strip()
+        handle = str(raw.get("handle") or "").strip()
+        vendor = str(raw.get("vendor") or "").strip() or None
+        images = raw.get("images") or []
+        image = images[0] if images else {}
+        for variant in raw.get("variants") or []:
+            price = parse_price(variant.get("price"))
+            available = variant.get("available") is True
+            if not title or not handle or price <= 0 or not available:
+                continue
+            variant_title = str(variant.get("title") or "").strip()
+            name = title
+            if variant_title and variant_title.casefold() != "default title":
+                name = f"{title} - {variant_title}"
+            public_sku = str(variant.get("sku") or "").strip() or None
+            sku = public_sku or str(variant.get("id") or "").strip() or None
+            barcode = str(variant.get("barcode") or "").strip() or None
+            ean = barcode or (
+                public_sku if public_sku and re.fullmatch(r"\d{8,14}", public_sku) else None
+            )
+            products.append(
+                Product(
+                    store="Irurzun",
+                    query=query,
+                    name=name,
+                    price=price,
+                    list_price=None,
+                    in_stock=True,
+                    brand=vendor,
+                    sku=sku,
+                    ean=ean,
+                    product_url=f"https://irurzun.cl/products/{handle}",
+                    image_url=str(image.get("src") or "").strip() or None,
+                    scraped_at=observed_at,
+                    channel_type="wholesale",
+                    pack_units=pack_units_from_name(name),
+                    minimum_packs=1,
+                )
+            )
+    return products
 
 def parse_tottus_categories(payload: str) -> list[tuple[str, str, int]]:
     root = json.loads(payload)
@@ -605,12 +779,54 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
         yield from products
 
 
+def crawl_acuenta(max_pages: int | None = None) -> Iterator[Product]:
+    categories = parse_acuenta_categories(fetch_text(ACUENTA_HOME_URL))
+    if not categories:
+        raise RuntimeError("aCuenta did not publish its category tree")
+
+    for category_name, slug in categories:
+        base_url = f"https://www.acuenta.cl/ca/{slug}"
+        first_html = fetch_text(base_url)
+        first_products, page_count, total = parse_acuenta_category_page(
+            first_html,
+            category_name,
+        )
+        if total > 0 and not first_products:
+            raise RuntimeError(f"aCuenta category {category_name} published no usable products")
+        yield from first_products
+        final_page = min(page_count, max_pages) if max_pages is not None else page_count
+        urls = (
+            f"{base_url}?currentPage={page_number}"
+            for page_number in range(2, final_page + 1)
+        )
+        for page_html in fetch_many(urls, workers=4):
+            products, _, _ = parse_acuenta_category_page(page_html, category_name)
+            if not products:
+                raise RuntimeError(
+                    f"aCuenta category {category_name} returned an empty page before completion"
+                )
+            yield from products
+
+
+def crawl_irurzun(max_pages: int | None = None) -> Iterator[Product]:
+    page_number = 1
+    while max_pages is None or page_number <= max_pages:
+        payload = fetch_text(f"{IRURZUN_PRODUCTS_URL}&page={page_number}")
+        root = json.loads(payload)
+        raw_products = root.get("products") or []
+        if not raw_products:
+            break
+        yield from parse_irurzun_products(payload)
+        page_number += 1
+
 CRAWLERS: dict[str, Callable[[int | None], Iterator[Product]]] = {
     "tottus": crawl_tottus,
     "santaisabel": crawl_santa,
     "unimarc": crawl_unimarc,
     "jumbo": crawl_jumbo,
     "lider": crawl_lider,
+    "acuenta": crawl_acuenta,
+    "irurzun": crawl_irurzun,
 }
 
 
