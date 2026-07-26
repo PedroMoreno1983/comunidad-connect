@@ -123,10 +123,6 @@ jobs:
           exit_code=${PIPESTATUS[0]}
           set -e
 
-          if [ "${{ matrix.store }}" = "lider" ] && [ "$exit_code" -eq 2 ]; then
-            echo "Lider remains explicitly blocked by its human-verification challenge." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
           exit "$exit_code"
 
       - name: Upload catalog report

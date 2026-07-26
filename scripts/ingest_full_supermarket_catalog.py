@@ -149,7 +149,7 @@ def crawl_store(
         flush()
         return {
             "store": display_store,
-            "status": "blocked" if store == "lider" else "partial",
+            "status": "partial",
             "error": str(error),
             "scraped_count": scraped_count,
             "persisted_count": persisted_count,
