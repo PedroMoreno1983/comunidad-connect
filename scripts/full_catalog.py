@@ -11,6 +11,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
+from http.client import IncompleteRead
 from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import quote
@@ -47,6 +48,8 @@ UNIMARC_CATEGORIES = (
     "hogar",
     "veganos-y-vegetarianos",
 )
+LIDER_CATALOG_URL = "https://super.lider.cl/v/precios-en-oferta-sin-sello"
+LIDER_PAGE_SIZE = 48
 JUMBO_CATEGORIES = (
     "frutas-y-verduras",
     "lacteos-huevos-y-congelados",
@@ -71,7 +74,7 @@ def fetch_text(
             with urlopen(request, timeout=timeout) as response:
                 charset = response.headers.get_content_charset() or "utf-8"
                 return response.read().decode(charset, errors="replace")
-        except (OSError, TimeoutError) as error:
+        except (OSError, TimeoutError, IncompleteRead) as error:
             if isinstance(error, HTTPError) and error.code in missing_statuses:
                 return ""
             last_error = error
@@ -350,6 +353,81 @@ def parse_santa_render_data(data: dict[str, Any], query: str) -> list[Product]:
     return products
 
 
+def parse_lider_page(
+    page_html: str,
+    query: str = "catalogo",
+) -> tuple[list[Product], int, int]:
+    item_list: dict[str, Any] | None = None
+    for match in re.finditer(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        page_html,
+        re.IGNORECASE | re.DOTALL,
+    ):
+        try:
+            candidate = json.loads(html.unescape(match.group(1)).strip())
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(candidate, dict) and candidate.get("@type") == "ItemList":
+            item_list = candidate
+            break
+
+    if item_list is None:
+        raise ValueError("Lider page does not contain an ItemList JSON-LD catalog")
+
+    total_match = re.search(
+        r"<h1[^>]*>.*?<span[^>]*>\s*\(([0-9.]+)\)\s*</span>",
+        page_html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    total = parse_price(total_match.group(1)) if total_match else 0
+    page_numbers = [
+        int(value)
+        for value in re.findall(
+            r'class="[^"]*\bpagination__link\b[^"]*"[^>]*>\s*([0-9]+)\s*</span>',
+            page_html,
+            re.IGNORECASE,
+        )
+    ]
+    page_count = max(page_numbers, default=1)
+
+    products: list[Product] = []
+    observed_at = utc_now()
+    for element in item_list.get("itemListElement") or []:
+        raw = element.get("item") if isinstance(element, dict) else None
+        if not isinstance(raw, dict) or raw.get("@type") != "Product":
+            continue
+        offer = raw.get("offers") or {}
+        price = parse_price(offer.get("price"))
+        name = str(raw.get("name") or "").strip()
+        raw_url = html.unescape(str(raw.get("url") or "").strip())
+        product_url = raw_url.split("?", 1)[0].replace(
+            "https://super.lider.cl:443/",
+            "https://super.lider.cl/",
+        )
+        sku_match = re.search(r"/([0-9]{14})/?$", product_url)
+        sku = sku_match.group(1) if sku_match else None
+        availability = str(offer.get("availability") or "")
+        if not name or price <= 0 or availability.endswith("OutOfStock"):
+            continue
+        products.append(
+            Product(
+                store="Lider",
+                query=query,
+                name=name,
+                price=price,
+                list_price=None,
+                in_stock=True,
+                sku=sku,
+                ean=sku,
+                product_url=product_url or None,
+                image_url=str(raw.get("image") or "").strip() or None,
+                scraped_at=observed_at,
+            )
+        )
+
+    return products, total or len(products), page_count
+
+
 def santa_categories(home_data: dict[str, Any]) -> list[str]:
     items = home_data.get("menu", {}).get("acf", {}).get("items") or []
     excluded = {"marcas-exclusivas", "productos-importados", "libres-de", "mypes"}
@@ -498,11 +576,33 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
-    del max_pages
-    raise RuntimeError(
-        "Lider is presenting an interactive human-verification challenge. "
-        "A complete crawl requires an authorized product feed or retailer API."
-    )
+    def listing_url(page_number: int) -> str:
+        return (
+            f"{LIDER_CATALOG_URL}?sortingorder=ascending"
+            f"&itemsperpage={LIDER_PAGE_SIZE}&display=grid&pagenumber={page_number}"
+        )
+
+    first_html = fetch_text(listing_url(1))
+    first_products, _, page_count = parse_lider_page(first_html, "catalogo")
+    if not first_products or page_count <= 1:
+        raise RuntimeError("Lider did not publish a paginated JSON-LD product catalog")
+    yield from first_products
+
+    final_page = min(page_count, max_pages) if max_pages is not None else page_count
+    first_signature = tuple(product_key(product) for product in first_products)
+    seen_pages = {first_signature}
+    urls = (listing_url(page_number) for page_number in range(2, final_page + 1))
+    for page_html in fetch_many(urls, workers=4):
+        products, _, _ = parse_lider_page(page_html, "catalogo")
+        signature = tuple(product_key(product) for product in products)
+        if not products:
+            raise RuntimeError("Lider returned an empty catalog page before the final page")
+        if signature in seen_pages:
+            raise RuntimeError(
+                "Lider repeated a catalog page; refusing to report an incomplete crawl"
+            )
+        seen_pages.add(signature)
+        yield from products
 
 
 CRAWLERS: dict[str, Callable[[int | None], Iterator[Product]]] = {

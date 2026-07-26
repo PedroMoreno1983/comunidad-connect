@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from full_catalog import (
     extract_santa_render_data,
     parse_jumbo_payload,
+    parse_lider_page,
     parse_santa_render_data,
     parse_tottus_categories,
     parse_tottus_page,
@@ -196,6 +197,50 @@ class FullCatalogParserTests(unittest.TestCase):
         products = parse_santa_render_data(extracted, "despensa")
         self.assertEqual(products[0].price, 990)
         self.assertEqual(products[0].ean, "7800000000001")
+
+    def test_lider_json_ld_parses_product_and_pagination(self) -> None:
+        page_html = """
+        <h1>Catalogo Lider <span>(10.000)</span></h1>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "item": {
+                "@type": "Product",
+                "name": "Arroz Grado 2 Bolsa 1 kg Lider",
+                "url": "https://super.lider.cl:443/ip/arroz/arroz-grado-2/00780000000001?utm_source=verbolia",
+                "image": "https://img.lider/arroz.jpg",
+                "offers": {
+                  "@type": "Offer",
+                  "price": "1.090",
+                  "priceCurrency": "CLP",
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            }
+          ]
+        }
+        </script>
+        <div class="pagination">
+          <span class="pagination__link active">1</span>
+          <span class="ve-nflw pagination__link">2</span>
+          <span class="ve-nflw pagination__link">208</span>
+        </div>
+        """
+        products, total, page_count = parse_lider_page(page_html)
+        self.assertEqual((total, page_count), (10000, 208))
+        self.assertEqual(products[0].store, "Lider")
+        self.assertEqual(products[0].price, 1090)
+        self.assertEqual(products[0].sku, "00780000000001")
+        self.assertEqual(products[0].ean, "00780000000001")
+        self.assertEqual(
+            products[0].product_url,
+            "https://super.lider.cl/ip/arroz/arroz-grado-2/00780000000001",
+        )
 
     def test_unique_products_prefers_sku_identity(self) -> None:
         render_data = {
