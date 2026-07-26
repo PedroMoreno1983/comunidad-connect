@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { buildBasketComparison, buildSupermarketCandidate } from '@/lib/supermarketBasket';
-import { significantWords, termMatchesProductName } from '@/lib/supermarketText';
+import { matchAnchor, termMatchesProductName } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
 /** TTL dinámico: 96h para cubrir la rotación diaria de términos del refresh. */
@@ -20,10 +20,10 @@ export async function comparePersistedSupermarkets(
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
   const entries = await Promise.all(terms.map(async term => {
-    // Postgres ILIKE es sensible a acentos: buscamos por la primera palabra
-    // significativa (sin acentos) y refinamos en JS, donde "queso en laminas"
-    // sí calza con "Queso en Láminas Colun".
-    const anchor = significantWords(term)[0] || term.trim().split(/\s+/)[0] || term;
+    // Postgres ILIKE es sensible a acentos: buscamos por la palabra ancla
+    // (primera significativa, sin acentos y con stem: "jaleas"→"jalea") y
+    // refinamos en JS, donde "queso en laminas" calza con "Queso en Láminas Colun".
+    const anchor = matchAnchor(term);
     const pattern = `%${anchor}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')

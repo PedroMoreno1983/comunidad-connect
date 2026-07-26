@@ -32,6 +32,16 @@ function stem(word: string): string {
 }
 
 /**
+ * Palabra ancla para el ILIKE de Postgres: primera palabra significativa con
+ * stem aplicado. Sin stem, "jaleas" jamás calza con el producto "Jalea Soprole"
+ * y el término queda vacío aunque el catálogo tenga el producto.
+ */
+export function matchAnchor(term: string): string {
+    const first = significantWords(term)[0] || foldAccents(term).split(/\s+/)[0] || foldAccents(term);
+    return stem(first);
+}
+
+/**
  * Verdadero cuando TODAS las palabras significativas del término aparecen en el
  * nombre del producto (sin importar orden ni acentos). Así "queso en laminas"
  * calza con "Queso en Láminas Colun 200g".
