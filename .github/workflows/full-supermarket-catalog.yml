@@ -104,7 +104,8 @@ jobs:
         if: steps.selection.outputs.run == 'true'
         run: |
           python -m pip install --disable-pip-version-check certifi==2026.7.22
-          echo "SSL_CERT_FILE=$(python -m certifi)" >> "$GITHUB_ENV"
+          cat "$(python -m certifi)" .github/certificates/globalsign-rsa-ov-ssl-ca-2018.pem > "$RUNNER_TEMP/supermarket-ca-bundle.pem"
+          echo "SSL_CERT_FILE=$RUNNER_TEMP/supermarket-ca-bundle.pem" >> "$GITHUB_ENV"
 
       - name: Install browser runtime
         if: steps.selection.outputs.run == 'true' && (matrix.store == 'unimarc' || matrix.store == 'jumbo')
