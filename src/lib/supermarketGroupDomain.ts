@@ -31,13 +31,25 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
 
     let quantity = 1;
     let rawTerm = entry;
+    const leadingMeasure = entry.match(
+      /^(\d{1,3})\s*(?:kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?)\s+(?:de\s+)?(.+)$/i,
+    );
+    const trailingMeasure = entry.match(
+      /^(.+?)\s+(\d{1,3})\s*(?:kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?)\s*$/i,
+    );
     const leadingQuantity = entry.match(/^(\d{1,3})\s*(?:x|unidades?|uds?|u)?\s+(.+)$/i)
       || entry.match(/^(\d{1,3})\s*[xX]\s*(.+)$/);
     const trailingQuantity = entry.match(/^(.+?)\s+[xX]\s*(\d{1,3})(?:\s*(?:unidades?|uds?|u))?\s*$/i)
       || entry.match(/^(.+?)\s*\((\d{1,3})\)\s*$/)
       || entry.match(/^(.+?)\s+(\d{1,3})(?:\s*(?:unidades?|uds?|u))?\s*$/i);
 
-    if (leadingQuantity) {
+    if (leadingMeasure) {
+      quantity = Number(leadingMeasure[1]);
+      rawTerm = leadingMeasure[2];
+    } else if (trailingMeasure) {
+      quantity = Number(trailingMeasure[2]);
+      rawTerm = trailingMeasure[1];
+    } else if (leadingQuantity) {
       quantity = Number(leadingQuantity[1]);
       rawTerm = leadingQuantity[2];
     } else if (trailingQuantity) {

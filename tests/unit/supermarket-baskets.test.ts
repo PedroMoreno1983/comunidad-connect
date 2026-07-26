@@ -69,4 +69,18 @@ describe('buildBasketComparison', () => {
     expect(result.recommended?.store).toBe('Tottus');
     expect(result.recommended?.subtotal).toBe(1900);
   });
+
+  it('counts a 12-unit egg tray as one pack for a request of 12 eggs', () => {
+    const result = buildBasketComparison(['huevos'], {
+      huevos: [row('Santa Isabel', 'Huevos blancos grandes 12 un.', 3000)],
+    }, { huevos: 12 });
+
+    expect(result.recommended?.items[0]).toMatchObject({
+      requestedQuantity: 12,
+      quantity: 1,
+      packUnits: 12,
+      suppliedQuantity: 12,
+      lineTotal: 3000,
+    });
+  });
 });
