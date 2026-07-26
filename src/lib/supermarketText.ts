@@ -40,8 +40,9 @@ const FRESH_PRODUCE = new Set([
 ]);
 
 const PROCESSED_PRODUCE_MARKERS = new Set([
-    'bebida', 'chips', 'conserva', 'crema', 'deshidratado', 'frita',
-    'galleta', 'jugo', 'pure', 'salsa', 'snack', 'sopa',
+    'artesanal', 'bebida', 'chips', 'cocida', 'congelada', 'conserva',
+    'crema', 'deshidratado', 'frita', 'galleta', 'jugo', 'prefrita', 'pure',
+    'sal', 'salsa', 'sabor', 'snack', 'sopa',
 ]);
 
 function stemmedWords(value: string): string[] {

@@ -55,9 +55,11 @@ function selectComparableRows(rows: Record<string, unknown>[]) {
       signature,
       rows: group,
       storeCount: new Set(group.map(row => asString(row.store))).size,
+      relevance: Math.max(...group.map(row => asNumber(row.match_relevance))),
     }))
     .sort((left, right) => (
       right.storeCount - left.storeCount
+      || right.relevance - left.relevance
       || Number(Boolean(right.signature)) - Number(Boolean(left.signature))
       || right.rows.length - left.rows.length
     ))[0]?.rows ?? [];
@@ -76,6 +78,7 @@ export function buildSupermarketCandidate(row: Record<string, unknown>, requeste
   const minimumPacks = Math.max(1, Math.round(asNumber(row.minimum_packs) || 1));
   const packs = Math.max(minimumPacks, Math.ceil(requestedQuantity / packUnits));
   const store = asString(row.store);
+  const matchRelevance = asNumber(row.match_relevance);
 
   return {
     id: asString(row.id),
@@ -89,6 +92,7 @@ export function buildSupermarketCandidate(row: Record<string, unknown>, requeste
     price,
     lineTotal: price * packs,
     store,
+    matchRelevance,
     channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
     originalPrice: listPrice > price ? listPrice : undefined,
     isOffer: listPrice > price,
@@ -118,7 +122,11 @@ export function buildBasketComparison(
           term,
           Math.min(MAX_REQUESTED_QUANTITY, Math.max(1, Math.round(requestedQuantities[term] || 1))),
         ))
-        .sort((left, right) => left.lineTotal - right.lineTotal || left.suppliedQuantity - right.suppliedQuantity)[0];
+        .sort((left, right) => (
+          right.matchRelevance - left.matchRelevance
+          || left.lineTotal - right.lineTotal
+          || left.suppliedQuantity - right.suppliedQuantity
+        ))[0];
       return candidate ? [candidate] : [];
     });
     const coveredTerms = new Set(items.map(item => item.requestedTerm));
