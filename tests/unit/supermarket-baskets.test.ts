@@ -108,4 +108,36 @@ describe('buildBasketComparison', () => {
       lineTotal: 8950,
     });
   });
+  it('compares different pack sizes by the full measured quantity requested', () => {
+    const result = buildBasketComparison(['detergente en polvo'], {
+      'detergente en polvo': [
+        row('Lider', 'Detergente en polvo 700 g', 2590),
+        row('Unimarc', 'Detergente en polvo 2.5 kg', 5090),
+        row('Jumbo', 'Detergente en polvo 2.5 kg', 5190),
+        row('Santa Isabel', 'Detergente en polvo 2.5 kg', 5290),
+        row('Tottus', 'Detergente en polvo 2.5 kg', 5290),
+      ],
+    }, { 'detergente en polvo': 700 }, { 'detergente en polvo': 'g' });
+
+    expect(result.recommended?.store).toBe('Lider');
+    expect(result.recommended?.items[0]).toMatchObject({
+      requestedQuantity: 700,
+      quantity: 1,
+      suppliedQuantity: 700,
+      lineTotal: 2590,
+    });
+  });
+
+  it('does not truncate gram requests when calculating required packs', () => {
+    const result = buildBasketComparison(['leche en polvo'], {
+      'leche en polvo': [row('Unimarc', 'Leche en polvo 300 g', 3790)],
+    }, { 'leche en polvo': 800 }, { 'leche en polvo': 'g' });
+
+    expect(result.recommended?.items[0]).toMatchObject({
+      requestedQuantity: 800,
+      quantity: 3,
+      suppliedQuantity: 900,
+      lineTotal: 11370,
+    });
+  });
 });

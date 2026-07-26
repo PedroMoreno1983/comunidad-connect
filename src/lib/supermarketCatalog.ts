@@ -3,6 +3,7 @@ import 'server-only';
 import {
   buildBasketComparison,
   buildSupermarketCandidate,
+  normalizeRequestedQuantity,
   SUPERMARKET_STORES,
 } from '@/lib/supermarketBasket';
 import { matchAnchor, productMatchScore } from '@/lib/supermarketText';
@@ -107,7 +108,10 @@ export async function comparePersistedSupermarkets(
   const rowsByTerm = Object.fromEntries(entries);
   const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities, requestedUnits);
   const alternativesByTerm = Object.fromEntries(entries.map(([term, rows]) => {
-    const requestedQuantity = Math.min(500, Math.max(1, Math.round(requestedQuantities[term] || 1)));
+    const requestedQuantity = normalizeRequestedQuantity(
+      requestedQuantities[term] || 1,
+      requestedUnits[term],
+    );
     const seen = new Set<string>();
     const alternatives = rows
       .map(row => buildSupermarketCandidate(row, term, requestedQuantity, requestedUnits[term]))

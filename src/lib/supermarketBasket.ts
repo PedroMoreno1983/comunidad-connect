@@ -4,7 +4,8 @@ export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 
 
 export const WHOLESALE_STORES = new Set<string>(['aCuenta', 'Irurzun']);
 
-const MAX_REQUESTED_QUANTITY = 500;
+const MAX_REQUESTED_COUNT = 500;
+const MAX_REQUESTED_MEASUREMENT = 50_000;
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -33,6 +34,14 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
 }
 
 type QuantitySelection = { packs: number; suppliedQuantity: number };
+
+export function normalizeRequestedQuantity(
+  value: number,
+  unit: SupermarketMeasurementUnit | undefined,
+): number {
+  const maximum = unit ? MAX_REQUESTED_MEASUREMENT : MAX_REQUESTED_COUNT;
+  return Math.min(maximum, Math.max(1, Math.round(value || 1)));
+}
 
 function normalizedProductUnit(value: string): SupermarketMeasurementUnit {
   if (value === 'kg') return 'kg';
@@ -172,10 +181,14 @@ export function buildBasketComparison(
   requestedQuantities: Record<string, number> = {},
   requestedUnits: Record<string, SupermarketMeasurementUnit | undefined> = {},
 ) {
-  const comparableByTerm = terms.map(term => ({
-    term,
-    rows: selectComparableRows(rowsByTerm[term] ?? []),
-  }));
+  const comparableByTerm = terms.map(term => {
+    const requestedUnit = requestedUnits[term];
+    const rows = rowsByTerm[term] ?? [];
+    return {
+      term,
+      rows: requestedUnit ? rows : selectComparableRows(rows),
+    };
+  });
 
   const comparisons = SUPERMARKET_STORES.map(store => {
     const items = comparableByTerm.flatMap(({ term, rows }) => {
@@ -184,7 +197,7 @@ export function buildBasketComparison(
         .map(row => buildSupermarketCandidate(
           row,
           term,
-          Math.min(MAX_REQUESTED_QUANTITY, Math.max(1, Math.round(requestedQuantities[term] || 1))),
+          normalizeRequestedQuantity(requestedQuantities[term] || 1, requestedUnits[term]),
           requestedUnits[term],
         ))
         .sort((left, right) => (
