@@ -19,6 +19,10 @@ describe('supermarketText foldAccents / significantWords', () => {
         expect(significantWords('queso en laminas')).toEqual(['queso', 'laminas']);
         expect(significantWords('arroz de grado 1')).toEqual(['arroz', 'grado']);
     });
+    it('keeps short product names such as tea', () => {
+        expect(significantWords('Té')).toEqual(['te']);
+        expect(termMatchesProductName('té', 'Té negro Ceylán 20 bolsitas')).toBe(true);
+    });
 });
 
 describe('supermarketText matchAnchor', () => {

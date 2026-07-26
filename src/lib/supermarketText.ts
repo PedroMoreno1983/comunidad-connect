@@ -15,13 +15,17 @@ export function foldAccents(value: string): string {
 const MATCH_STOP_WORDS = new Set([
     'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'en', 'con', 'por', 'para', 'al',
 ]);
+const SHORT_PRODUCT_WORDS = new Set(['te']);
 
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
 export function significantWords(term: string): string[] {
     return foldAccents(term)
         .split(/[^a-z0-9]+/i)
         .map(word => word.trim())
-        .filter(word => word.length >= 3 && !MATCH_STOP_WORDS.has(word));
+        .filter(word => (
+            (word.length >= 3 || SHORT_PRODUCT_WORDS.has(word))
+            && !MATCH_STOP_WORDS.has(word)
+        ));
 }
 
 /** Raíz tolerante a plurales simples: "laminas"→"lamina", "jaleas"→"jalea". */
