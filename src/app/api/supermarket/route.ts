@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
+import { calculateProductQuantity } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
 import { createClient } from '@/lib/supabase/server';
+import type { SupermarketMeasurementUnit } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -26,6 +28,7 @@ type SupermarketResultItem = {
   brand?: string;
   requestedTerm: string;
   requestedQuantity: number;
+  requestedUnit?: SupermarketMeasurementUnit;
   quantity: number;
   packUnits: number;
   suppliedQuantity: number;
@@ -45,6 +48,7 @@ type SupermarketResultItem = {
 interface RequestedItem {
   term: string;
   quantity: number;
+  unit?: SupermarketMeasurementUnit;
 }
 
 function toSupermarketResultItem(
@@ -55,10 +59,16 @@ function toSupermarketResultItem(
 ): SupermarketResultItem {
   const price = typeof item.price === 'number' ? item.price : 0;
   const requestedQuantity = requested.quantity;
+  const requestedUnit = requested.unit;
   const packUnits = typeof item.packUnits === 'number' ? item.packUnits : 1;
-  const packs = Math.max(1, Math.ceil(requestedQuantity / packUnits));
-  const suppliedQuantity = packs * packUnits;
   const name = typeof item.name === 'string' ? item.name : requested.term;
+  const calculated = calculateProductQuantity(name, requestedQuantity, requestedUnit, packUnits);
+  const packs = typeof item.quantity === 'number'
+    ? Math.max(1, Math.round(item.quantity))
+    : calculated.packs;
+  const suppliedQuantity = typeof item.suppliedQuantity === 'number'
+    ? item.suppliedQuantity
+    : calculated.suppliedQuantity;
   const brand = typeof item.brand === 'string' ? item.brand : undefined;
   const store = typeof item.store === 'string' ? item.store : undefined;
   const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
@@ -69,6 +79,7 @@ function toSupermarketResultItem(
     brand,
     requestedTerm: requested.term,
     requestedQuantity,
+    requestedUnit,
     quantity: packs,
     packUnits,
     suppliedQuantity,
@@ -113,6 +124,7 @@ export async function POST(req: NextRequest) {
     const requestedItems = parseGroupShoppingList(message.trim());
     const terms = requestedItems.map((item: RequestedItem) => item.term);
     const requestedQuantities = Object.fromEntries(requestedItems.map((item: RequestedItem) => [item.term, item.quantity]));
+    const requestedUnits = Object.fromEntries(requestedItems.map((item: RequestedItem) => [item.term, item.unit]));
     if (terms.length === 0) {
       return NextResponse.json({
         message: 'Indica uno o más productos para buscar precios reales.',
@@ -121,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const comparison = await comparePersistedSupermarkets(terms, requestedQuantities);
+      const comparison = await comparePersistedSupermarkets(terms, requestedQuantities, requestedUnits);
       const selected = comparison.recommended ?? comparison.bestAvailable;
       if (selected) {
         const ready = selected.complete;
@@ -162,6 +174,7 @@ export async function POST(req: NextRequest) {
             brand: '',
             requestedTerm: requested.term,
             requestedQuantity: requested.quantity,
+            requestedUnit: requested.unit,
             quantity: requested.quantity,
             packUnits: 1,
             suppliedQuantity: requested.quantity,
@@ -246,6 +259,7 @@ export async function POST(req: NextRequest) {
             brand: '',
             requestedTerm: requested.term,
             requestedQuantity: requested.quantity,
+            requestedUnit: requested.unit,
             quantity: requested.quantity,
             packUnits: 1,
             suppliedQuantity: requested.quantity,

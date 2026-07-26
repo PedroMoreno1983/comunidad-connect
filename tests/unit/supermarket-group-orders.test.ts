@@ -46,9 +46,9 @@ describe('supermarket group orders', () => {
 
   it('removes measurement words from the product term without losing quantity', () => {
     expect(parseGroupShoppingList('3 kilos de papas\n2 kg tomates\ncebollas 4 kg')).toEqual([
-      { term: 'papas', quantity: 3 },
-      { term: 'tomates', quantity: 2 },
-      { term: 'cebollas', quantity: 4 },
+      { term: 'papas', quantity: 3, unit: 'kg' },
+      { term: 'tomates', quantity: 2, unit: 'kg' },
+      { term: 'cebollas', quantity: 4, unit: 'kg' },
     ]);
   });
 
