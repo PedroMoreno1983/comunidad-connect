@@ -65,6 +65,7 @@ describe('supermarketText termMatchesProductName', () => {
         expect(productMatchScore('tomates', 'Salsa de tomate natural 200 g')).toBe(-1);
         expect(productMatchScore('tomates', 'Tomate larga vida 1 kg')).toBeGreaterThan(0);
         expect(productMatchScore('papas', 'Papas fritas corte americano 400 g')).toBe(-1);
+        expect(productMatchScore('papas', 'Papas Artesanales Sal de Mar 185 g')).toBe(-1);
         expect(productMatchScore('papas', 'Papa malla 2 kg')).toBeGreaterThan(0);
     });
 
