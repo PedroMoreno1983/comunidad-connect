@@ -60,7 +60,9 @@ export async function comparePersistedSupermarkets(
 
     if (error) throw error;
     const initialRows = normalizeRows(data);
-    const presentStores = new Set(initialRows.map(row => String(row.store || '')));
+    const presentStores = new Set(initialRows
+      .filter(row => productMatchScore(term, String(row.name || '')) >= 0)
+      .map(row => String(row.store || '')));
     const missingStores = SUPERMARKET_STORES.filter(store => !presentStores.has(store));
     const fallbackRows = (await Promise.all(missingStores.map(async store => {
       const { data: storeData, error: storeError } = await supabaseAdmin
