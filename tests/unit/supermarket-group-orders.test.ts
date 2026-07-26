@@ -59,6 +59,12 @@ describe('supermarket group orders', () => {
     ]);
   });
 
+  it('accepts the common un abbreviation without leaving it in the product term', () => {
+    expect(parseGroupShoppingList('pan de molde 1 un, te 20 un')).toEqual([
+      { term: 'pan de molde', quantity: 1 },
+      { term: 'te', quantity: 20 },
+    ]);
+  });
   it('allocates the prepared basket exactly by each participant contribution', () => {
     const allocation = allocateGroupCosts([
       { userId: 'ana', term: 'arroz', quantity: 2 },
