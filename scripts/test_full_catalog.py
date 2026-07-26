@@ -10,6 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from full_catalog import (
+    ACUENTA_FALLBACK_CATEGORIES,
+    acuenta_categories_from_html,
     extract_santa_render_data,
     extract_next_flight_stream,
     parse_acuenta_categories,
@@ -27,6 +29,11 @@ from full_catalog import (
 
 
 class FullCatalogParserTests(unittest.TestCase):
+    def test_acuenta_uses_stable_categories_when_homepage_is_blocked(self) -> None:
+        categories = acuenta_categories_from_html("")
+        self.assertEqual(categories, list(ACUENTA_FALLBACK_CATEGORIES))
+        self.assertIn(("Despensa", "despensa/05"), categories)
+
     def test_tottus_categories_split_catalog_below_page_cap(self) -> None:
         payload = json.dumps(
             {

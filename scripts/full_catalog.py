@@ -8,7 +8,7 @@ import json
 import math
 import re
 import time
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from http.client import IncompleteRead
@@ -61,6 +61,35 @@ JUMBO_CATEGORIES = (
     "mascotas",
 )
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
+ACUENTA_HEADERS = {
+    **HTTP_HEADERS,
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Referer": ACUENTA_HOME_URL,
+}
+ACUENTA_FALLBACK_CATEGORIES = (
+    ("Mascotas", "mascotas/88"),
+    ("Belleza", "belleza/99"),
+    ("Higiene y Cuidado Personal", "higiene-y-cuidado-personal/98"),
+    ("Frescos y Lacteos", "frescos-y-lacteos/07"),
+    ("Carnes y Pescados", "carnes-y-pescados/03"),
+    ("Aseo y limpieza", "aseo-y-limpieza/11"),
+    ("La Boti", "la-boti/80"),
+    ("Despensa", "despensa/05"),
+    ("Congelados", "congelados/04"),
+    ("Desayuno y Dulces", "desayuno-y-dulces/44"),
+    ("Bebidas, aguas y jugos", "bebidas-aguas-y-jugos/02"),
+    ("Papas fritas y picoteo", "papas-fritas-y-picoteo/51"),
+    ("Mundo bebe", "mundo-bebe/09"),
+    ("Panaderia y Pasteleria", "panaderia-y-pasteleria/10"),
+    ("Frutas y Verduras", "frutas-y-verduras/06"),
+    ("Hogar, entretencion y tecnologia", "hogar-entretencion-y-tecnologia/47"),
+)
 IRURZUN_PRODUCTS_URL = "https://irurzun.cl/collections/all/products.json?limit=250"
 
 
@@ -68,11 +97,12 @@ def fetch_text(
     url: str,
     timeout: int = 35,
     missing_statuses: tuple[int, ...] = (),
+    headers: Mapping[str, str] | None = None,
 ) -> str:
     last_error: Exception | None = None
     for attempt in range(3):
         try:
-            request = Request(url, headers=HTTP_HEADERS)
+            request = Request(url, headers=dict(headers or HTTP_HEADERS))
             with urlopen(request, timeout=timeout) as response:
                 charset = response.headers.get_content_charset() or "utf-8"
                 return response.read().decode(charset, errors="replace")
@@ -82,17 +112,29 @@ def fetch_text(
             last_error = error
             if attempt < 2:
                 time.sleep(2**attempt)
-    raise RuntimeError(f"Public catalog request failed after 3 attempts: {url}") from last_error
+    detail = (
+        f"HTTP {last_error.code}"
+        if isinstance(last_error, HTTPError)
+        else type(last_error).__name__ if last_error is not None else "unknown error"
+    )
+    raise RuntimeError(
+        f"Public catalog request failed after 3 attempts ({detail}): {url}"
+    ) from last_error
 
 
 def fetch_many(
     urls: Iterable[str],
     workers: int = 4,
     missing_statuses: tuple[int, ...] = (),
+    headers: Mapping[str, str] | None = None,
 ) -> Iterator[str]:
     with ThreadPoolExecutor(max_workers=workers) as executor:
         yield from executor.map(
-            lambda url: fetch_text(url, missing_statuses=missing_statuses),
+            lambda url: fetch_text(
+                url,
+                missing_statuses=missing_statuses,
+                headers=headers,
+            ),
             urls,
         )
 
@@ -165,6 +207,11 @@ def parse_acuenta_categories(page_html: str) -> list[tuple[str, str]]:
         seen.add(slug)
         categories.append((match.group("name"), slug))
     return categories
+
+
+def acuenta_categories_from_html(page_html: str) -> list[tuple[str, str]]:
+    categories = parse_acuenta_categories(page_html)
+    return categories or list(ACUENTA_FALLBACK_CATEGORIES)
 
 
 def parse_acuenta_category_page(
@@ -780,13 +827,15 @@ def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_acuenta(max_pages: int | None = None) -> Iterator[Product]:
-    categories = parse_acuenta_categories(fetch_text(ACUENTA_HOME_URL))
-    if not categories:
-        raise RuntimeError("aCuenta did not publish its category tree")
+    try:
+        home_html = fetch_text(ACUENTA_HOME_URL, headers=ACUENTA_HEADERS)
+    except RuntimeError:
+        home_html = ""
+    categories = acuenta_categories_from_html(home_html)
 
     for category_name, slug in categories:
         base_url = f"https://www.acuenta.cl/ca/{slug}"
-        first_html = fetch_text(base_url)
+        first_html = fetch_text(base_url, headers=ACUENTA_HEADERS)
         first_products, page_count, total = parse_acuenta_category_page(
             first_html,
             category_name,
@@ -799,7 +848,7 @@ def crawl_acuenta(max_pages: int | None = None) -> Iterator[Product]:
             f"{base_url}?currentPage={page_number}"
             for page_number in range(2, final_page + 1)
         )
-        for page_html in fetch_many(urls, workers=4):
+        for page_html in fetch_many(urls, workers=4, headers=ACUENTA_HEADERS):
             products, _, _ = parse_acuenta_category_page(page_html, category_name)
             if not products:
                 raise RuntimeError(
