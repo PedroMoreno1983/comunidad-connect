@@ -12,6 +12,7 @@ from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -58,7 +59,11 @@ JUMBO_CATEGORIES = (
 )
 
 
-def fetch_text(url: str, timeout: int = 35) -> str:
+def fetch_text(
+    url: str,
+    timeout: int = 35,
+    missing_statuses: tuple[int, ...] = (),
+) -> str:
     last_error: Exception | None = None
     for attempt in range(3):
         try:
@@ -67,15 +72,24 @@ def fetch_text(url: str, timeout: int = 35) -> str:
                 charset = response.headers.get_content_charset() or "utf-8"
                 return response.read().decode(charset, errors="replace")
         except (OSError, TimeoutError) as error:
+            if isinstance(error, HTTPError) and error.code in missing_statuses:
+                return ""
             last_error = error
             if attempt < 2:
                 time.sleep(2**attempt)
     raise RuntimeError(f"Public catalog request failed after 3 attempts: {url}") from last_error
 
 
-def fetch_many(urls: Iterable[str], workers: int = 4) -> Iterator[str]:
+def fetch_many(
+    urls: Iterable[str],
+    workers: int = 4,
+    missing_statuses: tuple[int, ...] = (),
+) -> Iterator[str]:
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        yield from executor.map(fetch_text, urls)
+        yield from executor.map(
+            lambda url: fetch_text(url, missing_statuses=missing_statuses),
+            urls,
+        )
 
 
 def parse_price(value: Any) -> int:
@@ -393,7 +407,10 @@ def crawl_santa(max_pages: int | None = None) -> Iterator[Product]:
                 for number in page_numbers
             ]
             reached_end = False
-            for payload in fetch_many(urls):
+            for payload in fetch_many(urls, missing_statuses=(404,)):
+                if not payload:
+                    reached_end = True
+                    break
                 products = parse_santa_render_data(extract_santa_render_data(payload), category)
                 signature = tuple(sorted(product_key(product) for product in products))
                 if not products or signature in seen_pages:
