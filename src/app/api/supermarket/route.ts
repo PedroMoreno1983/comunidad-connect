@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
       const comparison = await comparePersistedSupermarkets(terms, requestedQuantities, requestedUnits);
       const selected = comparison.recommended ?? comparison.bestAvailable;
       if (selected) {
-        const initialPlan = comparison.purchasePlan;
+        const selectedStore = selected.store;
         const persistedByTerm = new Map<string, SupermarketResultItem>(
-          initialPlan.baskets.flatMap(basket => basket.items).map(item => {
+          selected.items.map(item => {
             const itemRecord: Record<string, unknown> = { ...item };
             const term = typeof itemRecord.requestedTerm === 'string' ? itemRecord.requestedTerm : '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
@@ -151,11 +151,13 @@ export async function POST(req: NextRequest) {
             return [term, toSupermarketResultItem(itemRecord, req, 'catalog', optionCount)];
           })
         );
-        const liveItems = initialPlan.unresolvedTerms.length > 0
-          ? (await searchLiveSupermarkets(initialPlan.unresolvedTerms.join(', '))).items
+        const liveItems = selected.missingTerms.length > 0
+          ? (await searchLiveSupermarkets(selected.missingTerms.join(', '))).items
           : [];
         const liveByTerm = new Map<string, SupermarketResultItem>(
-          liveItems.map(item => {
+          liveItems
+            .filter(item => item.store === selectedStore)
+            .map(item => {
             const term = item.requestedTerm || item.query || '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
             return [term, toSupermarketResultItem({
@@ -197,19 +199,13 @@ export async function POST(req: NextRequest) {
         ));
         const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
         const foundCount = items.length - missingTerms.length;
-        const checkoutPlan = buildCheckoutPlan(items, terms, initialPlan.baskets.map(basket => basket.store));
+        const checkoutPlan = buildCheckoutPlan(items, terms, [selectedStore]);
         const ready = checkoutPlan.complete;
-        const primaryStore = checkoutPlan.baskets[0]?.store;
+        const primaryStore = selectedStore;
         const subtotal = checkoutPlan.total;
-        const distinctStores = new Set(items.filter(item => item.available && item.store).map(item => item.store));
-        const mixedNote = !ready && distinctStores.size > 1
-          ? ' Ninguna tienda cubrió toda tu lista: algunos productos vienen de tiendas distintas y cada uno muestra su tienda abajo.'
-          : '';
         const checkoutMessage = ready
-          ? checkoutPlan.status === 'single_store'
-            ? `Canasta completa seleccionada en ${primaryStore} por $${subtotal.toLocaleString('es-CL')}.`
-            : `Compra completa resuelta en ${checkoutPlan.storeCount} supermercados por $${subtotal.toLocaleString('es-CL')}.`
-          : `Plan listo con ${foundCount} de ${requestedItems.length} productos; ${missingTerms.length} requieren sustituto.${mixedNote}`;
+          ? `Canasta completa seleccionada en ${primaryStore} por $${subtotal.toLocaleString('es-CL')}.`
+          : `${primaryStore} cubre ${foundCount} de ${requestedItems.length} productos; ${missingTerms.length} necesitan un equivalente dentro de la misma tienda.`;
 
         return NextResponse.json({
           message: checkoutMessage,
@@ -233,6 +229,22 @@ export async function POST(req: NextRequest) {
             missingTerms: basket.missingTerms,
             complete: basket.complete,
           })),
+          basketOptions: [
+            {
+              ...selected,
+              items: checkoutPlan.baskets[0]?.items ?? selected.items,
+              subtotal,
+              coveredCount: foundCount,
+              coveragePercent: requestedItems.length > 0
+                ? Math.round(foundCount * 100 / requestedItems.length)
+                : 0,
+              missingTerms,
+              complete: ready,
+            },
+            ...comparison.comparisons
+              .filter(basket => basket.store !== selectedStore)
+              .slice(0, 2),
+          ],
           checkout: {
             status: checkoutPlan.status,
             store: primaryStore,
@@ -241,8 +253,8 @@ export async function POST(req: NextRequest) {
             requiresRetailerSession: true,
             cartPreloaded: false,
             detail: ready
-              ? `Convive preparó ${checkoutPlan.storeCount} lista${checkoutPlan.storeCount === 1 ? '' : 's'} para continuar sin volver a buscar los productos.`
-              : 'La compra no se detiene: lo disponible queda agrupado y cada faltante genera una tarea de reemplazo.',
+              ? `Convive preparó una sola canasta en ${primaryStore} para continuar sin volver a buscar los productos.`
+              : `Convive mantuvo todo en ${primaryStore}; los faltantes no se repartirán entre otras tiendas.`,
             plan: checkoutPlan,
           },
           sources: STORES.map(store => ({

@@ -145,6 +145,19 @@ function selectComparableRows(rows: Record<string, unknown>[]) {
     ))[0]?.rows ?? [];
 }
 
+function selectStoreRows(
+  rows: Record<string, unknown>[],
+  comparableRows: Record<string, unknown>[],
+  store: string,
+): Record<string, unknown>[] {
+  const storeRows = rows.filter(row => asString(row.store) === store);
+  const comparableStoreRows = comparableRows.filter(row => asString(row.store) === store);
+  // Prefer the presentation shared by the most stores so totals remain
+  // comparable. If this store does not sell that exact format, keep its best
+  // valid option instead of incorrectly declaring the whole product missing.
+  return comparableStoreRows.length > 0 ? comparableStoreRows : storeRows;
+}
+
 export function buildSupermarketCandidate(
   row: Record<string, unknown>,
   requestedTerm: string,
@@ -206,14 +219,14 @@ export function buildBasketComparison(
     const rows = rowsByTerm[term] ?? [];
     return {
       term,
-      rows: requestedUnit ? rows : selectComparableRows(rows),
+      rows,
+      comparableRows: requestedUnit ? rows : selectComparableRows(rows),
     };
   });
 
   const comparisons = SUPERMARKET_STORES.map(store => {
-    const items = comparableByTerm.flatMap(({ term, rows }) => {
-      const candidate = rows
-        .filter(row => asString(row.store) === store)
+    const items = comparableByTerm.flatMap(({ term, rows, comparableRows }) => {
+      const candidate = selectStoreRows(rows, comparableRows, store)
         .filter(row => isProductMeasurementCompatible(asString(row.name), requestedUnits[term]))
         .map(row => buildSupermarketCandidate(
           row,
