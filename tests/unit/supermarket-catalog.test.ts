@@ -9,6 +9,7 @@ vi.mock('server-only', () => ({}));
 
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
   getSupabaseAdmin: () => ({
+    rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Function not found' } }),
     from: () => {
       let store: string | undefined;
       const query = {

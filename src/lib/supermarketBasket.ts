@@ -1,4 +1,6 @@
-import type { SupermarketMeasurementUnit } from '@/lib/types';
+import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
+import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
+
 
 export const SUPERMARKET_STORES = ['Jumbo', 'Santa Isabel', 'Lider', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'] as const;
 
@@ -249,10 +251,12 @@ export function buildBasketComparison(
     ));
 
   const recommended = comparisons.find(basket => basket.complete) ?? null;
+  const purchasePlan = buildResilientPurchasePlan(terms, comparisons as SupermarketBasketCandidate[]);
   return {
     terms,
     recommended,
     bestAvailable: comparisons[0] ?? null,
     comparisons,
+    purchasePlan,
   };
 }

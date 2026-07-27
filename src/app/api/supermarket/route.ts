@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
 import { calculateProductQuantity } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
-import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
+import {
+  MAX_SHOPPING_LIST_CHARS,
+  MAX_SHOPPING_LIST_ITEMS,
+  parseGroupShoppingList,
+} from '@/lib/supermarketGroupDomain';
 import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
 import { createClient } from '@/lib/supabase/server';
 import type { SupermarketMeasurementUnit } from '@/lib/types';
@@ -114,9 +119,9 @@ export async function POST(req: NextRequest) {
       ? (body as Record<string, unknown>).message
       : undefined;
 
-    if (typeof message !== 'string' || message.trim().length < 2 || message.length > 1_500) {
+    if (typeof message !== 'string' || message.trim().length < 2 || message.length > MAX_SHOPPING_LIST_CHARS) {
       return NextResponse.json(
-        { error: 'Escribe entre 2 y 1.500 caracteres para buscar productos.' },
+        { error: `Escribe hasta ${MAX_SHOPPING_LIST_ITEMS} productos (${MAX_SHOPPING_LIST_CHARS.toLocaleString('es-CL')} caracteres).` },
         { status: 400 },
       );
     }
@@ -136,17 +141,18 @@ export async function POST(req: NextRequest) {
       const comparison = await comparePersistedSupermarkets(terms, requestedQuantities, requestedUnits);
       const selected = comparison.recommended ?? comparison.bestAvailable;
       if (selected) {
-        const ready = selected.complete;
+        const initialPlan = comparison.purchasePlan;
         const persistedByTerm = new Map<string, SupermarketResultItem>(
-          selected.items.map((item: Record<string, unknown>) => {
-            const term = typeof item.requestedTerm === 'string' ? item.requestedTerm : '';
+          initialPlan.baskets.flatMap(basket => basket.items).map(item => {
+            const itemRecord: Record<string, unknown> = { ...item };
+            const term = typeof itemRecord.requestedTerm === 'string' ? itemRecord.requestedTerm : '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
             const optionCount = (comparison.alternativesByTerm?.[term] || []).length || 1;
-            return [term, toSupermarketResultItem(item, req, 'catalog', optionCount)];
+            return [term, toSupermarketResultItem(itemRecord, req, 'catalog', optionCount)];
           })
         );
-        const liveItems = selected.missingTerms.length > 0
-          ? (await searchLiveSupermarkets(selected.missingTerms.join(', '))).items
+        const liveItems = initialPlan.unresolvedTerms.length > 0
+          ? (await searchLiveSupermarkets(initialPlan.unresolvedTerms.join(', '))).items
           : [];
         const liveByTerm = new Map<string, SupermarketResultItem>(
           liveItems.map(item => {
@@ -191,19 +197,26 @@ export async function POST(req: NextRequest) {
         ));
         const missingTerms = items.filter(item => !item.available).map(item => item.requestedTerm);
         const foundCount = items.length - missingTerms.length;
-        const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+        const checkoutPlan = buildCheckoutPlan(items, terms, initialPlan.baskets.map(basket => basket.store));
+        const ready = checkoutPlan.complete;
+        const primaryStore = checkoutPlan.baskets[0]?.store;
+        const subtotal = checkoutPlan.total;
         const distinctStores = new Set(items.filter(item => item.available && item.store).map(item => item.store));
         const mixedNote = !ready && distinctStores.size > 1
           ? ' Ninguna tienda cubrió toda tu lista: algunos productos vienen de tiendas distintas y cada uno muestra su tienda abajo.'
           : '';
+        const checkoutMessage = ready
+          ? checkoutPlan.status === 'single_store'
+            ? `Canasta completa seleccionada en ${primaryStore} por $${subtotal.toLocaleString('es-CL')}.`
+            : `Compra completa resuelta en ${checkoutPlan.storeCount} supermercados por $${subtotal.toLocaleString('es-CL')}.`
+          : `Plan listo con ${foundCount} de ${requestedItems.length} productos; ${missingTerms.length} requieren sustituto.${mixedNote}`;
+
         return NextResponse.json({
-          message: ready
-            ? `Canasta completa seleccionada en ${selected.store} por $${selected.subtotal.toLocaleString('es-CL')}.`
-            : `Encontré ${foundCount} de ${requestedItems.length} productos. Los faltantes siguen visibles para que puedas corregirlos o intentar otra descripción.${mixedNote}`,
+          message: checkoutMessage,
           items,
           fetchedAt: selected.fetchedAt ?? new Date().toISOString(),
-          mode: ready ? 'persisted_basket' : 'mixed_catalog_live',
-          recommendedStore: ready ? selected.store : null,
+          mode: checkoutPlan.status,
+          recommendedStore: primaryStore ?? null,
           basketSubtotal: subtotal,
           basketReady: ready,
           requestedCount: requestedItems.length,
@@ -221,13 +234,16 @@ export async function POST(req: NextRequest) {
             complete: basket.complete,
           })),
           checkout: {
-            status: ready ? 'ready_for_assisted_checkout' : 'missing_products',
-            store: selected.store,
-            storeUrl: STORE_URLS[selected.store],
+            status: checkoutPlan.status,
+            store: primaryStore,
+            storeUrl: primaryStore ? STORE_URLS[primaryStore] : undefined,
             productUrls: items.flatMap(item => item.productUrl ? [item.productUrl] : []),
             requiresRetailerSession: true,
             cartPreloaded: false,
-            detail: 'Convive abre una sola vez el supermercado ganador y copia la lista exacta. El carro no se precarga porque la tienda exige la sesión del comprador.',
+            detail: ready
+              ? `Convive preparó ${checkoutPlan.storeCount} lista${checkoutPlan.storeCount === 1 ? '' : 's'} para continuar sin volver a buscar los productos.`
+              : 'La compra no se detiene: lo disponible queda agrupado y cada faltante genera una tarea de reemplazo.',
+            plan: checkoutPlan,
           },
           sources: STORES.map(store => ({
             store,
