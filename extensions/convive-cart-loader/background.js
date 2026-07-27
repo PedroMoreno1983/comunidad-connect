@@ -1,44 +1,51 @@
+importScripts('store-config.js');
+
 const ACTIVE_JOB_KEY = 'conviveActiveCartJob';
 const MAX_ITEMS = 200;
 const MAX_QUANTITY = 99;
-const ALLOWED_LIDER_HOSTS = new Set(['super.lider.cl', 'www.lider.cl', 'lider.cl']);
+const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
 
 function safeText(value, maxLength) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
 }
 
-function safeProductUrl(value) {
+function storeConfig(store) {
+  return typeof store === 'string' ? STORE_CONFIGS[store] : undefined;
+}
+
+function safeProductUrl(value, config) {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   try {
     const url = new URL(value);
-    if (url.protocol !== 'https:' || !ALLOWED_LIDER_HOSTS.has(url.hostname)) return undefined;
+    if (url.protocol !== 'https:' || !config.hosts.includes(url.hostname)) return undefined;
     return url.toString();
   } catch {
     return undefined;
   }
 }
 
-function searchUrl(item) {
-  return `https://super.lider.cl/supermercado/search?query=${encodeURIComponent(item.name)}`;
+function searchUrl(store, item) {
+  return storeConfig(store).searchUrl(item.name);
 }
 
-function targetUrl(item) {
-  return item.productUrl || searchUrl(item);
+function targetUrl(store, item) {
+  return item.productUrl || searchUrl(store, item);
 }
 
 function sanitizeRequest(payload) {
-  if (!payload || payload.version !== 1 || payload.store !== 'Lider') return null;
+  const config = payload?.version === 1 ? storeConfig(payload.store) : undefined;
+  if (!config) return null;
   if (!Array.isArray(payload.items) || payload.items.length === 0 || payload.items.length > MAX_ITEMS) return null;
   const items = payload.items.map((item, index) => ({
     id: safeText(item?.id, 100) || `item-${index + 1}`,
     name: safeText(item?.name, 240),
     requestedTerm: safeText(item?.requestedTerm, 240),
     quantity: Math.min(MAX_QUANTITY, Math.max(1, Math.round(Number(item?.quantity) || 1))),
-    productUrl: safeProductUrl(item?.productUrl),
+    productUrl: safeProductUrl(item?.productUrl, config),
   }));
   if (items.some(item => !item.name)) return null;
   return {
-    store: 'Lider',
+    store: payload.store,
     items,
   };
 }
@@ -94,12 +101,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({
           ok: false,
           progress: {
-            store: 'Lider',
+            store: safeText(message.payload?.store, 80) || 'Supermercado',
             status: 'failed',
             total: 0,
             added: 0,
             failed: 0,
-            detail: 'El plan recibido no es válido o supera 200 productos.',
+            detail: 'El plan recibido no es válido, la tienda no es compatible o supera 200 productos.',
+          },
+        });
+        return;
+      }
+
+      const activeJob = await getJob();
+      if (activeJob && ['opening', 'loading', 'paused'].includes(activeJob.status)) {
+        sendResponse({
+          ok: false,
+          progress: {
+            store: request.store,
+            status: 'failed',
+            total: request.items.length,
+            added: 0,
+            failed: 0,
+            detail: `Ya hay una carga de ${activeJob.store} en curso. Termínala o reanúdala en su pestaña antes de abrir otra.`,
           },
         });
         return;
@@ -121,8 +144,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       job.retailerTabId = tab.id || null;
       job.status = 'loading';
       await saveJob(job);
-      if (!tab.id) throw new Error('No fue posible crear la pestaña de Lider.');
-      await chrome.tabs.update(tab.id, { url: targetUrl(job.items[0]) });
+      if (!tab.id) throw new Error(`No fue posible crear la pestaña de ${job.store}.`);
+      await chrome.tabs.update(tab.id, { url: targetUrl(job.store, job.items[0]) });
       const payload = progress(job, `Cargando 1 de ${job.items.length}: ${job.items[0].name}`, 'loading');
       await notifySource(job, payload);
       sendResponse({ ok: true, progress: payload });
@@ -140,13 +163,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ok: true,
         job: {
           id: job.id,
+          store: job.store,
           status: job.status,
           currentIndex: job.currentIndex,
           item: job.items[job.currentIndex],
           total: job.items.length,
           added: job.results.filter(result => result.status === 'added').length,
           failed: job.results.filter(result => result.status === 'failed').length,
-          targetUrl: job.items[job.currentIndex] ? targetUrl(job.items[job.currentIndex]) : null,
+          targetUrl: job.items[job.currentIndex]
+            ? targetUrl(job.store, job.items[job.currentIndex])
+            : null,
           inFlightItemId: job.inFlightItemId,
         },
       });
@@ -203,8 +229,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);
         const detail = failed > 0
-          ? `Carro cargado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
-          : `Carro listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
+          ? `Carro de ${job.store} procesado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
+          : `Carro de ${job.store} listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
         sendResponse({ ok: true, done: true, progress: payload });
@@ -220,9 +246,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'loading',
       );
       await notifySource(job, payload);
-      if (!job.retailerTabId) throw new Error('Se perdió la pestaña de Lider.');
-      const nextUrl = targetUrl(nextItem);
-      await chrome.tabs.update(job.retailerTabId, { url: nextUrl });
+      if (!job.retailerTabId) throw new Error(`Se perdió la pestaña de ${job.store}.`);
+      await chrome.tabs.update(job.retailerTabId, { url: targetUrl(job.store, nextItem) });
       sendResponse({
         ok: true,
         done: false,
