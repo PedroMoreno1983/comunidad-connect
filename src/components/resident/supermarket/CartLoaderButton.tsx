@@ -11,7 +11,15 @@ import type {
 
 const EXTENSION_SOURCE = 'convive-cart-loader';
 const EXTENSION_DOWNLOAD = '/downloads/convive-cart-loader.zip';
-const SUPPORTED_STORES = new Set(['Lider']);
+const SUPPORTED_STORES = new Set([
+  'Lider',
+  'Jumbo',
+  'Santa Isabel',
+  'Unimarc',
+  'Tottus',
+  'aCuenta',
+  'Irurzun',
+]);
 
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
@@ -81,6 +89,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const isRunning = progress?.status === 'opening' || progress?.status === 'loading';
   const isPaused = progress?.status === 'paused';
   const isDone = progress?.status === 'completed' || progress?.status === 'completed_with_issues';
+  const isWholesaleQuote = basket.store === 'Irurzun';
 
   if (!extensionReady && !checking) {
     return (
@@ -92,10 +101,10 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           style={{ background: 'var(--cc-ink)' }}
         >
           <Download className="mr-2 h-3.5 w-3.5" />
-          Descargar cargador beta
+          Descargar cargador multitienda
         </a>
         <p className="text-[11px] cc-text-tertiary">
-          Disponible en Chrome de escritorio. Se instala una vez; luego CoCo carga los productos en tu sesión real de Lider.
+          Disponible en Chrome de escritorio. Se instala una vez y trabaja dentro de tu sesión real del supermercado elegido.
         </p>
         <details className="rounded-lg border px-3 py-2 text-[11px] cc-text-secondary" style={{ borderColor: 'var(--cc-line)' }}>
           <summary className="cursor-pointer font-bold">Cómo activarlo por primera vez</summary>
@@ -122,7 +131,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             total: request.items.length,
             added: 0,
             failed: 0,
-            detail: 'Abriendo Lider en una sola pestaña…',
+            detail: `Abriendo ${basket.store} en una sola pestaña…`,
           });
           postToLoader('CONVIVE_CART_LOADER_START', request);
         }}
@@ -143,12 +152,22 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           : isDone
             ? `Carro cargado: ${progress.added} de ${progress.total}`
             : isPaused
-              ? 'Continuar en la pestaña de Lider'
-              : `Cargar ${basket.items.length} en Lider`}
+              ? `Continuar en la pestaña de ${basket.store}`
+              : `Cargar ${basket.items.length} en ${basket.store}`}
       </Button>
       {progress && (
         <p className={`text-[11px] ${progress.failed > 0 ? 'text-warning-fg' : 'cc-text-tertiary'}`}>
           {progress.detail}
+        </p>
+      )}
+      {!progress && (
+        <p className="text-[11px] cc-text-tertiary">
+          Si {basket.store} solicita ubicación o verificación humana, CoCo pausa y continúa después. Nunca confirma ni paga.
+        </p>
+      )}
+      {isWholesaleQuote && (
+        <p className="text-[11px] cc-text-tertiary">
+          Irurzun prepara un carro mayorista para cotización; el valor final se confirma directamente con el proveedor.
         </p>
       )}
     </div>

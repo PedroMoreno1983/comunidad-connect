@@ -6,12 +6,14 @@ const root = path.resolve(__dirname, '..');
 const extensionRoot = path.join(root, 'extensions', 'convive-cart-loader');
 const requiredFiles = [
   'manifest.json',
+  'store-config.js',
   'background.js',
   'convive-bridge.js',
-  'lider-loader.js',
+  'retailer-loader.js',
   'loader.css',
   'README.md',
 ];
+const stores = ['Lider', 'Jumbo', 'Santa Isabel', 'Unimarc', 'Tottus', 'aCuenta', 'Irurzun'];
 
 function check(condition, message) {
   if (!condition) throw new Error(message);
@@ -20,40 +22,83 @@ function check(condition, message) {
 for (const file of requiredFiles) {
   check(fs.existsSync(path.join(extensionRoot, file)), `Falta archivo de extensión: ${file}`);
 }
+check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el loader antiguo de Lider sin usar.');
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
+check(manifest.version === '0.2.0', 'La versión multitienda debe ser 0.2.0.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
+check(!manifest.host_permissions.includes('<all_urls>'), 'No se permite acceso global a hosts.');
 
-const allowedHostPermissions = new Set([
+const expectedHosts = new Set([
   'https://super.lider.cl/*',
   'https://www.lider.cl/*',
   'https://lider.cl/*',
+  'https://www.jumbo.cl/*',
+  'https://jumbo.cl/*',
+  'https://www.santaisabel.cl/*',
+  'https://santaisabel.cl/*',
+  'https://www.unimarc.cl/*',
+  'https://unimarc.cl/*',
+  'https://www.tottus.cl/*',
+  'https://tottus.cl/*',
+  'https://www.acuenta.cl/*',
+  'https://acuenta.cl/*',
+  'https://irurzun.cl/*',
+  'https://www.irurzun.cl/*',
 ]);
 check(
-  manifest.host_permissions.every(permission => allowedHostPermissions.has(permission)),
-  'La extensión solicita un dominio no autorizado.',
+  manifest.host_permissions.length === expectedHosts.size
+    && manifest.host_permissions.every(permission => expectedHosts.has(permission)),
+  'Los permisos de host no coinciden con los supermercados autorizados.',
 );
 
 const bridge = fs.readFileSync(path.join(extensionRoot, 'convive-bridge.js'), 'utf8');
 check(bridge.includes('https://conviveconnect.com'), 'El puente no valida el origen de producción.');
-check(bridge.includes("event.source !== window"), 'El puente no valida la ventana emisora.');
-check(bridge.includes("event.origin !== window.location.origin"), 'El puente no valida el origen del mensaje.');
+check(bridge.includes('event.source !== window'), 'El puente no valida la ventana emisora.');
+check(bridge.includes('event.origin !== window.location.origin'), 'El puente no valida el origen del mensaje.');
+
+const configSource = fs.readFileSync(path.join(extensionRoot, 'store-config.js'), 'utf8');
+const configContext = { globalThis: {} };
+vm.createContext(configContext);
+new vm.Script(configSource, { filename: 'store-config.js' }).runInContext(configContext);
+const configs = configContext.globalThis.CONVIVE_STORE_CONFIGS;
+for (const store of stores) {
+  check(configs[store], `Falta adaptador para ${store}.`);
+  check(configs[store].hosts.length > 0, `${store} no acota sus hosts.`);
+  check(configs[store].addSelectors.length > 0, `${store} no declara selectores de alta.`);
+  check(typeof configs[store].searchUrl === 'function', `${store} no declara URL de búsqueda.`);
+}
+check(
+  configs.Lider.searchUrl('leche').startsWith('https://www.lider.cl/'),
+  'Lider conserva la ruta 404 de super.lider.cl para búsquedas.',
+);
+check(
+  configs.Irurzun.searchUrl('arroz').startsWith('https://irurzun.cl/search?'),
+  'Irurzun conserva la ruta /buscar inexistente.',
+);
 
 const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
 check(background.includes('MAX_ITEMS = 200'), 'El cargador no conserva el límite de 200 productos.');
-check(background.includes('ALLOWED_LIDER_HOSTS'), 'Las URLs de productos no están acotadas a Lider.');
+check(background.includes('safeProductUrl(item?.productUrl, config)'), 'Las URLs exactas no se validan por tienda.');
 check(background.includes('completed_with_issues'), 'Los faltantes no tienen un cierre explícito.');
+check(background.includes('Ya hay una carga de'), 'No se evita iniciar dos cargas simultáneas.');
 
-const loader = fs.readFileSync(path.join(extensionRoot, 'lider-loader.js'), 'utf8');
+const loader = fs.readFileSync(path.join(extensionRoot, 'retailer-loader.js'), 'utf8');
 check(loader.includes('pageIsBlocked'), 'Falta pausa ante verificación humana.');
+check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entrega.');
+check(loader.includes('additionWasVerified'), 'Falta verificar que el carro cambió.');
 check(loader.includes('CLAIM_CART_ITEM'), 'Falta protección contra productos duplicados por recarga.');
 check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto por producto.');
+check(
+  loader.includes('el carro no cambió') && loader.includes('éxito falso'),
+  'Un clic sin efecto puede seguir reportándose como éxito.',
+);
 check(!/\b(click|submit)\s*\(\s*['"`]?(comprar|pagar|confirmar)/i.test(loader), 'El cargador intenta comprar o pagar.');
 
-for (const file of ['background.js', 'convive-bridge.js', 'lider-loader.js']) {
+for (const file of ['store-config.js', 'background.js', 'convive-bridge.js', 'retailer-loader.js']) {
   const source = fs.readFileSync(path.join(extensionRoot, file), 'utf8');
   new vm.Script(source, { filename: file });
 }
@@ -67,11 +112,11 @@ const button = fs.readFileSync(
   'utf8',
 );
 check(page.includes('<CartLoaderButton basket={basket} />'), 'La UI no usa el cargador por canasta.');
-check(button.includes("SUPPORTED_STORES = new Set(['Lider'])"), 'La UI declara tiendas no validadas.');
-check(button.includes('Cargar ${basket.items.length} en Lider'), 'Falta acción clara para cargar el carro.');
-check(
-  button.includes('La carga automática todavía no está validada'),
-  'Las tiendas no compatibles no muestran una limitación honesta.',
-);
+for (const store of stores) {
+  check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
+}
+check(button.includes('Cargar ${basket.items.length} en ${basket.store}'), 'La acción no usa la tienda elegida.');
+check(button.includes('Nunca confirma ni paga'), 'La UI perdió el límite de seguridad.');
+check(button.includes('carro mayorista para cotización'), 'Irurzun no se presenta honestamente como cotización.');
 
-console.log('Cart loader integrity QA passed.');
+console.log('Multistore cart loader integrity QA passed.');
