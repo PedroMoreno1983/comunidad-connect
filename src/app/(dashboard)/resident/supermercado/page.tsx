@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
+import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketSummary,
@@ -197,29 +198,6 @@ export default function SupermarketPage() {
     missingTerms.length > 0 ? `Sin coincidencia: ${missingTerms.join(', ')}` : '',
     'La disponibilidad y el pago se confirman directamente con el comercio.',
   ].filter(Boolean).join('\n');
-  const buildBasketText = (basket: SupermarketPurchasePlan['baskets'][number]) => [
-    `Lista Convive Connect para ${basket.store}`,
-    '',
-    ...basket.items.map((item, index) => {
-      const quantity = item.requestedUnit
-        ? `${item.requestedQuantity} ${item.requestedUnit}`
-        : `x${item.requestedQuantity}`;
-      return `${index + 1}. ${item.requestedTerm} ${quantity} -> ${item.name} (${money(item.lineTotal)})`;
-    }),
-    '',
-    `Subtotal referencial: ${money(basket.subtotal)}`,
-  ].join('\n');
-
-  const handleOpenBasket = (basket: SupermarketPurchasePlan['baskets'][number]) => {
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(buildBasketText(basket)).catch(() => undefined);
-    }
-    toast({
-      title: `Lista copiada para ${basket.store}`,
-      description: `${basket.items.length} productos listos en una sola lista.`,
-      variant: 'success',
-    });
-  };
 
 
   const handleShareList = async () => {
@@ -578,17 +556,7 @@ export default function SupermarketPage() {
                             </div>
                             <ShoppingCart className="h-4 w-4 cc-text-tertiary" />
                           </div>
-                          <a
-                            href={STORE_URLS[basket.store] || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => handleOpenBasket(basket)}
-                            className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-xs font-bold text-white"
-                            style={{ background: 'var(--cc-ink)' }}
-                          >
-                            Copiar {basket.items.length} y abrir tienda
-                            <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                          </a>
+                          <CartLoaderButton basket={basket} />
                         </div>
                       ))}
                     </div>
@@ -611,7 +579,7 @@ export default function SupermarketPage() {
                     )}
 
                     <p className="text-xs cc-text-tertiary">
-                      Cada botón abre una sola tienda y copia su lista completa. El carro aún no se precarga: eso requiere operar dentro de la sesión autenticada del comprador.
+                      En Lider, CoCo opera dentro de tu propia sesión, carga cantidades y deja la revisión final y el pago siempre bajo tu control.
                     </p>
                   </div>
                 )}
