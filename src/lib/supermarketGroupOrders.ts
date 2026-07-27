@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
 import {
   allocateGroupCosts,
@@ -227,17 +228,21 @@ async function upsertContribution(orderId: string, communityId: string, userId: 
 
 export async function createSupermarketGroupOrder(
   profile: GroupProfile,
-  input: { title: string; closesAt: string; items: GroupItemInput[] },
+  input: { title: string; closesAt: string; items: GroupItemInput[]; requestId: string },
 ): Promise<SupermarketGroupOrder> {
   const communityId = requireIdentity(profile);
   const title = input.title.trim().slice(0, 120);
+  const requestId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.requestId)
+    ? input.requestId
+    : randomUUID();
   if (title.length < 3) throw new Error('Escribe un nombre para la compra grupal.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.closesAt) || input.closesAt < new Date().toISOString().slice(0, 10)) {
     throw new Error('La fecha de cierre debe ser hoy o posterior.');
   }
   if (input.items.length === 0) throw new Error('Agrega al menos un producto con su cantidad.');
 
-  const { data, error } = await getSupabaseAdmin()
+  const supabaseAdmin = getSupabaseAdmin();
+  const inserted = await supabaseAdmin
     .from('supermarket_group_orders')
     .insert({
       community_id: communityId,
@@ -245,14 +250,30 @@ export async function createSupermarketGroupOrder(
       title,
       closes_at: input.closesAt,
       status: 'open',
+      client_request_id: requestId,
     })
     .select('*')
     .single();
+  let data = inserted.data;
+  let error = inserted.error;
+  const createdByThisRequest = !inserted.error;
+  if (inserted.error?.code === '23505') {
+    const existing = await supabaseAdmin
+      .from('supermarket_group_orders')
+      .select('*')
+      .eq('created_by', profile.id)
+      .eq('client_request_id', requestId)
+      .maybeSingle();
+    data = existing.data;
+    error = existing.error;
+  }
   if (error || !data) throw error || new Error('No se pudo crear la compra grupal.');
   try {
     await upsertContribution(asString(data.id), communityId, profile.id, input.items);
   } catch (error) {
-    await getSupabaseAdmin().from('supermarket_group_orders').delete().eq('id', data.id);
+    if (createdByThisRequest) {
+      await supabaseAdmin.from('supermarket_group_orders').delete().eq('id', data.id);
+    }
     throw error;
   }
   return (await hydrateOrders(profile, [data as Record<string, unknown>]))[0];

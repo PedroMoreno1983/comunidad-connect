@@ -4,6 +4,7 @@
  * El executor llama directamente a Supabase (Convive Connect DB).
  */
 
+import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { maybeCreateCoCoCase } from './caseService';
 import { PUBLIC_SITE_URL } from '@/lib/config';
@@ -1220,6 +1221,7 @@ export async function executeTool(
                     title: input.title,
                     closesAt: input.closes_at,
                     items: parseGroupShoppingList(input.shopping_list),
+                    requestId: randomUUID(),
                 });
                 return { success: true, order_id: order.id, title: order.title, members: order.members.length, items: order.items.length };
             }
