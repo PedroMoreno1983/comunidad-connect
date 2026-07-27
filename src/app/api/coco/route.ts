@@ -242,6 +242,16 @@ function buildLocalCoCoFallback(
         };
     }
 
+    if (text.includes('solidaridad') || text.includes('fondo solidario') || text.includes('apoyo mutuo') || text.includes('cesant') || text.includes('jubil')) {
+        return {
+            reply: context.role === 'admin'
+                ? 'Apoyo Mutuo ahora se gestiona dentro de Convivencia: puedes revisar la transparencia del fondo, resolver solicitudes confidenciales y supervisar la retribucion mediante tareas vecinales.'
+                : 'Apoyo Mutuo ahora vive dentro de Convivencia. Alli puedes conocer el fondo, solicitar apoyo de forma confidencial y participar en tareas vecinales.',
+            navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,
+            action: 'OPEN_MUTUAL_SUPPORT',
+        };
+    }
+
     if (text.includes('taladro') || text.includes('ayuda mutua') || text.includes('banco de tiempo') || text.includes('apoyo mutuo') || text.includes('habilidad') || text.includes('router') || text.includes('paquete')) {
         return {
             reply: 'Eso calza con el Banco de Tiempo: vecinos que ofrecen ayuda no monetaria como herramientas, paquetes, apoyo digital o cuidados. Puedes publicar una oferta o pedir apoyo sin convertir todo en compra externa.',

@@ -27,14 +27,16 @@ import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import { MutualSupportExperience } from "@/components/convivencia/MutualSupportExperience";
 
-type ActiveLane = "mediation" | "timebank" | "abasto" | "projects";
+type ActiveLane = "mediation" | "timebank" | "abasto" | "projects" | "support";
 
 const LANES: Array<{ id: ActiveLane; label: string; icon: typeof HeartHandshake }> = [
     { id: "mediation", label: "Mediacion CNV", icon: MessageSquareHeart },
     { id: "timebank", label: "Banco de tiempo", icon: HandCoins },
     { id: "abasto", label: "Abasto comunitario", icon: ShoppingBasket },
     { id: "projects", label: "Plaza social", icon: Leaf },
+    { id: "support", label: "Apoyo mutuo", icon: HeartHandshake },
 ];
 
 const cnvFeelings = ["frustrado/a", "cansado/a", "preocupado/a", "sobrepasado/a", "intranquilo/a"];
@@ -310,8 +312,8 @@ export default function ConvivenciaPage() {
                         Tu edificio como <em className="text-italic-serif text-brand-600">red de apoyo</em>.
                     </DisplayHeading>
                     <p className="max-w-3xl text-sm leading-7 cc-text-secondary">
-                        Convive transforma conflictos, habilidades, compras y proyectos en coordinacion concreta:
-                        menos multas automaticas, mas mediacion, economia comun y bienestar visible.
+                        Convive transforma conflictos, habilidades, compras, apoyo solidario y proyectos en coordinacion concreta:
+                        menos multas automaticas, mas mediacion, ayuda mutua, economia comun y bienestar visible.
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {LANES.map(lane => {
@@ -608,6 +610,12 @@ export default function ConvivenciaPage() {
                             </div>
                         ))}
                     </div>
+                </section>
+            )}
+
+            {activeLane === "support" && (
+                <section id="apoyo-mutuo" className="rounded-2xl border border-subtle bg-surface shadow-sm">
+                    <MutualSupportExperience />
                 </section>
             )}
         </div>

@@ -24,6 +24,7 @@ import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
+import { MutualSupportExperience } from "@/components/convivencia/MutualSupportExperience";
 
 function formatCurrency(value: number) {
     return `$${value.toLocaleString("es-CL")}`;
@@ -268,6 +269,24 @@ export default function AdminConvivenciaPage() {
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <section id="apoyo-mutuo" className="rounded-2xl border border-subtle bg-surface p-6 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <Eyebrow>Apoyo mutuo</Eyebrow>
+                        <h2 className="mt-2 text-2xl font-semibold cc-text-primary">Fondo, solicitudes y tareas vecinales</h2>
+                        <p className="mt-1 max-w-3xl text-sm cc-text-secondary">
+                            Gestiona el ciclo solidario desde Convivencia: transparencia del fondo, solicitudes confidenciales y retribucion mediante tareas utiles.
+                        </p>
+                    </div>
+                </div>
+                <details className="group mt-5 rounded-xl border border-subtle bg-elevated/25">
+                    <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold cc-text-primary">
+                        Abrir gestion de Apoyo Mutuo
+                    </summary>
+                    <div className="border-t border-subtle"><MutualSupportExperience /></div>
+                </details>
             </section>
 
             <section className="flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50/60 p-5">

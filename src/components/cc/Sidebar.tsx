@@ -227,7 +227,6 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
         { href: "/services", label: "Directorio Servicios", icon: Wrench, roles: ["resident", "admin"], feature: "maintenance" },
         { href: "/votaciones", label: "Votaciones", icon: Vote, roles: ["resident", "admin"], feature: "voting" },
-        { href: "/expenses/solidaridad", label: "Solidaridad Vecinal", icon: Shield, roles: ["resident", "admin"] },
       ]
     },
     {
