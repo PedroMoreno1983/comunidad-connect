@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "CoCo · Cargador de carros",
+  "version": "0.1.0",
+  "description": "Carga en tu sesión de Lider el carro preparado por CoCo. Nunca compra ni paga por ti.",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://super.lider.cl/*",
+    "https://www.lider.cl/*",
+    "https://lider.cl/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://conviveconnect.com/*",
+        "https://www.conviveconnect.com/*",
+        "http://localhost:3000/*",
+        "http://localhost:3012/*"
+      ],
+      "js": ["convive-bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://super.lider.cl/*",
+        "https://www.lider.cl/*",
+        "https://lider.cl/*"
+      ],
+      "css": ["loader.css"],
+      "js": ["lider-loader.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
