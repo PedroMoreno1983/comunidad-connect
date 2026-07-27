@@ -23,7 +23,7 @@ function row(store: string, term: string, price: number) {
   };
 }
 
-describe('large resilient supermarket checkout', () => {
+describe('large single-store supermarket checkout', () => {
   it('accepts one hundred and twenty distinct products and caps abusive lists', () => {
     const products = Array.from({ length: 205 }, (_, index) => `producto-codigo-${index + 1}`);
     const firstHundredTwenty = parseGroupShoppingList(products.slice(0, 120).join('\n'));
@@ -34,7 +34,7 @@ describe('large resilient supermarket checkout', () => {
     expect(capped.at(-1)?.term).toBe('producto codigo 200');
   });
 
-  it('completes the purchase with a second store when no single store has everything', () => {
+  it('does not complete a personal purchase by splitting it across stores', () => {
     const result = buildBasketComparison(['arroz', 'leche'], {
       arroz: [row('Jumbo', 'arroz', 1500)],
       leche: [row('Lider', 'leche', 1000)],
@@ -42,18 +42,18 @@ describe('large resilient supermarket checkout', () => {
 
     expect(result.recommended).toBeNull();
     expect(result.purchasePlan).toMatchObject({
-      status: 'split_store',
-      complete: true,
+      status: 'needs_substitution',
+      complete: false,
       requestedCount: 2,
-      resolvedCount: 2,
-      storeCount: 2,
-      total: 2500,
-      unresolvedTerms: [],
+      resolvedCount: 1,
+      storeCount: 1,
+      total: 1000,
+      unresolvedTerms: ['arroz'],
     });
-    expect(result.purchasePlan.baskets.map(basket => basket.store).sort()).toEqual(['Jumbo', 'Lider']);
+    expect(result.purchasePlan.baskets.map(basket => basket.store)).toEqual(['Lider']);
   });
 
-  it('keeps the best available plan moving and exposes only genuinely unresolved products', () => {
+  it('keeps unresolved products in the best single store', () => {
     const result = buildBasketComparison(['arroz', 'leche', 'aceite'], {
       arroz: [row('Jumbo', 'arroz', 1500)],
       leche: [row('Lider', 'leche', 1000)],
@@ -64,10 +64,11 @@ describe('large resilient supermarket checkout', () => {
       status: 'needs_substitution',
       complete: false,
       requestedCount: 3,
-      resolvedCount: 2,
-      storeCount: 2,
-      total: 2500,
-      unresolvedTerms: ['aceite'],
+      resolvedCount: 1,
+      storeCount: 1,
+      total: 1000,
+      unresolvedTerms: ['arroz', 'aceite'],
     });
+    expect(result.purchasePlan.baskets.map(basket => basket.store)).toEqual(['Lider']);
   });
 });

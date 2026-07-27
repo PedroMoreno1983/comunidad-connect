@@ -363,6 +363,12 @@ export interface SupermarketCartLoadProgress {
 }
 
 
+export interface SupermarketRequestedItem {
+  term: string;
+  quantity: number;
+  unit?: SupermarketMeasurementUnit;
+}
+
 export interface SupermarketSearchResponse {
   error?: string;
   message: string;
@@ -376,7 +382,9 @@ export interface SupermarketSearchResponse {
   foundCount: number;
   missingTerms: string[];
   alternativesByTerm?: Record<string, SupermarketSearchCandidate[]>;
+  requestedItems?: SupermarketRequestedItem[];
   basketComparison?: SupermarketBasketSummary[];
+  basketOptions?: SupermarketBasketCandidate[];
   checkout?: {
     status: string;
     store?: string;

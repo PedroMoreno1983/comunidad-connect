@@ -123,18 +123,18 @@ async function main() {
     }
 
     await page.waitForTimeout(3_000);
-    if (await page.getByRole('heading', { name: /Tu compra personal/i }).count() === 0) {
+    if (await page.getByRole('heading', { name: /Una lista\. Un supermercado/i }).count() === 0) {
       const bodyText = (await page.locator('body').innerText()).slice(0, 800);
       await page.screenshot({ path: 'C:\\tmp\\supermarket-ui-diagnostic.png', fullPage: true });
       throw Object.assign(new Error('La vista de Supermercado no mostro la compra personal.'), {
         details: { url: page.url(), bodyText, renderErrors },
       });
     }
-    assert(await page.getByRole('heading', { name: /Tu compra personal/i }).isVisible(), 'Personal supermarket is visible');
+    assert(await page.getByRole('heading', { name: /Una lista\. Un supermercado/i }).isVisible(), 'Personal supermarket is visible');
     assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
-    assert(await page.getByText('Tu lista completa,', { exact: false }).isVisible(), 'The personal shopping hero is visible');
+    assert(await page.getByText(/Pega hasta 200 productos/i).isVisible(), 'The single-store shopping hero is visible');
 
-    const colors = await page.getByText('sin productos ocultos.', { exact: false }).evaluate(element => {
+    const colors = await page.getByText(/Pega hasta 200 productos/i).evaluate(element => {
       const section = element.closest('section');
       return {
         foreground: getComputedStyle(element).color,
@@ -163,9 +163,9 @@ async function main() {
     ];
     await page.locator('#shopping-list').fill(products.join('\n'));
     await page.getByRole('button', { name: 'Comparar lista' }).click();
-    await page.getByText(/Encontramos \d+ de 15 productos/).waitFor({ timeout: 90_000 });
-    assert(await page.getByText(/Encontramos \d+ de 15 productos/).isVisible(), 'Coverage reports all fifteen requests');
-    assert(await page.getByText(/^Pediste:/).count() === 15, 'All fifteen requested rows remain visible');
+    await page.getByRole('heading', { name: /Mejores totales|Mayor cobertura/i }).waitFor({ timeout: 90_000 });
+    assert(await page.getByText(/Nunca repartimos tu compra entre supermercados/i).isVisible(), 'Results keep the purchase in one store');
+    assert(await page.locator('tbody tr').count() === 15, 'All fifteen requested rows remain in the contained table');
     assert((await page.locator('#shopping-list').inputValue()).includes('avena'), 'The original list remains editable after comparison');
 
     const desktopPath = 'C:\\tmp\\supermarket-ui-desktop.png';

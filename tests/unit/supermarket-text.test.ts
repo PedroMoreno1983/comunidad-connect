@@ -71,6 +71,8 @@ describe('supermarketText termMatchesProductName', () => {
         expect(productMatchScore('papas', 'Papas fritas corte americano 400 g')).toBe(-1);
         expect(productMatchScore('papas', 'Papas Artesanales Sal de Mar 185 g')).toBe(-1);
         expect(productMatchScore('papas', 'Papa malla 2 kg')).toBeGreaterThan(0);
+        expect(productMatchScore('cebollas', 'Cebolla en polvo 15 g')).toBe(-1);
+        expect(productMatchScore('cebollas', 'Cebolla granel 500 g')).toBeGreaterThan(0);
     });
 
     it('does not treat products labelled sin azucar as sugar', () => {

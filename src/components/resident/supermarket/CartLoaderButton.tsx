@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Download, Loader2, PauseCircle, ShoppingCart } from 'lucide-react';
+import { CheckCircle2, Loader2, LockKeyhole, PauseCircle, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type {
   SupermarketCartLoadProgress,
@@ -10,7 +10,6 @@ import type {
 } from '@/lib/types';
 
 const EXTENSION_SOURCE = 'convive-cart-loader';
-const EXTENSION_DOWNLOAD = '/downloads/convive-cart-loader.zip';
 const SUPPORTED_STORES = new Set([
   'Lider',
   'Jumbo',
@@ -31,7 +30,8 @@ function postToLoader(type: string, payload?: SupermarketCartLoadRequest) {
 
 export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const supported = SUPPORTED_STORES.has(basket.store);
-  const [extensionReady, setExtensionReady] = useState(false);
+  const wholesaleQuote = basket.store === 'Irurzun';
+  const [loaderReady, setLoaderReady] = useState(false);
   const [checking, setChecking] = useState(supported);
   const [progress, setProgress] = useState<SupermarketCartLoadProgress | null>(null);
   const pingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,7 +48,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       };
       if (message.source !== EXTENSION_SOURCE) return;
       if (message.type === 'CONVIVE_CART_LOADER_READY') {
-        setExtensionReady(true);
+        setLoaderReady(true);
         setChecking(false);
       }
       if (message.type === 'CONVIVE_CART_LOADER_PROGRESS' && message.payload?.store === basket.store) {
@@ -78,10 +78,19 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     })),
   }), [basket]);
 
-  if (!supported) {
+  if (!supported || (!loaderReady && !checking)) {
     return (
-      <div className="mt-3 rounded-lg border px-3 py-2 text-xs cc-text-secondary" style={{ borderColor: 'var(--cc-line)' }}>
-        La carga automática todavía no está validada para {basket.store}. CoCo mantiene la lista agrupada, pero no la presenta como carro listo.
+      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}>
+        <div className="flex items-start gap-2">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 cc-text-tertiary" />
+          <div>
+            <p className="text-sm font-bold cc-text-primary">Carga directa aún no conectada</p>
+            <p className="mt-1 text-xs leading-5 cc-text-secondary">
+              {basket.store} no permite que otra web escriba en tu carro sin una conexión autorizada con tu sesión.
+              Convive no te pedirá descargar un archivo desconocido ni afirmará que el carro está cargado cuando no lo está.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -89,38 +98,9 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const isRunning = progress?.status === 'opening' || progress?.status === 'loading';
   const isPaused = progress?.status === 'paused';
   const isDone = progress?.status === 'completed' || progress?.status === 'completed_with_issues';
-  const isWholesaleQuote = basket.store === 'Irurzun';
-
-  if (!extensionReady && !checking) {
-    return (
-      <div className="mt-3 space-y-2">
-        <a
-          href={EXTENSION_DOWNLOAD}
-          download
-          className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-xs font-bold text-white"
-          style={{ background: 'var(--cc-ink)' }}
-        >
-          <Download className="mr-2 h-3.5 w-3.5" />
-          Descargar cargador multitienda
-        </a>
-        <p className="text-[11px] cc-text-tertiary">
-          Disponible en Chrome de escritorio. Se instala una vez y trabaja dentro de tu sesión real del supermercado elegido.
-        </p>
-        <details className="rounded-lg border px-3 py-2 text-[11px] cc-text-secondary" style={{ borderColor: 'var(--cc-line)' }}>
-          <summary className="cursor-pointer font-bold">Cómo activarlo por primera vez</summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-4">
-            <li>Descomprime el archivo descargado.</li>
-            <li>Abre <code>chrome://extensions</code> y activa Modo desarrollador.</li>
-            <li>Pulsa “Cargar extensión sin empaquetar” y elige la carpeta.</li>
-            <li>Recarga Supermercado en Convive.</li>
-          </ol>
-        </details>
-      </div>
-    );
-  }
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="space-y-2">
       <Button
         type="button"
         disabled={checking || isRunning}
@@ -135,25 +115,29 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           });
           postToLoader('CONVIVE_CART_LOADER_START', request);
         }}
-        className="h-10 w-full text-xs text-white"
+        className="h-12 w-full text-sm text-white"
         style={{ background: 'var(--cc-ink)' }}
       >
         {checking || isRunning ? (
-          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : isDone ? (
-          <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+          <CheckCircle2 className="mr-2 h-4 w-4" />
         ) : isPaused ? (
-          <PauseCircle className="mr-2 h-3.5 w-3.5" />
+          <PauseCircle className="mr-2 h-4 w-4" />
         ) : (
-          <ShoppingCart className="mr-2 h-3.5 w-3.5" />
+          <ShoppingCart className="mr-2 h-4 w-4" />
         )}
         {isRunning
           ? `Cargando ${progress.added} de ${progress.total}`
           : isDone
-            ? `Carro cargado: ${progress.added} de ${progress.total}`
+            ? wholesaleQuote
+              ? `Revisar cotización en ${basket.store}`
+              : `Revisar y pagar en ${basket.store}`
             : isPaused
               ? `Continuar en la pestaña de ${basket.store}`
-              : `Cargar ${basket.items.length} en ${basket.store}`}
+              : wholesaleQuote
+                ? `Preparar cotización en ${basket.store}`
+                : `Cargar carro en ${basket.store}`}
       </Button>
       {progress && (
         <p className={`text-[11px] ${progress.failed > 0 ? 'text-warning-fg' : 'cc-text-tertiary'}`}>
@@ -162,12 +146,9 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       )}
       {!progress && (
         <p className="text-[11px] cc-text-tertiary">
-          Si {basket.store} solicita ubicación o verificación humana, CoCo pausa y continúa después. Nunca confirma ni paga.
-        </p>
-      )}
-      {isWholesaleQuote && (
-        <p className="text-[11px] cc-text-tertiary">
-          Irurzun prepara un carro mayorista para cotización; el valor final se confirma directamente con el proveedor.
+          {wholesaleQuote
+            ? 'CoCo prepara el carro mayorista; tú revisas la cotización antes de enviarla.'
+            : 'CoCo carga los productos y cantidades; tú revisas el carro, confirmas la entrega y pagas.'}
         </p>
       )}
     </div>

@@ -21,24 +21,25 @@ function item(requestedTerm: string, store: string, lineTotal: number): Supermar
 }
 
 describe('buildCheckoutPlan', () => {
-  it('keeps a complete multi-store purchase actionable', () => {
+  it('never combines products from different stores into one personal checkout', () => {
     const plan = buildCheckoutPlan([
       item('arroz', 'Jumbo', 2_000),
       item('leche', 'Lider', 1_200),
     ], ['arroz', 'leche'], ['Jumbo', 'Lider']);
 
     expect(plan).toMatchObject({
-      status: 'split_store',
-      complete: true,
+      status: 'needs_substitution',
+      complete: false,
       requestedCount: 2,
-      resolvedCount: 2,
-      storeCount: 2,
-      total: 3_200,
-      unresolvedTerms: [],
+      resolvedCount: 1,
+      storeCount: 1,
+      total: 2_000,
+      unresolvedTerms: ['leche'],
     });
+    expect(plan.baskets.map(basket => basket.store)).toEqual(['Jumbo']);
   });
 
-  it('returns resolved baskets plus replacement tasks when products are missing', () => {
+  it('returns one basket plus replacement tasks when products are missing', () => {
     const plan = buildCheckoutPlan([
       item('arroz', 'Jumbo', 2_000),
       {

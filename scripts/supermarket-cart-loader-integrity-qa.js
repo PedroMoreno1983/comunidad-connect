@@ -111,12 +111,15 @@ const button = fs.readFileSync(
   path.join(root, 'src', 'components', 'resident', 'supermarket', 'CartLoaderButton.tsx'),
   'utf8',
 );
-check(page.includes('<CartLoaderButton basket={basket} />'), 'La UI no usa el cargador por canasta.');
+check(page.includes('<CartLoaderButton basket={selectedBasket} />'), 'La UI no usa el cargador de la tienda elegida.');
 for (const store of stores) {
   check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
 }
-check(button.includes('Cargar ${basket.items.length} en ${basket.store}'), 'La acción no usa la tienda elegida.');
-check(button.includes('Nunca confirma ni paga'), 'La UI perdió el límite de seguridad.');
-check(button.includes('carro mayorista para cotización'), 'Irurzun no se presenta honestamente como cotización.');
+check(button.includes('Cargar carro en ${basket.store}'), 'La acción no usa la tienda elegida.');
+check(button.includes('confirmas la entrega y pagas'), 'La UI perdió el límite de seguridad.');
+check(
+  button.includes("basket.store === 'Irurzun'") && button.includes('carro mayorista') && button.includes('cotización'),
+  'Irurzun no se presenta honestamente como cotización.',
+);
 
 console.log('Multistore cart loader integrity QA passed.');

@@ -11,32 +11,25 @@ export function buildCheckoutPlan(
   requestedTerms: string[],
   preferredStores: string[],
 ): SupermarketPurchasePlan {
-  const availableItems = items.filter(item => item.available && item.store);
+  const discoveredStores = [...new Set(items.flatMap(item => item.store ? [item.store] : []))];
+  const selectedStore = preferredStores.find(store => discoveredStores.includes(store))
+    ?? discoveredStores[0];
+  const availableItems = items.filter(item => (
+    item.available && item.store === selectedStore
+  ));
   const unresolvedTerms = requestedTerms.filter(term => (
     !availableItems.some(item => item.requestedTerm === term)
   ));
-  const discoveredStores = [...new Set(availableItems.flatMap(item => item.store ? [item.store] : []))];
-  const orderedStores = [
-    ...preferredStores.filter(store => discoveredStores.includes(store)),
-    ...discoveredStores.filter(store => !preferredStores.includes(store)),
-  ];
-  const baskets: SupermarketPurchasePlanBasket[] = orderedStores.flatMap(store => {
-    const basketItems = availableItems.filter(item => item.store === store);
-    if (basketItems.length === 0) return [];
-    return [{
-      store,
-      channelType: WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail',
-      subtotal: basketItems.reduce((sum, item) => sum + item.lineTotal, 0),
-      items: basketItems,
-    }];
-  });
+  const baskets: SupermarketPurchasePlanBasket[] = selectedStore ? [{
+    store: selectedStore,
+    channelType: WHOLESALE_STORES.has(selectedStore) ? 'wholesale' : 'retail',
+    subtotal: availableItems.reduce((sum, item) => sum + item.lineTotal, 0),
+    items: availableItems,
+  }] : [];
   const complete = unresolvedTerms.length === 0 && requestedTerms.length > 0;
-  const suggestedStore = baskets[0]?.store;
 
   return {
-    status: complete
-      ? (baskets.length === 1 ? 'single_store' : 'split_store')
-      : 'needs_substitution',
+    status: complete ? 'single_store' : 'needs_substitution',
     complete,
     total: baskets.reduce((sum, basket) => sum + basket.subtotal, 0),
     requestedCount: requestedTerms.length,
@@ -46,9 +39,9 @@ export function buildCheckoutPlan(
     unresolvedTerms,
     substitutionTasks: unresolvedTerms.map(requestedTerm => ({
       requestedTerm,
-      suggestedStore,
-      searchUrl: suggestedStore ? storeSearchUrl(suggestedStore, requestedTerm) : undefined,
-      reason: 'Buscar un equivalente de la misma categoría, formato y unidad antes de cerrar el carro.',
+      suggestedStore: selectedStore,
+      searchUrl: selectedStore ? storeSearchUrl(selectedStore, requestedTerm) : undefined,
+      reason: 'Buscar un equivalente de la misma categoría, formato y unidad en el supermercado elegido.',
     })),
   };
 }
