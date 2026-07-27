@@ -33,6 +33,7 @@ import {
     ResidentFinanceExpense,
     ServiceRequestQueueItem,
     SupermarketGroupComparison,
+    SupermarketGroupCreateInput,
     SupermarketGroupOrder,
     TimeBankOffer,
     Unit,
@@ -2094,7 +2095,7 @@ export const SupermarketGroupService = {
         return data.orders;
     },
 
-    async create(input: { title: string; closesAt: string; shoppingList: string }): Promise<SupermarketGroupOrder> {
+    async create(input: SupermarketGroupCreateInput): Promise<SupermarketGroupOrder> {
         const response = await fetch('/api/supermarket/group-orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

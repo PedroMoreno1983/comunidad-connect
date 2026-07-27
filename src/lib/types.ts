@@ -223,6 +223,13 @@ export interface SupermarketGroupOrder {
   createdAt: string;
   updatedAt: string;
 }
+export interface SupermarketGroupCreateInput {
+  title: string;
+  closesAt: string;
+  shoppingList: string;
+  requestId: string;
+}
+
 
 export type SupermarketMeasurementUnit = 'kg' | 'g' | 'l' | 'ml';
 
