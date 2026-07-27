@@ -28,6 +28,7 @@ import { Tag } from "@/components/cc/Tag";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
 import { MutualSupportExperience } from "@/components/convivencia/MutualSupportExperience";
+import { CommunitySupplyPanel } from "@/components/convivencia/CommunitySupplyPanel";
 
 type ActiveLane = "mediation" | "timebank" | "abasto" | "projects" | "support";
 
@@ -121,6 +122,17 @@ export default function ConvivenciaPage() {
         needed: "",
         cocoInsight: "",
     });
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const requestedLane = new URLSearchParams(window.location.search).get("lane");
+        if (LANES.some(lane => lane.id === requestedLane)) {
+            const frame = window.requestAnimationFrame(() => {
+                setActiveLane(requestedLane as ActiveLane);
+            });
+            return () => window.cancelAnimationFrame(frame);
+        }
+    }, []);
 
     useEffect(() => {
         async function load() {
@@ -481,7 +493,10 @@ export default function ConvivenciaPage() {
 
             {activeLane === "abasto" && (
                 <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-                    <FormShell eyebrow="Abasto comunitario" title="Abrir compra colectiva">
+                    <div className="lg:col-span-2">
+                        <CommunitySupplyPanel />
+                    </div>
+                    <FormShell eyebrow="Campana complementaria" title="Coordinar producto por volumen">
                         <form onSubmit={handleCreatePurchase} className="space-y-4">
                             <Field label="Producto">
                                 <input value={purchaseForm.title} onChange={event => setPurchaseForm(prev => ({ ...prev, title: event.target.value }))} placeholder="Ej. Bidones de agua 20L" className="input-premium h-11 w-full" />

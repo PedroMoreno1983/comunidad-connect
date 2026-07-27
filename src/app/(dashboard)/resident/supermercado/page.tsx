@@ -16,7 +16,6 @@ import {
   ShoppingCart,
   Sparkles,
   Trash2,
-  Users,
   UtensilsCrossed,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -24,7 +23,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
-import { GroupBuyPanel } from '@/components/resident/supermarket/GroupBuyPanel';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketSummary,
@@ -56,7 +54,6 @@ function money(value: number) {
 
 export default function SupermarketPage() {
   const { toast } = useToast();
-  const [mode, setMode] = useState<'compare' | 'group'>('compare');
   const [list, setList] = useState<SupermarketShoppingItem[]>([]);
   const [newItem, setNewItem] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,23 +70,14 @@ export default function SupermarketPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (new URLSearchParams(window.location.search).get('mode') === 'group') {
-      setMode('group');
-    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') !== 'group') return;
+    const order = params.get('order');
+    const destination = order
+      ? `/convivencia?lane=abasto&order=${encodeURIComponent(order)}`
+      : '/convivencia?lane=abasto';
+    window.location.replace(destination);
   }, []);
-
-  const changeMode = (nextMode: 'compare' | 'group') => {
-    setMode(nextMode);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (nextMode === 'group') url.searchParams.set('mode', 'group');
-      else {
-        url.searchParams.delete('mode');
-        url.searchParams.delete('order');
-      }
-      window.history.replaceState({}, '', url);
-    }
-  };
 
   const resetComparison = () => {
     setRecommendedStore(null);
@@ -101,7 +89,6 @@ export default function SupermarketPage() {
     setFoundCount(0);
     setMissingTerms([]);
   };
-
   const addItem = (event?: React.FormEvent) => {
     event?.preventDefault();
     const name = newItem.trim();
@@ -283,47 +270,12 @@ export default function SupermarketPage() {
     <div className="mx-auto max-w-6xl space-y-8 px-4 pb-20 sm:px-0">
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>Supermercado</p>
-        <h1 className="mt-2 text-3xl font-bold cc-text-primary">¿Qué quieres hacer hoy?</h1>
+        <h1 className="mt-2 text-3xl font-bold cc-text-primary">Tu compra personal, mas clara.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          Compara tu lista personal o coordina una compra con otras personas del edificio. Son dos procesos distintos.
+          Compara precios reales, marcas y cantidades para preparar tu compra personal. Las compras comunitarias ahora viven en Convivencia.
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2" role="tablist" aria-label="Tipo de compra">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'compare'}
-          onClick={() => changeMode('compare')}
-          className="rounded-2xl border p-5 text-left transition-colors"
-          style={{
-            borderColor: mode === 'compare' ? 'var(--cc-copper)' : 'var(--cc-line)',
-            background: mode === 'compare' ? 'var(--cc-copper-tint)' : 'var(--cc-paper)',
-          }}
-        >
-          <ShoppingCart className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />
-          <span className="mt-3 block text-lg font-bold cc-text-primary">Comparar mi lista</span>
-          <span className="mt-1 block text-sm cc-text-secondary">Precios, marcas, cantidades y enlaces para comprar.</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'group'}
-          onClick={() => changeMode('group')}
-          className="rounded-2xl border p-5 text-left transition-colors"
-          style={{
-            borderColor: mode === 'group' ? 'var(--cc-copper)' : 'var(--cc-line)',
-            background: mode === 'group' ? 'var(--cc-copper-tint)' : 'var(--cc-paper)',
-          }}
-        >
-          <Users className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />
-          <span className="mt-3 block text-lg font-bold cc-text-primary">Comprar en comunidad</span>
-          <span className="mt-1 block text-sm cc-text-secondary">Invitar, sumar pedidos y repartir cuánto paga cada persona.</span>
-        </button>
-      </div>
-
-      {mode === 'group' ? <GroupBuyPanel /> : (
-        <>
           <section className="relative overflow-hidden rounded-2xl border p-6 text-white md:p-8" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-ink)' }}>
             <div className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
               <div className="space-y-4">
@@ -703,8 +655,6 @@ export default function SupermarketPage() {
               </div>
             </div>
           </div>
-        </>
-      )}
     </div>
   );
 }

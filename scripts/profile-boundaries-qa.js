@@ -56,6 +56,8 @@ function assertStaticRoleBoundaries() {
   const residentConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/convivencia/page.tsx'), 'utf8');
   const adminConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/admin/convivencia/page.tsx'), 'utf8');
   const mutualSupport = fs.readFileSync(path.join(process.cwd(), 'src/components/convivencia/MutualSupportExperience.tsx'), 'utf8');
+  const supermarketPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/resident/supermercado/page.tsx'), 'utf8');
+  const communitySupply = fs.readFileSync(path.join(process.cwd(), 'src/components/convivencia/CommunitySupplyPanel.tsx'), 'utf8');
   const authContext = fs.readFileSync(path.join(process.cwd(), 'src/lib/authContext.tsx'), 'utf8');
   const cocoRoute = fs.readFileSync(path.join(process.cwd(), 'src/app/api/coco/route.ts'), 'utf8');
   const convivenciaMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260726234956_admin_convivencia_privacy.sql'), 'utf8');
@@ -83,6 +85,10 @@ function assertStaticRoleBoundaries() {
   assert(residentConvivencia.includes('id: "support", label: "Apoyo mutuo"') && residentConvivencia.includes('<MutualSupportExperience />'), 'Resident convivencia embeds the real Mutual Support experience');
   assert(adminConvivencia.includes('id="apoyo-mutuo"') && adminConvivencia.includes('<MutualSupportExperience />'), 'Admin convivencia embeds Mutual Support management');
   assert(mutualSupport.includes('export function MutualSupportExperience'), 'Mutual Support is a reusable convivencia component');
+  assert(!supermarketPage.includes('GroupBuyPanel') && !supermarketPage.includes('Comprar en comunidad'), 'Personal Supermarket no longer embeds community purchasing');
+  assert(supermarketPage.includes('/convivencia?lane=abasto') && supermarketPage.includes("params.get('mode') !== 'group'"), 'Legacy group-shopping links redirect from Supermarket to community supply');
+  assert(residentConvivencia.includes('<CommunitySupplyPanel />') && residentConvivencia.includes('requestedLane as ActiveLane'), 'Resident community supply embeds the real group-purchase experience');
+  assert(communitySupply.includes('/convivencia?lane=abasto&order=') && communitySupply.includes('export function CommunitySupplyPanel'), 'Community purchase invitations deep-link to community supply');
   assert(authContext.includes('communities!profiles_community_id_fkey') && authContext.includes('pricing_tiers!communities_tier_id_fkey'), 'Client auth resolves the profile community through explicit relationships');
   assert(!authContext.includes("role: sbUser.user_metadata?.role || 'resident'"), 'Client auth never invents a resident role when profile hydration fails');
   assert(cocoRoute.includes("action: 'OPEN_MUTUAL_SUPPORT'") && cocoRoute.includes("'/admin/convivencia'"), 'CoCo routes Mutual Support by profile');
