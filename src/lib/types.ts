@@ -327,6 +327,41 @@ export interface SupermarketPurchasePlan {
   substitutionTasks: SupermarketSubstitutionTask[];
 }
 
+export type SupermarketCartLoaderStatus =
+  | 'idle'
+  | 'opening'
+  | 'loading'
+  | 'paused'
+  | 'completed'
+  | 'completed_with_issues'
+  | 'failed';
+
+export interface SupermarketCartLoadItem {
+  id: string;
+  name: string;
+  requestedTerm: string;
+  quantity: number;
+  productUrl?: string;
+}
+
+export interface SupermarketCartLoadRequest {
+  version: 1;
+  store: string;
+  items: SupermarketCartLoadItem[];
+  createdAt: string;
+}
+
+export interface SupermarketCartLoadProgress {
+  jobId?: string;
+  store: string;
+  status: SupermarketCartLoaderStatus;
+  total: number;
+  added: number;
+  failed: number;
+  currentItem?: string;
+  detail: string;
+}
+
 
 export interface SupermarketSearchResponse {
   error?: string;

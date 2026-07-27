@@ -1,0 +1,242 @@
+const ACTIVE_JOB_KEY = 'conviveActiveCartJob';
+const MAX_ITEMS = 200;
+const MAX_QUANTITY = 99;
+const ALLOWED_LIDER_HOSTS = new Set(['super.lider.cl', 'www.lider.cl', 'lider.cl']);
+
+function safeText(value, maxLength) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function safeProductUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || !ALLOWED_LIDER_HOSTS.has(url.hostname)) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function searchUrl(item) {
+  return `https://super.lider.cl/supermercado/search?query=${encodeURIComponent(item.name)}`;
+}
+
+function targetUrl(item) {
+  return item.productUrl || searchUrl(item);
+}
+
+function sanitizeRequest(payload) {
+  if (!payload || payload.version !== 1 || payload.store !== 'Lider') return null;
+  if (!Array.isArray(payload.items) || payload.items.length === 0 || payload.items.length > MAX_ITEMS) return null;
+  const items = payload.items.map((item, index) => ({
+    id: safeText(item?.id, 100) || `item-${index + 1}`,
+    name: safeText(item?.name, 240),
+    requestedTerm: safeText(item?.requestedTerm, 240),
+    quantity: Math.min(MAX_QUANTITY, Math.max(1, Math.round(Number(item?.quantity) || 1))),
+    productUrl: safeProductUrl(item?.productUrl),
+  }));
+  if (items.some(item => !item.name)) return null;
+  return {
+    store: 'Lider',
+    items,
+  };
+}
+
+function progress(job, detail, status = job.status) {
+  return {
+    jobId: job.id,
+    store: job.store,
+    status,
+    total: job.items.length,
+    added: job.results.filter(result => result.status === 'added').length,
+    failed: job.results.filter(result => result.status === 'failed').length,
+    currentItem: job.items[job.currentIndex]?.name,
+    detail,
+  };
+}
+
+async function saveJob(job) {
+  await chrome.storage.local.set({ [ACTIVE_JOB_KEY]: job });
+}
+
+async function getJob() {
+  const stored = await chrome.storage.local.get(ACTIVE_JOB_KEY);
+  return stored[ACTIVE_JOB_KEY] || null;
+}
+
+async function notifySource(job, payload) {
+  if (!job.sourceTabId) return;
+  try {
+    await chrome.tabs.sendMessage(job.sourceTabId, {
+      type: 'CART_LOAD_PROGRESS',
+      payload,
+    });
+  } catch {
+    // Convive puede haberse cerrado; la carga sigue en la pestaña del comercio.
+  }
+}
+
+async function pauseJob(job, detail) {
+  job.status = 'paused';
+  job.inFlightItemId = null;
+  await saveJob(job);
+  const payload = progress(job, detail, 'paused');
+  await notifySource(job, payload);
+  return payload;
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  void (async () => {
+    if (message?.type === 'START_CART_LOAD') {
+      const request = sanitizeRequest(message.payload);
+      if (!request || !sender.tab?.id) {
+        sendResponse({
+          ok: false,
+          progress: {
+            store: 'Lider',
+            status: 'failed',
+            total: 0,
+            added: 0,
+            failed: 0,
+            detail: 'El plan recibido no es válido o supera 200 productos.',
+          },
+        });
+        return;
+      }
+
+      const job = {
+        id: crypto.randomUUID(),
+        store: request.store,
+        items: request.items,
+        currentIndex: 0,
+        sourceTabId: sender.tab.id,
+        retailerTabId: null,
+        status: 'opening',
+        inFlightItemId: null,
+        results: [],
+        createdAt: new Date().toISOString(),
+      };
+      const tab = await chrome.tabs.create({ url: 'about:blank', active: true });
+      job.retailerTabId = tab.id || null;
+      job.status = 'loading';
+      await saveJob(job);
+      if (!tab.id) throw new Error('No fue posible crear la pestaña de Lider.');
+      await chrome.tabs.update(tab.id, { url: targetUrl(job.items[0]) });
+      const payload = progress(job, `Cargando 1 de ${job.items.length}: ${job.items[0].name}`, 'loading');
+      await notifySource(job, payload);
+      sendResponse({ ok: true, progress: payload });
+      return;
+    }
+
+    const job = await getJob();
+    if (!job || !sender.tab?.id || sender.tab.id !== job.retailerTabId) {
+      sendResponse({ ok: false });
+      return;
+    }
+
+    if (message?.type === 'GET_CART_LOAD_JOB') {
+      sendResponse({
+        ok: true,
+        job: {
+          id: job.id,
+          status: job.status,
+          currentIndex: job.currentIndex,
+          item: job.items[job.currentIndex],
+          total: job.items.length,
+          added: job.results.filter(result => result.status === 'added').length,
+          failed: job.results.filter(result => result.status === 'failed').length,
+          targetUrl: job.items[job.currentIndex] ? targetUrl(job.items[job.currentIndex]) : null,
+          inFlightItemId: job.inFlightItemId,
+        },
+      });
+      return;
+    }
+
+    if (message?.type === 'CLAIM_CART_ITEM') {
+      const item = job.items[job.currentIndex];
+      if (!item || message.itemId !== item.id || job.inFlightItemId) {
+        sendResponse({ ok: false, alreadyClaimed: Boolean(job.inFlightItemId) });
+        return;
+      }
+      job.inFlightItemId = item.id;
+      job.status = 'loading';
+      await saveJob(job);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message?.type === 'PAUSE_CART_LOAD') {
+      const payload = await pauseJob(job, safeText(message.detail, 300) || 'La carga necesita tu intervención.');
+      sendResponse({ ok: true, progress: payload });
+      return;
+    }
+
+    if (message?.type === 'RETRY_CART_ITEM') {
+      job.inFlightItemId = null;
+      job.status = 'loading';
+      await saveJob(job);
+      const payload = progress(job, `Reintentando ${job.items[job.currentIndex]?.name || 'producto'}…`, 'loading');
+      await notifySource(job, payload);
+      sendResponse({ ok: true, progress: payload });
+      return;
+    }
+
+    if (message?.type === 'COMPLETE_CART_ITEM') {
+      const item = job.items[job.currentIndex];
+      if (!item || item.id !== message.itemId || job.inFlightItemId !== item.id) {
+        sendResponse({ ok: false });
+        return;
+      }
+      const resultStatus = message.added ? 'added' : 'failed';
+      job.results.push({
+        itemId: item.id,
+        name: item.name,
+        status: resultStatus,
+        detail: safeText(message.detail, 300),
+      });
+      job.currentIndex += 1;
+      job.inFlightItemId = null;
+
+      if (job.currentIndex >= job.items.length) {
+        const failed = job.results.filter(result => result.status === 'failed').length;
+        job.status = failed > 0 ? 'completed_with_issues' : 'completed';
+        await saveJob(job);
+        const detail = failed > 0
+          ? `Carro cargado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
+          : `Carro listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
+        const payload = progress(job, detail, job.status);
+        await notifySource(job, payload);
+        sendResponse({ ok: true, done: true, progress: payload });
+        return;
+      }
+
+      job.status = 'loading';
+      await saveJob(job);
+      const nextItem = job.items[job.currentIndex];
+      const payload = progress(
+        job,
+        `Cargando ${job.currentIndex + 1} de ${job.items.length}: ${nextItem.name}`,
+        'loading',
+      );
+      await notifySource(job, payload);
+      if (!job.retailerTabId) throw new Error('Se perdió la pestaña de Lider.');
+      const nextUrl = targetUrl(nextItem);
+      await chrome.tabs.update(job.retailerTabId, { url: nextUrl });
+      sendResponse({
+        ok: true,
+        done: false,
+        progress: payload,
+      });
+      return;
+    }
+
+    sendResponse({ ok: false });
+  })().catch(error => {
+    sendResponse({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Fallo inesperado del cargador.',
+    });
+  });
+  return true;
+});
