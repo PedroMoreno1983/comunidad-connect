@@ -287,6 +287,39 @@ export interface SupermarketBasketSummary {
   missingTerms: string[];
   complete: boolean;
 }
+export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
+  channelType: SupermarketChannelType;
+  items: SupermarketSearchCandidate[];
+  fetchedAt?: string;
+}
+export type SupermarketPurchasePlanStatus = 'single_store' | 'split_store' | 'needs_substitution';
+
+export interface SupermarketPurchasePlanBasket {
+  store: string;
+  channelType: SupermarketChannelType;
+  subtotal: number;
+  items: SupermarketSearchCandidate[];
+}
+
+export interface SupermarketSubstitutionTask {
+  requestedTerm: string;
+  suggestedStore?: string;
+  searchUrl?: string;
+  reason: string;
+}
+
+export interface SupermarketPurchasePlan {
+  status: SupermarketPurchasePlanStatus;
+  complete: boolean;
+  total: number;
+  requestedCount: number;
+  resolvedCount: number;
+  storeCount: number;
+  baskets: SupermarketPurchasePlanBasket[];
+  unresolvedTerms: string[];
+  substitutionTasks: SupermarketSubstitutionTask[];
+}
+
 
 export interface SupermarketSearchResponse {
   error?: string;
@@ -310,6 +343,7 @@ export interface SupermarketSearchResponse {
     requiresRetailerSession: boolean;
     cartPreloaded: boolean;
     detail: string;
+    plan?: SupermarketPurchasePlan;
   };
 }
 export interface CommunityProject {

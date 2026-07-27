@@ -25,8 +25,10 @@ import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { GroupBuyPanel } from '@/components/resident/supermarket/GroupBuyPanel';
+import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketSummary,
+  SupermarketPurchasePlan,
   SupermarketSearchCandidate,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
@@ -67,6 +69,7 @@ export default function SupermarketPage() {
   const [missingTerms, setMissingTerms] = useState<string[]>([]);
   const [alternatives, setAlternatives] = useState<Record<string, SupermarketSearchCandidate[]>>({});
   const [basketComparisons, setBasketComparisons] = useState<SupermarketBasketSummary[]>([]);
+  const [checkoutPlan, setCheckoutPlan] = useState<SupermarketPurchasePlan | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -88,6 +91,17 @@ export default function SupermarketPage() {
     }
   };
 
+  const resetComparison = () => {
+    setRecommendedStore(null);
+    setBasketReady(false);
+    setBasketSubtotal(0);
+    setBasketComparisons([]);
+    setCheckoutPlan(null);
+    setRequestedCount(0);
+    setFoundCount(0);
+    setMissingTerms([]);
+  };
+
   const addItem = (event?: React.FormEvent) => {
     event?.preventDefault();
     const name = newItem.trim();
@@ -107,6 +121,7 @@ export default function SupermarketPage() {
       available: false,
       source: 'manual',
     }]);
+    resetComparison();
     setNewItem('');
   };
 
@@ -136,6 +151,7 @@ export default function SupermarketPage() {
       setMissingTerms(data.missingTerms);
       setAlternatives(data.alternativesByTerm || {});
       setBasketComparisons(data.basketComparison || []);
+      setCheckoutPlan(data.checkout?.plan ?? null);
 
       toast({
         title: data.foundCount === data.requestedCount ? 'Lista completa procesada' : 'Lista procesada con faltantes visibles',
@@ -153,7 +169,10 @@ export default function SupermarketPage() {
     }
   };
 
-  const removeItem = (id: string) => setList(previous => previous.filter(item => item.id !== id));
+  const removeItem = (id: string) => {
+    setList(previous => previous.filter(item => item.id !== id));
+    resetComparison();
+  };
   const toggleItem = (id: string) => setList(previous => previous.map(
     item => item.id === id ? { ...item, checked: !item.checked } : item,
   ));
@@ -167,10 +186,7 @@ export default function SupermarketPage() {
       available: true,
       source: 'catalog',
     } : item));
-    setRecommendedStore(null);
-    setBasketReady(false);
-    setBasketSubtotal(0);
-    setBasketComparisons([]);
+    resetComparison();
   };
 
   const totalAmount = list.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -194,6 +210,30 @@ export default function SupermarketPage() {
     missingTerms.length > 0 ? `Sin coincidencia: ${missingTerms.join(', ')}` : '',
     'La disponibilidad y el pago se confirman directamente con el comercio.',
   ].filter(Boolean).join('\n');
+  const buildBasketText = (basket: SupermarketPurchasePlan['baskets'][number]) => [
+    `Lista Convive Connect para ${basket.store}`,
+    '',
+    ...basket.items.map((item, index) => {
+      const quantity = item.requestedUnit
+        ? `${item.requestedQuantity} ${item.requestedUnit}`
+        : `x${item.requestedQuantity}`;
+      return `${index + 1}. ${item.requestedTerm} ${quantity} -> ${item.name} (${money(item.lineTotal)})`;
+    }),
+    '',
+    `Subtotal referencial: ${money(basket.subtotal)}`,
+  ].join('\n');
+
+  const handleOpenBasket = (basket: SupermarketPurchasePlan['baskets'][number]) => {
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(buildBasketText(basket)).catch(() => undefined);
+    }
+    toast({
+      title: `Lista copiada para ${basket.store}`,
+      description: `${basket.items.length} productos listos en una sola lista.`,
+      variant: 'success',
+    });
+  };
+
 
   const handleShareList = async () => {
     if (list.length === 0) return;
@@ -300,8 +340,8 @@ export default function SupermarketPage() {
                   Tu lista completa, <em style={{ color: '#F5BFA3', fontStyle: 'italic' }}>sin productos ocultos.</em>
                 </DisplayHeading>
                 <p className="max-w-xl text-sm leading-6 text-white/70">
-                  Puedes pegar hasta 30 productos. Si no indicas cantidad, usamos 1. Si no escribes una marca,
-                  mostramos la marca encontrada y te dejamos cambiarla cuando existan alternativas.
+                  Puedes pegar hasta {MAX_SHOPPING_LIST_ITEMS} productos. Si no indicas cantidad, usamos 1. Si no escribes una marca,
+                  CoCo elige una coincidencia vigente y mantiene los faltantes como tareas de reemplazo.
                 </p>
               </div>
 
@@ -316,7 +356,7 @@ export default function SupermarketPage() {
                     style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.10)' }}
                     placeholder={'2 arroz\nleche x 6\naceite\npapel higiénico 2'}
                     value={shoppingInput}
-                    maxLength={1500}
+                    maxLength={MAX_SHOPPING_LIST_CHARS}
                     onChange={event => setShoppingInput(event.target.value)}
                   />
                   <button
@@ -555,7 +595,76 @@ export default function SupermarketPage() {
                   </div>
                 )}
 
-                {recommendedStore && basketReady ? (
+                {checkoutPlan && (
+                  <div className="mt-5 space-y-4 rounded-xl border p-4" style={{ borderColor: checkoutPlan.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase cc-text-tertiary">
+                          {checkoutPlan.complete ? 'Plan de compra completo' : 'Plan listo para continuar'}
+                        </p>
+                        <p className="text-lg font-bold cc-text-primary">
+                          {checkoutPlan.resolvedCount} de {checkoutPlan.requestedCount} productos resueltos
+                        </p>
+                        <p className="text-sm cc-text-secondary">
+                          {checkoutPlan.storeCount} supermercado{checkoutPlan.storeCount === 1 ? '' : 's'} - {money(checkoutPlan.total)}
+                        </p>
+                      </div>
+                      {checkoutPlan.status === 'split_store' && (
+                        <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ background: 'var(--cc-paper-warm)' }}>
+                          Dividida para completar la lista
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {checkoutPlan.baskets.map(basket => (
+                        <div key={basket.store} className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-line)' }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-bold cc-text-primary">{basket.store}</p>
+                              <p className="text-xs cc-text-tertiary">{basket.items.length} productos - {money(basket.subtotal)}</p>
+                            </div>
+                            <ShoppingCart className="h-4 w-4 cc-text-tertiary" />
+                          </div>
+                          <a
+                            href={STORE_URLS[basket.store] || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleOpenBasket(basket)}
+                            className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-xs font-bold text-white"
+                            style={{ background: 'var(--cc-ink)' }}
+                          >
+                            Copiar {basket.items.length} y abrir tienda
+                            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+
+                    {checkoutPlan.substitutionTasks.length > 0 && (
+                      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                        <p className="text-sm font-bold cc-text-primary">Faltantes que no detienen la compra</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {checkoutPlan.substitutionTasks.map(task => task.searchUrl ? (
+                            <a key={task.requestedTerm} href={task.searchUrl} target="_blank" rel="noopener noreferrer" className="rounded-full border px-3 py-1 text-xs font-semibold cc-text-primary" style={{ borderColor: 'var(--cc-line)' }}>
+                              Reemplazar {task.requestedTerm}
+                            </a>
+                          ) : (
+                            <span key={task.requestedTerm} className="rounded-full border px-3 py-1 text-xs font-semibold cc-text-primary" style={{ borderColor: 'var(--cc-line)' }}>
+                              Revisar {task.requestedTerm}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-xs cc-text-tertiary">
+                      Cada botón abre una sola tienda y copia su lista completa. El carro aún no se precarga: eso requiere operar dentro de la sesión autenticada del comprador.
+                    </p>
+                  </div>
+                )}
+
+                {!checkoutPlan && recommendedStore && basketReady ? (
                   <div className="mt-5 space-y-3 rounded-xl border p-4" style={{ borderColor: 'var(--cc-sage)' }}>
                     <div>
                       <p className="text-xs font-bold uppercase cc-text-tertiary">Mejor canasta completa</p>

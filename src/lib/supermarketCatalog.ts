@@ -7,6 +7,7 @@ import {
   normalizeRequestedQuantity,
   SUPERMARKET_STORES,
 } from '@/lib/supermarketBasket';
+import { fetchBatchSupermarketRows } from '@/lib/supermarketCatalogBatch';
 import { matchAnchor, productMatchScore } from '@/lib/supermarketText';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import type { SupermarketMeasurementUnit } from '@/lib/types';
@@ -45,7 +46,10 @@ export async function comparePersistedSupermarkets(
 ) {
   const cutoff = new Date(Date.now() - MAX_PRICE_AGE_MS).toISOString();
   const supabaseAdmin = getSupabaseAdmin();
-  const entries = await Promise.all(terms.map(async term => {
+  const batchedRows = await fetchBatchSupermarketRows(terms, cutoff);
+  const entries: Array<[string, Record<string, unknown>[]]> = batchedRows
+    ? Object.entries(batchedRows)
+    : await Promise.all(terms.map(async term => {
     // Postgres ILIKE es sensible a acentos: buscamos por la palabra ancla
     // (primera significativa, sin acentos y con stem: "jaleas"→"jalea") y
     // refinamos en JS, donde "queso en laminas" calza con "Queso en Láminas Colun".
@@ -103,7 +107,7 @@ export async function comparePersistedSupermarkets(
       ));
     // Never fall back to the broad anchor: an honest missing item is safer
     // than presenting tomato sauce as tomato or a sugar-free yogurt as sugar.
-    return [term, refined] as const;
+    return [term, refined] as [string, Record<string, unknown>[]];
   }));
 
   const rowsByTerm = Object.fromEntries(entries);
