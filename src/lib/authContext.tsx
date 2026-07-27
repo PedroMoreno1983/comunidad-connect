@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('*, communities(id, cover_photo_url, pricing_tiers(features))')
+                .select('*, communities!profiles_community_id_fkey(id, cover_photo_url, pricing_tiers!communities_tier_id_fkey(features))')
                 .eq('id', sbUser.id)
                 .single();
 
@@ -210,11 +210,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Fallback Helper
     const mapSupabaseUserFromMetadata = (sbUser: SupabaseUser) => {
+        const metadataRole = sbUser.user_metadata?.role;
+        if (metadataRole !== 'admin' && metadataRole !== 'resident' && metadataRole !== 'concierge') {
+            console.error('[auth] No authoritative profile role is available; refusing to invent a client role.');
+            setUser(null);
+            return;
+        }
+
         setUser({
             id: sbUser.id,
             name: sbUser.user_metadata?.name || sbUser.email || 'Usuario',
             email: sbUser.email || '',
-            role: sbUser.user_metadata?.role || 'resident',
+            role: metadataRole,
             unitId: sbUser.user_metadata?.unit_id,
             unitName: sbUser.user_metadata?.unit_number ? `Depto ${sbUser.user_metadata.unit_number}` : undefined,
         });

@@ -56,6 +56,7 @@ function assertStaticRoleBoundaries() {
   const residentConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/convivencia/page.tsx'), 'utf8');
   const adminConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/admin/convivencia/page.tsx'), 'utf8');
   const mutualSupport = fs.readFileSync(path.join(process.cwd(), 'src/components/convivencia/MutualSupportExperience.tsx'), 'utf8');
+  const authContext = fs.readFileSync(path.join(process.cwd(), 'src/lib/authContext.tsx'), 'utf8');
   const cocoRoute = fs.readFileSync(path.join(process.cwd(), 'src/app/api/coco/route.ts'), 'utf8');
   const convivenciaMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260726234956_admin_convivencia_privacy.sql'), 'utf8');
 
@@ -82,6 +83,8 @@ function assertStaticRoleBoundaries() {
   assert(residentConvivencia.includes('id: "support", label: "Apoyo mutuo"') && residentConvivencia.includes('<MutualSupportExperience />'), 'Resident convivencia embeds the real Mutual Support experience');
   assert(adminConvivencia.includes('id="apoyo-mutuo"') && adminConvivencia.includes('<MutualSupportExperience />'), 'Admin convivencia embeds Mutual Support management');
   assert(mutualSupport.includes('export function MutualSupportExperience'), 'Mutual Support is a reusable convivencia component');
+  assert(authContext.includes('communities!profiles_community_id_fkey') && authContext.includes('pricing_tiers!communities_tier_id_fkey'), 'Client auth resolves the profile community through explicit relationships');
+  assert(!authContext.includes("role: sbUser.user_metadata?.role || 'resident'"), 'Client auth never invents a resident role when profile hydration fails');
   assert(cocoRoute.includes("action: 'OPEN_MUTUAL_SUPPORT'") && cocoRoute.includes("'/admin/convivencia'"), 'CoCo routes Mutual Support by profile');
   assert(sidebar.includes('title: "MI TURNO"') && sidebar.includes('label: "Entrega de turno"') && sidebar.includes('label: "Bitácora"'), 'Concierge receives the shift-specific navigation');
   assert(sidebar.includes('title: role === "conserje" ? "RECEPCIÓN" : "CONSERJERÍA"') && sidebar.includes('label: "Incidencias"'), 'Concierge receives the reception-specific navigation');
@@ -171,6 +174,16 @@ async function main() {
 
     const adminClient = await signInAs(adminEmail, password);
 
+    const { data: hydratedAdminProfile, error: hydratedAdminError } = await adminClient
+      .from('profiles')
+      .select('role, communities!profiles_community_id_fkey(id, pricing_tiers!communities_tier_id_fkey(features))')
+      .eq('id', adminAuth.user.id)
+      .single();
+    assert(
+      !hydratedAdminError && hydratedAdminProfile?.role === 'admin' && hydratedAdminProfile?.communities?.id === communityId,
+      'Authenticated profile hydration resolves the authoritative role without an ambiguous relationship',
+      { error: hydratedAdminError?.message },
+    );
 
     const conciergeEmail = `profile-concierge-${runId}@qa.convive.local`;
     const { data: conciergeAuth, error: conciergeAuthError } = await admin.auth.admin.createUser({
