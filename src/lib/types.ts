@@ -326,6 +326,58 @@ export interface CommunityProject {
   createdAt: string;
 }
 
+export type SolidarityActiveTab = 'transparency' | 'apply' | 'tasks';
+
+export interface SolidarityFund {
+  id: string;
+  community_id: string;
+  balance: number | string;
+  updated_at: string;
+}
+
+export interface SolidarityLedgerEntry {
+  id: string;
+  community_id: string;
+  entry_type: 'contribution' | 'subsidize' | 'work_offset';
+  amount: number | string;
+  hours: number | string;
+  description: string;
+  created_at: string;
+}
+
+export interface SolidarityApplication {
+  id: string;
+  community_id: string;
+  user_id: string;
+  category: 'unemployment' | 'pensioner' | 'medical' | 'emergency';
+  description: string;
+  amount_requested: number | string;
+  amount_approved: number | string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  resolved_at: string | null;
+  profiles?: {
+    name: string;
+    email: string;
+  };
+}
+
+export interface SolidarityTask {
+  id: string;
+  community_id: string;
+  title: string;
+  category: 'gardening' | 'packages' | 'recycling' | 'digital';
+  hours: number | string;
+  status: 'free' | 'reserved' | 'completed';
+  reserved_by: string | null;
+  reserved_at: string | null;
+  completed_at: string | null;
+  verified_by: string | null;
+  pin_code: string;
+  created_at: string;
+  profiles?: { name: string };
+}
+
 export interface ProfileSettings {
   avatarUrl?: string;
   phoneNumber: string;

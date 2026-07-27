@@ -64,6 +64,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "necesito un taladro", "puedo ayudar con router", "recibir paquetes", "banco de tiempo" | Explicar Banco de Tiempo y NAVEGAR:\`/convivencia\` |
 | "compra colectiva", "abasto", "gas", "bidones", "mayorista" | Explicar Abasto Comunitario y NAVEGAR:\`/convivencia\` |
 | "huerto", "reciclaje", "cuidado de mascotas", "adultos mayores" | Sugerir proyecto de Plaza Social y NAVEGAR:\`/convivencia\` |
+| "apoyo mutuo", "fondo solidario", "cesantia", "jubilacion" | Explicar el ciclo solidario y NAVEGAR:\`/convivencia\` para residentes o \`/admin/convivencia\` para administradores |
 | "llegó un paquete para el 4B" (conserje) | 'register_package' |
 | "va a llegar Juan González al 2A" (conserje) | 'register_visitor' |
 | "manda un WhatsApp al 4B avisando que llegó su paquete" (conserje/admin) | 'send_whatsapp_notification' |

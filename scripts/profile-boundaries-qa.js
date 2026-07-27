@@ -53,6 +53,10 @@ function assertStaticRoleBoundaries() {
   const trainingApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/training/modules/route.ts'), 'utf8');
   const operationsApi = fs.readFileSync(path.join(process.cwd(), 'src/app/api/operations/events/route.ts'), 'utf8');
   const amenitiesPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/amenities/page.tsx'), 'utf8');
+  const residentConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/convivencia/page.tsx'), 'utf8');
+  const adminConvivencia = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/admin/convivencia/page.tsx'), 'utf8');
+  const mutualSupport = fs.readFileSync(path.join(process.cwd(), 'src/components/convivencia/MutualSupportExperience.tsx'), 'utf8');
+  const cocoRoute = fs.readFileSync(path.join(process.cwd(), 'src/app/api/coco/route.ts'), 'utf8');
   const convivenciaMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260726234956_admin_convivencia_privacy.sql'), 'utf8');
 
   assert(
@@ -74,6 +78,11 @@ function assertStaticRoleBoundaries() {
   assert(proxy.includes('pathname.startsWith("/resident/supermercado")') && proxy.includes('allowed = role === "resident"'), 'Personal supermarket route is resident-only');
   assert(sidebar.includes('{ href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"]'), 'Personal supermarket navigation is resident-only');
   assert(convivenciaMigration.includes("get_my_role() = 'admin' AND status IN ('escalated', 'agreement')") && !convivenciaMigration.includes("'concierge'"), 'Mediation RLS exposes only escalated cases to administrators');
+  assert(!sidebar.includes('href: "/expenses/solidaridad"'), 'Mutual Support no longer appears as a separate sidebar module');
+  assert(residentConvivencia.includes('id: "support", label: "Apoyo mutuo"') && residentConvivencia.includes('<MutualSupportExperience />'), 'Resident convivencia embeds the real Mutual Support experience');
+  assert(adminConvivencia.includes('id="apoyo-mutuo"') && adminConvivencia.includes('<MutualSupportExperience />'), 'Admin convivencia embeds Mutual Support management');
+  assert(mutualSupport.includes('export function MutualSupportExperience'), 'Mutual Support is a reusable convivencia component');
+  assert(cocoRoute.includes("action: 'OPEN_MUTUAL_SUPPORT'") && cocoRoute.includes("'/admin/convivencia'"), 'CoCo routes Mutual Support by profile');
   assert(sidebar.includes('title: "MI TURNO"') && sidebar.includes('label: "Entrega de turno"') && sidebar.includes('label: "Bitácora"'), 'Concierge receives the shift-specific navigation');
   assert(sidebar.includes('title: role === "conserje" ? "RECEPCIÓN" : "CONSERJERÍA"') && sidebar.includes('label: "Incidencias"'), 'Concierge receives the reception-specific navigation');
   assert(sidebar.includes('requiresMarketplaceListing: true') && sidebar.includes('requiresServiceProvider: true'), 'Resident provider tools are conditional on real activity');
