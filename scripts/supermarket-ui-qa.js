@@ -117,20 +117,21 @@ async function main() {
     page.on('console', message => {
       if (message.type() === 'error') renderErrors.push(message.text());
     });
-    await page.goto(`${baseUrl}/resident/supermercado`, { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/resident/supermercado`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     if (new URL(page.url()).pathname.includes('/login')) {
       throw new Error('La sesión temporal QA no fue aceptada por el middleware local.');
     }
 
     await page.waitForTimeout(3_000);
-    if (await page.getByRole('tab', { name: /Comparar mi lista/i }).count() === 0) {
+    if (await page.getByRole('heading', { name: /Tu compra personal/i }).count() === 0) {
       const bodyText = (await page.locator('body').innerText()).slice(0, 800);
       await page.screenshot({ path: 'C:\\tmp\\supermarket-ui-diagnostic.png', fullPage: true });
-      throw Object.assign(new Error('La vista de Supermercado no mostró sus modos de compra.'), {
+      throw Object.assign(new Error('La vista de Supermercado no mostro la compra personal.'), {
         details: { url: page.url(), bodyText, renderErrors },
       });
     }
-    assert(await page.getByRole('tab', { name: /Comprar en comunidad/i }).isVisible(), 'Both purchase modes are visible');
+    assert(await page.getByRole('heading', { name: /Tu compra personal/i }).isVisible(), 'Personal supermarket is visible');
+    assert(await page.getByText('Comprar en comunidad', { exact: true }).count() === 0, 'Community purchasing is absent from Supermarket');
     assert(await page.getByText('Tu lista completa,', { exact: false }).isVisible(), 'The personal shopping hero is visible');
 
     const colors = await page.getByText('sin productos ocultos.', { exact: false }).evaluate(element => {
@@ -171,9 +172,9 @@ async function main() {
     await page.screenshot({ path: desktopPath, fullPage: true });
     report.screenshots.push(desktopPath);
 
-    await page.getByRole('tab', { name: /Comprar en comunidad/i }).click();
-    await page.getByRole('heading', { name: /Una lista común/i }).waitFor();
-    assert(new URL(page.url()).searchParams.get('mode') === 'group', 'Community mode has a shareable URL state');
+    await page.goto(`${baseUrl}/convivencia?lane=abasto`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await page.getByRole('heading', { name: /Compra en comunidad/i }).waitFor();
+    assert(new URL(page.url()).searchParams.get('lane') === 'abasto', 'Community purchasing opens inside community supply');
     assert(await page.getByText('Crea y comparte').isVisible(), 'Community flow explains how to invite and participate');
 
     const title = `Compra visual ${runId}`;
@@ -194,7 +195,7 @@ async function main() {
     await page.waitForTimeout(300);
     const sharedText = await page.evaluate(() => navigator.clipboard.readText());
     assert(
-      sharedText.includes(`mode=group&order=${order.data.id}`),
+      sharedText.includes(`convivencia?lane=abasto&order=${order.data.id}`),
       'Invitation copies a direct link to the exact group order',
     );
 
@@ -246,7 +247,7 @@ async function main() {
     }).eq('id', order.data.id);
     if (locked.error) throw locked.error;
 
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
     const orderCard = page.locator(`#group-order-${order.data.id}`);
     await orderCard.getByText('Quién paga cuánto').waitFor();
     assert(await orderCard.getByText('Organizador QA', { exact: true }).first().isVisible(), 'Settlement names the organizer');
@@ -255,7 +256,7 @@ async function main() {
     assert(await orderCard.getByText('$3.000', { exact: true }).isVisible() && await orderCard.getByText('$4.000', { exact: true }).isVisible(), 'Settlement displays exact participant amounts');
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
     const dimensions = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,

@@ -27,7 +27,7 @@ function money(value: number) {
   return `$${value.toLocaleString('es-CL')}`;
 }
 
-export function GroupBuyPanel() {
+export function CommunitySupplyPanel() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<SupermarketGroupOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,7 +175,7 @@ export function GroupBuyPanel() {
 
   const share = async (order: SupermarketGroupOrder) => {
     if (typeof window === 'undefined') return;
-    const url = `${window.location.origin}/resident/supermercado?mode=group&order=${order.id}`;
+    const url = `${window.location.origin}/convivencia?lane=abasto&order=${order.id}`;
     const text = `Súmate a “${order.title}” en Convive Connect. Abre el enlace y agrega tu lista: ${url}`;
     try {
       if (navigator.share) {
@@ -203,9 +203,9 @@ export function GroupBuyPanel() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--cc-copper)' }}>
-            <Users className="h-4 w-4" /> Compra comunitaria
+            <Users className="h-4 w-4" /> Abasto comunitario
           </div>
-          <h2 className="mt-2 text-2xl font-bold cc-text-primary">Una lista común, una compra y un reparto claro</h2>
+          <h2 className="mt-2 text-2xl font-bold cc-text-primary">Compra en comunidad: una lista, un pedido y un reparto claro</h2>
           <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
             Crea la compra, comparte el enlace con personas de tu comunidad y cada una agrega lo suyo.
             CoCo consolida cantidades, compara supermercados y mayoristas, y calcula cuánto paga cada participante al organizador.
