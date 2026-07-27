@@ -1,9 +1,9 @@
 import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { matchAnchor, productMatchScore } from '@/lib/supermarketText';
+import { matchAnchor, matchAnchors, productIntent, productMatchScore } from '@/lib/supermarketText';
 
-const QUERY_CHUNK_SIZE = 40;
+const QUERY_CHUNK_SIZE = 25;
 const CANDIDATES_PER_STORE = 12;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -26,6 +26,15 @@ function chunks<T>(values: T[], size: number): T[][] {
   return result;
 }
 
+function normalizeGroupedRows(value: unknown): Record<string, Record<string, unknown>[]> | null {
+  const payload = asRecord(value);
+  if (!payload) return null;
+  return Object.fromEntries(Object.entries(payload).map(([term, rows]) => [
+    term,
+    normalizeRows(rows).map(row => ({ ...row, requested_term: term })),
+  ]));
+}
+
 function isMissingBatchFunction(error: { code?: string; message?: string }): boolean {
   return error.code === 'PGRST202'
     || error.code === '42883'
@@ -40,16 +49,42 @@ export async function fetchBatchSupermarketRows(
   const collected: Record<string, unknown>[] = [];
 
   for (const termChunk of chunks(terms, QUERY_CHUNK_SIZE)) {
-    const { data, error } = await supabaseAdmin.rpc('search_supermarket_products_batch', {
-      p_queries: termChunk.map(term => ({ term, anchor: matchAnchor(term) })),
+    const queries = termChunk.map(term => ({
+      term,
+      anchor: matchAnchor(term),
+      anchors: matchAnchors(term),
+      intent: productIntent(term),
+    }));
+    const { data, error } = await supabaseAdmin.rpc('search_supermarket_products_batch_v2', {
+      p_queries: queries,
       p_cutoff: cutoff,
       p_limit_per_store: CANDIDATES_PER_STORE,
     });
-    if (error) {
-      if (isMissingBatchFunction(error)) return null;
-      throw error;
+    if (!error) {
+      const grouped = normalizeGroupedRows(data);
+      if (!grouped) throw new Error('Respuesta agrupada de supermercado invalida.');
+      collected.push(...Object.values(grouped).flat());
+      continue;
     }
-    collected.push(...normalizeRows(data));
+    if (!isMissingBatchFunction(error)) throw error;
+
+    // Six terms keep the legacy tabular fallback below the 1,000-row ceiling.
+    for (const fallbackChunk of chunks(termChunk, 6)) {
+      const { data: fallbackData, error: fallbackError } = await supabaseAdmin.rpc('search_supermarket_products_batch', {
+        p_queries: fallbackChunk.map(term => ({
+          term,
+          anchor: matchAnchor(term),
+          intent: productIntent(term),
+        })),
+        p_cutoff: cutoff,
+        p_limit_per_store: CANDIDATES_PER_STORE,
+      });
+      if (fallbackError) {
+        if (isMissingBatchFunction(fallbackError)) return null;
+        throw fallbackError;
+      }
+      collected.push(...normalizeRows(fallbackData));
+    }
   }
 
   return Object.fromEntries(terms.map(term => {

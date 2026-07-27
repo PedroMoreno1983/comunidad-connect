@@ -30,12 +30,23 @@ export function significantWords(term: string): string[] {
 
 /** Raíz tolerante a plurales simples: "laminas"→"lamina", "jaleas"→"jalea". */
 function stem(word: string): string {
+    const aliases: Record<string, string> = {
+        champinones: 'champinon',
+        comida: 'alimento',
+        limones: 'limon',
+        panales: 'panal',
+        pescado: 'merluza',
+        yoghurt: 'yogur',
+        yogurt: 'yogur',
+    };
+    const alias = aliases[word];
+    if (alias) return alias;
     if (word.endsWith('s') && word.length > 3) return word.slice(0, -1);
     return word;
 }
 
 const PACKAGE_PREFIXES = new Set([
-    'bandeja', 'bolsa', 'caja', 'malla', 'pack', 'paquete',
+    'bandeja', 'bolsa', 'caja', 'filete', 'malla', 'pack', 'paquete',
 ]);
 
 const FRESH_PRODUCE = new Set([
@@ -44,10 +55,22 @@ const FRESH_PRODUCE = new Set([
 ]);
 
 const PROCESSED_PRODUCE_MARKERS = new Set([
-    'artesanal', 'bebida', 'chips', 'cocida', 'congelada', 'conserva',
-    'crema', 'deshidratado', 'frita', 'galleta', 'jugo', 'prefrita', 'pure',
-    'sal', 'salsa', 'sabor', 'snack', 'sopa',
+    'apanada', 'artesanal', 'bebida', 'caldo', 'chips', 'cocida', 'congelada',
+    'congelado', 'conserva', 'crema', 'crispy', 'deshidratada', 'deshidratado',
+    'duquesa', 'frita', 'gajo', 'galleta', 'jugo', 'mermelada', 'polvo',
+    'prefrita', 'pure', 'rellena', 'rodaja', 'sal', 'salsa', 'sabor',
+    'sazonador', 'snack', 'sopa', 'souffle',
 ]);
+
+export type SupermarketProductIntent = 'fresh_produce' | 'general';
+
+export function productIntent(term: string): SupermarketProductIntent {
+    const words = stemmedWords(term);
+    const firstWord = words[0];
+    return words.length === 1 && firstWord && FRESH_PRODUCE.has(firstWord)
+        ? 'fresh_produce'
+        : 'general';
+}
 
 function stemmedWords(value: string): string[] {
     return significantWords(value).map(stem);
@@ -99,6 +122,22 @@ export function productMatchScore(term: string, productName: string): number {
 export function matchAnchor(term: string): string {
     const first = significantWords(term)[0] || foldAccents(term).split(/\s+/)[0] || foldAccents(term);
     return stem(first);
+}
+
+/** Catalogs use yogur, yogurt and yoghurt for the same product family. */
+export function matchAnchors(term: string): string[] {
+    const anchor = matchAnchor(term);
+    const variants: Record<string, string[]> = {
+        azucar: ['azucar', 'azúcar'],
+        champinon: ['champinon', 'champiñon'],
+        limon: ['limon', 'limón'],
+        panal: ['panal', 'pañal'],
+        platano: ['platano', 'plátano'],
+        salmon: ['salmon', 'salmón'],
+        te: ['te', 'té'],
+        yogur: ['yogur', 'yogurt', 'yoghurt'],
+    };
+    return variants[anchor] ?? [anchor];
 }
 
 /**
