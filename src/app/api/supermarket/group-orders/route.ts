@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { MAX_SHOPPING_LIST_CHARS } from '@/lib/supermarketGroupDomain';
 import {
   compareSupermarketGroupOrder,
   createSupermarketGroupOrder,
@@ -57,13 +58,14 @@ export async function POST(request: NextRequest) {
       order = await createSupermarketGroupOrder(profile, {
         title: clean(body.title, 120),
         closesAt: clean(body.closesAt, 10),
-        items: parseGroupShoppingList(clean(body.shoppingList, 1_500)),
+        items: parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS)),
+        requestId: clean(body.requestId, 36),
       });
     } else if (action === 'join') {
       order = await joinSupermarketGroupOrder(
         profile,
         orderId,
-        parseGroupShoppingList(clean(body.shoppingList, 1_500)),
+        parseGroupShoppingList(clean(body.shoppingList, MAX_SHOPPING_LIST_CHARS)),
       );
     } else if (action === 'lock') {
       order = await lockSupermarketGroupOrder(profile, orderId);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleDollarSign,
   ExternalLink,
@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { SupermarketGroupService } from '@/lib/api';
+import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type { SupermarketGroupComparison, SupermarketGroupOrder } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -37,6 +38,7 @@ export function GroupBuyPanel() {
   const [contributions, setContributions] = useState<Record<string, string>>({});
   const [comparisons, setComparisons] = useState<Record<string, SupermarketGroupComparison[]>>({});
 
+  const createInFlight = useRef(false);
   const refresh = async () => {
     setLoading(true);
     try {
@@ -76,9 +78,16 @@ export function GroupBuyPanel() {
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (createInFlight.current) return;
+    createInFlight.current = true;
     setBusy('create');
     try {
-      const order = await SupermarketGroupService.create({ title, closesAt, shoppingList });
+      const order = await SupermarketGroupService.create({
+        title,
+        closesAt,
+        shoppingList,
+        requestId: crypto.randomUUID(),
+      });
       setOrders(previous => [order, ...previous]);
       setTitle('');
       setShoppingList('');
@@ -94,6 +103,7 @@ export function GroupBuyPanel() {
         variant: 'destructive',
       });
     } finally {
+      createInFlight.current = false;
       setBusy(null);
     }
   };
@@ -238,11 +248,11 @@ export function GroupBuyPanel() {
               value={shoppingList}
               onChange={event => setShoppingList(event.target.value)}
               placeholder={'2 arroz\nleche x 6\naceite'}
-              maxLength={1500}
+              maxLength={MAX_SHOPPING_LIST_CHARS}
             />
           </label>
           <p className="text-xs cc-text-tertiary">
-            Una línea por producto. Si no indicas cantidad, CoCo usa 1. La marca es opcional.
+            Hasta {MAX_SHOPPING_LIST_ITEMS} productos. Si no indicas cantidad, CoCo usa 1. La marca es opcional.
           </p>
           <Button type="submit" disabled={busy === 'create'} className="w-full">
             {busy === 'create' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackagePlus className="mr-2 h-4 w-4" />}
