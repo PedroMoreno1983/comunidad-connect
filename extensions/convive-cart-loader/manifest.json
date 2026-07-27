@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CoCo · Cargador de carros",
-  "version": "0.1.0",
-  "description": "Carga en tu sesión de Lider el carro preparado por CoCo. Nunca compra ni paga por ti.",
+  "version": "0.2.0",
+  "description": "Carga el carro preparado por CoCo en supermercados compatibles. Nunca compra ni paga por ti.",
   "permissions": [
     "storage",
     "tabs"
@@ -10,7 +10,19 @@
   "host_permissions": [
     "https://super.lider.cl/*",
     "https://www.lider.cl/*",
-    "https://lider.cl/*"
+    "https://lider.cl/*",
+    "https://www.jumbo.cl/*",
+    "https://jumbo.cl/*",
+    "https://www.santaisabel.cl/*",
+    "https://santaisabel.cl/*",
+    "https://www.unimarc.cl/*",
+    "https://unimarc.cl/*",
+    "https://www.tottus.cl/*",
+    "https://tottus.cl/*",
+    "https://www.acuenta.cl/*",
+    "https://acuenta.cl/*",
+    "https://irurzun.cl/*",
+    "https://www.irurzun.cl/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -30,10 +42,22 @@
       "matches": [
         "https://super.lider.cl/*",
         "https://www.lider.cl/*",
-        "https://lider.cl/*"
+        "https://lider.cl/*",
+        "https://www.jumbo.cl/*",
+        "https://jumbo.cl/*",
+        "https://www.santaisabel.cl/*",
+        "https://santaisabel.cl/*",
+        "https://www.unimarc.cl/*",
+        "https://unimarc.cl/*",
+        "https://www.tottus.cl/*",
+        "https://tottus.cl/*",
+        "https://www.acuenta.cl/*",
+        "https://acuenta.cl/*",
+        "https://irurzun.cl/*",
+        "https://www.irurzun.cl/*"
       ],
       "css": ["loader.css"],
-      "js": ["lider-loader.js"],
+      "js": ["store-config.js", "retailer-loader.js"],
       "run_at": "document_idle"
     }
   ]

@@ -1,16 +1,36 @@
 # CoCo · Cargador de carros
 
 Extensión Manifest V3 que recibe una canasta de Convive Connect y agrega los
-productos en la sesión real del comprador en Lider.
+productos en la sesión real del comprador. La versión 0.2 incluye adaptadores
+independientes para Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e
+Irurzun.
 
 ## Alcance de seguridad
 
 - Sólo acepta planes iniciados desde `conviveconnect.com`.
-- Sólo puede navegar y actuar en dominios de Lider declarados en el manifest.
+- Sólo navega y actúa en los dominios de supermercados declarados en el manifest.
+- Cada URL exacta de producto se valida contra los dominios de su propia tienda.
 - No lee contraseñas, medios de pago ni datos del checkout.
 - No confirma pedidos, no reserva horarios y no ejecuta pagos.
-- Pausa ante CAPTCHA o verificación humana y permite reanudar.
-- Persiste el avance para continuar la carga producto por producto.
+- Pausa ante CAPTCHA, verificación humana o selección de entrega y permite reanudar.
+- Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
+- Persiste el avance para continuar producto por producto y no detiene toda la lista por un faltante.
+
+## Comportamiento por tienda
+
+| Tienda | Flujo |
+| --- | --- |
+| Lider | Ficha exacta o búsqueda; pausa ante el control humano de Walmart. |
+| Jumbo | Ficha o búsqueda Cencosud; carga y ajusta cantidades. |
+| Santa Isabel | Ficha o búsqueda Cencosud; carga y ajusta cantidades. |
+| Unimarc | Pausa para elegir despacho/retiro cuando el sitio lo exige. |
+| Tottus | Pausa ante Cloudflare; reanuda en la ficha exacta después de la validación humana. |
+| aCuenta | Pausa para elegir despacho/retiro cuando el sitio lo exige. |
+| Irurzun | Prepara el carro mayorista de cotización; no inventa un precio final. |
+
+Los sitios externos pueden cambiar sus controles sin aviso. Por eso los
+adaptadores y sus pruebas deben mantenerse por separado y nunca se debe asumir
+éxito sólo porque el clic fue ejecutado.
 
 ## Instalación de prueba
 
@@ -27,14 +47,7 @@ Google; el código no puede saltarse ese proceso.
 ## Flujo
 
 1. CoCo envía productos exactos, cantidades y URLs al puente de la extensión.
-2. La extensión abre una única pestaña de Lider en la sesión del comprador.
-3. Recorre los productos, agrega cantidades y conserva un registro de avance.
-4. Los faltantes no detienen el resto del carro.
+2. La extensión abre una única pestaña del supermercado en la sesión del comprador.
+3. Recorre los productos, verifica cada alta, ajusta cantidades y conserva el avance.
+4. Los faltantes se registran y la carga continúa con el siguiente producto.
 5. El comprador revisa disponibilidad, reemplazos, despacho y pago.
-
-## Desarrollo
-
-Los dominios y permisos se mantienen deliberadamente acotados. Antes de sumar
-otro supermercado, se debe validar su flujo real y agregar un adaptador
-independiente; no se debe declarar una tienda compatible usando selectores
-genéricos no verificados.
