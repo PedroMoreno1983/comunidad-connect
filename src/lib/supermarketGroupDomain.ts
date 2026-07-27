@@ -3,6 +3,9 @@ import type { SupermarketMeasurementUnit } from '@/lib/types';
 export type GroupItemInput = { term: string; quantity: number; unit?: SupermarketMeasurementUnit };
 export type GroupSettlementContribution = { userId: string; term: string; quantity: number };
 export type GroupSettlementBasketItem = { requestedTerm: string; lineTotal: number };
+export const MAX_SHOPPING_LIST_CHARS = 12_000;
+export const MAX_SHOPPING_LIST_ITEMS = 200;
+
 
 function normalizeTerm(value: string): string {
   return value
@@ -23,7 +26,7 @@ function normalizeMeasurementUnit(value: string): SupermarketMeasurementUnit {
 }
 export function parseGroupShoppingList(value: string): GroupItemInput[] {
   const consolidated = new Map<string, GroupItemInput>();
-  for (const [index, rawEntry] of value.slice(0, 1_500).split(/[,;\n]+/).entries()) {
+  for (const [index, rawEntry] of value.slice(0, MAX_SHOPPING_LIST_CHARS).split(/[,;\n]+/).entries()) {
     let entry = rawEntry
       .trim()
       .replace(/^[-*•]\s*/, '')
@@ -79,7 +82,7 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     const nextQuantity = Math.min(maxQuantity, (existing?.quantity || 0) + quantity);
     consolidated.set(term, { term, quantity: nextQuantity, unit: effectiveUnit });
   }
-  return [...consolidated.values()].slice(0, 30);
+  return [...consolidated.values()].slice(0, MAX_SHOPPING_LIST_ITEMS);
 }
 
 export function allocateGroupCosts(
