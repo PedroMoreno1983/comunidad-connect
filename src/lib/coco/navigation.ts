@@ -26,6 +26,7 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/staff/training": "Aula Virtual IA",
     "/admin/finanzas": "Finanzas",
     "/admin/finanzas/egresos": "Egresos y emisión del gasto común",
+    "/admin/finanzas/cobranza": "Cobranza y pagos",
     "/admin/units": "Unidades",
     "/admin/consumo": "Control Hídrico",
     "/admin/mantenimiento": "Mantenimiento",
