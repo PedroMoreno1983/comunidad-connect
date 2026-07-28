@@ -107,7 +107,9 @@ CREATE POLICY "unit_charges_read" ON public.unit_charges
     community_id = public.get_my_community_id()
     AND (
       public.get_my_role() IN ('admin', 'concierge')
-      OR unit_id IN (SELECT unit_id FROM public.profiles WHERE id = auth.uid())
+      -- units.owner_id (uuid) evita el choque de tipos con profiles.unit_id, que
+      -- es TEXT: comparar el unit_id (uuid) contra esa columna daba "uuid = text".
+      OR unit_id IN (SELECT id FROM public.units WHERE owner_id = auth.uid())
     )
   );
 
@@ -122,7 +124,9 @@ CREATE POLICY "unit_payments_read" ON public.unit_payments
     community_id = public.get_my_community_id()
     AND (
       public.get_my_role() IN ('admin', 'concierge')
-      OR unit_id IN (SELECT unit_id FROM public.profiles WHERE id = auth.uid())
+      -- units.owner_id (uuid) evita el choque de tipos con profiles.unit_id, que
+      -- es TEXT: comparar el unit_id (uuid) contra esa columna daba "uuid = text".
+      OR unit_id IN (SELECT id FROM public.units WHERE owner_id = auth.uid())
     )
   );
 
