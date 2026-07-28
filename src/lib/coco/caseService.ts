@@ -232,7 +232,14 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
 
     const recurring = includesAny(text, ['otra vez', 'de nuevo', 'cuarta vez', 'tercera vez', 'varias veces', 'recurrente']);
     const pureGreeting = /^(hola|buenas|buenos dias|buenas tardes|buenas noches|gracias)[\s!.?]*$/.test(text.trim());
-    const asksInfo = pureGreeting || includesAny(text, ['cuando vence', 'como pago', 'donde veo', 'como reservo', 'que es']);
+    // Preguntar cómo se hace algo no es pedir que se haga: sin esto, un
+    // "¿cómo puedo crear los cobros del mes?" abre un caso operativo falso.
+    const asksInfo = pureGreeting || includesAny(text, [
+        'cuando vence', 'como pago', 'donde veo', 'como reservo', 'que es',
+        'como puedo', 'como se', 'como hago', 'como funciona', 'donde puedo',
+        'donde se', 'en que modulo', 'en que seccion', 'me gustaria saber',
+        'quisiera saber', 'no logre identificar', 'no encuentro', 'se puede',
+    ]);
     const alreadyActed = role === 'concierge' && includesAny(text, ['ya ', 'subi', 'registre', 'autorice', 'cerre', 'avise', 'llego']);
 
     let type: CaseType = 'consulta_info';
@@ -253,7 +260,7 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         action = 'registrar_bitacora';
         shouldCreateCase = true;
         reason = 'Conserjería reporta una acción ya realizada que debe quedar en bitácora.';
-    } else if (role === 'admin' && includesAny(text, ['crea', 'crear', 'agenda', 'programa', 'asigna', 'coordina'])) {
+    } else if (role === 'admin' && !asksInfo && includesAny(text, ['crea', 'crear', 'agenda', 'programa', 'asigna', 'coordina'])) {
         type = 'gestion_admin';
         urgency = high ? 'alta' : 'media';
         action = 'crear_ticket';
