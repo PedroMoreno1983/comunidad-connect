@@ -192,6 +192,22 @@ function buildLocalCoCoFallback(
     const text = message.toLowerCase();
     const page = context.currentPage || '';
 
+    // Admin: armar/emitir el gasto común del mes (egresos + prorrateo). Va PRIMERO
+    // para que no lo intercepte el bloque legal ni, peor, la regla de Abasto
+    // Comunitario (donde "gasto" matcheaba el keyword "gas").
+    if (
+        context.role === 'admin' &&
+        (text.includes('egreso') || text.includes('prorrate') || text.includes('prorrata') ||
+            text.includes('armar el gasto') || text.includes('emitir') || text.includes('cobros del mes') ||
+            text.includes('gasto comun') || text.includes('gasto común') || text.includes('gastos comunes'))
+    ) {
+        return {
+            reply: 'Para armar el gasto común del mes: en /admin/finanzas/egresos cargas los egresos del edificio (luz, agua, remuneraciones, mantención…), revisas el prorrateo entre las unidades y emites los cobros de una vez, cuadrado al peso. Las alícuotas de cada unidad se definen en /admin/units.',
+            navigate: '/admin/finanzas/egresos',
+            action: 'OPEN_COMMUNITY_BILLING',
+        };
+    }
+
     if (
         text.includes('ley') ||
         text.includes('copropiedad') ||
@@ -229,7 +245,7 @@ function buildLocalCoCoFallback(
 
         return {
             reply: 'Como orientación operativa, CoCo usa la Ley 21.442 de Copropiedad Inmobiliaria, su reglamento y la Ley 21.719 de datos personales. Para administrador: revisar inscripción vigente, rendición de cuentas, cobro y conservación de bienes comunes. Para convivencia: registrar hechos, aplicar reglamento y mantener trazabilidad. Para datos personales: mínimo dato necesario, finalidad clara y acceso por rol. No reemplazo asesoría legal, pero puedo ayudarte a ordenar el caso.',
-            navigate: context.role === 'admin' ? '/admin/training' : context.role === 'concierge' ? '/staff/training' : undefined,
+            navigate: context.role === 'admin' || context.role === 'concierge' ? '/staff/training' : undefined,
             action: 'OPEN_LEGAL_GUIDANCE',
         };
     }
@@ -260,7 +276,7 @@ function buildLocalCoCoFallback(
         };
     }
 
-    if (text.includes('compra colectiva') || text.includes('abasto') || text.includes('mayorista') || text.includes('gas') || text.includes('bidon') || text.includes('bidón') || text.includes('limpieza')) {
+    if (text.includes('compra colectiva') || text.includes('abasto') || text.includes('mayorista') || /\bgas\b/.test(text) || text.includes('bidon') || text.includes('bidón') || text.includes('limpieza')) {
         return {
             reply: 'Para eso está Abasto Comunitario: campañas de compra colectiva para ahorrar por volumen y coordinar entregas con menos fricción. Te puedo llevar a crear una campaña con proveedor, precio retail, precio comunitario y mínimo de participantes.',
             navigate: context.role === 'admin' ? '/admin/convivencia' : context.role === 'resident' ? '/convivencia' : undefined,

@@ -23,6 +23,7 @@ export interface Unit {
   tower: string;
   ownerId?: string; // User ID
   tenantId?: string; // User ID
+  sharePermille?: number | null; // Alícuota en tanto por mil (‰); la suma de la comunidad debería dar 1000
 }
 
 export interface MarketplaceItem {

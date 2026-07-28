@@ -140,8 +140,8 @@ export default function AdminConvivenciaPage() {
             <section className="overflow-hidden rounded-2xl bg-[#17130f] p-7 text-white shadow-sm sm:p-9">
                 <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
                     <div>
-                        <Eyebrow className="text-white/55">Gobernanza comunitaria</Eyebrow>
-                        <DisplayHeading size={42} className="mt-3 text-white">
+                        <Eyebrow style={{ color: "rgba(255,255,255,0.55)" }}>Gobernanza comunitaria</Eyebrow>
+                        <DisplayHeading size={42} className="mt-3" style={{ color: "#fff" }}>
                             Gestionar la convivencia <em className="text-[#efb18f]">sin invadirla</em>.
                         </DisplayHeading>
                         <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65">

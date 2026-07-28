@@ -6,6 +6,13 @@
 
 import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { equalSplitPermille } from '@/lib/finance/prorration';
+import {
+    BillingError,
+    addCommunityExpense,
+    previewBilling,
+    issueBilling,
+} from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import {
@@ -293,6 +300,75 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
+    {
+        name: 'create_unit',
+        description: 'Crea un departamento/unidad en la comunidad, con su alícuota opcional. SOLO administradores. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                number: { type: 'string', description: 'Número o identificador del depto, ej: 1204' },
+                tower: { type: 'string', description: 'Torre o bloque, ej: A. Opcional.' },
+                floor: { type: 'string', description: 'Piso (número). Opcional.' },
+                share_permille: { type: 'string', description: 'Alícuota en tanto por mil (‰), ej: 8,3333. Opcional; se puede repartir después.' },
+            },
+            required: ['number'],
+        },
+    },
+    {
+        name: 'set_unit_alicuota',
+        description: 'Fija la alícuota (‰, tanto por mil) de una unidad existente. SOLO administradores. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                unit_id: { type: 'string', description: 'ID o número del depto.' },
+                permille: { type: 'string', description: 'Alícuota en ‰, ej: 8,3333.' },
+            },
+            required: ['unit_id', 'permille'],
+        },
+    },
+    {
+        name: 'distribute_alicuotas_equally',
+        description: 'Reparte 1000‰ en partes iguales entre TODAS las unidades de la comunidad (suma exacta 1000). Útil cuando todas pagan igual. SOLO administradores. Requiere confirmación.',
+        input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+        name: 'add_community_expense',
+        description: 'Carga un egreso del edificio para un mes (luz, agua, remuneraciones, mantención, seguridad u otro), base para armar el gasto común. SOLO administradores. Requiere confirmación.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                month: { type: 'string', description: 'Mes en formato AAAA-MM.' },
+                label: { type: 'string', description: 'Descripción del egreso, ej: Cuenta de luz espacios comunes.' },
+                amount: { type: 'string', description: 'Monto en pesos (entero, sin puntos).' },
+                category: { type: 'string', description: 'water | electricity | salaries | maintenance | security | other. Por defecto other.' },
+                prorate_method: { type: 'string', description: 'share (por alícuota) o equal (partes iguales). Por defecto share.' },
+            },
+            required: ['month', 'label', 'amount'],
+        },
+    },
+    {
+        name: 'preview_billing',
+        description: 'Previsualiza el reparto del gasto común de un mes: cuánto se cobraría a cada unidad y el total, SIN emitir nada. SOLO administradores. Úsala SIEMPRE antes de emitir.',
+        input_schema: {
+            type: 'object' as const,
+            properties: { month: { type: 'string', description: 'Mes en formato AAAA-MM.' } },
+            required: ['month'],
+        },
+    },
+    {
+        name: 'issue_billing',
+        description: 'Emite el gasto común del mes: crea el cobro real a cada unidad y notifica a los residentes. SOLO administradores. Requiere confirmación. Muestra SIEMPRE el preview (preview_billing) antes de proponerla.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                month: { type: 'string', description: 'Mes en formato AAAA-MM.' },
+                due_date: { type: 'string', description: 'Fecha de vencimiento en formato AAAA-MM-DD.' },
+            },
+            required: ['month', 'due_date'],
+        },
+    },
+
     // ── MÓDULO: IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────
     {
         name: 'request_urgent_access_approval',
@@ -391,6 +467,11 @@ export const MUTATING_TOOLS = new Set<string>([
     'create_supermarket_group_order',
     'join_supermarket_group_order',
     'lock_supermarket_group_order',
+    'create_unit',
+    'set_unit_alicuota',
+    'distribute_alicuotas_equally',
+    'add_community_expense',
+    'issue_billing',
 ]);
 
 const RESIDENT_TOOLS = new Set([
@@ -411,6 +492,8 @@ const CONCIERGE_TOOLS = new Set([
 const ADMIN_TOOLS = new Set([
     ...CONCIERGE_TOOLS,
     'create_circular', 'get_defaulters_list', 'create_poll', 'update_unit_data',
+    'create_unit', 'set_unit_alicuota', 'distribute_alicuotas_equally',
+    'add_community_expense', 'preview_billing', 'issue_billing',
 ]);
 
 const SYSTEM_TOOLS = new Set([
@@ -453,6 +536,16 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Crear votación', summary: str('title') || 'Nueva votación para la comunidad.' };
         case 'update_unit_data':
             return { title: 'Modificar unidad', summary: `Actualizar datos de la unidad ${unit('unit_id')}.` };
+        case 'create_unit':
+            return { title: 'Crear unidad', summary: `Depto ${str('number')}${str('tower') ? `, torre ${str('tower')}` : ''}${str('share_permille') ? `, alícuota ${str('share_permille')}‰` : ''}.` };
+        case 'set_unit_alicuota':
+            return { title: 'Fijar alícuota', summary: `Unidad ${unit('unit_id')} → ${str('permille')}‰.` };
+        case 'distribute_alicuotas_equally':
+            return { title: 'Repartir alícuotas', summary: 'Dividir 1000‰ en partes iguales entre todas las unidades.' };
+        case 'add_community_expense':
+            return { title: 'Cargar egreso', summary: `${str('label') || 'Egreso'} · $${str('amount')} · ${str('month')}.` };
+        case 'issue_billing':
+            return { title: 'Emitir gasto común', summary: `Emitir ${str('month')} (vence ${str('due_date')}): crea el cobro real a las unidades. Revisa el reparto antes de aprobar.` };
         case 'request_urgent_access_approval':
             return { title: 'Pedir acceso de emergencia', summary: str('reason') || 'Solicitud de apertura remota urgente.' };
         case 'dispatch_provider':
@@ -496,6 +589,20 @@ function isIsoDate(value?: string) {
 
 function isTime(value?: string) {
     return Boolean(value && /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value));
+}
+
+/** Parsea una alícuota ("8,3333" o "8.3333"). "" -> null. Inválido/negativo -> undefined. */
+function parsePermilleInput(raw?: string): number | null | undefined {
+    const trimmed = (raw ?? '').trim().replace(',', '.');
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n < 0) return undefined;
+    return Math.round(n * 10000) / 10000;
+}
+
+/** Monto en pesos desde texto: descarta separadores y símbolos ("$150.000" -> 150000). */
+function parsePesos(raw?: string): number {
+    return Number(String(raw ?? '').replace(/[^\d]/g, ''));
 }
 
 async function scopedUnit(userCtx: UserContext, requestedUnitId?: string) {
@@ -1089,6 +1196,127 @@ export async function executeTool(
                 
                 if (error || !updatedUnit) return { error: 'No se pudo actualizar el departamento', detail: error?.message };
                 return { success: true, message: `Información de la unidad actualizada correctamente.` };
+            }
+
+            // ── ADMIN · GASTO COMÚN ──────────────────────────────────────────
+            case 'create_unit': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden crear unidades.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const number = (input.number || '').trim().slice(0, 80);
+                if (!number) return { error: 'Indica el número o identificador del depto.' };
+
+                const record: Record<string, unknown> = { community_id: communityId, number };
+                if (input.tower && input.tower.trim()) record.tower = input.tower.trim().slice(0, 40);
+                if (input.floor && input.floor.trim()) {
+                    const floor = Number(input.floor);
+                    if (!Number.isInteger(floor) || floor < -10 || floor > 300) return { error: 'El piso indicado no es válido.' };
+                    record.floor = floor;
+                }
+                if (input.share_permille && input.share_permille.trim()) {
+                    const permille = parsePermilleInput(input.share_permille);
+                    if (permille === undefined) return { error: 'La alícuota debe ser un número mayor o igual a 0.' };
+                    record.share_permille = permille;
+                }
+
+                const { data, error } = await supabaseAdmin.from('units').insert(record).select('id, number').single();
+                if (error) return { error: 'No se pudo crear la unidad.', detail: error.message };
+                return { success: true, unit_id: data.id, message: `Unidad ${data.number} creada.` };
+            }
+
+            case 'set_unit_alicuota': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden fijar alícuotas.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const unitId = await scopedUnit(userCtx, input.unit_id);
+                if (!unitId) return forbidden('La unidad no existe en tu comunidad.');
+                const permille = parsePermilleInput(input.permille);
+                if (permille === undefined || permille === null) return { error: 'La alícuota debe ser un número mayor o igual a 0.' };
+                const { error } = await supabaseAdmin
+                    .from('units')
+                    .update({ share_permille: permille })
+                    .eq('id', unitId)
+                    .eq('community_id', communityId);
+                if (error) return { error: 'No se pudo fijar la alícuota.' };
+                return { success: true, message: `Alícuota de la unidad fijada en ${permille}‰.` };
+            }
+
+            case 'distribute_alicuotas_equally': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden repartir alícuotas.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                const { data: units, error } = await supabaseAdmin
+                    .from('units')
+                    .select('id')
+                    .eq('community_id', communityId)
+                    .order('number', { ascending: true });
+                if (error) return { error: 'No se pudieron cargar las unidades.' };
+                if (!units || units.length === 0) return { error: 'La comunidad no tiene unidades registradas.' };
+                const shares = equalSplitPermille(units.length);
+                const results = await Promise.all(units.map((unitRow, index) =>
+                    supabaseAdmin.from('units').update({ share_permille: shares[index] }).eq('id', unitRow.id).eq('community_id', communityId)));
+                if (results.some(result => result.error)) return { error: 'No se pudieron actualizar todas las alícuotas.' };
+                return { success: true, message: `1000‰ repartido en partes iguales entre ${units.length} unidades (${shares[0]}‰ cada una).` };
+            }
+
+            case 'add_community_expense': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden cargar egresos.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                try {
+                    const expense = await addCommunityExpense(communityId, userCtx.user_id ?? null, {
+                        month: (input.month || '').trim(),
+                        label: (input.label || '').trim(),
+                        amount: parsePesos(input.amount),
+                        category: (input.category || '').trim() || undefined,
+                        prorateMethod: input.prorate_method === 'equal' ? 'equal' : 'share',
+                    });
+                    return { success: true, expense_id: expense.id, message: `Egreso "${expense.label}" por $${Number(expense.amount).toLocaleString('es-CL')} cargado a ${expense.month}.` };
+                } catch (billingError) {
+                    if (billingError instanceof BillingError) return { error: billingError.message };
+                    throw billingError;
+                }
+            }
+
+            case 'preview_billing': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden ver el prorrateo.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                try {
+                    const preview = await previewBilling(communityId, (input.month || '').trim());
+                    return {
+                        month: preview.month,
+                        total_egresos: preview.totalExpenses,
+                        total_a_cobrar: preview.totalCharged,
+                        unidades: preview.unitCount,
+                        egresos_cargados: preview.expenseCount,
+                        reparte_en_partes_iguales: preview.fellBackToEqualSplit,
+                        advertencias: preview.warnings,
+                        ya_emitido: Boolean(preview.issuedRun),
+                        detalle: preview.units.map(unitRow => ({ unidad: unitRow.label, cobro: unitRow.total })),
+                    };
+                } catch (billingError) {
+                    if (billingError instanceof BillingError) return { error: billingError.message };
+                    throw billingError;
+                }
+            }
+
+            case 'issue_billing': {
+                if (!isAdmin(userCtx)) return { error: 'Solo los administradores pueden emitir el gasto común.' };
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                try {
+                    const result = await issueBilling(communityId, userCtx.user_id ?? null, (input.month || '').trim(), (input.due_date || '').trim());
+                    return {
+                        success: true,
+                        message: `Gasto común de ${result.month} emitido: ${result.issuedUnits} unidad(es), total $${result.totalCharged.toLocaleString('es-CL')}. ${result.notified} residente(s) notificado(s).`
+                            + (result.skippedUnits.length ? ` Omitidas por tener ya un cobro: ${result.skippedUnits.join(', ')}.` : ''),
+                        ...result,
+                    };
+                } catch (billingError) {
+                    if (billingError instanceof BillingError) return { error: billingError.message };
+                    throw billingError;
+                }
             }
 
             // ── IOT & PREDICTIVE MAINTENANCE ─────────────────────────────────

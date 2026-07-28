@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PollCard } from "@/components/polls/PollCard";
+import { PollManager } from "@/components/admin/PollManager";
 import { PollsService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
@@ -123,6 +124,24 @@ export default function VotacionesPage() {
             throw error;
         }
     };
+
+    // Votaciones unificadas: el administrador ve el módulo de GESTIÓN (crear,
+    // gestionar y ver resultados) en la misma ruta. El residente ve el módulo
+    // de participación (votar). Antes esto vivía separado en /admin/votaciones.
+    if (user?.role === "admin") {
+        return (
+            <div className="mx-auto max-w-7xl space-y-7 px-4 py-6 sm:px-6 sm:py-8">
+                <header className="border-b pb-6" style={{ borderColor: "var(--cc-line)" }}>
+                    <Eyebrow>Participación comunitaria</Eyebrow>
+                    <DisplayHeading size={32} className="mt-2">Gestión de votaciones</DisplayHeading>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 font-medium cc-text-secondary">
+                        Crea consultas formales, publícalas para los residentes y revisa los resultados agregados. Todo desde un solo lugar.
+                    </p>
+                </header>
+                <PollManager />
+            </div>
+        );
+    }
 
     if (loading) {
         return (
