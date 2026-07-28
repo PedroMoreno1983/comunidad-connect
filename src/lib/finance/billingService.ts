@@ -422,6 +422,80 @@ export async function issueBilling(
 }
 
 /**
+ * Copia los egresos de un mes al siguiente.
+ *
+ * Un edificio repite casi los mismos egresos todos los meses (remuneraciones,
+ * luz, agua, ascensor, aseo). Volver a teclearlos es donde se cuela el error
+ * humano, así que se copian con su categoría y método de prorrateo, dejando los
+ * montos para que el administrador los ajuste contra las boletas reales.
+ */
+export async function copyExpensesFromMonth(
+    communityId: string,
+    createdBy: string | null,
+    fromMonth: string,
+    toMonth: string,
+) {
+    if (!MONTH_PATTERN.test(fromMonth) || !MONTH_PATTERN.test(toMonth)) {
+        throw new BillingError('bad_month', 'Indica los meses en formato AAAA-MM.');
+    }
+    if (fromMonth === toMonth) {
+        throw new BillingError('same_month', 'El mes de origen y el de destino no pueden ser el mismo.');
+    }
+
+    const admin = getSupabaseAdmin();
+    await assertNotIssued(communityId, toMonth);
+
+    const { data: source, error: sourceError } = await admin
+        .from('community_expenses')
+        .select('category, label, amount, provider, prorate_method')
+        .eq('community_id', communityId)
+        .eq('month', fromMonth);
+    if (sourceError) throw sourceError;
+    if (!source || source.length === 0) {
+        throw new BillingError('no_source', `No hay egresos cargados en ${fromMonth} para copiar.`);
+    }
+
+    // No duplicar lo que ya existe en el destino: se copia solo lo que falta,
+    // comparando por descripción, así reintentar la copia es inofensivo.
+    const { data: existing } = await admin
+        .from('community_expenses')
+        .select('label')
+        .eq('community_id', communityId)
+        .eq('month', toMonth);
+    const existingLabels = new Set((existing ?? []).map(row => String(row.label).trim().toLowerCase()));
+
+    const toInsert = source
+        .filter(row => !existingLabels.has(String(row.label).trim().toLowerCase()))
+        .map(row => ({
+            community_id: communityId,
+            month: toMonth,
+            category: row.category,
+            label: row.label,
+            amount: row.amount,
+            provider: row.provider,
+            prorate_method: row.prorate_method,
+            created_by: createdBy,
+        }));
+
+    if (toInsert.length === 0) {
+        throw new BillingError('already_copied', `Los egresos de ${fromMonth} ya están en ${toMonth}.`, 409);
+    }
+
+    const { data, error } = await admin
+        .from('community_expenses')
+        .insert(toInsert)
+        .select('id');
+    if (error) throw error;
+
+    return {
+        fromMonth,
+        toMonth,
+        copied: data?.length ?? 0,
+        skipped: source.length - toInsert.length,
+    };
+}
+
+/**
  * Crea el cobro de gasto común de UNA unidad, fuera de la emisión mensual.
  *
  * Es el camino corto que usa el Agent Center para un cobro puntual. Vive acá y

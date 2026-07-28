@@ -401,6 +401,91 @@ export async function getCommunityBalances(communityId: string) {
     };
 }
 
+export interface DebtCertificate {
+    community: { name: string; address: string | null };
+    unit: { label: string; ownerName: string | null };
+    issuedAt: string;
+    issuedBy: string | null;
+    balance: number;
+    overdueAmount: number;
+    oldestOverdueMonth: string | null;
+    /** Deuda pendiente agrupada por periodo, que es como se lee un certificado. */
+    pendingByMonth: Array<{ month: string; concepts: Array<{ label: string; amount: number }>; total: number }>;
+    isUpToDate: boolean;
+}
+
+/**
+ * Certificado de deuda de una unidad.
+ *
+ * En Chile se exige para transferir una propiedad y es el documento con que la
+ * administración acredita lo adeudado. Por eso arma el detalle por periodo y no
+ * solo un total: quien lo recibe necesita ver de qué meses viene la deuda.
+ */
+export async function getDebtCertificate(
+    communityId: string,
+    unitId: string,
+    issuedBy: string | null,
+): Promise<DebtCertificate> {
+    const admin = getSupabaseAdmin();
+    const unit = await assertUnitBelongsToCommunity(communityId, unitId);
+
+    const [statement, communityResult, ownerResult, expensesResult, chargesResult] = await Promise.all([
+        getUnitStatement(communityId, unitId),
+        admin.from('communities').select('name, address').eq('id', communityId).maybeSingle(),
+        unit.owner_id
+            ? admin.from('profiles').select('name, full_name').eq('id', unit.owner_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+        admin.from('expenses')
+            .select('month, amount, status')
+            .eq('community_id', communityId).eq('unit_id', unitId).neq('status', 'paid'),
+        admin.from('unit_charges')
+            .select('month, label, amount, status')
+            .eq('community_id', communityId).eq('unit_id', unitId).eq('status', 'pending'),
+    ]);
+
+    const byMonth = new Map<string, Array<{ label: string; amount: number }>>();
+    for (const row of expensesResult.data ?? []) {
+        const month = String(row.month);
+        if (!byMonth.has(month)) byMonth.set(month, []);
+        byMonth.get(month)!.push({ label: 'Gasto común', amount: Math.round(Number(row.amount || 0)) });
+    }
+    for (const row of chargesResult.data ?? []) {
+        const month = String(row.month);
+        if (!byMonth.has(month)) byMonth.set(month, []);
+        byMonth.get(month)!.push({ label: String(row.label), amount: Math.round(Number(row.amount || 0)) });
+    }
+
+    const pendingByMonth = [...byMonth.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([month, concepts]) => ({
+            month,
+            concepts,
+            total: concepts.reduce((sum, concept) => sum + concept.amount, 0),
+        }));
+
+    const ownerRow = ownerResult.data as { name?: string; full_name?: string } | null;
+
+    return {
+        community: {
+            name: String(communityResult.data?.name || 'Comunidad'),
+            address: communityResult.data?.address ? String(communityResult.data.address) : null,
+        },
+        unit: {
+            label: statement.unitLabel,
+            ownerName: ownerRow?.full_name || ownerRow?.name || null,
+        },
+        issuedAt: new Date().toISOString().slice(0, 10),
+        issuedBy,
+        balance: statement.balance,
+        overdueAmount: statement.overdueAmount,
+        oldestOverdueMonth: statement.oldestOverdueMonth,
+        pendingByMonth,
+        // Un saldo a favor también es estar al día: no se certifica deuda si no
+        // la hay, aunque el número sea negativo.
+        isUpToDate: statement.balance <= 0,
+    };
+}
+
 /**
  * Genera los cargos de interés por mora del periodo indicado.
  *

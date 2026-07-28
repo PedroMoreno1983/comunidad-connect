@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-    AlertTriangle, ArrowLeft, Loader2, Percent, Receipt, Wallet, X,
+    AlertTriangle, ArrowLeft, FileText, Loader2, Percent, Receipt, Wallet, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -339,9 +339,17 @@ export default function CobranzaPage() {
                             <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                 Cartola de {selected.label}
                             </h2>
-                            <button type="button" onClick={() => { setSelected(null); setStatement(null); }} aria-label="Cerrar cartola" className="rounded-lg p-1 cc-text-tertiary">
-                                <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href={`/admin/finanzas/certificado?unitId=${selected.unitId}`}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold underline cc-text-secondary"
+                                >
+                                    <FileText className="h-3.5 w-3.5" /> Certificado de deuda
+                                </Link>
+                                <button type="button" onClick={() => { setSelected(null); setStatement(null); }} aria-label="Cerrar cartola" className="rounded-lg p-1 cc-text-tertiary">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
 
                         {!statement ? (

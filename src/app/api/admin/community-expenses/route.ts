@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
-import { BillingError, listCommunityExpenses, addCommunityExpense, deleteCommunityExpense } from '@/lib/finance/billingService';
+import {
+    BillingError, listCommunityExpenses, addCommunityExpense, deleteCommunityExpense,
+    copyExpensesFromMonth,
+} from '@/lib/finance/billingService';
 
 export const runtime = 'nodejs';
 
@@ -52,6 +55,19 @@ export async function POST(req: NextRequest) {
         if (auth.error) return auth.error;
 
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+
+        // Copiar los egresos del mes anterior es la acción más frecuente al
+        // abrir un periodo nuevo, así que comparte endpoint con la carga manual.
+        if (cleanText(body.action, 20) === 'copy_from_month') {
+            const result = await copyExpensesFromMonth(
+                auth.communityId,
+                auth.profile.id,
+                cleanText(body.fromMonth, 7),
+                cleanText(body.month, 7),
+            );
+            return NextResponse.json(result);
+        }
+
         const expense = await addCommunityExpense(auth.communityId, auth.profile.id, {
             month: cleanText(body.month, 7),
             label: cleanText(body.label, 160),
