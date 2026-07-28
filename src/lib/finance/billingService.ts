@@ -75,6 +75,8 @@ export interface BillingIssueResult {
     notified: number;
     fellBackToEqualSplit: boolean;
     warnings: string[];
+    /** Aporte al fondo de reserva generado por esta emisión. 0 si no aplica. */
+    reserveContribution: number;
 }
 
 /** Lanza BillingError 409 si el mes ya tiene una emisión vigente. */
@@ -373,15 +375,49 @@ export async function issueBilling(
         );
     }
 
+    const totalCharged = pending.reduce((sum, unit) => sum + unit.total, 0);
+
+    // Aporte al fondo de reserva (Ley 21.442). Solo si la comunidad configuró
+    // una tasa: sin decisión explícita del administrador no se mueve plata a
+    // un fondo aparte. El índice único por billing_run_id lo hace idempotente.
+    let reserveContribution = 0;
+    const { data: communityRow } = await admin
+        .from('communities')
+        .select('reserve_fund_rate')
+        .eq('id', communityId)
+        .maybeSingle();
+    const reserveRate = Number(communityRow?.reserve_fund_rate || 0);
+    if (reserveRate > 0) {
+        reserveContribution = Math.round(totalCharged * (reserveRate / 100));
+        if (reserveContribution > 0) {
+            const { error: fundError } = await admin.from('reserve_fund_movements').insert({
+                community_id: communityId,
+                kind: 'contribution',
+                amount: reserveContribution,
+                month,
+                label: `Aporte del gasto común ${month} (${reserveRate}%)`,
+                billing_run_id: run.id,
+                created_by: issuedBy,
+            });
+            // El aporte es un asiento derivado: si falla, la emisión sigue
+            // siendo válida y se avisa, en vez de revertir todos los cobros.
+            if (fundError) {
+                console.warn('[billingService] reserve fund contribution failed:', fundError);
+                reserveContribution = 0;
+            }
+        }
+    }
+
     return {
         runId: run.id,
         month,
         issuedUnits: pending.length,
         skippedUnits: skipped.map(unit => unit.label),
-        totalCharged: pending.reduce((sum, unit) => sum + unit.total, 0),
+        totalCharged,
         notified: notifications.length,
         fellBackToEqualSplit: result.fellBackToEqualSplit,
         warnings: result.warnings,
+        reserveContribution,
     };
 }
 
@@ -416,6 +452,15 @@ export async function cancelBilling(communityId: string, runId: string) {
 
     const { error: updateError } = await admin.from('billing_runs').update({ status: 'cancelled' }).eq('id', runId);
     if (updateError) throw updateError;
+
+    // El aporte al fondo de reserva de esta emisión también se revierte: si no,
+    // el fondo quedaría inflado por plata que nunca se cobró.
+    const { error: fundError } = await admin
+        .from('reserve_fund_movements')
+        .delete()
+        .eq('billing_run_id', runId)
+        .eq('kind', 'contribution');
+    if (fundError) console.warn('[billingService] reserve fund reversal failed:', fundError);
 
     return { ok: true, month: run.month };
 }

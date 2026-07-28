@@ -177,12 +177,18 @@ interés por mora a las cuotas vencidas. El residente ve su propia cartola en
 /resident/finances. El interés por mora requiere que la comunidad tenga una tasa
 configurada: si es 0, no se le cobra interés a nadie, y así hay que decirlo.
 
+En /admin/finanzas/rendicion está el cierre del periodo: informe de lo cobrado
+vs lo recaudado vs los egresos (con desglose por categoría y por medio de pago),
+el fondo de reserva de la Ley 21.442 con su saldo y movimientos, y la
+configuración de las tasas de interés por mora y de aporte al fondo. Ambas tasas
+parten en 0 y solo aplican si el administrador las configura.
+
 Todavía NO existen en la plataforma (está en desarrollo): pagos en línea
-(pendiente de credenciales Haulmer), fondo de reserva como módulo aparte,
-conciliación bancaria, remuneraciones del personal, contabilidad de doble
-entrada (libro diario, balance), presupuesto anual y certificados de deuda en
-PDF. Si un administrador pregunta por alguna de estas, NO inventes una ubicación
-ni afirmes que existe: reconoce con honestidad que está en la hoja de ruta y
+(pendiente de credenciales Haulmer), conciliación bancaria, remuneraciones del
+personal, contabilidad de doble entrada (libro diario, balance), presupuesto
+anual, convenios de pago para morosos y certificados de deuda en PDF. Si un
+administrador pregunta por alguna de estas, NO inventes una ubicación ni
+afirmes que existe: reconoce con honestidad que está en la hoja de ruta y
 ofrécele lo más cercano que sí existe.
 
 ## Control de Pantalla (Comandos UI)
