@@ -110,6 +110,123 @@ export async function addReserveFundMovement(
     return data;
 }
 
+export interface BudgetComparison {
+    year: number;
+    lines: Array<{
+        category: string;
+        categoryLabel: string;
+        annualBudget: number;
+        /** Presupuesto proporcional a los meses ya transcurridos del año. */
+        expectedToDate: number;
+        actualToDate: number;
+        variance: number;
+        variancePercent: number;
+    }>;
+    totals: { annualBudget: number; expectedToDate: number; actualToDate: number; variance: number };
+    monthsElapsed: number;
+}
+
+/**
+ * Presupuestado vs real del año.
+ *
+ * Compara contra el presupuesto proporcional a los meses transcurridos, no
+ * contra el anual completo: en marzo haber gastado el 20% del presupuesto de
+ * luz no es una desviación, es ir bien. Comparar contra el total anual haría
+ * que todo pareciera "bajo presupuesto" hasta diciembre.
+ */
+export async function getBudgetComparison(communityId: string, year: number): Promise<BudgetComparison> {
+    const admin = getSupabaseAdmin();
+    const [budgetResult, expensesResult] = await Promise.all([
+        admin.from('annual_budgets')
+            .select('category, annual_amount')
+            .eq('community_id', communityId).eq('year', year),
+        admin.from('community_expenses')
+            .select('category, amount, month')
+            .eq('community_id', communityId)
+            .gte('month', `${year}-01`).lte('month', `${year}-12`),
+    ]);
+    if (budgetResult.error) throw budgetResult.error;
+    if (expensesResult.error) throw expensesResult.error;
+
+    const now = new Date();
+    const monthsElapsed = now.getFullYear() > year
+        ? 12
+        : now.getFullYear() < year ? 0 : now.getMonth() + 1;
+
+    const actualByCategory = new Map<string, number>();
+    for (const row of expensesResult.data ?? []) {
+        const key = String(row.category || 'other');
+        actualByCategory.set(key, (actualByCategory.get(key) || 0) + Math.round(Number(row.amount || 0)));
+    }
+
+    const budgetByCategory = new Map<string, number>();
+    for (const row of budgetResult.data ?? []) {
+        budgetByCategory.set(String(row.category), Math.round(Number(row.annual_amount || 0)));
+    }
+
+    // Se listan todas las categorías que tengan presupuesto O gasto real: un
+    // gasto sin presupuesto es justamente lo que el comité quiere ver.
+    const categories = new Set([...budgetByCategory.keys(), ...actualByCategory.keys()]);
+
+    const lines = [...categories].map(category => {
+        const annualBudget = budgetByCategory.get(category) || 0;
+        const actualToDate = actualByCategory.get(category) || 0;
+        const expectedToDate = Math.round((annualBudget / 12) * monthsElapsed);
+        const variance = actualToDate - expectedToDate;
+        return {
+            category,
+            categoryLabel: CATEGORY_LABELS[category] || category,
+            annualBudget,
+            expectedToDate,
+            actualToDate,
+            variance,
+            variancePercent: expectedToDate > 0 ? Math.round((variance / expectedToDate) * 100) : 0,
+        };
+    }).sort((a, b) => b.actualToDate - a.actualToDate);
+
+    const totals = lines.reduce((acc, line) => ({
+        annualBudget: acc.annualBudget + line.annualBudget,
+        expectedToDate: acc.expectedToDate + line.expectedToDate,
+        actualToDate: acc.actualToDate + line.actualToDate,
+        variance: acc.variance + line.variance,
+    }), { annualBudget: 0, expectedToDate: 0, actualToDate: 0, variance: 0 });
+
+    return { year, lines, totals, monthsElapsed };
+}
+
+/** Crea o actualiza la línea de presupuesto de una categoría. */
+export async function setBudgetLine(
+    communityId: string,
+    createdBy: string | null,
+    input: { year: number; category: string; annualAmount: number },
+) {
+    if (!Number.isInteger(input.year) || input.year < 2020 || input.year > 2100) {
+        throw new BillingError('bad_year', 'Indica un año válido.');
+    }
+    if (!CATEGORY_LABELS[input.category]) {
+        throw new BillingError('bad_category', 'Categoría no válida.');
+    }
+    const annualAmount = Math.round(Number(input.annualAmount));
+    if (!Number.isFinite(annualAmount) || annualAmount < 0) {
+        throw new BillingError('bad_amount', 'El monto no puede ser negativo.');
+    }
+
+    const { data, error } = await getSupabaseAdmin()
+        .from('annual_budgets')
+        .upsert({
+            community_id: communityId,
+            year: input.year,
+            category: input.category,
+            annual_amount: annualAmount,
+            created_by: createdBy,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'community_id,year,category' })
+        .select('id, year, category, annual_amount')
+        .single();
+    if (error) throw error;
+    return data;
+}
+
 export interface MonthlyReport {
     month: string;
     /** Egresos del edificio cargados para el mes. */

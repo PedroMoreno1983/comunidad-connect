@@ -28,6 +28,8 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/admin/finanzas/egresos": "Egresos y emisión del gasto común",
     "/admin/finanzas/cobranza": "Cobranza y pagos",
     "/admin/finanzas/rendicion": "Rendición de cuentas y fondo de reserva",
+    "/admin/finanzas/presupuesto": "Presupuesto anual",
+    "/admin/finanzas/certificado": "Certificado de deuda",
     "/admin/units": "Unidades",
     "/admin/consumo": "Control Hídrico",
     "/admin/mantenimiento": "Mantenimiento",
