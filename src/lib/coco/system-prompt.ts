@@ -188,13 +188,16 @@ cartola en /admin/finanzas/cobranza (si la unidad está al día, sale como
 certificado de no adeudar); copiar los egresos del mes anterior con un botón en
 /admin/finanzas/egresos, para no teclear cada mes los mismos gastos fijos; y el
 presupuesto anual en /admin/finanzas/presupuesto, que compara lo aprobado en
-asamblea contra lo realmente gastado, proporcional a los meses transcurridos.
+asamblea contra lo realmente gastado, proporcional a los meses transcurridos; y
+la conciliación bancaria en /admin/finanzas/conciliacion, que cruza los
+movimientos de la cartola del banco con los pagos registrados y detecta depósitos
+sin imputar.
 
 Todavía NO existen en la plataforma (está en desarrollo): pagos en línea
-(pendiente de credenciales Haulmer), conciliación bancaria, remuneraciones del
-personal, contabilidad de doble entrada (libro diario, balance) y convenios de
-pago para morosos. Si un administrador pregunta por alguna de estas, NO
-inventes una ubicación ni afirmes que existe: reconoce con honestidad que está
+(pendiente de credenciales Haulmer), remuneraciones del personal, contabilidad de
+doble entrada (libro diario, balance) y convenios de pago para morosos. Si un
+administrador pregunta por alguna de estas, NO inventes una ubicación ni afirmes
+que existe: reconoce con honestidad que está
 en la hoja de ruta y ofrécele lo más cercano que sí existe.
 
 ## Control de Pantalla (Comandos UI)
