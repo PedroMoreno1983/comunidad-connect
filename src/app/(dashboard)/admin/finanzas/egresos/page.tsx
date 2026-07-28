@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-    AlertTriangle, ArrowLeft, Calculator, CheckCircle2, Loader2, Plus, Send, Trash2,
+    AlertTriangle, ArrowLeft, Calculator, CheckCircle2, Copy, Loader2, Plus, Send, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -103,6 +103,41 @@ export default function EgresosPage() {
     }, [month, toast]);
 
     useEffect(() => { void load(); }, [load]);
+
+    async function copyPreviousMonth() {
+        const [year, mon] = month.split("-").map(Number);
+        const previous = mon === 1
+            ? `${year - 1}-12`
+            : `${year}-${String(mon - 1).padStart(2, "0")}`;
+
+        setSaving(true);
+        try {
+            const response = await fetch("/api/admin/community-expenses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "copy_from_month", fromMonth: previous, month }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "No se pudieron copiar los egresos.");
+
+            toast({
+                title: "Egresos copiados",
+                description: `${data.copied} egreso(s) desde ${previous}.`
+                    + (data.skipped > 0 ? ` ${data.skipped} ya existían y se omitieron.` : "")
+                    + " Revisa los montos contra las boletas del mes.",
+                variant: "success",
+            });
+            await load();
+        } catch (error) {
+            toast({
+                title: "No se copiaron",
+                description: error instanceof Error ? error.message : "Error inesperado.",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    }
 
     async function addExpense(event: React.FormEvent) {
         event.preventDefault();
@@ -267,9 +302,21 @@ export default function EgresosPage() {
 
                 {!issuedRun && (
                     <section className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
-                            Agregar egreso
-                        </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                                Agregar egreso
+                            </h2>
+                            <Button
+                                type="button"
+                                onClick={() => void copyPreviousMonth()}
+                                disabled={saving}
+                                className="text-xs"
+                                style={{ background: "transparent", color: "var(--cc-ink)", border: "1px solid var(--cc-line)" }}
+                            >
+                                <Copy className="mr-2 h-3.5 w-3.5" />
+                                Copiar egresos del mes anterior
+                            </Button>
+                        </div>
                         <form onSubmit={addExpense} className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_160px_150px_auto]">
                             <input
                                 value={label}
