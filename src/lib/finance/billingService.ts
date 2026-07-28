@@ -421,6 +421,86 @@ export async function issueBilling(
     };
 }
 
+/**
+ * Crea el cobro de gasto común de UNA unidad, fuera de la emisión mensual.
+ *
+ * Es el camino corto que usa el Agent Center para un cobro puntual. Vive acá y
+ * no en el Agent Center para que exista un solo lugar donde nace un cobro: si
+ * la validación de duplicados o el formato del desglose cambian, cambian para
+ * todos los caminos a la vez.
+ */
+export async function createUnitExpense(
+    communityId: string,
+    createdBy: string | null,
+    input: { unitId: string; month: string; amount: number; dueDate: string; label?: string },
+) {
+    if (!MONTH_PATTERN.test(input.month)) {
+        throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
+    }
+    if (!DATE_PATTERN.test(input.dueDate)) {
+        throw new BillingError('bad_due_date', 'Indica la fecha de vencimiento en formato AAAA-MM-DD.');
+    }
+    const amount = Math.round(Number(input.amount));
+    if (!Number.isFinite(amount) || amount <= 0) {
+        throw new BillingError('bad_amount', 'El monto debe ser mayor que cero.');
+    }
+
+    const admin = getSupabaseAdmin();
+
+    const { data: unit } = await admin
+        .from('units')
+        .select('id, number, tower')
+        .eq('id', input.unitId)
+        .eq('community_id', communityId)
+        .maybeSingle();
+    if (!unit) throw new BillingError('unit_not_found', 'Esa unidad no existe en tu comunidad.', 404);
+
+    const label = (input.label || '').trim() || `Gasto común ${input.month}`;
+
+    const { data: existing, error: existingError } = await admin
+        .from('expenses')
+        .select('id')
+        .eq('community_id', communityId)
+        .eq('unit_id', input.unitId)
+        .eq('month', input.month)
+        .limit(1)
+        .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) {
+        throw new BillingError(
+            'already_charged',
+            `El Depto ${unit.number} ya tiene un cobro registrado para ${input.month}.`,
+            409,
+        );
+    }
+
+    const { data: expense, error: expenseError } = await admin
+        .from('expenses')
+        .insert({
+            unit_id: input.unitId,
+            community_id: communityId,
+            month: input.month,
+            amount,
+            status: 'pending',
+            due_date: input.dueDate,
+        })
+        .select('id, month, amount, status, due_date')
+        .single();
+    if (expenseError) throw expenseError;
+
+    // El desglose es informativo: si falla, el cobro sigue siendo válido.
+    const { error: itemError } = await admin.from('expense_items').insert({
+        expense_id: expense.id,
+        category: 'other',
+        label,
+        amount,
+    });
+    if (itemError) console.warn('[billingService] expense_item insert failed:', itemError);
+
+    void createdBy;
+    return { expense, unitNumber: String(unit.number) };
+}
+
 /** Anula una emisión, borrando los cobros generados salvo los ya pagados. */
 export async function cancelBilling(communityId: string, runId: string) {
     const admin = getSupabaseAdmin();
