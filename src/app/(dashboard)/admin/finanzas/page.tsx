@@ -7,7 +7,7 @@ import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { AlertCircle, ArrowRight, BellRing, Calculator, FileText, Loader2, Send, ShieldCheck, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, BellRing, Calculator, FileText, Landmark, Loader2, Send, ShieldCheck, Wallet } from "lucide-react";
 import Link from "next/link";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
@@ -153,6 +153,25 @@ export default function AdminFinanzasPage() {
                         </h2>
                         <p className="mt-1 text-sm leading-6 cc-text-secondary">
                             Saldo de cada unidad con la deuda arrastrada, registro de pagos, multas e interés por mora.
+                        </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
+
+                <Link
+                    href="/admin/finanzas/rendicion"
+                    className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                        <Landmark className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Rendición de cuentas y fondo de reserva
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Informe mensual de ingresos vs egresos para el comité, y control del fondo de reserva de la Ley 21.442.
                         </p>
                     </div>
                     <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
