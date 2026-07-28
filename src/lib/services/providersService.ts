@@ -63,11 +63,14 @@ export const providersService = {
     async getById(id: string): Promise<ServiceProvider | null> {
         if (!id || id === 'undefined') return null;
 
+        // maybeSingle(): 0 filas -> data null sin error. Con single() un proveedor
+        // inexistente (p. ej. una notificación con id obsoleto) lanzaba error y
+        // reventaba la página en el ErrorBoundary en vez de mostrar un 404 limpio.
         const { data: p, error } = await supabase
             .from('service_providers')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
         if (error) throw error;
         if (!p) return null;
 

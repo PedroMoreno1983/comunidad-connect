@@ -25,13 +25,14 @@ export const COCO_NAV_MAP: Record<string, string> = {
     "/concierge/packages": "Encomiendas",
     "/staff/training": "Aula Virtual IA",
     "/admin/finanzas": "Finanzas",
+    "/admin/finanzas/egresos": "Egresos y emisión del gasto común",
     "/admin/units": "Unidades",
     "/admin/consumo": "Control Hídrico",
     "/admin/mantenimiento": "Mantenimiento",
     "/admin/votaciones": "Gestión de Votos",
     "/admin/users": "Usuarios",
     "/admin/onboarding": "Carga Masiva",
-    "/admin/training": "Generador de Cursos",
+    // "/admin/training": Generador de Cursos oculto temporalmente (2026-07); fuera del nav de CoCo.
     // Legacy aliases kept for backwards compatibility with existing chat history.
     "/social": "Muro Social",
     "/chat": "Comunidad",

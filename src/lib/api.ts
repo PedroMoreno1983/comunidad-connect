@@ -1165,11 +1165,24 @@ export const WaterService = {
             });
     },
 
-    // Crear nueva unidad
-    async createUnit(unit: Partial<Unit>) {
+    // Crear nueva unidad. Acepta columnas crudas (snake_case) como share_permille.
+    async createUnit(unit: Partial<Unit> & { share_permille?: number | null }) {
         const { data, error } = await supabase
             .from('units')
             .insert(unit)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Actualizar campos de una unidad (p. ej. la alícuota share_permille).
+    async updateUnit(unitId: string, patch: Record<string, unknown>) {
+        const { data, error } = await supabase
+            .from('units')
+            .update(patch)
+            .eq('id', unitId)
             .select()
             .single();
 

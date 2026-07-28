@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { MarketplaceService } from "@/lib/api";
 import {
-    CheckCircle2, ExternalLink, Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info, ShieldCheck
+    CheckCircle2, ExternalLink, Plus, Tag, ShoppingBag, Sparkles, Repeat, Image as ImageIcon, Loader2, Info
 } from "lucide-react";
 import { MarketplaceItem } from "@/lib/types";
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/Input";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { MarketplaceCard } from "@/components/marketplace/MarketplaceCard";
+import { MarketplaceManagementClient } from "@/components/marketplace/MarketplaceManagementClient";
 import { ProductFilters } from "@/components/marketplace/ProductFilters";
 import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
 import { MarketplaceChatModal } from "@/components/marketplace/MarketplaceChatModal";
@@ -341,6 +342,13 @@ export default function MarketplacePage() {
         return categoryConfig[category] || categoryConfig.other;
     };
 
+    // Marketplace unificado: un administrador ve el mismo módulo en modo
+    // MODERACIÓN (revisar y ocultar publicaciones que infrinjan las reglas).
+    // No compra ni vende: solo resguarda que el marketplace funcione sano.
+    if (user?.role === 'admin') {
+        return <MarketplaceManagementClient mode="admin" />;
+    }
+
     return (
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
              {/* Header Section */}
@@ -578,15 +586,6 @@ export default function MarketplacePage() {
                         <Info className="h-4.5 w-4.5" />
                         Reglamento
                     </CcButton>
-
-                    {user?.role === 'admin' && (
-                        <Link href="/admin/marketplace">
-                            <CcButton variant="ghost" size="md" style={{ borderColor: "rgba(16,185,129,0.30)", color: "var(--cc-sage)" }}>
-                                <ShieldCheck className="h-4.5 w-4.5" />
-                                Moderación
-                            </CcButton>
-                        </Link>
-                    )}
                 </div>
             </div>
 

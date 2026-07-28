@@ -15,6 +15,7 @@ export const CANONICAL_SITE_URL = (
 
 export const SUPPORT_EMAIL = 'soporte@conviveconnect.com';
 export const WHATSAPP_WEBHOOK_PATH = '/api/coco/whatsapp';
+export const DEMO_COMMUNITY_ID = '11111111-1111-1111-1111-111111111111';
 
 // Detectar si estamos corriendo en un dispositivo movil (Capacitor).
 export const isNative = typeof window !== 'undefined' &&

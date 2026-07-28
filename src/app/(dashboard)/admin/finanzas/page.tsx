@@ -7,7 +7,8 @@ import { CondoFeesTable } from "@/components/admin/CondoFeesTable";
 import { motion } from "framer-motion";
 import { CommunityFinance } from "@/lib/types";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { AlertCircle, BellRing, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, BellRing, Calculator, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 
@@ -119,6 +120,25 @@ export default function AdminFinanzasPage() {
                         </article>
                     ))}
                 </section>
+                <Link
+                    href="/admin/finanzas/egresos"
+                    className="flex items-center gap-4 rounded-2xl border p-5 transition hover:shadow-sm"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--cc-paper-warm)", color: "var(--cc-copper)" }}>
+                        <Calculator className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                            Armar el gasto común del mes
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 cc-text-secondary">
+                            Carga los egresos del edificio, revisa el prorrateo entre unidades y emite el cobro de todas de una vez.
+                        </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 cc-text-tertiary" />
+                </Link>
+
                 <ModuleFlow
                     title="Cierre financiero del periodo"
                     description="El flujo financiero debe partir en cobranza, cruzar ingresos y egresos, y terminar con reporte y recordatorios enviados."
