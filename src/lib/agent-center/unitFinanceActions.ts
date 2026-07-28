@@ -1,6 +1,7 @@
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 import { resolveResidentExpenseTarget } from '@/lib/agent-center/financeQueries';
-import { bestEffortInsert, stableNotificationId } from '@/lib/agent-center/utils';
+import { stableNotificationId } from '@/lib/agent-center/utils';
+import { createUnitExpense } from '@/lib/finance/billingService';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { sendWhatsAppNotificationForUser, type WhatsAppNotificationResult } from '@/lib/server/whatsappNotify';
 
@@ -28,36 +29,15 @@ export async function executeCreateUnitExpense(action: AgentAction, profile: Age
     const amount = Number(action.args.amount || 0);
     const label = cleanText(action.args.label, 120) || 'Gasto comun generado desde Agent Center';
 
-    const { data: existing, error: existingError } = await admin
-        .from('expenses')
-        .select('id, status')
-        .eq('community_id', communityId)
-        .eq('unit_id', target.unitId)
-        .eq('month', month)
-        .limit(1)
-        .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) throw new Error(`El Depto ${target.unitNumber} ya tiene un cobro registrado para ${month}.`);
-
-    const { data: expense, error: expenseError } = await admin
-        .from('expenses')
-        .insert({
-            unit_id: target.unitId,
-            month,
-            amount,
-            status: 'pending',
-            due_date: dueDate,
-            community_id: communityId,
-        })
-        .select('id, month, amount, status, due_date')
-        .single();
-    if (expenseError) throw expenseError;
-
-    await bestEffortInsert('expense_items', {
-        expense_id: expense.id,
-        category: 'other',
-        label,
+    // El cobro nace en billingService, igual que los de la emisión mensual: una
+    // sola fuente de verdad para el dinero, en vez de dos inserts paralelos que
+    // pueden divergir en validaciones o en el formato del desglose.
+    const { expense } = await createUnitExpense(communityId, profile.id, {
+        unitId: target.unitId,
+        month,
         amount,
+        dueDate,
+        label,
     });
 
     let notificationId: string | null = null;
