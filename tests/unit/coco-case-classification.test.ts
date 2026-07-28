@@ -55,4 +55,25 @@ describe("classifyCoCoMessage", () => {
         expect(decision.category).toBe("otro");
         expect(decision.shouldCreateCase).toBe(false);
     });
+
+    it("treats an admin asking how to do something as a question, not a work request", () => {
+        // Regression from a real prospect evaluating the product: the admin branch
+        // fired on the bare word "crear" anywhere in the text, so asking *how* to
+        // create something opened a spurious 'gestion_admin' case.
+        const decision = classifyCoCoMessage(
+            "Te escribo ya que me gustaría saber como puedo empezar a crear egresos para armar el gasto común del mes. No logré identificar en qué módulo se realiza.",
+            { role: "admin" },
+        );
+        expect(decision.shouldCreateCase).toBe(false);
+        expect(decision.type).not.toBe("gestion_admin");
+    });
+
+    it("still opens a case when an admin actually asks for work to be done", () => {
+        const decision = classifyCoCoMessage(
+            "Crea una reunión de comité para el jueves y asigna la revisión del ascensor",
+            { role: "admin" },
+        );
+        expect(decision.shouldCreateCase).toBe(true);
+        expect(decision.type).toBe("gestion_admin");
+    });
 });
