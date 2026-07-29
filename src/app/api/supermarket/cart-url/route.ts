@@ -4,6 +4,7 @@ import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
 import { buildDirectCartUrl, storeSupportsDirectCart, directCartConfidence } from '@/lib/supermarket/cartUrl';
+import { buildSharedCart, storeSupportsSharedCart } from '@/lib/supermarket/vtexSharedCart';
 
 export const runtime = 'nodejs';
 
@@ -40,7 +41,11 @@ export async function POST(req: NextRequest) {
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const store = cleanText(body.store, 40);
 
-        if (!storeSupportsDirectCart(store)) {
+        // El carro compartido tiene prioridad donde existe: la tienda confirma
+        // qué quedó adentro, en vez de tener que confiar en que el navegador
+        // ejecute bien un enlace.
+        const canShare = storeSupportsSharedCart(store);
+        if (!canShare && !storeSupportsDirectCart(store)) {
             // No es un error: es información que la UI necesita para ofrecer el
             // otro camino en vez de un botón que no va a funcionar.
             return NextResponse.json({
@@ -110,6 +115,38 @@ export async function POST(req: NextRequest) {
         const withSku = resolved.filter(item => item.sku);
         const missing = resolved.filter(item => !item.sku);
 
+        // ── Camino preferido: armar el carro en la tienda y verificar ──────
+        if (canShare && withSku.length > 0) {
+            const shared = await buildSharedCart(store, withSku.map(item => ({
+                sku: item.sku,
+                quantity: item.quantity,
+                name: item.name,
+            })));
+
+            if (shared.ok && shared.checkoutUrl) {
+                return NextResponse.json({
+                    supported: true,
+                    mode: 'shared-cart',
+                    store,
+                    // Verificado por la tienda, no supuesto: por eso no lleva
+                    // el matiz de 'attempt' que sí necesita el enlace directo.
+                    confidence: 'verified',
+                    cartUrl: shared.checkoutUrl,
+                    loadedCount: shared.added.length,
+                    cartTotal: shared.cartTotal,
+                    // Lo que la tienda rechazó, con su propio motivo, más lo que
+                    // nunca tuvo SKU en nuestro catálogo.
+                    missingItems: [
+                        ...shared.rejected.map(item => item.name),
+                        ...missing.map(item => item.name),
+                    ].filter(Boolean),
+                    rejectedDetail: shared.rejected,
+                });
+            }
+            // Si el carro compartido falla se sigue al enlace directo cuando la
+            // tienda también lo admite; si no, cae al mensaje de no soportado.
+        }
+
         const cartUrl = buildDirectCartUrl(store, withSku);
         if (!cartUrl) {
             return NextResponse.json({
@@ -122,6 +159,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             supported: true,
+            mode: 'direct-link',
             store,
             cartUrl,
             // 'verified' (Jumbo, funciona) o 'attempt' (Lider/Unimarc: puede que la
