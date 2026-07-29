@@ -14,6 +14,7 @@ import {
     issueBilling,
 } from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
+import { rememberFact } from './user-memory';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import {
     compareSupermarketGroupOrder,
@@ -300,6 +301,19 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: MEMORIA (todos los perfiles) ────────────────────────────────
+    {
+        name: 'remember_preference',
+        description: 'Guarda un hecho durable y útil que la persona te contó sobre sí misma o sus preferencias (ej: "es electrodependiente", "prefiere que le avisen por la mañana", "tiene un perro"), para recordarlo en futuras conversaciones. Úsala solo con datos que la persona compartió y que valga la pena recordar. No la uses para datos sensibles innecesarios ni para cada detalle trivial.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                fact: { type: 'string', description: 'El hecho a recordar, en una frase corta y en tercera persona.' },
+            },
+            required: ['fact'],
+        },
+    },
+
     // ── MÓDULO: ADMIN · GASTO COMÚN (unidades, alícuotas, egresos, emisión) ──
     {
         name: 'create_unit',
@@ -481,6 +495,7 @@ const RESIDENT_TOOLS = new Set([
     'vote_in_poll', 'register_visitor', 'get_pending_packages',
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
+    'remember_preference',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -1196,6 +1211,15 @@ export async function executeTool(
                 
                 if (error || !updatedUnit) return { error: 'No se pudo actualizar el departamento', detail: error?.message };
                 return { success: true, message: `Información de la unidad actualizada correctamente.` };
+            }
+
+            // ── MEMORIA ──────────────────────────────────────────────────────
+            case 'remember_preference': {
+                if (!userCtx.user_id) return { error: 'No pude identificarte para guardar el recuerdo.' };
+                const fact = (input.fact || '').trim();
+                if (!fact) return { error: 'No hay nada que recordar.' };
+                const facts = await rememberFact(userCtx.user_id, userCtx.community_id ?? null, fact);
+                return { success: true, remembered: fact, total_facts: facts.length };
             }
 
             // ── ADMIN · GASTO COMÚN ──────────────────────────────────────────

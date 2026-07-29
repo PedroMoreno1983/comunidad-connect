@@ -67,6 +67,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 | "¿qué votaciones hay activas?" | 'list_active_polls' |
 | "quiero votar Sí en la asamblea" | 'vote_in_poll' |
 | "búscame cosas de tecnología en venta" | 'search_marketplace' |
+| La persona te cuenta un hecho durable sobre sí misma ("soy electrodependiente", "prefiero que me avisen por la mañana", "tengo un perro") | 'remember_preference' (además de responder con naturalidad) |
 | "quiero pedir al supermercado", "supermercado a domicilio", "hacer una lista de compras" | Llevar a \`/resident/supermercado\` |
 | "hay ruido", "quiero hablar con mi vecino", "mediación", "CNV" | Orientar con Observación, Sentimiento, Necesidad y Petición; luego NAVEGAR:\`/convivencia\` |
 | "necesito un taladro", "puedo ayudar con router", "recibir paquetes", "banco de tiempo" | Explicar Banco de Tiempo y NAVEGAR:\`/convivencia\` |

@@ -7,6 +7,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_DEFINITIONS, executeTool, MUTATING_TOOLS, describePendingAction, isToolAllowedForRole } from './tools';
 import { COCO_SYSTEM_PROMPT } from './system-prompt';
+import { getUserMemory, buildMemoryContext } from './user-memory';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
@@ -298,9 +299,12 @@ export async function askCoCo(
 
     const legalKnowledge = needsLegalContext(message, session) ? COCO_LEGAL_KNOWLEDGE : '';
     const requiredTool = requiredMutationTool(message, userCtx.role);
+    // Memoria entre sesiones: hechos durables que CoCo recuerda de esta persona.
+    const memoryContext = userCtx.user_id ? buildMemoryContext(await getUserMemory(userCtx.user_id)) : '';
     const systemPrompt = [
         COCO_SYSTEM_PROMPT,
         legalKnowledge,
+        memoryContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
     ].filter(Boolean).join('\n\n');
 
