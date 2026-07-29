@@ -24,8 +24,11 @@ const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
 // coincidir con lib/supermarket/cartUrl.ts; el servidor manda, esto solo decide
 // qué botón mostrar antes de preguntarle. Jumbo está verificado; Lider y Unimarc
 // son "intentar": su WAF puede bloquear y ahí queda el cargador de respaldo.
-const VERIFIED_DIRECT_STORES = new Set(['Jumbo']);
-const ATTEMPT_DIRECT_STORES = new Set(['Lider', 'Unimarc']);
+// Jumbo, Santa Isabel y Unimarc arman el carro server-to-server con la Checkout
+// API de VTEX y la tienda confirma qué quedó adentro: eso es 'verified'. Lider
+// solo tiene el enlace directo, que su WAF puede bloquear: 'attempt'.
+const VERIFIED_DIRECT_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
+const ATTEMPT_DIRECT_STORES = new Set(['Lider']);
 const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT_STORES]);
 
 interface CartLoaderButtonProps {
@@ -37,7 +40,12 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [directResult, setDirectResult] = useState<{ loaded: number; missing: string[]; confidence?: 'verified' | 'attempt' } | null>(null);
+  const [directResult, setDirectResult] = useState<{
+    loaded: number;
+    missing: string[];
+    confidence?: 'verified' | 'attempt';
+    cartTotal?: number;
+  } | null>(null);
   const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
 
   const storeUrl = STORE_HOME[basket.store];
@@ -76,7 +84,13 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         return;
       }
 
-      setDirectResult({ loaded: data.loadedCount, missing: data.missingItems || [], confidence: data.confidence });
+      setDirectResult({
+        loaded: data.loadedCount,
+        missing: data.missingItems || [],
+        confidence: data.confidence,
+        // Solo el carro compartido devuelve un total confirmado por la tienda.
+        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
+      });
       window.open(data.cartUrl, '_blank', 'noopener');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
@@ -199,8 +213,12 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               </>
             ) : (
               <>
-                {directResult.loaded} producto(s) quedaron en el carro. Si la tienda te pide
-                iniciar sesión, hazlo y el carro se arma solo. Revisa, elige la entrega y paga.
+                {basket.store} confirmó {directResult.loaded} producto(s) en el carro
+                {typeof directResult.cartTotal === 'number' && directResult.cartTotal > 0
+                  ? `, por $${directResult.cartTotal.toLocaleString('es-CL')}`
+                  : ''}
+                . Si te pide iniciar sesión, hazlo y el carro sigue ahí. Revisa, elige
+                la entrega y paga.
               </>
             )}
           </p>
