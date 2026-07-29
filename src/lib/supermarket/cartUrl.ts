@@ -38,14 +38,19 @@ const VERIFIED_DIRECT_CART_STORES: Record<string, string> = {
 };
 
 /**
- * Lider y Unimarc: son VTEX, pero su WAF bloquea toda verificación automatizada.
- * Puede funcionar para un usuario real logueado; se ofrece con aviso, no como
- * seguro. El filtro por SKU protege: si el catálogo no tiene SKUs de esa tienda,
- * no se arma ningún enlace y la UI cae al cargador igual.
+ * Lider: solo enlace directo. Su WAF bloquea las llamadas desde servidor, pero
+ * eso NO invalida el mecanismo: una navegación del navegador del usuario no
+ * está sujeta al mismo bloqueo que un fetch desde Vercel. Por eso Convive arma
+ * la URL y no intenta abrirla ni validarla antes: sería pedirle permiso a un
+ * portero que solo nos rechaza a nosotros.
+ *
+ * La contrapartida es que después tampoco podemos leer el carro de Lider desde
+ * nuestro dominio, así que el resultado se declara "pendiente de que lo
+ * revises", no "verificado". Unimarc salió de acá: ahora arma el carro por la
+ * Checkout API y la tienda confirma lo que quedó (ver vtexSharedCart.ts).
  */
 const ATTEMPT_DIRECT_CART_STORES: Record<string, string> = {
     Lider: 'https://www.lider.cl',
-    Unimarc: 'https://www.unimarc.cl',
 };
 
 const DIRECT_CART_STORES: Record<string, string> = {
