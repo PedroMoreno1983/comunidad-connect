@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
-import { buildDirectCartUrl, storeSupportsDirectCart } from '@/lib/supermarket/cartUrl';
+import { buildDirectCartUrl, storeSupportsDirectCart, directCartConfidence } from '@/lib/supermarket/cartUrl';
 
 export const runtime = 'nodejs';
 
@@ -124,6 +124,9 @@ export async function POST(req: NextRequest) {
             supported: true,
             store,
             cartUrl,
+            // 'verified' (Jumbo, funciona) o 'attempt' (Lider/Unimarc: puede que la
+            // tienda te pida verificación o bloquee). La UI avisa en el segundo caso.
+            confidence: directCartConfidence(store),
             loadedCount: withSku.length,
             // La UI debe nombrar lo que quedó fuera: un carro incompleto que se
             // presenta como completo hace que la persona pague de menos sin saberlo.

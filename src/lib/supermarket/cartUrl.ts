@@ -6,17 +6,23 @@
  * un GET. Si la persona no tiene sesión, la tienda la manda a iniciarla y
  * conserva la orden en su `callback`: al entrar, el carro ya quedó armado.
  *
- * Verificado contra los sitios reales el 2026-07-29:
- *   Jumbo  -> 307 con callback que preserva los 3 SKU de la prueba
- *   Lider  -> 307
- *   Santa Isabel, aCuenta -> 404 (no exponen la ruta)
- *   Unimarc (403) y Tottus (526) bloquearon la comprobación desde servidor,
- *   así que se tratan como no soportadas hasta poder verificarlas en un
- *   navegador real.
+ * Verificado contra los sitios reales el 2026-07-29, trazando el redirect completo:
+ *   Jumbo        -> 307 a /?openLogin=1&callback=/checkout/cart/add?... : el login
+ *                   PRESERVA la orden de agregar. Funciona de verdad.
+ *   Lider        -> 307 a /blocked?url=... : su WAF manda el request a una página
+ *                   de bloqueo. NO es un login. Puede pasar para un navegador real
+ *                   (con cookies/JS), pero desde servidor se bloquea: sin garantía.
+ *   Unimarc      -> 403 hasta en la homepage: WAF bloquea todo lo automatizado.
+ *                   VTEX como Jumbo, así que podría funcionar para un usuario real,
+ *                   pero no se puede verificar: sin garantía.
+ *   Santa Isabel -> homepage 200 pero /checkout/cart/add da 404: ruta deshabilitada.
+ *                   Un navegador real también recibe 404. No sirve.
+ *   aCuenta      -> 404 en la misma ruta. No sirve.
+ *   Tottus       -> vive en tottus.falabella.com (plataforma Falabella, no VTEX).
  *
- * Para las cadenas sin soporte queda el camino anterior (el cargador), que sí
- * pide un gesto extra. No se inventa un enlace que no funciona: prometer un
- * carro cargado y que llegue vacío es peor que decir la verdad.
+ * Por eso hay dos niveles: VERIFICADO (Jumbo) y "intentar" (Lider, Unimarc), este
+ * último con aviso explícito de que puede fallar. Para las cadenas sin soporte
+ * queda el cargador. No se promete un carro cargado que pueda llegar vacío.
  */
 
 export interface CartUrlItem {
@@ -24,17 +30,41 @@ export interface CartUrlItem {
     quantity: number;
 }
 
-/** Cadenas donde el enlace directo está verificado. */
-const DIRECT_CART_STORES: Record<string, string> = {
+export type DirectCartConfidence = 'verified' | 'attempt';
+
+/** Jumbo: enlace directo verificado de punta a punta. */
+const VERIFIED_DIRECT_CART_STORES: Record<string, string> = {
     Jumbo: 'https://www.jumbo.cl',
+};
+
+/**
+ * Lider y Unimarc: son VTEX, pero su WAF bloquea toda verificación automatizada.
+ * Puede funcionar para un usuario real logueado; se ofrece con aviso, no como
+ * seguro. El filtro por SKU protege: si el catálogo no tiene SKUs de esa tienda,
+ * no se arma ningún enlace y la UI cae al cargador igual.
+ */
+const ATTEMPT_DIRECT_CART_STORES: Record<string, string> = {
     Lider: 'https://www.lider.cl',
+    Unimarc: 'https://www.unimarc.cl',
+};
+
+const DIRECT_CART_STORES: Record<string, string> = {
+    ...VERIFIED_DIRECT_CART_STORES,
+    ...ATTEMPT_DIRECT_CART_STORES,
 };
 
 /** Tope de productos por enlace: una URL enorme se corta en algunos navegadores. */
 const MAX_ITEMS_PER_URL = 50;
 
+/** 'verified' | 'attempt' | null. La UI usa esto para avisar cuando no es seguro. */
+export function directCartConfidence(store: string): DirectCartConfidence | null {
+    if (Object.prototype.hasOwnProperty.call(VERIFIED_DIRECT_CART_STORES, store)) return 'verified';
+    if (Object.prototype.hasOwnProperty.call(ATTEMPT_DIRECT_CART_STORES, store)) return 'attempt';
+    return null;
+}
+
 export function storeSupportsDirectCart(store: string): boolean {
-    return Object.prototype.hasOwnProperty.call(DIRECT_CART_STORES, store);
+    return directCartConfidence(store) !== null;
 }
 
 export function supportedDirectCartStores(): string[] {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    buildDirectCartUrl, storeSupportsDirectCart, countUnsupportedItems,
+    buildDirectCartUrl, storeSupportsDirectCart, countUnsupportedItems, directCartConfidence,
 } from '@/lib/supermarket/cartUrl';
 
 describe('buildDirectCartUrl', () => {
@@ -35,7 +35,12 @@ describe('buildDirectCartUrl', () => {
         // el camino alternativo desde el principio.
         expect(buildDirectCartUrl('Santa Isabel', [{ sku: '1', quantity: 1 }])).toBeNull();
         expect(buildDirectCartUrl('Tottus', [{ sku: '1', quantity: 1 }])).toBeNull();
-        expect(buildDirectCartUrl('Unimarc', [{ sku: '1', quantity: 1 }])).toBeNull();
+        expect(buildDirectCartUrl('aCuenta', [{ sku: '1', quantity: 1 }])).toBeNull();
+    });
+
+    it('arma el enlace también para las cadenas "intentar" (Lider, Unimarc)', () => {
+        expect(buildDirectCartUrl('Unimarc', [{ sku: '1', quantity: 1 }]))
+            .toContain('https://www.unimarc.cl/checkout/cart/add?');
     });
 
     it('devuelve null si ningún producto trae SKU', () => {
@@ -72,11 +77,22 @@ describe('buildDirectCartUrl', () => {
 });
 
 describe('storeSupportsDirectCart', () => {
-    it('reconoce solo las cadenas verificadas', () => {
+    it('reconoce las cadenas con enlace (verificadas o "intentar")', () => {
         expect(storeSupportsDirectCart('Jumbo')).toBe(true);
         expect(storeSupportsDirectCart('Lider')).toBe(true);
+        expect(storeSupportsDirectCart('Unimarc')).toBe(true);
         expect(storeSupportsDirectCart('Santa Isabel')).toBe(false);
         expect(storeSupportsDirectCart('aCuenta')).toBe(false);
+    });
+});
+
+describe('directCartConfidence', () => {
+    it('distingue verificado, intentar y no soportado', () => {
+        expect(directCartConfidence('Jumbo')).toBe('verified');
+        expect(directCartConfidence('Lider')).toBe('attempt');
+        expect(directCartConfidence('Unimarc')).toBe('attempt');
+        expect(directCartConfidence('Santa Isabel')).toBeNull();
+        expect(directCartConfidence('Tottus')).toBeNull();
     });
 });
 
