@@ -11,7 +11,8 @@ import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-cent
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
-import { getAgentPlannerModel, planAgentAction } from '@/lib/agent-center/planner';
+import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
+import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
@@ -770,12 +771,12 @@ function finalizeInferredAction(message: string, candidate: AgentAction) {
     }
 }
 
-async function inferAction(message: string, profile: AgentProfile): Promise<AgentAction> {
-    const action = await inferActionUnenriched(message, profile);
+async function inferAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
+    const action = await inferActionUnenriched(message, profile, history);
     return enrichPlaybookPreview(action, profile);
 }
 
-async function inferActionUnenriched(message: string, profile: AgentProfile): Promise<AgentAction> {
+async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
     if (isIndividualDebtQuery(message)) {
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
@@ -792,7 +793,7 @@ async function inferActionUnenriched(message: string, profile: AgentProfile): Pr
     }
 
     try {
-        const plannedAction = await planAgentAction(message, profile);
+        const plannedAction = await planAgentAction(message, profile, history);
         if (plannedAction) return finalizeInferredAction(message, plannedAction);
     } catch (error) {
         console.warn('[AgentCenterPlanner] Claude planning failed; using deterministic heuristic.', error);
@@ -1313,16 +1314,22 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(12);
 
-    const [policies, summary, workflows, tasks, triggers, proposals] = await Promise.all([
+    const [policies, summary, workflows, tasks, triggers, proposals, session] = await Promise.all([
         getAgentPolicies(profile),
         getAgentSummary(profile),
         getAgentWorkflows(profile),
         getRecentAgentTasks(profile),
         getAgentTriggerRules(profile),
         getPendingAgentProposals(profile),
+        getSession(`agent:web:${profile.id}`),
     ]);
 
+    const conversation = (session?.conversation ?? [])
+        .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => typeof turn.content === 'string')
+        .map(turn => ({ role: turn.role, content: turn.content }));
+
     return NextResponse.json({
+        conversation,
         activity: data || [],
         policies: Object.values(policies),
         summary,
@@ -1382,6 +1389,17 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // Memoria conversacional del Agent Center: se reutiliza la tabla
+        // coco_sessions (con su tope de 20 mensajes y expiración), bajo una clave
+        // propia por administrador, para que el agente dialogue con contexto sin
+        // que el historial crezca sin límite.
+        const agentSessionKey = `agent:web:${profile.id}`;
+
+        if (body.type === 'reset_conversation') {
+            await deleteSession(agentSessionKey);
+            return NextResponse.json({ status: 'executed', reply: 'Empecemos de nuevo. ¿Qué necesitas?', conversation: [] });
+        }
+
         const message = cleanText(body.message, 1200);
         const incomingAction = body.action && typeof body.action === 'object' ? body.action as AgentAction : null;
         const confirmed = Boolean(body.confirmed);
@@ -1405,11 +1423,34 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // Solo la conversación libre (mensaje nuevo, no confirmar/rechazar/playbook)
+        // se beneficia del contexto previo.
+        const isFreeMessage = !confirmed && !rejected && !requestedPlaybook && Boolean(message);
+        const agentHistory: PlannerTurn[] = isFreeMessage
+            ? (((await getSession(agentSessionKey))?.conversation ?? [])
+                .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => typeof turn.content === 'string')
+                .map(turn => ({ role: turn.role, content: turn.content })))
+            : [];
+
         const action = confirmed || rejected
             ? await loadPersistedProposal(incomingAction, profile)
             : requestedPlaybook
                 ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
-            : await inferAction(message, profile);
+            : await inferAction(message, profile, agentHistory);
+
+        // Persiste el turno para dar memoria a la próxima consulta. Best-effort:
+        // si falla, la conversación sigue, solo pierde contexto.
+        if (isFreeMessage) {
+            const conversation = [
+                ...agentHistory,
+                { role: 'user' as const, content: message },
+                { role: 'assistant' as const, content: action.summary || action.title || 'Acción preparada.' },
+            ];
+            await saveSession(agentSessionKey, {
+                conversation,
+                user_context: { user_id: profile.id, role: profile.role, community_id: profile.community_id, channel: 'agent-center' },
+            }).catch(() => undefined);
+        }
         if (rejected) {
             await claimPersistedProposal(action, 'rejected');
             await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
