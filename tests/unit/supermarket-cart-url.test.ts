@@ -38,9 +38,15 @@ describe('buildDirectCartUrl', () => {
         expect(buildDirectCartUrl('aCuenta', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
-    it('arma el enlace también para las cadenas "intentar" (Lider, Unimarc)', () => {
-        expect(buildDirectCartUrl('Unimarc', [{ sku: '1', quantity: 1 }]))
-            .toContain('https://www.unimarc.cl/checkout/cart/add?');
+    it('arma el enlace para Lider, que solo tiene esta vía', () => {
+        expect(buildDirectCartUrl('Lider', [{ sku: '1', quantity: 1 }]))
+            .toContain('https://www.lider.cl/checkout/cart/add?');
+    });
+
+    it('ya no usa enlace directo en Unimarc: pasó a carro compartido', () => {
+        // Unimarc arma el carro por la Checkout API y la tienda confirma qué
+        // quedó adentro, que es más fuerte que confiar en un enlace.
+        expect(buildDirectCartUrl('Unimarc', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
     it('devuelve null si ningún producto trae SKU', () => {
@@ -77,20 +83,23 @@ describe('buildDirectCartUrl', () => {
 });
 
 describe('storeSupportsDirectCart', () => {
-    it('reconoce las cadenas con enlace (verificadas o "intentar")', () => {
+    it('reconoce las cadenas con enlace directo', () => {
         expect(storeSupportsDirectCart('Jumbo')).toBe(true);
         expect(storeSupportsDirectCart('Lider')).toBe(true);
-        expect(storeSupportsDirectCart('Unimarc')).toBe(true);
+        // Unimarc y Santa Isabel usan carro compartido, no enlace.
+        expect(storeSupportsDirectCart('Unimarc')).toBe(false);
         expect(storeSupportsDirectCart('Santa Isabel')).toBe(false);
         expect(storeSupportsDirectCart('aCuenta')).toBe(false);
     });
 });
 
 describe('directCartConfidence', () => {
-    it('distingue verificado, intentar y no soportado', () => {
+    it('distingue verificado, pendiente de revisar y no soportado', () => {
         expect(directCartConfidence('Jumbo')).toBe('verified');
+        // Lider: no podemos leer su carro desde nuestro dominio, así que el
+        // resultado se declara pendiente de que la persona lo revise.
         expect(directCartConfidence('Lider')).toBe('attempt');
-        expect(directCartConfidence('Unimarc')).toBe('attempt');
+        expect(directCartConfidence('Unimarc')).toBeNull();
         expect(directCartConfidence('Santa Isabel')).toBeNull();
         expect(directCartConfidence('Tottus')).toBeNull();
     });

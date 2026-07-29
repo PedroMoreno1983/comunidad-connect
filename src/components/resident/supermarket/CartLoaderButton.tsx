@@ -201,15 +201,16 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         <div>
           <p className="text-sm font-bold cc-text-primary">
             {directResult.confidence === 'attempt'
-              ? `Abrimos ${basket.store} e intentamos cargar tu carro`
+              ? `Enviamos tu carro a ${basket.store}`
               : `${basket.store} se abrió con tu carro cargado`}
           </p>
           <p className="mt-1 text-xs leading-5 cc-text-secondary">
             {directResult.confidence === 'attempt' ? (
               <>
-                Enviamos {directResult.loaded} producto(s). {basket.store} a veces pide verificación
-                o bloquea la carga automática. Si el carro llegó vacío, usa el cargador de respaldo.
-                Si iniciaste sesión y los productos quedaron, revisa, elige la entrega y paga.
+                {directResult.loaded} producto(s) van en el enlace. Por seguridad del navegador
+                no podemos leer el carro de {basket.store} desde acá, así que revísalo tú:
+                si quedó cargado, sigue con la entrega y el pago. Si llegó vacío, usa el
+                cargador de respaldo.
               </>
             ) : (
               <>
