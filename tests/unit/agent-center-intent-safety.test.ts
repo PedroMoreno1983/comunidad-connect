@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, looksReadOnlyRequest } from '../../src/lib/agent-center/intentSafety';
+import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, isMonthlyBillingRequest, looksReadOnlyRequest } from '../../src/lib/agent-center/intentSafety';
 import { buildIndividualDebtAction, preventReadOnlyMutation } from '../../src/lib/agent-center/intentActions';
 import type { AgentAction } from '../../src/lib/agent-center/domain';
 
@@ -13,6 +13,34 @@ describe('Agent Center intent safety', () => {
 
     it('keeps collection workflows separate from individual lookups', () => {
         expect(isIndividualDebtQuery('revisar morosos y preparar cobranza')).toBe(false);
+    });
+
+    describe('monthly billing vs individual debt', () => {
+        it.each([
+            'coco quiero armar los gastos comunes de julio',
+            'arma el gasto comun de julio',
+            'emitir el gasto común del mes',
+            'necesito generar los gastos comunes',
+            'preparar el prorrateo de agosto',
+            'cargar los egresos del edificio',
+        ])('recognises building the month as a billing request: %s', message => {
+            expect(isMonthlyBillingRequest(message)).toBe(true);
+        });
+
+        it.each([
+            'necesito saber si el depto 1204 debe algo',
+            'cuanto debe la residente Andrea Dupré',
+            'quienes estan morosos este mes',
+            'saldo pendiente de la unidad A-302',
+        ])('does not mistake a debt lookup for a billing request: %s', message => {
+            expect(isMonthlyBillingRequest(message)).toBe(false);
+        });
+
+        it('does not treat a single-unit charge as the monthly run', () => {
+            // Lleva departamento y monto: es un cobro puntual, no la emisión
+            // mensual. El route handler además exige que no haya unitNumber.
+            expect(extractUnitNumber('crea un cobro de 50000 para el depto 504')).toBe('504');
+        });
     });
 
     it.each([
