@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -96,6 +96,7 @@ type AgentPlaybook = {
 };
 
 type AgentCenterGetResponse = {
+  conversation?: { role: "user" | "assistant"; content: string }[];
   activity?: ActivityRow[];
   policies?: AgentPolicy[];
   summary?: AgentSummary;
@@ -229,11 +230,31 @@ export default function AgentCenterPage() {
   const [showBitacora, setShowBitacora] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [uploadedBatchId, setUploadedBatchId] = useState("");
+  const historySeeded = useRef(false);
 
   async function loadActivity() {
     const response = await fetch("/api/agent-center", { cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json() as AgentCenterGetResponse;
+
+    // Al entrar, se siembra el hilo persistido (memoria del Agent Center) una sola
+    // vez, para no pisar los mensajes vivos de la sesión en recargas posteriores.
+    if (!historySeeded.current) {
+      historySeeded.current = true;
+      const persisted = Array.isArray(data.conversation) ? data.conversation : [];
+      if (persisted.length > 0) {
+        setMessages((current) => [
+          ...persisted.map((turn) => ({
+            id: nowId(),
+            role: (turn.role === "user" ? "user" : "agent") as AgentMessage["role"],
+            content: turn.content,
+            status: turn.role === "assistant" ? ("executed" as const) : undefined,
+          })),
+          ...current,
+        ]);
+      }
+    }
+
     setActivity(Array.isArray(data.activity) ? data.activity : []);
     setPolicies(policyListToMap(data.policies));
     setSummary(data.summary || DEFAULT_SUMMARY);
@@ -328,7 +349,27 @@ export default function AgentCenterPage() {
     const message = input.trim();
     if (!message || loading) return;
     setInput("");
+    // La burbuja del usuario aparece de inmediato para que se sienta un diálogo.
+    setMessages((current) => [...current, { id: nowId(), role: "user", content: message }]);
     await sendAgentRequest({ message });
+  }
+
+  async function resetConversation() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await fetch("/api/agent-center", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "reset_conversation" }),
+      });
+      setMessages((current) => current.filter((m) => m.id.startsWith("proposal-")));
+    } catch {
+      // best-effort: si falla, el reset local igual limpia la vista
+      setMessages((current) => current.filter((m) => m.id.startsWith("proposal-")));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function confirmAction(messageId: string, action: AgentAction) {
@@ -513,25 +554,52 @@ export default function AgentCenterPage() {
         )}
       </div>
 
-      {/* Resultados recientes de mensajes ejecutados/rechazados/error, para no perder el feedback */}
-      {messages.some((m) => m.status && m.status !== "awaiting_confirmation") && (
-        <div className="mt-4 space-y-2.5">
-          {messages.filter((m) => m.status && m.status !== "awaiting_confirmation").slice(-3).map((message) => (
-            <div
-              key={message.id}
-              className="flex items-start gap-2.5 rounded-xl border p-3.5 text-[13px]"
-              style={{
-                borderColor: message.status === "executed" ? "rgba(95, 122, 70,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : "var(--cc-line)",
-                background: message.status === "executed" ? "var(--cc-sage-tint)" : message.status === "rejected" ? "var(--cc-rose-tint)" : "var(--cc-paper)",
-              }}
-            >
-              {message.status === "executed" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
-              {message.status === "rejected" && <XCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-rose)" }} />}
-              <span className="cc-text-secondary">{message.result?.message || message.content}</span>
+      {/* Hilo conversacional: mensajes del usuario y respuestas del agente en orden.
+          Las propuestas que esperan aprobación viven arriba en la cola, no aquí. */}
+      {(() => {
+        const thread = messages.filter((m) => !m.id.startsWith("proposal-") && m.status !== "awaiting_confirmation");
+        if (thread.length === 0) return null;
+        return (
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[13px] font-medium cc-text-tertiary">Conversación</h2>
+              <button
+                type="button"
+                onClick={resetConversation}
+                disabled={loading}
+                className="text-[12px] font-medium disabled:opacity-50"
+                style={{ color: "var(--cc-copper)" }}
+              >
+                Nueva conversación
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="space-y-2.5">
+              {thread.map((message) => (
+                message.role === "user" ? (
+                  <div key={message.id} className="flex justify-end">
+                    <span className="max-w-[80%] rounded-2xl rounded-br-sm px-3.5 py-2 text-[13px] text-paper" style={{ background: "var(--cc-carbon, var(--cc-ink))" }}>
+                      {message.content}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    key={message.id}
+                    className="flex items-start gap-2.5 rounded-xl border p-3.5 text-[13px]"
+                    style={{
+                      borderColor: message.status === "executed" ? "rgba(95, 122, 70,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : message.status === "error" ? "var(--cc-line)" : "var(--cc-line)",
+                      background: message.status === "executed" ? "var(--cc-sage-tint)" : message.status === "rejected" ? "var(--cc-rose-tint)" : "var(--cc-paper)",
+                    }}
+                  >
+                    {message.status === "executed" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
+                    {message.status === "rejected" && <XCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-rose)" }} />}
+                    <span className="cc-text-secondary">{message.result?.message || message.content}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {(triggers.length > 0 || tasks.length > 0) && (
         <details className="group mt-6 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>

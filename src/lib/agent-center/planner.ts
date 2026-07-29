@@ -109,11 +109,30 @@ export function coercePlannedAction(value: unknown): AgentAction | null {
     };
 }
 
-export async function planAgentAction(message: string, profile: AgentProfile): Promise<AgentAction | null> {
+export interface PlannerTurn {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export async function planAgentAction(
+    message: string,
+    profile: AgentProfile,
+    history: PlannerTurn[] = [],
+): Promise<AgentAction | null> {
     if (!process.env.ANTHROPIC_API_KEY) return null;
 
     const today = new Date().toISOString().slice(0, 10);
-    const userPrompt = `Fecha actual: ${today}\nRol: ${profile.role || 'sin rol'}\nNombre: ${profile.name || 'Administracion'}\nSolicitud: ${message}`;
+    // El contexto reciente se pliega como texto (no como mensajes separados) para
+    // que el agente dialogue —resolver "y también para junio", "hazlo para el de
+    // al lado"— sin arriesgar la alternancia user/assistant que exige la API con
+    // tool_choice forzado.
+    const recent = history.slice(-6);
+    const contextBlock = recent.length
+        ? `\n\nContexto de la conversacion reciente (lo mas nuevo al final):\n${recent
+            .map(turn => `${turn.role === 'user' ? 'Admin' : 'CoCo'}: ${turn.content}`)
+            .join('\n')}`
+        : '';
+    const userPrompt = `Fecha actual: ${today}\nRol: ${profile.role || 'sin rol'}\nNombre: ${profile.name || 'Administracion'}\nSolicitud: ${message}${contextBlock}`;
     const estimatedPromptTokens = estimateTokensFromText(`${SYSTEM_PROMPT}\n${userPrompt}`);
     const estimatedCompletionTokens = 900;
 
