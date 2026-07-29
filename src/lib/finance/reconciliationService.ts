@@ -127,16 +127,23 @@ export async function importBankTransactions(
         };
     });
 
-    // onConflict deja pasar los duplicados (mismo movimiento reimportado) sin
-    // reventar toda la carga; ignoreDuplicates evita el error 23505.
-    const { data, error } = await getSupabaseAdmin()
-        .from('bank_transactions')
-        .upsert(clean, { onConflict: 'community_id,txn_date,amount,reference', ignoreDuplicates: true })
-        .select('id');
-    if (error) throw error;
-
-    const inserted = data?.length ?? 0;
-    return { imported: inserted, skippedDuplicates: clean.length - inserted };
+    // Se inserta fila por fila y se saltan los duplicados por el código 23505:
+    // el índice único de dedup es PARCIAL (solo cuando hay referencia), y Postgres
+    // no acepta ON CONFLICT contra un índice parcial sin repetir su predicado, así
+    // que un upsert con onConflict de columnas fallaba. Una cartola trae decenas
+    // de filas, no miles, así que el costo es despreciable.
+    const admin = getSupabaseAdmin();
+    let imported = 0;
+    let skippedDuplicates = 0;
+    for (const row of clean) {
+        const { error } = await admin.from('bank_transactions').insert(row);
+        if (error) {
+            if ((error as { code?: string }).code === '23505') { skippedDuplicates += 1; continue; }
+            throw error;
+        }
+        imported += 1;
+    }
+    return { imported, skippedDuplicates };
 }
 
 /** Confirma que un movimiento del banco corresponde a un pago registrado. */
