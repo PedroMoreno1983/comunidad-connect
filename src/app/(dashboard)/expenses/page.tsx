@@ -463,8 +463,15 @@ export default function ExpensesPage() {
                             </div>
                         </div>
 
-                        {/* CTA */}
-                        {capabilities.onlinePayments && activeExpense && activeExpense.status !== "paid" ? (
+                        {/* CTA — "al día" depende de si DEBE, no de si el pago en
+                            línea está disponible. Mezclarlo hacía que a un residente
+                            con deuda se le dijera que estaba al día cada vez que
+                            Haulmer no estaba configurado. */}
+                        {!activeExpense || activeExpense.status === "paid" ? (
+                            <div className="mt-auto pt-4 pb-3 text-center text-sm font-semibold text-success flex items-center justify-center gap-2">
+                                <Check size={16} /> Estás al día con tus gastos comunes.
+                            </div>
+                        ) : capabilities.onlinePayments ? (
                             <div className="mt-auto pt-4 pb-3">
                                 <Button variant="primary" size="lg" block onClick={handlePay} disabled={isPaying !== null}>
                                     {isPaying ? <Loader2 className="h-5 w-5 animate-spin" /> : (
@@ -476,8 +483,19 @@ export default function ExpensesPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="mt-auto pt-4 pb-3 text-center text-sm font-semibold text-success flex items-center justify-center gap-2">
-                                <Check size={16} /> Estás al día con tus gastos comunes.
+                            <div className="mt-auto pt-4 pb-3">
+                                <div
+                                    className="rounded-xl px-4 py-3 text-center"
+                                    style={{ background: "var(--cc-paper-warm)", border: "1px solid var(--cc-line)" }}
+                                >
+                                    <div className="text-sm font-semibold" style={{ color: "var(--cc-ink)" }}>
+                                        Tienes ${totalAmount.toLocaleString("es-CL")} por pagar
+                                    </div>
+                                    <div className="mt-1 text-[11px]" style={{ color: "var(--cc-ink-tertiary)" }}>
+                                        El pago en línea todavía no está habilitado en tu comunidad.
+                                        Coordina el pago con la administración.
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </>

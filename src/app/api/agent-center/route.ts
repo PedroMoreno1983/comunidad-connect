@@ -278,7 +278,10 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
                 amount,
                 month,
                 dueDate,
-                label: cleanText(message.replace(/\s+/g, ' '), 120) || 'Gasto comun generado desde Agent Center',
+                // El concepto lo LEE EL RESIDENTE en su cobro, así que no puede
+                // ser el comando crudo del administrador: en producción quedó
+                // "cobra 75.000 al depto 1204" como descripción de la cuota.
+                label: `Gasto común ${month}`,
             },
             requiresConfirmation: true,
             title: `Crear cobro para Depto ${unitNumber}`,
