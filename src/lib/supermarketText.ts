@@ -28,7 +28,22 @@ export function significantWords(term: string): string[] {
         ));
 }
 
-/** Raíz tolerante a plurales simples: "laminas"→"lamina", "jaleas"→"jalea". */
+// Palabras reales que TERMINAN en -illa/-illo pero NO son diminutivos de otra
+// cosa. Sin este resguardo, "tortilla"→"torta" o "vainilla"→"vaina" romperían
+// el match. La reducción de diminutivos se salta estas.
+const NON_DIMINUTIVE_ILL = new Set([
+    'tortilla', 'vainilla', 'mantequilla', 'semilla', 'costilla', 'pastilla',
+    'morcilla', 'natilla', 'quesillo', 'tomillo', 'membrillo', 'cuchillo',
+    'cepillo', 'ladrillo', 'palillo', 'martillo', 'tornillo', 'bolsillo',
+    'pasillo', 'amarillo', 'cigarrillo', 'polvillo', 'colmillo', 'gargantilla',
+]);
+
+/**
+ * Raíz tolerante a plurales simples ("laminas"→"lamina") y a diminutivos chilenos
+ * ("longanizillas"→"longaniza", "salchichilla"→"salchicha"). Sin lo segundo, el
+ * diminutivo no calzaba con NINGÚN producto del catálogo y el ítem se reportaba
+ * como faltante en todas las cadenas a la vez.
+ */
 function stem(word: string): string {
     const aliases: Record<string, string> = {
         champinones: 'champinon',
@@ -41,8 +56,18 @@ function stem(word: string): string {
     };
     const alias = aliases[word];
     if (alias) return alias;
-    if (word.endsWith('s') && word.length > 3) return word.slice(0, -1);
-    return word;
+
+    let base = word;
+    if (base.endsWith('s') && base.length > 3) base = base.slice(0, -1); // plural simple
+
+    // Diminutivo -illa/-illo -> base ("longaniz"+"a", "salchich"+"a"), salvo las
+    // palabras que legítimamente terminan así.
+    if (!NON_DIMINUTIVE_ILL.has(base)) {
+        const diminutive = base.match(/^(.{4,})ill([oa])$/);
+        if (diminutive) return `${diminutive[1]}${diminutive[2]}`;
+    }
+
+    return base;
 }
 
 const PACKAGE_PREFIXES = new Set([
