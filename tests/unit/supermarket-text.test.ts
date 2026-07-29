@@ -38,6 +38,31 @@ describe('supermarketText matchAnchor', () => {
         expect(matchAnchor('Atún')).toBe('atun');
         expect(matchAnchor('arroz')).toBe('arroz');
     });
+
+    it('reduce diminutivos chilenos a su base, para que el ILIKE encuentre el producto', () => {
+        // Sin esto, "longanizillas" no calzaba con ningún producto del catálogo.
+        expect(matchAnchor('longanizillas')).toBe('longaniza');
+        expect(matchAnchor('salchichillas')).toBe('salchicha');
+        expect(matchAnchor('longanizilla')).toBe('longaniza');
+    });
+
+    it('NO corrompe palabras reales que terminan en -illa/-illo', () => {
+        expect(matchAnchor('tortilla')).toBe('tortilla');
+        expect(matchAnchor('vainilla')).toBe('vainilla');
+        expect(matchAnchor('mantequilla')).toBe('mantequilla');
+        expect(matchAnchor('quesillo')).toBe('quesillo');
+    });
+});
+
+describe('supermarketText diminutivos en el match completo', () => {
+    it('el diminutivo calza con el producto base del catálogo', () => {
+        expect(termMatchesProductName('longanizillas', 'Longaniza Parrillera 2 Un 250 gr Alejandro')).toBe(true);
+        expect(termMatchesProductName('salchichillas', 'Salchicha Vienesa Pf 1 kg')).toBe(true);
+    });
+    it('tortilla sigue calzando con tortilla, no con torta', () => {
+        expect(termMatchesProductName('tortilla', 'Tortilla Mexicana Trigo 10 un')).toBe(true);
+        expect(termMatchesProductName('tortilla', 'Torta de Chocolate 8 porciones')).toBe(false);
+    });
 });
 
 describe('supermarketText termMatchesProductName', () => {

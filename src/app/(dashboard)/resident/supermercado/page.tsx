@@ -296,15 +296,27 @@ export default function SupermarketPage() {
                     </p>
                   </div>
                 </div>
-                <div className="w-full sm:w-80">
+                <div className="w-full space-y-2 sm:w-80">
                   {selectedBasket.complete ? (
                     <CartLoaderButton basket={selectedBasket} />
+                  ) : selectedBasket.coveredCount > 0 ? (
+                    <>
+                      {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
+                          Ahora se puede cargar lo encontrado y agregar el resto a mano. */}
+                      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                        <p className="text-sm font-bold cc-text-primary">
+                          Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
+                        </p>
+                        <p className="mt-1 text-xs cc-text-secondary">
+                          {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
+                        </p>
+                      </div>
+                      <CartLoaderButton basket={selectedBasket} />
+                    </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
-                      <p className="text-sm font-bold cc-text-primary">Aún no está lista para cargar</p>
-                      <p className="mt-1 text-xs cc-text-secondary">
-                        CoCo debe resolver {selectedBasket.missingTerms.length} equivalentes en {selectedBasket.store} antes de presentarla como compra completa.
-                      </p>
+                      <p className="text-sm font-bold cc-text-primary">No encontramos productos de tu lista en {selectedBasket.store}</p>
+                      <p className="mt-1 text-xs cc-text-secondary">Prueba otra tienda o revisa cómo escribiste los productos.</p>
                     </div>
                   )}
                 </div>
