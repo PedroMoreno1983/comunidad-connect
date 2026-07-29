@@ -20,6 +20,11 @@ const STORE_HOME: Record<string, string> = {
 // puede trabajar en segundo plano ahí y avanza de a un producto por clic.
 const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
 
+// Cadenas donde el carro se carga con un enlace, sin instalar nada. Debe
+// coincidir con lib/supermarket/cartUrl.ts; el servidor manda, esto solo
+// decide qué botón mostrar antes de preguntarle.
+const DIRECT_CART_STORES = new Set(['Jumbo', 'Lider']);
+
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
 }
@@ -29,12 +34,53 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [directResult, setDirectResult] = useState<{ loaded: number; missing: string[] } | null>(null);
+  const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
 
   const storeUrl = STORE_HOME[basket.store];
   const stepByStep = STEP_BY_STEP_STORES.has(basket.store);
   const wholesaleQuote = basket.store === 'Irurzun';
 
   if (!storeUrl) return null;
+
+  /**
+   * Camino preferido: un enlace que deja el carro cargado sin instalar nada.
+   * Solo existe en las cadenas que exponen la ruta de carrito de VTEX; el
+   * endpoint responde `supported: false` en el resto y ahí se cae al cargador.
+   */
+  async function loadDirectly() {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/supermarket/cart-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store: basket.store,
+          items: basket.items.map(item => ({
+            name: item.name,
+            productUrl: item.productUrl,
+            quantity: Math.max(1, Math.round(item.quantity)),
+          })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'No se pudo preparar el carro.');
+
+      if (!data.supported || !data.cartUrl) {
+        // La tienda no lo permite: se ofrece el cargador en vez de fingir.
+        setDirectUnavailable(data.reason || null);
+        return;
+      }
+
+      setDirectResult({ loaded: data.loadedCount, missing: data.missingItems || [] });
+      window.open(data.cartUrl, '_blank', 'noopener');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function prepare() {
     setLoading(true);
@@ -129,12 +175,54 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     );
   }
 
+  if (directResult) {
+    return (
+      <div
+        className="space-y-3 rounded-xl border p-4"
+        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+      >
+        <div>
+          <p className="text-sm font-bold cc-text-primary">
+            {basket.store} se abrió con tu carro cargado
+          </p>
+          <p className="mt-1 text-xs leading-5 cc-text-secondary">
+            {directResult.loaded} producto(s) quedaron en el carro. Si la tienda te pide
+            iniciar sesión, hazlo y el carro se arma solo. Revisa, elige la entrega y paga.
+          </p>
+        </div>
+
+        {directResult.missing.length > 0 && (
+          <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
+            <p className="text-[11px] font-semibold cc-text-primary">
+              {directResult.missing.length} producto(s) no se pudieron cargar
+            </p>
+            <p className="mt-1 text-[11px] leading-4 cc-text-tertiary">
+              {directResult.missing.slice(0, 5).join(', ')}
+              {directResult.missing.length > 5 ? `, y ${directResult.missing.length - 5} más` : ''}.
+              Tendrás que buscarlos en la tienda.
+            </p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setDirectResult(null)}
+          className="text-xs underline cc-text-tertiary"
+        >
+          Volver
+        </button>
+      </div>
+    );
+  }
+
+  const canLoadDirectly = DIRECT_CART_STORES.has(basket.store) && !directUnavailable;
+
   return (
     <div className="space-y-2">
       <Button
         type="button"
         disabled={loading}
-        onClick={() => void prepare()}
+        onClick={() => void (canLoadDirectly ? loadDirectly() : prepare())}
         className="h-12 w-full text-sm text-white"
         style={{ background: 'var(--cc-ink)' }}
       >
@@ -143,13 +231,20 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       </Button>
 
       {error && <p className="text-[11px] text-danger-fg">{error}</p>}
+      {directUnavailable && <p className="text-[11px] cc-text-tertiary">{directUnavailable}</p>}
 
-      <p className="text-[11px] cc-text-tertiary">
-        Necesitas el marcador de CoCo una sola vez.{' '}
-        <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 underline">
-          Activarlo ahora <ExternalLink className="h-3 w-3" />
-        </Link>
-      </p>
+      {canLoadDirectly ? (
+        <p className="text-[11px] cc-text-tertiary">
+          Se abre {basket.store} con los productos ya en el carro. No tienes que instalar nada.
+        </p>
+      ) : (
+        <p className="text-[11px] cc-text-tertiary">
+          En {basket.store} necesitas el marcador de CoCo una sola vez.{' '}
+          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 underline">
+            Activarlo ahora <ExternalLink className="h-3 w-3" />
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
