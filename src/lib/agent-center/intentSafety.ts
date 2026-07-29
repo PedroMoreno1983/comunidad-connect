@@ -52,6 +52,23 @@ export function isIndividualDebtQuery(message: string) {
         || /\b(?:cuanto\s+)?(?:debe|adeuda|tiene deuda|tiene pagos? pendientes?)\b.{1,90}\b(?:el|la)?\s*(?:departamento|depto|dpto|unidad)\b/.test(normalized);
 }
 
+/**
+ * "Armar el gasto común del mes" vs "¿cuánto debe el 1204?".
+ *
+ * Son intenciones opuestas que comparten la palabra "gasto": una abarca a TODAS
+ * las unidades y por eso no lleva departamento, la otra es sobre una sola. Sin
+ * distinguirlas, el Agent Center pedía un residente para una operación que no
+ * tiene uno.
+ */
+export function isMonthlyBillingRequest(message: string) {
+    const normalized = normalizeIntentText(message);
+    const aboutBilling = /\b(gasto|gastos)\s+(comun|comunes)\b/.test(normalized)
+        || /\bprorrate/.test(normalized)
+        || /\begreso/.test(normalized);
+    const wantsToBuild = /\b(arma|armar|emite|emitir|genera|generar|calcula|calcular|prepara|preparar|carga|cargar|hace|hacer)\b/.test(normalized);
+    return aboutBilling && wantsToBuild;
+}
+
 export function extractResidentQuery(message: string) {
     const patterns = [
         /(?:residente|vecina|vecino)\s+([\p{L}][\p{L}\s.'-]{1,78}?)(?=\s+(?:debe|adeuda|tiene|mantiene|esta)|[?,.;!]|$)/iu,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
-import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
+import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, isMonthlyBillingRequest, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
 import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
 import { executeCreateUnitExpense, executeSendUnitPaymentReminder } from '@/lib/agent-center/unitFinanceActions';
 import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
@@ -326,6 +326,30 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     if (wantsBroadcastWorkflow) {
         const playbook = getPlaybook('community_broadcast');
         if (playbook) return playbookAction(playbook, message);
+    }
+
+    // "Armar/emitir el gasto comun del mes" es una intencion distinta de
+    // "consultar la deuda de alguien": no lleva departamento porque abarca a
+    // TODAS las unidades. Sin esta rama caia en el catch-all de abajo y el
+    // Agent Center pedia un residente para una operacion que no tiene uno.
+    const wantsMonthlyBilling = profile.role === 'admin'
+        && isMonthlyBillingRequest(message)
+        && !unitNumber;
+
+    if (wantsMonthlyBilling) {
+        const month = monthFromText(message);
+        return {
+            agentKey: 'finance',
+            toolName: 'clarify_intent',
+            args: { requestedText: cleanText(message, 500) },
+            requiresConfirmation: false,
+            title: `Armar el gasto comun de ${month}`,
+            summary: 'El gasto comun del mes se arma en Egresos y emision: cargas los egresos '
+                + 'del edificio, revisas el prorrateo entre unidades y emites el cobro de todas '
+                + 'de una vez. Tambien puedes pedirselo a CoCo en el chat. Desde aca solo se '
+                + 'crean cobros de una unidad puntual, indicando su departamento y monto.',
+            targetHref: '/admin/finanzas/egresos',
+        };
     }
 
     if (lower.includes('gasto') || lower.includes('pago') || lower.includes('deuda')) {
