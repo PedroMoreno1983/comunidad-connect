@@ -41,16 +41,22 @@ const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; f
 };
 
 /**
- * Ordena por cobertura y precio, con desempate por cargabilidad: a precios
- * parecidos gana la tienda más fácil de cargar; si una es bastante más barata,
- * el precio manda igual (el distintivo avisa que necesita un paso extra).
+ * Ordena priorizando las tiendas donde la carga del carro SÍ funciona (rank 0-1:
+ * enlace/carro directo) por sobre las manuales (rank 2: Tottus/aCuenta), aunque
+ * estas sean más baratas — a pedido: que lo que se puede cargar salga primero.
+ * Dentro de cada grupo: más cobertura, luego mejor precio.
  */
 function orderBaskets(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate[] {
+  const worksGroup = (store: string) => (loadabilityRank(store) <= 1 ? 0 : 1);
   return [...baskets].sort((a, b) => {
+    const ga = worksGroup(a.store);
+    const gb = worksGroup(b.store);
+    if (ga !== gb) return ga - gb; // primero las que cargan
     if (a.complete !== b.complete) return a.complete ? -1 : 1;
     if (a.coveredCount !== b.coveredCount) return b.coveredCount - a.coveredCount;
-    const sa = a.subtotal * (1 + loadabilityRank(a.store) * 0.02);
-    const sb = b.subtotal * (1 + loadabilityRank(b.store) * 0.02);
+    // leve desempate fino: 'verified' sobre 'attempt' a precio parecido
+    const sa = a.subtotal * (1 + loadabilityRank(a.store) * 0.01);
+    const sb = b.subtotal * (1 + loadabilityRank(b.store) * 0.01);
     return sa - sb;
   });
 }
