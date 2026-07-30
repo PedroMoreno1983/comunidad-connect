@@ -51,6 +51,24 @@ function mapVisitorRow(row: VisitorRow): VisitorLog {
     };
 }
 
+/**
+ * Avisa al residente que su visita ingresó. Best-effort: la notificación la
+ * escribe el servidor (rol de servicio) porque es para otro usuario. Si falla,
+ * la visita ya quedó registrada; no interrumpe el flujo del conserje.
+ */
+async function notifyResidentOfVisit(unitId: string, visitorName: string, unitNumber = "") {
+    if (!unitId && !unitNumber) return;
+    try {
+        await fetch("/api/concierge/visit-notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ unitId, unitNumber, visitorName }),
+        });
+    } catch {
+        // silencioso a propósito
+    }
+}
+
 
 export default function VisitorsPage() {
     const { user } = useAuth();
@@ -94,6 +112,9 @@ export default function VisitorsPage() {
                 registered_by: user?.id || 'admin',
                 is_qr: false
             });
+
+            // Avisa al residente que su visita ingresó (best-effort, server-side).
+            void notifyResidentOfVisit(newVisitor.unit, newVisitor.name);
 
             const visitor = mapVisitorRow({
                 ...(data as VisitorRow),
@@ -221,6 +242,8 @@ export default function VisitorsPage() {
                 onScanSuccess={(newLog: VisitorLog) => {
                     const nextVisitors = [newLog, ...visitors];
                     setVisitors(nextVisitors);
+                    // onScanSuccess entrega el número de unidad, no el UUID.
+                    void notifyResidentOfVisit("", newLog.visitorName, newLog.unitId);
                 }}
             />
 
