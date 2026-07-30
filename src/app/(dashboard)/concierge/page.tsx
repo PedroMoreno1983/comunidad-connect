@@ -85,6 +85,9 @@ export default function ConciergeDashboardPage() {
     const [visitors, setVisitors] = React.useState<ConciergeVisitorRow[]>([]);
     const [packages, setPackages] = React.useState<ConciergePackageRow[]>([]);
     const [cases, setCases] = React.useState<ConciergeCaseRow[]>([]);
+    const [incidentForm, setIncidentForm] = React.useState<{ title: string; urgency: string }>({ title: "", urgency: "media" });
+    const [incidentSaving, setIncidentSaving] = React.useState(false);
+    const [incidentError, setIncidentError] = React.useState<string | null>(null);
     const [handoverHistory, setHandoverHistory] = React.useState<ConciergeOperationEvent[]>([]);
     const [handoverSaving, setHandoverSaving] = React.useState(false);
     const [handoverMessage, setHandoverMessage] = React.useState<string | null>(null);
@@ -122,6 +125,29 @@ export default function ConciergeDashboardPage() {
         load();
         return () => { cancelled = true; };
     }, []);
+
+    const submitIncident = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!incidentForm.title.trim()) return;
+        setIncidentSaving(true);
+        setIncidentError(null);
+        try {
+            const response = await fetch("/api/concierge/incidents", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(incidentForm),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "No se pudo registrar la incidencia.");
+            // Se agrega arriba de la lista para verla al instante.
+            setCases(current => [data.incident as ConciergeCaseRow, ...current]);
+            setIncidentForm({ title: "", urgency: "media" });
+        } catch (error) {
+            setIncidentError(error instanceof Error ? error.message : "No se pudo registrar la incidencia.");
+        } finally {
+            setIncidentSaving(false);
+        }
+    };
 
     const submitHandover = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -324,10 +350,40 @@ export default function ConciergeDashboardPage() {
                             Casos que requieren seguimiento.
                         </h2>
                     </div>
-                    <Link href="/chat" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--cc-ink)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--cc-paper)]">
+                    <Link href="/chat" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--cc-line)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--cc-ink)]">
                         Reportar con CoCo <ArrowRight className="h-4 w-4" />
                     </Link>
                 </div>
+
+                {/* Reporte directo: el conserje registra una incidencia sin pasar por
+                    el chat. Antes la sección era solo lectura y por eso parecía muerta. */}
+                <form onSubmit={submitIncident} className="mt-5 flex flex-col gap-2 rounded-xl border border-[var(--cc-line)] bg-[var(--cc-paper-warm)] p-3 sm:flex-row sm:items-center">
+                    <input
+                        value={incidentForm.title}
+                        onChange={event => setIncidentForm(current => ({ ...current, title: event.target.value }))}
+                        placeholder="Reportar una incidencia (ej: filtración en pasillo piso 3)"
+                        className="h-10 flex-1 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-3 text-sm outline-none focus:border-[var(--cc-copper)]"
+                    />
+                    <select
+                        value={incidentForm.urgency}
+                        onChange={event => setIncidentForm(current => ({ ...current, urgency: event.target.value }))}
+                        className="h-10 rounded-lg border border-[var(--cc-line)] bg-[var(--cc-paper)] px-2 text-sm"
+                    >
+                        <option value="baja">Baja</option>
+                        <option value="media">Media</option>
+                        <option value="alta">Alta</option>
+                        <option value="emergencia">Emergencia</option>
+                    </select>
+                    <button
+                        type="submit"
+                        disabled={incidentSaving || !incidentForm.title.trim()}
+                        className="h-10 rounded-lg bg-[var(--cc-ink)] px-4 text-sm font-semibold text-[var(--cc-paper)] disabled:opacity-50"
+                    >
+                        {incidentSaving ? "Registrando..." : "Reportar"}
+                    </button>
+                </form>
+                {incidentError && <p className="mt-2 text-xs text-[var(--cc-rose)]">{incidentError}</p>}
+
                 {loading ? (
                     <p className="py-8 text-sm text-[var(--cc-ink-tertiary)]">Cargando incidencias...</p>
                 ) : cases.length === 0 ? (
