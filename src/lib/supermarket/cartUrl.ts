@@ -25,6 +25,8 @@
  * queda el cargador. No se promete un carro cargado que pueda llegar vacío.
  */
 
+import { storeSupportsSharedCart } from './vtexSharedCart';
+
 export interface CartUrlItem {
     sku: string;
     quantity: number;
@@ -70,6 +72,37 @@ export function directCartConfidence(store: string): DirectCartConfidence | null
 
 export function storeSupportsDirectCart(store: string): boolean {
     return directCartConfidence(store) !== null;
+}
+
+export type StoreLoadability = 'direct' | 'attempt' | 'manual';
+
+/**
+ * Cargabilidad del carro por tienda, para que la UI la muestre y el orden la
+ * considere cuando los precios son parecidos:
+ *   'direct'  -> carga sola y confirmada: carro compartido (Jumbo, Santa Isabel,
+ *                Unimarc) o enlace directo verificado
+ *   'attempt' -> enlace que la tienda puede bloquear; no podemos confirmarlo (Lider)
+ *   'manual'  -> requiere un paso extra (marcador) o gestión comercial
+ *
+ * Tiene que mirar AMBOS mecanismos. Mirando solo el enlace directo, Santa Isabel
+ * y Unimarc caían en 'manual' -- el peor nivel -- cuando son de las que mejor
+ * funcionan: la UI las etiquetaba "requiere un paso extra" y el desempate les
+ * cargaba una penalización de precio, pudiendo recomendar una tienda más cara.
+ */
+export function storeLoadability(store: string): StoreLoadability {
+    // El carro compartido es el mecanismo más fuerte: la tienda confirma qué
+    // quedó adentro, así que manda sobre lo que diga el enlace directo.
+    if (storeSupportsSharedCart(store)) return 'direct';
+    const confidence = directCartConfidence(store);
+    if (confidence === 'verified') return 'direct';
+    if (confidence === 'attempt') return 'attempt';
+    return 'manual';
+}
+
+/** Menor = mejor de cargar. Para desempatar el orden a precios parecidos. */
+export function loadabilityRank(store: string): number {
+    const tier = storeLoadability(store);
+    return tier === 'direct' ? 0 : tier === 'attempt' ? 1 : 2;
 }
 
 export function supportedDirectCartStores(): string[] {

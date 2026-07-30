@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildDirectCartUrl, storeSupportsDirectCart, countUnsupportedItems, directCartConfidence,
+    storeLoadability, loadabilityRank,
 } from '@/lib/supermarket/cartUrl';
+import { sharedCartStores, storeSupportsSharedCart } from '@/lib/supermarket/vtexSharedCart';
 
 describe('buildDirectCartUrl', () => {
     it('arma el enlace de Jumbo con los SKU y cantidades', () => {
@@ -102,6 +104,34 @@ describe('directCartConfidence', () => {
         expect(directCartConfidence('Unimarc')).toBeNull();
         expect(directCartConfidence('Santa Isabel')).toBeNull();
         expect(directCartConfidence('Tottus')).toBeNull();
+    });
+});
+
+describe('storeLoadability / loadabilityRank', () => {
+    it('clasifica la cargabilidad por tienda', () => {
+        expect(storeLoadability('Jumbo')).toBe('direct');
+        expect(storeLoadability('Lider')).toBe('attempt');
+        expect(storeLoadability('Tottus')).toBe('manual');
+        expect(storeLoadability('aCuenta')).toBe('manual');
+    });
+
+    it('toda tienda con carro compartido es "direct", no "manual"', () => {
+        // Regresión: storeLoadability solo miraba el enlace directo, así que
+        // Santa Isabel y Unimarc caían en 'manual' (el peor nivel) pese a cargar
+        // solas y confirmadas. La UI las rotulaba "requiere un paso extra" y el
+        // desempate les cargaba una penalización de precio, con lo que podía
+        // recomendar una tienda más cara que las que sí funcionan.
+        for (const store of sharedCartStores()) {
+            expect(storeSupportsSharedCart(store)).toBe(true);
+            expect(storeLoadability(store)).toBe('direct');
+            expect(loadabilityRank(store)).toBe(0);
+        }
+    });
+
+    it('ordena mejor a la más fácil de cargar', () => {
+        expect(loadabilityRank('Jumbo')).toBeLessThan(loadabilityRank('Lider'));
+        expect(loadabilityRank('Lider')).toBeLessThan(loadabilityRank('Tottus'));
+        expect(loadabilityRank('Santa Isabel')).toBeLessThan(loadabilityRank('Lider'));
     });
 });
 
