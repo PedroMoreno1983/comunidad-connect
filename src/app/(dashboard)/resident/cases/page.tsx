@@ -54,6 +54,7 @@ const urgencyStyle: Record<CocoCase["urgency"], React.CSSProperties> = {
 export default function ResidentCasesPage() {
     const { user } = useAuth();
     const [cases, setCases] = useState<CocoCase[]>([]);
+    const [visibleCount, setVisibleCount] = useState(5);
     const [eventsByCase, setEventsByCase] = useState<Record<string, CocoCaseEvent[]>>({});
     const [loading, setLoading] = useState(true);
 
@@ -156,7 +157,7 @@ export default function ResidentCasesPage() {
                     </div>
                 ) : (
                     <div className="divide-y divide-[var(--cc-line)]">
-                        {cases.map(item => {
+                        {cases.slice(0, visibleCount).map(item => {
                             const status = statusCopy[item.status] || statusCopy.open;
                             const StatusIcon = status.icon;
                             const isHot = item.urgency === "alta" || item.urgency === "emergencia";
@@ -211,6 +212,20 @@ export default function ResidentCasesPage() {
                                 </article>
                             );
                         })}
+                        {/* Antes se listaban TODOS los casos apilados. Ahora se muestran
+                            de a pocos para no saturar la pantalla hacia abajo. */}
+                        {cases.length > visibleCount && (
+                            <div className="p-4 text-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleCount(count => count + 5)}
+                                    className="rounded-lg border px-4 py-2 text-sm font-semibold cc-text-primary transition hover:bg-[var(--cc-paper-warm)]"
+                                    style={{ borderColor: "var(--cc-line)" }}
+                                >
+                                    Ver más ({cases.length - visibleCount} restantes)
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </section>

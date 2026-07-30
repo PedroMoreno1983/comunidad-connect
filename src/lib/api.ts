@@ -1703,6 +1703,27 @@ export const AmenitiesService = {
         start_time: string;
         end_time: string;
     }) {
+        // Bloqueo de topes: no se permite una reserva confirmada del mismo espacio
+        // y día cuyo horario se pise con otra. Antes no existía y dos personas
+        // podían reservar el mismo bloque. Los horarios son HH:MM (24h, con cero a
+        // la izquierda), así que la comparación de strings equivale a la temporal.
+        const { data: sameDay, error: overlapError } = await supabase
+            .from('bookings')
+            .select('start_time, end_time')
+            .eq('amenity_id', bookingData.amenity_id)
+            .eq('date', bookingData.date)
+            .eq('status', 'confirmed');
+        if (overlapError) {
+            console.error('Error checking booking overlap:', overlapError);
+            throw overlapError;
+        }
+        const clashes = (sameDay ?? []).some((existing: { start_time: string | null; end_time: string | null }) =>
+            bookingData.start_time < String(existing.end_time)
+            && bookingData.end_time > String(existing.start_time));
+        if (clashes) {
+            throw new Error('Ese espacio ya está reservado en ese horario. Elige otro bloque disponible.');
+        }
+
         const { data, error } = await supabase
             .from('bookings')
             .insert({
