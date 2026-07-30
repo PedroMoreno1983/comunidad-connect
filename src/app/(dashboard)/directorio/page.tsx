@@ -140,6 +140,9 @@ export default function DirectoryPage() {
                     }
                 />
 
+                {/* El banco de tiempo vive en Convivencia, que el conserje no tiene.
+                    Mostrárselo lo llevaba a una sección ajena a su rol. */}
+                {user?.role !== 'concierge' && (
                 <div className="rounded-xl border border-brand-100 bg-brand-50/60 p-5 shadow-sm">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-start gap-3">
@@ -159,6 +162,7 @@ export default function DirectoryPage() {
                         </Link>
                     </div>
                 </div>
+                )}
 
                 {/* Segmented Control Toggle */}
                 <div className="flex justify-center">
