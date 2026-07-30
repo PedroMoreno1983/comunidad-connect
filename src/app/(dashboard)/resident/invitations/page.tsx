@@ -69,7 +69,19 @@ export default function ResidentInvitationsPage() {
         fetchInvitations();
     }, [user]);
 
-    const activeInvitations = invitations.filter(i => i.status === 'active');
+    // Un pase vale si sigue 'active' Y su vigencia no ha pasado. Filtrar solo por
+    // status dejaba pases vencidos hace meses contados como activos, porque nada
+    // en el sistema cambia ese campo cuando llega la hora: conserjería podía
+    // dejar entrar con un pase caducado.
+    const now = Date.now();
+    const isStillValid = (validTo: string) => {
+        const expiry = new Date(validTo).getTime();
+        // Una fecha ilegible no debe descartar el pase en silencio: se conserva y
+        // conserjería la revisa, en vez de desaparecerlo de la lista.
+        return Number.isNaN(expiry) || expiry > now;
+    };
+    const activeInvitations = invitations.filter(i => i.status === 'active' && isStillValid(i.validTo));
+    const expiredInvitations = invitations.filter(i => i.status === 'active' && !isStillValid(i.validTo));
     const pastInvitations = invitations.filter(i => i.status !== 'active');
     const handleGenerated = (invitation: GeneratedInvitation) => {
         setInvitations(current => [invitation, ...current]);
@@ -188,6 +200,34 @@ export default function ResidentInvitationsPage() {
                                 </motion.div>
                             ))}
                         </div>
+
+                        {/* Pases cuya vigencia ya pasó. Se muestran, no se esconden:
+                            el residente tiene que saber que caducó para generar otro. */}
+                        {!isLoading && expiredInvitations.length > 0 && (
+                            <div
+                                className="rounded-2xl border p-5"
+                                style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
+                            >
+                                <p className="text-xs font-bold uppercase tracking-wider cc-text-secondary">
+                                    Vencidos ({expiredInvitations.length})
+                                </p>
+                                <p className="mt-1 text-xs cc-text-tertiary">
+                                    Conserjería ya no acepta estos pases. Genera uno nuevo si la visita sigue en pie.
+                                </p>
+                                <ul className="mt-3 space-y-2">
+                                    {expiredInvitations.map(inv => (
+                                        <li key={inv.id} className="flex items-center justify-between text-sm">
+                                            <span className="cc-text-primary">{inv.guestName}</span>
+                                            <span className="text-xs cc-text-tertiary">
+                                                Venció el {new Date(inv.validTo).toLocaleString('es-CL', {
+                                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                                                })}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
 
                     {/* History List */}
