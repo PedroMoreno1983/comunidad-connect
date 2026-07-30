@@ -263,7 +263,14 @@ export default function AmenitiesPage() {
         }
     };
 
-    const userBookings = bookings.filter(b => b.userId === user?.id);
+    const allUserBookings = bookings.filter(b => b.userId === user?.id);
+    // "Próximas" tiene que mirar la fecha, no solo de quién es la reserva: sin
+    // esto se listaban reservas de hace meses bajo ese título. Se comparan
+    // strings YYYY-MM-DD, que ordenan igual que las fechas y evitan líos de
+    // zona horaria al construir Date.
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const userBookings = allUserBookings.filter(b => (b.date || '') >= todayKey);
+    const pastUserBookings = allUserBookings.filter(b => (b.date || '') < todayKey);
 
     const getIcon = (iconName: string) => {
         return iconMap[iconName] || Calendar;
@@ -401,7 +408,9 @@ export default function AmenitiesPage() {
                         <div className="grid grid-cols-3 gap-4 border-y py-5" style={{ borderColor: "var(--cc-line)" }}>
                             {[
                                 { label: "Espacios Activos", value: amenities.length, tone: "sage" as const },
-                                { label: "Mis Reservas", value: userBookings.length, tone: "copper" as const },
+                                // Cuenta solo las próximas: es el número sobre el que
+                                // el residente puede actuar. Las pasadas van abajo.
+                                { label: "Reservas próximas", value: userBookings.length, tone: "copper" as const },
                                 { label: "Turnos Diarios", value: timeSlots.length, tone: "plum" as const }
                             ].map(card => (
                                 <div key={card.label} className="border-r last:border-r-0" style={{ borderColor: "var(--cc-line)" }}>
@@ -481,6 +490,28 @@ export default function AmenitiesPage() {
                                         );
                                     })}
                                 </div>
+                            </section>
+                        )}
+
+                        {/* Reservas ya pasadas. Se nombran para que el residente no
+                            crea que se perdieron al dejar de aparecer arriba. */}
+                        {pastUserBookings.length > 0 && (
+                            <section className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
+                                <h3 className="text-sm font-bold cc-text-secondary uppercase tracking-wide">
+                                    Reservas pasadas ({pastUserBookings.length})
+                                </h3>
+                                <ul className="mt-3 space-y-1.5">
+                                    {pastUserBookings.slice(0, 5).map(booking => (
+                                        <li key={booking.id} className="flex items-center justify-between text-sm">
+                                            <span className="cc-text-primary">
+                                                {amenities.find(a => a.id === booking.amenityId)?.name || 'Espacio común'}
+                                            </span>
+                                            <span className="text-xs cc-text-tertiary">
+                                                {booking.date} · {booking.startTime}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </section>
                         )}
                     </>

@@ -8,6 +8,7 @@ import {
     CheckCircle2,
     History,
     Loader2,
+    Minus,
     TrendingDown,
     TrendingUp,
     Waves,
@@ -95,7 +96,11 @@ export default function WaterConsumptionPage() {
     const currentConsumption = lastReading?.consumption || 0;
     const previousConsumption = previousReading?.consumption || 0;
     const consumptionDelta = currentConsumption - previousConsumption;
-    const trendPercent = previousConsumption > 0 ? (consumptionDelta / previousConsumption) * 100 : 0;
+    // Sin mes anterior con consumo no hay porcentaje que mostrar. Caer a 0 hacía
+    // que la tarjeta dijera "0% más que mes anterior", que se lee como "consumiste
+    // lo mismo" cuando en realidad no hay con qué comparar.
+    const hasComparableMonth = previousConsumption > 0;
+    const trendPercent = hasComparableMonth ? (consumptionDelta / previousConsumption) * 100 : null;
     const isElevated = currentConsumption > BUILDING_AVERAGE_M3 * 1.2;
     const possibleLeak = previousConsumption > 0 && currentConsumption > previousConsumption * 1.35 && currentConsumption > 8;
     const recentReadings = readings.slice(-3).reverse();
@@ -154,12 +159,27 @@ export default function WaterConsumptionPage() {
                 </div>
 
                 <div className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full" style={consumptionDelta <= 0 ? { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" } : { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" }}>
-                        {consumptionDelta <= 0 ? <TrendingDown className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
+                    <div
+                        className="mb-4 flex h-11 w-11 items-center justify-center rounded-full"
+                        style={!hasComparableMonth
+                            ? { background: "var(--cc-paper-warm)", color: "var(--cc-ink-tertiary)" }
+                            : consumptionDelta <= 0
+                                ? { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }
+                                : { background: "var(--cc-amber-tint)", color: "var(--cc-amber)" }}
+                    >
+                        {!hasComparableMonth
+                            ? <Minus className="h-5 w-5" />
+                            : consumptionDelta <= 0
+                                ? <TrendingDown className="h-5 w-5" />
+                                : <TrendingUp className="h-5 w-5" />}
                     </div>
-                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{formatPercent(trendPercent)}</p>
+                    <p className="text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
+                        {trendPercent === null ? "—" : formatPercent(trendPercent)}
+                    </p>
                     <p className="text-xs font-bold uppercase tracking-wide cc-text-secondary">
-                        {consumptionDelta <= 0 ? "Menos que mes anterior" : "Más que mes anterior"}
+                        {!hasComparableMonth
+                            ? "Sin mes anterior para comparar"
+                            : consumptionDelta <= 0 ? "Menos que mes anterior" : "Más que mes anterior"}
                     </p>
                 </div>
 

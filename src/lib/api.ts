@@ -1733,6 +1733,16 @@ export const AmenitiesService = {
 // POLLS & VOTING
 // ==========================================
 export const PollsService = {
+    /**
+     * Votaciones abiertas de verdad: status 'active' Y con plazo vigente.
+     *
+     * Sin la condición de fecha, una votación cuyo plazo venció seguía contando
+     * como activa porque nada en el sistema cambia su status al cerrarse. El
+     * centro de votación mostraba "6 consultas activas, cierran pronto" mientras
+     * cada tarjeta decía "Finalizada" (la tarjeta sí calculaba por fecha), y CoCo
+     * las ofrecía para votar. El filtro va acá para que valga en todos los
+     * consumidores, no solo en la página.
+     */
     async getActivePolls() {
         const { data: polls, error } = await supabase
             .from('polls')
@@ -1742,6 +1752,7 @@ export const PollsService = {
                 votes:poll_votes(option_id)
             `)
             .eq('status', 'active')
+            .gte('end_date', new Date().toISOString())
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -1752,6 +1763,11 @@ export const PollsService = {
         return polls;
     },
 
+    /**
+     * Cerradas: las marcadas 'closed' más las que quedaron 'active' con el plazo
+     * vencido. Sin la segunda mitad esas votaciones desaparecían de la pantalla
+     * al arreglar getActivePolls, en vez de pasar al historial.
+     */
     async getClosedPolls() {
         const { data: polls, error } = await supabase
             .from('polls')
@@ -1760,7 +1776,7 @@ export const PollsService = {
                 options:poll_options(*),
                 votes:poll_votes(option_id)
             `)
-            .eq('status', 'closed')
+            .or(`status.eq.closed,and(status.eq.active,end_date.lt.${new Date().toISOString()})`)
             .order('end_date', { ascending: false });
 
         if (error) {
