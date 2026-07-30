@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
+import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/supermarket/cartUrl';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
@@ -31,6 +32,27 @@ const LIST_SUGGESTIONS = [
 
 function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
+}
+
+const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
+  direct: { label: 'Carga automática', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
+  attempt: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
+  manual: { label: 'Requiere un paso extra', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
+};
+
+/**
+ * Ordena por cobertura y precio, con desempate por cargabilidad: a precios
+ * parecidos gana la tienda más fácil de cargar; si una es bastante más barata,
+ * el precio manda igual (el distintivo avisa que necesita un paso extra).
+ */
+function orderBaskets(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate[] {
+  return [...baskets].sort((a, b) => {
+    if (a.complete !== b.complete) return a.complete ? -1 : 1;
+    if (a.coveredCount !== b.coveredCount) return b.coveredCount - a.coveredCount;
+    const sa = a.subtotal * (1 + loadabilityRank(a.store) * 0.02);
+    const sb = b.subtotal * (1 + loadabilityRank(b.store) * 0.02);
+    return sa - sb;
+  });
 }
 
 function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingItem {
@@ -111,10 +133,12 @@ export default function SupermarketPage() {
         quantity: item.requestedQuantity,
         unit: item.requestedUnit,
       }));
-      const nextOptions = data.basketOptions ?? [];
+      // Se reordena con desempate por cargabilidad: a precios parecidos, primero
+      // la tienda más fácil de cargar. La selección por defecto sigue ese orden.
+      const nextOptions = orderBaskets(data.basketOptions ?? []);
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
-      setSelectedStore(data.recommendedStore ?? nextOptions[0]?.store ?? null);
+      setSelectedStore(nextOptions[0]?.store ?? data.recommendedStore ?? null);
       setList(data.items);
 
       toast({
@@ -259,6 +283,17 @@ export default function SupermarketPage() {
                       {index === 0 && basket.complete && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
                     </div>
                     <p className="mt-4 text-xl font-bold cc-text-primary">{basket.store}</p>
+                    {(() => {
+                      const badge = LOADABILITY_BADGE[storeLoadability(basket.store)];
+                      return (
+                        <span
+                          className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          style={{ background: badge.bg, color: badge.fg }}
+                        >
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
                     <p className="mt-1 text-2xl font-bold cc-text-primary">{money(basket.subtotal)}</p>
                     <p className="mt-2 text-sm cc-text-secondary">
                       {basket.coveredCount} de {basket.requestedCount} productos
