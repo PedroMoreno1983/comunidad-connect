@@ -31,6 +31,12 @@ const VERIFIED_DIRECT_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
 const ATTEMPT_DIRECT_STORES = new Set(['Lider']);
 const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT_STORES]);
 
+// Cadenas sin carga automática posible hoy: Tottus corre en la plataforma de
+// Falabella (no VTEX), donde ni el enlace ni el marcador funcionan. Ofrecerle un
+// cargador con código sería prometer algo que no carga nada. Se abre la tienda y
+// se muestra la lista para agregar a mano, hasta una integración comercial.
+const MANUAL_ONLY_STORES = new Set(['Tottus']);
+
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
 }
@@ -260,24 +266,32 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   }
 
   const canLoadDirectly = DIRECT_CART_STORES.has(basket.store) && !directUnavailable;
+  const manualOnly = MANUAL_ONLY_STORES.has(basket.store);
 
   return (
     <div className="space-y-2">
       <Button
         type="button"
         disabled={loading}
-        onClick={() => void (canLoadDirectly ? loadDirectly() : prepare())}
+        onClick={() => {
+          if (manualOnly) { window.open(storeUrl, '_blank', 'noopener'); return; }
+          void (canLoadDirectly ? loadDirectly() : prepare());
+        }}
         className="h-12 w-full text-sm text-white"
         style={{ background: 'var(--cc-ink)' }}
       >
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-        {wholesaleQuote ? `Preparar cotización en ${basket.store}` : `Cargar carro en ${basket.store}`}
+        {manualOnly ? `Abrir ${basket.store}` : wholesaleQuote ? `Preparar cotización en ${basket.store}` : `Cargar carro en ${basket.store}`}
       </Button>
 
       {error && <p className="text-[11px] text-danger-fg">{error}</p>}
       {directUnavailable && <p className="text-[11px] cc-text-tertiary">{directUnavailable}</p>}
 
-      {canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
+      {manualOnly ? (
+        <p className="text-[11px] cc-text-tertiary">
+          {basket.store} todavía no permite cargar el carro automáticamente (requiere una integración con la cadena). Se abre la tienda; agrega los productos de tu lista, que ves aquí abajo.
+        </p>
+      ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
         <p className="text-[11px] cc-text-tertiary">
           Se abre {basket.store} con los productos ya en el carro. No tienes que instalar nada.
         </p>
