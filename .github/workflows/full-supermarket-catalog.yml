@@ -7,6 +7,14 @@ on:
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
       - ".github/workflows/full-supermarket-catalog.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "scripts/full_catalog.py"
+      - "scripts/ingest_full_supermarket_catalog.py"
+      - "scripts/test_full_catalog.py"
+      - ".github/workflows/full-supermarket-catalog.yml"
   schedule:
     - cron: "27 3 * * *"
   workflow_dispatch:
