@@ -230,8 +230,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "SI OFREZCO SERVICIOS",
       links: [
-        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"], requiresMarketplaceListing: true },
-        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
+        { href: "/marketplace?view=mine", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"], requiresMarketplaceListing: true },
+        { href: "/services?view=requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
         { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident"], feature: "maintenance", requiresServiceProvider: true },
       ]
     },
