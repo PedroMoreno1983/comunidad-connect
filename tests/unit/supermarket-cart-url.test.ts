@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildDirectCartUrl, storeSupportsDirectCart, countUnsupportedItems, directCartConfidence,
-    storeLoadability, loadabilityRank,
+    storeLoadability, loadabilityRank, MAX_ITEMS_PER_URL,
 } from '@/lib/supermarket/cartUrl';
 
 describe('buildDirectCartUrl', () => {
@@ -87,7 +87,7 @@ describe('buildDirectCartUrl', () => {
         const items = Array.from({ length: 70 }, (_, i) => ({ sku: `s${i}`, quantity: 1 }));
         const url = buildDirectCartUrl('Jumbo', items);
         const params = new URLSearchParams(url!.split('?')[1]);
-        expect(params.getAll('sku')).toHaveLength(50);
+        expect(params.getAll('sku')).toHaveLength(MAX_ITEMS_PER_URL);
     });
 });
 
@@ -141,6 +141,6 @@ describe('countUnsupportedItems', () => {
 
     it('suma también los que exceden el tope de 50', () => {
         const items = Array.from({ length: 60 }, (_, i) => ({ sku: `s${i}`, quantity: 1 }));
-        expect(countUnsupportedItems(items)).toBe(10);
+        expect(countUnsupportedItems(items)).toBe(60 - MAX_ITEMS_PER_URL);
     });
 });

@@ -43,6 +43,8 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [directResult, setDirectResult] = useState<{
     planned: number;
     missing: string[];
+    cartUrl: string;
+    opened: boolean;
     confidence?: 'verified' | 'attempt';
   } | null>(null);
   const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
@@ -60,6 +62,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
    * respuesta server-to-server.
    */
   async function loadDirectly() {
+    // Reservar la pestaña durante el gesto del clic evita que el navegador la
+    // bloquee cuando la respuesta del API llegue después.
+    const checkoutTab = window.open('about:blank', '_blank');
+    if (checkoutTab) checkoutTab.opener = null;
+
     setLoading(true);
     setError(null);
     try {
@@ -78,18 +85,28 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'No se pudo preparar el carro.');
 
-      if (!data.supported || !data.cartUrl) {
+      const cartUrl = typeof data.cartUrl === 'string' ? data.cartUrl : '';
+      if (!data.supported || !cartUrl) {
+        if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
         setDirectUnavailable(data.reason || null);
         return;
       }
 
+      let opened = false;
+      if (checkoutTab && !checkoutTab.closed) {
+        checkoutTab.location.replace(cartUrl);
+        opened = true;
+      }
+
       setDirectResult({
         planned: typeof data.plannedCount === 'number' ? data.plannedCount : 0,
-        missing: data.missingItems || [],
+        missing: Array.isArray(data.missingItems) ? data.missingItems : [],
+        cartUrl,
+        opened,
         confidence: data.confidence,
       });
-      window.open(data.cartUrl, '_blank', 'noopener');
     } catch (err) {
+      if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
     } finally {
       setLoading(false);
@@ -197,7 +214,9 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       >
         <div>
           <p className="text-sm font-bold cc-text-primary">
-            Se abrió el cargador de {basket.store}
+            {directResult.opened
+              ? `Se abrió el cargador de ${basket.store}`
+              : `El cargador de ${basket.store} está listo`}
           </p>
           <p className="mt-1 text-xs leading-5 cc-text-secondary">
             Enviamos {directResult.planned} producto(s) al checkout de la tienda para
@@ -220,7 +239,16 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={directResult.cartUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
+          >
+            {directResult.opened ? 'Volver a abrir el carro' : 'Abrir el carro'}{' '}
+            <ExternalLink className="h-3 w-3" />
+          </a>
           <Link
             href="/resident/supermercado/cargador"
             className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"

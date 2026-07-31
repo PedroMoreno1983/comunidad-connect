@@ -3,7 +3,12 @@ import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
-import { buildDirectCartUrl, storeSupportsDirectCart, directCartConfidence } from '@/lib/supermarket/cartUrl';
+import {
+    buildDirectCartUrl,
+    storeSupportsDirectCart,
+    directCartConfidence,
+    MAX_ITEMS_PER_URL,
+} from '@/lib/supermarket/cartUrl';
 
 export const runtime = 'nodejs';
 
@@ -108,7 +113,9 @@ export async function POST(req: NextRequest) {
 
         const withSku = resolved.filter(item => item.sku);
         const missing = resolved.filter(item => !item.sku);
-        const cartUrl = buildDirectCartUrl(store, withSku);
+        const planned = withSku.slice(0, MAX_ITEMS_PER_URL);
+        const overflow = withSku.slice(MAX_ITEMS_PER_URL);
+        const cartUrl = buildDirectCartUrl(store, planned);
 
         if (!cartUrl) {
             return NextResponse.json({
@@ -126,8 +133,8 @@ export async function POST(req: NextRequest) {
             cartUrl,
             // Confirma el mecanismo, no el stock de los productos.
             confidence: directCartConfidence(store),
-            plannedCount: withSku.length,
-            missingItems: missing.map(item => item.name).filter(Boolean),
+            plannedCount: planned.length,
+            missingItems: [...missing, ...overflow].map(item => item.name).filter(Boolean),
         });
     } catch (error) {
         return apiErrorResponse(req, '/api/supermarket/cart-url', error, {

@@ -142,11 +142,22 @@ check(cartUrl.includes("params.append('redirect', 'true')"), 'El enlace no redir
 check(!cartUrl.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');
 check(!cartRoute.includes('buildSharedCart'), 'La API volvió a crear un carro ajeno a la sesión del comprador.');
 check(cartRoute.includes("mode: 'browser-session-link'"), 'La API no identifica el handoff de sesión.');
-check(cartRoute.includes('plannedCount: withSku.length'), 'La API volvió a presentar enviados como cargados.');
+check(cartRoute.includes('const planned = withSku.slice(0, MAX_ITEMS_PER_URL)'), 'La API no respeta el tope real del enlace.');
+check(cartRoute.includes('plannedCount: planned.length'), 'La API vuelve a contar productos que no viajan en el enlace.');
+check(
+  cartRoute.includes('missingItems: [...missing, ...overflow]'),
+  'La API oculta los productos que exceden el tope del enlace.',
+);
 check(!fs.existsSync(path.join(root, 'src', 'lib', 'supermarket', 'vtexSharedCart.ts')), 'Quedó el adaptador de carro server-to-server.');
 check(!button.includes('se abrió con tu carro cargado'), 'La UI todavía afirma un carro cargado sin leer la sesión.');
 check(!button.includes('confirmó') || !button.includes('producto(s) en el carro'), 'La UI todavía presenta la API remota como confirmación del carro.');
 check(button.includes('Revisa que aparezcan en'), 'La UI no pide verificar el carro real de la tienda.');
 check(button.includes('Usar el cargador asistido'), 'Falta recuperación cuando la carga directa falla.');
+check(
+  button.includes("window.open('about:blank', '_blank')")
+    && button.includes('checkoutTab.location.replace(cartUrl)'),
+  'La pestaña se abre después del await y el navegador puede bloquearla.',
+);
+check(button.includes('href={directResult.cartUrl}'), 'Falta enlace manual si el navegador bloquea la pestaña.');
 
 console.log('Multistore cart loader integrity QA passed.');

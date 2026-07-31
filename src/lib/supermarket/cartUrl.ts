@@ -53,7 +53,7 @@ const DIRECT_CART_STORES: Record<string, string> = {
 };
 
 /** Tope de productos por enlace: una URL enorme se corta en algunos navegadores. */
-const MAX_ITEMS_PER_URL = 50;
+export const MAX_ITEMS_PER_URL = 50;
 
 /** 'verified' | 'attempt' | null. La UI nunca confunde esto con stock confirmado. */
 export function directCartConfidence(store: string): DirectCartConfidence | null {
