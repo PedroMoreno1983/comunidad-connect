@@ -1,4 +1,4 @@
-import { providersService } from "@/lib/services/providersService";
+import { providerServerService } from "@/lib/services/providerServerService";
 import { ServiceProvider } from "@/lib/types";
 import { ServicesCatalogClient } from "@/components/services/ServicesCatalogClient";
 
@@ -41,7 +41,7 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
 ];
 
 export default async function ServicesPage() {
-    const allProviders = await providersService.getAll();
+    const allProviders = await providerServerService.getAll();
     const categoryCounts = CATEGORIES.map(category => ({
         ...category,
         count: allProviders.filter(provider => provider.category === category.id).length
