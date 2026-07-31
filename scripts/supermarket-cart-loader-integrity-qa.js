@@ -122,4 +122,31 @@ check(
   'Irurzun no se presenta honestamente como cotización.',
 );
 
+// Regresión del handoff VTEX: el carro se crea en la sesión del navegador,
+// nunca en una sesión server-to-server que el comprador no posee.
+const cartUrl = fs.readFileSync(
+  path.join(root, 'src', 'lib', 'supermarket', 'cartUrl.ts'),
+  'utf8',
+);
+const cartRoute = fs.readFileSync(
+  path.join(root, 'src', 'app', 'api', 'supermarket', 'cart-url', 'route.ts'),
+  'utf8',
+);
+check(
+  cartUrl.includes('https://santaisabel.vtexcommercestable.com.br')
+    && cartUrl.includes('https://unimarc.vtexcommercestable.com.br')
+    && cartUrl.includes('https://jumbo.vtexcommercestable.com.br'),
+  'Los enlaces VTEX no apuntan a los hosts reales de checkout.',
+);
+check(cartUrl.includes("params.append('redirect', 'true')"), 'El enlace no redirige al checkout visible.');
+check(!cartUrl.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');
+check(!cartRoute.includes('buildSharedCart'), 'La API volvió a crear un carro ajeno a la sesión del comprador.');
+check(cartRoute.includes("mode: 'browser-session-link'"), 'La API no identifica el handoff de sesión.');
+check(cartRoute.includes('plannedCount: withSku.length'), 'La API volvió a presentar enviados como cargados.');
+check(!fs.existsSync(path.join(root, 'src', 'lib', 'supermarket', 'vtexSharedCart.ts')), 'Quedó el adaptador de carro server-to-server.');
+check(!button.includes('se abrió con tu carro cargado'), 'La UI todavía afirma un carro cargado sin leer la sesión.');
+check(!button.includes('confirmó') || !button.includes('producto(s) en el carro'), 'La UI todavía presenta la API remota como confirmación del carro.');
+check(button.includes('Revisa que aparezcan en'), 'La UI no pide verificar el carro real de la tienda.');
+check(button.includes('Usar el cargador asistido'), 'Falta recuperación cuando la carga directa falla.');
+
 console.log('Multistore cart loader integrity QA passed.');
