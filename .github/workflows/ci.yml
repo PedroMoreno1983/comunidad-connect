@@ -52,12 +52,10 @@ jobs:
 
       - name: Role workflow regressions
         run: |
-          npm run qa:profiles
           npm run qa:training
           npm run qa:onboarding-batches
-          npm run qa:marketplace-chat
-          npm run qa:operations
-          npm run qa:supabase-schema
+          npm run qa:production-mode
+          npm run qa:production-hardening
 
       - name: Production dependency audit
         run: npm audit --omit=dev
