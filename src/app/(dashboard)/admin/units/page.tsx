@@ -252,7 +252,7 @@ export default function UnitsPage() {
             <ModuleHeader
                 eyebrow="Administración"
                 title="Gestion de unidades"
-                description="Administra departamentos, torres y asignaciones de residentes desde una vista operacional."
+                description="Administra propiedades físicas, torres, alícuotas y su asignación. Las cuentas y permisos se gestionan en Usuarios; el listado de contacto está en Directorio."
                 icon={<Building2 className="h-5 w-5" />}
                 meta={`${stats.total} unidades · ${stats.assigned} asignadas`}
                 actions={
