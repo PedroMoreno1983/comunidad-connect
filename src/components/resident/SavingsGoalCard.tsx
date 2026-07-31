@@ -63,7 +63,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest" className="cc-text-tertiary">Meta de consumo</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest cc-text-tertiary">Meta de consumo</p>
                                 <p className="flex items-center gap-2 text-2xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>
                                     {targetConsumption.toFixed(1)} m³
                                     <span className="rounded-full px-2 py-1 text-xs font-bold" style={{ background: "rgba(169, 188, 147, 0.2)", color: "var(--cc-sage)" }}>
