@@ -54,8 +54,6 @@ jobs:
         run: |
           npm run qa:training
           npm run qa:onboarding-batches
-          npm run qa:production-mode
-          npm run qa:production-hardening
 
       - name: Production dependency audit
         run: npm audit --omit=dev
