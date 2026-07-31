@@ -139,10 +139,7 @@ check(
   'Los enlaces VTEX no apuntan a los hosts reales de checkout.',
 );
 check(cartUrl.includes("params.append('redirect', 'true')"), 'El enlace no redirige al checkout visible.');
-const cartUrlExecutable = cartUrl
-  .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '')
-  .replace(/\\/\\/.*$/gm, '');
-check(!cartUrlExecutable.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');
+check(!cartUrl.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');
 check(!cartRoute.includes('buildSharedCart'), 'La API volvió a crear un carro ajeno a la sesión del comprador.');
 check(cartRoute.includes("mode: 'browser-session-link'"), 'La API no identifica el handoff de sesión.');
 check(cartRoute.includes('plannedCount: withSku.length'), 'La API volvió a presentar enviados como cargados.');
