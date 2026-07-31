@@ -220,7 +220,7 @@ export default function ExpensesPage() {
 
     if (isLoading) {
         return (
-            <div className="max-w-md mx-auto px-5 py-20 flex flex-col items-center justify-center min-h-screen">
+            <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-5 py-20 lg:max-w-2xl">
                 <Loader2 className="h-8 w-8 animate-spin text-[#9C5636] mb-4" />
                 <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Cargando cuentas…</span>
             </div>
@@ -274,9 +274,20 @@ export default function ExpensesPage() {
         ? Math.round(historyChartData.reduce((sum, item) => sum + item.v, 0) / historyChartData.length) * 1000
         : 0;
 
+    // La altura de las barras se escalaba contra un tope fijo de 200 (=$200.000):
+    // un gasto mayor desbordaba el gráfico, y varios gastos chicos quedaban todos
+    // pegados al mínimo sin mostrar diferencia entre meses. Se escala contra el
+    // mayor del propio periodo, que es como se lee un gráfico de barras.
+    const historyMax = historyChartData.reduce((max, item) => Math.max(max, item.v), 0);
+
     return (
         <ErrorBoundary name="Expenses Resident Page">
-            <div className="max-w-md mx-auto px-5 py-3.5 flex flex-col min-h-screen">
+            {/* El ancho era max-w-md fijo: una columna de 448px (ancho de teléfono)
+                flotando al centro de una pantalla de escritorio, con un hueco enorme
+                a cada lado. Ahora crece con la pantalla. min-h-screen se quita
+                porque este contenedor ya vive dentro del área scrolleable del
+                layout, y forzaba una altura de más. */}
+            <div className="mx-auto flex w-full max-w-md flex-col px-5 py-3.5 lg:max-w-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 pt-1.5">
                     <button 
@@ -443,14 +454,18 @@ export default function ExpensesPage() {
                             className="rounded-xl border bg-paper-warm mb-6"
                             style={{ borderColor: "var(--cc-line)", padding: "20px 18px 14px", borderRadius: 18 }}
                         >
-                            <div className="flex items-end gap-3.5 mb-2.5" style={{ height: 100 }}>
+                            {/* items-stretch (no items-end): con items-end cada columna
+                                se dimensionaba por su contenido, el envoltorio h-full
+                                resolvía a 0 y la barra —que usa height en %— quedaba
+                                invisible. El gráfico salía vacío. */}
+                            <div className="mb-2.5 flex items-stretch gap-3.5" style={{ height: 100 }}>
                                 {historyChartData.map((m, idx) => {
                                     const colors = [DATA_PALETTE.yellow, "#D9A04A", DATA_PALETTE.orange, "#CB7146", DATA_PALETTE.copper];
                                     const color = colors[idx % colors.length];
                                     return (
                                     <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
-                                        <div className="flex h-full w-full items-end">
-                                            <FoldedBar pct={Math.max(10, (m.v / 200) * 100)} color={m.paid ? color : DATA_PALETTE.copper} orientation="vertical" rounded={4} />
+                                        <div className="flex w-full flex-1 items-end">
+                                            <FoldedBar pct={historyMax > 0 ? Math.max(10, (m.v / historyMax) * 100) : 10} color={m.paid ? color : DATA_PALETTE.copper} orientation="vertical" rounded={4} />
                                         </div>
                                         <div className="font-mono" style={{ fontSize: 10, color: "var(--cc-ink-tertiary)" }}>{m.m}</div>
                                     </div>
