@@ -170,16 +170,18 @@ export default function StaffTrainingPage() {
                                 Capacitaciones oficiales para convivencia, reglamento, seguridad y operación diaria del edificio.
                             </p>
                         </div>
-                        <Button
-                            onClick={() => {
-                                setSelectedCourseContent("");
-                                setSelectedCourseTitle("Modo libre con Tutora CoCo");
-                            }}
-                            className="w-full sm:w-auto"
-                            trailingIcon={<Play className="h-4 w-4" />}
-                        >
-                            Abrir modo libre
-                        </Button>
+                        {user?.role === "admin" && (
+                            <Button
+                                onClick={() => {
+                                    setSelectedCourseContent("");
+                                    setSelectedCourseTitle("Modo libre con Tutora CoCo");
+                                }}
+                                className="w-full sm:w-auto"
+                                trailingIcon={<Play className="h-4 w-4" />}
+                            >
+                                Abrir modo libre
+                            </Button>
+                        )}
                     </div>
 
                     <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
@@ -201,11 +203,11 @@ export default function StaffTrainingPage() {
                     outcome="Cierre esperado: el equipo entiende el protocolo o reglamento y sabe qué acción corresponde tomar dentro de la plataforma."
                     currentStep={courses.length ? 2 : 1}
                     completedSteps={stats.completed ? 4 : courses.length ? 1 : 0}
-                    statusLabel={courses.length ? "Cursos activos" : "Modo libre"}
+                    statusLabel={courses.length ? "Cursos activos" : "Sin cursos publicados"}
                     primaryActionLabel="Ver cursos"
                     primaryActionHref="#catalogo-cursos"
-                    secondaryActionLabel="Abrir modo libre"
-                    secondaryActionHref="#modo-libre"
+                    secondaryActionLabel={user?.role === "admin" ? "Abrir modo libre" : "Ver progreso"}
+                    secondaryActionHref={user?.role === "admin" ? "#modo-libre" : "#catalogo-cursos"}
                 />
 
                 {loading ? (
@@ -258,6 +260,7 @@ export default function StaffTrainingPage() {
                             ))
                         )}
 
+                        {user?.role === "admin" && (
                         <article
                             id="modo-libre"
                             onClick={() => {
@@ -281,6 +284,7 @@ export default function StaffTrainingPage() {
                                 <Play className="h-4 w-4" />
                             </div>
                         </article>
+                        )}
                     </section>
                 )}
             </div>

@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         const category = cleanText(body.category, 40) as ProviderCategory;
         const contactPhone = cleanText(body.contactPhone, 40);
         const email = cleanText(body.email, 160);
+        const external = body.external === true;
 
         if (!name || !category || !contactPhone) {
             return NextResponse.json(
@@ -75,17 +76,23 @@ export async function POST(request: NextRequest) {
         }
 
 
-        const { data: existingProvider } = await supabaseAdmin
-            .from('service_providers')
-            .select('id')
-            .eq('user_id', profile.id)
-            .maybeSingle();
+        if (external && profile.role !== 'admin') {
+            return NextResponse.json({ error: 'Solo administración puede registrar proveedores externos.' }, { status: 403 });
+        }
 
-        if (existingProvider) {
-            return NextResponse.json(
-                { error: 'Ya existe un perfil de proveedor asociado a tu usuario.' },
-                { status: 409 }
-            );
+        if (!external) {
+            const { data: existingProvider } = await supabaseAdmin
+                .from('service_providers')
+                .select('id')
+                .eq('user_id', profile.id)
+                .maybeSingle();
+
+            if (existingProvider) {
+                return NextResponse.json(
+                    { error: 'Ya existe un perfil de proveedor asociado a tu usuario.' },
+                    { status: 409 }
+                );
+            }
         }
 
         const { data: provider, error: insertError } = await supabaseAdmin
@@ -107,7 +114,7 @@ export async function POST(request: NextRequest) {
                 review_count: 0,
                 completed_jobs: 0,
                 verified: false,
-                user_id: profile.id,
+                user_id: external ? null : profile.id,
                 community_id: profile.community_id,
             })
             .select('id, name, category, rating, review_count, contact_phone, email, photo, bio, years_experience, specialties, certifications, hourly_rate, availability, response_time, completed_jobs, verified')
@@ -124,8 +131,10 @@ export async function POST(request: NextRequest) {
             user_id: profile.id,
             type: 'success',
             category: 'service_provider',
-            title: 'Perfil de tecnico creado',
-            body: 'Tu perfil quedo registrado y pendiente de verificacion.',
+            title: external ? 'Proveedor externo creado' : 'Perfil de técnico creado',
+            body: external
+                ? `El proveedor ${provider.name} quedó disponible en la red de la comunidad.`
+                : 'Tu perfil quedó registrado y pendiente de verificación.',
             link: `/services/provider/${provider.id}`,
             community_id: profile.community_id,
         });
@@ -134,17 +143,20 @@ export async function POST(request: NextRequest) {
             communityId: profile.community_id,
             actorId: profile.id,
             actorRole: profile.role,
-            action: 'provider.created',
+            action: external ? 'provider.external_created' : 'provider.created',
             entityType: 'service_provider',
             entityId: provider.id,
             severity: 'success',
             status: 'pending',
-            summary: `Proveedor registrado pendiente de verificacion: ${provider.name}`,
+            summary: external
+                ? `Proveedor externo registrado por administración: ${provider.name}`
+                : `Proveedor registrado pendiente de verificación: ${provider.name}`,
             metadata: {
                 category,
                 yearsExperience: provider.years_experience,
                 specialties: provider.specialties,
                 certifications: provider.certifications,
+                external,
             },
             requestId: getRequestId(request),
         });

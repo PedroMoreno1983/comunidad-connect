@@ -1,4 +1,4 @@
-import { providersService, reviewsService } from "@/lib/services/providersService";
+import { providerServerService } from "@/lib/services/providerServerService";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,14 +10,14 @@ export default async function ProviderProfilePage({ params }: { params: Promise<
     const resolvedParams = await params;
 
     // Fetch provider from Supabase
-    const provider = await providersService.getById(resolvedParams.id);
+    const provider = await providerServerService.getById(resolvedParams.id);
 
     if (!provider) {
         notFound();
     }
 
     // Fetch reviews for this provider
-    const providerReviews = await reviewsService.getByProvider(provider.id);
+    const providerReviews = await providerServerService.getReviews(provider.id);
 
     return (
         <div className="mx-auto max-w-6xl space-y-6 px-4 pb-24 sm:px-6 lg:pb-0">

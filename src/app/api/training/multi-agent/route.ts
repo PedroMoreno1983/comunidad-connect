@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
             : undefined;
         const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_ITEMS) : [];
 
+        if (profile.role === 'concierge' && !courseContent?.trim()) {
+            return NextResponse.json({ error: "Conserjería solo puede abrir cursos publicados por administración." }, { status: 403 });
+        }
+
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }

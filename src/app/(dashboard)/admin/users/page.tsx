@@ -118,7 +118,7 @@ export default function UsersPage() {
             <ModuleHeader
                 eyebrow="Administración"
                 title="Usuarios y accesos"
-                description="Controla roles, unidades asignadas y codigos de invitacion desde una vista operativa."
+                description="Administra personas, roles, accesos y códigos de invitación. Las propiedades físicas se crean en Unidades; los contactos visibles se consultan en Directorio."
                 icon={<Users className="h-5 w-5" />}
                 meta={`${communityName} · ${stats.total} usuarios registrados`}
                 actions={

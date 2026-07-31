@@ -222,7 +222,7 @@ export default function MantenimientoAdminPage() {
                 <div>
                     <Eyebrow className="mb-2">Operación técnica</Eyebrow>
                     <DisplayHeading size={32}>Mantenimiento</DisplayHeading>
-                    <p className="mt-2 text-sm font-medium cc-text-secondary">Control de casos CoCo, solicitudes técnicas, activos críticos y sensores.</p>
+                    <p className="mt-2 text-sm font-medium cc-text-secondary">Esta es la cola humana de mantenimiento: prioriza casos CoCo, solicitudes, activos y sensores hasta dejar evidencia de cierre. Agent Center automatiza acciones y auditoría; no reemplaza esta operación.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">

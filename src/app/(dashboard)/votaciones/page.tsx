@@ -184,25 +184,25 @@ export default function VotacionesPage() {
 
             {/* Featured Poll Callout — built entirely from real poll data, no fake countdown/documents */}
             {featuredPoll && (
-                <div className="rounded-xl border border-transparent bg-slate-950 p-6 text-white shadow-lg overflow-hidden relative">
-                    <div className="absolute right-0 top-0 h-40 w-40 bg-radial-gradient from-brand-500/20 to-transparent pointer-events-none" />
+                <div className="rounded-xl border border-subtle bg-surface p-6 shadow-sm overflow-hidden relative">
+                    <div className="absolute right-0 top-0 h-40 w-40 bg-radial-gradient from-brand-100/40 to-transparent pointer-events-none" />
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div className="space-y-3 flex-1">
                             <div className="flex items-center gap-3">
                                 <Tag tone={featuredDaysLeft <= 1 ? "rose" : "copper"} dot={true} solid>
                                     {featuredPoll.hasVotedInit ? "Consulta destacada" : "Pendiente de tu voto"}
                                 </Tag>
-                                <span className="font-mono text-sm tracking-wider text-slate-300">
+                                <span className="font-mono text-sm tracking-wider cc-text-secondary">
                                     {featuredDaysLeft === 0 ? "Cierra hoy" : `${featuredDaysLeft} día${featuredDaysLeft === 1 ? "" : "s"} para cerrar`}
                                 </span>
                             </div>
-                            <h2 className="text-2xl font-semibold leading-tight">
-                                <em className="text-italic-serif text-brand-300">{featuredPoll.title}</em>
+                            <h2 className="text-2xl font-semibold leading-tight cc-text-primary">
+                                <em className="text-italic-serif text-brand-600">{featuredPoll.title}</em>
                             </h2>
-                            <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+                            <p className="text-sm cc-text-secondary max-w-2xl leading-relaxed">
                                 {featuredPoll.description || "Revisa las opciones y emite tu voto antes del cierre."}
                             </p>
-                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">
                                 {featuredPoll.totalVotes} voto{featuredPoll.totalVotes === 1 ? "" : "s"} registrado{featuredPoll.totalVotes === 1 ? "" : "s"} hasta ahora
                             </p>
                         </div>
@@ -210,7 +210,7 @@ export default function VotacionesPage() {
                         <div className="shrink-0 lg:max-w-xs w-full lg:w-auto">
                             <a
                                 href="#consultas-activas"
-                                className="flex w-full items-center justify-center rounded-lg bg-white/10 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-white/20"
+                                className="flex w-full items-center justify-center rounded-lg border border-subtle bg-canvas px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider cc-text-primary transition-all hover:border-brand-300 hover:bg-elevated"
                             >
                                 {featuredPoll.hasVotedInit ? "Ver resultados" : "Ir a votar"}
                             </a>
@@ -222,7 +222,7 @@ export default function VotacionesPage() {
             <section className="grid gap-4 md:grid-cols-3">
                 <MetricCard icon={<Vote className="h-5 w-5" />} label="Consultas activas" value={activePolls.length} helper="Disponibles para votar" />
                 <MetricCard icon={<Users className="h-5 w-5" />} label="Votos activos" value={stats.totalActiveVotes} helper="Participación registrada" />
-                <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los próximos 3 días" dark />
+                <MetricCard icon={<CalendarDays className="h-5 w-5" />} label="Cierran pronto" value={stats.closingSoon} helper="En los próximos 3 días" />
             </section>
 
             <section id="consultas-activas" className="scroll-mt-24 space-y-5">
@@ -280,15 +280,15 @@ export default function VotacionesPage() {
     );
 }
 
-function MetricCard({ icon, label, value, helper, dark = false }: { icon: React.ReactNode; label: string; value: number; helper: string; dark?: boolean }) {
+function MetricCard({ icon, label, value, helper }: { icon: React.ReactNode; label: string; value: number; helper: string }) {
     return (
-        <article className={`rounded-xl border p-5 shadow-sm ${dark ? "border-slate-900 bg-slate-950 text-white" : "border-subtle bg-surface"}`}>
-            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${dark ? "bg-white/10 text-brand-300" : "bg-brand-50 text-brand-600"}`}>
+        <article className="rounded-xl border border-subtle bg-surface p-5 shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 {icon}
             </div>
-            <p className={`mt-5 text-3xl font-semibold ${dark ? "text-white" : "cc-text-primary"}`}>{value}</p>
-            <p className={`mt-1 text-xs font-bold uppercase tracking-[0.12em] ${dark ? "text-slate-400" : "cc-text-secondary"}`}>{label}</p>
-            <p className={`mt-2 text-sm ${dark ? "text-slate-300" : "cc-text-secondary"}`}>{helper}</p>
+            <p className="mt-5 text-3xl font-semibold cc-text-primary">{value}</p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] cc-text-secondary">{label}</p>
+            <p className="mt-2 text-sm cc-text-secondary">{helper}</p>
         </article>
     );
 }

@@ -35,6 +35,7 @@ type VisitorRow = {
     visitor_name?: string | null;
     unit_id?: string | null;
     entry_time?: string | null;
+    exit_time?: string | null;
     is_qr?: boolean | null;
     units?: {
         number?: string | null;
@@ -47,6 +48,7 @@ function mapVisitorRow(row: VisitorRow): VisitorLog {
         visitorName: row.visitor_name || "Visita",
         unitId: row.units?.number || row.unit_id || "Sin unidad",
         entryTime: row.entry_time || new Date().toISOString(),
+        exitTime: row.exit_time || undefined,
         isQr: Boolean(row.is_qr),
     };
 }
@@ -80,9 +82,9 @@ export default function VisitorsPage() {
     const [query, setQuery] = useState("");
     const { toast } = useToast();
     const qrEntries = visitors.filter(visitor => visitor.isQr).length;
-    const manualEntries = visitors.length - qrEntries;
+    const visitorsInside = visitors.filter(visitor => !visitor.exitTime).length;
     const filteredVisitors = visitors.filter(visitor =>
-        `${visitor.visitorName} ${visitor.unitId} ${visitor.isQr ? "qr" : "manual"}`.toLowerCase().includes(query.trim().toLowerCase())
+        `${visitor.visitorName} ${visitor.unitId} ${visitor.isQr ? "qr" : "manual"} ${visitor.exitTime ? "salio" : "dentro"}`.toLowerCase().includes(query.trim().toLowerCase())
     );
 
     useEffect(() => {
@@ -136,6 +138,27 @@ export default function VisitorsPage() {
                 title: "Error",
                 description: "No se pudo registrar la visita.",
                 variant: "destructive"
+            });
+        }
+    };
+
+    const handleRegisterExit = async (visitor: VisitorLog) => {
+        try {
+            await VisitorService.registerExit(visitor.id);
+            const exitTime = new Date().toISOString();
+            setVisitors(current => current.map(item => item.id === visitor.id ? { ...item, exitTime } : item));
+            setSelectedVisitor(current => current?.id === visitor.id ? { ...current, exitTime } : current);
+            toast({
+                title: "Salida registrada",
+                description: `La salida de ${visitor.visitorName} quedó guardada en la bitácora.`,
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Error registering visitor exit:", error);
+            toast({
+                title: "No se pudo registrar la salida",
+                description: "Reintenta antes de cerrar el turno.",
+                variant: "destructive",
             });
         }
     };
@@ -205,7 +228,7 @@ export default function VisitorsPage() {
                 {[
                     { label: "Ingresos hoy", value: visitors.length, icon: <UserCheck className="h-5 w-5" /> },
                     { label: "Con QR", value: qrEntries, icon: <QrCode className="h-5 w-5" /> },
-                    { label: "Manual", value: manualEntries, icon: <ClipboardList className="h-5 w-5" /> },
+                    { label: "Dentro ahora", value: visitorsInside, icon: <ClipboardList className="h-5 w-5" /> },
                 ].map(item => (
                     <div key={item.label} className="rounded-2xl border p-5" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                         <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper)" }}>
@@ -277,6 +300,7 @@ export default function VisitorsPage() {
                                     <th className="px-10 py-6 text-left text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Destino</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Hora Entrada</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Tipo</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Estado</th>
                                     <th className="px-10 py-6 text-right text-[10px] font-semibold cc-text-tertiary uppercase tracking-[0.08em]">Acciones</th>
                                 </tr>
                             </thead>
@@ -308,6 +332,11 @@ export default function VisitorsPage() {
                                                 <span className="text-xs font-bold cc-text-secondary">{visitor.isQr ? "Código QR" : "Manual"}</span>
                                             </div>
                                         </td>
+                                        <td className="px-10 py-8">
+                                            <span className="rounded-full px-3 py-1.5 text-xs font-semibold" style={visitor.exitTime ? { background: "var(--cc-paper-warm)", color: "var(--cc-ink-secondary)" } : { background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
+                                                {visitor.exitTime ? "Salió" : "Dentro"}
+                                            </span>
+                                        </td>
                                         <td className="px-10 py-8 text-right">
                                             <button
                                                 type="button"
@@ -322,7 +351,7 @@ export default function VisitorsPage() {
                                 ))}
                                 {filteredVisitors.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="px-10 py-16 text-center">
+                                        <td colSpan={6} className="px-10 py-16 text-center">
                                             <Search className="mx-auto mb-4 h-10 w-10" style={{ color: "var(--cc-ink-faint)" }} />
                                             <p className="font-semibold cc-text-primary">Sin registros para esta busqueda</p>
                                             <p className="mt-1 text-sm cc-text-secondary">Prueba con otro nombre, unidad o tipo de ingreso.</p>
@@ -359,16 +388,29 @@ export default function VisitorsPage() {
                                     <p className="mt-1 font-semibold cc-text-primary">{selectedVisitor.isQr ? "Codigo QR" : "Manual"}</p>
                                 </div>
                             </div>
-                            <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Hora registrada</p>
-                                <p className="mt-1 font-semibold cc-text-primary">
-                                    {new Date(selectedVisitor.entryTime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
-                                </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Entrada</p>
+                                    <p className="mt-1 font-semibold cc-text-primary">
+                                        {new Date(selectedVisitor.entryTime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border p-4" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] cc-text-tertiary">Salida</p>
+                                    <p className="mt-1 font-semibold cc-text-primary">
+                                        {selectedVisitor.exitTime ? new Date(selectedVisitor.exitTime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" }) : "Aún se encuentra dentro"}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}
                     <DialogFooter>
-                        <Button type="button" onClick={() => setSelectedVisitor(null)}>
+                        {selectedVisitor && !selectedVisitor.exitTime && (
+                            <Button type="button" onClick={() => void handleRegisterExit(selectedVisitor)}>
+                                Registrar salida
+                            </Button>
+                        )}
+                        <Button type="button" variant="outline" onClick={() => setSelectedVisitor(null)}>
                             Cerrar detalle
                         </Button>
                     </DialogFooter>

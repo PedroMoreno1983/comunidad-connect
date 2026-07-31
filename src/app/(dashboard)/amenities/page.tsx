@@ -191,7 +191,7 @@ export default function AmenitiesPage() {
         try {
             const endTime = `${parseInt(selectedTime) + 2}:00`;
 
-            await AmenitiesService.createBooking({
+            const createdBooking = await AmenitiesService.createBooking({
                 amenity_id: selectedAmenity.id,
                 user_id: user.id,
                 date: selectedDate,
@@ -203,7 +203,7 @@ export default function AmenitiesPage() {
             setSelectedAmenity(null);
             toast({
                 title: "¡Reserva Confirmada!",
-                description: `Tu reserva se guardó correctamente.`,
+                description: `Tu reserva se guardó correctamente. Comprobante ${String(createdBooking.id).slice(0, 8).toUpperCase()}.`,
                 variant: "success",
             });
         } catch (error: unknown) {

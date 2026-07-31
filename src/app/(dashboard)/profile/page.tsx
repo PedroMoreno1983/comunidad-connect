@@ -11,6 +11,7 @@ import {
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { ProfileService } from "@/lib/api";
+import { PrivacySettings } from "@/components/profile/PrivacySettings";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -143,35 +144,23 @@ export default function ProfilePage() {
                         </h2>
                         <p className="text-xs text-[var(--cc-ink-tertiary)] mb-4">{user?.email}</p>
 
-                        {/* Badge "Residente verificada" con dot sage */}
-                        <div className="mb-6">
+                        <div>
                             <CcTag tone="sage" dot solid>
-                                {user?.role === "admin" ? "Administrador verificado" : user?.role === "concierge" ? "Conserje verificado" : "Residente verificado"}
+                                {user?.role === "admin" ? "Administración" : user?.role === "concierge" ? "Conserjería" : "Residente"}
                             </CcTag>
                         </div>
-
-                        {/* Stats Row (reservas / al día % / años aquí) */}
-                        <div className="w-full grid grid-cols-3 gap-2 border-t border-[var(--cc-line)] pt-5 mt-2">
-                            <div className="text-center">
-                                <span className="text-[9px] font-medium text-[var(--cc-ink-tertiary)] uppercase tracking-wider block mb-0.5">Reservas</span>
-                                <span className="text-base font-semibold text-[var(--cc-ink)]">12</span>
-                            </div>
-                            <div className="text-center border-x border-[var(--cc-line)] px-1">
-                                <span className="text-[9px] font-medium text-[var(--cc-ink-tertiary)] uppercase tracking-wider block mb-0.5">Al día</span>
-                                <span className="text-base font-semibold text-[var(--cc-sage)]">100%</span>
-                            </div>
-                            <div className="text-center">
-                                <span className="text-[9px] font-medium text-[var(--cc-ink-tertiary)] uppercase tracking-wider block mb-0.5">Años</span>
-                                <span className="text-base font-semibold text-[var(--cc-ink)]">2</span>
-                            </div>
-                        </div>
+                        <p className="mt-5 border-t border-[var(--cc-line)] pt-5 text-xs leading-5 text-[var(--cc-ink-tertiary)]">
+                            Aquí solo se muestran datos guardados en tu cuenta. La actividad y los pagos se consultan en sus módulos correspondientes.
+                        </p>
                     </div>
                 </div>
 
                 {/* Column 2-3: Form Menus & Settings */}
                 <div className="md:col-span-2 space-y-8">
                     
-                    {/* Tu Unidad Group */}
+                    {user?.role === "resident" && (
+                        <>
+                            {/* Tu Unidad Group */}
                     <div className="space-y-3">
                         <Eyebrow className="px-1">Tu unidad</Eyebrow>
                         <div className="bg-[var(--cc-paper)] border border-[var(--cc-line)] rounded-xl divide-y divide-[var(--cc-line)] overflow-hidden shadow-sm">
@@ -203,6 +192,8 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     </div>
+                        </>
+                    )}
 
                     {/* Cuenta Group */}
                     <div className="space-y-3">
@@ -290,6 +281,12 @@ export default function ProfilePage() {
                                     setIsSavingWa(true);
                                     try {
                                         await ProfileService.saveWhatsapp(user.id, phoneNumber, whatsappEnabled);
+                                        const consentResponse = await fetch("/api/privacy/consents", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ consentType: "whatsapp", granted: whatsappEnabled }),
+                                        });
+                                        if (!consentResponse.ok) throw new Error("No se pudo auditar el consentimiento.");
                                         toast({ title: 'WhatsApp guardado', description: whatsappEnabled ? 'Recibirás notificaciones en tu WhatsApp.' : 'Notificaciones desactivadas.', variant: 'success' });
                                     } catch {
                                         toast({ title: 'Error', description: 'No se pudo guardar el número.', variant: 'destructive' });
@@ -339,6 +336,8 @@ export default function ProfilePage() {
                 </div>
 
             </div>
+
+            <PrivacySettings />
         </div>
     );
 }

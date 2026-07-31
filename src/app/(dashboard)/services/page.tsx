@@ -1,6 +1,7 @@
-import { providersService } from "@/lib/services/providersService";
+import { providerServerService } from "@/lib/services/providerServerService";
 import { ServiceProvider } from "@/lib/types";
 import { ServicesCatalogClient } from "@/components/services/ServicesCatalogClient";
+import { MyRequestsClient } from "@/components/services/MyRequestsClient";
 
 const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wrench' | 'zap' | 'key' | 'cleaning' | 'toolbox'; gradient: string; description: string }[] = [
     {
@@ -40,8 +41,11 @@ const CATEGORIES: { id: ServiceProvider['category']; name: string; iconName: 'wr
     }
 ];
 
-export default async function ServicesPage() {
-    const allProviders = await providersService.getAll();
+export default async function ServicesPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+    const { view } = await searchParams;
+    if (view === "requests") return <MyRequestsClient />;
+
+    const allProviders = await providerServerService.getAll();
     const categoryCounts = CATEGORIES.map(category => ({
         ...category,
         count: allProviders.filter(provider => provider.category === category.id).length

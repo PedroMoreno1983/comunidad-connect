@@ -113,7 +113,7 @@ export default function AdminConsumoPage() {
                 <div>
                     <p className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--cc-ink-tertiary)" }}>Administración</p>
                     <h1 className="mt-2 text-[28px] leading-none sm:text-[34px]" style={{ fontFamily: "var(--cc-font-display)", color: "var(--cc-ink)" }}>Control hídrico</h1>
-                    <p className="mt-2.5 cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}</p>
+                    <p className="mt-2.5 cc-text-secondary">Periodo activo: {currentPeriod.month} {currentPeriod.year}. Completa lecturas pendientes, revisa alertas y cierra el reporte del periodo.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">

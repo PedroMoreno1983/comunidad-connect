@@ -134,7 +134,7 @@ export default function ComunicacionesPage() {
                     Publicar <em className="text-italic-serif text-brand-600">comunicación</em>
                 </DisplayHeading>
                 <p className="mt-2 text-sm cc-text-secondary">
-                    Redacta anuncios oficiales y notifica a los residentes por múltiples canales simultáneamente.
+                    Aquí redactas y publicas mensajes oficiales para la comunidad. Notificaciones es la bandeja personal donde cada usuario recibe eventos automáticos.
                 </p>
             </div>
 
