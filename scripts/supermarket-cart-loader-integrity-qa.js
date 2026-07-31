@@ -118,7 +118,7 @@ for (const store of stores) {
 check(button.includes('Cargar carro en ${basket.store}'), 'La acción no usa la tienda elegida.');
 check(button.includes('confirmas la entrega y pagas'), 'La UI perdió el límite de seguridad.');
 check(
-  button.includes("basket.store === 'Irurzun'") && button.includes('carro mayorista') && button.includes('cotización'),
+  button.includes("basket.store === 'Irurzun'") && button.includes('Preparar cotización en'),
   'Irurzun no se presenta honestamente como cotización.',
 );
 
