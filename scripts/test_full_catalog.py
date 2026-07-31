@@ -17,6 +17,7 @@ from full_catalog import (
     parse_acuenta_categories,
     parse_acuenta_category_page,
     parse_irurzun_products,
+    parse_jumbo_html,
     parse_jumbo_payload,
     parse_lider_page,
     parse_santa_render_data,
@@ -154,6 +155,47 @@ class FullCatalogParserTests(unittest.TestCase):
         self.assertEqual(total, 3742)
         self.assertEqual(products[0].product_url, "https://www.jumbo.cl/mermelada-light/p")
         self.assertEqual(products[0].list_price, 1730)
+
+    def test_jumbo_html_parses_server_rendered_json_ld(self) -> None:
+        document = {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "item": {
+                        "@type": "Product",
+                        "name": "Arroz Grado 1 1 kg",
+                        "url": "https://www.jumbo.cl/arroz-grado-1-2034586/p",
+                        "image": "https://img/jumbo-arroz.jpg",
+                        "brand": {"@type": "Brand", "name": "Miraflores"},
+                        "offers": {
+                            "@type": "Offer",
+                            "priceCurrency": "CLP",
+                            "price": 2290,
+                            "availability": "https://schema.org/InStock",
+                        },
+                    },
+                }
+            ],
+        }
+        page_html = (
+            "<html><body><h1>Despensa</h1><p>3.736 productos</p>"
+            f'<script type="application/ld+json">{json.dumps(document)}</script>'
+            "</body></html>"
+        )
+        products, total = parse_jumbo_html(page_html, "despensa")
+        self.assertEqual(total, 3736)
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0].store, "Jumbo")
+        self.assertEqual(products[0].price, 2290)
+        self.assertEqual(products[0].brand, "Miraflores")
+        self.assertEqual(products[0].sku, "2034586")
+        self.assertEqual(
+            products[0].product_url,
+            "https://www.jumbo.cl/arroz-grado-1-2034586/p",
+        )
 
     def test_santa_render_data_and_menu_categories(self) -> None:
         render_data = {

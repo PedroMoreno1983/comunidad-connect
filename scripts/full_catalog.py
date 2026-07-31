@@ -526,6 +526,87 @@ def parse_jumbo_payload(data: dict[str, Any], query: str) -> tuple[list[Product]
     return products, parse_price(data.get("results")) or len(products)
 
 
+
+def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
+    for match in re.finditer(
+        r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        page_html,
+        flags=re.I | re.S,
+    ):
+        raw = html.unescape(match.group(1)).strip()
+        try:
+            document = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        pending: list[Any] = [document]
+        while pending:
+            value = pending.pop()
+            if isinstance(value, dict):
+                yield value
+                pending.extend(value.values())
+            elif isinstance(value, list):
+                pending.extend(value)
+
+
+def parse_jumbo_html(page_html: str, query: str) -> tuple[list[Product], int]:
+    products: list[Product] = []
+    observed_at = utc_now()
+
+    for document in _json_ld_objects(page_html):
+        if document.get("@type") != "ItemList":
+            continue
+        for entry in document.get("itemListElement") or []:
+            if not isinstance(entry, dict):
+                continue
+            raw = entry.get("item") or entry
+            if not isinstance(raw, dict):
+                continue
+            offers = raw.get("offers") or {}
+            if isinstance(offers, list):
+                offers = offers[0] if offers else {}
+            if not isinstance(offers, dict):
+                continue
+            name = str(raw.get("name") or entry.get("name") or "").strip()
+            product_url = str(raw.get("url") or entry.get("url") or "").strip()
+            price = parse_price(offers.get("price"))
+            availability = str(offers.get("availability") or "")
+            if (
+                not name
+                or not product_url
+                or price <= 0
+                or (availability and not availability.endswith("/InStock"))
+            ):
+                continue
+            brand_value = raw.get("brand")
+            brand = (
+                str(brand_value.get("name") or "").strip()
+                if isinstance(brand_value, dict)
+                else str(brand_value or "").strip()
+            )
+            image_value = raw.get("image")
+            if isinstance(image_value, list):
+                image_value = image_value[0] if image_value else None
+            sku_match = re.search(r"-(\d{5,})(?:/p)?/?$", product_url)
+            products.append(
+                Product(
+                    store="Jumbo",
+                    query=query,
+                    name=name,
+                    price=price,
+                    list_price=None,
+                    in_stock=True,
+                    brand=brand or None,
+                    sku=sku_match.group(1) if sku_match else None,
+                    product_url=product_url,
+                    image_url=str(image_value).strip() if image_value else None,
+                    scraped_at=observed_at,
+                )
+            )
+
+    total_match = re.search(r"(\d[\d.]*)\s+productos", page_html, flags=re.I)
+    total = parse_price(total_match.group(1)) if total_match else len(products)
+    return list(unique_products(products)), total or len(products)
+
 def extract_santa_render_data(page_html: str) -> dict[str, Any]:
     match = re.search(r'window\.__renderData\s*=\s*("(?:\\.|[^"\\])*")', page_html)
     if not match:
@@ -764,39 +845,39 @@ def crawl_unimarc(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
-    sync_playwright = _require_playwright()
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        page = browser.new_page(user_agent=USER_AGENT, locale="es-CL")
-        try:
-            for category in JUMBO_CATEGORIES:
-                page_number = 1
-                total = 1
-                per_page = 40
-                while page_number <= math.ceil(total / max(per_page, 1)):
-                    if max_pages is not None and page_number > max_pages:
-                        break
-                    with page.expect_response(
-                        lambda response: (
-                            response.url == "https://bff.jumbo.cl/catalog/plp"
-                            and response.request.method == "POST"
-                        ),
-                        timeout=45_000,
-                    ) as response_info:
-                        page.goto(
-                            f"https://www.jumbo.cl/{category}?page={page_number}",
-                            wait_until="domcontentloaded",
-                            timeout=45_000,
-                        )
-                    payload = response_info.value.json()
-                    products, total = parse_jumbo_payload(payload, category)
-                    per_page = len(payload.get("products") or []) or per_page
-                    if not products:
-                        break
-                    yield from products
-                    page_number += 1
-        finally:
-            browser.close()
+    for category in JUMBO_CATEGORIES:
+        base_url = f"https://www.jumbo.cl/{category}"
+        first_html = fetch_text(base_url)
+        first_products, total = parse_jumbo_html(first_html, category)
+        if total > 0 and not first_products:
+            raise RuntimeError(
+                f"Jumbo category {category} published no usable JSON-LD products"
+            )
+        yield from first_products
+
+        page_size = max(len(first_products), 1)
+        page_count = math.ceil(total / page_size)
+        final_page = min(page_count, max_pages) if max_pages is not None else page_count
+        first_signature = tuple(product_key(product) for product in first_products)
+        seen_pages = {first_signature}
+        urls = (
+            f"{base_url}?page={page_number}"
+            for page_number in range(2, final_page + 1)
+        )
+        for page_html in fetch_many(urls, workers=4):
+            products, _ = parse_jumbo_html(page_html, category)
+            signature = tuple(product_key(product) for product in products)
+            if not products:
+                raise RuntimeError(
+                    f"Jumbo category {category} returned an empty page before completion"
+                )
+            if signature in seen_pages:
+                raise RuntimeError(
+                    f"Jumbo category {category} repeated a page; "
+                    "refusing to report an incomplete crawl"
+                )
+            seen_pages.add(signature)
+            yield from products
 
 
 def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
