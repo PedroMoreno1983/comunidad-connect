@@ -77,12 +77,12 @@ export default function PackagesPage() {
             });
             const unitNumber = units.find(unit => unit.id === data.recipientUnitId)?.number || data.recipientUnitNumber || "seleccionada";
 
-            setPackages([data, ...packages]);
+            setPackages(current => [data, ...current]);
             setIsDialogOpen(false);
             setNewPackage({ unit: "", description: "" });
             toast({
                 title: "Paquete Registrado",
-                description: `Se notifico al residente de la Unidad ${unitNumber}.`,
+                description: `Se notificó al residente de la Unidad ${unitNumber}.`,
                 variant: "success",
             });
         } catch (error) {
@@ -225,22 +225,16 @@ export default function PackagesPage() {
                     <p className="text-xs font-bold cc-text-tertiary uppercase tracking-[0.08em]">Hoy Completados</p>
                 </div>
 
-                {/* Tarjeta oscura fija: no usa var(--cc-ink) porque ese token se invierte
-                    en modo oscuro y dejaba el texto ilegible. Colores claros explícitos. */}
-                <div className="p-8 rounded-2xl relative overflow-hidden group" style={{ background: "#17130f" }}>
-                    <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:rotate-12 transition-transform duration-500">
-                        <BellRing className="h-20 w-20" style={{ color: "#efb18f" }} />
-                    </div>
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="mb-6">
-                            <h3 className="font-semibold text-white" style={{ fontFamily: "var(--cc-font-display)" }}>Estado Alertas</h3>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "#efb18f" }}>Notificaciones Activas</p>
+                <div className="p-8 rounded-2xl border" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="p-3 rounded-full" style={{ background: "var(--cc-copper-tint)" }}>
+                            <BellRing className="h-6 w-6" style={{ color: "var(--cc-copper)" }} />
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="h-3 w-3 rounded-full animate-pulse" style={{ background: "var(--cc-sage)" }} />
-                            <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.85)" }}>Sistema Online</span>
-                        </div>
+                        <h3 className="font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Aviso al residente</h3>
                     </div>
+                    <p className="text-sm leading-6 cc-text-secondary">
+                        Al registrar una encomienda, la base de datos crea automáticamente una notificación para los residentes de la unidad.
+                    </p>
                 </div>
             </div>
 
