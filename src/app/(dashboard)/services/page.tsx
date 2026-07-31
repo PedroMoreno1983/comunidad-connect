@@ -1,4 +1,4 @@
-import { providersService } from "@/lib/services/providersService";
+import { providerServerService } from "@/lib/services/providerServerService";
 import { ServiceProvider } from "@/lib/types";
 import { ServicesCatalogClient } from "@/components/services/ServicesCatalogClient";
 import { MyRequestsClient } from "@/components/services/MyRequestsClient";
@@ -45,7 +45,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
     const { view } = await searchParams;
     if (view === "requests") return <MyRequestsClient />;
 
-    const allProviders = await providersService.getAll();
+    const allProviders = await providerServerService.getAll();
     const categoryCounts = CATEGORIES.map(category => ({
         ...category,
         count: allProviders.filter(provider => provider.category === category.id).length
