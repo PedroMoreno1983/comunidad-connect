@@ -31,7 +31,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                     </div>
                     <div>
                         <h2 className="text-xl font-semibold cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Meta de ahorro</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest" className="cc-text-tertiary">Plan personal</p>
+                        <p className="text-xs font-bold uppercase tracking-widest cc-text-tertiary">Plan personal</p>
                     </div>
                 </div>
 
@@ -50,7 +50,7 @@ export function SavingsGoalCard({ currentConsumption, lastMonthConsumption }: Sa
                                     style={{ borderColor: "var(--cc-line-strong)", background: "var(--cc-paper-warm)" }}
                                 >
                                     <span className="block text-2xl font-semibold cc-text-primary transition-transform">{percent}%</span>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest" className="cc-text-tertiary">Menos</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest cc-text-tertiary">Menos</span>
                                 </button>
                             ))}
                         </div>
