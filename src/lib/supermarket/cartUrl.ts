@@ -15,7 +15,7 @@
  *                   que un producto quedó cargado sin revisión del comprador.
  *
  * Nunca se entrega un orderForm creado por el servidor mediante
- * `/checkout/?orderFormId=…`: ese identificador no transfiere la cookie ni la
+ * una URL de checkout con `orderFormId`: ese ID no transfiere la cookie ni la
  * propiedad del carro a otra sesión del navegador y puede abrir un 404 o un
  * carro distinto.
  */
