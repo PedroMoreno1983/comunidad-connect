@@ -175,7 +175,7 @@ export default function NotificationsPage() {
                         Lo importante, <em className="font-normal italic text-copper">a tiempo.</em>
                     </DisplayHeading>
                     <p className="mt-3 max-w-2xl text-sm leading-6 cc-text-secondary">
-                        Avisos, reservas, pagos y novedades de tu comunidad, ordenados en un solo lugar.
+                        Esta es tu bandeja personal de eventos automáticos: reservas, pagos, encomiendas y novedades. No se usa para redactar comunicados.
                     </p>
                 </div>
 

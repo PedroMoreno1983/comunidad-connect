@@ -1735,6 +1735,10 @@ export const AmenitiesService = {
 
         if (error) {
             console.error("Error creating booking:", error);
+            const bookingError = error as { code?: string };
+            if (bookingError.code === '23P01') {
+                throw new Error('Ese espacio ya está reservado en ese horario. Elige otro bloque disponible.');
+            }
             throw error;
         }
 

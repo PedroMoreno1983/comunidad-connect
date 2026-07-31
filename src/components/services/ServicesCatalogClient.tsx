@@ -87,7 +87,7 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <Link href="/services/my-requests"><Button variant="ghost">Mis solicitudes</Button></Link>
+                        <Link href="/services?view=requests"><Button variant="ghost">Mis solicitudes</Button></Link>
                         <Link href="/services/register"><Button variant="copper">Crear perfil proveedor</Button></Link>
                     </div>
                 </div>

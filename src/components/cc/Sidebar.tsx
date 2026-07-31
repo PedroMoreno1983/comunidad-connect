@@ -192,7 +192,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       title: "COMUNIDAD",
       links: [
         { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident"] },
-        { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident", "concierge"] },
+        { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
         { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
         { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
@@ -230,8 +230,8 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "SI OFREZCO SERVICIOS",
       links: [
-        { href: "/marketplace/my-listings", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"], requiresMarketplaceListing: true },
-        { href: "/services/my-requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
+        { href: "/marketplace?view=mine", label: "Mis Publicaciones", icon: ShoppingBag, roles: ["resident"], requiresMarketplaceListing: true },
+        { href: "/services?view=requests", label: "Mis Solicitudes", icon: ClipboardList, roles: ["resident"], feature: "maintenance" },
         { href: "/services/provider-dashboard", label: "Panel Proveedor", icon: Briefcase, roles: ["resident"], feature: "maintenance", requiresServiceProvider: true },
       ]
     },
@@ -261,8 +261,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "AJUSTES",
       links: [
-        { href: "/profile", label: "Mi Perfil", icon: UserCircle, roles: ["admin", "resident", "concierge"] },
-        { href: "/privacy-center", label: "Privacidad", icon: Shield, roles: ["admin", "resident", "concierge"] },
+        { href: "/profile", label: "Mi perfil y privacidad", icon: UserCircle, roles: ["admin", "resident", "concierge"] },
       ]
     }
   ];

@@ -10,12 +10,15 @@ import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
+import { useAuth } from "@/lib/authContext";
 
 type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
 
 export default function ProviderRegisterPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { user } = useAuth();
+    const isExternalRegistration = user?.role === "admin";
     const photoInputRef = useRef<HTMLInputElement>(null);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,6 +124,7 @@ export default function ProviderRegisterPage() {
             hourlyRate: parseFloat(formData.hourlyRate) || 0,
             responseTime: formData.responseTime,
             photo: formData.photo,
+            external: isExternalRegistration,
         };
 
         try {
@@ -139,8 +143,10 @@ export default function ProviderRegisterPage() {
             }
 
             toast({
-                title: "¿Registro Exitoso!",
-                description: "Tu perfil de técnico ha sido creado correctamente.",
+                title: "Registro exitoso",
+                description: isExternalRegistration
+                    ? "El proveedor externo quedó visible para la comunidad."
+                    : "Tu perfil de técnico fue creado correctamente.",
                 variant: "success",
             });
 
@@ -171,16 +177,21 @@ export default function ProviderRegisterPage() {
             {/* Header */}
             <div className="text-center space-y-3">
                 <DisplayHeading size={32} className="mx-auto">
-                    Regístrate como <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>Técnico Profesional</em>
+                    {isExternalRegistration ? "Registrar " : "Regístrate como "}
+                    <em style={{ color: "var(--cc-copper)", fontStyle: "italic" }}>{isExternalRegistration ? "Proveedor Externo" : "Técnico Profesional"}</em>
                 </DisplayHeading>
                 <p className="text-base font-medium cc-text-secondary max-w-2xl mx-auto">
-                    Une a nuestra plataforma y conecta con cientos de clientes potenciales
+                    {isExternalRegistration
+                        ? "Añade un contacto profesional que presta servicios a esta comunidad, aunque no tenga cuenta en Convive."
+                        : "Únete a la plataforma y conecta con residentes que necesitan tus servicios."}
                 </p>
             </div>
 
             <ModuleFlow
                 title="De perfil a proveedor verificable"
-                description="El técnico completa datos básicos, especialidades, certificaciones y foto antes de quedar disponible para recibir solicitudes."
+                description={isExternalRegistration
+                    ? "Administración registra contacto, experiencia y especialidades del proveedor externo antes de incorporarlo a la red de la comunidad."
+                    : "El técnico completa datos básicos, especialidades, certificaciones y foto antes de quedar disponible para recibir solicitudes."}
                 steps={[
                     "Identificar proveedor",
                     "Completar experiencia",
@@ -556,7 +567,7 @@ export default function ProviderRegisterPage() {
                                 type="submit"
                                 disabled={formData.specialties.length === 0 || isSubmitting}
                             >
-                                {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
+                                {isSubmitting ? 'Guardando...' : isExternalRegistration ? 'Registrar Proveedor' : 'Enviar Solicitud'}
                             </Button>
                         </div>
                     </div>

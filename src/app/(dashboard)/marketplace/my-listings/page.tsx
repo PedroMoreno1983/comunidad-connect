@@ -1,7 +1,5 @@
-import { MarketplaceManagementClient } from "@/components/marketplace/MarketplaceManagementClient";
-
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 export default function MyMarketplaceListingsPage() {
-    return <MarketplaceManagementClient mode="mine" />;
+    redirect("/marketplace?view=mine");
 }

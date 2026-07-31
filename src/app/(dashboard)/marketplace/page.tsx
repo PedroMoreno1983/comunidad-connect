@@ -349,6 +349,10 @@ export default function MarketplacePage() {
         return <MarketplaceManagementClient mode="admin" />;
     }
 
+    if (searchParams.get("view") === "mine") {
+        return <MarketplaceManagementClient mode="mine" />;
+    }
+
     return (
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
              {/* Header Section */}
@@ -575,7 +579,7 @@ export default function MarketplacePage() {
                         <MessageCircle className="h-4.5 w-4.5" />
                         Mensajes
                     </CcButton>
-                    <Link href="/marketplace/my-listings">
+                    <Link href="/marketplace?view=mine">
                         <CcButton variant="ghost" size="md">
                             <ShoppingBag className="h-4.5 w-4.5" />
                             Mis publicaciones
@@ -615,7 +619,7 @@ export default function MarketplacePage() {
                                 Ver en vitrina
                                 <ExternalLink className="h-4 w-4" />
                             </a>
-                            <Link href="/marketplace/my-listings">
+                            <Link href="/marketplace?view=mine">
                                 <Button variant="outline">Gestionar publicación</Button>
                             </Link>
                         </div>
