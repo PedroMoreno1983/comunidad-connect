@@ -97,6 +97,17 @@ export function productIntent(term: string): SupermarketProductIntent {
         : 'general';
 }
 
+/**
+ * Generic grocery words need a wider candidate window than a precise product
+ * name. The final filter still rejects unsuitable formats; this only prevents
+ * the database price ordering from hiding normal packages behind sachets and
+ * individual servings.
+ */
+export function needsBroadCatalogCandidates(term: string): boolean {
+    const words = stemmedWords(term);
+    return words.length === 1 && ['bebida', 'carne', 'longaniza'].includes(words[0] || '');
+}
+
 function stemmedWords(value: string): string[] {
     return significantWords(value).map(stem);
 }
@@ -212,7 +223,7 @@ export function buildSelectionReason(options: {
     }
     const brandLabel = brand ? `Marca ${brand}` : 'Esta opción';
     const base = optionCount > 1
-        ? `${brandLabel} elegida por mejor precio entre ${optionCount} opciones${storeLabel}`
+        ? `${brandLabel} elegida por coincidencia, presentacion y precio entre ${optionCount} opciones${storeLabel}`
         : optionCount === 1
             ? `${brandLabel}: única opción disponible${storeLabel}`
             : `${brandLabel} elegida por mejor precio entre las opciones encontradas${storeLabel}`;

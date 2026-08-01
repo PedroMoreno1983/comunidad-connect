@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { Check, Copy, ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import type { SupermarketPurchasePlanBasket } from '@/lib/types';
+import type {
+  SupermarketCheckoutQuote,
+  SupermarketCheckoutQuoteItem,
+  SupermarketPurchasePlanBasket,
+} from '@/lib/types';
 
 const STORE_HOME: Record<string, string> = {
   Lider: 'https://www.lider.cl/supermercado',
@@ -31,11 +35,20 @@ const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT
 // comercial para carga automática. Se abre la tienda con la lista visible.
 const MANUAL_ONLY_STORES = new Set(['Tottus']);
 
-interface CartLoaderButtonProps {
-  basket: SupermarketPurchasePlanBasket;
+function currentRetailerCartUrl(cartUrl: string): string {
+  try {
+    return `${new URL(cartUrl).origin}/checkout/#/cart`;
+  } catch {
+    return cartUrl;
+  }
 }
 
-export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
+interface CartLoaderButtonProps {
+  basket: SupermarketPurchasePlanBasket;
+  onQuote?: (quote: SupermarketCheckoutQuote) => void;
+}
+
+export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -46,6 +59,12 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     cartUrl: string;
     opened: boolean;
     confidence?: 'verified' | 'attempt';
+    quotedTotal: number;
+    catalogTotal: number;
+    quotedAt: string;
+    quotedItems: SupermarketCheckoutQuoteItem[];
+    missingTerms: string[];
+    quoteSource?: 'retailer_checkout';
   } | null>(null);
   const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
 
@@ -62,11 +81,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
    * respuesta server-to-server.
    */
   async function loadDirectly() {
-    // Reservar la pestaña durante el gesto del clic evita que el navegador la
-    // bloquee cuando la respuesta del API llegue después.
-    const checkoutTab = window.open('about:blank', '_blank');
-    if (checkoutTab) checkoutTab.opener = null;
-
     setLoading(true);
     setError(null);
     try {
@@ -76,37 +90,70 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         body: JSON.stringify({
           store: basket.store,
           items: basket.items.map(item => ({
+            id: item.id,
+            requestedTerm: item.requestedTerm,
             name: item.name,
             productUrl: item.productUrl,
             quantity: Math.max(1, Math.round(item.quantity)),
+            lineTotal: item.lineTotal,
           })),
         }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo preparar el carro.');
+      const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo preparar el carro.');
+      }
 
       const cartUrl = typeof data.cartUrl === 'string' ? data.cartUrl : '';
       if (!data.supported || !cartUrl) {
-        if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
-        setDirectUnavailable(data.reason || null);
+        setDirectUnavailable(typeof data.reason === 'string' ? data.reason : null);
         return;
       }
 
-      let opened = false;
-      if (checkoutTab && !checkoutTab.closed) {
-        checkoutTab.location.replace(cartUrl);
-        opened = true;
-      }
+      const quotedItems = Array.isArray(data.quotedItems)
+        ? data.quotedItems.filter((item): item is SupermarketCheckoutQuoteItem => (
+          item !== null && typeof item === 'object'
+          && typeof (item as SupermarketCheckoutQuoteItem).sku === 'string'
+          && typeof (item as SupermarketCheckoutQuoteItem).requestedTerm === 'string'
+          && typeof (item as SupermarketCheckoutQuoteItem).lineTotal === 'number'
+        ))
+        : [];
+      const missingTerms = Array.isArray(data.missingTerms)
+        ? data.missingTerms.filter((term): term is string => typeof term === 'string')
+        : [];
+      const quotedTotal = typeof data.quotedTotal === 'number' ? data.quotedTotal : 0;
+      const catalogTotal = typeof data.catalogTotal === 'number' ? data.catalogTotal : basket.subtotal;
+      const quotedAt = typeof data.quotedAt === 'string' ? data.quotedAt : new Date().toISOString();
+      const quoteSource = data.quoteSource === 'retailer_checkout' ? data.quoteSource : undefined;
 
       setDirectResult({
         planned: typeof data.plannedCount === 'number' ? data.plannedCount : 0,
-        missing: Array.isArray(data.missingItems) ? data.missingItems : [],
+        missing: Array.isArray(data.missingItems)
+          ? data.missingItems.filter((item): item is string => typeof item === 'string')
+          : [],
         cartUrl,
-        opened,
-        confidence: data.confidence,
+        opened: false,
+        confidence: data.confidence === 'verified' || data.confidence === 'attempt'
+          ? data.confidence
+          : undefined,
+        quotedTotal,
+        catalogTotal,
+        quotedAt,
+        quotedItems,
+        missingTerms,
+        quoteSource,
       });
+      if (quoteSource === 'retailer_checkout') {
+        onQuote?.({
+          store: basket.store,
+          subtotal: quotedTotal,
+          catalogSubtotal: catalogTotal,
+          items: quotedItems,
+          missingTerms,
+          quotedAt,
+        });
+      }
     } catch (err) {
-      if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
     } finally {
       setLoading(false);
@@ -215,16 +262,68 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         <div>
           <p className="text-sm font-bold cc-text-primary">
             {directResult.opened
-              ? `Se abrió el cargador de ${basket.store}`
-              : `El cargador de ${basket.store} está listo`}
+              ? `Se abrio el checkout de ${basket.store}`
+              : directResult.quoteSource === 'retailer_checkout'
+                ? `Precio y productos confirmados por ${basket.store}`
+                : `El cargador de ${basket.store} esta listo`}
           </p>
           <p className="mt-1 text-xs leading-5 cc-text-secondary">
-            Enviamos {directResult.planned} producto(s) al checkout de la tienda para
-            agregarlos dentro de esa pestaña y de tu sesión. Revisa que aparezcan en
-            el carro antes de elegir la entrega y pagar. Si la tienda rechazó stock,
-            pidió verificación o el carro llegó vacío, usa el cargador asistido.
+            {directResult.quoteSource === 'retailer_checkout' ? (
+              <>
+                La tienda confirmo {directResult.planned} producto(s) disponibles por{' '}
+                <strong>${Math.round(directResult.quotedTotal).toLocaleString('es-CL')}</strong>.
+                Revisa esta cotizacion y abre el checkout solo cuando estes conforme.
+              </>
+            ) : (
+              <>
+                Prepararemos {directResult.planned} producto(s) dentro de tu sesion en la tienda.
+                Revisa que el carro, el stock y el total sean correctos antes de pagar.
+              </>
+            )}
           </p>
         </div>
+
+        {directResult.quoteSource === 'retailer_checkout'
+          && Math.round(directResult.catalogTotal) !== Math.round(directResult.quotedTotal) && (
+          <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-amber)' }}>
+            <p className="text-[11px] font-semibold cc-text-primary">El precio cambio al confirmarlo</p>
+            <p className="mt-1 text-[11px] leading-4 cc-text-secondary">
+              El catalogo estimaba ${Math.round(directResult.catalogTotal).toLocaleString('es-CL')};
+              el checkout confirmo ${Math.round(directResult.quotedTotal).toLocaleString('es-CL')}.
+              Desde ahora mostramos y enviamos el valor del checkout.
+            </p>
+          </div>
+        )}
+
+        {directResult.quoteSource === 'retailer_checkout' && (
+          <>
+            <div className="max-h-40 space-y-1 overflow-auto rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
+              {directResult.quotedItems.map(item => (
+                <div key={`${item.requestedTerm}-${item.sku}`} className="flex justify-between gap-3 text-[11px]">
+                  <span className="cc-text-secondary">{item.name}</span>
+                  <span className="shrink-0 font-semibold cc-text-primary">
+                    ${Math.round(item.lineTotal).toLocaleString('es-CL')}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
+              <p className="text-[11px] leading-4 cc-text-secondary">
+                La tienda conserva productos de carros anteriores. Si ya habias hecho una prueba,
+                deja ese carro vacio para que el total coincida con esta cotizacion.
+              </p>
+              <a
+                href={currentRetailerCartUrl(directResult.cartUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold underline cc-text-primary"
+              >
+                Revisar o vaciar mi carro anterior <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </>
+        )}
 
         {directResult.missing.length > 0 && (
           <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
@@ -244,9 +343,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             href={directResult.cartUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
+            onClick={() => setDirectResult(current => current ? { ...current, opened: true } : current)}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+            style={{ background: 'var(--cc-ink)' }}
           >
-            {directResult.opened ? 'Volver a abrir el carro' : 'Abrir el carro'}{' '}
+            {directResult.opened ? 'Volver a abrir el checkout' : 'Abrir checkout y cargar carro'}{' '}
             <ExternalLink className="h-3 w-3" />
           </a>
           <Link
@@ -263,6 +364,13 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             Volver
           </button>
         </div>
+        {basket.store === 'Santa Isabel' && (
+          <p className="text-[11px] leading-4 cc-text-tertiary">
+            Santa Isabel cobra en su checkout oficial de VTEX. La compra es chilena y en pesos;
+            esa plantilla externa puede mostrar un dominio tecnico .com.br o una frase del pie
+            en portugues. Convive no controla esa plantilla de la tienda.
+          </p>
+        )}
       </div>
     );
   }
@@ -283,7 +391,13 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         style={{ background: 'var(--cc-ink)' }}
       >
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-        {manualOnly ? `Abrir ${basket.store}` : wholesaleQuote ? `Preparar cotización en ${basket.store}` : `Cargar carro en ${basket.store}`}
+        {manualOnly
+          ? `Abrir ${basket.store}`
+          : wholesaleQuote
+            ? `Preparar cotización en ${basket.store}`
+            : VERIFIED_DIRECT_STORES.has(basket.store)
+              ? 'Confirmar carro y precio'
+              : `Preparar carro en ${basket.store}`}
       </Button>
 
       {error && <p className="text-[11px] text-danger-fg">{error}</p>}
@@ -295,9 +409,8 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </p>
       ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
         <p className="text-[11px] cc-text-tertiary">
-          Se abre el checkout de {basket.store} y la tienda carga los productos dentro
-          de esa sesión. Revisa el carro antes de continuar; el cargador asistido queda
-          disponible si un producto fue rechazado.
+          Primero confirmamos cada producto, su SKU y el total directamente con {basket.store}.
+          Despues veras el detalle y podras abrir el checkout oficial.
         </p>
       ) : canLoadDirectly ? (
         <p className="text-[11px] cc-text-tertiary">
