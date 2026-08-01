@@ -299,6 +299,37 @@ export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
   channelType: SupermarketChannelType;
   items: SupermarketSearchCandidate[];
   fetchedAt?: string;
+  quoteStatus?: 'catalog' | 'retailer';
+  quotedAt?: string;
+}
+
+export interface SupermarketCheckoutQuoteItem {
+  id: string;
+  requestedTerm: string;
+  name: string;
+  sku: string;
+  productUrl?: string;
+  quantity: number;
+  price: number;
+  lineTotal: number;
+}
+
+export interface SupermarketCheckoutQuoteRequestItem {
+  id: string;
+  requestedTerm: string;
+  name: string;
+  productUrl?: string;
+  quantity: number;
+  catalogLineTotal: number;
+}
+
+export interface SupermarketCheckoutQuote {
+  store: string;
+  subtotal: number;
+  catalogSubtotal: number;
+  items: SupermarketCheckoutQuoteItem[];
+  missingTerms: string[];
+  quotedAt: string;
 }
 export type SupermarketPurchasePlanStatus = 'single_store' | 'split_store' | 'needs_substitution';
 

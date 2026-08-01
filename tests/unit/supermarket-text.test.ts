@@ -130,7 +130,7 @@ describe('supermarketText buildSelectionReason', () => {
 
     it('explains the price criterion and option count when the user gave no brand', () => {
         expect(buildSelectionReason({ brand: 'Soprole', explicitBrand: null, optionCount: 3, store: 'Lider' }))
-            .toBe('Marca Soprole elegida por mejor precio entre 3 opciones en Lider.');
+            .toBe('Marca Soprole elegida por coincidencia, presentacion y precio entre 3 opciones en Lider.');
     });
 
     it('flags single-option picks honestly', () => {

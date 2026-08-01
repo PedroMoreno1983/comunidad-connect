@@ -111,11 +111,22 @@ const button = fs.readFileSync(
   path.join(root, 'src', 'components', 'resident', 'supermarket', 'CartLoaderButton.tsx'),
   'utf8',
 );
-check(page.includes('<CartLoaderButton basket={selectedBasket} />'), 'La UI no usa el cargador de la tienda elegida.');
+check(
+  page.includes('<CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />'),
+  'La UI no usa el cargador de la tienda elegida ni aplica la cotizacion confirmada.',
+);
 for (const store of stores) {
   check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
 }
-check(button.includes('Cargar carro en ${basket.store}'), 'La acción no usa la tienda elegida.');
+check(
+  button.includes('Confirmar carro y precio') && button.includes('Abrir checkout y cargar carro'),
+  'La UI no separa la confirmacion de productos/precio de la apertura del checkout.',
+);
+check(
+  button.includes("quoteSource === 'retailer_checkout'")
+    && button.includes('Preparar carro en ${basket.store}'),
+  'La UI confunde la cotizacion VTEX verificada con el intento de carga de Lider.',
+);
 check(button.includes('confirmas la entrega y pagas'), 'La UI perdió el límite de seguridad.');
 check(
   button.includes("basket.store === 'Irurzun'") && button.includes('Preparar cotización en'),
@@ -151,12 +162,16 @@ check(
 check(!fs.existsSync(path.join(root, 'src', 'lib', 'supermarket', 'vtexSharedCart.ts')), 'Quedó el adaptador de carro server-to-server.');
 check(!button.includes('se abrió con tu carro cargado'), 'La UI todavía afirma un carro cargado sin leer la sesión.');
 check(!button.includes('confirmó') || !button.includes('producto(s) en el carro'), 'La UI todavía presenta la API remota como confirmación del carro.');
-check(button.includes('Revisa que aparezcan en'), 'La UI no pide verificar el carro real de la tienda.');
+check(
+  button.includes('La tienda conserva productos de carros anteriores')
+    && button.includes('Revisar o vaciar mi carro anterior'),
+  'La UI no pide revisar el carro real ni advierte sobre productos anteriores.',
+);
 check(button.includes('Usar el cargador asistido'), 'Falta recuperación cuando la carga directa falla.');
 check(
-  button.includes("window.open('about:blank', '_blank')")
-    && button.includes('checkoutTab.location.replace(cartUrl)'),
-  'La pestaña se abre después del await y el navegador puede bloquearla.',
+  !button.includes("window.open('about:blank', '_blank')")
+    && button.includes('href={directResult.cartUrl}'),
+  'El checkout no queda asociado a un clic explicito del usuario.',
 );
 check(button.includes('href={directResult.cartUrl}'), 'Falta enlace manual si el navegador bloquea la pestaña.');
 

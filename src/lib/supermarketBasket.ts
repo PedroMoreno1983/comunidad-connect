@@ -1,4 +1,5 @@
 import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
+import { foldAccents, matchAnchor, significantWords } from '@/lib/supermarketText';
 import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
 
 
@@ -71,6 +72,51 @@ function parseProductMeasurement(name: string) {
     amount: Number(match[1].replace(',', '.')),
     unit: normalizedProductUnit(match[2]),
   };
+}
+
+function productMeasurementInBaseUnits(name: string): { dimension: 'mass' | 'volume'; amount: number } | null {
+  const measurement = parseProductMeasurement(name);
+  if (!measurement) return null;
+  return {
+    dimension: unitDimension(measurement.unit),
+    amount: measurement.amount * unitBaseFactor(measurement.unit),
+  };
+}
+
+/**
+ * A bare category word is not permission to choose the cheapest tiny serving.
+ * These defaults mirror what a Chilean household normally means in a shopping
+ * list while preserving explicit requests such as "bebida lactea 200 ml".
+ */
+export function isProductSuitableForRequest(
+  name: string,
+  requestedTerm: string,
+  requestedUnit: SupermarketMeasurementUnit | undefined,
+): boolean {
+  if (!isProductMeasurementCompatible(name, requestedUnit)) return false;
+  if (requestedUnit || significantWords(requestedTerm).length !== 1) return true;
+
+  const family = matchAnchor(requestedTerm);
+  const normalizedName = foldAccents(name);
+  const measurement = productMeasurementInBaseUnits(name);
+
+  if (family === 'carne') {
+    return Boolean(
+      measurement?.dimension === 'mass'
+      && measurement.amount >= 400
+      && /\b(vacuno|res)\b/.test(normalizedName),
+    );
+  }
+  if (family === 'longaniza') {
+    return Boolean(measurement?.dimension === 'mass' && measurement.amount >= 400);
+  }
+  if (family === 'bebida') {
+    if (/\b(lactea|vegetal|isotonica|energetica|polvo|vino|cerveza|alcohol)\b/.test(normalizedName)) {
+      return false;
+    }
+    return Boolean(measurement?.dimension === 'volume' && measurement.amount >= 1_000);
+  }
+  return true;
 }
 
 export function isProductMeasurementCompatible(
@@ -216,7 +262,11 @@ export function buildBasketComparison(
 ) {
   const comparableByTerm = terms.map(term => {
     const requestedUnit = requestedUnits[term];
-    const rows = rowsByTerm[term] ?? [];
+    const rows = (rowsByTerm[term] ?? []).filter(row => isProductSuitableForRequest(
+      asString(row.name),
+      term,
+      requestedUnit,
+    ));
     return {
       term,
       rows,
@@ -227,7 +277,11 @@ export function buildBasketComparison(
   const comparisons = SUPERMARKET_STORES.map(store => {
     const items = comparableByTerm.flatMap(({ term, rows, comparableRows }) => {
       const candidate = selectStoreRows(rows, comparableRows, store)
-        .filter(row => isProductMeasurementCompatible(asString(row.name), requestedUnits[term]))
+        .filter(row => isProductSuitableForRequest(
+          asString(row.name),
+          term,
+          requestedUnits[term],
+        ))
         .map(row => buildSupermarketCandidate(
           row,
           term,
