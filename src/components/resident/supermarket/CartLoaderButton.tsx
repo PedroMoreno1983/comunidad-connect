@@ -20,21 +20,15 @@ const STORE_HOME: Record<string, string> = {
 // puede trabajar en segundo plano ahí y avanza de a un producto por clic.
 const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
 
-// Cadenas donde el carro se carga con un enlace, sin instalar nada. Debe
-// coincidir con lib/supermarket/cartUrl.ts; el servidor manda, esto solo decide
-// qué botón mostrar antes de preguntarle. Jumbo está verificado; Lider y Unimarc
-// son "intentar": su WAF puede bloquear y ahí queda el cargador de respaldo.
-// Jumbo, Santa Isabel y Unimarc arman el carro server-to-server con la Checkout
-// API de VTEX y la tienda confirma qué quedó adentro: eso es 'verified'. Lider
-// solo tiene el enlace directo, que su WAF puede bloquear: 'attempt'.
+// Estas cadenas tienen una ruta de carrito que se ejecuta dentro de la sesión
+// del navegador. El servidor prepara el enlace; la tienda agrega y la persona
+// confirma el resultado en su checkout.
 const VERIFIED_DIRECT_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
 const ATTEMPT_DIRECT_STORES = new Set(['Lider']);
 const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT_STORES]);
 
-// Cadenas sin carga automática posible hoy: Tottus corre en la plataforma de
-// Falabella (no VTEX), donde ni el enlace ni el marcador funcionan. Ofrecerle un
-// cargador con código sería prometer algo que no carga nada. Se abre la tienda y
-// se muestra la lista para agregar a mano, hasta una integración comercial.
+// Tottus corre en la plataforma de Falabella y hoy requiere una integración
+// comercial para carga automática. Se abre la tienda con la lista visible.
 const MANUAL_ONLY_STORES = new Set(['Tottus']);
 
 interface CartLoaderButtonProps {
@@ -47,10 +41,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [directResult, setDirectResult] = useState<{
-    loaded: number;
+    planned: number;
     missing: string[];
+    cartUrl: string;
+    opened: boolean;
     confidence?: 'verified' | 'attempt';
-    cartTotal?: number;
   } | null>(null);
   const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
 
@@ -61,11 +56,17 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   if (!storeUrl) return null;
 
   /**
-   * Camino preferido: un enlace que deja el carro cargado sin instalar nada.
-   * Solo existe en las cadenas que exponen la ruta de carrito de VTEX; el
-   * endpoint responde `supported: false` en el resto y ahí se cae al cargador.
+   * Crea un enlace de alta que la tienda ejecuta dentro de la sesión del
+   * comprador. Convive no puede leer un carro cross-origin, por lo que la UI
+   * informa cuántos productos envió y pide revisar; nunca declara éxito por una
+   * respuesta server-to-server.
    */
   async function loadDirectly() {
+    // Reservar la pestaña durante el gesto del clic evita que el navegador la
+    // bloquee cuando la respuesta del API llegue después.
+    const checkoutTab = window.open('about:blank', '_blank');
+    if (checkoutTab) checkoutTab.opener = null;
+
     setLoading(true);
     setError(null);
     try {
@@ -84,21 +85,28 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'No se pudo preparar el carro.');
 
-      if (!data.supported || !data.cartUrl) {
-        // La tienda no lo permite: se ofrece el cargador en vez de fingir.
+      const cartUrl = typeof data.cartUrl === 'string' ? data.cartUrl : '';
+      if (!data.supported || !cartUrl) {
+        if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
         setDirectUnavailable(data.reason || null);
         return;
       }
 
+      let opened = false;
+      if (checkoutTab && !checkoutTab.closed) {
+        checkoutTab.location.replace(cartUrl);
+        opened = true;
+      }
+
       setDirectResult({
-        loaded: data.loadedCount,
-        missing: data.missingItems || [],
+        planned: typeof data.plannedCount === 'number' ? data.plannedCount : 0,
+        missing: Array.isArray(data.missingItems) ? data.missingItems : [],
+        cartUrl,
+        opened,
         confidence: data.confidence,
-        // Solo el carro compartido devuelve un total confirmado por la tienda.
-        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
       });
-      window.open(data.cartUrl, '_blank', 'noopener');
     } catch (err) {
+      if (checkoutTab && !checkoutTab.closed) checkoutTab.close();
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
     } finally {
       setLoading(false);
@@ -206,53 +214,47 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       >
         <div>
           <p className="text-sm font-bold cc-text-primary">
-            {directResult.confidence === 'attempt'
-              ? `Enviamos tu carro a ${basket.store}`
-              : `${basket.store} se abrió con tu carro cargado`}
+            {directResult.opened
+              ? `Se abrió el cargador de ${basket.store}`
+              : `El cargador de ${basket.store} está listo`}
           </p>
           <p className="mt-1 text-xs leading-5 cc-text-secondary">
-            {directResult.confidence === 'attempt' ? (
-              <>
-                {directResult.loaded} producto(s) van en el enlace. Por seguridad del navegador
-                no podemos leer el carro de {basket.store} desde acá, así que revísalo tú:
-                si quedó cargado, sigue con la entrega y el pago. Si llegó vacío, usa el
-                cargador de respaldo.
-              </>
-            ) : (
-              <>
-                {basket.store} confirmó {directResult.loaded} producto(s) en el carro
-                {typeof directResult.cartTotal === 'number' && directResult.cartTotal > 0
-                  ? `, por $${directResult.cartTotal.toLocaleString('es-CL')}`
-                  : ''}
-                . Si te pide iniciar sesión, hazlo y el carro sigue ahí. Revisa, elige
-                la entrega y paga.
-              </>
-            )}
+            Enviamos {directResult.planned} producto(s) al checkout de la tienda para
+            agregarlos dentro de esa pestaña y de tu sesión. Revisa que aparezcan en
+            el carro antes de elegir la entrega y pagar. Si la tienda rechazó stock,
+            pidió verificación o el carro llegó vacío, usa el cargador asistido.
           </p>
         </div>
 
         {directResult.missing.length > 0 && (
           <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
             <p className="text-[11px] font-semibold cc-text-primary">
-              {directResult.missing.length} producto(s) no se pudieron cargar
+              {directResult.missing.length} producto(s) no se incluyeron en el enlace
             </p>
             <p className="mt-1 text-[11px] leading-4 cc-text-tertiary">
               {directResult.missing.slice(0, 5).join(', ')}
               {directResult.missing.length > 5 ? `, y ${directResult.missing.length - 5} más` : ''}.
-              Tendrás que buscarlos en la tienda.
+              Agrégalos en la tienda o usa el cargador asistido.
             </p>
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          {directResult.confidence === 'attempt' && (
-            <Link
-              href="/resident/supermercado/cargador"
-              className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
-            >
-              Usar el cargador de respaldo <ExternalLink className="h-3 w-3" />
-            </Link>
-          )}
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={directResult.cartUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
+          >
+            {directResult.opened ? 'Volver a abrir el carro' : 'Abrir el carro'}{' '}
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <Link
+            href="/resident/supermercado/cargador"
+            className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
+          >
+            Usar el cargador asistido <ExternalLink className="h-3 w-3" />
+          </Link>
           <button
             type="button"
             onClick={() => setDirectResult(null)}
@@ -293,12 +295,14 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </p>
       ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
         <p className="text-[11px] cc-text-tertiary">
-          Se abre {basket.store} con los productos ya en el carro. No tienes que instalar nada.
+          Se abre el checkout de {basket.store} y la tienda carga los productos dentro
+          de esa sesión. Revisa el carro antes de continuar; el cargador asistido queda
+          disponible si un producto fue rechazado.
         </p>
       ) : canLoadDirectly ? (
         <p className="text-[11px] cc-text-tertiary">
           Intentamos cargar el carro directo en {basket.store} sin instalar nada. Su sitio a veces
-          pide verificación; si te bloquea, tienes el cargador de respaldo.
+          pide verificación; si te bloquea, tienes el cargador asistido.
         </p>
       ) : (
         <p className="text-[11px] cc-text-tertiary">
