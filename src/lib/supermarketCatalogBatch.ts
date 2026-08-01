@@ -1,7 +1,13 @@
 import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { matchAnchor, matchAnchors, productIntent, productMatchScore } from '@/lib/supermarketText';
+import {
+  matchAnchor,
+  matchAnchors,
+  needsBroadCatalogCandidates,
+  productIntent,
+  productMatchScore,
+} from '@/lib/supermarketText';
 
 const QUERY_CHUNK_SIZE = 25;
 const CANDIDATES_PER_STORE = 12;
@@ -58,7 +64,9 @@ export async function fetchBatchSupermarketRows(
     const { data, error } = await supabaseAdmin.rpc('search_supermarket_products_batch_v2', {
       p_queries: queries,
       p_cutoff: cutoff,
-      p_limit_per_store: CANDIDATES_PER_STORE,
+      p_limit_per_store: termChunk.some(needsBroadCatalogCandidates)
+        ? 30
+        : CANDIDATES_PER_STORE,
     });
     if (!error) {
       const grouped = normalizeGroupedRows(data);

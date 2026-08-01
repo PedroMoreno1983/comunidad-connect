@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -19,6 +19,7 @@ import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
+  SupermarketCheckoutQuote,
   SupermarketRequestedItem,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
@@ -26,7 +27,7 @@ import type {
 
 const LIST_SUGGESTIONS = [
   { title: 'Compra semanal', items: ['Pechuga de pollo', 'Arroz', 'Paltas', 'Huevos', 'Leche', 'Pan molde'] },
-  { title: 'Asado', items: ['Carne', 'Longanizas', 'Cebollas', 'Papas', 'Tomates', 'Bebidas'] },
+  { title: 'Asado', items: ['500 g carne molida de vacuno', '500 g longanizas', '1 kg cebollas', '2 kg papas', '500 g tomates', '2 l bebida cola'] },
   { title: 'Desayunos', items: ['Avena', 'Leche', 'Yogur', 'Plátanos', 'Huevos', 'Pan'] },
 ];
 
@@ -122,6 +123,61 @@ export default function SupermarketPage() {
     }));
   };
 
+  const applyCheckoutQuote = useCallback((quote: SupermarketCheckoutQuote) => {
+    const quotedByTerm = new Map(quote.items.map(item => [item.requestedTerm, item]));
+    const missing = new Set(quote.missingTerms);
+
+    setBasketOptions(current => current.map(basket => {
+      if (basket.store !== quote.store) return basket;
+      const items = basket.items.flatMap(item => {
+        const confirmed = quotedByTerm.get(item.requestedTerm);
+        if (!confirmed || missing.has(item.requestedTerm)) return [];
+        return [{
+          ...item,
+          name: confirmed.name,
+          productUrl: confirmed.productUrl,
+          quantity: confirmed.quantity,
+          price: confirmed.price,
+          lineTotal: confirmed.lineTotal,
+          fetchedAt: quote.quotedAt,
+        }];
+      });
+      const missingTerms = [...new Set([...basket.missingTerms, ...quote.missingTerms])];
+      return {
+        ...basket,
+        items,
+        subtotal: quote.subtotal,
+        coveredCount: items.length,
+        coveragePercent: basket.requestedCount > 0
+          ? Math.round(items.length * 100 / basket.requestedCount)
+          : 0,
+        missingTerms,
+        complete: missingTerms.length === 0 && items.length === basket.requestedCount,
+        quoteStatus: 'retailer' as const,
+        quotedAt: quote.quotedAt,
+      };
+    }));
+
+    setList(current => current.map(item => {
+      const confirmed = quotedByTerm.get(item.requestedTerm);
+      if (confirmed) {
+        return {
+          ...item,
+          name: confirmed.name,
+          productUrl: confirmed.productUrl,
+          quantity: confirmed.quantity,
+          price: confirmed.price,
+          lineTotal: confirmed.lineTotal,
+          fetchedAt: quote.quotedAt,
+          available: true,
+        };
+      }
+      return missing.has(item.requestedTerm)
+        ? { ...item, available: false, source: 'missing' as const }
+        : item;
+    }));
+  }, []);
+
   const processShoppingList = async () => {
     if (!shoppingInput.trim()) return;
     setLoading(true);
@@ -177,8 +233,8 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo busca toda tu compra dentro de cada cadena, compara las canastas completas y te muestra primero
-          la más barata, luego la segunda y la tercera.
+          CoCo busca toda tu compra dentro de cada cadena y compara canastas completas. Antes de abrir una
+          tienda compatible, confirma otra vez los productos y el total directamente con su checkout.
         </p>
       </header>
 
@@ -300,7 +356,12 @@ export default function SupermarketPage() {
                         </span>
                       );
                     })()}
-                    <p className="mt-1 text-2xl font-bold cc-text-primary">{money(basket.subtotal)}</p>
+                    <p className="mt-1 text-2xl font-bold cc-text-primary">
+                      {basket.quoteStatus === 'retailer' ? money(basket.subtotal) : `Est. ${money(basket.subtotal)}`}
+                    </p>
+                    <p className="mt-0.5 text-[10px] cc-text-tertiary">
+                      {basket.quoteStatus === 'retailer' ? 'Confirmado por la tienda' : 'Estimado del catalogo'}
+                    </p>
                     <p className="mt-2 text-sm cc-text-secondary">
                       {basket.coveredCount} de {basket.requestedCount} productos
                     </p>
@@ -333,13 +394,15 @@ export default function SupermarketPage() {
                     <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Tu elección</p>
                     <h2 className="mt-1 text-2xl font-bold cc-text-primary">{selectedBasket.store}</h2>
                     <p className="mt-1 text-sm cc-text-secondary">
-                      {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos · {money(selectedBasket.subtotal)}
+                      {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos ·{' '}
+                      {selectedBasket.quoteStatus === 'retailer' ? 'confirmado ' : 'estimado '}
+                      {money(selectedBasket.subtotal)}
                     </p>
                   </div>
                 </div>
                 <div className="w-full space-y-2 sm:w-80">
                   {selectedBasket.complete ? (
-                    <CartLoaderButton basket={selectedBasket} />
+                    <CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />
                   ) : selectedBasket.coveredCount > 0 ? (
                     <>
                       {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
@@ -352,7 +415,7 @@ export default function SupermarketPage() {
                           {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
                         </p>
                       </div>
-                      <CartLoaderButton basket={selectedBasket} />
+                      <CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />
                     </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
@@ -438,7 +501,9 @@ export default function SupermarketPage() {
                 </p>
                 <p className="mt-1 text-sm cc-text-secondary">
                   {selectedBasket.complete
-                    ? 'El total incluye todos los productos y cantidades de tu lista.'
+                    ? selectedBasket.quoteStatus === 'retailer'
+                      ? 'La tienda confirmo cada producto disponible y el total actual antes de abrir el checkout.'
+                      : 'Es un estimado del catalogo. Confirma carro y precio antes de abrir el checkout.'
                     : 'El subtotal no se compara como si fuera una compra completa. CoCo mantiene la búsqueda dentro de esta misma cadena.'}
                 </p>
               </div>

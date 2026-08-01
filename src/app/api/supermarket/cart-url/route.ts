@@ -9,6 +9,7 @@ import {
     directCartConfidence,
     MAX_ITEMS_PER_URL,
 } from '@/lib/supermarket/cartUrl';
+import { quoteVtexBasket, storeSupportsVtexQuote } from '@/lib/supermarket/vtexQuote';
 
 export const runtime = 'nodejs';
 
@@ -25,10 +26,10 @@ function cleanText(value: unknown, max: number) {
  * la tienda. No crea carros server-to-server: un orderForm remoto no transfiere
  * su cookie ni su propiedad al navegador de la persona.
  *
- * La canasta viaja con nombre y URL de producto, no con SKU, así que el SKU se
- * resuelve acá contra el catálogo. El resultado dice cuántos productos viajan
- * en el enlace, nunca cuántos quedaron en el carro; eso solo lo confirma la
- * persona en el checkout de la tienda.
+ * En tiendas VTEX, los productos y precios se vuelven a resolver contra la
+ * tienda antes de construir el enlace. El resultado dice cuántos productos
+ * viajan en el enlace, nunca cuántos quedaron en el carro; eso solo lo confirma
+ * la persona en el checkout de la tienda.
  */
 export async function POST(req: NextRequest) {
     const limited = await enforceDistributedRateLimit(req, 'supermarket.cart_url', {
@@ -60,14 +61,65 @@ export async function POST(req: NextRequest) {
         const requested = rawItems.map(entry => {
             const item = entry as Record<string, unknown>;
             return {
+                id: cleanText(item.id, 100),
+                requestedTerm: cleanText(item.requestedTerm, 80),
                 name: cleanText(item.name, 240),
                 productUrl: cleanText(item.productUrl, 600),
                 quantity: Math.min(99, Math.max(1, Math.round(Number(item.quantity) || 1))),
+                catalogLineTotal: Math.max(0, Number(item.lineTotal) || 0),
             };
         }).filter(item => item.name || item.productUrl);
 
         if (requested.length === 0) {
             return NextResponse.json({ error: 'La lista llegó vacía.' }, { status: 400 });
+        }
+
+        if (storeSupportsVtexQuote(store)) {
+            const quoteInput = requested.slice(0, MAX_ITEMS_PER_URL).map((item, index) => ({
+                id: item.id || `item-${index + 1}`,
+                requestedTerm: item.requestedTerm || item.name,
+                name: item.name,
+                productUrl: item.productUrl || undefined,
+                quantity: item.quantity,
+                catalogLineTotal: item.catalogLineTotal,
+            }));
+            const overflow = requested.slice(MAX_ITEMS_PER_URL);
+            const quote = await quoteVtexBasket(store, quoteInput);
+            const cartUrl = buildDirectCartUrl(store, quote.items);
+            const allMissingTerms = [
+                ...quote.missingTerms,
+                ...overflow.map(item => item.requestedTerm || item.name),
+            ];
+            const unresolvedNames = quote.missingTerms.map(term => (
+                quoteInput.find(item => item.requestedTerm === term)?.name || term
+            ));
+
+            if (!cartUrl) {
+                return NextResponse.json({
+                    supported: false,
+                    store,
+                    reason: 'La tienda no confirmo ningun SKU disponible para esta lista. '
+                        + 'No abrimos un carro con productos distintos; usa otra tienda o el cargador asistido.',
+                    quotedAt: quote.quotedAt,
+                    missingItems: [...unresolvedNames, ...overflow.map(item => item.name)],
+                });
+            }
+
+            return NextResponse.json({
+                supported: true,
+                mode: 'browser-session-link',
+                store,
+                cartUrl,
+                confidence: directCartConfidence(store),
+                plannedCount: quote.items.length,
+                missingItems: [...unresolvedNames, ...overflow.map(item => item.name)].filter(Boolean),
+                missingTerms: allMissingTerms,
+                quotedItems: quote.items,
+                quotedTotal: quote.subtotal,
+                catalogTotal: quote.catalogSubtotal,
+                quotedAt: quote.quotedAt,
+                quoteSource: 'retailer_checkout',
+            });
         }
 
         const admin = getSupabaseAdmin();

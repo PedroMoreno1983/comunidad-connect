@@ -154,4 +154,27 @@ describe('buildBasketComparison', () => {
     expect(result.recommended?.items[0].name).toBe('Yogur bebible 1 L');
     expect(result.comparisons.some(basket => basket.store === 'Lider')).toBe(false);
   });
+
+  it('rejects tiny or unrelated products for a generic asado list', () => {
+    const result = buildBasketComparison(['carne', 'longanizas', 'bebidas'], {
+      carne: [
+        row('Santa Isabel', 'Carne Molida Chilenaza Congelada 125 g', 790),
+        row('Santa Isabel', 'Carne Molida Vacuno 10% Grasa 500 g', 5590),
+      ],
+      longanizas: [
+        row('Santa Isabel', 'Longaniza Schwencke 250 g', 2990),
+        row('Santa Isabel', 'Longaniza Angus La Preferida 500 g', 4990),
+      ],
+      bebidas: [
+        row('Santa Isabel', 'Bebida Lactea Yogu Yogu Chirimoya 200 ml', 630),
+        row('Santa Isabel', 'Bebida Coca-Cola Original 2 L', 2190),
+      ],
+    });
+
+    expect(result.recommended?.items.map(item => item.name)).toEqual([
+      'Carne Molida Vacuno 10% Grasa 500 g',
+      'Longaniza Angus La Preferida 500 g',
+      'Bebida Coca-Cola Original 2 L',
+    ]);
+  });
 });
