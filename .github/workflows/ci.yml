@@ -55,6 +55,9 @@ jobs:
           npm run qa:training
           npm run qa:onboarding-batches
 
+      - name: Supermarket cart session regression
+        run: npm run qa:supermarket-cart-loader
+
       - name: Production dependency audit
         run: npm audit --omit=dev
 

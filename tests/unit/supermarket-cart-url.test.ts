@@ -1,27 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildDirectCartUrl, storeSupportsDirectCart, countUnsupportedItems, directCartConfidence,
-    storeLoadability, loadabilityRank,
+    storeLoadability, loadabilityRank, MAX_ITEMS_PER_URL,
 } from '@/lib/supermarket/cartUrl';
-import { sharedCartStores, storeSupportsSharedCart } from '@/lib/supermarket/vtexSharedCart';
 
 describe('buildDirectCartUrl', () => {
-    it('arma el enlace de Jumbo con los SKU y cantidades', () => {
+    it('arma el enlace de Jumbo en el host de checkout con SKU y cantidades', () => {
         const url = buildDirectCartUrl('Jumbo', [
             { sku: '95710', quantity: 1 },
             { sku: '93386', quantity: 2 },
         ]);
 
-        expect(url).toContain('https://www.jumbo.cl/checkout/cart/add?');
+        expect(url).toContain('https://jumbo.vtexcommercestable.com.br/checkout/cart/add?');
         const params = new URLSearchParams(url!.split('?')[1]);
         expect(params.getAll('sku')).toEqual(['95710', '93386']);
         expect(params.getAll('qty')).toEqual(['1', '2']);
         expect(params.getAll('seller')).toEqual(['1', '1']);
         expect(params.get('sc')).toBe('1');
+        expect(params.get('redirect')).toBe('true');
+    });
+
+    it('usa los hosts de checkout que crean el carro en la sesión del navegador', () => {
+        expect(buildDirectCartUrl('Santa Isabel', [{ sku: '7917', quantity: 1 }]))
+            .toContain('https://santaisabel.vtexcommercestable.com.br/checkout/cart/add?');
+        expect(buildDirectCartUrl('Unimarc', [{ sku: '75563', quantity: 1 }]))
+            .toContain('https://unimarc.vtexcommercestable.com.br/checkout/cart/add?');
+    });
+
+    it('nunca vuelve a entregar un orderForm creado en otra sesión', () => {
+        for (const store of ['Jumbo', 'Santa Isabel', 'Unimarc']) {
+            const url = buildDirectCartUrl(store, [{ sku: '1', quantity: 1 }]);
+            expect(url).not.toContain('orderFormId');
+            expect(url).toContain('/checkout/cart/add?');
+        }
     });
 
     it('emite un seller por producto: VTEX lee los parámetros en paralelo', () => {
-        const url = buildDirectCartUrl('Lider', [
+        const url = buildDirectCartUrl('Santa Isabel', [
             { sku: 'A', quantity: 1 },
             { sku: 'B', quantity: 1 },
             { sku: 'C', quantity: 1 },
@@ -32,23 +47,15 @@ describe('buildDirectCartUrl', () => {
         expect(params.getAll('seller')).toHaveLength(3);
     });
 
-    it('devuelve null para una cadena sin soporte, en vez de un enlace roto', () => {
-        // Prometer un carro cargado y que llegue vacío es peor que ofrecer
-        // el camino alternativo desde el principio.
-        expect(buildDirectCartUrl('Santa Isabel', [{ sku: '1', quantity: 1 }])).toBeNull();
+    it('devuelve null para una cadena sin enlace, en vez de prometer un carro vacío', () => {
         expect(buildDirectCartUrl('Tottus', [{ sku: '1', quantity: 1 }])).toBeNull();
         expect(buildDirectCartUrl('aCuenta', [{ sku: '1', quantity: 1 }])).toBeNull();
+        expect(buildDirectCartUrl('Irurzun', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
-    it('arma el enlace para Lider, que solo tiene esta vía', () => {
+    it('arma el enlace para Lider, que queda sujeto a revisión por su WAF', () => {
         expect(buildDirectCartUrl('Lider', [{ sku: '1', quantity: 1 }]))
             .toContain('https://www.lider.cl/checkout/cart/add?');
-    });
-
-    it('ya no usa enlace directo en Unimarc: pasó a carro compartido', () => {
-        // Unimarc arma el carro por la Checkout API y la tienda confirma qué
-        // quedó adentro, que es más fuerte que confiar en un enlace.
-        expect(buildDirectCartUrl('Unimarc', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
     it('devuelve null si ningún producto trae SKU', () => {
@@ -57,7 +64,7 @@ describe('buildDirectCartUrl', () => {
     });
 
     it('ignora los productos sin SKU pero conserva el resto', () => {
-        const url = buildDirectCartUrl('Jumbo', [
+        const url = buildDirectCartUrl('Unimarc', [
             { sku: '111', quantity: 1 },
             { sku: '', quantity: 1 },
             { sku: '222', quantity: 1 },
@@ -80,29 +87,27 @@ describe('buildDirectCartUrl', () => {
         const items = Array.from({ length: 70 }, (_, i) => ({ sku: `s${i}`, quantity: 1 }));
         const url = buildDirectCartUrl('Jumbo', items);
         const params = new URLSearchParams(url!.split('?')[1]);
-        expect(params.getAll('sku')).toHaveLength(50);
+        expect(params.getAll('sku')).toHaveLength(MAX_ITEMS_PER_URL);
     });
 });
 
 describe('storeSupportsDirectCart', () => {
-    it('reconoce las cadenas con enlace directo', () => {
+    it('reconoce solo las cadenas con enlace de sesión', () => {
         expect(storeSupportsDirectCart('Jumbo')).toBe(true);
+        expect(storeSupportsDirectCart('Santa Isabel')).toBe(true);
+        expect(storeSupportsDirectCart('Unimarc')).toBe(true);
         expect(storeSupportsDirectCart('Lider')).toBe(true);
-        // Unimarc y Santa Isabel usan carro compartido, no enlace.
-        expect(storeSupportsDirectCart('Unimarc')).toBe(false);
-        expect(storeSupportsDirectCart('Santa Isabel')).toBe(false);
         expect(storeSupportsDirectCart('aCuenta')).toBe(false);
+        expect(storeSupportsDirectCart('Tottus')).toBe(false);
     });
 });
 
 describe('directCartConfidence', () => {
-    it('distingue verificado, pendiente de revisar y no soportado', () => {
+    it('distingue mecanismo verificado, intento con WAF y no soportado', () => {
         expect(directCartConfidence('Jumbo')).toBe('verified');
-        // Lider: no podemos leer su carro desde nuestro dominio, así que el
-        // resultado se declara pendiente de que la persona lo revise.
+        expect(directCartConfidence('Santa Isabel')).toBe('verified');
+        expect(directCartConfidence('Unimarc')).toBe('verified');
         expect(directCartConfidence('Lider')).toBe('attempt');
-        expect(directCartConfidence('Unimarc')).toBeNull();
-        expect(directCartConfidence('Santa Isabel')).toBeNull();
         expect(directCartConfidence('Tottus')).toBeNull();
     });
 });
@@ -110,28 +115,18 @@ describe('directCartConfidence', () => {
 describe('storeLoadability / loadabilityRank', () => {
     it('clasifica la cargabilidad por tienda', () => {
         expect(storeLoadability('Jumbo')).toBe('direct');
+        expect(storeLoadability('Santa Isabel')).toBe('direct');
+        expect(storeLoadability('Unimarc')).toBe('direct');
         expect(storeLoadability('Lider')).toBe('attempt');
         expect(storeLoadability('Tottus')).toBe('manual');
         expect(storeLoadability('aCuenta')).toBe('manual');
     });
 
-    it('toda tienda con carro compartido es "direct", no "manual"', () => {
-        // Regresión: storeLoadability solo miraba el enlace directo, así que
-        // Santa Isabel y Unimarc caían en 'manual' (el peor nivel) pese a cargar
-        // solas y confirmadas. La UI las rotulaba "requiere un paso extra" y el
-        // desempate les cargaba una penalización de precio, con lo que podía
-        // recomendar una tienda más cara que las que sí funcionan.
-        for (const store of sharedCartStores()) {
-            expect(storeSupportsSharedCart(store)).toBe(true);
-            expect(storeLoadability(store)).toBe('direct');
-            expect(loadabilityRank(store)).toBe(0);
-        }
-    });
-
     it('ordena mejor a la más fácil de cargar', () => {
         expect(loadabilityRank('Jumbo')).toBeLessThan(loadabilityRank('Lider'));
-        expect(loadabilityRank('Lider')).toBeLessThan(loadabilityRank('Tottus'));
         expect(loadabilityRank('Santa Isabel')).toBeLessThan(loadabilityRank('Lider'));
+        expect(loadabilityRank('Unimarc')).toBeLessThan(loadabilityRank('Lider'));
+        expect(loadabilityRank('Lider')).toBeLessThan(loadabilityRank('Tottus'));
     });
 });
 
@@ -146,6 +141,6 @@ describe('countUnsupportedItems', () => {
 
     it('suma también los que exceden el tope de 50', () => {
         const items = Array.from({ length: 60 }, (_, i) => ({ sku: `s${i}`, quantity: 1 }));
-        expect(countUnsupportedItems(items)).toBe(10);
+        expect(countUnsupportedItems(items)).toBe(60 - MAX_ITEMS_PER_URL);
     });
 });
