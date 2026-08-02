@@ -123,6 +123,11 @@ check(
   'La UI no separa la confirmacion de productos/precio de la apertura del checkout.',
 );
 check(
+  button.includes('Cargar productos y abrir Unimarc')
+    && button.includes('pulsa el carro de la esquina'),
+  'Unimarc no explica su handoff especial hacia el contador del carro.',
+);
+check(
   button.includes("quoteSource === 'retailer_checkout'")
     && button.includes('Preparar carro en ${basket.store}'),
   'La UI confunde la cotizacion VTEX verificada con el intento de carga de Lider.',
@@ -149,7 +154,10 @@ check(
     && cartUrl.includes('https://jumbo.vtexcommercestable.com.br'),
   'Los enlaces VTEX no apuntan a los hosts reales de checkout.',
 );
-check(cartUrl.includes("params.append('redirect', 'true')"), 'El enlace no redirige al checkout visible.');
+check(
+  cartUrl.includes("params.append('redirect', store === 'Unimarc' ? 'false' : 'true')"),
+  'Unimarc debe evitar la redireccion rota a /checkout/#/cart.',
+);
 check(!cartUrl.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');
 check(!cartRoute.includes('buildSharedCart'), 'La API volvió a crear un carro ajeno a la sesión del comprador.');
 check(cartRoute.includes("mode: 'browser-session-link'"), 'La API no identifica el handoff de sesión.');
@@ -169,9 +177,10 @@ check(
 );
 check(button.includes('Usar el cargador asistido'), 'Falta recuperación cuando la carga directa falla.');
 check(
-  !button.includes("window.open('about:blank', '_blank')")
-    && button.includes('href={directResult.cartUrl}'),
-  'El checkout no queda asociado a un clic explicito del usuario.',
+  button.includes("window.open('about:blank', '_blank')")
+    && button.includes('UNIMARC_LANDING_DELAY_MS')
+    && button.includes("currentRetailerCartUrl(cartUrl, 'Unimarc')"),
+  'El handoff de Unimarc no completa la carga antes de mostrar su portada.',
 );
 check(button.includes('href={directResult.cartUrl}'), 'Falta enlace manual si el navegador bloquea la pestaña.');
 

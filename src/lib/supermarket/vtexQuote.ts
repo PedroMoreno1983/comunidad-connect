@@ -67,7 +67,7 @@ function productSlug(productUrl: string | undefined): string | null {
 async function fetchJson(
   url: string,
   init?: RequestInit,
-  allowNotFound = false,
+  allowLookupFailure = false,
 ): Promise<unknown> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -82,7 +82,7 @@ async function fetchJson(
         ...(init?.headers ?? {}),
       },
     });
-    if (allowNotFound && response.status === 404) return [];
+    if (allowLookupFailure && (response.status === 400 || response.status === 404)) return [];
     if (!response.ok) {
       throw new Error(`VTEX respondio HTTP ${response.status}.`);
     }
@@ -90,6 +90,12 @@ async function fetchJson(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function vtexSearchTerm(value: string): string {
+  // El storefront antiguo de Unimarc rechaza `ft=` cuando el texto contiene
+  // un porcentaje, aunque venga correctamente codificado como `%25`.
+  return value.replace(/[%<>]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function offerFromProduct(
@@ -144,7 +150,7 @@ async function resolveProduct(
   });
   if (products.length === 0 || offers.length === 0) {
     products = asRecords(await fetchJson(
-      `${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(item.name)}&_from=0&_to=19`,
+      `${base}/api/catalog_system/pub/products/search?ft=${encodeURIComponent(vtexSearchTerm(item.name))}&_from=0&_to=19`,
     ));
     offers = products.flatMap(product => {
       const offer = offerFromProduct(item.name, product);
@@ -178,7 +184,15 @@ async function resolveProducts(
   const results: Array<SupermarketCheckoutQuoteItem | null> = [];
   for (let index = 0; index < items.length; index += LOOKUP_CONCURRENCY) {
     const chunk = items.slice(index, index + LOOKUP_CONCURRENCY);
-    results.push(...await Promise.all(chunk.map(item => resolveProduct(store, item))));
+    results.push(...await Promise.all(chunk.map(async item => {
+      try {
+        return await resolveProduct(store, item);
+      } catch {
+        // Una busqueda rechazada o intermitente no debe derribar toda la cesta.
+        // El termino se informa como faltante y nunca se sustituye a ciegas.
+        return null;
+      }
+    })));
   }
   return results;
 }

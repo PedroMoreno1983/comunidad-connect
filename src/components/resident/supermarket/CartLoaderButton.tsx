@@ -34,10 +34,14 @@ const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT
 // Tottus corre en la plataforma de Falabella y hoy requiere una integración
 // comercial para carga automática. Se abre la tienda con la lista visible.
 const MANUAL_ONLY_STORES = new Set(['Tottus']);
+const UNIMARC_LANDING_DELAY_MS = 1_800;
 
-function currentRetailerCartUrl(cartUrl: string): string {
+function currentRetailerCartUrl(cartUrl: string, store: string): string {
   try {
-    return `${new URL(cartUrl).origin}/checkout/#/cart`;
+    const origin = new URL(cartUrl).origin;
+    return store === 'Unimarc'
+      ? `${origin}/?ReturnUrl=%2Fcart`
+      : `${origin}/checkout/#/cart`;
   } catch {
     return cartUrl;
   }
@@ -195,6 +199,29 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
     }
   }
 
+  function openUnimarcCart(cartUrl: string) {
+    const checkoutTab = window.open('about:blank', '_blank');
+    if (!checkoutTab) {
+      setError('El navegador bloqueo la pestana de Unimarc. Habilita ventanas emergentes o usa el cargador asistido.');
+      return;
+    }
+
+    checkoutTab.location.href = cartUrl;
+    window.setTimeout(() => {
+      if (!checkoutTab.closed) {
+        try {
+          // El endpoint ya agrego los SKU. Unimarc no implementa /checkout/#/cart,
+          // asi que terminamos en su portada con el contador del carro visible.
+          checkoutTab.location.href = currentRetailerCartUrl(cartUrl, 'Unimarc');
+          checkoutTab.opener = null;
+        } catch {
+          setError('Unimarc cargo los productos, pero no permitio abrir su portada. Usa el enlace de revision.');
+        }
+      }
+    }, UNIMARC_LANDING_DELAY_MS);
+    setDirectResult(current => current ? { ...current, opened: true } : current);
+  }
+
   if (code) {
     return (
       <div
@@ -262,7 +289,9 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         <div>
           <p className="text-sm font-bold cc-text-primary">
             {directResult.opened
-              ? `Se abrio el checkout de ${basket.store}`
+              ? basket.store === 'Unimarc'
+                ? 'Se abrio Unimarc para revisar tu carro'
+                : `Se abrio el checkout de ${basket.store}`
               : directResult.quoteSource === 'retailer_checkout'
                 ? `Precio y productos confirmados por ${basket.store}`
                 : `El cargador de ${basket.store} esta listo`}
@@ -314,7 +343,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
                 deja ese carro vacio para que el total coincida con esta cotizacion.
               </p>
               <a
-                href={currentRetailerCartUrl(directResult.cartUrl)}
+                href={currentRetailerCartUrl(directResult.cartUrl, basket.store)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold underline cc-text-primary"
@@ -339,17 +368,29 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <a
-            href={directResult.cartUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setDirectResult(current => current ? { ...current, opened: true } : current)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
-            style={{ background: 'var(--cc-ink)' }}
-          >
-            {directResult.opened ? 'Volver a abrir el checkout' : 'Abrir checkout y cargar carro'}{' '}
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          {basket.store === 'Unimarc' ? (
+            <button
+              type="button"
+              onClick={() => openUnimarcCart(directResult.cartUrl)}
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+              style={{ background: 'var(--cc-ink)' }}
+            >
+              {directResult.opened ? 'Volver a abrir Unimarc' : 'Cargar productos y abrir Unimarc'}{' '}
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          ) : (
+            <a
+              href={directResult.cartUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setDirectResult(current => current ? { ...current, opened: true } : current)}
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+              style={{ background: 'var(--cc-ink)' }}
+            >
+              {directResult.opened ? 'Volver a abrir el checkout' : 'Abrir checkout y cargar carro'}{' '}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
           <Link
             href="/resident/supermercado/cargador"
             className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
@@ -369,6 +410,13 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
             Santa Isabel cobra en su checkout oficial de VTEX. La compra es chilena y en pesos;
             esa plantilla externa puede mostrar un dominio tecnico .com.br o una frase del pie
             en portugues. Convive no controla esa plantilla de la tienda.
+          </p>
+        )}
+        {basket.store === 'Unimarc' && (
+          <p className="text-[11px] leading-4 cc-text-tertiary">
+            Unimarc carga los productos y luego muestra su portada porque su checkout antiguo no admite
+            un enlace directo al carro. Si no has iniciado sesion, hazlo ahi y pulsa el carro de la esquina
+            superior derecha; los productos quedan asociados a esa sesion.
           </p>
         )}
       </div>
