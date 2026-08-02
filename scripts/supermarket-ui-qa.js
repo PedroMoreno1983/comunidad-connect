@@ -197,6 +197,18 @@ async function main() {
       'Default recommendation supports automatic cart loading',
       { selectedStore },
     );
+    if (selectedStore === 'Unimarc') {
+      assert(
+        await page.getByTestId('unimarc-login-warning').isVisible(),
+        'Unimarc warns before opening that Google login is unavailable and explains the working access',
+      );
+      const loginWarning = await page.getByTestId('unimarc-login-warning').innerText();
+      assert(
+        loginWarning.includes('Google') && loginWarning.includes('Recibir la clave de acceso rápido'),
+        'Unimarc login warning names the broken provider and the quick-access alternative',
+        { loginWarning },
+      );
+    }
     const cartResponsePromise = page.waitForResponse(response => (
       response.url().endsWith('/api/supermarket/cart-url')
       && response.request().method() === 'POST'

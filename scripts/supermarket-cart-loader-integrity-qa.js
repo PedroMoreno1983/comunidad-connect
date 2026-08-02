@@ -133,8 +133,10 @@ check(
 );
 check(
   button.includes("basket.store === 'Unimarc'")
-    && button.includes('pulsa el carro de la esquina'),
-  'Unimarc no explica su handoff especial hacia el contador del carro.',
+    && button.includes('pulsa el carro de la esquina')
+    && button.includes('El acceso con Google no está configurado por Unimarc')
+    && button.includes('Recibir la clave de acceso rápido'),
+  'Unimarc no explica su handoff especial o la alternativa al acceso roto con Google.',
 );
 check(
   button.includes("quoteSource === 'retailer_checkout'")
