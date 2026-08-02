@@ -162,11 +162,101 @@ async function main() {
       'avena',
     ];
     await page.locator('#shopping-list').fill(products.join('\n'));
+    const comparisonResponsePromise = page.waitForResponse(response => (
+      response.url().endsWith('/api/supermarket')
+      && response.request().method() === 'POST'
+    ));
     await page.getByRole('button', { name: 'Comparar lista' }).click();
+    const comparisonResponse = await comparisonResponsePromise;
+    const comparisonPayload = await comparisonResponse.json();
     await page.getByRole('heading', { name: /Mejores totales|Mayor cobertura/i }).waitFor({ timeout: 90_000 });
     assert(await page.getByText(/Nunca repartimos tu compra entre supermercados/i).isVisible(), 'Results keep the purchase in one store');
     assert(await page.locator('tbody tr').count() === 15, 'All fifteen requested rows remain in the contained table');
     assert((await page.locator('#shopping-list').inputValue()).includes('avena'), 'The original list remains editable after comparison');
+
+    const selectedStore = await page.getByText('Tu elección', { exact: true })
+      .locator('..').locator('h2').innerText();
+    const selectedBasket = (comparisonPayload.basketOptions || [])
+      .find(basket => basket.store === selectedStore);
+    assert(Boolean(selectedBasket), 'Selected store exists in the comparison payload', { selectedStore });
+    const expectedNames = (comparisonPayload.requestedItems || []).map(requested => (
+      selectedBasket.items.find(item => item.requestedTerm === requested.term)?.name || requested.term
+    ));
+    const visibleNames = await page.locator('tbody tr').evaluateAll(rows => rows.map(row => (
+      row.querySelectorAll('td')[1]?.querySelector('p')?.textContent?.trim() || ''
+    )));
+    assert(
+      JSON.stringify(visibleNames) === JSON.stringify(expectedNames),
+      'Visible products and values belong to the selected supermarket',
+      { selectedStore, expectedNames, visibleNames },
+    );
+
+    const verifiedDirectStores = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
+    assert(
+      verifiedDirectStores.has(selectedStore),
+      'Default recommendation supports automatic cart loading',
+      { selectedStore },
+    );
+    const cartResponsePromise = page.waitForResponse(response => (
+      response.url().endsWith('/api/supermarket/cart-url')
+      && response.request().method() === 'POST'
+    ));
+    const popupPromise = context.waitForEvent('page');
+    await page.getByRole('button', { name: `Cargar carro en ${selectedStore}` }).click();
+    const [cartResponse, retailerPage] = await Promise.all([cartResponsePromise, popupPromise]);
+    const cartPayload = await cartResponse.json();
+    assert(
+      cartResponse.ok() && cartPayload.supported === true && cartPayload.plannedCount > 0,
+      'Cart handoff API confirms products for the selected store',
+      { status: cartResponse.status(), cartPayload },
+    );
+    await retailerPage.waitForURL(url => url.hostname.includes('vtexcommercestable.com.br'), {
+      timeout: 45_000,
+    });
+    await retailerPage.waitForFunction(async plannedCount => {
+      try {
+        const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
+        const orderForm = await response.json();
+        return Array.isArray(orderForm.items) && orderForm.items.length === plannedCount;
+      } catch {
+        return false;
+      }
+    }, cartPayload.plannedCount, { timeout: 45_000 });
+    if (selectedStore === 'Unimarc') {
+      await retailerPage.waitForURL(url => (
+        url.hostname === 'unimarc.vtexcommercestable.com.br'
+        && url.searchParams.get('ReturnUrl') === '/cart'
+      ), { timeout: 15_000 });
+      await retailerPage.waitForFunction(async plannedCount => {
+        try {
+          const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
+          const orderForm = await response.json();
+          return Array.isArray(orderForm.items) && orderForm.items.length === plannedCount;
+        } catch {
+          return false;
+        }
+      }, cartPayload.plannedCount, { timeout: 30_000 });
+    }
+    const retailerCart = await retailerPage.evaluate(async () => {
+      const response = await fetch('/api/checkout/pub/orderForm', { cache: 'no-store' });
+      const orderForm = await response.json();
+      return {
+        count: Array.isArray(orderForm.items) ? orderForm.items.length : 0,
+        ids: Array.isArray(orderForm.items) ? orderForm.items.map(item => String(item.id)) : [],
+      };
+    });
+    assert(
+      retailerCart.count === cartPayload.plannedCount,
+      'One click opens the official retailer session with the confirmed cart',
+      {
+        selectedStore,
+        finalUrl: retailerPage.url(),
+        plannedCount: cartPayload.plannedCount,
+        cartCount: retailerCart.count,
+        skuIds: retailerCart.ids,
+      },
+    );
+    await retailerPage.close();
 
     const desktopPath = 'C:\\tmp\\supermarket-ui-desktop.png';
     await page.screenshot({ path: desktopPath, fullPage: true });

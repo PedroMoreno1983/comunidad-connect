@@ -36,9 +36,9 @@ function money(value: number) {
 }
 
 const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
-  direct: { label: 'Carga automática', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
-  attempt: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
-  manual: { label: 'Requiere un paso extra', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
+  direct: { label: 'Carro automático', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
+  attempt: { label: 'Puede pedir verificación', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
+  manual: { label: 'No carga automática', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
 };
 
 /**
@@ -81,6 +81,22 @@ function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingIt
   };
 }
 
+function shoppingListForBasket(
+  basket: SupermarketBasketCandidate,
+  requested: SupermarketRequestedItem[],
+): SupermarketShoppingItem[] {
+  const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
+  return requested.map(requestedItem => {
+    const candidate = byTerm.get(requestedItem.term);
+    return candidate ? {
+      ...candidate,
+      checked: false,
+      available: true,
+      source: 'catalog' as const,
+    } : missingItem(requestedItem);
+  });
+}
+
 export default function SupermarketPage() {
   const { toast } = useToast();
   const [shoppingInput, setShoppingInput] = useState('');
@@ -110,17 +126,8 @@ export default function SupermarketPage() {
     basket: SupermarketBasketCandidate,
     requested = requestedItems,
   ) => {
-    const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
     setSelectedStore(basket.store);
-    setList(requested.map(requestedItem => {
-      const candidate = byTerm.get(requestedItem.term);
-      return candidate ? {
-        ...candidate,
-        checked: false,
-        available: true,
-        source: 'catalog' as const,
-      } : missingItem(requestedItem);
-    }));
+    setList(shoppingListForBasket(basket, requested));
   };
 
   const applyCheckoutQuote = useCallback((quote: SupermarketCheckoutQuote) => {
@@ -198,16 +205,25 @@ export default function SupermarketPage() {
       // Se reordena con desempate por cargabilidad: a precios parecidos, primero
       // la tienda más fácil de cargar. La selección por defecto sigue ese orden.
       const nextOptions = orderBaskets(data.basketOptions ?? []);
+      const initialBasket = nextOptions[0] ?? null;
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
-      setSelectedStore(nextOptions[0]?.store ?? data.recommendedStore ?? null);
-      setList(data.items);
+      if (initialBasket) {
+        // La API puede recomendar la más barata, pero la UI reordena para poner
+        // primero una tienda cargable. La tabla debe seguir esa misma elección.
+        selectBasket(initialBasket, nextRequested);
+      } else {
+        setSelectedStore(data.recommendedStore ?? null);
+        setList(data.items);
+      }
 
       toast({
         title: nextOptions.some(basket => basket.complete)
           ? 'Comparación completa'
           : 'Comparación con faltantes',
-        description: data.message,
+        description: initialBasket
+          ? `${initialBasket.store}: ${initialBasket.coveredCount} de ${initialBasket.requestedCount} productos por ${money(initialBasket.subtotal)}.`
+          : data.message,
         variant: nextOptions.some(basket => basket.complete) ? 'success' : undefined,
       });
     } catch (error) {
@@ -233,8 +249,8 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo busca toda tu compra dentro de cada cadena y compara canastas completas. Antes de abrir una
-          tienda compatible, confirma otra vez los productos y el total directamente con su checkout.
+          CoCo compara toda tu lista dentro de cada cadena. En Jumbo, Santa Isabel y Unimarc abre el carro
+          oficial con un clic; las demás tiendas se muestran solo como referencia cuando no permiten esa carga.
         </p>
       </header>
 
@@ -375,7 +391,13 @@ export default function SupermarketPage() {
                       />
                     </div>
                     <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
-                      {basket.complete ? 'Canasta completa' : `${basket.missingTerms.length} por reemplazar en esta tienda`}
+                      {basket.complete
+                        ? storeLoadability(basket.store) === 'direct'
+                          ? 'Lista lista para cargar'
+                          : storeLoadability(basket.store) === 'attempt'
+                            ? 'Lista encontrada; la tienda puede verificarte'
+                            : 'Lista encontrada; carga manual'
+                        : `${basket.missingTerms.length} por reemplazar en esta tienda`}
                     </p>
                   </button>
                 );
@@ -401,21 +423,23 @@ export default function SupermarketPage() {
                   </div>
                 </div>
                 <div className="w-full space-y-2 sm:w-80">
-                  {selectedBasket.complete ? (
-                    <CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />
-                  ) : selectedBasket.coveredCount > 0 ? (
+                  {selectedBasket.coveredCount > 0 ? (
                     <>
-                      {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
-                          Ahora se puede cargar lo encontrado y agregar el resto a mano. */}
-                      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
-                        <p className="text-sm font-bold cc-text-primary">
-                          Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
-                        </p>
-                        <p className="mt-1 text-xs cc-text-secondary">
-                          {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
-                        </p>
-                      </div>
-                      <CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />
+                      {!selectedBasket.complete && (
+                        <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                          <p className="text-sm font-bold cc-text-primary">
+                            Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
+                          </p>
+                          <p className="mt-1 text-xs cc-text-secondary">
+                            {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
+                          </p>
+                        </div>
+                      )}
+                      <CartLoaderButton
+                        key={selectedBasket.store}
+                        basket={selectedBasket}
+                        onQuote={applyCheckoutQuote}
+                      />
                     </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
@@ -496,14 +520,20 @@ export default function SupermarketPage() {
               <div>
                 <p className="font-bold cc-text-primary">
                   {selectedBasket.complete
-                    ? `Canasta completa en ${selectedBasket.store}`
+                    ? storeLoadability(selectedBasket.store) === 'direct'
+                      ? `Lista lista para cargar en ${selectedBasket.store}`
+                      : storeLoadability(selectedBasket.store) === 'attempt'
+                        ? `Lista encontrada en ${selectedBasket.store}; puede pedir verificación`
+                        : `Lista encontrada en ${selectedBasket.store}; carga manual`
                     : `Faltan ${selectedBasket.missingTerms.length} productos en ${selectedBasket.store}`}
                 </p>
                 <p className="mt-1 text-sm cc-text-secondary">
                   {selectedBasket.complete
-                    ? selectedBasket.quoteStatus === 'retailer'
-                      ? 'La tienda confirmo cada producto disponible y el total actual antes de abrir el checkout.'
-                      : 'Es un estimado del catalogo. Confirma carro y precio antes de abrir el checkout.'
+                    ? storeLoadability(selectedBasket.store) === 'manual'
+                      ? 'El precio es una referencia. Esta tienda no permite que Convive cargue el carro automáticamente.'
+                      : selectedBasket.quoteStatus === 'retailer'
+                        ? 'La tienda confirmo cada producto disponible y el total actual antes de abrir el checkout.'
+                        : 'Es un estimado del catalogo. Convive lo validará al abrir el carro oficial.'
                     : 'El subtotal no se compara como si fuera una compra completa. CoCo mantiene la búsqueda dentro de esta misma cadena.'}
                 </p>
               </div>
