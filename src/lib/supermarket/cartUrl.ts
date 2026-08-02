@@ -4,8 +4,10 @@
  * El detalle importante es el dominio: los storefronts públicos de Santa
  * Isabel y Unimarc no exponen `/checkout/cart/add`; el checkout real vive en
  * el host de la cuenta VTEX. Al navegar directamente a ese host, VTEX crea o
- * reutiliza la cookie `checkout.vtex.com`, agrega los SKU y redirige a
- * `/checkout/#/cart`.
+ * reutiliza la cookie `checkout.vtex.com` y agrega los SKU. Unimarc no soporta
+ * la redireccion VTEX estandar a `/checkout/#/cart`: su storefront antiguo la
+ * convierte en una busqueda de "carrito", por eso la UI completa el handoff
+ * hacia su portada despues de cargar los productos.
  *
  * Probado el 2026-07-31 contra los hosts reales y carros identificables:
  *   Santa Isabel -> 2 SKU, cantidades 1 y 2, quedaron en el mismo orderForm.
@@ -114,8 +116,10 @@ export function buildDirectCartUrl(store: string, items: CartUrlItem[]): string 
     usable.forEach(item => params.append('qty', String(item.quantity)));
     usable.forEach(() => params.append('seller', '1'));
     params.append('sc', '1');
-    // Sin esta redirección, el endpoint responde vacío y la persona no llega al carro.
-    params.append('redirect', 'true');
+    // Unimarc convierte /checkout/#/cart en una busqueda vacia. La UI abre este
+    // endpoint sin redireccion y, una vez cargados los SKU, lleva la misma
+    // pestana a la portada donde el contador del carro queda visible.
+    params.append('redirect', store === 'Unimarc' ? 'false' : 'true');
 
     return `${base}/checkout/cart/add?${params.toString()}`;
 }

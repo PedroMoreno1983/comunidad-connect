@@ -23,8 +23,9 @@ describe('buildDirectCartUrl', () => {
     it('usa los hosts de checkout que crean el carro en la sesión del navegador', () => {
         expect(buildDirectCartUrl('Santa Isabel', [{ sku: '7917', quantity: 1 }]))
             .toContain('https://santaisabel.vtexcommercestable.com.br/checkout/cart/add?');
-        expect(buildDirectCartUrl('Unimarc', [{ sku: '75563', quantity: 1 }]))
-            .toContain('https://unimarc.vtexcommercestable.com.br/checkout/cart/add?');
+        const unimarc = buildDirectCartUrl('Unimarc', [{ sku: '75563', quantity: 1 }]);
+        expect(unimarc).toContain('https://unimarc.vtexcommercestable.com.br/checkout/cart/add?');
+        expect(new URL(unimarc!).searchParams.get('redirect')).toBe('false');
     });
 
     it('nunca vuelve a entregar un orderForm creado en otra sesión', () => {
