@@ -112,18 +112,27 @@ const button = fs.readFileSync(
   'utf8',
 );
 check(
-  page.includes('<CartLoaderButton basket={selectedBasket} onQuote={applyCheckoutQuote} />'),
+  page.includes('<CartLoaderButton')
+    && page.includes('key={selectedBasket.store}')
+    && page.includes('basket={selectedBasket}')
+    && page.includes('onQuote={applyCheckoutQuote}'),
   'La UI no usa el cargador de la tienda elegida ni aplica la cotizacion confirmada.',
+);
+check(
+  page.includes('const initialBasket = nextOptions[0] ?? null')
+    && page.includes('selectBasket(initialBasket, nextRequested)')
+    && page.includes('setList(shoppingListForBasket(basket, requested))'),
+  'La tabla de productos puede quedar mostrando otra tienda distinta a la seleccionada.',
 );
 for (const store of stores) {
   check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
 }
 check(
-  button.includes('Confirmar carro y precio') && button.includes('Abrir checkout y cargar carro'),
-  'La UI no separa la confirmacion de productos/precio de la apertura del checkout.',
+  button.includes('Cargar carro en ${basket.store}') && button.includes('Volver a abrir el carro'),
+  'La UI no ofrece la carga directa en un clic y su recuperacion manual.',
 );
 check(
-  button.includes('Cargar productos y abrir Unimarc')
+  button.includes("basket.store === 'Unimarc'")
     && button.includes('pulsa el carro de la esquina'),
   'Unimarc no explica su handoff especial hacia el contador del carro.',
 );
@@ -178,10 +187,17 @@ check(
 check(button.includes('Usar el cargador asistido'), 'Falta recuperación cuando la carga directa falla.');
 check(
   button.includes("window.open('about:blank', '_blank')")
+    && button.includes('void loadDirectly(checkoutTab)')
+    && button.includes('navigatePreparedCart(checkoutTab, cartUrl)')
     && button.includes('UNIMARC_LANDING_DELAY_MS')
     && button.includes("currentRetailerCartUrl(cartUrl, 'Unimarc')"),
-  'El handoff de Unimarc no completa la carga antes de mostrar su portada.',
+  'La carga directa no reserva la pestana en el clic o Unimarc no completa su handoff.',
 );
-check(button.includes('href={directResult.cartUrl}'), 'Falta enlace manual si el navegador bloquea la pestaña.');
+check(button.includes('reopenPreparedCart(directResult.cartUrl)'), 'Falta reabrir el carro si la pestaña se cierra.');
+check(
+  page.includes("manual: { label: 'No carga automática'")
+    && page.includes("direct: { label: 'Carro automático'"),
+  'La comparación vuelve a presentar una tienda manual como si cargara el carro.',
+);
 
 console.log('Multistore cart loader integrity QA passed.');

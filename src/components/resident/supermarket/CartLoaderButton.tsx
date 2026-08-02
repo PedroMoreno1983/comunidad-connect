@@ -84,7 +84,47 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
    * informa cuántos productos envió y pide revisar; nunca declara éxito por una
    * respuesta server-to-server.
    */
-  async function loadDirectly() {
+  function openLoadingTab(): Window | null {
+    const checkoutTab = window.open('about:blank', '_blank');
+    if (!checkoutTab) {
+      setError('El navegador bloqueo la pestana del supermercado. Habilita ventanas emergentes y vuelve a intentarlo.');
+      return null;
+    }
+
+    try {
+      checkoutTab.document.title = `Preparando carro en ${basket.store}`;
+      checkoutTab.document.body.innerHTML = '';
+      const message = checkoutTab.document.createElement('p');
+      message.textContent = `Convive esta confirmando los productos y el precio con ${basket.store}...`;
+      message.style.cssText = 'font: 16px system-ui; margin: 48px; color: #2f2923';
+      checkoutTab.document.body.appendChild(message);
+    } catch {
+      // about:blank puede estar restringido por una politica del navegador.
+    }
+    return checkoutTab;
+  }
+
+  function navigatePreparedCart(checkoutTab: Window, cartUrl: string) {
+    checkoutTab.location.href = cartUrl;
+    if (basket.store === 'Unimarc') {
+      window.setTimeout(() => {
+        if (!checkoutTab.closed) {
+          try {
+            // El endpoint ya agrego los SKU. Unimarc no implementa /checkout/#/cart,
+            // asi que terminamos en su portada con el contador del carro visible.
+            checkoutTab.location.href = currentRetailerCartUrl(cartUrl, 'Unimarc');
+            checkoutTab.opener = null;
+          } catch {
+            setError('Unimarc cargo los productos, pero no permitio abrir su portada. Usa el enlace de revision.');
+          }
+        }
+      }, UNIMARC_LANDING_DELAY_MS);
+      return;
+    }
+    checkoutTab.opener = null;
+  }
+
+  async function loadDirectly(checkoutTab: Window | null) {
     setLoading(true);
     setError(null);
     try {
@@ -110,6 +150,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
 
       const cartUrl = typeof data.cartUrl === 'string' ? data.cartUrl : '';
       if (!data.supported || !cartUrl) {
+        checkoutTab?.close();
         setDirectUnavailable(typeof data.reason === 'string' ? data.reason : null);
         return;
       }
@@ -136,7 +177,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           ? data.missingItems.filter((item): item is string => typeof item === 'string')
           : [],
         cartUrl,
-        opened: false,
+        opened: checkoutTab !== null,
         confidence: data.confidence === 'verified' || data.confidence === 'attempt'
           ? data.confidence
           : undefined,
@@ -157,7 +198,9 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           quotedAt,
         });
       }
+      if (checkoutTab) navigatePreparedCart(checkoutTab, cartUrl);
     } catch (err) {
+      checkoutTab?.close();
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
     } finally {
       setLoading(false);
@@ -199,26 +242,10 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
     }
   }
 
-  function openUnimarcCart(cartUrl: string) {
-    const checkoutTab = window.open('about:blank', '_blank');
-    if (!checkoutTab) {
-      setError('El navegador bloqueo la pestana de Unimarc. Habilita ventanas emergentes o usa el cargador asistido.');
-      return;
-    }
-
-    checkoutTab.location.href = cartUrl;
-    window.setTimeout(() => {
-      if (!checkoutTab.closed) {
-        try {
-          // El endpoint ya agrego los SKU. Unimarc no implementa /checkout/#/cart,
-          // asi que terminamos en su portada con el contador del carro visible.
-          checkoutTab.location.href = currentRetailerCartUrl(cartUrl, 'Unimarc');
-          checkoutTab.opener = null;
-        } catch {
-          setError('Unimarc cargo los productos, pero no permitio abrir su portada. Usa el enlace de revision.');
-        }
-      }
-    }, UNIMARC_LANDING_DELAY_MS);
+  function reopenPreparedCart(cartUrl: string) {
+    const checkoutTab = openLoadingTab();
+    if (!checkoutTab) return;
+    navigatePreparedCart(checkoutTab, cartUrl);
     setDirectResult(current => current ? { ...current, opened: true } : current);
   }
 
@@ -290,8 +317,8 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           <p className="text-sm font-bold cc-text-primary">
             {directResult.opened
               ? basket.store === 'Unimarc'
-                ? 'Se abrio Unimarc para revisar tu carro'
-                : `Se abrio el checkout de ${basket.store}`
+                ? 'Se abrio Unimarc con los productos en tu sesion'
+                : `Se abrio el carro de ${basket.store}`
               : directResult.quoteSource === 'retailer_checkout'
                 ? `Precio y productos confirmados por ${basket.store}`
                 : `El cargador de ${basket.store} esta listo`}
@@ -301,7 +328,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
               <>
                 La tienda confirmo {directResult.planned} producto(s) disponibles por{' '}
                 <strong>${Math.round(directResult.quotedTotal).toLocaleString('es-CL')}</strong>.
-                Revisa esta cotizacion y abre el checkout solo cuando estes conforme.
+                El carro oficial ya se abrio en otra pestana para que lo revises antes de pagar.
               </>
             ) : (
               <>
@@ -368,29 +395,14 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          {basket.store === 'Unimarc' ? (
-            <button
-              type="button"
-              onClick={() => openUnimarcCart(directResult.cartUrl)}
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
-              style={{ background: 'var(--cc-ink)' }}
-            >
-              {directResult.opened ? 'Volver a abrir Unimarc' : 'Cargar productos y abrir Unimarc'}{' '}
-              <ExternalLink className="h-3 w-3" />
-            </button>
-          ) : (
-            <a
-              href={directResult.cartUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setDirectResult(current => current ? { ...current, opened: true } : current)}
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
-              style={{ background: 'var(--cc-ink)' }}
-            >
-              {directResult.opened ? 'Volver a abrir el checkout' : 'Abrir checkout y cargar carro'}{' '}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
+          <button
+            type="button"
+            onClick={() => reopenPreparedCart(directResult.cartUrl)}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+            style={{ background: 'var(--cc-ink)' }}
+          >
+            Volver a abrir el carro <ExternalLink className="h-3 w-3" />
+          </button>
           <Link
             href="/resident/supermercado/cargador"
             className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
@@ -433,7 +445,12 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         disabled={loading}
         onClick={() => {
           if (manualOnly) { window.open(storeUrl, '_blank', 'noopener'); return; }
-          void (canLoadDirectly ? loadDirectly() : prepare());
+          if (canLoadDirectly) {
+            const checkoutTab = openLoadingTab();
+            if (checkoutTab) void loadDirectly(checkoutTab);
+            return;
+          }
+          void prepare();
         }}
         className="h-12 w-full text-sm text-white"
         style={{ background: 'var(--cc-ink)' }}
@@ -444,7 +461,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           : wholesaleQuote
             ? `Preparar cotización en ${basket.store}`
             : VERIFIED_DIRECT_STORES.has(basket.store)
-              ? 'Confirmar carro y precio'
+              ? `Cargar carro en ${basket.store}`
               : `Preparar carro en ${basket.store}`}
       </Button>
 
@@ -457,8 +474,8 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         </p>
       ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
         <p className="text-[11px] cc-text-tertiary">
-          Primero confirmamos cada producto, su SKU y el total directamente con {basket.store}.
-          Despues veras el detalle y podras abrir el checkout oficial.
+          Un clic confirma productos y precio, y abre el carro oficial de {basket.store}.
+          Revisa el detalle antes de elegir entrega y pagar.
         </p>
       ) : canLoadDirectly ? (
         <p className="text-[11px] cc-text-tertiary">
