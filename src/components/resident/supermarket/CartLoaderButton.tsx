@@ -47,6 +47,23 @@ function currentRetailerCartUrl(cartUrl: string, store: string): string {
   }
 }
 
+function UnimarcLoginNotice() {
+  return (
+    <div
+      role="note"
+      data-testid="unimarc-login-warning"
+      className="rounded-lg border px-3 py-2"
+      style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-paper)' }}
+    >
+      <p className="text-[11px] font-semibold cc-text-primary">Cómo iniciar sesión en Unimarc</p>
+      <p className="mt-1 text-[11px] leading-4 cc-text-secondary">
+        El acceso con Google no está configurado por Unimarc. Usa Email o RUT con tu clave,
+        o el botón &quot;Recibir la clave de acceso rápido&quot;. Convive no administra ese acceso.
+      </p>
+    </div>
+  );
+}
+
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
   onQuote?: (quote: SupermarketCheckoutQuote) => void;
@@ -425,11 +442,14 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           </p>
         )}
         {basket.store === 'Unimarc' && (
-          <p className="text-[11px] leading-4 cc-text-tertiary">
-            Unimarc carga los productos y luego muestra su portada porque su checkout antiguo no admite
-            un enlace directo al carro. Si no has iniciado sesion, hazlo ahi y pulsa el carro de la esquina
-            superior derecha; los productos quedan asociados a esa sesion.
-          </p>
+          <>
+            <UnimarcLoginNotice />
+            <p className="text-[11px] leading-4 cc-text-tertiary">
+              Unimarc carga los productos y luego muestra su portada porque su checkout antiguo no admite
+              un enlace directo al carro. Después de iniciar sesión, pulsa el carro de la esquina
+              superior derecha; los productos quedan asociados a esa sesión.
+            </p>
+          </>
         )}
       </div>
     );
@@ -464,6 +484,8 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
               ? `Cargar carro en ${basket.store}`
               : `Preparar carro en ${basket.store}`}
       </Button>
+
+      {basket.store === 'Unimarc' && <UnimarcLoginNotice />}
 
       {error && <p className="text-[11px] text-danger-fg">{error}</p>}
       {directUnavailable && <p className="text-[11px] cc-text-tertiary">{directUnavailable}</p>}
