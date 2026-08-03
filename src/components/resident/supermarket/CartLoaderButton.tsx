@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Check, Copy, ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import type { DirectCartConfidence } from '@/lib/supermarket/cartUrl';
 import type {
   SupermarketCheckoutQuote,
   SupermarketCheckoutQuoteItem,
@@ -79,7 +80,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
     missing: string[];
     cartUrl: string;
     opened: boolean;
-    confidence?: 'verified' | 'attempt';
+    confidence?: DirectCartConfidence;
     quotedTotal: number;
     catalogTotal: number;
     quotedAt: string;
@@ -195,7 +196,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           : [],
         cartUrl,
         opened: checkoutTab !== null,
-        confidence: data.confidence === 'verified' || data.confidence === 'attempt'
+        confidence: data.confidence === 'verified' || data.confidence === 'offsite'
           ? data.confidence
           : undefined,
         quotedTotal,
