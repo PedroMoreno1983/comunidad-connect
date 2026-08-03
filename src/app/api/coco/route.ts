@@ -12,6 +12,8 @@ import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
+import { resolveAiModel } from '@/lib/ai/modelRouter';
+import { completeDeepSeekText } from '@/lib/ai/deepseek';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -56,25 +58,148 @@ function parseImageAttachment(value: unknown): CoCoImageAttachment | null {
     return { mediaType, data };
 }
 
+interface CoCoFallbackContext {
+    name: string;
+    role: string;
+    currentPage: string;
+    userId?: string;
+    communityId?: string;
+}
+
+function buildFallbackPrompt(message: string, context: CoCoFallbackContext): string {
+    return `${COCO_SYSTEM_PROMPT}
+
+Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}
+
+Usuario dice: ${message}`;
+}
+
+/**
+ * Extrae navegación y comando del texto crudo del modelo.
+ *
+ * Es compartido por todos los proveedores de respaldo a propósito: incluye la
+ * guarda anti-inyección de LOGOUT, y duplicarla por proveedor es cómo se
+ * termina con un camino que la tiene y otro que no.
+ */
+function parseFallbackReply(rawText: string, message: string) {
+    const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
+    const actionMatch = rawText.match(/CMD:([A-Z_]+)/);
+    let action = actionMatch?.[1];
+    // Misma guarda que el camino principal de Claude: LOGOUT solo puede venir
+    // del modelo si el mensaje de la persona plausiblemente lo pidió.
+    if (action === 'LOGOUT' && !/cerrar sesi[oó]n|cierra mi sesi[oó]n|me voy|logout|salir de (la cuenta|mi cuenta)/i.test(message)) {
+        action = undefined;
+    }
+    const reply = rawText
+        .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
+        .replace(/CMD:[A-Z_]+/g, '')
+        .trim();
+    return {
+        reply: reply || 'No pude generar una respuesta clara.',
+        navigate: navMatch?.[1],
+        action,
+    };
+}
+
+/**
+ * Respaldo por DeepSeek. Es texto puro sin herramientas, o sea exactamente el
+ * perfil que modelRouter.ts manda al nivel barato. Si no hay credencial o la
+ * llamada falla, quien llama sigue con Gemini: el respaldo no puede quedarse
+ * sin respaldo.
+ */
+async function askDeepSeekFallback(message: string, context: CoCoFallbackContext) {
+    const routed = resolveAiModel('coco.chat.fallback');
+    if (routed.provider !== 'deepseek') return null;
+
+    const prompt = buildFallbackPrompt(message, context);
+    const estimatedPromptTokens = estimateTokensFromText(prompt);
+
+    await enforceAiBudget({
+        communityId: context.communityId,
+        userId: context.userId,
+        role: context.role,
+        module: 'coco.chat.fallback',
+        provider: 'deepseek',
+        model: routed.model,
+        actionType: 'fallback',
+        estimatedPromptTokens,
+        estimatedCompletionTokens: 700,
+    });
+
+    const startedAt = Date.now();
+    const result = await completeDeepSeekText({
+        model: routed.model,
+        system: COCO_SYSTEM_PROMPT,
+        user: `Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}\n\nUsuario dice: ${message}`,
+        maxTokens: 700,
+    });
+
+    await recordAiUsage({
+        communityId: context.communityId,
+        userId: context.userId,
+        role: context.role,
+        module: 'coco.chat.fallback',
+        provider: 'deepseek',
+        model: routed.model,
+        actionType: 'fallback',
+        promptTokens: result.promptTokens || estimatedPromptTokens,
+        completionTokens: result.completionTokens,
+        totalTokens: (result.promptTokens || estimatedPromptTokens) + result.completionTokens,
+        estimatedCostCents: estimateAiCostCents({
+            provider: 'deepseek',
+            model: routed.model,
+            promptTokens: result.promptTokens || estimatedPromptTokens,
+            completionTokens: result.completionTokens,
+        }),
+        status: 'success',
+        metadata: {
+            latencyMs: Date.now() - startedAt,
+            routedBecause: routed.reason,
+            cachedPromptTokens: result.cachedPromptTokens,
+        },
+    });
+
+    if (!result.text.trim()) return null;
+    return parseFallbackReply(result.text, message);
+}
+
+/**
+ * La cadena de respaldo completa, en orden de costo: DeepSeek si está
+ * configurado, después Gemini, y al final la respuesta local sin modelo.
+ *
+ * El tope de presupuesto se propaga en vez de degradar: si la comunidad se
+ * quedó sin cuota, seguir intentando con otro proveedor sería justamente lo
+ * que el tope existe para impedir.
+ */
+async function runCoCoFallback(message: string, context: CoCoFallbackContext) {
+    try {
+        const viaDeepSeek = await askDeepSeekFallback(message, context);
+        if (viaDeepSeek) return viaDeepSeek;
+    } catch (error) {
+        if (isAiBudgetExceededError(error)) throw error;
+        console.warn('[CoCo DeepSeek Fallback Error]', error);
+    }
+
+    if (!process.env.GEMINI_API_KEY) return buildLocalCoCoFallback(message, context);
+
+    try {
+        return await askGeminiFallback(message, context);
+    } catch (error) {
+        if (isAiBudgetExceededError(error)) throw error;
+        console.warn('[CoCo Gemini Fallback Error]', error);
+        return buildLocalCoCoFallback(message, context);
+    }
+}
+
 async function askGeminiFallback(
     message: string,
-    context: {
-        name: string;
-        role: string;
-        currentPage: string;
-        userId?: string;
-        communityId?: string;
-    }
+    context: CoCoFallbackContext
 ) {
     if (!GEMINI_API_KEY) {
         throw new Error('Missing GEMINI_API_KEY');
     }
 
-    const prompt = `${COCO_SYSTEM_PROMPT}
-
-Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}
-
-Usuario dice: ${message}`;
+    const prompt = buildFallbackPrompt(message, context);
 
     const body = {
         contents: [
@@ -117,18 +242,7 @@ Usuario dice: ${message}`;
 
         if (res.ok) {
             const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            const navMatch = rawText.match(/NAVEGAR:(\/[a-zA-Z0-9/_-]+)/);
-            const actionMatch = rawText.match(/CMD:([A-Z_]+)/);
-            let fallbackAction = actionMatch?.[1];
-            // Same anti-injection guard as the primary Claude path: LOGOUT can only
-            // come from the model if the user's own message plausibly asked for it.
-            if (fallbackAction === 'LOGOUT' && !/cerrar sesi[oó]n|cierra mi sesi[oó]n|me voy|logout|salir de (la cuenta|mi cuenta)/i.test(message)) {
-                fallbackAction = undefined;
-            }
-            const reply = rawText
-                .replace(/NAVEGAR:\/[a-zA-Z0-9/_-]+/g, '')
-                .replace(/CMD:[A-Z_]+/g, '')
-                .trim();
+            const parsed = parseFallbackReply(rawText, message);
             const completionTokens = estimateTokensFromText(rawText);
 
             await recordAiUsage({
@@ -152,11 +266,7 @@ Usuario dice: ${message}`;
                 metadata: { latencyMs: Date.now() - startedAt },
             });
 
-            return {
-                reply: reply || 'No pude generar una respuesta clara.',
-                navigate: navMatch?.[1],
-                action: fallbackAction,
-            };
+            return parsed;
         }
 
         const errorMessage = data?.error?.message || res.statusText || 'Unknown Gemini error';
@@ -430,13 +540,7 @@ export async function POST(req: NextRequest) {
                 );
             }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
-            const fallback = process.env.GEMINI_API_KEY
-                ? await askGeminiFallback(message, fallbackContext).catch(error => {
-                    if (isAiBudgetExceededError(error)) throw error;
-                    console.warn('[CoCo Gemini Fallback Error]', error);
-                    return buildLocalCoCoFallback(message, fallbackContext);
-                })
-                : buildLocalCoCoFallback(message, fallbackContext);
+            const fallback = await runCoCoFallback(message, fallbackContext);
             const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
             return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
@@ -486,13 +590,7 @@ export async function POST(req: NextRequest) {
                 );
             }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
-            const fallback = process.env.GEMINI_API_KEY
-                ? await askGeminiFallback(message, fallbackContext).catch(error => {
-                    if (isAiBudgetExceededError(error)) throw error;
-                    console.warn('[CoCo Gemini Fallback Error]', error);
-                    return buildLocalCoCoFallback(message, fallbackContext);
-                })
-                : buildLocalCoCoFallback(message, fallbackContext);
+            const fallback = await runCoCoFallback(message, fallbackContext);
             const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
             return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });

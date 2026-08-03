@@ -7,9 +7,12 @@ import type {
     ReelScene,
     ReelTone,
 } from '@/lib/types';
+import { anthropicModelFor } from '@/lib/ai/modelRouter';
 
 const DEFAULT_DURATION = 35;
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-5';
+// Redacción creativa: es donde más se nota la diferencia de modelo, así que
+// esta tarea se queda en el nivel alto.
+const MODEL = anthropicModelFor('marketing.reel');
 
 const AUDIENCE_LABELS: Record<ReelAudience, string> = {
     administrators: 'Administradores de condominios',
