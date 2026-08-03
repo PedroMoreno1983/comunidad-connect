@@ -107,10 +107,12 @@ describe('storeSupportsDirectCart', () => {
 });
 
 describe('directCartConfidence', () => {
-    it('distingue mecanismo verificado, intento con WAF y no soportado', () => {
+    it('distingue verificado, fuera de sitio, intento con WAF y no soportado', () => {
         expect(directCartConfidence('Jumbo')).toBe('verified');
-        expect(directCartConfidence('Santa Isabel')).toBe('verified');
-        expect(directCartConfidence('Unimarc')).toBe('verified');
+        // El alta ocurre, pero en el host de cuenta VTEX: el carro no queda en
+        // el dominio donde la persona tiene sesión. Ver la nota en cartUrl.ts.
+        expect(directCartConfidence('Santa Isabel')).toBe('offsite');
+        expect(directCartConfidence('Unimarc')).toBe('offsite');
         expect(directCartConfidence('Lider')).toBe('attempt');
         expect(directCartConfidence('Tottus')).toBeNull();
     });
@@ -118,18 +120,25 @@ describe('directCartConfidence', () => {
 
 describe('storeLoadability / loadabilityRank', () => {
     it('clasifica la cargabilidad por tienda', () => {
+        // Solo Jumbo deja el carro en el dominio donde la persona compra.
         expect(storeLoadability('Jumbo')).toBe('direct');
-        expect(storeLoadability('Santa Isabel')).toBe('direct');
-        expect(storeLoadability('Unimarc')).toBe('direct');
+        // Santa Isabel y Unimarc cargan, pero en el host de cuenta VTEX: el
+        // carro no aparece en su sitio. No es 'direct' ni 'manual'.
+        expect(storeLoadability('Santa Isabel')).toBe('offsite');
+        expect(storeLoadability('Unimarc')).toBe('offsite');
         expect(storeLoadability('Lider')).toBe('attempt');
         expect(storeLoadability('Tottus')).toBe('manual');
         expect(storeLoadability('aCuenta')).toBe('manual');
     });
 
-    it('ordena mejor a la más fácil de cargar', () => {
-        expect(loadabilityRank('Jumbo')).toBeLessThan(loadabilityRank('Lider'));
+    it('deja a Jumbo por delante de todas: es la única que carga donde se paga', () => {
+        for (const store of ['Santa Isabel', 'Unimarc', 'Lider', 'Tottus', 'aCuenta']) {
+            expect(loadabilityRank('Jumbo')).toBeLessThan(loadabilityRank(store));
+        }
+    });
+
+    it('ordena los niveles intermedios de mejor a peor', () => {
         expect(loadabilityRank('Santa Isabel')).toBeLessThan(loadabilityRank('Lider'));
-        expect(loadabilityRank('Unimarc')).toBeLessThan(loadabilityRank('Lider'));
         expect(loadabilityRank('Lider')).toBeLessThan(loadabilityRank('Tottus'));
     });
 });
