@@ -331,8 +331,22 @@ Reglas: consulta al menos una fuente; puedes cruzar varias; nunca inventes datos
     let totalOutput = 0;
 
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
-        const response = await anthropic.messages.create({ model: MODEL, max_tokens: 1600, temperature: 0, system, messages, tools: READ_TOOLS });
-        totalInput += response.usage?.input_tokens || 0;
+        // Prompt caching: system + READ_TOOLS son identicos en las 4 rondas del loop.
+        // El breakpoint aqui cachea tools + system juntos (orden de render: tools ->
+        // system -> messages), asi solo la primera ronda los paga completos.
+        const response = await anthropic.messages.create({
+            model: MODEL,
+            max_tokens: 1600,
+            temperature: 0,
+            system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+            messages,
+            tools: READ_TOOLS,
+        });
+        // input_tokens excluye lo cacheado: hay que sumar los tres campos para no
+        // subcontar el consumo real frente al presupuesto.
+        totalInput += (response.usage?.input_tokens || 0)
+            + (response.usage?.cache_creation_input_tokens || 0)
+            + (response.usage?.cache_read_input_tokens || 0);
         totalOutput += response.usage?.output_tokens || 0;
         const toolUses = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use');
         if (!toolUses.length) {

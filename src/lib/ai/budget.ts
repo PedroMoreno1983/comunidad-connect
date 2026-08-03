@@ -76,9 +76,14 @@ export function estimateTokensFromMessages(value: unknown) {
 export function estimateAiCostCents(input: {
     provider: string;
     model?: string | null;
+    /** Total de tokens de entrada, incluyendo la parte cacheada. */
     promptTokens?: number;
     completionTokens?: number;
     imageCount?: number;
+    /** Porcion de promptTokens escrita a la cache de prompts (tarifa 1,25x). */
+    cacheWriteTokens?: number;
+    /** Porcion de promptTokens servida desde la cache de prompts (tarifa 0,1x). */
+    cacheReadTokens?: number;
 }) {
     const provider = input.provider.toLowerCase();
     const model = (input.model || '').toLowerCase();
@@ -86,12 +91,19 @@ export function estimateAiCostCents(input: {
     const completion = input.completionTokens ?? 0;
     const images = input.imageCount ?? 0;
 
+    // El prompt caching cobra la escritura a 1,25x y la lectura a 0,1x del precio
+    // de entrada. Se reexpresa el input en "tokens equivalentes a precio completo"
+    // para no duplicar las tarifas de cada proveedor mas abajo.
+    const cacheWrite = Math.min(Math.max(0, input.cacheWriteTokens ?? 0), prompt);
+    const cacheRead = Math.min(Math.max(0, input.cacheReadTokens ?? 0), prompt - cacheWrite);
+    const billable = (prompt - cacheWrite - cacheRead) + cacheWrite * 1.25 + cacheRead * 0.1;
+
     if (provider === 'openai' && images > 0) return images * 4;
-    if (provider === 'voyage') return ((prompt + completion) / 1_000_000) * 0.2;
-    if (provider === 'gemini') return (prompt / 1_000_000) * 8 + (completion / 1_000_000) * 30;
-    if (provider === 'anthropic' && model.includes('opus')) return (prompt / 1_000_000) * 1500 + (completion / 1_000_000) * 7500;
-    if (provider === 'anthropic') return (prompt / 1_000_000) * 300 + (completion / 1_000_000) * 1500;
-    return ((prompt + completion) / 1_000_000) * 100;
+    if (provider === 'voyage') return ((billable + completion) / 1_000_000) * 0.2;
+    if (provider === 'gemini') return (billable / 1_000_000) * 8 + (completion / 1_000_000) * 30;
+    if (provider === 'anthropic' && model.includes('opus')) return (billable / 1_000_000) * 1500 + (completion / 1_000_000) * 7500;
+    if (provider === 'anthropic') return (billable / 1_000_000) * 300 + (completion / 1_000_000) * 1500;
+    return ((billable + completion) / 1_000_000) * 100;
 }
 
 function monthStart() {
