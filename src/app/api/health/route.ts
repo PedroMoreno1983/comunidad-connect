@@ -23,6 +23,10 @@ export async function GET() {
         anthropic: hasEnv('ANTHROPIC_API_KEY'),
         gemini: hasEnv('GEMINI_API_KEY'),
         openai: hasEnv('OPENAI_API_KEY'),
+        // Opcional: sin ella el nivel barato de modelRouter.ts cae a Claude
+        // Haiku. Se reporta para poder confirmar desde fuera que la variable
+        // llegó al deploy, que es distinto de haberla escrito en el panel.
+        deepseek: hasEnv('DEEPSEEK_API_KEY'),
     };
 
     const communications = {
