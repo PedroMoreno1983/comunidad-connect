@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Check, Copy, ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import type { DirectCartConfidence } from '@/lib/supermarket/cartUrl';
+import { Capacitor } from '@capacitor/core';
+import { storeLoadability, type DirectCartConfidence } from '@/lib/supermarket/cartUrl';
 import type {
   SupermarketCheckoutQuote,
   SupermarketCheckoutQuoteItem,
@@ -25,17 +26,62 @@ const STORE_HOME: Record<string, string> = {
 // puede trabajar en segundo plano ahí y avanza de a un producto por clic.
 const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
 
-// Estas cadenas tienen una ruta de carrito que se ejecuta dentro de la sesión
-// del navegador. El servidor prepara el enlace; la tienda agrega y la persona
-// confirma el resultado en su checkout.
-const VERIFIED_DIRECT_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
-const ATTEMPT_DIRECT_STORES = new Set(['Lider']);
-const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT_STORES]);
+/*
+ * Qué puede hacer cada tienda lo decide storeLoadability() y nadie más. Antes
+ * este componente tenía sus propias listas y se desincronizaron: seguía
+ * mandando a Lider por la carga directa después de que cartUrl.ts dejara de
+ * emitirle enlace, y llamaba "verificadas" a Santa Isabel y Unimarc, que
+ * cargan fuera del sitio de la tienda. Dos fuentes de verdad para el mismo
+ * dato terminan siempre así.
+ */
+function canLoadCart(store: string): boolean {
+    return storeLoadability(store) !== 'manual';
+}
 
-// Tottus corre en la plataforma de Falabella y hoy requiere una integración
-// comercial para carga automática. Se abre la tienda con la lista visible.
-const MANUAL_ONLY_STORES = new Set(['Tottus']);
 const UNIMARC_LANDING_DELAY_MS = 1_800;
+
+/**
+ * Abre la tienda en el navegador del sistema.
+ *
+ * En el teléfono usa @capacitor/browser, que levanta Chrome Custom Tabs en
+ * Android y SFSafariViewController en iOS. Lo importante no es que se vea
+ * dentro de la app: es que ESOS DOS COMPARTEN LAS COOKIES del navegador del
+ * sistema, así que la sesión que la persona ya tiene en Jumbo sigue viva y
+ * llega directo al botón de pagar. Un WebView embebido tiene su propio
+ * almacén de cookies y la obligaría a iniciar sesión de nuevo dentro de la
+ * app, que es justo donde se abandona una compra.
+ *
+ * El fallback a window.open NO es defensivo por gusto. capacitor.config.ts
+ * apunta server.url a conviveconnect.com, o sea que la app instalada carga
+ * este JS desde Vercel mientras el plugin nativo solo existe tras un `cap
+ * sync` y una nueva versión en las tiendas. Sin este catch, el primer deploy
+ * rompería el botón de pagar en todos los teléfonos ya instalados hasta que
+ * cada persona actualice.
+ */
+async function openInSystemBrowser(url: string): Promise<void> {
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url, presentationStyle: 'popover' });
+            return;
+        } catch {
+            // Binario sin el plugin todavía: seguimos por el navegador externo.
+        }
+    }
+    window.open(url, '_blank', 'noopener');
+}
+
+/**
+ * Solo tomamos el camino nativo cuando la apertura es un salto limpio: una
+ * URL, una navegación. Las tiendas 'offsite' necesitan una segunda navegación
+ * sobre la MISMA pestaña (ver navigatePreparedCart) y para eso hace falta un
+ * handle de Window que el navegador del sistema no entrega. Ahí se mantiene el
+ * comportamiento actual, que ya funciona, en vez de inventar un flujo nativo
+ * de dos pasos que no puedo probar en un dispositivo.
+ */
+function usesSystemBrowser(store: string): boolean {
+    return Capacitor.isNativePlatform() && storeLoadability(store) !== 'offsite';
+}
 
 function currentRetailerCartUrl(cartUrl: string, store: string): string {
   try {
@@ -195,7 +241,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           ? data.missingItems.filter((item): item is string => typeof item === 'string')
           : [],
         cartUrl,
-        opened: checkoutTab !== null,
+        opened: checkoutTab !== null || usesSystemBrowser(basket.store),
         confidence: data.confidence === 'verified' || data.confidence === 'offsite'
           ? data.confidence
           : undefined,
@@ -217,6 +263,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         });
       }
       if (checkoutTab) navigatePreparedCart(checkoutTab, cartUrl);
+      else if (usesSystemBrowser(basket.store)) await openInSystemBrowser(cartUrl);
     } catch (err) {
       checkoutTab?.close();
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
@@ -252,7 +299,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
       } catch {
         // Sin permiso de portapapeles: el código igual se muestra para copiarlo a mano.
       }
-      window.open(storeUrl, '_blank', 'noopener');
+      await openInSystemBrowser(storeUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo preparar la carga.');
     } finally {
@@ -456,8 +503,8 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
     );
   }
 
-  const canLoadDirectly = DIRECT_CART_STORES.has(basket.store) && !directUnavailable;
-  const manualOnly = MANUAL_ONLY_STORES.has(basket.store);
+  const canLoadDirectly = canLoadCart(basket.store) && !directUnavailable;
+  const manualOnly = !canLoadCart(basket.store);
 
   return (
     <div className="space-y-2">
@@ -465,8 +512,11 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         type="button"
         disabled={loading}
         onClick={() => {
-          if (manualOnly) { window.open(storeUrl, '_blank', 'noopener'); return; }
+          if (manualOnly) { void openInSystemBrowser(storeUrl); return; }
           if (canLoadDirectly) {
+            // En el navegador del sistema no hay pestaña que preparar: el
+            // enlace se abre recién cuando la tienda confirmó los productos.
+            if (usesSystemBrowser(basket.store)) { void loadDirectly(null); return; }
             const checkoutTab = openLoadingTab();
             if (checkoutTab) void loadDirectly(checkoutTab);
             return;
@@ -481,7 +531,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
           ? `Abrir ${basket.store}`
           : wholesaleQuote
             ? `Preparar cotización en ${basket.store}`
-            : VERIFIED_DIRECT_STORES.has(basket.store)
+            : storeLoadability(basket.store) === 'direct'
               ? `Cargar carro en ${basket.store}`
               : `Preparar carro en ${basket.store}`}
       </Button>
@@ -495,15 +545,16 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         <p className="text-[11px] cc-text-tertiary">
           {basket.store} todavía no permite cargar el carro automáticamente (requiere una integración con la cadena). Se abre la tienda; agrega los productos de tu lista, que ves aquí abajo.
         </p>
-      ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
+      ) : canLoadDirectly && storeLoadability(basket.store) === 'direct' ? (
         <p className="text-[11px] cc-text-tertiary">
           Un clic confirma productos y precio, y abre el carro oficial de {basket.store}.
           Revisa el detalle antes de elegir entrega y pagar.
         </p>
       ) : canLoadDirectly ? (
         <p className="text-[11px] cc-text-tertiary">
-          Intentamos cargar el carro directo en {basket.store} sin instalar nada. Su sitio a veces
-          pide verificación; si te bloquea, tienes el cargador asistido.
+          En {basket.store} los productos se cargan en el sistema de checkout de la cadena, que
+          corre en otro dominio: tu carro en {basket.store}.cl seguirá vacío y puede que tengas
+          que iniciar sesión ahí. Revisa el detalle antes de pagar.
         </p>
       ) : (
         <p className="text-[11px] cc-text-tertiary">
