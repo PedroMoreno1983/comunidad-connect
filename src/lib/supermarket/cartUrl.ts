@@ -38,17 +38,30 @@ export interface CartUrlItem {
     quantity: number;
 }
 
-export type DirectCartConfidence = 'verified' | 'attempt';
+export type DirectCartConfidence = 'verified' | 'offsite' | 'attempt';
 
 /**
- * La ruta de alta y su redirección al checkout fueron verificadas. "verified"
- * describe el mecanismo, no cada producto: la tienda puede rechazar stock y la
- * persona siempre debe revisar el carro antes de continuar.
+ * El carro se arma en el MISMO dominio donde la persona compra y tiene sesión.
+ * "verified" describe el mecanismo, no cada producto: la tienda puede rechazar
+ * stock y la persona siempre debe revisar el carro antes de continuar.
  */
 const VERIFIED_DIRECT_CART_STORES: Record<string, string> = {
     // Dominio público: la cookie del carro queda en jumbo.cl, que es donde la
     // persona tiene su sesión. Ver la nota de cookies en la cabecera.
     Jumbo: 'https://www.jumbo.cl',
+};
+
+/**
+ * El alta funciona, pero ocurre en el host de cuenta VTEX y no en el dominio de
+ * la tienda: la cookie del carro queda en *.vtexcommercestable.com.br, un
+ * dominio donde la persona no inició sesión y que no reconoce como la marca.
+ * Su carro en santaisabel.cl / unimarc.cl sigue vacío.
+ *
+ * No es "verified": llamarlo así prometía que el carro aparecía donde la
+ * persona iba a pagar, y no es lo que pasa. Tampoco es "manual", porque los
+ * productos sí se cargan. Es su propio nivel, y la UI lo dice.
+ */
+const OFFSITE_DIRECT_CART_STORES: Record<string, string> = {
     'Santa Isabel': 'https://santaisabel.vtexcommercestable.com.br',
     Unimarc: 'https://unimarc.vtexcommercestable.com.br',
 };
@@ -64,15 +77,17 @@ const ATTEMPT_DIRECT_CART_STORES: Record<string, string> = {
 
 const DIRECT_CART_STORES: Record<string, string> = {
     ...VERIFIED_DIRECT_CART_STORES,
+    ...OFFSITE_DIRECT_CART_STORES,
     ...ATTEMPT_DIRECT_CART_STORES,
 };
 
 /** Tope de productos por enlace: una URL enorme se corta en algunos navegadores. */
 export const MAX_ITEMS_PER_URL = 50;
 
-/** 'verified' | 'attempt' | null. La UI nunca confunde esto con stock confirmado. */
+/** 'verified' | 'offsite' | 'attempt' | null. Nunca significa stock confirmado. */
 export function directCartConfidence(store: string): DirectCartConfidence | null {
     if (Object.prototype.hasOwnProperty.call(VERIFIED_DIRECT_CART_STORES, store)) return 'verified';
+    if (Object.prototype.hasOwnProperty.call(OFFSITE_DIRECT_CART_STORES, store)) return 'offsite';
     if (Object.prototype.hasOwnProperty.call(ATTEMPT_DIRECT_CART_STORES, store)) return 'attempt';
     return null;
 }
@@ -81,24 +96,31 @@ export function storeSupportsDirectCart(store: string): boolean {
     return directCartConfidence(store) !== null;
 }
 
-export type StoreLoadability = 'direct' | 'attempt' | 'manual';
+export type StoreLoadability = 'direct' | 'offsite' | 'attempt' | 'manual';
 
 /**
- * Cargabilidad del carro por tienda, para ordenar alternativas con precios
- * parecidos. "direct" significa que existe un cargador de sesión; no significa
- * que todos los SKU tengan stock.
+ * Cargabilidad del carro por tienda. Ninguno de estos niveles significa que
+ * todos los SKU tengan stock: eso solo lo confirma la tienda al cargar.
+ *   direct  -> se carga en el dominio donde la persona compra (Jumbo)
+ *   offsite -> se carga, pero en el host de cuenta VTEX (Santa Isabel, Unimarc)
+ *   attempt -> no podemos comprobar el resultado (Lider)
+ *   manual  -> hay que agregar los productos a mano (aCuenta, Tottus)
  */
 export function storeLoadability(store: string): StoreLoadability {
     const confidence = directCartConfidence(store);
     if (confidence === 'verified') return 'direct';
+    if (confidence === 'offsite') return 'offsite';
     if (confidence === 'attempt') return 'attempt';
     return 'manual';
 }
 
-/** Menor = mejor de cargar. Para desempatar el orden a precios parecidos. */
+/** Menor = mejor de cargar. Ordena las alternativas de la comparación. */
 export function loadabilityRank(store: string): number {
     const tier = storeLoadability(store);
-    return tier === 'direct' ? 0 : tier === 'attempt' ? 1 : 2;
+    if (tier === 'direct') return 0;
+    if (tier === 'offsite') return 1;
+    if (tier === 'attempt') return 2;
+    return 3;
 }
 
 export function supportedDirectCartStores(): string[] {
