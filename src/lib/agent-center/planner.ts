@@ -1,11 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
+import { anthropicModelFor } from '@/lib/ai/modelRouter';
 
-export const AGENT_CENTER_CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+export const AGENT_CENTER_CLAUDE_MODEL = anthropicModelFor('agent-center.planner');
 
 export function getAgentPlannerModel() {
-    return AGENT_CENTER_CLAUDE_MODEL;
+    return anthropicModelFor('agent-center.mission-planner');
 }
 
 const MODEL = AGENT_CENTER_CLAUDE_MODEL;

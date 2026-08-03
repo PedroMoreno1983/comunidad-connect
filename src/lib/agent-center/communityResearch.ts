@@ -3,8 +3,9 @@ import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estim
 import type { AgentProfile } from '@/lib/agent-center/domain';
 import { normalizeIntentText } from '@/lib/agent-center/intentSafety';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { anthropicModelFor } from '@/lib/ai/modelRouter';
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+const MODEL = anthropicModelFor('agent-center.research');
 const MAX_ROUNDS = 4;
 
 type ResearchTrace = { source: string; args: Record<string, unknown>; records: number };

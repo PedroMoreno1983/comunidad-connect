@@ -12,6 +12,7 @@ import { getProactiveContext } from './proactive';
 import { COCO_LEGAL_KNOWLEDGE } from './legal-knowledge';
 import type { ConversationMessage, SessionData } from './session-store';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromMessages, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
+import { anthropicModelFor } from '@/lib/ai/modelRouter';
 import { recordOperationEvent, sanitizeMetadata } from '@/lib/operations/audit';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 
@@ -19,7 +20,10 @@ const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+// El modelo lo decide modelRouter.ts, no una variable global: CoCo usa
+// herramientas que leen y escriben datos reales, así que no baja de nivel
+// aunque otras tareas del sistema sí lo hagan.
+const MODEL = anthropicModelFor('coco.chat');
 const MAX_TOOL_ROUNDS = 5; // Máximo de rondas de tool use por mensaje
 
 export type CoCoImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';

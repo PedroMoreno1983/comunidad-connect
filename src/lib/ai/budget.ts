@@ -86,10 +86,18 @@ export function estimateAiCostCents(input: {
     const completion = input.completionTokens ?? 0;
     const images = input.imageCount ?? 0;
 
+    // Centavos de dólar por millón de tokens, precios al 2026-08-03. La tabla
+    // anterior cobraba Opus a 1500/7500, que era el precio de Opus 4.5: con
+    // Opus 5 el costo real es un tercio de eso, así que el panel de consumo
+    // venía sobreestimando y podía bloquear por presupuesto antes de tiempo.
     if (provider === 'openai' && images > 0) return images * 4;
     if (provider === 'voyage') return ((prompt + completion) / 1_000_000) * 0.2;
     if (provider === 'gemini') return (prompt / 1_000_000) * 8 + (completion / 1_000_000) * 30;
-    if (provider === 'anthropic' && model.includes('opus')) return (prompt / 1_000_000) * 1500 + (completion / 1_000_000) * 7500;
+    // DeepSeek cobra aún menos los tokens servidos desde su caché; sin ese dato
+    // se cobra todo a precio lleno, que es el lado seguro para un presupuesto.
+    if (provider === 'deepseek') return (prompt / 1_000_000) * 14 + (completion / 1_000_000) * 28;
+    if (provider === 'anthropic' && model.includes('haiku')) return (prompt / 1_000_000) * 100 + (completion / 1_000_000) * 500;
+    if (provider === 'anthropic' && model.includes('opus')) return (prompt / 1_000_000) * 500 + (completion / 1_000_000) * 2500;
     if (provider === 'anthropic') return (prompt / 1_000_000) * 300 + (completion / 1_000_000) * 1500;
     return ((prompt + completion) / 1_000_000) * 100;
 }

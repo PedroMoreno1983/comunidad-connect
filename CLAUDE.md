@@ -46,7 +46,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 # IA
 ANTHROPIC_API_KEY=       # Motor principal del agente CoCo
-GEMINI_API_KEY=          # Legado / fallback
+GEMINI_API_KEY=          # Legado / fallback + extracción de PDFs escaneados
+DEEPSEEK_API_KEY=        # Opcional. Tareas simples de solo texto; sin ella caen a Claude Haiku
 
 # Emails
 RESEND_API_KEY=          # Proveedor de emails transaccionales
