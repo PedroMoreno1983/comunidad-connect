@@ -20,6 +20,17 @@
  * una URL de checkout con `orderFormId`: ese ID no transfiere la cookie ni la
  * propiedad del carro a otra sesión del navegador y puede abrir un 404 o un
  * carro distinto.
+ *
+ * Jumbo va por su dominio público y NO por el host de cuenta. Verificado el
+ * 2026-08-01 mirando dónde queda la cookie del carro:
+ *   jumbo.vtexcommercestable.com.br -> 302 y
+ *       Set-Cookie checkout.vtex.com ... domain=jumbo.vtexcommercestable.com.br
+ *   www.jumbo.cl                    -> 307 a /?openLogin=1&callback=/checkout/cart/add?…
+ * El host de cuenta deja el carro en un dominio donde la persona no tiene
+ * sesión ni reconoce la marca; el dominio público le pide iniciar sesión y
+ * recién ahí ejecuta el alta, dentro de su propia sesión. Santa Isabel (404) y
+ * Unimarc (403) no exponen esa ruta en su dominio público, así que siguen por
+ * el host de cuenta -- con la limitación descrita arriba.
  */
 
 export interface CartUrlItem {
@@ -35,7 +46,9 @@ export type DirectCartConfidence = 'verified' | 'attempt';
  * persona siempre debe revisar el carro antes de continuar.
  */
 const VERIFIED_DIRECT_CART_STORES: Record<string, string> = {
-    Jumbo: 'https://jumbo.vtexcommercestable.com.br',
+    // Dominio público: la cookie del carro queda en jumbo.cl, que es donde la
+    // persona tiene su sesión. Ver la nota de cookies en la cabecera.
+    Jumbo: 'https://www.jumbo.cl',
     'Santa Isabel': 'https://santaisabel.vtexcommercestable.com.br',
     Unimarc: 'https://unimarc.vtexcommercestable.com.br',
 };

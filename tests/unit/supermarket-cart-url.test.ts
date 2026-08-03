@@ -5,13 +5,16 @@ import {
 } from '@/lib/supermarket/cartUrl';
 
 describe('buildDirectCartUrl', () => {
-    it('arma el enlace de Jumbo en el host de checkout con SKU y cantidades', () => {
+    it('arma el enlace de Jumbo en su dominio público con SKU y cantidades', () => {
         const url = buildDirectCartUrl('Jumbo', [
             { sku: '95710', quantity: 1 },
             { sku: '93386', quantity: 2 },
         ]);
 
-        expect(url).toContain('https://jumbo.vtexcommercestable.com.br/checkout/cart/add?');
+        // Dominio público, no el host de cuenta: ahí es donde la persona tiene
+        // sesión y donde queda la cookie del carro.
+        expect(url).toContain('https://www.jumbo.cl/checkout/cart/add?');
+        expect(url).not.toContain('vtexcommercestable');
         const params = new URLSearchParams(url!.split('?')[1]);
         expect(params.getAll('sku')).toEqual(['95710', '93386']);
         expect(params.getAll('qty')).toEqual(['1', '2']);
