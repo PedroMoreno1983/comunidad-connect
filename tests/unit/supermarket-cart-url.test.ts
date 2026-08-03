@@ -57,9 +57,10 @@ describe('buildDirectCartUrl', () => {
         expect(buildDirectCartUrl('Irurzun', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
-    it('arma el enlace para Lider, que queda sujeto a revisión por su WAF', () => {
-        expect(buildDirectCartUrl('Lider', [{ sku: '1', quantity: 1 }]))
-            .toContain('https://www.lider.cl/checkout/cart/add?');
+    it('no inventa un enlace VTEX para Lider, que no corre VTEX', () => {
+        // /api/catalog_system y /api/checkout/pub/orderForm dan 404 en el origen
+        // de lider.cl: no es una tienda VTEX y esa ruta no carga nada.
+        expect(buildDirectCartUrl('Lider', [{ sku: '1', quantity: 1 }])).toBeNull();
     });
 
     it('devuelve null si ningún producto trae SKU', () => {
@@ -100,20 +101,20 @@ describe('storeSupportsDirectCart', () => {
         expect(storeSupportsDirectCart('Jumbo')).toBe(true);
         expect(storeSupportsDirectCart('Santa Isabel')).toBe(true);
         expect(storeSupportsDirectCart('Unimarc')).toBe(true);
-        expect(storeSupportsDirectCart('Lider')).toBe(true);
+        expect(storeSupportsDirectCart('Lider')).toBe(false);
         expect(storeSupportsDirectCart('aCuenta')).toBe(false);
         expect(storeSupportsDirectCart('Tottus')).toBe(false);
     });
 });
 
 describe('directCartConfidence', () => {
-    it('distingue verificado, fuera de sitio, intento con WAF y no soportado', () => {
+    it('distingue verificado, fuera de sitio y no soportado', () => {
         expect(directCartConfidence('Jumbo')).toBe('verified');
         // El alta ocurre, pero en el host de cuenta VTEX: el carro no queda en
         // el dominio donde la persona tiene sesión. Ver la nota en cartUrl.ts.
         expect(directCartConfidence('Santa Isabel')).toBe('offsite');
         expect(directCartConfidence('Unimarc')).toBe('offsite');
-        expect(directCartConfidence('Lider')).toBe('attempt');
+        expect(directCartConfidence('Lider')).toBeNull();
         expect(directCartConfidence('Tottus')).toBeNull();
     });
 });
@@ -126,7 +127,8 @@ describe('storeLoadability / loadabilityRank', () => {
         // carro no aparece en su sitio. No es 'direct' ni 'manual'.
         expect(storeLoadability('Santa Isabel')).toBe('offsite');
         expect(storeLoadability('Unimarc')).toBe('offsite');
-        expect(storeLoadability('Lider')).toBe('attempt');
+        // Lider no corre VTEX: sin gramática de carro conocida, es manual.
+        expect(storeLoadability('Lider')).toBe('manual');
         expect(storeLoadability('Tottus')).toBe('manual');
         expect(storeLoadability('aCuenta')).toBe('manual');
     });
@@ -137,9 +139,9 @@ describe('storeLoadability / loadabilityRank', () => {
         }
     });
 
-    it('ordena los niveles intermedios de mejor a peor', () => {
+    it('pone las que cargan fuera de sitio por sobre las manuales', () => {
         expect(loadabilityRank('Santa Isabel')).toBeLessThan(loadabilityRank('Lider'));
-        expect(loadabilityRank('Lider')).toBeLessThan(loadabilityRank('Tottus'));
+        expect(loadabilityRank('Unimarc')).toBeLessThan(loadabilityRank('Tottus'));
     });
 });
 

@@ -28,9 +28,17 @@
  *   www.jumbo.cl                    -> 307 a /?openLogin=1&callback=/checkout/cart/add?…
  * El host de cuenta deja el carro en un dominio donde la persona no tiene
  * sesión ni reconoce la marca; el dominio público le pide iniciar sesión y
- * recién ahí ejecuta el alta, dentro de su propia sesión. Santa Isabel (404) y
- * Unimarc (403) no exponen esa ruta en su dominio público, así que siguen por
- * el host de cuenta -- con la limitación descrita arriba.
+ * recién ahí ejecuta el alta, dentro de su propia sesión.
+ *
+ * Santa Isabel no expone esa ruta en su dominio público: portada 200 y
+ * /checkout/cart/add 404, el mismo 404 que una ruta inventada. Concluyente.
+ *
+ * Unimarc tampoco. Desde servidor devuelve 403 a todo -- portada y rutas
+ * inventadas incluidas -- así que ese 403 no decía nada sobre la ruta. Probado
+ * el 2026-08-03 en un navegador real, mismo origen: /checkout/cart/add?sku=…
+ * responde 404 con su propia página "Página no encontrada | Unimarc", y
+ * /api/checkout/pub/orderForm responde 500. El checkout no se sirve desde su
+ * dominio público, por eso sigue por el host de cuenta.
  */
 
 export interface CartUrlItem {
@@ -38,7 +46,7 @@ export interface CartUrlItem {
     quantity: number;
 }
 
-export type DirectCartConfidence = 'verified' | 'offsite' | 'attempt';
+export type DirectCartConfidence = 'verified' | 'offsite';
 
 /**
  * El carro se arma en el MISMO dominio donde la persona compra y tiene sesión.
@@ -66,29 +74,36 @@ const OFFSITE_DIRECT_CART_STORES: Record<string, string> = {
     Unimarc: 'https://unimarc.vtexcommercestable.com.br',
 };
 
-/**
- * Lider conserva un enlace de intento: su WAF impide comprobar el resultado
- * desde Convive. El callback de login mantiene los parámetros, pero la UI lo
- * presenta expresamente como pendiente de revisión.
+/*
+ * Lider NO tiene enlace, y la razón es que no corre VTEX. Comprobado el
+ * 2026-08-03 contra www.lider.cl y super.lider.cl:
+ *   /api/catalog_system/pub/products/search -> 404 sin pasar por el WAF
+ *   /api/checkout/pub/orderForm             -> 404 sin pasar por el WAF
+ * Un 404 que llega al origen descarta la plataforma: en cualquier tienda VTEX
+ * esas rutas existen. Su robots.txt confirma otra estructura (/cart, /catalogo,
+ * /supermercado, /tu-cuenta) y /supermercado redirige con queueittoken, o sea
+ * sala de espera de Queue-it.
+ *
+ * Antes emitíamos /checkout/cart/add?sku&qty&seller para Lider -- gramática de
+ * VTEX sobre un sitio que no es VTEX -- y la UI lo excusaba diciendo que la
+ * tienda "puede pedirte verificación". El WAF devuelve /blocked para todo
+ * /checkout*, y eso se leyó como que la ruta existía; una ruta inventada pasa
+ * y da 404 limpio, así que el bloqueo era por prefijo y no evidencia de nada.
+ * Hasta conocer su gramática real de carro, Lider es carga manual.
  */
-const ATTEMPT_DIRECT_CART_STORES: Record<string, string> = {
-    Lider: 'https://www.lider.cl',
-};
 
 const DIRECT_CART_STORES: Record<string, string> = {
     ...VERIFIED_DIRECT_CART_STORES,
     ...OFFSITE_DIRECT_CART_STORES,
-    ...ATTEMPT_DIRECT_CART_STORES,
 };
 
 /** Tope de productos por enlace: una URL enorme se corta en algunos navegadores. */
 export const MAX_ITEMS_PER_URL = 50;
 
-/** 'verified' | 'offsite' | 'attempt' | null. Nunca significa stock confirmado. */
+/** 'verified' | 'offsite' | null. Nunca significa stock confirmado. */
 export function directCartConfidence(store: string): DirectCartConfidence | null {
     if (Object.prototype.hasOwnProperty.call(VERIFIED_DIRECT_CART_STORES, store)) return 'verified';
     if (Object.prototype.hasOwnProperty.call(OFFSITE_DIRECT_CART_STORES, store)) return 'offsite';
-    if (Object.prototype.hasOwnProperty.call(ATTEMPT_DIRECT_CART_STORES, store)) return 'attempt';
     return null;
 }
 
@@ -96,21 +111,23 @@ export function storeSupportsDirectCart(store: string): boolean {
     return directCartConfidence(store) !== null;
 }
 
-export type StoreLoadability = 'direct' | 'offsite' | 'attempt' | 'manual';
+export type StoreLoadability = 'direct' | 'offsite' | 'manual';
 
 /**
  * Cargabilidad del carro por tienda. Ninguno de estos niveles significa que
  * todos los SKU tengan stock: eso solo lo confirma la tienda al cargar.
  *   direct  -> se carga en el dominio donde la persona compra (Jumbo)
  *   offsite -> se carga, pero en el host de cuenta VTEX (Santa Isabel, Unimarc)
- *   attempt -> no podemos comprobar el resultado (Lider)
- *   manual  -> hay que agregar los productos a mano (aCuenta, Tottus)
+ *   manual  -> hay que agregar los productos a mano (Lider, aCuenta, Tottus)
+ *
+ * No hay un nivel "lo intentamos": si no sabemos que carga, es manual. Prometer
+ * un intento hace que la persona abra una pestaña, no encuentre su carro y no
+ * entienda por qué; decirle de entrada que copie la lista es más barato.
  */
 export function storeLoadability(store: string): StoreLoadability {
     const confidence = directCartConfidence(store);
     if (confidence === 'verified') return 'direct';
     if (confidence === 'offsite') return 'offsite';
-    if (confidence === 'attempt') return 'attempt';
     return 'manual';
 }
 
@@ -119,8 +136,7 @@ export function loadabilityRank(store: string): number {
     const tier = storeLoadability(store);
     if (tier === 'direct') return 0;
     if (tier === 'offsite') return 1;
-    if (tier === 'attempt') return 2;
-    return 3;
+    return 2;
 }
 
 export function supportedDirectCartStores(): string[] {

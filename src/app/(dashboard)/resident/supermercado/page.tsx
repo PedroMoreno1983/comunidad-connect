@@ -41,7 +41,6 @@ const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; f
   // sitio de la tienda: el carro no aparece donde la persona tiene su sesión.
   // Decir "Carro automático" ahí prometía algo que no ocurre.
   offsite: { label: 'Carga en otro sitio', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
-  attempt: { label: 'Puede pedir verificación', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
   manual: { label: 'No carga automática', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
 };
 
@@ -49,7 +48,6 @@ const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; f
 const LOADABILITY_STATUS: Record<StoreLoadability, string> = {
   direct: 'Lista lista para cargar',
   offsite: 'Se carga, pero fuera del sitio de la tienda',
-  attempt: 'Lista encontrada; la tienda puede verificarte',
   manual: 'Lista encontrada; carga manual',
 };
 
@@ -57,7 +55,6 @@ const LOADABILITY_STATUS: Record<StoreLoadability, string> = {
 const LOADABILITY_HEADLINE: Record<StoreLoadability, (store: string) => string> = {
   direct: store => `Lista lista para cargar en ${store}`,
   offsite: store => `Lista encontrada en ${store}; se carga fuera de su sitio`,
-  attempt: store => `Lista encontrada en ${store}; puede pedir verificación`,
   manual: store => `Lista encontrada en ${store}; carga manual`,
 };
 
@@ -379,7 +376,6 @@ export default function SupermarketPage() {
               const costoDeLaBarata: Record<StoreLoadability, string> = {
                 direct: 'y su carro también se carga solo',
                 offsite: 'pero su carro se arma fuera del sitio de la tienda',
-                attempt: 'pero ahí la tienda puede pedirte verificación',
                 manual: 'pero ahí tendrías que agregar los productos a mano',
               };
               return (
