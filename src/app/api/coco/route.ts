@@ -13,7 +13,9 @@ import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudge
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSafeCoCoNavigation } from '@/lib/coco/navigation';
 import { resolveAiModel } from '@/lib/ai/modelRouter';
-import { completeDeepSeekText } from '@/lib/ai/deepseek';
+import { runDeepSeekToolLoop } from '@/lib/ai/deepseek';
+import { fallbackToolsForRole, isFallbackReadOnlyTool, type AnthropicStyleTool } from '@/lib/ai/toolBridge';
+import { TOOL_DEFINITIONS, executeTool, isToolAllowedForRole } from '@/lib/coco/tools';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODELS = [
@@ -126,11 +128,33 @@ async function askDeepSeekFallback(message: string, context: CoCoFallbackContext
         estimatedCompletionTokens: 700,
     });
 
+    // Herramientas de solo lectura: durante una caída del motor principal, el
+    // respaldo puede responder "¿cuánto debo?" en vez de conversar sin datos.
+    // Nada que escriba cruza — ver FALLBACK_READ_ONLY_TOOLS.
+    const tools = fallbackToolsForRole(
+        TOOL_DEFINITIONS as unknown as AnthropicStyleTool[],
+        context.role,
+        isToolAllowedForRole,
+    );
+
     const startedAt = Date.now();
-    const result = await completeDeepSeekText({
+    const result = await runDeepSeekToolLoop({
         model: routed.model,
         system: COCO_SYSTEM_PROMPT,
         user: `Contexto del usuario: Nombre: ${context.name || 'Usuario'} | Rol: ${context.role} | Página actual: ${context.currentPage}\n\nUsuario dice: ${message}`,
+        tools,
+        executeToolCall: (name, args) => {
+            // Segunda barrera, además del filtro de arriba: si algún día alguien
+            // amplía la lista sin pensar, esto sigue negando lo que escribe.
+            if (!isFallbackReadOnlyTool(name)) {
+                return Promise.resolve({ error: 'Herramienta no disponible en modo de respaldo.' });
+            }
+            return executeTool(name, args, {
+                user_id: context.userId,
+                community_id: context.communityId,
+                role: context.role,
+            });
+        },
         maxTokens: 700,
     });
 
