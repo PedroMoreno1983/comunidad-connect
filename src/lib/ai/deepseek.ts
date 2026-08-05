@@ -5,9 +5,15 @@
  * del proyecto (lo usa imageService.ts), así que esto es un cambio de baseURL
  * y no un SDK nuevo.
  *
- * Solo texto: no expone tool calling en formato Anthropic ni entiende PDF ni
- * imágenes. Por eso modelRouter.ts nunca le manda tareas con herramientas, y
- * la extracción de nóminas y PDFs se queda en Gemini, que sí lee escaneos.
+ * DeepSeek SÍ soporta tool calling, en formato OpenAI. Lo que no hay todavía
+ * es la traducción: las herramientas de CoCo están declaradas en formato
+ * Anthropic ({name, description, input_schema}) y OpenAI las quiere como
+ * {type:'function', function:{name, description, parameters}}. Es una
+ * conversión mecánica, no un rediseño, pero mientras no exista este helper
+ * expone solo texto y modelRouter.ts no le manda tareas con herramientas.
+ *
+ * Lo que no cubre es la extracción de nóminas y PDFs escaneados, que necesita
+ * leer imágenes y se queda en Gemini.
  */
 
 import OpenAI from 'openai';
