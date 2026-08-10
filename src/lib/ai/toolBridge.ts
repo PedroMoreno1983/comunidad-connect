@@ -76,6 +76,42 @@ export function toOpenAiTool(tool: AnthropicStyleTool): OpenAiStyleTool {
 }
 
 /**
+ * Parámetros que el servidor resuelve solo, desde la sesión de quien pregunta.
+ *
+ * executeTool los pasa por scopedUnit / scopedCommunity, que sacan la unidad y
+ * la comunidad del userCtx e ignoran lo que venga del modelo si no
+ * corresponde. Son, además, la barrera que impide que un residente consulte la
+ * unidad de otro.
+ */
+const SESSION_RESOLVED_PARAMS = new Set(['unit_id', 'community_id']);
+
+/**
+ * Saca de `required` los parámetros que el servidor ya conoce.
+ *
+ * Sin esto el esquema le miente al modelo: siete de las catorce herramientas
+ * declaran unit_id o community_id como obligatorios cuando el servidor los
+ * resuelve de la sesión. Comprobado contra la API real — al preguntarle
+ * "¿cuánto debo?", el modelo no llamaba a ninguna herramienta y respondía
+ * pidiéndole el número de departamento a una persona que ya había iniciado
+ * sesión y cuyo departamento el sistema tenía.
+ *
+ * Siguen declarados como propiedades opcionales: si el modelo los manda,
+ * scopedUnit/scopedCommunity los validan igual.
+ */
+function relaxSessionResolvedParams(schema: Record<string, unknown>): Record<string, unknown> {
+    const required = schema.required;
+    if (!Array.isArray(required)) return schema;
+    const kept = required.filter(name => typeof name === 'string' && !SESSION_RESOLVED_PARAMS.has(name));
+    if (kept.length === required.length) return schema;
+    if (kept.length > 0) return { ...schema, required: kept };
+    // Sin obligatorios que conservar, se quita la clave entera: un `required`
+    // vacío es válido pero algunos validadores de schema lo rechazan.
+    const relaxed = { ...schema };
+    delete relaxed.required;
+    return relaxed;
+}
+
+/**
  * Las herramientas que puede usar el respaldo para un rol dado.
  *
  * Aplica dos filtros y necesita los dos: la lista de solo lectura, y el mismo
@@ -91,7 +127,10 @@ export function fallbackToolsForRole(
     return tools
         .filter(tool => FALLBACK_READ_ONLY_SET.has(tool.name))
         .filter(tool => isAllowedForRole(tool.name, role))
-        .map(toOpenAiTool);
+        .map(tool => toOpenAiTool({
+            ...tool,
+            input_schema: relaxSessionResolvedParams(tool.input_schema),
+        }));
 }
 
 export function isFallbackReadOnlyTool(name: string): boolean {

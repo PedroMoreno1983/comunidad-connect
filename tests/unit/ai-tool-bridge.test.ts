@@ -53,6 +53,50 @@ describe('toOpenAiTool', () => {
     });
 });
 
+describe('parámetros que resuelve el servidor', () => {
+    it('no exige unit_id, que el servidor saca de la sesión', () => {
+        // Comprobado contra la API real: con unit_id en `required`, el modelo
+        // no llamaba a la herramienta y le pedía el número de departamento a
+        // alguien que ya había iniciado sesión.
+        const pago = fallbackToolsForRole(ALL_TOOLS, 'resident', isToolAllowedForRole)
+            .find(tool => tool.function.name === 'get_payment_status');
+        expect(pago).toBeDefined();
+        expect(pago!.function.parameters.required).toBeUndefined();
+    });
+
+    it('no exige community_id, que también sale de la sesión', () => {
+        const morosos = fallbackToolsForRole(ALL_TOOLS, 'admin', isToolAllowedForRole)
+            .find(tool => tool.function.name === 'get_defaulters_list');
+        expect(morosos).toBeDefined();
+        expect(morosos!.function.parameters.required).toBeUndefined();
+    });
+
+    it('conserva los parámetros que el servidor NO puede adivinar', () => {
+        // search_marketplace necesita qué buscar, y check_availability qué
+        // espacio y qué día. Relajar eso dejaría al modelo llamando a ciegas.
+        const porNombre = new Map(
+            fallbackToolsForRole(ALL_TOOLS, 'resident', isToolAllowedForRole)
+                .map(tool => [tool.function.name, tool.function.parameters.required]),
+        );
+        expect(porNombre.get('search_marketplace')).toEqual(['query']);
+        expect(porNombre.get('check_availability')).toEqual(['space_name', 'date']);
+    });
+
+    it('los deja como propiedades opcionales, no los borra del esquema', () => {
+        // El modelo puede mandarlos igual; scopedUnit los valida.
+        const pago = fallbackToolsForRole(ALL_TOOLS, 'resident', isToolAllowedForRole)
+            .find(tool => tool.function.name === 'get_payment_status');
+        const props = pago!.function.parameters.properties as Record<string, unknown>;
+        expect(props).toHaveProperty('unit_id');
+    });
+
+    it('no muta la definición original compartida con el camino principal', () => {
+        const original = ALL_TOOLS.find(tool => tool.name === 'get_payment_status')!;
+        fallbackToolsForRole(ALL_TOOLS, 'resident', isToolAllowedForRole);
+        expect(original.input_schema.required).toEqual(['unit_id']);
+    });
+});
+
 describe('fallbackToolsForRole', () => {
     it('aplica también el control de rol, no solo la lista blanca', () => {
         // get_defaulters_list es de lectura, pero la nómina de morosos no la ve
