@@ -167,8 +167,9 @@ const cartRoute = fs.readFileSync(
 check(
   cartUrl.includes('https://santaisabel.vtexcommercestable.com.br')
     && cartUrl.includes('https://unimarc.vtexcommercestable.com.br')
-    && cartUrl.includes('https://jumbo.vtexcommercestable.com.br'),
-  'Los enlaces VTEX no apuntan a los hosts reales de checkout.',
+    && cartUrl.includes("Jumbo: 'https://www.jumbo.cl'")
+    && !cartUrl.includes("Jumbo: 'https://jumbo.vtexcommercestable.com.br'"),
+  'Los enlaces de carro no respetan los dominios de sesión verificados.',
 );
 check(
   cartUrl.includes("params.append('redirect', store === 'Unimarc' ? 'false' : 'true')"),
