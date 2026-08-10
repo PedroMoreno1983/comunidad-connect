@@ -944,14 +944,18 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 yield from first_products
 
                 page_size = max(len(first_products), 1)
-                page_count = math.ceil(total / page_size)
-                final_page = (
-                    min(page_count, max_pages)
-                    if max_pages is not None
-                    else page_count
-                )
+                published_page_count = math.ceil(total / page_size)
+                probes_until_repeat = published_page_count <= 1
+                if max_pages is not None:
+                    final_page = max_pages
+                elif probes_until_repeat:
+                    final_page = 200
+                else:
+                    final_page = published_page_count
+
                 first_signature = tuple(product_key(product) for product in first_products)
                 seen_pages = {first_signature}
+                repeated_page = False
                 for page_number in range(2, final_page + 1):
                     products, _ = load_catalog_page(
                         f"{base_url}?page={page_number}",
@@ -964,12 +968,24 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                             "before completion"
                         )
                     if signature in seen_pages:
+                        if probes_until_repeat:
+                            repeated_page = True
+                            break
                         raise RuntimeError(
-                            f"Jumbo category {category} repeated a page; "
-                            "refusing to report an incomplete crawl"
+                            f"Jumbo category {category} repeated page {page_number} "
+                            f"before published page {published_page_count}"
                         )
                     seen_pages.add(signature)
                     yield from products
+
+                if (
+                    probes_until_repeat
+                    and max_pages is None
+                    and not repeated_page
+                ):
+                    raise RuntimeError(
+                        f"Jumbo category {category} exceeded the 200-page safety limit"
+                    )
         finally:
             browser.close()
 
