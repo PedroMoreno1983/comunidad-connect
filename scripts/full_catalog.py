@@ -939,19 +939,27 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             category: str,
         ) -> tuple[list[Product], int]:
             label = re.compile(rf"^p[aá]gina\\s+{page_number}$", flags=re.I)
+            number = re.compile(rf"^\\s*{page_number}\\s*$")
             candidates = (
                 page.get_by_role("link", name=label),
                 page.get_by_role("button", name=label),
                 page.locator(f'[aria-label="Página {page_number}"]'),
                 page.locator(f'[aria-label="pagina {page_number}" i]'),
+                page.locator("a").filter(has_text=number),
+                page.locator("button").filter(has_text=number),
             )
-            control = next(
-                (candidate.first for candidate in candidates if candidate.count() > 0),
-                None,
-            )
+            control = None
+            for candidate in candidates:
+                for index in range(candidate.count()):
+                    visible = candidate.nth(index)
+                    if visible.is_visible():
+                        control = visible
+                        break
+                if control is not None:
+                    break
             if control is None:
                 raise RuntimeError(
-                    f"Jumbo category {category} does not expose a control "
+                    f"Jumbo category {category} does not expose a visible control "
                     f"for page {page_number}"
                 )
             captured_payloads.clear()
