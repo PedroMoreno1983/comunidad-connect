@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   CheckCircle2,
   Loader2,
   Play,
@@ -35,6 +36,12 @@ type AgentAction = {
   runId?: string | null;
 };
 
+/** El backend avisa cuando respondió sin el motor de razonamiento. */
+type AgentDegradation = {
+  reason: "missing_api_key" | "budget_blocked" | "api_error" | "empty_plan";
+  detail: string;
+};
+
 type AgentMessage = {
   id: string;
   role: "user" | "agent";
@@ -42,6 +49,7 @@ type AgentMessage = {
   status?: "awaiting_confirmation" | "executed" | "error" | "rejected";
   steps?: AgentStep[];
   action?: AgentAction;
+  degraded?: AgentDegradation | null;
   result?: {
     title?: string;
     message?: string;
@@ -311,6 +319,7 @@ export default function AgentCenterPage() {
         status?: AgentMessage["status"];
         steps?: AgentStep[];
         action?: AgentAction;
+        degraded?: AgentDegradation | null;
         result?: AgentMessage["result"];
       };
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "No se pudo ejecutar CoCo.");
@@ -324,6 +333,7 @@ export default function AgentCenterPage() {
           status: data.status,
           steps: Array.isArray(data.steps) ? data.steps : [],
           action: data.action,
+          degraded: data.degraded ?? null,
           result: data.result,
         },
       ]);
@@ -582,17 +592,29 @@ export default function AgentCenterPage() {
                     </span>
                   </div>
                 ) : (
-                  <div
-                    key={message.id}
-                    className="flex items-start gap-2.5 rounded-xl border p-3.5 text-[13px]"
-                    style={{
-                      borderColor: message.status === "executed" ? "rgba(95, 122, 70,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : message.status === "error" ? "var(--cc-line)" : "var(--cc-line)",
-                      background: message.status === "executed" ? "var(--cc-sage-tint)" : message.status === "rejected" ? "var(--cc-rose-tint)" : "var(--cc-paper)",
-                    }}
-                  >
-                    {message.status === "executed" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
-                    {message.status === "rejected" && <XCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-rose)" }} />}
-                    <span className="cc-text-secondary">{message.result?.message || message.content}</span>
+                  <div key={message.id} className="space-y-1.5">
+                    <div
+                      className="flex items-start gap-2.5 rounded-xl border p-3.5 text-[13px]"
+                      style={{
+                        borderColor: message.status === "executed" ? "rgba(95, 122, 70,0.25)" : message.status === "rejected" ? "rgba(181,82,78,0.25)" : message.status === "error" ? "var(--cc-line)" : "var(--cc-line)",
+                        background: message.status === "executed" ? "var(--cc-sage-tint)" : message.status === "rejected" ? "var(--cc-rose-tint)" : "var(--cc-paper)",
+                      }}
+                    >
+                      {message.status === "executed" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />}
+                      {message.status === "rejected" && <XCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--cc-rose)" }} />}
+                      <span className="cc-text-secondary">{message.result?.message || message.content}</span>
+                    </div>
+                    {/* Sin este aviso, una respuesta sin Claude se lee igual que
+                        una razonada y el agente parece tonto en vez de caído. */}
+                    {message.degraded && (
+                      <div
+                        className="flex items-start gap-2 rounded-lg border px-3 py-2 text-[12px]"
+                        style={{ borderColor: "rgba(181,82,78,0.25)", background: "var(--cc-rose-tint)" }}
+                      >
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "var(--cc-rose)" }} />
+                        <span className="cc-text-secondary">{message.degraded.detail}</span>
+                      </div>
+                    )}
                   </div>
                 )
               ))}

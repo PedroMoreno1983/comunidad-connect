@@ -69,6 +69,38 @@ export function isMonthlyBillingRequest(message: string) {
     return aboutBilling && wantsToBuild;
 }
 
+/**
+ * Preguntas agregadas sobre el edificio ("quien debe gastos comunes", "como
+ * viene la morosidad") no tienen un residente al que apuntar, y por eso caían
+ * en el catch-all de finanzas, que pedía justamente ese dato.
+ * `get_community_snapshot` ya existía como herramienta de solo lectura: el
+ * vocabulario era demasiado estrecho para llegar a ella.
+ *
+ * `isMonthlyBillingRequest` se descarta primero porque "puedes armar el gasto
+ * comun de julio?" comparte vocabulario con una pregunta pero es una emisión.
+ * El llamador debe resolver antes `isIndividualDebtQuery`: lo específico
+ * (la deuda de una unidad) gana sobre lo agregado.
+ */
+const ANALYTIC_SUBJECT = /\b(resumen|estado|situacion|indicadores|cuanto|cuanta|cuantos|cuantas|total|moroso|morosos|morosidad|deuda|deudas|deudor|deudores|impago|impagos|saldo|saldos|gastos? comunes?|pagos? pendientes?|ticket|tickets|reserva|reservas|residente|residentes|ocupacion)\b/;
+
+export function looksLikeAnalyticQuestion(message: string) {
+    if (!looksReadOnlyRequest(message) || isMonthlyBillingRequest(message)) return false;
+    return ANALYTIC_SUBJECT.test(normalizeIntentText(message));
+}
+
+/**
+ * Los términos son prefijos, no palabras completas: la versión anterior cerraba
+ * cada alternativa con `\b` y por eso "moros" nunca matcheaba "morosos" ni
+ * "gasto" a "gastos". El foco caía a 'all' en casi toda pregunta real.
+ */
+export function analyticFocus(message: string): 'finance' | 'maintenance' | 'community' | 'all' {
+    const normalized = normalizeIntentText(message);
+    if (/\b(moros|deuda|deudor|pago|impago|saldo|finanz|gasto)/.test(normalized)) return 'finance';
+    if (/\b(ticket|mantencion|mantenimiento|falla|proveedor)/.test(normalized)) return 'maintenance';
+    if (/\b(reserva|residente|comunidad|vecin)/.test(normalized)) return 'community';
+    return 'all';
+}
+
 export function extractResidentQuery(message: string) {
     const patterns = [
         /(?:residente|vecina|vecino)\s+([\p{L}][\p{L}\s.'-]{1,78}?)(?=\s+(?:debe|adeuda|tiene|mantiene|esta)|[?,.;!]|$)/iu,
@@ -88,9 +120,15 @@ export function extractUnitNumber(message: string) {
     return match?.[1]?.trim() || '';
 }
 
+// Solo al inicio de la frase: "quien debe gastos comunes" es una pregunta,
+// "a quien le envio el comunicado" es una instruccion que la menciona.
+const INTERROGATIVE_OPENER = /^(?:quien|quienes|cual|cuales|cuanto|cuanta|cuantos|cuantas|que|como|donde)\b/;
+
 export function looksReadOnlyRequest(message: string) {
     const normalized = normalizeIntentText(message);
-    const hasReadHint = READ_ONLY_HINTS.some(hint => normalized.includes(hint)) || normalized.endsWith('?');
+    const hasReadHint = READ_ONLY_HINTS.some(hint => normalized.includes(hint))
+        || normalized.endsWith('?')
+        || INTERROGATIVE_OPENER.test(normalized);
     const hasMutationHint = MUTATION_HINTS.some(hint => normalized.includes(hint));
     return hasReadHint && !hasMutationHint;
 }

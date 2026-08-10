@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
-import { extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, isMonthlyBillingRequest, looksReadOnlyRequest } from '@/lib/agent-center/intentSafety';
+import { analyticFocus, extractResidentQuery, extractUnitNumber, isIndividualDebtQuery, isMonthlyBillingRequest, looksLikeAnalyticQuestion } from '@/lib/agent-center/intentSafety';
+import { enrichMessageWithHistory } from '@/lib/agent-center/conversationContext';
 import { getResidentExpenseSummary } from '@/lib/agent-center/financeQueries';
 import { executeCreateUnitExpense, executeSendUnitPaymentReminder } from '@/lib/agent-center/unitFinanceActions';
 import { buildClarificationAction, buildIndividualDebtAction, preventReadOnlyMutation } from '@/lib/agent-center/intentActions';
@@ -11,7 +12,14 @@ import { assertDailyActionLimit, claimPersistedProposal } from '@/lib/agent-cent
 import { getRecentAgentTasks } from '@/lib/agent-center/taskEngine';
 import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
-import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
+import {
+    getAgentPlannerModel,
+    planAgentAction,
+    plannerDegradationFromError,
+    plannerUnavailableDegradation,
+    type PlannerDegradation,
+    type PlannerTurn,
+} from '@/lib/agent-center/planner';
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
@@ -216,7 +224,7 @@ function buildAnnouncementAction(message: string): AgentAction {
     };
 }
 
-function inferActionHeuristic(message: string, profile: AgentProfile): AgentAction {
+function inferActionHeuristicDirect(message: string, profile: AgentProfile): AgentAction {
     const lower = message.toLowerCase();
     const date = dateFromText(message);
     const { start, end } = timeFromText(message);
@@ -226,21 +234,14 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     const wantsIotReadiness = lower.includes('iot') || lower.includes('emergencia') || lower.includes('filtracion');
     const wantsMaintenanceReview = lower.includes('tickets abiertos') || lower.includes('triage') || lower.includes('mantencion') || lower.includes('mantenimiento') || lower.includes('proveedor');
     const wantsBroadcastWorkflow = (wantsWorkflow || lower.includes('difusion')) && (lower.includes('comunicado') || lower.includes('aviso') || lower.includes('anuncio'));
-    const wantsOperationalSnapshot = looksReadOnlyRequest(message) && /\b(resumen|estado|indicadores|cuantos|cuantas|total|morosos|deudas|tickets|reservas|residentes)\b/i.test(normalizeText(message));
+    const wantsOperationalSnapshot = looksLikeAnalyticQuestion(message);
 
     if (isIndividualDebtQuery(message)) {
         return buildIndividualDebtAction(message, profile);
     }
 
     if (wantsOperationalSnapshot) {
-        const normalized = normalizeText(message);
-        const focus = /\b(moros|deuda|pago|finanz)\b/.test(normalized)
-            ? 'finance'
-            : /\b(ticket|mantencion|mantenimiento|falla)\b/.test(normalized)
-                ? 'maintenance'
-                : /\b(reserva|residente|comunidad)\b/.test(normalized)
-                    ? 'community'
-                    : 'all';
+        const focus = analyticFocus(message);
         return {
             agentKey: focus === 'all' ? 'community' : focus,
             toolName: 'get_community_snapshot',
@@ -416,6 +417,21 @@ function inferActionHeuristic(message: string, profile: AgentProfile): AgentActi
     return buildClarificationAction(message, pickAgent(message));
 }
 
+/**
+ * El reintento con contexto solo ocurre cuando el mensaje aislado ya falló, así
+ * que nunca puede pisar una intención que se entendió por sí sola.
+ */
+function inferActionHeuristic(message: string, profile: AgentProfile, history: PlannerTurn[] = []): AgentAction {
+    const direct = inferActionHeuristicDirect(message, profile);
+    if (direct.toolName !== 'clarify_intent' || history.length === 0) return direct;
+
+    const enriched = enrichMessageWithHistory(message, history);
+    if (enriched === message) return direct;
+
+    const retried = inferActionHeuristicDirect(enriched, profile);
+    return retried.toolName === 'clarify_intent' ? direct : retried;
+}
+
 // ---------------------------------------------------------------------------
 // Fallback determinístico de orquestación: cuando Claude no está disponible,
 // una solicitud multi-dominio se divide en cláusulas y cada una se resuelve
@@ -441,7 +457,7 @@ function inferClauseAction(clause: string, fullMessage: string, profile: AgentPr
     let enriched = clause;
     const unitNumber = extractUnitNumber(fullMessage);
     if (unitNumber && !extractUnitNumber(clause)) enriched = `${clause} depto ${unitNumber}`;
-    const action = inferActionHeuristic(enriched, profile);
+    const action = inferActionHeuristicDirect(enriched, profile);
     if (action.toolName === 'clarify_intent' || action.toolName === 'run_playbook' || action.toolName === 'run_mission') {
         return null;
     }
@@ -784,6 +800,20 @@ async function updateAgentPolicy(profile: AgentProfile, body: Record<string, unk
     });
 }
 
+/**
+ * Una degradación silenciosa es indistinguible de un agente tonto: el
+ * administrador ve "necesito mas detalle" y concluye que CoCo no razona. Este
+ * paso lo dice explícitamente en la trazabilidad y en el hilo del chat.
+ */
+function degradationStep(degradation: PlannerDegradation): AgentStep {
+    return {
+        kind: 'warning',
+        title: 'Motor de razonamiento no disponible',
+        detail: degradation.detail,
+        metadata: { reason: degradation.reason },
+    };
+}
+
 function finalizeInferredAction(message: string, candidate: AgentAction) {
     const action = normalizeAction(preventReadOnlyMutation(message, normalizeAction(candidate)));
     try {
@@ -798,35 +828,51 @@ function finalizeInferredAction(message: string, candidate: AgentAction) {
     }
 }
 
-async function inferAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
-    const action = await inferActionUnenriched(message, profile, history);
-    return enrichPlaybookPreview(action, profile);
+interface InferredAction {
+    action: AgentAction;
+    /** No nulo cuando la respuesta se produjo sin Claude: el chat debe decirlo. */
+    degradation: PlannerDegradation | null;
 }
 
-async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
-    if (isIndividualDebtQuery(message)) {
-        return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
-    }
+async function inferAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<InferredAction> {
+    const inferred = await inferActionUnenriched(message, profile, history);
+    return { ...inferred, action: await enrichPlaybookPreview(inferred.action, profile) };
+}
 
+async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<InferredAction> {
+    // Antes `isIndividualDebtQuery` corría aquí, ANTES del planner: un regex
+    // decidía por Claude en toda consulta de deuda. Ahora vive solo dentro de
+    // la heurística, como red de seguridad del fallback. `preventReadOnlyMutation`
+    // sigue garantizando que una consulta nunca se convierta en escritura.
     if (detectMultiIntent(message)) {
+        let missionDegradation = plannerUnavailableDegradation();
         try {
             const missionPlan = await planAgentMission(message, profile);
-            if (missionPlan) return finalizeInferredAction(message, buildMissionAction(missionPlan));
+            if (missionPlan) return { action: finalizeInferredAction(message, buildMissionAction(missionPlan)), degradation: null };
         } catch (error) {
             console.warn('[AgentCenterMission] Claude mission planning failed; falling back to single planner.', error);
+            missionDegradation = plannerDegradationFromError(error);
         }
         const heuristicMission = buildHeuristicMission(message, profile);
-        if (heuristicMission) return finalizeInferredAction(message, heuristicMission);
+        if (heuristicMission) {
+            return { action: finalizeInferredAction(message, heuristicMission), degradation: missionDegradation };
+        }
     }
 
+    let degradation: PlannerDegradation | null;
     try {
-        const plannedAction = await planAgentAction(message, profile, history);
-        if (plannedAction) return finalizeInferredAction(message, plannedAction);
+        const outcome = await planAgentAction(message, profile, history);
+        if (outcome.action) return { action: finalizeInferredAction(message, outcome.action), degradation: null };
+        degradation = outcome.degradation;
     } catch (error) {
         console.warn('[AgentCenterPlanner] Claude planning failed; using deterministic heuristic.', error);
+        degradation = plannerDegradationFromError(error);
     }
 
-    return finalizeInferredAction(message, inferActionHeuristic(message, profile));
+    return {
+        action: finalizeInferredAction(message, inferActionHeuristic(message, profile, history)),
+        degradation,
+    };
 }
 
 /**
@@ -1459,11 +1505,17 @@ export async function POST(req: NextRequest) {
                 .map(turn => ({ role: turn.role, content: turn.content })))
             : [];
 
-        const action = confirmed || rejected
-            ? await loadPersistedProposal(incomingAction, profile)
-            : requestedPlaybook
-                ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
-            : await inferAction(message, profile, agentHistory);
+        let plannerDegradation: PlannerDegradation | null = null;
+        let action: AgentAction;
+        if (confirmed || rejected) {
+            action = await loadPersistedProposal(incomingAction, profile);
+        } else if (requestedPlaybook) {
+            action = await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile);
+        } else {
+            const inferred = await inferAction(message, profile, agentHistory);
+            action = inferred.action;
+            plannerDegradation = inferred.degradation;
+        }
 
         // Persiste el turno para dar memoria a la próxima consulta. Best-effort:
         // si falla, la conversación sigue, solo pierde contexto.
@@ -1516,7 +1568,9 @@ export async function POST(req: NextRequest) {
             ? missionRequiresConfirmation((action.args.steps as AgentMissionStep[]) || [], policies)
             : effectiveRequiresConfirmation(action.toolName, policy);
         action.requiresConfirmation = needsConfirmation;
-        const steps: AgentStep[] = traceStepsForAction(action);
+        const steps: AgentStep[] = plannerDegradation
+            ? [degradationStep(plannerDegradation), ...traceStepsForAction(action)]
+            : traceStepsForAction(action);
 
         if (needsConfirmation && !confirmed) {
             const audit = await logActivity(profile, action, 'preview');
@@ -1538,6 +1592,7 @@ export async function POST(req: NextRequest) {
                 reply: 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla con trazabilidad.',
                 action: persistedAction,
                 steps,
+                degraded: plannerDegradation,
             });
         }
 
@@ -1570,6 +1625,7 @@ export async function POST(req: NextRequest) {
             action,
             result,
             steps,
+            degraded: plannerDegradation,
         });
     } catch (error: unknown) {
         console.error('[agent-center] request failed', error);

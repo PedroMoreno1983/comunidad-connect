@@ -128,8 +128,20 @@ function defaultBudget(): AiBudget {
     };
 }
 
-function isUuid(value?: string | null) {
-    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+/**
+ * Forma de UUID, no RFC 4122 estricto.
+ *
+ * La version anterior exigia los nibbles de version [1-5] y variante [89ab], y
+ * por eso rechazaba dos ids que esta base usa de verdad:
+ * `00000000-0000-0000-0000-000000000000` (comunidad por defecto de varios
+ * admins) y `11111111-1111-1111-1111-111111111111` (el condominio demo del
+ * CLAUDE.md). Postgres los acepta como `uuid`, asi que la consecuencia era
+ * silenciosa y grave: `fetchBudget` devolvia los limites por defecto ignorando
+ * la fila real de `ai_budgets`, `fetchUsage` devolvia cero, y el presupuesto de
+ * IA de esas comunidades quedaba sin tope.
+ */
+export function isUuid(value?: string | null) {
+    return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
 function dailyLimitForRole(budget: AiBudget, role?: string | null) {
@@ -238,7 +250,10 @@ export async function recordAiUsage(input: AiUsageRecord) {
     });
 
     try {
-        await getSupabaseAdmin().from('ai_usage_events').insert({
+        // supabase-js NO lanza en un insert fallido: devuelve { error }. Sin
+        // revisarlo, una violacion de FK o una deriva de schema desaparecia sin
+        // dejar rastro, que es justo lo contrario de para lo que sirve esta tabla.
+        const { error } = await getSupabaseAdmin().from('ai_usage_events').insert({
             community_id: isUuid(input.communityId) ? input.communityId : null,
             user_id: isUuid(input.userId) ? input.userId : null,
             role: input.role ?? null,
@@ -255,6 +270,10 @@ export async function recordAiUsage(input: AiUsageRecord) {
             blocked_reason: input.blockedReason ?? null,
             metadata: input.metadata ?? {},
         });
+
+        if (error) {
+            console.warn(`[AI Budget] Could not record AI usage for ${input.module}: ${error.code} ${error.message}`);
+        }
     } catch (error) {
         console.warn('[AI Budget] Could not record AI usage:', error);
     }

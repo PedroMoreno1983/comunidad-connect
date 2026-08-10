@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
+import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import type { AgentAction, AgentProfile } from '@/lib/agent-center/domain';
 
 export const AGENT_CENTER_CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -114,12 +114,78 @@ export interface PlannerTurn {
     content: string;
 }
 
+/**
+ * Por qué el Agent Center respondió sin Claude.
+ *
+ * Antes las tres causas —sin API key, presupuesto agotado, error de la API—
+ * devolvían `null` o se tragaban en un `catch`, y el administrador recibía una
+ * aclaración genérica indistinguible de una respuesta razonada. El agente
+ * parecía tonto cuando en realidad nunca se había ejecutado.
+ */
+export type PlannerDegradationReason = 'missing_api_key' | 'budget_blocked' | 'api_error' | 'empty_plan';
+
+export interface PlannerDegradation {
+    reason: PlannerDegradationReason;
+    detail: string;
+}
+
+export interface PlannerOutcome {
+    action: AgentAction | null;
+    degradation: PlannerDegradation | null;
+}
+
+const FALLBACK_NOTICE = 'Respondí en modo básico, con reglas por palabras clave.';
+
+const DEGRADATION_DETAIL: Record<PlannerDegradationReason, string> = {
+    missing_api_key: `El motor de razonamiento (Claude) no está configurado en este entorno: falta ANTHROPIC_API_KEY. ${FALLBACK_NOTICE}`,
+    budget_blocked: `El presupuesto de IA de la comunidad bloqueó la llamada al motor de razonamiento. ${FALLBACK_NOTICE}`,
+    api_error: `El motor de razonamiento (Claude) no respondió. ${FALLBACK_NOTICE}`,
+    empty_plan: `El motor de razonamiento (Claude) respondió sin una acción utilizable. ${FALLBACK_NOTICE}`,
+};
+
+function degraded(reason: PlannerDegradationReason, detail?: string): PlannerOutcome {
+    return {
+        action: null,
+        degradation: { reason, detail: detail || DEGRADATION_DETAIL[reason] },
+    };
+}
+
+/** El planner de misiones falla igual que el de acción única; comparte el vocabulario. */
+export function plannerDegradationFromError(error: unknown): PlannerDegradation {
+    if (isAiBudgetExceededError(error)) {
+        return { reason: 'budget_blocked', detail: `${error.message} ${FALLBACK_NOTICE}` };
+    }
+    return { reason: 'api_error', detail: DEGRADATION_DETAIL.api_error };
+}
+
+/** Degradación conocida antes de intentar la llamada: no hay con qué razonar. */
+export function plannerUnavailableDegradation(): PlannerDegradation | null {
+    if (process.env.ANTHROPIC_API_KEY) return null;
+    return { reason: 'missing_api_key', detail: DEGRADATION_DETAIL.missing_api_key };
+}
+
 export async function planAgentAction(
     message: string,
     profile: AgentProfile,
     history: PlannerTurn[] = [],
-): Promise<AgentAction | null> {
-    if (!process.env.ANTHROPIC_API_KEY) return null;
+): Promise<PlannerOutcome> {
+    if (!process.env.ANTHROPIC_API_KEY) {
+        // Sin telemetría, un deploy sin la key se ve exactamente igual que un
+        // agente que decidió pedir precisión. Queda registrado como 'skipped'.
+        await recordAiUsage({
+            communityId: profile.community_id,
+            userId: profile.id,
+            role: profile.role,
+            module: 'agent-center.planner',
+            provider: 'anthropic',
+            model: MODEL,
+            actionType: 'other',
+            status: 'skipped',
+            blockedReason: 'missing_api_key',
+            metadata: { degradedTo: 'heuristic' },
+        });
+        return degraded('missing_api_key');
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     // El contexto reciente se pliega como texto (no como mensajes separados) para
@@ -136,32 +202,71 @@ export async function planAgentAction(
     const estimatedPromptTokens = estimateTokensFromText(`${SYSTEM_PROMPT}\n${userPrompt}`);
     const estimatedCompletionTokens = 900;
 
-    await enforceAiBudget({
-        communityId: profile.community_id,
-        userId: profile.id,
-        role: profile.role,
-        module: 'agent-center.planner',
-        provider: 'anthropic',
-        model: MODEL,
-        actionType: 'other',
-        estimatedPromptTokens,
-        estimatedCompletionTokens,
-    });
+    try {
+        await enforceAiBudget({
+            communityId: profile.community_id,
+            userId: profile.id,
+            role: profile.role,
+            module: 'agent-center.planner',
+            provider: 'anthropic',
+            model: MODEL,
+            actionType: 'other',
+            estimatedPromptTokens,
+            estimatedCompletionTokens,
+        });
+    } catch (error) {
+        // enforceAiBudget ya dejó el evento 'blocked' en ai_usage_events; aquí
+        // solo se traduce el motivo para que el administrador lo vea en el chat.
+        if (isAiBudgetExceededError(error)) {
+            return degraded('budget_blocked', `${error.message} ${FALLBACK_NOTICE}`);
+        }
+        throw error;
+    }
 
     const startedAt = Date.now();
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const response = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 1100,
-        temperature: 0,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userPrompt }],
-        tools: [PLANNER_TOOL],
-        tool_choice: { type: 'tool', name: PLANNER_TOOL.name },
-    });
+
+    let response: Anthropic.Message;
+    try {
+        response = await anthropic.messages.create({
+            model: MODEL,
+            max_tokens: 1100,
+            temperature: 0,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: 'user', content: userPrompt }],
+            tools: [PLANNER_TOOL],
+            tool_choice: { type: 'tool', name: PLANNER_TOOL.name },
+        });
+    } catch (error) {
+        const apiDetail = error instanceof Anthropic.APIError
+            ? `HTTP ${error.status}`
+            : error instanceof Error ? error.name : 'error desconocido';
+        console.warn('[AgentCenterPlanner] Anthropic call failed:', error);
+        await recordAiUsage({
+            communityId: profile.community_id,
+            userId: profile.id,
+            role: profile.role,
+            module: 'agent-center.planner',
+            provider: 'anthropic',
+            model: MODEL,
+            actionType: 'other',
+            promptTokens: estimatedPromptTokens,
+            status: 'error',
+            blockedReason: 'api_error',
+            metadata: {
+                latencyMs: Date.now() - startedAt,
+                degradedTo: 'heuristic',
+                error: error instanceof Error ? error.message.slice(0, 280) : 'unknown',
+            },
+        });
+        return degraded('api_error', `El motor de razonamiento (Claude) no respondió (${apiDetail}). ${FALLBACK_NOTICE}`);
+    }
 
     const promptTokens = response.usage?.input_tokens ?? estimatedPromptTokens;
     const completionTokens = response.usage?.output_tokens ?? estimatedCompletionTokens;
+    const toolUse = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use' && block.name === PLANNER_TOOL.name);
+    const action = coercePlannedAction(toolUse?.input);
+
     await recordAiUsage({
         communityId: profile.community_id,
         userId: profile.id,
@@ -174,10 +279,14 @@ export async function planAgentAction(
         completionTokens,
         totalTokens: promptTokens + completionTokens,
         estimatedCostCents: estimateAiCostCents({ provider: 'anthropic', model: MODEL, promptTokens, completionTokens }),
-        status: 'success',
-        metadata: { latencyMs: Date.now() - startedAt, stopReason: response.stop_reason },
+        status: action ? 'success' : 'error',
+        blockedReason: action ? undefined : 'empty_plan',
+        metadata: {
+            latencyMs: Date.now() - startedAt,
+            stopReason: response.stop_reason,
+            toolName: action?.toolName,
+        },
     });
 
-    const toolUse = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use' && block.name === PLANNER_TOOL.name);
-    return coercePlannedAction(toolUse?.input);
+    return action ? { action, degradation: null } : degraded('empty_plan');
 }
