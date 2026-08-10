@@ -603,8 +603,22 @@ def parse_jumbo_html(page_html: str, query: str) -> tuple[list[Product], int]:
                 )
             )
 
-    total_match = re.search(r"(\d[\d.]*)\s+productos", page_html, flags=re.I)
-    total = parse_price(total_match.group(1)) if total_match else len(products)
+    # Jumbo renders the product count through nested markup. Searching the raw
+    # HTML misses values such as "<span>617</span> productos" and silently
+    # reduces the crawl to the first page. Normalize the visible text first so
+    # pagination remains complete even when Jumbo changes wrapper elements.
+    page_text = html.unescape(re.sub(r"<[^>]+>", " ", page_html))
+    page_text = re.sub(r"\s+", " ", page_text)
+    total_match = re.search(r"(\d[\d.]*)\s+productos", page_text, flags=re.I)
+    page_count_match = re.search(
+        r"p[aá]gina\s+\d+\s+de\s+(\d+)",
+        page_text,
+        flags=re.I,
+    )
+    page_count = parse_price(page_count_match.group(1)) if page_count_match else 0
+    total = parse_price(total_match.group(1)) if total_match else 0
+    if total <= 0 and page_count > 0:
+        total = len(products) * page_count
     return list(unique_products(products)), total or len(products)
 
 def extract_santa_render_data(page_html: str) -> dict[str, Any]:

@@ -197,6 +197,33 @@ class FullCatalogParserTests(unittest.TestCase):
             "https://www.jumbo.cl/arroz-grado-1-2034586/p",
         )
 
+    def test_jumbo_html_reads_counts_across_nested_markup(self) -> None:
+        document = {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": [
+                {
+                    "item": {
+                        "@type": "Product",
+                        "name": "Leche Entera 1 L",
+                        "url": "https://www.jumbo.cl/leche-entera-1234567/p",
+                        "offers": {
+                            "price": 1190,
+                            "availability": "https://schema.org/InStock",
+                        },
+                    }
+                }
+            ],
+        }
+        page_html = (
+            '<span class="total">617</span><span> productos</span>'
+            '<label>Página <strong>1</strong> de <strong>16</strong></label>'
+            f'<script type="application/ld+json">{json.dumps(document)}</script>'
+        )
+        products, total = parse_jumbo_html(page_html, "lacteos")
+        self.assertEqual(len(products), 1)
+        self.assertEqual(total, 617)
+
     def test_santa_render_data_and_menu_categories(self) -> None:
         render_data = {
             "menu": {
