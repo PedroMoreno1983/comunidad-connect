@@ -546,6 +546,15 @@ def jumbo_payload_candidates(value: Any) -> Iterator[dict[str, Any]]:
             yield from jumbo_payload_candidates(nested)
 
 
+def jumbo_page_count_from_links(hrefs: Iterable[Any]) -> int:
+    page_count = 1
+    for href in hrefs:
+        match = re.search(r"(?:[?&])page=(\d+)", str(href), flags=re.I)
+        if match:
+            page_count = max(page_count, int(match.group(1)))
+    return page_count
+
+
 
 def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
     for match in re.finditer(
@@ -911,6 +920,16 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 if len(payload_products) > len(best_products):
                     best_products = payload_products
                 best_total = max(best_total, payload_total)
+
+            page_hrefs = page.locator('a[href*="page="]').evaluate_all(
+                "(nodes) => nodes.map((node) => node.getAttribute('href') || '')"
+            )
+            rendered_page_count = jumbo_page_count_from_links(page_hrefs)
+            if best_products and rendered_page_count > 1:
+                best_total = max(
+                    best_total,
+                    len(best_products) * rendered_page_count,
+                )
             return best_products, best_total
 
         page.on("response", capture_catalog_response)
