@@ -859,39 +859,72 @@ def crawl_unimarc(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
-    for category in JUMBO_CATEGORIES:
-        base_url = f"https://www.jumbo.cl/{category}"
-        first_html = fetch_text(base_url)
-        first_products, total = parse_jumbo_html(first_html, category)
-        if total > 0 and not first_products:
-            raise RuntimeError(
-                f"Jumbo category {category} published no usable JSON-LD products"
-            )
-        yield from first_products
+    # Jumbo renders paginated catalog state client-side. A plain HTTP request
+    # receives the first page, but subsequent pages can be an empty app shell.
+    # Use the browser runtime already installed by the catalog workflow and wait
+    # until the page publishes its ItemList JSON-LD before parsing.
+    sync_playwright = _require_playwright()
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(user_agent=USER_AGENT, locale="es-CL")
+        try:
+            for category in JUMBO_CATEGORIES:
+                base_url = f"https://www.jumbo.cl/{category}"
+                page.goto(
+                    base_url,
+                    wait_until="domcontentloaded",
+                    timeout=45_000,
+                )
+                page.wait_for_function(
+                    """() => Array.from(
+                        document.querySelectorAll('script[type="application/ld+json"]')
+                    ).some((node) => (node.textContent || '').includes('ItemList'))""",
+                    timeout=30_000,
+                )
+                first_products, total = parse_jumbo_html(page.content(), category)
+                if total > 0 and not first_products:
+                    raise RuntimeError(
+                        f"Jumbo category {category} published no usable JSON-LD products"
+                    )
+                yield from first_products
 
-        page_size = max(len(first_products), 1)
-        page_count = math.ceil(total / page_size)
-        final_page = min(page_count, max_pages) if max_pages is not None else page_count
-        first_signature = tuple(product_key(product) for product in first_products)
-        seen_pages = {first_signature}
-        urls = (
-            f"{base_url}?page={page_number}"
-            for page_number in range(2, final_page + 1)
-        )
-        for page_html in fetch_many(urls, workers=4):
-            products, _ = parse_jumbo_html(page_html, category)
-            signature = tuple(product_key(product) for product in products)
-            if not products:
-                raise RuntimeError(
-                    f"Jumbo category {category} returned an empty page before completion"
+                page_size = max(len(first_products), 1)
+                page_count = math.ceil(total / page_size)
+                final_page = (
+                    min(page_count, max_pages)
+                    if max_pages is not None
+                    else page_count
                 )
-            if signature in seen_pages:
-                raise RuntimeError(
-                    f"Jumbo category {category} repeated a page; "
-                    "refusing to report an incomplete crawl"
-                )
-            seen_pages.add(signature)
-            yield from products
+                first_signature = tuple(product_key(product) for product in first_products)
+                seen_pages = {first_signature}
+                for page_number in range(2, final_page + 1):
+                    page.goto(
+                        f"{base_url}?page={page_number}",
+                        wait_until="domcontentloaded",
+                        timeout=45_000,
+                    )
+                    page.wait_for_function(
+                        """() => Array.from(
+                            document.querySelectorAll('script[type="application/ld+json"]')
+                        ).some((node) => (node.textContent || '').includes('ItemList'))""",
+                        timeout=30_000,
+                    )
+                    products, _ = parse_jumbo_html(page.content(), category)
+                    signature = tuple(product_key(product) for product in products)
+                    if not products:
+                        raise RuntimeError(
+                            f"Jumbo category {category} returned an empty page "
+                            "before completion"
+                        )
+                    if signature in seen_pages:
+                        raise RuntimeError(
+                            f"Jumbo category {category} repeated a page; "
+                            "refusing to report an incomplete crawl"
+                        )
+                    seen_pages.add(signature)
+                    yield from products
+        finally:
+            browser.close()
 
 
 def crawl_lider(max_pages: int | None = None) -> Iterator[Product]:
