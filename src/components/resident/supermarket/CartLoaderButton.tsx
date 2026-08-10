@@ -114,9 +114,10 @@ function UnimarcLoginNotice() {
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
   onQuote?: (quote: SupermarketCheckoutQuote) => void;
+  onSelect?: () => void;
 }
 
-export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
+export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButtonProps) {
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -512,6 +513,7 @@ export function CartLoaderButton({ basket, onQuote }: CartLoaderButtonProps) {
         type="button"
         disabled={loading}
         onClick={() => {
+          onSelect?.();
           if (manualOnly) { void openInSystemBrowser(storeUrl); return; }
           if (canLoadDirectly) {
             // En el navegador del sistema no hay pestaña que preparar: el
