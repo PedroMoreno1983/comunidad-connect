@@ -526,6 +526,26 @@ def parse_jumbo_payload(data: dict[str, Any], query: str) -> tuple[list[Product]
     return products, parse_price(data.get("results")) or len(products)
 
 
+def jumbo_payload_candidates(value: Any) -> Iterator[dict[str, Any]]:
+    """Find Jumbo product-list payloads nested in browser JSON responses."""
+    if isinstance(value, dict):
+        products = value.get("products")
+        if (
+            isinstance(products, list)
+            and products
+            and any(
+                isinstance(product, dict) and isinstance(product.get("items"), list)
+                for product in products
+            )
+        ):
+            yield value
+        for nested in value.values():
+            yield from jumbo_payload_candidates(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from jumbo_payload_candidates(nested)
+
+
 
 def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
     for match in re.finditer(
@@ -859,32 +879,48 @@ def crawl_unimarc(max_pages: int | None = None) -> Iterator[Product]:
 
 
 def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
-    # Jumbo renders paginated catalog state client-side. A plain HTTP request
-    # receives the first page, but subsequent pages can be an empty app shell.
-    # Use the browser runtime already installed by the catalog workflow and wait
-    # until the page publishes its ItemList JSON-LD before parsing.
+    # Jumbo renders paginated catalog state client-side. Later pages do not
+    # consistently publish JSON-LD, so capture the same JSON catalog responses
+    # used by the browser and fall back to rendered JSON-LD for page one.
     sync_playwright = _require_playwright()
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(user_agent=USER_AGENT, locale="es-CL")
+        captured_payloads: list[dict[str, Any]] = []
+
+        def capture_catalog_response(response: Any) -> None:
+            content_type = str(response.headers.get("content-type") or "").casefold()
+            if "json" not in content_type:
+                return
+            try:
+                body = response.json()
+            except Exception:
+                return
+            captured_payloads.extend(jumbo_payload_candidates(body))
+
+        def load_catalog_page(url: str, category: str) -> tuple[list[Product], int]:
+            captured_payloads.clear()
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_timeout(3_000)
+
+            html_products, html_total = parse_jumbo_html(page.content(), category)
+            best_products = html_products
+            best_total = html_total
+            for payload in captured_payloads:
+                payload_products, payload_total = parse_jumbo_payload(payload, category)
+                if len(payload_products) > len(best_products):
+                    best_products = payload_products
+                best_total = max(best_total, payload_total)
+            return best_products, best_total
+
+        page.on("response", capture_catalog_response)
         try:
             for category in JUMBO_CATEGORIES:
                 base_url = f"https://www.jumbo.cl/{category}"
-                page.goto(
-                    base_url,
-                    wait_until="domcontentloaded",
-                    timeout=45_000,
-                )
-                page.wait_for_function(
-                    """() => Array.from(
-                        document.querySelectorAll('script[type="application/ld+json"]')
-                    ).some((node) => (node.textContent || '').includes('ItemList'))""",
-                    timeout=30_000,
-                )
-                first_products, total = parse_jumbo_html(page.content(), category)
+                first_products, total = load_catalog_page(base_url, category)
                 if total > 0 and not first_products:
                     raise RuntimeError(
-                        f"Jumbo category {category} published no usable JSON-LD products"
+                        f"Jumbo category {category} published no usable products"
                     )
                 yield from first_products
 
@@ -898,18 +934,10 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 first_signature = tuple(product_key(product) for product in first_products)
                 seen_pages = {first_signature}
                 for page_number in range(2, final_page + 1):
-                    page.goto(
+                    products, _ = load_catalog_page(
                         f"{base_url}?page={page_number}",
-                        wait_until="domcontentloaded",
-                        timeout=45_000,
+                        category,
                     )
-                    page.wait_for_function(
-                        """() => Array.from(
-                            document.querySelectorAll('script[type="application/ld+json"]')
-                        ).some((node) => (node.textContent || '').includes('ItemList'))""",
-                        timeout=30_000,
-                    )
-                    products, _ = parse_jumbo_html(page.content(), category)
                     signature = tuple(product_key(product) for product in products)
                     if not products:
                         raise RuntimeError(
