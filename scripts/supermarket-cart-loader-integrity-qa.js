@@ -124,8 +124,13 @@ check(
     && page.includes('setList(shoppingListForBasket(basket, requested))'),
   'La tabla de productos puede quedar mostrando otra tienda distinta a la seleccionada.',
 );
+check(
+  button.includes("storeLoadability(store) !== 'manual'"),
+  'La UI no delega la cargabilidad a la fuente de verdad compartida.',
+);
 for (const store of stores) {
-  check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
+  const homeKey = store.includes(' ') ? `'${store}'` : `${store}:`;
+  check(button.includes(homeKey), `La UI no declara el destino de ${store}.`);
 }
 check(
   button.includes('Cargar carro en ${basket.store}') && button.includes('Volver a abrir el carro'),
