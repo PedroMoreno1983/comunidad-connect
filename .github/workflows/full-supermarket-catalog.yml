@@ -6,6 +6,8 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_ingest_full_supermarket_catalog.py"
+      - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
       - ".github/workflows/full-supermarket-catalog.yml"
   push:
     branches:
@@ -14,6 +16,8 @@ on:
       - "scripts/full_catalog.py"
       - "scripts/ingest_full_supermarket_catalog.py"
       - "scripts/test_full_catalog.py"
+      - "scripts/test_ingest_full_supermarket_catalog.py"
+      - "supabase/migrations/20260810180000_reconcile_supermarket_stock.sql"
       - ".github/workflows/full-supermarket-catalog.yml"
   schedule:
     - cron: "27 3 * * *"
@@ -59,8 +63,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run catalog parser tests
-        run: python -m unittest scripts/test_full_catalog.py -v
+      - name: Run catalog ingestion tests
+        run: python -m unittest scripts/test_full_catalog.py scripts/test_ingest_full_supermarket_catalog.py -v
 
   crawl:
     if: github.event_name != 'pull_request'

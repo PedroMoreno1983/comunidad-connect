@@ -124,8 +124,13 @@ check(
     && page.includes('setList(shoppingListForBasket(basket, requested))'),
   'La tabla de productos puede quedar mostrando otra tienda distinta a la seleccionada.',
 );
+check(
+  button.includes("storeLoadability(store) !== 'manual'"),
+  'La UI no delega la cargabilidad a la fuente de verdad compartida.',
+);
 for (const store of stores) {
-  check(button.includes(`'${store}'`), `La UI no habilita ${store}.`);
+  const homeKey = store.includes(' ') ? `'${store}'` : `${store}:`;
+  check(button.includes(homeKey), `La UI no declara el destino de ${store}.`);
 }
 check(
   button.includes('Cargar carro en ${basket.store}') && button.includes('Volver a abrir el carro'),
@@ -162,8 +167,9 @@ const cartRoute = fs.readFileSync(
 check(
   cartUrl.includes('https://santaisabel.vtexcommercestable.com.br')
     && cartUrl.includes('https://unimarc.vtexcommercestable.com.br')
-    && cartUrl.includes('https://jumbo.vtexcommercestable.com.br'),
-  'Los enlaces VTEX no apuntan a los hosts reales de checkout.',
+    && cartUrl.includes("Jumbo: 'https://www.jumbo.cl'")
+    && !cartUrl.includes("Jumbo: 'https://jumbo.vtexcommercestable.com.br'"),
+  'Los enlaces de carro no respetan los dominios de sesión verificados.',
 );
 check(
   cartUrl.includes("params.append('redirect', store === 'Unimarc' ? 'false' : 'true')"),

@@ -104,6 +104,44 @@ def catalog_count(store_name: str) -> int:
         return int(total) if total.isdigit() else 0
 
 
+def finalize_stock_reconciliation(store_name: str, started_at: str) -> dict[str, Any]:
+    supabase_url, service_role_key = supabase_credentials()
+    finished_at = utc_now()
+    payload = {
+        "p_store": store_name,
+        "p_started_at": started_at,
+        "p_finished_at": finished_at,
+    }
+    request = Request(
+        f"{supabase_url}/rest/v1/rpc/finalize_supermarket_catalog_refresh",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        method="POST",
+        headers={
+            "apikey": service_role_key,
+            "Authorization": f"Bearer {service_role_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urlopen(request, timeout=75) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body) if body else {}
+            if not isinstance(result, dict):
+                raise RuntimeError("Supabase returned an invalid stock reconciliation result")
+            return result
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:2_000]
+        raise RuntimeError(
+            f"Supabase rejected {store_name} stock reconciliation with "
+            f"HTTP {error.code}: {detail}"
+        ) from error
+    except URLError as error:
+        raise RuntimeError(
+            f"Could not reach Supabase while reconciling {store_name}: {error.reason}"
+        ) from error
+
+
 def crawl_store(
     store: str,
     batch_size: int,
@@ -111,6 +149,7 @@ def crawl_store(
     dry_run: bool,
 ) -> dict[str, Any]:
     started = time.time()
+    started_at = utc_now()
     display_store = {
         "santaisabel": "Santa Isabel",
         "tottus": "Tottus",
@@ -160,6 +199,22 @@ def crawl_store(
             "dry_run": dry_run,
         }
 
+    stock_reconciliation = None
+    if not dry_run and max_pages is None:
+        try:
+            stock_reconciliation = finalize_stock_reconciliation(display_store, started_at)
+        except Exception as error:  # noqa: BLE001 - reconciliation failures must fail the job.
+            return {
+                "store": display_store,
+                "status": "partial",
+                "error": f"Stock reconciliation failed: {error}",
+                "scraped_count": scraped_count,
+                "persisted_count": persisted_count,
+                "batch_count": len(batch_results),
+                "elapsed_seconds": round(time.time() - started, 2),
+                "dry_run": dry_run,
+            }
+
     database_count = None if dry_run else catalog_count(display_store)
     return {
         "store": display_store,
@@ -168,6 +223,7 @@ def crawl_store(
         "persisted_count": persisted_count,
         "database_count": database_count,
         "batch_count": len(batch_results),
+        "stock_reconciliation": stock_reconciliation,
         "elapsed_seconds": round(time.time() - started, 2),
         "dry_run": dry_run,
     }
