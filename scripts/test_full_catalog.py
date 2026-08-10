@@ -14,6 +14,7 @@ from full_catalog import (
     acuenta_categories_from_html,
     extract_santa_render_data,
     extract_next_flight_stream,
+    jumbo_page_count_from_links,
     jumbo_payload_candidates,
     parse_acuenta_categories,
     parse_acuenta_category_page,
@@ -128,6 +129,14 @@ class FullCatalogParserTests(unittest.TestCase):
         self.assertEqual(total, 1614)
         self.assertEqual(products[0].store, "Unimarc")
         self.assertEqual(products[0].price, 1290)
+
+    def test_jumbo_page_count_reads_rendered_pagination_links(self) -> None:
+        hrefs = [
+            "/frutas-y-verduras?page=2",
+            "https://www.jumbo.cl/frutas-y-verduras?sort=asc&page=16",
+            None,
+        ]
+        self.assertEqual(jumbo_page_count_from_links(hrefs), 16)
 
     def test_jumbo_payload_candidates_find_nested_browser_response(self) -> None:
         payload = {
