@@ -242,8 +242,7 @@ export async function POST(req: NextRequest) {
               complete: ready,
             },
             ...comparison.comparisons
-              .filter(basket => basket.store !== selectedStore)
-              .slice(0, 2),
+              .filter(basket => basket.store !== selectedStore),
           ],
           checkout: {
             status: checkoutPlan.status,

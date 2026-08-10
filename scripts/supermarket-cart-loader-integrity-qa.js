@@ -111,6 +111,10 @@ const button = fs.readFileSync(
   path.join(root, 'src', 'components', 'resident', 'supermarket', 'CartLoaderButton.tsx'),
   'utf8',
 );
+const supermarketRoute = fs.readFileSync(
+  path.join(root, 'src', 'app', 'api', 'supermarket', 'route.ts'),
+  'utf8',
+);
 check(
   page.includes('<CartLoaderButton')
     && page.includes('key={selectedBasket.store}')
@@ -123,6 +127,14 @@ check(
     && page.includes('selectBasket(initialBasket, nextRequested)')
     && page.includes('setList(shoppingListForBasket(basket, requested))'),
   'La tabla de productos puede quedar mostrando otra tienda distinta a la seleccionada.',
+);
+check(
+  page.includes('additionalBasketOptions')
+    && page.includes('Otros supermercados')
+    && page.includes('onSelect={() => selectBasket(basket)}')
+    && button.includes('onSelect?.()')
+    && !supermarketRoute.includes('.slice(0, 2)'),
+  'La comparación no ofrece todos los supermercados o la carga no selecciona la tienda en el mismo clic.',
 );
 check(
   button.includes("storeLoadability(store) !== 'manual'"),
