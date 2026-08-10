@@ -148,6 +148,8 @@ export default function SupermarketPage() {
     [basketOptions, selectedStore],
   );
   const completeBasketCount = basketOptions.filter(basket => basket.complete).length;
+  const featuredBasketOptions = basketOptions.slice(0, 3);
+  const additionalBasketOptions = basketOptions.slice(3);
 
   const selectBasket = (
     basket: SupermarketBasketCandidate,
@@ -392,7 +394,7 @@ export default function SupermarketPage() {
             })()}
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {basketOptions.map((basket, index) => {
+              {featuredBasketOptions.map((basket, index) => {
                 const selected = basket.store === selectedBasket?.store;
                 return (
                   <button
@@ -459,6 +461,75 @@ export default function SupermarketPage() {
                 );
               })}
             </div>
+
+            {additionalBasketOptions.length > 0 && (
+              <div
+                className="mt-6 rounded-2xl border p-4 md:p-5"
+                style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+              >
+                <div>
+                  <p className="text-sm font-bold cc-text-primary">Otros supermercados</p>
+                  <p className="mt-1 text-xs leading-5 cc-text-secondary">
+                    También puedes comprar en cualquiera de estas tiendas. Al cargar el carro,
+                    esa tienda queda seleccionada y se abre inmediatamente cuando la cadena lo permite.
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {additionalBasketOptions.map(basket => (
+                    <div
+                      key={basket.store}
+                      data-store-option={basket.store}
+                      className="rounded-xl border p-4"
+                      style={{
+                        borderColor: basket.store === selectedBasket?.store
+                          ? 'var(--cc-copper)'
+                          : 'var(--cc-line)',
+                        background: 'var(--cc-paper)',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold cc-text-primary">{basket.store}</p>
+                          <p className="mt-1 text-xs cc-text-secondary">
+                            {basket.coveredCount} de {basket.requestedCount} productos
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold cc-text-primary">
+                            {basket.quoteStatus === 'retailer'
+                              ? money(basket.subtotal)
+                              : `Est. ${money(basket.subtotal)}`}
+                          </p>
+                          <p className="text-[10px] cc-text-tertiary">
+                            {basket.complete ? 'Lista completa' : `${basket.missingTerms.length} por reemplazar`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        {basket.items.length > 0 ? (
+                          <CartLoaderButton
+                            basket={basket}
+                            onQuote={applyCheckoutQuote}
+                            onSelect={() => selectBasket(basket)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => selectBasket(basket)}
+                            className="h-11 w-full rounded-lg border text-sm font-semibold cc-text-primary"
+                            style={{ borderColor: 'var(--cc-line)' }}
+                          >
+                            Ver opción en {basket.store}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {selectedBasket && (
