@@ -907,11 +907,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 return
             captured_payloads.extend(jumbo_payload_candidates(body))
 
-        def load_catalog_page(url: str, category: str) -> tuple[list[Product], int]:
-            captured_payloads.clear()
-            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
-            page.wait_for_timeout(3_000)
-
+        def current_catalog_page(category: str) -> tuple[list[Product], int]:
             html_products, html_total = parse_jumbo_html(page.content(), category)
             best_products = html_products
             best_total = html_total
@@ -932,11 +928,42 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 )
             return best_products, best_total
 
+        def load_catalog_url(url: str, category: str) -> tuple[list[Product], int]:
+            captured_payloads.clear()
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_timeout(3_000)
+            return current_catalog_page(category)
+
+        def click_catalog_page(
+            page_number: int,
+            category: str,
+        ) -> tuple[list[Product], int]:
+            label = re.compile(rf"^p[aá]gina\\s+{page_number}$", flags=re.I)
+            candidates = (
+                page.get_by_role("link", name=label),
+                page.get_by_role("button", name=label),
+                page.locator(f'[aria-label="Página {page_number}"]'),
+                page.locator(f'[aria-label="pagina {page_number}" i]'),
+            )
+            control = next(
+                (candidate.first for candidate in candidates if candidate.count() > 0),
+                None,
+            )
+            if control is None:
+                raise RuntimeError(
+                    f"Jumbo category {category} does not expose a control "
+                    f"for page {page_number}"
+                )
+            captured_payloads.clear()
+            control.click(timeout=15_000)
+            page.wait_for_timeout(3_000)
+            return current_catalog_page(category)
+
         page.on("response", capture_catalog_response)
         try:
             for category in JUMBO_CATEGORIES:
                 base_url = f"https://www.jumbo.cl/{category}"
-                first_products, total = load_catalog_page(base_url, category)
+                first_products, total = load_catalog_url(base_url, category)
                 if total > 0 and not first_products:
                     raise RuntimeError(
                         f"Jumbo category {category} published no usable products"
@@ -957,10 +984,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                 seen_pages = {first_signature}
                 repeated_page = False
                 for page_number in range(2, final_page + 1):
-                    products, _ = load_catalog_page(
-                        f"{base_url}?page={page_number}",
-                        category,
-                    )
+                    products, _ = click_catalog_page(page_number, category)
                     signature = tuple(product_key(product) for product in products)
                     if not products:
                         raise RuntimeError(
