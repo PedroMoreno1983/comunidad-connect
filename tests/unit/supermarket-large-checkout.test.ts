@@ -9,7 +9,7 @@ function row(store: string, term: string, price: number) {
   return {
     id: `${store}-${term}`,
     store,
-    name: `${term} 1 kg`,
+    name: term === 'leche' ? `${term} 1 L` : `${term} 1 kg`,
     brand: null,
     product_url: `https://example.com/${store}/${term}`,
     image_url: null,
