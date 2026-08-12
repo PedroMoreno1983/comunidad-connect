@@ -55,7 +55,7 @@ function fixtureHtml(store) {
     <html>
       <body>
         <header>
-          <button id="fixture-cart" aria-label="El carro tiene 0 productos">0</button>
+          <button id="fixture-cart" aria-label="El carro tiene 0 productos" onclick="sessionStorage.setItem('convive-cart-opened', 'true')">0</button>
         </header>
         <main>
           <h1>Producto ${store} test</h1>
@@ -206,12 +206,18 @@ async function main() {
       if (retailerPages.length !== 1) {
         throw new Error(`${store.name} abrió ${retailerPages.length} pestañas; se esperaba una.`);
       }
+      await retailerPages[0].waitForFunction(
+        () => sessionStorage.getItem('convive-cart-opened') === 'true',
+        null,
+        { timeout: 5000 },
+      );
       const quantities = await retailerPages[0].evaluate(() => ({
         milk: sessionStorage.getItem('milk'),
         rice: sessionStorage.getItem('rice'),
+        cartOpened: sessionStorage.getItem('convive-cart-opened'),
       }));
-      if (quantities.milk !== '2' || quantities.rice !== '1') {
-        throw new Error(`${store.name} no conservó cantidades: ${JSON.stringify(quantities)}`);
+      if (quantities.milk !== '2' || quantities.rice !== '1' || quantities.cartOpened !== 'true') {
+        throw new Error(`${store.name} no conservó cantidades o no abrió el carro: ${JSON.stringify(quantities)}`);
       }
       results.push({ store: store.name, retailerTabs: retailerPages.length, quantities, progress });
     }
