@@ -27,7 +27,9 @@ function isCartProgress(value: unknown): value is SupermarketCartLoadProgress {
 export function useSupermarketCartLoader(
   basket: SupermarketPurchasePlanBasket,
 ): SupermarketCartLoaderBridge {
-  const [availability, setAvailability] = useState<SupermarketCartLoaderBridge['availability']>('checking');
+  const [availability, setAvailability] = useState<SupermarketCartLoaderBridge['availability']>(
+    Capacitor.isNativePlatform() ? 'unavailable' : 'checking',
+  );
   const [progress, setProgress] = useState<SupermarketCartLoadProgress | null>(null);
 
   const request = useMemo<SupermarketCartLoadRequest>(() => ({
@@ -44,13 +46,8 @@ export function useSupermarketCartLoader(
   }), [basket]);
 
   useEffect(() => {
-    setProgress(null);
-    if (Capacitor.isNativePlatform()) {
-      setAvailability('unavailable');
-      return;
-    }
+    if (Capacitor.isNativePlatform()) return;
 
-    setAvailability('checking');
     let ready = false;
     const onMessage = (event: MessageEvent<unknown>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
@@ -114,5 +111,9 @@ export function useSupermarketCartLoader(
     return true;
   }, [availability, request]);
 
-  return { availability, progress, start };
+  return {
+    availability,
+    progress: progress?.store === basket.store ? progress : null,
+    start,
+  };
 }
