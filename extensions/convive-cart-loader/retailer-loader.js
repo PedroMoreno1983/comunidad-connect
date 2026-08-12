@@ -57,6 +57,52 @@
     return null;
   }
 
+  function cartControlCandidates(config) {
+    const scored = new Map();
+    const offer = (candidate, score) => {
+      if (!(candidate instanceof Element)) return;
+      const element = candidate.matches('a[href],button,[role="button"]')
+        ? candidate
+        : candidate.closest('a[href],button,[role="button"]');
+      if (!element || !isVisible(element) || !isEnabled(element)) return;
+      if (element.closest('#convive-cart-loader')) return;
+      const previous = scored.get(element) || 0;
+      scored.set(element, Math.max(previous, score));
+    };
+
+    for (const selector of config.cartSelectors) {
+      for (const element of document.querySelectorAll(selector)) offer(element, 130);
+    }
+
+    for (const element of document.querySelectorAll(
+      'header a[href],header button,header [role="button"],nav a[href],nav button,nav [role="button"]',
+    )) {
+      const metadata = normalize([
+        elementLabel(element),
+        element.getAttribute('class'),
+        element.getAttribute('id'),
+        element.getAttribute('href'),
+        element.getAttribute('data-testid'),
+      ].filter(Boolean).join(' '));
+      if (/\b(agregar|anadir|comprar|pagar|confirmar|finalizar)\b/.test(metadata)) continue;
+      const cartIntent = ['cart', 'carro', 'carrito', 'basket', 'shopping bag']
+        .some(fragment => metadata.includes(fragment));
+      if (!cartIntent) continue;
+      const href = normalize(element.getAttribute('href'));
+      const score = (href.includes('cart') || href.includes('carro') ? 110 : 0)
+        + (metadata.includes('cart') || metadata.includes('carro') || metadata.includes('carrito') ? 80 : 0);
+      offer(element, score);
+    }
+
+    return [...scored.entries()]
+      .map(([element, score]) => ({ element, score }))
+      .sort((left, right) => right.score - left.score);
+  }
+
+  function findCartControl(config) {
+    return cartControlCandidates(config)[0]?.element || null;
+  }
+
   function findAddControl(config) {
     const configured = firstVisible(config.addSelectors, document, config.allowHiddenControls);
     if (configured) return configured;
@@ -186,19 +232,20 @@
   }
 
   function parseCartCount(config) {
-    for (const selector of config.cartSelectors) {
-      const elements = [...document.querySelectorAll(selector)].filter(isVisible);
-      for (const element of elements) {
-        const label = [
-          element.textContent,
-          element.getAttribute('aria-label'),
-          element.getAttribute('title'),
-        ].filter(Boolean).join(' ');
-        const cartMatch = label.match(/(?:carro|carrito|cart)[^\d]{0,30}(\d{1,4})/i);
-        if (cartMatch) return Number(cartMatch[1]);
-        const plainMatch = label.trim().match(/^(\d{1,4})$/);
-        if (plainMatch) return Number(plainMatch[1]);
-      }
+    for (const { element } of cartControlCandidates(config)) {
+      const label = [
+        element.textContent,
+        element.getAttribute('aria-label'),
+        element.getAttribute('title'),
+      ].filter(Boolean).join(' ');
+      const cartMatch = label.match(/(?:carro|carrito|cart)[^\d]{0,40}(\d{1,4})/i);
+      if (cartMatch) return Number(cartMatch[1]);
+      const plainMatch = label.trim().match(/^(\d{1,4})$/);
+      if (plainMatch) return Number(plainMatch[1]);
+      const badge = [...element.querySelectorAll('span,strong,small')]
+        .map(candidate => candidate.textContent?.trim() || '')
+        .find(value => /^\d{1,4}$/.test(value));
+      if (badge) return Number(badge);
     }
     return null;
   }
@@ -266,9 +313,14 @@
         item: null,
         detail: response.progress.detail,
       });
-      const cartControl = firstVisible(config.cartSelectors);
+      const cartControl = await waitFor(() => findCartControl(config), 5000);
       if (cartControl) {
-        window.setTimeout(() => cartControl.click(), 700);
+        window.setTimeout(() => {
+          cartControl.click();
+          overlay.querySelector('.coco-loader__detail').textContent =
+            `${response.progress.detail} Abrimos el carro de ${response.progress.store} para que lo revises.`;
+          window.setTimeout(() => overlay.remove(), 2500);
+        }, 700);
       } else {
         overlay.querySelector('.coco-loader__detail').textContent =
           `${response.progress.detail} Pulsa el carro de ${response.progress.store} para continuar al pago.`;
@@ -362,7 +414,12 @@
       return;
     }
 
-    const claim = await runtimeMessage({ type: 'CLAIM_CART_ITEM', itemId: item.id });
+    const cartCountBeforeQuantity = parseCartCount(config);
+    const claim = await runtimeMessage({
+      type: 'CLAIM_CART_ITEM',
+      itemId: item.id,
+      cartCountBefore: cartCountBeforeQuantity,
+    });
     if (!claim?.ok) {
       await pause(
         overlay,
@@ -374,7 +431,6 @@
     let preferredRoot = addControl.closest(
       'article,li,[data-testid*="product"],[data-testid*="quantifier"],[class*="product-control"],[class*="product-form"],product-form',
     );
-    const cartCountBeforeQuantity = parseCartCount(config);
     let quantityResult = { complete: true, clicks: 0 };
     let addedDuringQuantity = false;
     if (config.quantityBeforeAdd) {

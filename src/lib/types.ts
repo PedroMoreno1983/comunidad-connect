@@ -391,6 +391,8 @@ export interface SupermarketCartLoadProgress {
   added: number;
   failed: number;
   currentItem?: string;
+  previousCartUnits?: number;
+  cartTotalUnits?: number;
   detail: string;
 }
 

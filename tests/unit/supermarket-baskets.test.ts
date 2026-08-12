@@ -155,6 +155,23 @@ describe('buildBasketComparison', () => {
     expect(result.comparisons.some(basket => basket.store === 'Lider')).toBe(false);
   });
 
+  it('uses a household-size dairy milk for a generic milk request', () => {
+    const result = buildBasketComparison(['leche'], {
+      leche: [
+        row('Jumbo', 'Leche Soprole Avena con Manzana 200 ml', 570),
+        row('Jumbo', 'Leche entera 1 L', 1090),
+        row('Lider', 'Leche descremada 900 ml', 990),
+        row('Santa Isabel', 'Bebida vegetal de almendras 1 L', 1890),
+      ],
+    });
+
+    expect(result.recommended?.store).toBe('Lider');
+    expect(result.recommended?.items[0].name).toBe('Leche descremada 900 ml');
+    expect(result.comparisons.flatMap(basket => basket.items).map(item => item.name)).not.toContain(
+      'Leche Soprole Avena con Manzana 200 ml',
+    );
+  });
+
   it('rejects tiny or unrelated products for a generic asado list', () => {
     const result = buildBasketComparison(['carne', 'longanizas', 'bebidas'], {
       carne: [

@@ -37,7 +37,15 @@
       '.product-control input[type="number"]',
       '.product-control [data-quantity]',
     ],
-    cartSelectors: ['button[aria-label*="carro de compras"]'],
+    cartSelectors: [
+      'button[aria-label*="carro" i]',
+      'a[aria-label*="carro" i]',
+      '[data-testid*="cart" i]',
+      'header a[href*="cart" i]',
+      'header a[href*="carro" i]',
+      'header button[class*="cart" i]',
+      'header [role="button"][class*="cart" i]',
+    ],
   };
 
   const configs = {

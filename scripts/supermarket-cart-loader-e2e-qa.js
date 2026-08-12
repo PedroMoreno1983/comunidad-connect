@@ -55,7 +55,7 @@ function fixtureHtml(store) {
     <html>
       <body>
         <header>
-          <button id="fixture-cart" aria-label="El carro tiene 0 productos" onclick="sessionStorage.setItem('convive-cart-opened', 'true')">0</button>
+          <button id="fixture-cart" aria-label="El carro tiene 2 productos" onclick="sessionStorage.setItem('convive-cart-opened', 'true')">2</button>
         </header>
         <main>
           <h1>Producto ${store} test</h1>
@@ -70,8 +70,11 @@ function fixtureHtml(store) {
                 const product = bulkProduct
                   || (location.pathname.includes('milk') ? 'milk' : 'rice');
                 sessionStorage.setItem(product, '1');
-                document.querySelector('#fixture-cart').textContent = '1';
-                document.querySelector('#fixture-cart').setAttribute('aria-label', 'El carro tiene 1 productos');
+                const cart = document.querySelector('#fixture-cart');
+                const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
+                sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
+                cart.textContent = String(nextCartCount);
+                cart.setAttribute('aria-label', 'El carro tiene ' + nextCartCount + ' productos');
                 const wrapper = this.parentElement;
                 this.remove();
                 const value = document.createElement('span');
@@ -86,6 +89,11 @@ function fixtureHtml(store) {
                   value.dataset.quantity = String(next);
                   value.textContent = String(next);
                   sessionStorage.setItem(product, String(next));
+                  const cart = document.querySelector('#fixture-cart');
+                  const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
+                  sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
+                  cart.textContent = String(nextCartCount);
+                  cart.setAttribute('aria-label', 'El carro tiene ' + nextCartCount + ' productos');
                 };
                 wrapper.append(value, plus);
               "
@@ -95,6 +103,12 @@ function fixtureHtml(store) {
             <input name="quantity" aria-label="Cantidad" value="1" hidden />
           </div>
         </main>
+        <script>
+          const savedCartCount = sessionStorage.getItem('fixture-cart-count') || '2';
+          const cart = document.querySelector('#fixture-cart');
+          cart.textContent = savedCartCount;
+          cart.setAttribute('aria-label', 'El carro tiene ' + savedCartCount + ' productos');
+        </script>
       </body>
     </html>`;
 }
@@ -198,8 +212,14 @@ async function main() {
       const progress = await source.evaluate(storeName => (
         window.cartProgress.filter(item => item.store === storeName).at(-1)
       ), store.name);
-      if (progress.added !== 2 || progress.failed !== 0 || progress.total !== 2) {
-        throw new Error(`${store.name} terminó con progreso inválido: ${JSON.stringify(progress)}`);
+      if (
+        progress.added !== 2
+        || progress.failed !== 0
+        || progress.total !== 2
+        || progress.previousCartUnits !== 2
+        || progress.cartTotalUnits !== 5
+      ) {
+        throw new Error(`${store.name} terminó con progreso o conteo previo inválido: ${JSON.stringify(progress)}`);
       }
 
       const retailerPages = context.pages().filter(page => page.url().startsWith(store.origin));
@@ -253,7 +273,12 @@ async function main() {
     const largeProgress = await source.evaluate(() => (
       window.cartProgress.filter(item => item.store === 'Jumbo' && item.total === 100).at(-1)
     ));
-    if (largeProgress.added !== 100 || largeProgress.failed !== 0) {
+    if (
+      largeProgress.added !== 100
+      || largeProgress.failed !== 0
+      || largeProgress.previousCartUnits !== 5
+      || largeProgress.cartTotalUnits !== 105
+    ) {
       throw new Error(`La canasta de 100 terminó inválida: ${JSON.stringify(largeProgress)}`);
     }
     const largeRetailerPages = context.pages().filter(page => (

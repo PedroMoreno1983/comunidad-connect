@@ -50,7 +50,14 @@ function sanitizeRequest(payload) {
   };
 }
 
+function addedUnits(job) {
+  return job.results
+    .filter(result => result.status === 'added')
+    .reduce((sum, result) => sum + Math.max(1, Number(result.quantity) || 1), 0);
+}
+
 function progress(job, detail, status = job.status) {
+  const previousCartUnits = Number.isInteger(job.initialCartCount) ? job.initialCartCount : undefined;
   return {
     jobId: job.id,
     store: job.store,
@@ -59,6 +66,10 @@ function progress(job, detail, status = job.status) {
     added: job.results.filter(result => result.status === 'added').length,
     failed: job.results.filter(result => result.status === 'failed').length,
     currentItem: job.items[job.currentIndex]?.name,
+    previousCartUnits,
+    cartTotalUnits: previousCartUnits === undefined
+      ? undefined
+      : previousCartUnits + addedUnits(job),
     detail,
   };
 }
@@ -137,6 +148,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         retailerTabId: null,
         status: 'opening',
         inFlightItemId: null,
+        initialCartCount: null,
         results: [],
         createdAt: new Date().toISOString(),
       };
@@ -185,6 +197,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: false, alreadyClaimed: Boolean(job.inFlightItemId) });
         return;
       }
+      const cartCountBefore = Number(message.cartCountBefore);
+      if (
+        job.currentIndex === 0
+        && job.initialCartCount === null
+        && Number.isInteger(cartCountBefore)
+        && cartCountBefore >= 0
+        && cartCountBefore <= 10_000
+      ) {
+        job.initialCartCount = cartCountBefore;
+      }
       job.inFlightItemId = item.id;
       job.status = 'loading';
       await saveJob(job);
@@ -219,6 +241,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         itemId: item.id,
         name: item.name,
         status: resultStatus,
+        quantity: item.quantity,
         detail: safeText(message.detail, 300),
       });
       job.currentIndex += 1;
@@ -226,11 +249,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (job.currentIndex >= job.items.length) {
         const failed = job.results.filter(result => result.status === 'failed').length;
+        const added = job.results.length - failed;
+        const previousCartUnits = Number.isInteger(job.initialCartCount) ? job.initialCartCount : null;
+        const preservedDetail = previousCartUnits && previousCartUnits > 0
+          ? ` Conservamos ${previousCartUnits} ${previousCartUnits === 1 ? 'producto' : 'productos'} que ya ${previousCartUnits === 1 ? 'estaba' : 'estaban'} en el carro; el total visible esperado es ${previousCartUnits + addedUnits(job)}.`
+          : '';
         job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);
         const detail = failed > 0
-          ? `Carro de ${job.store} procesado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
-          : `Carro de ${job.store} listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
+          ? `Carro de ${job.store} procesado. ${added} productos de tu lista agregados y ${failed} pendientes para revisar.${preservedDetail}`
+          : `Carro de ${job.store} listo: ${added} productos de tu lista agregados.${preservedDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
         sendResponse({ ok: true, done: true, progress: payload });

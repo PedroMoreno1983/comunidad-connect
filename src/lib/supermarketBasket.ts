@@ -116,6 +116,12 @@ export function isProductSuitableForRequest(
     }
     return Boolean(measurement?.dimension === 'volume' && measurement.amount >= 1_000);
   }
+  if (family === 'leche') {
+    if (/\b(avena|almendra|soya|coco|vegetal|manzana|frutilla|chocolate|platano|vainilla|sabor|bebida lactea|polvo)\b/.test(normalizedName)) {
+      return false;
+    }
+    return Boolean(measurement?.dimension === 'volume' && measurement.amount >= 900);
+  }
   return true;
 }
 

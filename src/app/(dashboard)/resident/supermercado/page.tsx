@@ -244,8 +244,8 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo compara toda tu lista dentro de cada cadena. En Jumbo, Santa Isabel y Unimarc abre el carro
-          oficial con un clic; las demás tiendas se muestran solo como referencia cuando no permiten esa carga.
+          CoCo compara tu lista en las siete cadenas y, con el cargador activado, prepara el carro oficial
+          de la tienda que elijas. Tú revisas disponibilidad, eliges entrega y pagas.
         </p>
       </header>
 
