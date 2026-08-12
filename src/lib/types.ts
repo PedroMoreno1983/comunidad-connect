@@ -394,6 +394,14 @@ export interface SupermarketCartLoadProgress {
   detail: string;
 }
 
+export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'unavailable';
+
+export interface SupermarketCartLoaderBridge {
+  availability: SupermarketCartLoaderAvailability;
+  progress: SupermarketCartLoadProgress | null;
+  start: () => boolean;
+}
+
 
 export interface SupermarketRequestedItem {
   term: string;
