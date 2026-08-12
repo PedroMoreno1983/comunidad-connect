@@ -251,7 +251,7 @@
     return { complete: true, clicks };
   }
 
-  async function completeItem(overlay, item, added, detail) {
+  async function completeItem(overlay, config, item, added, detail) {
     const response = await runtimeMessage({
       type: 'COMPLETE_CART_ITEM',
       itemId: item.id,
@@ -266,6 +266,13 @@
         item: null,
         detail: response.progress.detail,
       });
+      const cartControl = firstVisible(config.cartSelectors);
+      if (cartControl) {
+        window.setTimeout(() => cartControl.click(), 700);
+      } else {
+        overlay.querySelector('.coco-loader__detail').textContent =
+          `${response.progress.detail} Pulsa el carro de ${response.progress.store} para continuar al pago.`;
+      }
     }
     return response;
   }
@@ -351,7 +358,7 @@
 
     let addControl = initialAddControl || await waitFor(() => findAddControl(config), 10000);
     if (!addControl) {
-      await completeItem(overlay, item, false, 'No se encontró un botón de agregar disponible.');
+      await completeItem(overlay, config, item, false, 'No se encontró un botón de agregar disponible.');
       return;
     }
 
@@ -412,6 +419,7 @@
     if (outcome !== 'added') {
       await completeItem(
         overlay,
+        config,
         item,
         false,
         'El sitio recibió el clic, pero el carro no cambió. Se dejó como pendiente para no informar un éxito falso.',
@@ -432,7 +440,7 @@
     const detail = quantityResult.complete
       ? `Agregado y verificado con cantidad ${item.quantity}.`
       : `Producto agregado y verificado, pero ${job.store} no permitió ajustar automáticamente toda la cantidad ${item.quantity}.`;
-    await completeItem(overlay, item, true, detail);
+    await completeItem(overlay, config, item, true, detail);
   }
 
   void run().catch(async error => {
