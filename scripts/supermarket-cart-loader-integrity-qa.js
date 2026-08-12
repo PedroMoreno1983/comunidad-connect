@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.0', 'La versión con handoff automático debe ser 0.3.0.');
+check(manifest.version === '0.3.2', 'La versión con equivalencias y handoff corregidos debe ser 0.3.2.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -85,6 +85,12 @@ check(background.includes('MAX_ITEMS = 200'), 'El cargador no conserva el límit
 check(background.includes('safeProductUrl(item?.productUrl, config)'), 'Las URLs exactas no se validan por tienda.');
 check(background.includes('completed_with_issues'), 'Los faltantes no tienen un cierre explícito.');
 check(background.includes('Ya hay una carga de'), 'No se evita iniciar dos cargas simultáneas.');
+check(
+  background.includes('initialCartCount')
+    && background.includes('previousCartUnits')
+    && background.includes('cartTotalUnits'),
+  'El resultado no distingue la lista cargada de los productos que ya estaban en el carro.',
+);
 
 const loader = fs.readFileSync(path.join(extensionRoot, 'retailer-loader.js'), 'utf8');
 check(loader.includes('pageIsBlocked'), 'Falta pausa ante verificación humana.');
@@ -92,7 +98,12 @@ check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entre
 check(loader.includes('additionWasVerified'), 'Falta verificar que el carro cambió.');
 check(loader.includes('CLAIM_CART_ITEM'), 'Falta protección contra productos duplicados por recarga.');
 check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto por producto.');
-check(loader.includes('cartControl.click()'), 'Al terminar no se abre el carro oficial de la tienda.');
+check(
+  loader.includes('findCartControl')
+    && loader.includes('cartControl.click()')
+    && loader.includes('cartCountBefore'),
+  'Al terminar no se encuentra o abre el carro oficial, o no se registra su conteo previo.',
+);
 check(
   loader.includes('el carro no cambió') && loader.includes('éxito falso'),
   'Un clic sin efecto puede seguir reportándose como éxito.',
