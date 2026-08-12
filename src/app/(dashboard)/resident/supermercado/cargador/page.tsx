@@ -13,6 +13,7 @@ const SUPPORTED_STORES = [
 
 export default function CargadorPage() {
   const installUrl = process.env.NEXT_PUBLIC_CART_LOADER_INSTALL_URL;
+  const isPreview = process.env.VERCEL_ENV === 'preview';
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
@@ -55,6 +56,26 @@ export default function CargadorPage() {
           >
             Activar cargador en Chrome o Edge <ExternalLink className="h-4 w-4" />
           </a>
+        ) : isPreview ? (
+          <div
+            role="status"
+            className="mt-5 rounded-lg border px-4 py-3"
+            style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-paper)' }}
+          >
+            <p className="text-sm font-semibold cc-text-primary">Paquete temporal para probar este PR</p>
+            <p className="mt-1 text-xs leading-5 cc-text-secondary">
+              Descarga y descomprime el ZIP. En <code>chrome://extensions</code>, activa
+              “Modo desarrollador”, pulsa “Cargar extensión sin empaquetar” y elige la
+              carpeta descomprimida. Este paquete solo autoriza esta vista previa.
+            </p>
+            <a
+              href="/downloads/convive-cart-loader-preview-pr53.zip"
+              download
+              className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
+            >
+              Descargar cargador temporal 0.3.1
+            </a>
+          </div>
         ) : (
           <div
             role="status"
