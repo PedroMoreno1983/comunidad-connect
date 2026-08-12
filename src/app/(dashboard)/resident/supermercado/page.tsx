@@ -15,7 +15,6 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
-import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/supermarket/cartUrl';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
@@ -35,45 +34,12 @@ function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
 
-const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
-  direct: { label: 'Carro automático', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
-  // Los productos sí se cargan, pero en el host de cuenta de VTEX y no en el
-  // sitio de la tienda: el carro no aparece donde la persona tiene su sesión.
-  // Decir "Carro automático" ahí prometía algo que no ocurre.
-  offsite: { label: 'Carga en otro sitio', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
-  manual: { label: 'No carga automática', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
-};
-
-/** Qué pasa al continuar, cuando la lista está completa en esa tienda. */
-const LOADABILITY_STATUS: Record<StoreLoadability, string> = {
-  direct: 'Lista lista para cargar',
-  offsite: 'Se carga, pero fuera del sitio de la tienda',
-  manual: 'Lista encontrada; carga manual',
-};
-
-/** Lo mismo, nombrando la tienda, para el aviso de la canasta elegida. */
-const LOADABILITY_HEADLINE: Record<StoreLoadability, (store: string) => string> = {
-  direct: store => `Lista lista para cargar en ${store}`,
-  offsite: store => `Lista encontrada en ${store}; se carga fuera de su sitio`,
-  manual: store => `Lista encontrada en ${store}; carga manual`,
-};
-
 /**
- * Ordena por qué tan bien carga el carro (ver loadabilityRank): primero Jumbo,
- * que es la única donde el carro queda en el sitio donde la persona compra;
- * después las que cargan fuera de sitio, las de intento y por último las
- * manuales — aunque estas sean más baratas. Dentro de cada grupo: primero las
- * completas, luego más cobertura, luego mejor precio.
+ * Todas las cadenas se cargan con el cargador de Convive. Por eso el orden
+ * vuelve a responder a la compra: canasta completa, mayor cobertura y precio.
  */
 function orderBaskets(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate[] {
   return [...baskets].sort((a, b) => {
-    // Hoy solo 'direct' (Jumbo) deja el carro donde la persona compra y paga.
-    // En el resto hay que rehacer el trabajo, así que una canasta más barata
-    // que no se puede cargar no sirve: va primero la que sí funciona, y la UI
-    // dice explícitamente por qué y cuánto cuesta la alternativa barata.
-    const ra = loadabilityRank(a.store);
-    const rb = loadabilityRank(b.store);
-    if (ra !== rb) return ra - rb;
     if (a.complete !== b.complete) return a.complete ? -1 : 1;
     if (a.coveredCount !== b.coveredCount) return b.coveredCount - a.coveredCount;
     return a.subtotal - b.subtotal;
@@ -365,34 +331,6 @@ export default function SupermarketPage() {
               </p>
             </div>
 
-            {/* Si la primera opción no es la más barata, decirlo con el monto:
-                priorizamos la que carga el carro sola, y esa decisión tiene que
-                estar a la vista para que la persona pueda elegir lo contrario. */}
-            {(() => {
-              const recomendada = basketOptions[0];
-              const barata = cheapestBasket(basketOptions);
-              if (!recomendada || !barata || barata.store === recomendada.store) return null;
-              const diferencia = recomendada.subtotal - barata.subtotal;
-              if (diferencia <= 0) return null;
-              // Qué le costaría realmente irse por la barata, según su tienda.
-              const costoDeLaBarata: Record<StoreLoadability, string> = {
-                direct: 'y su carro también se carga solo',
-                offsite: 'pero su carro se arma fuera del sitio de la tienda',
-                manual: 'pero ahí tendrías que agregar los productos a mano',
-              };
-              return (
-                <p
-                  className="mt-4 rounded-xl px-4 py-3 text-xs leading-5"
-                  style={{ background: 'var(--cc-paper-warm)', border: '1px solid var(--cc-line)' }}
-                >
-                  <strong className="cc-text-primary">{recomendada.store}</strong> aparece primero porque
-                  es el único donde el carro se carga solo en el sitio donde compras y pagas.{' '}
-                  <strong className="cc-text-primary">{barata.store}</strong> sale {money(diferencia)} más
-                  barato, {costoDeLaBarata[storeLoadability(barata.store)]}. Puedes elegir cualquiera.
-                </p>
-              );
-            })()}
-
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               {featuredBasketOptions.map((basket, index) => {
                 const selected = basket.store === selectedBasket?.store;
@@ -423,17 +361,12 @@ export default function SupermarketPage() {
                         && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
                     </div>
                     <p className="mt-4 text-xl font-bold cc-text-primary">{basket.store}</p>
-                    {(() => {
-                      const badge = LOADABILITY_BADGE[storeLoadability(basket.store)];
-                      return (
-                        <span
-                          className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                          style={{ background: badge.bg, color: badge.fg }}
-                        >
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
+                    <span
+                      className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{ background: 'var(--cc-sage-tint)', color: 'var(--cc-sage)' }}
+                    >
+                      Carga automática
+                    </span>
                     <p className="mt-1 text-2xl font-bold cc-text-primary">
                       {basket.quoteStatus === 'retailer' ? money(basket.subtotal) : `Est. ${money(basket.subtotal)}`}
                     </p>
@@ -454,7 +387,7 @@ export default function SupermarketPage() {
                     </div>
                     <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
                       {basket.complete
-                        ? LOADABILITY_STATUS[storeLoadability(basket.store)]
+                        ? 'Lista lista para cargar'
                         : `${basket.missingTerms.length} por reemplazar en esta tienda`}
                     </p>
                   </button>
@@ -471,7 +404,7 @@ export default function SupermarketPage() {
                   <p className="text-sm font-bold cc-text-primary">Otros supermercados</p>
                   <p className="mt-1 text-xs leading-5 cc-text-secondary">
                     También puedes comprar en cualquiera de estas tiendas. Al cargar el carro,
-                    esa tienda queda seleccionada y se abre inmediatamente cuando la cadena lo permite.
+                    esa tienda queda seleccionada y el cargador prepara su carro en una sola pestaña.
                   </p>
                 </div>
 
@@ -647,18 +580,14 @@ export default function SupermarketPage() {
               <div>
                 <p className="font-bold cc-text-primary">
                   {selectedBasket.complete
-                    ? LOADABILITY_HEADLINE[storeLoadability(selectedBasket.store)](selectedBasket.store)
+                    ? `Lista lista para cargar en ${selectedBasket.store}`
                     : `Faltan ${selectedBasket.missingTerms.length} productos en ${selectedBasket.store}`}
                 </p>
                 <p className="mt-1 text-sm cc-text-secondary">
                   {selectedBasket.complete
-                    ? storeLoadability(selectedBasket.store) === 'manual'
-                      ? 'El precio es una referencia. Esta tienda no permite que Convive cargue el carro automáticamente.'
-                      : storeLoadability(selectedBasket.store) === 'offsite'
-                        ? 'Los productos se cargan en el sistema de checkout de la cadena, no en su sitio web: tu carro en el sitio de la tienda seguirá vacío.'
-                        : selectedBasket.quoteStatus === 'retailer'
-                        ? 'La tienda confirmo cada producto disponible y el total actual antes de abrir el checkout.'
-                        : 'Es un estimado del catalogo. Convive lo validará al abrir el carro oficial.'
+                    ? selectedBasket.quoteStatus === 'retailer'
+                      ? 'La tienda confirmó cada producto disponible y el total actual antes de abrir el checkout.'
+                      : 'Es un estimado del catálogo. El cargador verificará cada alta dentro del carro oficial.'
                     : 'El subtotal no se compara como si fuera una compra completa. CoCo mantiene la búsqueda dentro de esta misma cadena.'}
                 </p>
               </div>
