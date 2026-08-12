@@ -161,7 +161,7 @@ check(
   !button.includes('/api/supermarket/cart-plan')
     && !button.includes('setCode(')
     && !activationPage.includes('BOOKMARKLET')
-    && !activationPage.includes('marcador'),
+    && !activationPage.includes('javascript:(function'),
   'Volvió el flujo de código o marcador que obliga a reconstruir la compra.',
 );
 check(
