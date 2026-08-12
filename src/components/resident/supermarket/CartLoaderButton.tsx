@@ -375,7 +375,7 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
             href="/resident/supermercado/cargador"
             className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
           >
-            Usar el cargador asistido <ExternalLink className="h-3 w-3" />
+            Activar el cargador automático <ExternalLink className="h-3 w-3" />
           </Link>
           <button
             type="button"
