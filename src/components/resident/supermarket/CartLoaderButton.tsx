@@ -425,6 +425,10 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
             cartLoader.start();
             return;
           }
+          if (cartLoader.availability === 'outdated') {
+            window.location.assign('/resident/supermercado/cargador');
+            return;
+          }
           if (manualOnly) {
             window.location.assign('/resident/supermercado/cargador');
             return;
@@ -451,7 +455,9 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
             ? `Cargando ${loaderProgress.added + loaderProgress.failed} de ${loaderProgress.total}`
             : cartLoader.availability === 'ready'
               ? `Cargar carro en ${basket.store}`
-              : manualOnly
+              : cartLoader.availability === 'outdated'
+                ? 'Actualizar cargador de Convive'
+                : manualOnly
                 ? `Activar cargador para ${basket.store}`
                 : wholesaleQuote
                   ? `Preparar cotización en ${basket.store}`
@@ -506,6 +512,14 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
         <p className="text-[11px] cc-text-tertiary">
           Convive agregará y verificará los productos en tu sesión de {basket.store}.
           Al terminar abrirá el carro oficial; tú revisas y pagas.
+        </p>
+      ) : cartLoader.availability === 'outdated' ? (
+        <p role="alert" className="text-[11px] leading-4 text-warning-fg">
+          El cargador instalado{cartLoader.installedVersion ? ` (v${cartLoader.installedVersion})` : ''} es anterior
+          y no puede informar con precisión qué había en el carro ni abrirlo automáticamente.{' '}
+          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 font-semibold underline">
+            Actualizarlo ahora <ExternalLink className="h-3 w-3" />
+          </Link>
         </p>
       ) : manualOnly ? (
         <p className="text-[11px] cc-text-tertiary">

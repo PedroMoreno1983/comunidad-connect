@@ -69,15 +69,15 @@ export default function CargadorPage() {
               carpeta descomprimida. Este paquete solo autoriza esta vista previa.
             </p>
             <p className="mt-2 text-xs font-semibold leading-5 cc-text-primary">
-              Si ya cargaste 0.3.1, elimínala o reemplaza su carpeta y pulsa “Recargar”
-              en Chrome. Descargar el ZIP por sí solo no actualiza la extensión instalada.
+              Si ya cargaste una versión anterior, elimínala o reemplaza su carpeta y pulsa
+              “Recargar” en Chrome. Descargar el ZIP por sí solo no actualiza la extensión instalada.
             </p>
             <a
               href="/downloads/convive-cart-loader-preview-pr53.zip"
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador temporal 0.3.3
+              Descargar cargador temporal 0.3.5
             </a>
           </div>
         ) : (

@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.2', 'La versión con equivalencias y handoff corregidos debe ser 0.3.2.');
+check(manifest.version === '0.3.4', 'La versión con negociación de capacidades debe ser 0.3.4.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -59,6 +59,12 @@ const bridge = fs.readFileSync(path.join(extensionRoot, 'convive-bridge.js'), 'u
 check(bridge.includes('https://conviveconnect.com'), 'El puente no valida el origen de producción.');
 check(bridge.includes('event.source !== window'), 'El puente no valida la ventana emisora.');
 check(bridge.includes('event.origin !== window.location.origin'), 'El puente no valida el origen del mensaje.');
+check(
+  bridge.includes('chrome.runtime.getManifest().version')
+    && bridge.includes('cart-baseline-v1')
+    && bridge.includes('cart-auto-open-v2'),
+  'El puente no informa una versión y capacidades verificables.',
+);
 
 const configSource = fs.readFileSync(path.join(extensionRoot, 'store-config.js'), 'utf8');
 const configContext = { globalThis: {} };
@@ -87,9 +93,11 @@ check(background.includes('completed_with_issues'), 'Los faltantes no tienen un 
 check(background.includes('Ya hay una carga de'), 'No se evita iniciar dos cargas simultáneas.');
 check(
   background.includes('initialCartCount')
-    && background.includes('previousCartUnits')
-    && background.includes('cartTotalUnits'),
-  'El resultado no distingue la lista cargada de los productos que ya estaban en el carro.',
+    && background.includes('latestCartCount')
+    && background.includes('previousCartCount')
+    && background.includes('currentCartCount')
+    && background.includes('cartCountAfter'),
+  'El resultado no informa el contador real antes y después de preparar el carro.',
 );
 
 const loader = fs.readFileSync(path.join(extensionRoot, 'retailer-loader.js'), 'utf8');
@@ -101,7 +109,9 @@ check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto 
 check(
   loader.includes('findCartControl')
     && loader.includes('cartControl.click()')
-    && loader.includes('cartCountBefore'),
+    && loader.includes('cartCountBefore')
+    && loader.includes('cartCountAfter')
+    && loader.includes('chrome.runtime.getManifest().version'),
   'Al terminar no se encuentra o abre el carro oficial, o no se registra su conteo previo.',
 );
 check(
@@ -163,7 +173,11 @@ check(
 check(
   loaderHook.includes('CONVIVE_CART_LOADER_PING')
     && loaderHook.includes('CONVIVE_CART_LOADER_START')
+    && loaderHook.includes('REQUIRED_LOADER_CAPABILITIES')
+    && loaderHook.includes("setAvailability(compatible ? 'ready' : 'outdated')")
     && button.includes('useSupermarketCartLoader(basket)')
+    && button.includes("cartLoader.availability === 'outdated'")
+    && button.includes('Actualizar cargador de Convive')
     && button.includes("cartLoader.availability === 'ready'")
     && button.includes('cartLoader.start()'),
   'El botón visible no usa el puente de la extensión como flujo principal.',

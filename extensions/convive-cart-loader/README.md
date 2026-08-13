@@ -1,7 +1,7 @@
 # CoCo · Cargador de carros
 
 Extensión Manifest V3 que recibe una canasta de Convive Connect y agrega los
-productos en la sesión real del comprador. La versión 0.3.2 conecta el botón de Convive, conserva y declara lo que ya había en el carro, abre el carro al terminar e incluye adaptadores
+productos en la sesión real del comprador. La versión 0.3.4 conecta el botón de Convive, conserva y declara lo que ya había en el carro, abre el carro al terminar e incluye adaptadores
 independientes para Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e
 Irurzun.
 
@@ -14,7 +14,8 @@ Irurzun.
 - No confirma pedidos, no reserva horarios y no ejecuta pagos.
 - Pausa ante CAPTCHA, verificación humana o selección de entrega y permite reanudar.
 - Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
-- Detecta el conteo previo del carro y lo separa de los productos agregados por CoCo.
+- Informa el contador observado antes y después sin asumir que cada producto crea una línea nueva.
+- Expone versión y capacidades para impedir que Convive use un cargador antiguo.
 - Persiste el avance para continuar producto por producto y no detiene toda la lista por un faltante.
 
 ## Comportamiento por tienda

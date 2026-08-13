@@ -156,11 +156,11 @@ async function main() {
     await source.goto('https://conviveconnect.com/resident/supermercado');
     await source.waitForTimeout(500);
 
-    const extensionReady = await source.evaluate(() => new Promise(resolve => {
+    const extensionIdentity = await source.evaluate(() => new Promise(resolve => {
       const listener = event => {
         if (event.data?.type === 'CONVIVE_CART_LOADER_READY') {
           window.removeEventListener('message', listener);
-          resolve(true);
+          resolve(event.data.payload);
         }
       };
       window.addEventListener('message', listener);
@@ -168,9 +168,16 @@ async function main() {
         source: 'convive-connect',
         type: 'CONVIVE_CART_LOADER_PING',
       }, window.location.origin);
-      window.setTimeout(() => resolve(false), 3000);
+      window.setTimeout(() => resolve(null), 3000);
     }));
-    if (!extensionReady) throw new Error('La extensión no respondió al ping de Convive.');
+    if (
+      !extensionIdentity
+      || extensionIdentity.version !== '0.3.4'
+      || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
+      || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
+    ) {
+      throw new Error(`La extensión no informó una identidad compatible: ${JSON.stringify(extensionIdentity)}`);
+    }
 
     const results = [];
     for (const store of stores) {
@@ -216,8 +223,8 @@ async function main() {
         progress.added !== 2
         || progress.failed !== 0
         || progress.total !== 2
-        || progress.previousCartUnits !== 2
-        || progress.cartTotalUnits !== 5
+        || progress.previousCartCount !== 2
+        || progress.currentCartCount !== 5
       ) {
         throw new Error(`${store.name} terminó con progreso o conteo previo inválido: ${JSON.stringify(progress)}`);
       }
@@ -276,8 +283,8 @@ async function main() {
     if (
       largeProgress.added !== 100
       || largeProgress.failed !== 0
-      || largeProgress.previousCartUnits !== 5
-      || largeProgress.cartTotalUnits !== 105
+      || largeProgress.previousCartCount !== 5
+      || largeProgress.currentCartCount !== 105
     ) {
       throw new Error(`La canasta de 100 terminó inválida: ${JSON.stringify(largeProgress)}`);
     }
@@ -296,7 +303,7 @@ async function main() {
 
     console.log(JSON.stringify({
       passed: true,
-      extensionReady,
+      extensionIdentity,
       stores: results,
       largeBasket: {
         retailerTabs: largeRetailerPages.length,
