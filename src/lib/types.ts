@@ -391,15 +391,16 @@ export interface SupermarketCartLoadProgress {
   added: number;
   failed: number;
   currentItem?: string;
-  previousCartUnits?: number;
-  cartTotalUnits?: number;
+  previousCartCount?: number;
+  currentCartCount?: number;
   detail: string;
 }
 
-export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'unavailable';
+export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'outdated' | 'unavailable';
 
 export interface SupermarketCartLoaderBridge {
   availability: SupermarketCartLoaderAvailability;
+  installedVersion?: string;
   progress: SupermarketCartLoadProgress | null;
   start: () => boolean;
 }

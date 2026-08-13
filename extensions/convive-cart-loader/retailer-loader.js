@@ -203,7 +203,8 @@
       <button type="button" class="coco-loader__retry" hidden>Reanudar carga</button>
       <p class="coco-loader__safety">CoCo agrega productos. Nunca confirma ni paga la compra.</p>
     `;
-    overlay.querySelector('.coco-loader__badge').textContent = store;
+    const version = chrome.runtime.getManifest().version;
+    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v${version}`;
     document.documentElement.appendChild(overlay);
     return overlay;
   }
@@ -303,6 +304,7 @@
       type: 'COMPLETE_CART_ITEM',
       itemId: item.id,
       added,
+      cartCountAfter: parseCartCount(config),
       detail,
     });
     if (response?.done && response.progress) {

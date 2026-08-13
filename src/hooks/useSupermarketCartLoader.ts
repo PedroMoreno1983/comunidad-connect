@@ -12,6 +12,21 @@ import type {
 const CONVIVE_SOURCE = 'convive-connect';
 const LOADER_SOURCE = 'convive-cart-loader';
 const READY_TIMEOUT_MS = 1_500;
+const REQUIRED_LOADER_CAPABILITIES = [
+  'cart-baseline-v1',
+  'cart-auto-open-v2',
+] as const;
+
+function loaderIdentity(value: unknown): { version?: string; capabilities: string[] } {
+  if (!value || typeof value !== 'object') return { capabilities: [] };
+  const identity = value as { version?: unknown; capabilities?: unknown };
+  return {
+    version: typeof identity.version === 'string' ? identity.version : undefined,
+    capabilities: Array.isArray(identity.capabilities)
+      ? identity.capabilities.filter((capability): capability is string => typeof capability === 'string')
+      : [],
+  };
+}
 
 function isCartProgress(value: unknown): value is SupermarketCartLoadProgress {
   if (!value || typeof value !== 'object') return false;
@@ -31,6 +46,7 @@ export function useSupermarketCartLoader(
     Capacitor.isNativePlatform() ? 'unavailable' : 'checking',
   );
   const [progress, setProgress] = useState<SupermarketCartLoadProgress | null>(null);
+  const [installedVersion, setInstalledVersion] = useState<string>();
 
   const request = useMemo<SupermarketCartLoadRequest>(() => ({
     version: 1,
@@ -48,7 +64,7 @@ export function useSupermarketCartLoader(
   useEffect(() => {
     if (Capacitor.isNativePlatform()) return;
 
-    let ready = false;
+    let answered = false;
     const onMessage = (event: MessageEvent<unknown>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       if (!event.data || typeof event.data !== 'object') return;
@@ -56,8 +72,13 @@ export function useSupermarketCartLoader(
       if (message.source !== LOADER_SOURCE) return;
 
       if (message.type === 'CONVIVE_CART_LOADER_READY') {
-        ready = true;
-        setAvailability('ready');
+        answered = true;
+        const identity = loaderIdentity(message.payload);
+        setInstalledVersion(identity.version);
+        const compatible = REQUIRED_LOADER_CAPABILITIES.every(capability => (
+          identity.capabilities.includes(capability)
+        ));
+        setAvailability(compatible ? 'ready' : 'outdated');
         return;
       }
 
@@ -83,7 +104,7 @@ export function useSupermarketCartLoader(
       }, window.location.origin);
     }, 300);
     const timeout = window.setTimeout(() => {
-      if (!ready) setAvailability('unavailable');
+      if (!answered) setAvailability('unavailable');
     }, READY_TIMEOUT_MS);
 
     return () => {
@@ -113,6 +134,7 @@ export function useSupermarketCartLoader(
 
   return {
     availability,
+    installedVersion,
     progress: progress?.store === basket.store ? progress : null,
     start,
   };
