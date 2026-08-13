@@ -68,6 +68,10 @@ export default function CargadorPage() {
               “Modo desarrollador”, pulsa “Cargar extensión sin empaquetar” y elige la
               carpeta descomprimida. Este paquete solo autoriza esta vista previa.
             </p>
+            <p className="mt-2 text-xs font-semibold leading-5 cc-text-primary">
+              Si ya cargaste 0.3.1, elimínala o reemplaza su carpeta y pulsa “Recargar”
+              en Chrome. Descargar el ZIP por sí solo no actualiza la extensión instalada.
+            </p>
             <a
               href="/downloads/convive-cart-loader-preview-pr53.zip"
               download
