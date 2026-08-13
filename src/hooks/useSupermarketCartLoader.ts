@@ -15,6 +15,7 @@ const READY_TIMEOUT_MS = 1_500;
 const REQUIRED_LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
+  'cart-replace-v1',
 ] as const;
 
 function loaderIdentity(value: unknown): { version?: string; capabilities: string[] } {
@@ -48,7 +49,7 @@ export function useSupermarketCartLoader(
   const [progress, setProgress] = useState<SupermarketCartLoadProgress | null>(null);
   const [installedVersion, setInstalledVersion] = useState<string>();
 
-  const request = useMemo<SupermarketCartLoadRequest>(() => ({
+  const request = useMemo<Omit<SupermarketCartLoadRequest, 'replaceCart'>>(() => ({
     version: 1,
     store: basket.store,
     createdAt: new Date().toISOString(),
@@ -114,20 +115,23 @@ export function useSupermarketCartLoader(
     };
   }, [basket.store]);
 
-  const start = useCallback(() => {
+  const start = useCallback((options?: { replaceCart?: boolean }) => {
     if (availability !== 'ready' || request.items.length === 0) return false;
+    const replaceCart = options?.replaceCart === true;
     setProgress({
       store: request.store,
       status: 'opening',
       total: request.items.length,
       added: 0,
       failed: 0,
-      detail: `Abriendo ${request.store} para cargar el carro…`,
+      detail: replaceCart
+        ? `Abriendo ${request.store} para reemplazar el carro anterior…`
+        : `Abriendo ${request.store} para cargar el carro…`,
     });
     window.postMessage({
       source: CONVIVE_SOURCE,
       type: 'CONVIVE_CART_LOADER_START',
-      payload: request,
+      payload: { ...request, replaceCart },
     }, window.location.origin);
     return true;
   }, [availability, request]);

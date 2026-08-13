@@ -34,6 +34,14 @@ function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
 
+function cartLoaderKey(basket: SupermarketBasketCandidate): string {
+  const itemsKey = basket.items
+    .map(item => `${item.requestedTerm}:${item.id}:${item.quantity}`)
+    .join('|');
+
+  return `${basket.store}:${itemsKey}`;
+}
+
 /**
  * Todas las cadenas se cargan con el cargador de Convive. Por eso el orden
  * vuelve a responder a la compra: canasta completa, mayor cobertura y precio.
@@ -443,6 +451,7 @@ export default function SupermarketPage() {
                       <div className="mt-3">
                         {basket.items.length > 0 ? (
                           <CartLoaderButton
+                            key={cartLoaderKey(basket)}
                             basket={basket}
                             onQuote={applyCheckoutQuote}
                             onSelect={() => selectBasket(basket)}
@@ -496,7 +505,7 @@ export default function SupermarketPage() {
                         </div>
                       )}
                       <CartLoaderButton
-                        key={selectedBasket.store}
+                        key={cartLoaderKey(selectedBasket)}
                         basket={selectedBasket}
                         onQuote={applyCheckoutQuote}
                       />

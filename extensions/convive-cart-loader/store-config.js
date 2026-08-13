@@ -24,6 +24,13 @@
     'despacho a domicilio retiro en tienda',
   ];
 
+  const commonEmptyCartLabels = [
+    'vaciar carro',
+    'vaciar carrito',
+    'eliminar todos',
+    'eliminar todo',
+  ];
+
   const cencosud = {
     addSelectors: [
       'button[data-cnstrc-btn="add_to_cart"]',
@@ -46,6 +53,10 @@
       'header button[class*="cart" i]',
       'header [role="button"][class*="cart" i]',
     ],
+    emptyCartSelectors: [
+      'button[data-gtm-tag="Vaciar carro"]',
+    ],
+    emptyCartLabels: commonEmptyCartLabels,
   };
 
   const configs = {
@@ -72,6 +83,7 @@
         'button[aria-label*="El carro tiene"]',
         '[data-testid*="cart"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -114,6 +126,7 @@
         '[aria-label*="carrito"]',
         '[class*="Cart"] [class*="quantity"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -140,6 +153,7 @@
         '[data-testid*="cart"]',
         'button[aria-label*="carro"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -166,6 +180,7 @@
         '[data-testid="header-cart-button"]',
         '[data-testid*="cart-count"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -190,6 +205,7 @@
         '[data-testid="cart-drawer-trigger"]',
         'button[aria-label="Carrito"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       allowHiddenControls: true,
       quantityBeforeAdd: true,
       quantityControlAddsToCart: true,

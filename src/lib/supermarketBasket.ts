@@ -94,11 +94,24 @@ export function isProductSuitableForRequest(
   requestedUnit: SupermarketMeasurementUnit | undefined,
 ): boolean {
   if (!isProductMeasurementCompatible(name, requestedUnit)) return false;
+  const normalizedName = foldAccents(name);
+  const normalizedTerm = foldAccents(requestedTerm);
+  const measurement = productMeasurementInBaseUnits(name);
+
+  if (!requestedUnit && /\bpechuga\b/.test(normalizedTerm) && /\bpollo\b/.test(normalizedTerm)) {
+    if (!/\bpechuga\b/.test(normalizedName) || !/\bpollo\b/.test(normalizedName) || /\bpavo\b/.test(normalizedName)) {
+      return false;
+    }
+    if (/\b(apanad|asada|acaramelad|cocida|fiambre|jamon|rebozad)\w*\b/.test(normalizedName)) {
+      return false;
+    }
+    return measurement === null
+      || measurement.dimension === 'mass' && measurement.amount >= 500;
+  }
+
   if (requestedUnit || significantWords(requestedTerm).length !== 1) return true;
 
   const family = matchAnchor(requestedTerm);
-  const normalizedName = foldAccents(name);
-  const measurement = productMeasurementInBaseUnits(name);
 
   if (family === 'carne') {
     return Boolean(

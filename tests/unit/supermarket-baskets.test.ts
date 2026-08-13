@@ -172,6 +172,19 @@ describe('buildBasketComparison', () => {
     );
   });
 
+  it('uses a raw household-size chicken breast instead of a cooked snack pack', () => {
+    const result = buildBasketComparison(['pechuga de pollo'], {
+      'pechuga de pollo': [
+        row('aCuenta', 'Pechuga de Pollo Cocida Bolsa 150 g PF', 2490),
+        row('aCuenta', 'Pechuga de Pollo Deshuesada 700 g', 5590),
+        row('Jumbo', 'Pechuga de Pavo Cocida 125 g', 3090),
+      ],
+    });
+
+    expect(result.recommended?.store).toBe('aCuenta');
+    expect(result.recommended?.items[0].name).toBe('Pechuga de Pollo Deshuesada 700 g');
+  });
+
   it('rejects tiny or unrelated products for a generic asado list', () => {
     const result = buildBasketComparison(['carne', 'longanizas', 'bebidas'], {
       carne: [
