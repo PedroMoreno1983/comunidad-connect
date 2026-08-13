@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import {
   matchAnchor,
   matchAnchors,
@@ -102,7 +103,10 @@ export async function fetchBatchSupermarketRows(
         ...row,
         match_relevance: productMatchScore(term, String(row.name || '')),
       }))
-      .filter(row => row.match_relevance >= 0);
+      .filter(row => (
+        row.match_relevance >= 0
+        && isProductSuitableForRequest(String(row.name || ''), term, undefined)
+      ));
     const bestRelevanceByStore = new Map<string, number>();
     for (const row of scored) {
       const store = String(row.store || '');

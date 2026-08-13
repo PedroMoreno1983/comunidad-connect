@@ -204,7 +204,7 @@ async function main() {
     }));
     if (
       !extensionIdentity
-      || extensionIdentity.version !== '0.3.5'
+      || extensionIdentity.version !== '0.3.6'
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
       || !extensionIdentity.capabilities?.includes('cart-replace-v1')
