@@ -55,8 +55,43 @@ function fixtureHtml(store) {
     <html>
       <body>
         <header>
-          <button id="fixture-cart" aria-label="El carro tiene 2 productos" onclick="sessionStorage.setItem('convive-cart-opened', 'true')">2</button>
+          <button
+            id="fixture-cart"
+            aria-label="Carro de compras"
+            onclick="
+              sessionStorage.setItem('convive-cart-opened', 'true');
+              document.querySelector('#fixture-cart-drawer').hidden = false;
+            "
+          ><span data-cart-count>2</span></button>
         </header>
+        <aside id="fixture-cart-drawer" hidden>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onclick="this.parentElement.hidden = true"
+          ></button>
+          <p>Carro de compras</p>
+          <button
+            type="button"
+            data-gtm-tag="Vaciar carro"
+            onclick="document.querySelector('#fixture-empty-confirmation').showModal()"
+          >Vaciar carro</button>
+        </aside>
+        <dialog id="fixture-empty-confirmation">
+          <p>¿Quieres vaciar el carro y eliminar todos los productos?</p>
+          <button type="button" onclick="this.closest('dialog').close()">Cancelar</button>
+          <button
+            type="button"
+            onclick="
+              sessionStorage.setItem('fixture-cart-count', '0');
+              sessionStorage.setItem('convive-cart-cleared', 'true');
+              const cart = document.querySelector('#fixture-cart');
+              cart.querySelector('[data-cart-count]').textContent = '0';
+              this.closest('dialog').close();
+              document.querySelector('#fixture-cart-drawer').hidden = true;
+            "
+          >Si, vaciar</button>
+        </dialog>
         <main>
           <h1>Producto ${store} test</h1>
           <div class="product-control" data-testid="detail-cart-quantifier">
@@ -73,8 +108,7 @@ function fixtureHtml(store) {
                 const cart = document.querySelector('#fixture-cart');
                 const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
                 sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
-                cart.textContent = String(nextCartCount);
-                cart.setAttribute('aria-label', 'El carro tiene ' + nextCartCount + ' productos');
+                cart.querySelector('[data-cart-count]').textContent = String(nextCartCount);
                 const wrapper = this.parentElement;
                 this.remove();
                 const value = document.createElement('span');
@@ -92,8 +126,7 @@ function fixtureHtml(store) {
                   const cart = document.querySelector('#fixture-cart');
                   const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
                   sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
-                  cart.textContent = String(nextCartCount);
-                  cart.setAttribute('aria-label', 'El carro tiene ' + nextCartCount + ' productos');
+                  cart.querySelector('[data-cart-count]').textContent = String(nextCartCount);
                 };
                 wrapper.append(value, plus);
               "
@@ -106,8 +139,7 @@ function fixtureHtml(store) {
         <script>
           const savedCartCount = sessionStorage.getItem('fixture-cart-count') || '2';
           const cart = document.querySelector('#fixture-cart');
-          cart.textContent = savedCartCount;
-          cart.setAttribute('aria-label', 'El carro tiene ' + savedCartCount + ' productos');
+          cart.querySelector('[data-cart-count]').textContent = savedCartCount;
         </script>
       </body>
     </html>`;
@@ -172,9 +204,10 @@ async function main() {
     }));
     if (
       !extensionIdentity
-      || extensionIdentity.version !== '0.3.4'
+      || extensionIdentity.version !== '0.3.5'
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
+      || !extensionIdentity.capabilities?.includes('cart-replace-v1')
     ) {
       throw new Error(`La extensión no informó una identidad compatible: ${JSON.stringify(extensionIdentity)}`);
     }
@@ -191,6 +224,7 @@ async function main() {
         version: 1,
         store: store.name,
         createdAt: new Date().toISOString(),
+        replaceCart: true,
         items: [
           {
             id: `${store.name}-milk`,
@@ -209,13 +243,33 @@ async function main() {
         ],
       });
 
-      await source.waitForFunction(
-        storeName => window.cartProgress.some(progress => (
-          progress.store === storeName && progress.status === 'completed'
-        )),
-        store.name,
-        { timeout: 30000 },
-      );
+      try {
+        await source.waitForFunction(
+          storeName => window.cartProgress.some(progress => (
+            progress.store === storeName && progress.status === 'completed'
+          )),
+          store.name,
+          { timeout: 30000 },
+        );
+      } catch (error) {
+        const observed = await source.evaluate(storeName => (
+          window.cartProgress.filter(progress => progress.store === storeName)
+        ), store.name);
+        const retailerPage = context.pages().find(page => page.url().startsWith(store.origin));
+        const retailerState = retailerPage ? await retailerPage.evaluate(() => ({
+          cartCount: document.querySelector('[data-cart-count]')?.textContent,
+          savedCartCount: sessionStorage.getItem('fixture-cart-count'),
+          cartCleared: sessionStorage.getItem('convive-cart-cleared'),
+          drawerHidden: document.querySelector('#fixture-cart-drawer')?.hidden,
+          dialogOpen: document.querySelector('#fixture-empty-confirmation')?.open,
+          dialogButtons: [...document.querySelectorAll('#fixture-empty-confirmation button')]
+            .map(button => button.textContent?.trim()),
+        })) : null;
+        throw new Error(
+          `${store.name} no completó la carga: ${JSON.stringify({ observed, retailerState })}`,
+          { cause: error },
+        );
+      }
       const progress = await source.evaluate(storeName => (
         window.cartProgress.filter(item => item.store === storeName).at(-1)
       ), store.name);
@@ -224,7 +278,9 @@ async function main() {
         || progress.failed !== 0
         || progress.total !== 2
         || progress.previousCartCount !== 2
-        || progress.currentCartCount !== 5
+        || progress.currentCartCount !== 3
+        || progress.removedCartCount !== 2
+        || progress.cartReplaced !== true
       ) {
         throw new Error(`${store.name} terminó con progreso o conteo previo inválido: ${JSON.stringify(progress)}`);
       }
@@ -242,8 +298,14 @@ async function main() {
         milk: sessionStorage.getItem('milk'),
         rice: sessionStorage.getItem('rice'),
         cartOpened: sessionStorage.getItem('convive-cart-opened'),
+        cartCleared: sessionStorage.getItem('convive-cart-cleared'),
       }));
-      if (quantities.milk !== '2' || quantities.rice !== '1' || quantities.cartOpened !== 'true') {
+      if (
+        quantities.milk !== '2'
+        || quantities.rice !== '1'
+        || quantities.cartOpened !== 'true'
+        || quantities.cartCleared !== 'true'
+      ) {
         throw new Error(`${store.name} no conservó cantidades o no abrió el carro: ${JSON.stringify(quantities)}`);
       }
       results.push({ store: store.name, retailerTabs: retailerPages.length, quantities, progress });
@@ -264,6 +326,7 @@ async function main() {
           version: 1,
           store: 'Jumbo',
           createdAt: new Date().toISOString(),
+          replaceCart: true,
           items,
         },
       }, window.location.origin);
@@ -284,7 +347,9 @@ async function main() {
       largeProgress.added !== 100
       || largeProgress.failed !== 0
       || largeProgress.previousCartCount !== 2
-      || largeProgress.currentCartCount !== 102
+      || largeProgress.currentCartCount !== 100
+      || largeProgress.removedCartCount !== 2
+      || largeProgress.cartReplaced !== true
     ) {
       throw new Error(`La canasta de 100 terminó inválida: ${JSON.stringify(largeProgress)}`);
     }

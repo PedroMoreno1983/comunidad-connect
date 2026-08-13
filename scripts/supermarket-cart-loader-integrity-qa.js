@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.4', 'La versión con negociación de capacidades debe ser 0.3.4.');
+check(manifest.version === '0.3.5', 'La versión con reemplazo verificado debe ser 0.3.5.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -62,7 +62,8 @@ check(bridge.includes('event.origin !== window.location.origin'), 'El puente no 
 check(
   bridge.includes('chrome.runtime.getManifest().version')
     && bridge.includes('cart-baseline-v1')
-    && bridge.includes('cart-auto-open-v2'),
+    && bridge.includes('cart-auto-open-v2')
+    && bridge.includes('cart-replace-v1'),
   'El puente no informa una versión y capacidades verificables.',
 );
 
@@ -75,6 +76,7 @@ for (const store of stores) {
   check(configs[store], `Falta adaptador para ${store}.`);
   check(configs[store].hosts.length > 0, `${store} no acota sus hosts.`);
   check(configs[store].addSelectors.length > 0, `${store} no declara selectores de alta.`);
+  check(configs[store].emptyCartLabels.length > 0, `${store} no declara cómo vaciar el carro anterior.`);
   check(typeof configs[store].searchUrl === 'function', `${store} no declara URL de búsqueda.`);
 }
 check(
@@ -96,7 +98,9 @@ check(
     && background.includes('latestCartCount')
     && background.includes('previousCartCount')
     && background.includes('currentCartCount')
-    && background.includes('cartCountAfter'),
+    && background.includes('cartCountAfter')
+    && background.includes('removedCartCount')
+    && background.includes('COMPLETE_CART_RESET'),
   'El resultado no informa el contador real antes y después de preparar el carro.',
 );
 
@@ -106,6 +110,13 @@ check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entre
 check(loader.includes('additionWasVerified'), 'Falta verificar que el carro cambió.');
 check(loader.includes('CLAIM_CART_ITEM'), 'Falta protección contra productos duplicados por recarga.');
 check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto por producto.');
+check(
+  loader.includes('replaceExistingCart')
+    && loader.includes('findEmptyCartControl')
+    && loader.includes('findEmptyCartConfirmation')
+    && loader.includes('settledCartCount'),
+  'La lista nueva no reemplaza y verifica el carro anterior antes de cargar.',
+);
 check(
   loader.includes('findCartControl')
     && loader.includes('cartControl.click()')
@@ -147,10 +158,11 @@ const supermarketRoute = fs.readFileSync(
 );
 check(
   page.includes('<CartLoaderButton')
-    && page.includes('key={selectedBasket.store}')
+    && page.includes('function cartLoaderKey')
+    && page.includes('key={cartLoaderKey(selectedBasket)}')
     && page.includes('basket={selectedBasket}')
     && page.includes('onQuote={applyCheckoutQuote}'),
-  'La UI no usa el cargador de la tienda elegida ni aplica la cotizacion confirmada.',
+  'La UI no reinicia el cargador para una lista nueva o no aplica la cotizacion confirmada.',
 );
 check(
   page.includes('const initialBasket = nextOptions[0] ?? null')
@@ -179,7 +191,9 @@ check(
     && button.includes("cartLoader.availability === 'outdated'")
     && button.includes('Actualizar cargador de Convive')
     && button.includes("cartLoader.availability === 'ready'")
-    && button.includes('cartLoader.start()'),
+    && button.includes('cartLoader.start({ replaceCart: true })')
+    && button.includes('Vaciar carro anterior y cargar')
+    && loaderHook.includes("'cart-replace-v1'"),
   'El botón visible no usa el puente de la extensión como flujo principal.',
 );
 check(
@@ -199,7 +213,7 @@ for (const store of stores) {
   check(button.includes(homeKey), `La UI no declara el destino de ${store}.`);
 }
 check(
-  button.includes('Cargar carro en ${basket.store}') && button.includes('Volver a abrir el carro'),
+  button.includes('Cargar lista nueva en ${basket.store}') && button.includes('Volver a abrir el carro'),
   'La UI no ofrece la carga directa en un clic y su recuperacion manual.',
 );
 check(

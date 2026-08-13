@@ -47,12 +47,14 @@ function sanitizeRequest(payload) {
   return {
     store: payload.store,
     items,
+    replaceCart: payload.replaceCart === true,
   };
 }
 
 function progress(job, detail, status = job.status) {
   const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : undefined;
   const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : undefined;
+  const removedCartCount = Number.isInteger(job.removedCartCount) ? job.removedCartCount : undefined;
   return {
     jobId: job.id,
     store: job.store,
@@ -63,6 +65,8 @@ function progress(job, detail, status = job.status) {
     currentItem: job.items[job.currentIndex]?.name,
     previousCartCount,
     currentCartCount,
+    removedCartCount,
+    cartReplaced: job.replaceCart === true && job.cartResetStatus === 'completed',
     detail,
   };
 }
@@ -143,6 +147,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         inFlightItemId: null,
         initialCartCount: null,
         latestCartCount: null,
+        removedCartCount: null,
+        replaceCart: request.replaceCart,
+        cartResetStatus: request.replaceCart ? 'pending' : 'skipped',
         results: [],
         createdAt: new Date().toISOString(),
       };
@@ -180,8 +187,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? targetUrl(job.store, job.items[job.currentIndex])
             : null,
           inFlightItemId: job.inFlightItemId,
+          replaceCart: job.replaceCart === true,
+          cartResetStatus: job.cartResetStatus || 'skipped',
         },
       });
+      return;
+    }
+
+    if (message?.type === 'COMPLETE_CART_RESET') {
+      if (!job.replaceCart || job.currentIndex !== 0 || job.cartResetStatus !== 'pending') {
+        sendResponse({ ok: false });
+        return;
+      }
+      const cartCountBefore = Number(message.cartCountBefore);
+      const cartCountAfter = Number(message.cartCountAfter);
+      if (
+        !Number.isInteger(cartCountBefore)
+        || !Number.isInteger(cartCountAfter)
+        || cartCountBefore < 0
+        || cartCountAfter !== 0
+        || cartCountBefore > 10_000
+      ) {
+        sendResponse({ ok: false });
+        return;
+      }
+      job.initialCartCount = cartCountBefore;
+      job.latestCartCount = 0;
+      job.removedCartCount = cartCountBefore;
+      job.cartResetStatus = 'completed';
+      await saveJob(job);
+      const payload = progress(
+        job,
+        cartCountBefore > 0
+          ? `Carro anterior vaciado: se retiraron ${cartCountBefore} unidades. Cargando la lista nueva…`
+          : 'El carro ya estaba vacío. Cargando la lista nueva…',
+        'loading',
+      );
+      await notifySource(job, payload);
+      sendResponse({ ok: true, progress: payload });
       return;
     }
 
@@ -256,7 +299,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : null;
         const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : null;
         const observedCartDetail = previousCartCount !== null && currentCartCount !== null
-          ? ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
+          ? job.replaceCart && job.cartResetStatus === 'completed'
+            ? ` Se eliminaron ${job.removedCartCount || 0} unidades anteriores y el carro nuevo ahora marca ${currentCartCount}.`
+            : ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
           : '';
         job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);

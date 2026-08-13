@@ -117,6 +117,7 @@ interface CartLoaderButtonProps {
 export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [replaceConfirmationOpen, setReplaceConfirmationOpen] = useState(false);
   const [directResult, setDirectResult] = useState<{
     planned: number;
     missing: string[];
@@ -422,7 +423,7 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
         onClick={() => {
           onSelect?.();
           if (cartLoader.availability === 'ready') {
-            cartLoader.start();
+            setReplaceConfirmationOpen(true);
             return;
           }
           if (cartLoader.availability === 'outdated') {
@@ -454,7 +455,7 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
           : loaderBusy && loaderProgress
             ? `Cargando ${loaderProgress.added + loaderProgress.failed} de ${loaderProgress.total}`
             : cartLoader.availability === 'ready'
-              ? `Cargar carro en ${basket.store}`
+              ? `Cargar lista nueva en ${basket.store}`
               : cartLoader.availability === 'outdated'
                 ? 'Actualizar cargador de Convive'
                 : manualOnly
@@ -465,6 +466,45 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
                     ? `Cargar carro en ${basket.store}`
                     : `Preparar carro en ${basket.store}`}
       </Button>
+
+      {replaceConfirmationOpen && !loaderBusy && (
+        <div
+          role="alertdialog"
+          aria-labelledby={`replace-cart-${basket.store}`}
+          className="space-y-3 rounded-xl border px-4 py-3"
+          style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-paper-warm)' }}
+        >
+          <div>
+            <p id={`replace-cart-${basket.store}`} className="text-xs font-bold cc-text-primary">
+              Esta carga reemplazará el carro actual de {basket.store}
+            </p>
+            <p className="mt-1 text-[11px] leading-4 cc-text-secondary">
+              Convive vaciará los productos anteriores antes de agregar esta lista. Así el carro y el total
+              corresponden solamente a esta compra.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                setReplaceConfirmationOpen(false);
+                cartLoader.start({ replaceCart: true });
+              }}
+              className="h-9 text-xs text-white"
+              style={{ background: 'var(--cc-ink)' }}
+            >
+              Vaciar carro anterior y cargar
+            </Button>
+            <button
+              type="button"
+              onClick={() => setReplaceConfirmationOpen(false)}
+              className="px-2 text-xs font-semibold underline cc-text-secondary"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {loaderProgress && (
         <div
@@ -510,7 +550,7 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
 
       {cartLoader.availability === 'ready' ? (
         <p className="text-[11px] cc-text-tertiary">
-          Convive agregará y verificará los productos en tu sesión de {basket.store}.
+          Convive vaciará el carro anterior y luego agregará y verificará los productos en tu sesión de {basket.store}.
           Al terminar abrirá el carro oficial; tú revisas y pagas.
         </p>
       ) : cartLoader.availability === 'outdated' ? (

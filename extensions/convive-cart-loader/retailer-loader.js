@@ -66,6 +66,14 @@
         : candidate.closest('a[href],button,[role="button"]');
       if (!element || !isVisible(element) || !isEnabled(element)) return;
       if (element.closest('#convive-cart-loader')) return;
+      const metadata = normalize([
+        elementLabel(element),
+        element.getAttribute('class'),
+        element.getAttribute('id'),
+        element.getAttribute('href'),
+        element.getAttribute('data-testid'),
+      ].filter(Boolean).join(' '));
+      if (/\b(agregar|anadir|add to cart|comprar|pagar|confirmar|finalizar)\b/.test(metadata)) return;
       const previous = scored.get(element) || 0;
       scored.set(element, Math.max(previous, score));
     };
@@ -234,6 +242,12 @@
 
   function parseCartCount(config) {
     for (const { element } of cartControlCandidates(config)) {
+      const badge = [...element.querySelectorAll(
+        'span,strong,small,[data-testid*="count" i],[class*="badge" i],[class*="count" i]',
+      )]
+        .map(candidate => candidate.textContent?.trim() || '')
+        .find(value => /^\d{1,4}$/.test(value));
+      if (badge) return Number(badge);
       const label = [
         element.textContent,
         element.getAttribute('aria-label'),
@@ -241,14 +255,138 @@
       ].filter(Boolean).join(' ');
       const cartMatch = label.match(/(?:carro|carrito|cart)[^\d]{0,40}(\d{1,4})/i);
       if (cartMatch) return Number(cartMatch[1]);
+      const reverseCartMatch = label.match(/(\d{1,4})[^\d]{0,40}(?:carro|carrito|cart)/i);
+      if (reverseCartMatch) return Number(reverseCartMatch[1]);
       const plainMatch = label.trim().match(/^(\d{1,4})$/);
       if (plainMatch) return Number(plainMatch[1]);
-      const badge = [...element.querySelectorAll('span,strong,small')]
-        .map(candidate => candidate.textContent?.trim() || '')
-        .find(value => /^\d{1,4}$/.test(value));
-      if (badge) return Number(badge);
     }
     return null;
+  }
+
+  async function settledCartCount(config, timeoutMs = 8000) {
+    await new Promise(resolve => window.setTimeout(resolve, 1800));
+    const startedAt = Date.now();
+    let previous = null;
+    let stableReads = 0;
+    while (Date.now() - startedAt < timeoutMs) {
+      const current = parseCartCount(config);
+      if (current !== null) {
+        stableReads = current === previous ? stableReads + 1 : 1;
+        previous = current;
+        if (stableReads >= 3) return current;
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 350));
+    }
+    return previous;
+  }
+
+  function labelMatches(label, expectedLabels) {
+    return expectedLabels.some(expected => {
+      const normalizedExpected = normalize(expected);
+      return label === normalizedExpected || label.startsWith(`${normalizedExpected} `);
+    });
+  }
+
+  function findEmptyCartControl(config) {
+    const configured = firstVisible(config.emptyCartSelectors || []);
+    if (configured) return configured;
+    const labels = config.emptyCartLabels || [];
+    return [...document.querySelectorAll('button,[role="button"],a[href]')]
+      .filter(element => isVisible(element) && isEnabled(element) && !element.closest('#convive-cart-loader'))
+      .find(element => labelMatches(elementLabel(element), labels)) || null;
+  }
+
+  function findEmptyCartConfirmation() {
+    const containers = [...document.querySelectorAll(
+      'dialog,[role="dialog"],[aria-modal="true"],[class*="modal"],[class*="Modal"]',
+    )].filter(container => {
+      if (!isVisible(container)) return false;
+      const text = normalize(container.textContent);
+      return /\b(vaciar|eliminar)\b/.test(text)
+        && /\b(carro|carrito|producto|articulo)\b/.test(text);
+    });
+    for (const container of containers.reverse()) {
+      const confirmation = [...container.querySelectorAll('button,[role="button"]')]
+        .filter(element => isVisible(element) && isEnabled(element))
+        .find(element => {
+          const label = elementLabel(element);
+          return /^(?:si\b.*\b(?:vaciar|eliminar)|confirmar|aceptar|vaciar(?: carro| carrito)?|eliminar(?: todo| todos| productos)?)$/.test(label);
+        });
+      if (confirmation) return confirmation;
+    }
+    return null;
+  }
+
+  function closeCartPanel() {
+    const close = [...document.querySelectorAll('button[aria-label="Cerrar" i],button[title="Cerrar" i]')]
+      .filter(element => isVisible(element) && isEnabled(element))
+      .find(element => !element.closest('#convive-cart-loader'));
+    close?.click();
+  }
+
+  async function replaceExistingCart(overlay, config, job) {
+    overlay.querySelector('.coco-loader__detail').textContent =
+      `Revisando el carro anterior de ${job.store} antes de cargar la lista nueva…`;
+    const before = await settledCartCount(config);
+    if (before === null) {
+      await pause(
+        overlay,
+        `No fue posible verificar el contador de ${job.store}. Abre su carro, déjalo vacío y pulsa “Reanudar carga”.`,
+      );
+      return false;
+    }
+
+    if (before > 0) {
+      const cartControl = findCartControl(config);
+      if (!cartControl) {
+        await pause(
+          overlay,
+          `No encontramos el acceso al carro de ${job.store}. Ábrelo, vacíalo y pulsa “Reanudar carga”.`,
+        );
+        return false;
+      }
+      cartControl.click();
+      const emptyControl = await waitFor(() => findEmptyCartControl(config), 8000);
+      if (!emptyControl) {
+        await pause(
+          overlay,
+          `${job.store} no mostró una opción verificable para vaciar el carro. Vacíalo aquí y pulsa “Reanudar carga”.`,
+        );
+        return false;
+      }
+      emptyControl.click();
+
+      await new Promise(resolve => window.setTimeout(resolve, 600));
+      if (parseCartCount(config) !== 0) {
+        const confirmation = await waitFor(() => findEmptyCartConfirmation(), 4000);
+        confirmation?.click();
+      }
+
+      const cleared = await waitFor(() => (
+        parseCartCount(config) === 0 ? { cartCount: 0 } : null
+      ), 10000);
+      if (!cleared) {
+        await pause(
+          overlay,
+          `${job.store} no confirmó que el carro quedara vacío. Vacíalo aquí y pulsa “Reanudar carga”.`,
+        );
+        return false;
+      }
+      closeCartPanel();
+    }
+
+    const reset = await runtimeMessage({
+      type: 'COMPLETE_CART_RESET',
+      cartCountBefore: before,
+      cartCountAfter: 0,
+    });
+    if (!reset?.ok) {
+      await pause(overlay, 'No fue posible registrar el vaciado. Revisa el carro y pulsa “Reanudar carga”.');
+      return false;
+    }
+    overlay.querySelector('.coco-loader__detail').textContent = reset.progress?.detail
+      || 'Carro anterior verificado. Cargando la lista nueva…';
+    return true;
   }
 
   function quantitySignature(config) {
@@ -362,6 +500,8 @@
       item: item.name,
       detail: job.status === 'paused'
         ? 'La carga está pausada. Completa el paso solicitado y reanuda.'
+        : job.replaceCart && job.cartResetStatus === 'pending'
+          ? `Revisando el carro anterior de ${job.store}…`
         : `Buscando ${item.name}…`,
     });
 
@@ -385,6 +525,11 @@
         `${job.store} necesita que elijas despacho, retiro o ubicación. Hazlo aquí y luego pulsa “Reanudar carga”.`,
       );
       return;
+    }
+
+    if (job.replaceCart && job.cartResetStatus === 'pending') {
+      const replaced = await replaceExistingCart(overlay, config, job);
+      if (!replaced) return;
     }
 
     if (job.inFlightItemId === item.id) {

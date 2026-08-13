@@ -381,6 +381,7 @@ export interface SupermarketCartLoadRequest {
   store: string;
   items: SupermarketCartLoadItem[];
   createdAt: string;
+  replaceCart: boolean;
 }
 
 export interface SupermarketCartLoadProgress {
@@ -393,6 +394,8 @@ export interface SupermarketCartLoadProgress {
   currentItem?: string;
   previousCartCount?: number;
   currentCartCount?: number;
+  removedCartCount?: number;
+  cartReplaced?: boolean;
   detail: string;
 }
 
@@ -402,7 +405,7 @@ export interface SupermarketCartLoaderBridge {
   availability: SupermarketCartLoaderAvailability;
   installedVersion?: string;
   progress: SupermarketCartLoadProgress | null;
-  start: () => boolean;
+  start: (options?: { replaceCart?: boolean }) => boolean;
 }
 
 
