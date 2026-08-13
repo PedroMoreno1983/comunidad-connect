@@ -283,8 +283,8 @@ async function main() {
     if (
       largeProgress.added !== 100
       || largeProgress.failed !== 0
-      || largeProgress.previousCartCount !== 5
-      || largeProgress.currentCartCount !== 105
+      || largeProgress.previousCartCount !== 2
+      || largeProgress.currentCartCount !== 102
     ) {
       throw new Error(`La canasta de 100 terminó inválida: ${JSON.stringify(largeProgress)}`);
     }
