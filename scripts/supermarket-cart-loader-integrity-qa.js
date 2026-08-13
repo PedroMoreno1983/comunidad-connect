@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.5', 'La versión con reemplazo verificado debe ser 0.3.5.');
+check(manifest.version === '0.3.6', 'La versión con reemplazo verificado debe ser 0.3.6.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');

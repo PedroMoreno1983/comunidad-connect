@@ -252,7 +252,7 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo compara tu lista en las siete cadenas y, con el cargador activado, prepara el carro oficial
+          CoCo compara tu lista en las cadenas con catálogo vigente y, con el cargador activado, prepara el carro oficial
           de la tienda que elijas. Tú revisas disponibilidad, eliges entrega y pagas.
         </p>
       </header>

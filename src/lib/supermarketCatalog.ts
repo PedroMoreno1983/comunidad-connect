@@ -90,7 +90,10 @@ export async function comparePersistedSupermarkets(
         ...row,
         match_relevance: productMatchScore(term, String(row.name || '')),
       }))
-      .filter(row => row.match_relevance >= 0);
+      .filter(row => (
+        row.match_relevance >= 0
+        && isProductSuitableForRequest(String(row.name || ''), term, requestedUnits[term])
+      ));
     const bestRelevanceByStore = new Map<string, number>();
     for (const row of scored) {
       const store = String(row.store || '');
