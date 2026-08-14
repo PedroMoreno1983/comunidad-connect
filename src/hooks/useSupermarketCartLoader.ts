@@ -16,6 +16,7 @@ const REQUIRED_LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
   'cart-replace-v1',
+  'cart-stale-job-recovery-v1',
 ] as const;
 
 function loaderIdentity(value: unknown): { version?: string; capabilities: string[] } {

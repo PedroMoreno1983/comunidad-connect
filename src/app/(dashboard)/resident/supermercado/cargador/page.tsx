@@ -77,7 +77,7 @@ export default function CargadorPage() {
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador temporal 0.3.7
+              Descargar cargador temporal 0.3.8
             </a>
           </div>
         ) : (
