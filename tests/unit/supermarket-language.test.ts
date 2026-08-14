@@ -35,4 +35,15 @@ describe('supermarket catalog language variants', () => {
     expect(productIntent('papas fritas')).toBe('general');
     expect(termMatchesProductName('papas fritas', 'Papas fritas sal de mar 150 g')).toBe(true);
   });
+
+  it('resolves common Chilean drinks, retailer naming and a frequent typo', () => {
+    expect(matchAnchor('champaña brut')).toBe('espumante');
+    expect(matchAnchors('champaña brut')).toEqual(['espumante', 'champana', 'champaña']);
+    expect(termMatchesProductName('champaña brut', 'Espumante Brut 750 ml')).toBe(true);
+    expect(termMatchesProductName('Aperol', 'Cóctel Aperitivo Botella 1 L Aperol')).toBe(true);
+    expect(termMatchesProductName('Aperol', 'Licor Aperol 11° 1 L')).toBe(true);
+    expect(termMatchesProductName('coca', 'Bebida Original Botella 2 L Coca-Cola')).toBe(true);
+    expect(termMatchesProductName('tónica', 'Agua Tónica Botella 1,5 L Schweppes')).toBe(true);
+    expect(termMatchesProductName('Canadá dray', 'Bebida Ginger Ale 1,5 L Canada Dry')).toBe(true);
+  });
 });

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildBasketComparison } from '@/lib/supermarketBasket';
+import {
+  buildBasketComparison,
+  buildSupermarketCandidate,
+  isProductSuitableForRequest,
+} from '@/lib/supermarketBasket';
 import { allocateGroupCosts, parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
 
 describe('supermarket group orders', () => {
@@ -65,6 +69,117 @@ describe('supermarket group orders', () => {
       { term: 'te', quantity: 20 },
     ]);
   });
+
+  it('parses a party drinks list with emoji bullets and packaging quantities', () => {
+    expect(parseGroupShoppingList([
+      '- 🍷 3 botellas de vino',
+      '- 🍸 1 botella de gin',
+      '- 🥃 3 botellas de pisco',
+      '- 🍹 2 botellas de Aperol',
+      '- 3 champaña brut',
+      '- 🍺 40 cervezas .',
+      '- 3 botellas de agua con gas',
+      '- 4 coca',
+      '- 1 tónica',
+      '- 2 Canadá dray',
+    ].join('\n'))).toEqual([
+      { term: 'vino', quantity: 3 },
+      { term: 'gin', quantity: 1 },
+      { term: 'pisco', quantity: 3 },
+      { term: 'aperol', quantity: 2 },
+      { term: 'champana brut', quantity: 3 },
+      { term: 'cervezas', quantity: 40 },
+      { term: 'agua con gas', quantity: 3 },
+      { term: 'coca', quantity: 4 },
+      { term: 'tonica', quantity: 1 },
+      { term: 'canada dray', quantity: 2 },
+    ]);
+  });
+
+  it('uses declared pack size to supply a requested number of beers', () => {
+    const result = buildBasketComparison(['cervezas'], {
+      cervezas: [
+        {
+          id: 'single',
+          store: 'Lider',
+          name: 'Cerveza Lager Lata 350 ml',
+          price: 1290,
+          pack_units: 1,
+          channel_type: 'retail',
+        },
+        {
+          id: 'pack',
+          store: 'Lider',
+          name: 'Cerveza Lager Latas Pack 12 Un 350 ml',
+          price: 8690,
+          pack_units: 1,
+          channel_type: 'retail',
+        },
+      ],
+    }, { cervezas: 40 });
+
+    expect(result.comparisons[0]?.items[0]).toMatchObject({
+      name: 'Cerveza Lager Latas Pack 12 Un 350 ml',
+      requestedQuantity: 40,
+      quantity: 4,
+      packUnits: 12,
+      suppliedQuantity: 48,
+    });
+  });
+
+  it('does not confuse a 330 ml presentation with a pack of 330 beers', () => {
+    const candidate = buildSupermarketCandidate({
+      id: 'unknown-pack',
+      store: 'Lider',
+      name: 'Cerveza Pils Lager Botellas Pack 330 ml Kross',
+      price: 5190,
+      pack_units: 1,
+    }, 'cervezas', 40);
+    expect(candidate).toMatchObject({ packUnits: 1, quantity: 40, suppliedQuantity: 40 });
+
+    const explicitPack = buildSupermarketCandidate({
+      id: 'six-pack',
+      store: 'Unimarc',
+      name: 'Pack cerveza Corelli lager lata 6 un de 330 cc',
+      price: 4990,
+      pack_units: 1,
+    }, 'cervezas', 40);
+    expect(explicitPack).toMatchObject({ packUnits: 6, quantity: 7, suppliedQuantity: 42 });
+
+    const multipliedPack = buildSupermarketCandidate({
+      id: 'multiplied-six-pack',
+      store: 'Tottus',
+      name: 'Pack Bebida Coca Cola Original Lata 6 x 350 ml',
+      price: 4990,
+      pack_units: 1,
+    }, 'coca', 4);
+    expect(multipliedPack).toMatchObject({ packUnits: 6, quantity: 1, suppliedQuantity: 6 });
+
+    const namedSixPack = buildSupermarketCandidate({
+      id: 'named-six-pack',
+      store: 'Tottus',
+      name: 'Cerveza Estrella Damm Botella 330 cc Six Pack',
+      price: 5990,
+      pack_units: 1,
+    }, 'cervezas', 40);
+    expect(namedSixPack).toMatchObject({ packUnits: 6, quantity: 7, suppliedQuantity: 42 });
+  });
+
+  it('does not substitute a prepared sour mix for a bottle of pisco', () => {
+    expect(isProductSuitableForRequest('Pisco Especial 35° Botella 1 L', 'pisco', undefined)).toBe(true);
+    expect(isProductSuitableForRequest('Pisco Sour Campanario 1 L', 'pisco', undefined)).toBe(false);
+    expect(isProductSuitableForRequest('Base Pisco Sour Mix 200 g', 'pisco', undefined)).toBe(false);
+    expect(isProductSuitableForRequest('Pisco Ice Altonic 7°', 'pisco', undefined)).toBe(false);
+  });
+
+  it('does not silently substitute alcohol-free beer or a mixed soda pack', () => {
+    expect(isProductSuitableForRequest('Cerveza Lager Lata 350 ml', 'cervezas', undefined)).toBe(true);
+    expect(isProductSuitableForRequest('Cerveza Sin Alcohol Lata 330 cc', 'cervezas', undefined)).toBe(false);
+    expect(isProductSuitableForRequest('Cerveza Sin Alcohol Lata 330 cc', 'cerveza sin alcohol', undefined)).toBe(true);
+    expect(isProductSuitableForRequest('Bebida Coca-Cola Original 2 L', 'coca', undefined)).toBe(true);
+    expect(isProductSuitableForRequest('Pack Coca-Cola + Sprite 3 L', 'coca', undefined)).toBe(false);
+  });
+
   it('allocates the prepared basket exactly by each participant contribution', () => {
     const allocation = allocateGroupCosts([
       { userId: 'ana', term: 'arroz', quantity: 2 },
