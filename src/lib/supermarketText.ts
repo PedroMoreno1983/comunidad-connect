@@ -17,9 +17,17 @@ const MATCH_STOP_WORDS = new Set([
 ]);
 const SHORT_PRODUCT_WORDS = new Set(['te']);
 
+function canonicalCatalogTerm(value: string): string {
+    const normalized = foldAccents(value);
+    if (/^cocas?$/.test(normalized)) return 'coca cola';
+    return normalized
+        .replace(/^champanas?\b/, 'espumante')
+        .replace(/\bdray\b/g, 'dry');
+}
+
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
 export function significantWords(term: string): string[] {
-    return foldAccents(term)
+    return canonicalCatalogTerm(term)
         .split(/[^a-z0-9]+/i)
         .map(word => word.trim())
         .filter(word => (
@@ -71,7 +79,8 @@ function stem(word: string): string {
 }
 
 const PACKAGE_PREFIXES = new Set([
-    'bandeja', 'bolsa', 'caja', 'filete', 'malla', 'pack', 'paquete',
+    'agua', 'aperitivo', 'bandeja', 'bolsa', 'botella', 'caja', 'coctel',
+    'filete', 'lata', 'licor', 'malla', 'pack', 'paquete',
 ]);
 
 const FRESH_PRODUCE = new Set([
@@ -128,7 +137,8 @@ export function productMatchScore(term: string, productName: string): number {
     if (firstPosition < 0) return -1;
 
     if (termWords.length === 1) {
-        const packagePrefixed = firstPosition === 1 && PACKAGE_PREFIXES.has(nameWords[0]);
+        const packagePrefixed = firstPosition > 0
+            && nameWords.slice(0, firstPosition).every(word => PACKAGE_PREFIXES.has(word));
         if (firstPosition !== 0 && !packagePrefixed) return -1;
         if (
             FRESH_PRODUCE.has(firstTerm)
@@ -166,6 +176,7 @@ export function matchAnchors(term: string): string[] {
     const variants: Record<string, string[]> = {
         azucar: ['azucar', 'azúcar'],
         champinon: ['champinon', 'champiñon'],
+        espumante: ['espumante', 'champana', 'champaña'],
         limon: ['limon', 'limón'],
         panal: ['panal', 'pañal'],
         platano: ['platano', 'plátano'],

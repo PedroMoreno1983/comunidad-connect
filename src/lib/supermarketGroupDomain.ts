@@ -30,6 +30,7 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     let entry = rawEntry
       .trim()
       .replace(/^[-*•]\s*/, '')
+      .replace(/^[^\p{L}\p{N}]+/gu, '')
       .replace(/^\d+[.)]\s+/, '');
     if (index === 0) {
       entry = entry
@@ -44,6 +45,9 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
     let quantity = 1;
     let rawTerm = entry;
     let unit: SupermarketMeasurementUnit | undefined;
+    const leadingPackage = entry.match(
+      /^(\d{1,3})\s*(?:botellas?|latas?|cajas?|packs?|paquetes?)\s+(?:de\s+)?(.+)$/i,
+    );
     const leadingMeasure = entry.match(
       /^(\d{1,5})\s*(kg|kgs|kilos?|kilogramos?|g|gr|gramos?|l|lt|litros?|ml|cc)\s+(?:de\s+)?(.+)$/i,
     );
@@ -56,7 +60,10 @@ export function parseGroupShoppingList(value: string): GroupItemInput[] {
       || entry.match(/^(.+?)\s*\((\d{1,3})\)\s*$/)
       || entry.match(/^(.+?)\s+(\d{1,3})(?:\s*(?:un(?:idad(?:es)?)?|uds?|u))?\s*$/i);
 
-    if (leadingMeasure) {
+    if (leadingPackage) {
+      quantity = Number(leadingPackage[1]);
+      rawTerm = leadingPackage[2];
+    } else if (leadingMeasure) {
       quantity = Number(leadingMeasure[1]);
       unit = normalizeMeasurementUnit(leadingMeasure[2]);
       rawTerm = leadingMeasure[3];

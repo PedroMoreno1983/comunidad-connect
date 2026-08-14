@@ -28,8 +28,19 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
+  const explicitPack = normalizedName.match(
+    /\bpack(?:\s+de)?(?:\s+(?:latas?|botellas?|unidades?|un))?\s+(\d{1,3})\b(?!\s*(?:ml|cc|g|gr|kg|l|lt)\b)/,
+  ) ?? normalizedName.match(
+    /\bpack\b(?:\s+[a-z]+){0,6}\s+(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/,
+  ) ?? normalizedName.match(
+    /\bpack\b[^0-9]{0,80}\b(\d{1,3})\s*x\s*\d+(?:[.,]\d+)?\s*(?:ml|cc|g|gr|kg|l|lt)\b/,
+  );
+  if (explicitPack) return Math.max(1, Number(explicitPack[1]));
+  if (/\b(?:six pack|sixpack)\b/.test(normalizedName)) return 6;
+
   // "12 huevos" means twelve units, not twelve trays. Keep this inference
-  // narrow so "2 arroz" still means two products, not units inside a pack.
+  // narrow when the product name does not explicitly declare a pack, so
+  // "2 arroz" still means two products, not units inside a package.
   if (!/\bhuevos?\b/.test(normalizedTerm)) return 1;
   if (/\bdocena\b/.test(normalizedName)) return 12;
   const match = normalizedName.match(/\b(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/);
@@ -97,6 +108,16 @@ export function isProductSuitableForRequest(
   const normalizedName = foldAccents(name);
   const normalizedTerm = foldAccents(requestedTerm);
   const measurement = productMeasurementInBaseUnits(name);
+  const family = matchAnchor(requestedTerm);
+
+  if (family === 'coca' && /\b(sprite|fanta)\b/.test(normalizedName)) return false;
+  if (
+    family === 'cerveza'
+    && !/\bsin alcohol\b/.test(normalizedTerm)
+    && /\b(?:sin alcohol|0(?:[,.]0)?°)\b/.test(normalizedName)
+  ) {
+    return false;
+  }
 
   if (!requestedUnit && /\bpechuga\b/.test(normalizedTerm) && /\bpollo\b/.test(normalizedTerm)) {
     if (!/\bpechuga\b/.test(normalizedName) || !/\bpollo\b/.test(normalizedName) || /\bpavo\b/.test(normalizedName)) {
@@ -111,8 +132,6 @@ export function isProductSuitableForRequest(
 
   if (requestedUnit || significantWords(requestedTerm).length !== 1) return true;
 
-  const family = matchAnchor(requestedTerm);
-
   if (family === 'carne') {
     return Boolean(
       measurement?.dimension === 'mass'
@@ -122,6 +141,9 @@ export function isProductSuitableForRequest(
   }
   if (family === 'longaniza') {
     return Boolean(measurement?.dimension === 'mass' && measurement.amount >= 400);
+  }
+  if (family === 'pisco') {
+    return !/\b(sour|cocktail|coctel|mix|base|ice)\b/.test(normalizedName);
   }
   if (family === 'bebida') {
     if (/\b(lactea|vegetal|isotonica|energetica|polvo|vino|cerveza|alcohol)\b/.test(normalizedName)) {
@@ -180,7 +202,8 @@ function formatSignature(name: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
-  const match = normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc|un|unidad|unidades)\b/);
+  const match = normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/)
+    ?? normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(un|unidad|unidades)\b/);
   if (!match) return '';
   const unit = match[2] === 'gr' ? 'g' : match[2] === 'lt' ? 'l' : match[2];
   return `${match[1].replace(',', '.')}${unit}`;
