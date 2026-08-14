@@ -59,6 +59,7 @@ function DashboardShell({
             '/resident/supermercado': 'Supermercado y Compras Grupales',
             '/amenities': 'Reservas de Instalaciones',
             '/expenses': 'Gastos Comunes',
+            '/estacionamientos': 'Estacionamientos Vimba',
             '/votaciones': 'Votaciones',
             '/notifications': 'Notificaciones',
             '/feed': 'Avisos y Comunicaciones',

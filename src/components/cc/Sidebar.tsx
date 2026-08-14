@@ -12,6 +12,7 @@ import { NavigationService } from "@/lib/api";
 import { clsx } from "clsx";
 import {
   Activity,
+  Car,
   Home,
   ShoppingBag,
   Store,
@@ -194,7 +195,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
         { href: "/home", label: "Inicio", icon: Home, roles: ["admin", "resident"] },
         { href: "/notifications", label: "Notificaciones", icon: Bell, roles: ["admin", "resident"] },
         { href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"] },
-        { href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
+        { href: "/comunicaciones", label: role === "conserje" ? "Comunicaciones y avisos" : "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"] },
         { href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["resident", "admin"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["concierge"], feature: "amenities" },
@@ -220,6 +221,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     {
       title: "SERVICIOS DE LA COMUNIDAD",
       links: [
+        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["resident", "admin"] },
         { href: "/amenities", label: "Espacios Comunes", icon: Calendar, roles: ["resident", "admin"], feature: "amenities" },
         { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, roles: ["resident", "admin"] },
         { href: "/resident/supermercado", label: "Supermercado", icon: Store, roles: ["resident"] },
@@ -240,6 +242,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/concierge/visitors", label: "Visitas", icon: Shield, roles: ["concierge", "admin"] },
         { href: "/concierge/packages", label: "Paquetería", icon: Package, roles: ["concierge", "admin"] },
+        { href: "/estacionamientos", label: "Estacionamientos", icon: Car, roles: ["concierge"] },
         { href: "/concierge#incidencias", label: "Incidencias", icon: Wrench, roles: ["concierge"] },
         { href: "/directorio", label: "Directorio", icon: Users, roles: ["concierge"] },
       ]
@@ -249,6 +252,7 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
       links: [
         { href: "/admin/finanzas", label: "Control Finanzas", icon: PieChart, roles: ["admin"] },
         { href: "/admin/units", label: "Unidades", icon: Home, roles: ["admin"] },
+        { href: "/estacionamientos?tab=admin", label: "Estacionamientos", icon: Car, roles: ["admin"] },
         { href: "/admin/consumo", label: "Control Hídrico", icon: Waves, roles: ["admin"] },
         { href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"] },
         { href: "/admin/mantenimiento", label: "Mantenimiento", icon: Wrench, roles: ["admin"], feature: "maintenance" },
