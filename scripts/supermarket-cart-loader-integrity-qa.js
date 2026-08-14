@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.9', 'La versión con detección precisa de CAPTCHA debe ser 0.3.9.');
+check(manifest.version === '0.3.10', 'La versión con lectura automática del panel del carro debe ser 0.3.10.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -126,7 +126,11 @@ check(
   loader.includes('replaceExistingCart')
     && loader.includes('findEmptyCartControl')
     && loader.includes('findEmptyCartConfirmation')
-    && loader.includes('settledCartCount'),
+    && loader.includes('settledCartCount')
+    && loader.includes('visibleCartPanelCount')
+    && loader.includes('cartCountWithDrawerProbe')
+    && loader.includes('cartControl.click()')
+    && loader.includes('closeCartPanel()'),
   'La lista nueva no reemplaza y verifica el carro anterior antes de cargar.',
 );
 check(
@@ -169,7 +173,7 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador temporal 0.3.9')
+  activationPage.includes('Descargar cargador temporal 0.3.10')
     && activationPage.includes('Cargar lista nueva')
     && activationPage.includes('Confirma que quieres reemplazar el carro anterior'),
   'La guía del cargador no explica ni enlaza la versión que realmente reemplaza el carro.',

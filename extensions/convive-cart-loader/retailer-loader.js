@@ -250,8 +250,20 @@
       });
   }
 
+  function visibleCartPanelCount() {
+    for (const element of [...document.querySelectorAll('h1,h2,h3,[role="heading"],p')].filter(isVisible)) {
+      const label = elementLabel(element);
+      const match = label.match(/(?:tienes|hay|carro tiene|carrito tiene) (\d{1,4}) (?:productos|articulos)\b/)
+        || label.match(/^(\d{1,4}) (?:productos|articulos)\b/);
+      if (match) return Number(match[1]);
+    }
+    return null;
+  }
+
   function parseCartCount(config) {
     if (hasVisibleEmptyCartState()) return 0;
+    const panelCount = visibleCartPanelCount();
+    if (panelCount !== null) return panelCount;
     for (const { element } of cartControlCandidates(config)) {
       const badge = [...element.querySelectorAll(
         'span,strong,small,[data-testid*="count" i],[class*="badge" i],[class*="count" i]',
@@ -289,6 +301,18 @@
       await new Promise(resolve => window.setTimeout(resolve, 350));
     }
     return previous;
+  }
+
+  async function cartCountWithDrawerProbe(config) {
+    let count = await settledCartCount(config);
+    if (count !== null) return count;
+
+    const cartControl = findCartControl(config);
+    if (!cartControl) return null;
+    cartControl.click();
+    count = await settledCartCount(config, 5000);
+    if (count !== null) closeCartPanel();
+    return count;
   }
 
   function labelMatches(label, expectedLabels) {
@@ -338,7 +362,7 @@
   async function replaceExistingCart(overlay, config, job) {
     overlay.querySelector('.coco-loader__detail').textContent =
       `Revisando el carro anterior de ${job.store} antes de cargar la lista nueva…`;
-    const before = await settledCartCount(config);
+    const before = await cartCountWithDrawerProbe(config);
     if (before === null) {
       await pause(
         overlay,
