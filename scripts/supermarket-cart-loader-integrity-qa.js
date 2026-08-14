@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.8', 'La versión con recuperación de cargas huérfanas debe ser 0.3.8.');
+check(manifest.version === '0.3.9', 'La versión con detección precisa de CAPTCHA debe ser 0.3.9.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -80,6 +80,10 @@ for (const store of stores) {
   check(configs[store].emptyCartLabels.length > 0, `${store} no declara cómo vaciar el carro anterior.`);
   check(typeof configs[store].searchUrl === 'function', `${store} no declara URL de búsqueda.`);
 }
+check(
+  stores.every(store => !configs[store].blockedText.some(fragment => fragment.toLowerCase() === 'un momento')),
+  'Una frase comercial genérica vuelve a activar un falso CAPTCHA.',
+);
 check(
   configs.Lider.searchUrl('leche').startsWith('https://www.lider.cl/'),
   'Lider conserva la ruta 404 de super.lider.cl para búsquedas.',
@@ -165,7 +169,7 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador temporal 0.3.8')
+  activationPage.includes('Descargar cargador temporal 0.3.9')
     && activationPage.includes('Cargar lista nueva')
     && activationPage.includes('Confirma que quieres reemplazar el carro anterior'),
   'La guía del cargador no explica ni enlaza la versión que realmente reemplaza el carro.',
