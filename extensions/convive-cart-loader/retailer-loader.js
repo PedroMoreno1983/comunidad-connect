@@ -240,7 +240,18 @@
     });
   }
 
+  function hasVisibleEmptyCartState() {
+    return [...document.querySelectorAll('h1,h2,h3,[role="heading"],p')]
+      .filter(isVisible)
+      .some(element => {
+        const label = elementLabel(element);
+        return /^(?:tu )?(?:carro|carrito) (?:esta )?vacio\b/.test(label)
+          || /^(?:no tienes|sin) productos (?:en|dentro de) (?:tu )?(?:carro|carrito)\b/.test(label);
+      });
+  }
+
   function parseCartCount(config) {
+    if (hasVisibleEmptyCartState()) return 0;
     for (const { element } of cartControlCandidates(config)) {
       const badge = [...element.querySelectorAll(
         'span,strong,small,[data-testid*="count" i],[class*="badge" i],[class*="count" i]',

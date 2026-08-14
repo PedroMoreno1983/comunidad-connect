@@ -51,6 +51,19 @@ const stores = [
 ];
 
 function fixtureHtml(store) {
+  const emptyCartDomUpdate = store === 'Jumbo'
+    ? `
+               cart.querySelector('[data-cart-count]')?.remove();
+               const drawer = document.querySelector('#fixture-cart-drawer');
+               const emptyHeading = document.createElement('h2');
+               emptyHeading.dataset.emptyCartState = 'true';
+               emptyHeading.textContent = 'Tu carro esta vacio';
+               drawer.append(emptyHeading);
+             `
+    : `
+               cart.querySelector('[data-cart-count]').textContent = '0';
+               document.querySelector('#fixture-cart-drawer').hidden = true;
+             `;
   return `<!doctype html>
     <html>
       <body>
@@ -84,11 +97,10 @@ function fixtureHtml(store) {
             type="button"
             onclick="
               sessionStorage.setItem('fixture-cart-count', '0');
-              sessionStorage.setItem('convive-cart-cleared', 'true');
-              const cart = document.querySelector('#fixture-cart');
-              cart.querySelector('[data-cart-count]').textContent = '0';
-              this.closest('dialog').close();
-              document.querySelector('#fixture-cart-drawer').hidden = true;
+               sessionStorage.setItem('convive-cart-cleared', 'true');
+               const cart = document.querySelector('#fixture-cart');
+               ${emptyCartDomUpdate}
+               this.closest('dialog').close();
             "
           >Si, vaciar</button>
         </dialog>
@@ -106,9 +118,15 @@ function fixtureHtml(store) {
                   || (location.pathname.includes('milk') ? 'milk' : 'rice');
                 sessionStorage.setItem(product, '1');
                 const cart = document.querySelector('#fixture-cart');
-                const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
-                sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
-                cart.querySelector('[data-cart-count]').textContent = String(nextCartCount);
+                 const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
+                 sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
+                 let cartCount = cart.querySelector('[data-cart-count]');
+                 if (!cartCount) {
+                   cartCount = document.createElement('span');
+                   cartCount.dataset.cartCount = '';
+                   cart.append(cartCount);
+                 }
+                 cartCount.textContent = String(nextCartCount);
                 const wrapper = this.parentElement;
                 this.remove();
                 const value = document.createElement('span');
@@ -204,7 +222,7 @@ async function main() {
     }));
     if (
       !extensionIdentity
-      || extensionIdentity.version !== '0.3.6'
+      || extensionIdentity.version !== '0.3.7'
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
       || !extensionIdentity.capabilities?.includes('cart-replace-v1')
@@ -259,8 +277,15 @@ async function main() {
         const retailerState = retailerPage ? await retailerPage.evaluate(() => ({
           cartCount: document.querySelector('[data-cart-count]')?.textContent,
           savedCartCount: sessionStorage.getItem('fixture-cart-count'),
-          cartCleared: sessionStorage.getItem('convive-cart-cleared'),
-          drawerHidden: document.querySelector('#fixture-cart-drawer')?.hidden,
+           cartCleared: sessionStorage.getItem('convive-cart-cleared'),
+           emptyStateText: document.querySelector('[data-empty-cart-state]')?.textContent,
+           emptyStateRect: (() => {
+             const element = document.querySelector('[data-empty-cart-state]');
+             if (!element) return null;
+             const rect = element.getBoundingClientRect();
+             return { width: rect.width, height: rect.height };
+           })(),
+           drawerHidden: document.querySelector('#fixture-cart-drawer')?.hidden,
           dialogOpen: document.querySelector('#fixture-empty-confirmation')?.open,
           dialogButtons: [...document.querySelectorAll('#fixture-empty-confirmation button')]
             .map(button => button.textContent?.trim()),

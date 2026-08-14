@@ -26,9 +26,9 @@ export default function CargadorPage() {
 
       <h1 className="mt-6 text-2xl font-bold cc-text-primary">Activa la carga automática</h1>
       <p className="mt-2 text-sm leading-6 cc-text-secondary">
-        Se activa una sola vez en Chrome o Edge. Después, desde Convive solo pulsas
-        <strong> Cargar carro</strong>: CoCo agrega y verifica los productos, abre el
-        carro oficial y tú continúas al pago.
+        Se activa una sola vez en Chrome o Edge. Después, desde Convive pulsas
+        <strong> Cargar lista nueva</strong>, confirmas el reemplazo y CoCo vacía el carro anterior
+        antes de agregar y verificar esta compra. Tú continúas al pago.
       </p>
 
       <section
@@ -77,7 +77,7 @@ export default function CargadorPage() {
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador temporal 0.3.5
+              Descargar cargador temporal 0.3.7
             </a>
           </div>
         ) : (
@@ -100,9 +100,9 @@ export default function CargadorPage() {
         <h2 className="text-sm font-bold cc-text-primary">Así funciona</h2>
         <ol className="mt-3 space-y-3 text-sm cc-text-secondary">
           {[
-            'Elige el supermercado y pulsa “Cargar carro”.',
-            'CoCo abre una sola pestaña de la tienda y usa tu sesión real.',
-            'Agrega cada producto y comprueba que el carro haya cambiado.',
+            'Elige el supermercado y pulsa “Cargar lista nueva”.',
+            'Confirma que quieres reemplazar el carro anterior de esa tienda.',
+            'CoCo abre una sola pestaña, comprueba que el carro quedó en cero y agrega cada producto.',
             'Si la tienda pide login, ubicación o CAPTCHA, CoCo espera y luego continúa.',
             'Al terminar abre el carro oficial. Tú revisas, eliges entrega y pagas.',
           ].map((step, index) => (
