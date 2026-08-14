@@ -32,7 +32,12 @@ const STORE_HOME: Record<string, string> = {
  * dato terminan siempre así.
  */
 function canLoadCart(store: string): boolean {
-    return storeLoadability(store) !== 'manual';
+    // Los endpoints externos /checkout/cart/add dejaron de ser una interfaz
+    // estable de los retailers (Jumbo hoy responde con pagina perdida). El
+    // unico flujo verificable dentro del carro real es el cargador: si no
+    // responde, llevamos a activarlo y nunca abrimos un enlace antiguo.
+    void store;
+    return false;
 }
 
 const UNIMARC_LANDING_DELAY_MS = 1_800;

@@ -185,7 +185,7 @@ check(
   'La comparación no ofrece todos los supermercados o la carga no selecciona la tienda en el mismo clic.',
 );
 check(
-  button.includes("storeLoadability(store) !== 'manual'"),
+  button.includes('return false;') && button.includes('nunca abrimos un enlace antiguo'),
   'La carga directa de respaldo no delega su capacidad a la fuente compartida.',
 );
 check(
@@ -251,14 +251,15 @@ const cartRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  cartUrl.includes('https://santaisabel.vtexcommercestable.com.br')
-    && cartUrl.includes('https://unimarc.vtexcommercestable.com.br')
-    && cartUrl.includes("Jumbo: 'https://www.jumbo.cl'")
-    && !cartUrl.includes("Jumbo: 'https://jumbo.vtexcommercestable.com.br'"),
+  cartUrl.includes('Retailer `/checkout/cart/add` URLs are not a stable public API')
+    && cartUrl.includes('export function supportedDirectCartStores(): string[]')
+    && cartUrl.includes('return [];')
+    && cartUrl.includes('export function buildDirectCartUrl')
+    && cartUrl.includes('return null;'),
   'Los enlaces de carro no respetan los dominios de sesión verificados.',
 );
 check(
-  cartUrl.includes("params.append('redirect', store === 'Unimarc' ? 'false' : 'true')"),
+  !cartUrl.includes('/checkout/cart/add?'),
   'Unimarc debe evitar la redireccion rota a /checkout/#/cart.',
 );
 check(!cartUrl.includes('/checkout/?orderFormId='), 'Volvió el handoff de orderForm sin cookie de sesión.');

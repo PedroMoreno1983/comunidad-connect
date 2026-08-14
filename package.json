@@ -77,6 +77,9 @@
     "postcss": "8.5.23",
     "sharp": "0.35.0",
     "uuid": "^11.1.1",
+    "minimatch@3.1.5": {
+      "brace-expansion": "1.1.18"
+    },
     "exceljs": {
       "archiver": "8.0.0",
       "unzipper": "0.12.5"

@@ -23,7 +23,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPERMARKET_SEARCH_TERMS: ${{ inputs.terms || 'arroz,leche,huevos,aceite,pan molde,pollo,carne molida,papas,tomates,detergente' }}
+      SUPERMARKET_SEARCH_TERMS: ${{ inputs.terms || 'arroz,leche,huevos,aceite,pan molde,pollo,carne molida,longaniza,papas,tomates,cebolla,coca cola,detergente' }}
 
     steps:
       - name: Check out repository
