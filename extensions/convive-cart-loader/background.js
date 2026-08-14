@@ -47,10 +47,14 @@ function sanitizeRequest(payload) {
   return {
     store: payload.store,
     items,
+    replaceCart: payload.replaceCart === true,
   };
 }
 
 function progress(job, detail, status = job.status) {
+  const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : undefined;
+  const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : undefined;
+  const removedCartCount = Number.isInteger(job.removedCartCount) ? job.removedCartCount : undefined;
   return {
     jobId: job.id,
     store: job.store,
@@ -59,6 +63,10 @@ function progress(job, detail, status = job.status) {
     added: job.results.filter(result => result.status === 'added').length,
     failed: job.results.filter(result => result.status === 'failed').length,
     currentItem: job.items[job.currentIndex]?.name,
+    previousCartCount,
+    currentCartCount,
+    removedCartCount,
+    cartReplaced: job.replaceCart === true && job.cartResetStatus === 'completed',
     detail,
   };
 }
@@ -137,6 +145,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         retailerTabId: null,
         status: 'opening',
         inFlightItemId: null,
+        initialCartCount: null,
+        latestCartCount: null,
+        removedCartCount: null,
+        replaceCart: request.replaceCart,
+        cartResetStatus: request.replaceCart ? 'pending' : 'skipped',
         results: [],
         createdAt: new Date().toISOString(),
       };
@@ -174,8 +187,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? targetUrl(job.store, job.items[job.currentIndex])
             : null,
           inFlightItemId: job.inFlightItemId,
+          replaceCart: job.replaceCart === true,
+          cartResetStatus: job.cartResetStatus || 'skipped',
         },
       });
+      return;
+    }
+
+    if (message?.type === 'COMPLETE_CART_RESET') {
+      if (!job.replaceCart || job.currentIndex !== 0 || job.cartResetStatus !== 'pending') {
+        sendResponse({ ok: false });
+        return;
+      }
+      const cartCountBefore = Number(message.cartCountBefore);
+      const cartCountAfter = Number(message.cartCountAfter);
+      if (
+        !Number.isInteger(cartCountBefore)
+        || !Number.isInteger(cartCountAfter)
+        || cartCountBefore < 0
+        || cartCountAfter !== 0
+        || cartCountBefore > 10_000
+      ) {
+        sendResponse({ ok: false });
+        return;
+      }
+      job.initialCartCount = cartCountBefore;
+      job.latestCartCount = 0;
+      job.removedCartCount = cartCountBefore;
+      job.cartResetStatus = 'completed';
+      await saveJob(job);
+      const payload = progress(
+        job,
+        cartCountBefore > 0
+          ? `Carro anterior vaciado: se retiraron ${cartCountBefore} unidades. Cargando la lista nueva…`
+          : 'El carro ya estaba vacío. Cargando la lista nueva…',
+        'loading',
+      );
+      await notifySource(job, payload);
+      sendResponse({ ok: true, progress: payload });
       return;
     }
 
@@ -184,6 +233,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!item || message.itemId !== item.id || job.inFlightItemId) {
         sendResponse({ ok: false, alreadyClaimed: Boolean(job.inFlightItemId) });
         return;
+      }
+      const cartCountBefore = Number(message.cartCountBefore);
+      if (
+        job.currentIndex === 0
+        && job.initialCartCount === null
+        && Number.isInteger(cartCountBefore)
+        && cartCountBefore >= 0
+        && cartCountBefore <= 10_000
+      ) {
+        job.initialCartCount = cartCountBefore;
+        job.latestCartCount = cartCountBefore;
       }
       job.inFlightItemId = item.id;
       job.status = 'loading';
@@ -214,11 +274,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: false });
         return;
       }
+      const cartCountAfter = Number(message.cartCountAfter);
+      if (
+        Number.isInteger(cartCountAfter)
+        && cartCountAfter >= 0
+        && cartCountAfter <= 10_000
+      ) {
+        job.latestCartCount = cartCountAfter;
+      }
       const resultStatus = message.added ? 'added' : 'failed';
       job.results.push({
         itemId: item.id,
         name: item.name,
         status: resultStatus,
+        quantity: item.quantity,
         detail: safeText(message.detail, 300),
       });
       job.currentIndex += 1;
@@ -226,11 +295,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (job.currentIndex >= job.items.length) {
         const failed = job.results.filter(result => result.status === 'failed').length;
+        const added = job.results.length - failed;
+        const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : null;
+        const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : null;
+        const observedCartDetail = previousCartCount !== null && currentCartCount !== null
+          ? job.replaceCart && job.cartResetStatus === 'completed'
+            ? ` Se eliminaron ${job.removedCartCount || 0} unidades anteriores y el carro nuevo ahora marca ${currentCartCount}.`
+            : ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
+          : '';
         job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);
         const detail = failed > 0
-          ? `Carro de ${job.store} procesado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
-          : `Carro de ${job.store} listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
+          ? `Carro de ${job.store} procesado. ${added} productos de tu lista quedaron preparados y ${failed} pendientes para revisar.${observedCartDetail}`
+          : `Carro de ${job.store} listo: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
         sendResponse({ ok: true, done: true, progress: payload });
