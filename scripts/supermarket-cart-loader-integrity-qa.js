@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.7', 'La versión con detección de carro vacío debe ser 0.3.7.');
+check(manifest.version === '0.3.8', 'La versión con recuperación de cargas huérfanas debe ser 0.3.8.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -63,7 +63,8 @@ check(
   bridge.includes('chrome.runtime.getManifest().version')
     && bridge.includes('cart-baseline-v1')
     && bridge.includes('cart-auto-open-v2')
-    && bridge.includes('cart-replace-v1'),
+    && bridge.includes('cart-replace-v1')
+    && bridge.includes('cart-stale-job-recovery-v1'),
   'El puente no informa una versión y capacidades verificables.',
 );
 
@@ -92,7 +93,14 @@ const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'u
 check(background.includes('MAX_ITEMS = 200'), 'El cargador no conserva el límite de 200 productos.');
 check(background.includes('safeProductUrl(item?.productUrl, config)'), 'Las URLs exactas no se validan por tienda.');
 check(background.includes('completed_with_issues'), 'Los faltantes no tienen un cierre explícito.');
-check(background.includes('Ya hay una carga de'), 'No se evita iniciar dos cargas simultáneas.');
+check(
+  background.includes('liveRetailerTab')
+    && background.includes('chrome.tabs.get')
+    && background.includes('chrome.tabs.onRemoved.addListener')
+    && background.includes("job.status = 'abandoned'")
+    && background.includes('Retomando la carga de'),
+  'Una carga huérfana puede seguir bloqueando el cargador o una carga activa no vuelve a enfocar su pestaña.',
+);
 check(
   background.includes('initialCartCount')
     && background.includes('latestCartCount')
@@ -157,7 +165,7 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador temporal 0.3.7')
+  activationPage.includes('Descargar cargador temporal 0.3.8')
     && activationPage.includes('Cargar lista nueva')
     && activationPage.includes('Confirma que quieres reemplazar el carro anterior'),
   'La guía del cargador no explica ni enlaza la versión que realmente reemplaza el carro.',
@@ -199,7 +207,8 @@ check(
     && button.includes("cartLoader.availability === 'ready'")
     && button.includes('cartLoader.start({ replaceCart: true })')
     && button.includes('Vaciar carro anterior y cargar')
-    && loaderHook.includes("'cart-replace-v1'"),
+    && loaderHook.includes("'cart-replace-v1'")
+    && loaderHook.includes("'cart-stale-job-recovery-v1'"),
   'El botón visible no usa el puente de la extensión como flujo principal.',
 );
 check(
