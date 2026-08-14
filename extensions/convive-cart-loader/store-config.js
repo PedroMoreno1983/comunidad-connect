@@ -10,7 +10,6 @@
     'security verification',
     'verificacion de seguridad en curso',
     'verificación de seguridad en curso',
-    'un momento',
   ];
 
   const commonLocationText = [
