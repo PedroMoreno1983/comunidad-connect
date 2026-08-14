@@ -47,7 +47,7 @@ const BASE_CATALOG_TERMS = [
   'huevos', 'leche', 'mantequilla', 'queso', 'yogurt', 'leche descremada',
   'queso laminado', 'queso crema',
   // Carnes y fríos
-  'pollo', 'carne molida', 'atun', 'jamon', 'salchichas', 'pate', 'hamburguesa',
+  'pollo', 'carne molida', 'longaniza', 'atun', 'jamon', 'salchichas', 'pate', 'hamburguesa',
   // Verduras y frutas
   'tomate', 'cebolla', 'papa', 'limon', 'palta', 'manzana', 'platano', 'zanahoria',
   // Panadería

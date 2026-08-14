@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, Loader2, PauseCircle, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import { useSupermarketCartLoader } from '@/hooks/useSupermarketCartLoader';
 import { Capacitor } from '@capacitor/core';
 import { storeLoadability, type DirectCartConfidence } from '@/lib/supermarket/cartUrl';
 import type {
@@ -22,10 +23,6 @@ const STORE_HOME: Record<string, string> = {
   Irurzun: 'https://irurzun.cl',
 };
 
-// aCuenta e Irurzun responden X-Frame-Options: DENY, así que el cargador no
-// puede trabajar en segundo plano ahí y avanza de a un producto por clic.
-const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
-
 /*
  * Qué puede hacer cada tienda lo decide storeLoadability() y nadie más. Antes
  * este componente tenía sus propias listas y se desincronizaron: seguía
@@ -35,7 +32,12 @@ const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
  * dato terminan siempre así.
  */
 function canLoadCart(store: string): boolean {
-    return storeLoadability(store) !== 'manual';
+    // Los endpoints externos /checkout/cart/add dejaron de ser una interfaz
+    // estable de los retailers (Jumbo hoy responde con pagina perdida). El
+    // unico flujo verificable dentro del carro real es el cargador: si no
+    // responde, llevamos a activarlo y nunca abrimos un enlace antiguo.
+    void store;
+    return false;
 }
 
 const UNIMARC_LANDING_DELAY_MS = 1_800;
@@ -118,10 +120,9 @@ interface CartLoaderButtonProps {
 }
 
 export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButtonProps) {
-  const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [replaceConfirmationOpen, setReplaceConfirmationOpen] = useState(false);
   const [directResult, setDirectResult] = useState<{
     planned: number;
     missing: string[];
@@ -136,9 +137,9 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
     quoteSource?: 'retailer_checkout';
   } | null>(null);
   const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
+  const cartLoader = useSupermarketCartLoader(basket);
 
   const storeUrl = STORE_HOME[basket.store];
-  const stepByStep = STEP_BY_STEP_STORES.has(basket.store);
   const wholesaleQuote = basket.store === 'Irurzun';
 
   if (!storeUrl) return null;
@@ -273,104 +274,11 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
     }
   }
 
-  async function prepare() {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/supermarket/cart-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          store: basket.store,
-          items: basket.items.map(item => ({
-            id: item.id,
-            name: item.name,
-            quantity: Math.max(1, Math.round(item.quantity)),
-            productUrl: item.productUrl,
-          })),
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo preparar la carga.');
-
-      setCode(data.code);
-      try {
-        await navigator.clipboard.writeText(data.code);
-        setCopied(true);
-      } catch {
-        // Sin permiso de portapapeles: el código igual se muestra para copiarlo a mano.
-      }
-      await openInSystemBrowser(storeUrl);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo preparar la carga.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function reopenPreparedCart(cartUrl: string) {
     const checkoutTab = openLoadingTab();
     if (!checkoutTab) return;
     navigatePreparedCart(checkoutTab, cartUrl);
     setDirectResult(current => current ? { ...current, opened: true } : current);
-  }
-
-  if (code) {
-    return (
-      <div
-        className="space-y-3 rounded-xl border p-4"
-        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
-      >
-        <div>
-          <p className="text-sm font-bold cc-text-primary">
-            {basket.store} se abrió en otra pestaña
-          </p>
-          <p className="mt-1 text-xs leading-5 cc-text-secondary">
-            Inicia sesión ahí si aún no lo has hecho, pulsa el marcador{' '}
-            <strong>CoCo · Cargar carro</strong> y pega este código:
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            void navigator.clipboard.writeText(code).then(() => setCopied(true)).catch(() => undefined);
-          }}
-          className="flex w-full items-center justify-between rounded-lg border px-4 py-3"
-          style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
-        >
-          <span className="font-mono text-xl font-bold tracking-[0.2em] cc-text-primary">{code}</span>
-          {copied ? <Check className="h-4 w-4 text-success-fg" /> : <Copy className="h-4 w-4 cc-text-tertiary" />}
-        </button>
-
-        <p className="text-[11px] cc-text-tertiary">
-          {copied ? 'Código copiado. ' : ''}
-          Vence en 30 minutos. {basket.items.length} productos
-          {stepByStep
-            ? `. En ${basket.store} el cargador avanza de a un producto por clic.`
-            : '. CoCo los agrega solos; tú revisas, confirmas la entrega y pagas.'}
-        </p>
-
-        <div className="flex gap-2">
-          <a
-            href={storeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 rounded-lg border px-3 py-2 text-center text-xs font-semibold cc-text-primary"
-            style={{ borderColor: 'var(--cc-line)' }}
-          >
-            Volver a abrir {basket.store}
-          </a>
-          <button
-            type="button"
-            onClick={() => { setCode(null); setCopied(false); }}
-            className="rounded-lg px-3 py-2 text-xs cc-text-tertiary"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
   }
 
   if (directResult) {
@@ -473,7 +381,7 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
             href="/resident/supermercado/cargador"
             className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
           >
-            Usar el cargador asistido <ExternalLink className="h-3 w-3" />
+            Activar el cargador automático <ExternalLink className="h-3 w-3" />
           </Link>
           <button
             type="button"
@@ -506,15 +414,31 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
 
   const canLoadDirectly = canLoadCart(basket.store) && !directUnavailable;
   const manualOnly = !canLoadCart(basket.store);
+  const loaderProgress = cartLoader.progress;
+  const loaderBusy = loaderProgress !== null
+    && ['opening', 'loading', 'paused'].includes(loaderProgress.status);
+  const loaderFinished = loaderProgress !== null
+    && ['completed', 'completed_with_issues'].includes(loaderProgress.status);
 
   return (
     <div className="space-y-2">
       <Button
         type="button"
-        disabled={loading}
+        disabled={loading || cartLoader.availability === 'checking' || loaderBusy}
         onClick={() => {
           onSelect?.();
-          if (manualOnly) { void openInSystemBrowser(storeUrl); return; }
+          if (cartLoader.availability === 'ready') {
+            setReplaceConfirmationOpen(true);
+            return;
+          }
+          if (cartLoader.availability === 'outdated') {
+            window.location.assign('/resident/supermercado/cargador');
+            return;
+          }
+          if (manualOnly) {
+            window.location.assign('/resident/supermercado/cargador');
+            return;
+          }
           if (canLoadDirectly) {
             // En el navegador del sistema no hay pestaña que preparar: el
             // enlace se abre recién cuando la tienda confirmó los productos.
@@ -523,29 +447,131 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
             if (checkoutTab) void loadDirectly(checkoutTab);
             return;
           }
-          void prepare();
+          window.location.assign('/resident/supermercado/cargador');
         }}
         className="h-12 w-full text-sm text-white"
         style={{ background: 'var(--cc-ink)' }}
       >
-        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-        {manualOnly
-          ? `Abrir ${basket.store}`
-          : wholesaleQuote
-            ? `Preparar cotización en ${basket.store}`
-            : storeLoadability(basket.store) === 'direct'
-              ? `Cargar carro en ${basket.store}`
-              : `Preparar carro en ${basket.store}`}
+        {loading || cartLoader.availability === 'checking' || loaderBusy
+          ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          : <ShoppingCart className="mr-2 h-4 w-4" />}
+        {cartLoader.availability === 'checking'
+          ? 'Conectando el cargador…'
+          : loaderBusy && loaderProgress
+            ? `Cargando ${loaderProgress.added + loaderProgress.failed} de ${loaderProgress.total}`
+            : cartLoader.availability === 'ready'
+              ? `Cargar lista nueva en ${basket.store}`
+              : cartLoader.availability === 'outdated'
+                ? 'Actualizar cargador de Convive'
+                : manualOnly
+                ? `Activar cargador para ${basket.store}`
+                : wholesaleQuote
+                  ? `Preparar cotización en ${basket.store}`
+                  : storeLoadability(basket.store) === 'direct'
+                    ? `Cargar carro en ${basket.store}`
+                    : `Preparar carro en ${basket.store}`}
       </Button>
+
+      {replaceConfirmationOpen && !loaderBusy && (
+        <div
+          role="alertdialog"
+          aria-labelledby={`replace-cart-${basket.store}`}
+          className="space-y-3 rounded-xl border px-4 py-3"
+          style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-paper-warm)' }}
+        >
+          <div>
+            <p id={`replace-cart-${basket.store}`} className="text-xs font-bold cc-text-primary">
+              Esta carga reemplazará el carro actual de {basket.store}
+            </p>
+            <p className="mt-1 text-[11px] leading-4 cc-text-secondary">
+              Convive vaciará los productos anteriores antes de agregar esta lista. Así el carro y el total
+              corresponden solamente a esta compra.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                setReplaceConfirmationOpen(false);
+                cartLoader.start({ replaceCart: true });
+              }}
+              className="h-9 text-xs text-white"
+              style={{ background: 'var(--cc-ink)' }}
+            >
+              Vaciar carro anterior y cargar
+            </Button>
+            <button
+              type="button"
+              onClick={() => setReplaceConfirmationOpen(false)}
+              className="px-2 text-xs font-semibold underline cc-text-secondary"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loaderProgress && (
+        <div
+          role="status"
+          className="space-y-2 rounded-lg border px-3 py-3"
+          style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold cc-text-primary">
+            {loaderProgress.status === 'paused' ? (
+              <PauseCircle className="h-4 w-4 text-warning-fg" />
+            ) : loaderProgress.status === 'failed' ? (
+              <AlertCircle className="h-4 w-4 text-danger-fg" />
+            ) : loaderFinished ? (
+              <CheckCircle2 className="h-4 w-4 text-success-fg" />
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            <span>
+              {loaderFinished
+                ? `Carro de ${basket.store} listo`
+                : `${loaderProgress.added + loaderProgress.failed} de ${loaderProgress.total} procesados`}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--cc-line)' }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${loaderProgress.total > 0
+                  ? Math.round(((loaderProgress.added + loaderProgress.failed) / loaderProgress.total) * 100)
+                  : 0}%`,
+                background: 'var(--cc-ink)',
+              }}
+            />
+          </div>
+          <p className="text-[11px] leading-4 cc-text-secondary">{loaderProgress.detail}</p>
+        </div>
+      )}
 
       {basket.store === 'Unimarc' && <UnimarcLoginNotice />}
 
       {error && <p className="text-[11px] text-danger-fg">{error}</p>}
       {directUnavailable && <p className="text-[11px] cc-text-tertiary">{directUnavailable}</p>}
 
-      {manualOnly ? (
+      {cartLoader.availability === 'ready' ? (
         <p className="text-[11px] cc-text-tertiary">
-          {basket.store} todavía no permite cargar el carro automáticamente (requiere una integración con la cadena). Se abre la tienda; agrega los productos de tu lista, que ves aquí abajo.
+          Convive vaciará el carro anterior y luego agregará y verificará los productos en tu sesión de {basket.store}.
+          Al terminar abrirá el carro oficial; tú revisas y pagas.
+        </p>
+      ) : cartLoader.availability === 'outdated' ? (
+        <p role="alert" className="text-[11px] leading-4 text-warning-fg">
+          El cargador instalado{cartLoader.installedVersion ? ` (v${cartLoader.installedVersion})` : ''} es anterior
+          y no puede informar con precisión qué había en el carro ni abrirlo automáticamente.{' '}
+          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 font-semibold underline">
+            Actualizarlo ahora <ExternalLink className="h-3 w-3" />
+          </Link>
+        </p>
+      ) : manualOnly ? (
+        <p className="text-[11px] cc-text-tertiary">
+          Para cargar automáticamente en {basket.store}, activa una vez el cargador de Convive.{' '}
+          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 underline">
+            Activarlo ahora <ExternalLink className="h-3 w-3" />
+          </Link>
         </p>
       ) : canLoadDirectly && storeLoadability(basket.store) === 'direct' ? (
         <p className="text-[11px] cc-text-tertiary">
@@ -554,16 +580,11 @@ export function CartLoaderButton({ basket, onQuote, onSelect }: CartLoaderButton
         </p>
       ) : canLoadDirectly ? (
         <p className="text-[11px] cc-text-tertiary">
-          En {basket.store} los productos se cargan en el sistema de checkout de la cadena, que
-          corre en otro dominio: tu carro en {basket.store}.cl seguirá vacío y puede que tengas
-          que iniciar sesión ahí. Revisa el detalle antes de pagar.
+          La tienda carga los productos en su checkout oficial. Revisa el detalle antes de pagar.
         </p>
       ) : (
         <p className="text-[11px] cc-text-tertiary">
-          En {basket.store} necesitas el marcador de CoCo una sola vez.{' '}
-          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 underline">
-            Activarlo ahora <ExternalLink className="h-3 w-3" />
-          </Link>
+          Activa el cargador de Convive para completar el carro sin copiar códigos ni reconstruir la compra.
         </p>
       )}
     </div>

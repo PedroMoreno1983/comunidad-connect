@@ -23,7 +23,35 @@ vi.mock('@/lib/supabase/supabaseAdmin', () => ({
       return {
         data: Object.fromEntries(params.p_queries.map((query, index) => [
           query.term,
-          [{
+          query.term === 'pechuga de pollo' ? [{
+            id: 'cooked-snack',
+            store: 'aCuenta',
+            name: 'Pechuga de Pollo Cocida Bolsa 150 g PF',
+            brand: 'PF',
+            product_url: 'https://example.com/cooked-snack',
+            image_url: null,
+            price: 1750,
+            list_price: null,
+            in_stock: true,
+            last_seen_at: '2026-07-27T00:00:00Z',
+            channel_type: 'wholesale',
+            pack_units: 1,
+            minimum_packs: 1,
+          }, {
+            id: 'raw-chicken',
+            store: 'aCuenta',
+            name: 'Pollo Pechuga Deshuesada Congelada 750 g Super Pollo',
+            brand: 'Super Pollo',
+            product_url: 'https://example.com/raw-chicken',
+            image_url: null,
+            price: 5690,
+            list_price: null,
+            in_stock: true,
+            last_seen_at: '2026-07-27T00:00:00Z',
+            channel_type: 'wholesale',
+            pack_units: 1,
+            minimum_packs: 1,
+          }] : [{
             id: `product-${query.term}`,
             store: index % 2 === 0 ? 'Lider' : 'Jumbo',
             name: `${query.term} 1 kg`,
@@ -62,5 +90,13 @@ describe('fetchBatchSupermarketRows', () => {
       requested_term: 'producto 100',
       name: 'producto 100 1 kg',
     });
+  });
+
+  it('keeps a suitable raw chicken option when a cooked snack has a higher text score', async () => {
+    const result = await fetchBatchSupermarketRows(['pechuga de pollo'], '2026-07-20T00:00:00Z');
+
+    expect(result?.['pechuga de pollo'].map(row => row.name)).toEqual([
+      'Pollo Pechuga Deshuesada Congelada 750 g Super Pollo',
+    ]);
   });
 });

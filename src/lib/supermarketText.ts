@@ -105,7 +105,7 @@ export function productIntent(term: string): SupermarketProductIntent {
  */
 export function needsBroadCatalogCandidates(term: string): boolean {
     const words = stemmedWords(term);
-    return words.length === 1 && ['bebida', 'carne', 'longaniza'].includes(words[0] || '');
+    return words.length === 1 && ['bebida', 'carne', 'leche', 'longaniza'].includes(words[0] || '');
 }
 
 function stemmedWords(value: string): string[] {

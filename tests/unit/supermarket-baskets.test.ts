@@ -155,6 +155,36 @@ describe('buildBasketComparison', () => {
     expect(result.comparisons.some(basket => basket.store === 'Lider')).toBe(false);
   });
 
+  it('uses a household-size dairy milk for a generic milk request', () => {
+    const result = buildBasketComparison(['leche'], {
+      leche: [
+        row('Jumbo', 'Leche Soprole Avena con Manzana 200 ml', 570),
+        row('Jumbo', 'Leche entera 1 L', 1090),
+        row('Lider', 'Leche descremada 900 ml', 990),
+        row('Santa Isabel', 'Bebida vegetal de almendras 1 L', 1890),
+      ],
+    });
+
+    expect(result.recommended?.store).toBe('Lider');
+    expect(result.recommended?.items[0].name).toBe('Leche descremada 900 ml');
+    expect(result.comparisons.flatMap(basket => basket.items).map(item => item.name)).not.toContain(
+      'Leche Soprole Avena con Manzana 200 ml',
+    );
+  });
+
+  it('uses a raw household-size chicken breast instead of a cooked snack pack', () => {
+    const result = buildBasketComparison(['pechuga de pollo'], {
+      'pechuga de pollo': [
+        row('aCuenta', 'Pechuga de Pollo Cocida Bolsa 150 g PF', 2490),
+        row('aCuenta', 'Pechuga de Pollo Deshuesada 700 g', 5590),
+        row('Jumbo', 'Pechuga de Pavo Cocida 125 g', 3090),
+      ],
+    });
+
+    expect(result.recommended?.store).toBe('aCuenta');
+    expect(result.recommended?.items[0].name).toBe('Pechuga de Pollo Deshuesada 700 g');
+  });
+
   it('rejects tiny or unrelated products for a generic asado list', () => {
     const result = buildBasketComparison(['carne', 'longanizas', 'bebidas'], {
       carne: [
@@ -176,5 +206,39 @@ describe('buildBasketComparison', () => {
       'Longaniza Angus La Preferida 500 g',
       'Bebida Coca-Cola Original 2 L',
     ]);
+  });
+
+  it('builds the complete six-product Jumbo asado basket with measured quantities', () => {
+    const terms = ['carne molida de vacuno', 'longanizas', 'cebollas', 'papas', 'tomates', 'bebida cola'];
+    const result = buildBasketComparison(terms, {
+      'carne molida de vacuno': [row('Jumbo', 'Carne Molida de Vacuno Congelada 10% Grasa 500 g', 5890)],
+      longanizas: [row('Jumbo', 'Longaniza Angus La Preferida 500 g', 4990)],
+      cebollas: [row('Jumbo', 'Cebolla Malla 1 kg', 1870)],
+      papas: [row('Jumbo', 'Papa Malla 2 kg', 2990)],
+      tomates: [row('Jumbo', 'Tomate Larga Vida Malla 1 kg', 1990)],
+      'bebida cola': [row('Jumbo', 'Bebida Coca-Cola Original 2 L', 2590)],
+    }, {
+      'carne molida de vacuno': 500,
+      longanizas: 500,
+      cebollas: 1,
+      papas: 2,
+      tomates: 500,
+      'bebida cola': 2,
+    }, {
+      'carne molida de vacuno': 'g',
+      longanizas: 'g',
+      cebollas: 'kg',
+      papas: 'kg',
+      tomates: 'g',
+      'bebida cola': 'l',
+    });
+
+    expect(result.recommended).toMatchObject({
+      store: 'Jumbo',
+      complete: true,
+      coveredCount: 6,
+      missingTerms: [],
+    });
+    expect(result.recommended?.items).toHaveLength(6);
   });
 });

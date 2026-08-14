@@ -1,3 +1,10 @@
+const LOADER_CAPABILITIES = [
+  'cart-baseline-v1',
+  'cart-auto-open-v2',
+  'loader-version-handshake-v1',
+  'cart-replace-v1',
+];
+
 const ALLOWED_ORIGINS = new Set([
   'https://conviveconnect.com',
   'https://www.conviveconnect.com',
@@ -32,7 +39,10 @@ window.addEventListener('message', event => {
   if (!message || message.source !== 'convive-connect') return;
 
   if (message.type === 'CONVIVE_CART_LOADER_PING') {
-    postToConvive('CONVIVE_CART_LOADER_READY');
+    postToConvive('CONVIVE_CART_LOADER_READY', {
+      version: chrome.runtime.getManifest().version,
+      capabilities: LOADER_CAPABILITIES,
+    });
     return;
   }
 

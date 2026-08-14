@@ -51,12 +51,59 @@ const stores = [
 ];
 
 function fixtureHtml(store) {
+  const emptyCartDomUpdate = store === 'Jumbo'
+    ? `
+               cart.querySelector('[data-cart-count]')?.remove();
+               const drawer = document.querySelector('#fixture-cart-drawer');
+               const emptyHeading = document.createElement('h2');
+               emptyHeading.dataset.emptyCartState = 'true';
+               emptyHeading.textContent = 'Tu carro esta vacio';
+               drawer.append(emptyHeading);
+             `
+    : `
+               cart.querySelector('[data-cart-count]').textContent = '0';
+               document.querySelector('#fixture-cart-drawer').hidden = true;
+             `;
   return `<!doctype html>
     <html>
       <body>
         <header>
-          <button id="fixture-cart" aria-label="El carro tiene 0 productos">0</button>
+          <button
+            id="fixture-cart"
+            aria-label="Carro de compras"
+            onclick="
+              sessionStorage.setItem('convive-cart-opened', 'true');
+              document.querySelector('#fixture-cart-drawer').hidden = false;
+            "
+          ><span data-cart-count>2</span></button>
         </header>
+        <aside id="fixture-cart-drawer" hidden>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onclick="this.parentElement.hidden = true"
+          ></button>
+          <p>Carro de compras</p>
+          <button
+            type="button"
+            data-gtm-tag="Vaciar carro"
+            onclick="document.querySelector('#fixture-empty-confirmation').showModal()"
+          >Vaciar carro</button>
+        </aside>
+        <dialog id="fixture-empty-confirmation">
+          <p>¿Quieres vaciar el carro y eliminar todos los productos?</p>
+          <button type="button" onclick="this.closest('dialog').close()">Cancelar</button>
+          <button
+            type="button"
+            onclick="
+              sessionStorage.setItem('fixture-cart-count', '0');
+               sessionStorage.setItem('convive-cart-cleared', 'true');
+               const cart = document.querySelector('#fixture-cart');
+               ${emptyCartDomUpdate}
+               this.closest('dialog').close();
+            "
+          >Si, vaciar</button>
+        </dialog>
         <main>
           <h1>Producto ${store} test</h1>
           <div class="product-control" data-testid="detail-cart-quantifier">
@@ -70,8 +117,16 @@ function fixtureHtml(store) {
                 const product = bulkProduct
                   || (location.pathname.includes('milk') ? 'milk' : 'rice');
                 sessionStorage.setItem(product, '1');
-                document.querySelector('#fixture-cart').textContent = '1';
-                document.querySelector('#fixture-cart').setAttribute('aria-label', 'El carro tiene 1 productos');
+                const cart = document.querySelector('#fixture-cart');
+                 const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
+                 sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
+                 let cartCount = cart.querySelector('[data-cart-count]');
+                 if (!cartCount) {
+                   cartCount = document.createElement('span');
+                   cartCount.dataset.cartCount = '';
+                   cart.append(cartCount);
+                 }
+                 cartCount.textContent = String(nextCartCount);
                 const wrapper = this.parentElement;
                 this.remove();
                 const value = document.createElement('span');
@@ -86,6 +141,10 @@ function fixtureHtml(store) {
                   value.dataset.quantity = String(next);
                   value.textContent = String(next);
                   sessionStorage.setItem(product, String(next));
+                  const cart = document.querySelector('#fixture-cart');
+                  const nextCartCount = Number(sessionStorage.getItem('fixture-cart-count') || '2') + 1;
+                  sessionStorage.setItem('fixture-cart-count', String(nextCartCount));
+                  cart.querySelector('[data-cart-count]').textContent = String(nextCartCount);
                 };
                 wrapper.append(value, plus);
               "
@@ -95,6 +154,11 @@ function fixtureHtml(store) {
             <input name="quantity" aria-label="Cantidad" value="1" hidden />
           </div>
         </main>
+        <script>
+          const savedCartCount = sessionStorage.getItem('fixture-cart-count') || '2';
+          const cart = document.querySelector('#fixture-cart');
+          cart.querySelector('[data-cart-count]').textContent = savedCartCount;
+        </script>
       </body>
     </html>`;
 }
@@ -142,11 +206,11 @@ async function main() {
     await source.goto('https://conviveconnect.com/resident/supermercado');
     await source.waitForTimeout(500);
 
-    const extensionReady = await source.evaluate(() => new Promise(resolve => {
+    const extensionIdentity = await source.evaluate(() => new Promise(resolve => {
       const listener = event => {
         if (event.data?.type === 'CONVIVE_CART_LOADER_READY') {
           window.removeEventListener('message', listener);
-          resolve(true);
+          resolve(event.data.payload);
         }
       };
       window.addEventListener('message', listener);
@@ -154,9 +218,17 @@ async function main() {
         source: 'convive-connect',
         type: 'CONVIVE_CART_LOADER_PING',
       }, window.location.origin);
-      window.setTimeout(() => resolve(false), 3000);
+      window.setTimeout(() => resolve(null), 3000);
     }));
-    if (!extensionReady) throw new Error('La extensión no respondió al ping de Convive.');
+    if (
+      !extensionIdentity
+      || extensionIdentity.version !== '0.3.7'
+      || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
+      || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
+      || !extensionIdentity.capabilities?.includes('cart-replace-v1')
+    ) {
+      throw new Error(`La extensión no informó una identidad compatible: ${JSON.stringify(extensionIdentity)}`);
+    }
 
     const results = [];
     for (const store of stores) {
@@ -170,6 +242,7 @@ async function main() {
         version: 1,
         store: store.name,
         createdAt: new Date().toISOString(),
+        replaceCart: true,
         items: [
           {
             id: `${store.name}-milk`,
@@ -188,30 +261,77 @@ async function main() {
         ],
       });
 
-      await source.waitForFunction(
-        storeName => window.cartProgress.some(progress => (
-          progress.store === storeName && progress.status === 'completed'
-        )),
-        store.name,
-        { timeout: 30000 },
-      );
+      try {
+        await source.waitForFunction(
+          storeName => window.cartProgress.some(progress => (
+            progress.store === storeName && progress.status === 'completed'
+          )),
+          store.name,
+          { timeout: 30000 },
+        );
+      } catch (error) {
+        const observed = await source.evaluate(storeName => (
+          window.cartProgress.filter(progress => progress.store === storeName)
+        ), store.name);
+        const retailerPage = context.pages().find(page => page.url().startsWith(store.origin));
+        const retailerState = retailerPage ? await retailerPage.evaluate(() => ({
+          cartCount: document.querySelector('[data-cart-count]')?.textContent,
+          savedCartCount: sessionStorage.getItem('fixture-cart-count'),
+           cartCleared: sessionStorage.getItem('convive-cart-cleared'),
+           emptyStateText: document.querySelector('[data-empty-cart-state]')?.textContent,
+           emptyStateRect: (() => {
+             const element = document.querySelector('[data-empty-cart-state]');
+             if (!element) return null;
+             const rect = element.getBoundingClientRect();
+             return { width: rect.width, height: rect.height };
+           })(),
+           drawerHidden: document.querySelector('#fixture-cart-drawer')?.hidden,
+          dialogOpen: document.querySelector('#fixture-empty-confirmation')?.open,
+          dialogButtons: [...document.querySelectorAll('#fixture-empty-confirmation button')]
+            .map(button => button.textContent?.trim()),
+        })) : null;
+        throw new Error(
+          `${store.name} no completó la carga: ${JSON.stringify({ observed, retailerState })}`,
+          { cause: error },
+        );
+      }
       const progress = await source.evaluate(storeName => (
         window.cartProgress.filter(item => item.store === storeName).at(-1)
       ), store.name);
-      if (progress.added !== 2 || progress.failed !== 0 || progress.total !== 2) {
-        throw new Error(`${store.name} terminó con progreso inválido: ${JSON.stringify(progress)}`);
+      if (
+        progress.added !== 2
+        || progress.failed !== 0
+        || progress.total !== 2
+        || progress.previousCartCount !== 2
+        || progress.currentCartCount !== 3
+        || progress.removedCartCount !== 2
+        || progress.cartReplaced !== true
+      ) {
+        throw new Error(`${store.name} terminó con progreso o conteo previo inválido: ${JSON.stringify(progress)}`);
       }
 
       const retailerPages = context.pages().filter(page => page.url().startsWith(store.origin));
       if (retailerPages.length !== 1) {
         throw new Error(`${store.name} abrió ${retailerPages.length} pestañas; se esperaba una.`);
       }
+      await retailerPages[0].waitForFunction(
+        () => sessionStorage.getItem('convive-cart-opened') === 'true',
+        null,
+        { timeout: 5000 },
+      );
       const quantities = await retailerPages[0].evaluate(() => ({
         milk: sessionStorage.getItem('milk'),
         rice: sessionStorage.getItem('rice'),
+        cartOpened: sessionStorage.getItem('convive-cart-opened'),
+        cartCleared: sessionStorage.getItem('convive-cart-cleared'),
       }));
-      if (quantities.milk !== '2' || quantities.rice !== '1') {
-        throw new Error(`${store.name} no conservó cantidades: ${JSON.stringify(quantities)}`);
+      if (
+        quantities.milk !== '2'
+        || quantities.rice !== '1'
+        || quantities.cartOpened !== 'true'
+        || quantities.cartCleared !== 'true'
+      ) {
+        throw new Error(`${store.name} no conservó cantidades o no abrió el carro: ${JSON.stringify(quantities)}`);
       }
       results.push({ store: store.name, retailerTabs: retailerPages.length, quantities, progress });
     }
@@ -231,6 +351,7 @@ async function main() {
           version: 1,
           store: 'Jumbo',
           createdAt: new Date().toISOString(),
+          replaceCart: true,
           items,
         },
       }, window.location.origin);
@@ -247,7 +368,14 @@ async function main() {
     const largeProgress = await source.evaluate(() => (
       window.cartProgress.filter(item => item.store === 'Jumbo' && item.total === 100).at(-1)
     ));
-    if (largeProgress.added !== 100 || largeProgress.failed !== 0) {
+    if (
+      largeProgress.added !== 100
+      || largeProgress.failed !== 0
+      || largeProgress.previousCartCount !== 2
+      || largeProgress.currentCartCount !== 100
+      || largeProgress.removedCartCount !== 2
+      || largeProgress.cartReplaced !== true
+    ) {
       throw new Error(`La canasta de 100 terminó inválida: ${JSON.stringify(largeProgress)}`);
     }
     const largeRetailerPages = context.pages().filter(page => (
@@ -265,7 +393,7 @@ async function main() {
 
     console.log(JSON.stringify({
       passed: true,
-      extensionReady,
+      extensionIdentity,
       stores: results,
       largeBasket: {
         retailerTabs: largeRetailerPages.length,
