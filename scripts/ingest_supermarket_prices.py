@@ -26,8 +26,11 @@ DEFAULT_TERMS = (
     "pan molde",
     "pollo",
     "carne molida",
+    "longaniza",
     "papas",
     "tomates",
+    "cebolla",
+    "coca cola",
     "detergente",
 )
 

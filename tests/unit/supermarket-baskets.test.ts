@@ -207,4 +207,38 @@ describe('buildBasketComparison', () => {
       'Bebida Coca-Cola Original 2 L',
     ]);
   });
+
+  it('builds the complete six-product Jumbo asado basket with measured quantities', () => {
+    const terms = ['carne molida de vacuno', 'longanizas', 'cebollas', 'papas', 'tomates', 'bebida cola'];
+    const result = buildBasketComparison(terms, {
+      'carne molida de vacuno': [row('Jumbo', 'Carne Molida de Vacuno Congelada 10% Grasa 500 g', 5890)],
+      longanizas: [row('Jumbo', 'Longaniza Angus La Preferida 500 g', 4990)],
+      cebollas: [row('Jumbo', 'Cebolla Malla 1 kg', 1870)],
+      papas: [row('Jumbo', 'Papa Malla 2 kg', 2990)],
+      tomates: [row('Jumbo', 'Tomate Larga Vida Malla 1 kg', 1990)],
+      'bebida cola': [row('Jumbo', 'Bebida Coca-Cola Original 2 L', 2590)],
+    }, {
+      'carne molida de vacuno': 500,
+      longanizas: 500,
+      cebollas: 1,
+      papas: 2,
+      tomates: 500,
+      'bebida cola': 2,
+    }, {
+      'carne molida de vacuno': 'g',
+      longanizas: 'g',
+      cebollas: 'kg',
+      papas: 'kg',
+      tomates: 'g',
+      'bebida cola': 'l',
+    });
+
+    expect(result.recommended).toMatchObject({
+      store: 'Jumbo',
+      complete: true,
+      coveredCount: 6,
+      missingTerms: [],
+    });
+    expect(result.recommended?.items).toHaveLength(6);
+  });
 });
