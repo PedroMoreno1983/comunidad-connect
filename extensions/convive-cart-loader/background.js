@@ -1,6 +1,8 @@
 importScripts('store-config.js');
 
 const ACTIVE_JOB_KEY = 'conviveActiveCartJob';
+const ACTIVE_JOB_STATUSES = new Set(['opening', 'loading', 'paused']);
+const OPENING_TAB_GRACE_MS = 15_000;
 const MAX_ITEMS = 200;
 const MAX_QUANTITY = 99;
 const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
@@ -72,12 +74,54 @@ function progress(job, detail, status = job.status) {
 }
 
 async function saveJob(job) {
+  job.updatedAt = new Date().toISOString();
   await chrome.storage.local.set({ [ACTIVE_JOB_KEY]: job });
 }
 
 async function getJob() {
   const stored = await chrome.storage.local.get(ACTIVE_JOB_KEY);
   return stored[ACTIVE_JOB_KEY] || null;
+}
+
+function jobIsActive(job) {
+  return Boolean(job && ACTIVE_JOB_STATUSES.has(job.status));
+}
+
+function jobAgeMs(job) {
+  const createdAt = Date.parse(job?.createdAt || '');
+  return Number.isFinite(createdAt) ? Math.max(0, Date.now() - createdAt) : Infinity;
+}
+
+async function liveRetailerTab(job) {
+  if (!jobIsActive(job) || !Number.isInteger(job.retailerTabId)) return null;
+  let tab;
+  try {
+    tab = await chrome.tabs.get(job.retailerTabId);
+  } catch {
+    return null;
+  }
+
+  const tabUrl = tab.pendingUrl || tab.url || '';
+  if (tabUrl === 'about:blank') {
+    return jobAgeMs(job) <= OPENING_TAB_GRACE_MS ? tab : null;
+  }
+
+  try {
+    const config = storeConfig(job.store);
+    const url = new URL(tabUrl);
+    return config?.hosts.includes(url.hostname) ? tab : null;
+  } catch {
+    return null;
+  }
+}
+
+async function abandonJob(job, detail) {
+  job.status = 'abandoned';
+  job.inFlightItemId = null;
+  await saveJob(job);
+  const payload = progress(job, detail, 'failed');
+  await notifySource(job, payload);
+  return payload;
 }
 
 async function notifySource(job, payload) {
@@ -121,19 +165,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       const activeJob = await getJob();
-      if (activeJob && ['opening', 'loading', 'paused'].includes(activeJob.status)) {
-        sendResponse({
-          ok: false,
-          progress: {
-            store: request.store,
-            status: 'failed',
-            total: request.items.length,
-            added: 0,
-            failed: 0,
-            detail: `Ya hay una carga de ${activeJob.store} en curso. Termínala o reanúdala en su pestaña antes de abrir otra.`,
-          },
-        });
-        return;
+      if (jobIsActive(activeJob)) {
+        const activeTab = await liveRetailerTab(activeJob);
+        if (activeTab) {
+          activeJob.sourceTabId = sender.tab.id;
+          await saveJob(activeJob);
+          await chrome.tabs.update(activeTab.id, { active: true });
+          const resumedStatus = activeJob.status === 'paused' ? 'paused' : 'loading';
+          const payload = progress(
+            activeJob,
+            activeJob.status === 'paused'
+              ? `La carga de ${activeJob.store} necesita tu intervención en la pestaña que acabamos de abrir.`
+              : `Retomando la carga de ${activeJob.store} en su pestaña.`,
+            resumedStatus,
+          );
+          await notifySource(activeJob, payload);
+          sendResponse({ ok: true, resumed: true, progress: payload });
+          return;
+        }
+
+        await abandonJob(
+          activeJob,
+          `La pestaña de ${activeJob.store} se cerró antes de terminar. La carga anterior fue liberada para poder empezar de nuevo.`,
+        );
       }
 
       const job = {
@@ -341,4 +395,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   });
   return true;
+});
+
+chrome.tabs.onRemoved.addListener(tabId => {
+  void (async () => {
+    const job = await getJob();
+    if (!jobIsActive(job) || job.retailerTabId !== tabId) return;
+    await abandonJob(
+      job,
+      `La pestaña de ${job.store} se cerró antes de terminar. Pulsa "Cargar lista nueva" para comenzar otra vez.`,
+    );
+  })();
 });
