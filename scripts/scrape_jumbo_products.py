@@ -12,7 +12,7 @@ import unicodedata
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,52 @@ def matches_query(name: str, query: str) -> bool:
     return all(token in normalized_name for token in normalize(query).split() if len(token) > 1)
 
 
+URL_TOKEN_STOPWORDS = {
+    "de",
+    "del",
+    "el",
+    "g",
+    "gr",
+    "kg",
+    "l",
+    "lt",
+    "ml",
+    "p",
+    "pet",
+    "un",
+    "unidad",
+    "unidades",
+}
+PROTEIN_TOKENS = {"cerdo", "pavo", "pollo", "vacuno"}
+
+
+def product_slug_tokens(href: str) -> set[str]:
+    path_parts = [part for part in urlparse(href).path.split("/") if part]
+    slug = (
+        path_parts[-2]
+        if path_parts and path_parts[-1].lower() == "p"
+        else (path_parts[-1] if path_parts else "")
+    )
+    return {
+        token
+        for token in normalize(slug).split()
+        if len(token) > 1 and not token.isdigit() and token not in URL_TOKEN_STOPWORDS
+    }
+
+
+def product_name_score(name: str, query: str, href: str) -> tuple[int, int, int]:
+    name_tokens = set(normalize(name).split())
+    slug_tokens = product_slug_tokens(href)
+    overlap = len(name_tokens & slug_tokens)
+    return overlap, int(matches_query(name, query)), len(name_tokens)
+
+
+def contradicts_product_slug(name: str, href: str) -> bool:
+    name_proteins = set(normalize(name).split()) & PROTEIN_TOKENS
+    slug_proteins = product_slug_tokens(href) & PROTEIN_TOKENS
+    return bool(name_proteins and slug_proteins and name_proteins.isdisjoint(slug_proteins))
+
+
 def parse_card(query: str, text: str, href: str) -> Product | None:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     product_indexes = [
@@ -58,8 +104,20 @@ def parse_card(query: str, text: str, href: str) -> Product | None:
     if not product_indexes:
         return None
 
-    product_index = product_indexes[-1]
+    # A product link can sit inside a container that also includes a neighboring
+    # card. Choose the query-matching line that best agrees with this link's
+    # slug, instead of blindly taking the last matching line in the container.
+    product_index = max(
+        product_indexes,
+        key=lambda index: product_name_score(lines[index], query, href),
+    )
     name = lines[product_index]
+    slug_tokens = product_slug_tokens(href)
+    if (
+        slug_tokens
+        and product_name_score(name, query, href)[0] < min(2, len(slug_tokens))
+    ) or contradicts_product_slug(name, href):
+        return None
     previous = lines[max(0, product_index - 8):product_index]
     price_lines = [
         line
