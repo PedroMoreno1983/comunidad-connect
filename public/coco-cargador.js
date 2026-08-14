@@ -35,7 +35,7 @@
     'robot or human', 'robot o humano', 'confirma que eres humano',
     'confirm that you are human', 'activate and hold',
     'verificacion de seguridad', 'verificación de seguridad',
-    'security verification', 'un momento',
+    'security verification',
   ];
 
   const locationText = [
