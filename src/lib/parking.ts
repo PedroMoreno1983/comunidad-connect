@@ -1,69 +1,133 @@
 /**
- * Helpers de presentación del módulo de estacionamientos.
- *
- * Solo formato y etiquetas: la lógica de datos vive en ParkingService (api.ts) y
- * las reglas de negocio en la base de datos.
+ * Helpers y utilidades para el módulo de Estacionamientos de ComunidadConnect.
+ * Incluye gestión de tiempos, disponibilidad, formateo chileno,
+ * cálculos de sobreestadía, navegación GPS y códigos de acceso.
  */
-import type {
-    ParkingBookingStatus,
-    ParkingDriverVerification,
-    ParkingSpotStatus,
-    ParkingVehicleSize,
-} from '@/lib/types';
 
-/** Índice 0 = domingo, igual que Date.getDay() y que la columna weekday. */
-export const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] as const;
+import type { ParkingFloorLevel } from './types';
 
-export const VEHICLE_SIZE_LABELS: Record<ParkingVehicleSize, string> = {
+export const VEHICLE_SIZE_LABELS: Record<string, string> = {
     moto: 'Moto',
     auto: 'Auto',
     suv: 'SUV',
     camioneta: 'Camioneta',
 };
 
-export const SPOT_STATUS_LABELS: Record<ParkingSpotStatus, string> = {
+export const SPOT_STATUS_LABELS: Record<string, string> = {
     draft: 'Borrador',
-    pending_approval: 'En revisión',
-    published: 'Publicado',
+    published: 'Disponible',
     paused: 'Pausado',
-    rejected: 'Rechazado',
+    occupied: 'Ocupado',
+    archived: 'Archivado',
 };
 
-export const SPOT_STATUS_TONES: Record<ParkingSpotStatus, 'neutral' | 'amber' | 'sage' | 'rose'> = {
+export const SPOT_STATUS_TONES: Record<string, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
     draft: 'neutral',
-    pending_approval: 'amber',
     published: 'sage',
-    paused: 'neutral',
-    rejected: 'rose',
+    paused: 'amber',
+    occupied: 'rose',
+    archived: 'neutral',
 };
 
-export const BOOKING_STATUS_LABELS: Record<ParkingBookingStatus, string> = {
+export const BOOKING_STATUS_LABELS: Record<string, string> = {
+    pending: 'Pendiente',
     confirmed: 'Confirmada',
     active: 'En curso',
     completed: 'Finalizada',
     cancelled: 'Cancelada',
-    no_show: 'No se presentó',
+    overstay: 'Tiempo Excedido',
 };
 
-export const BOOKING_STATUS_TONES: Record<ParkingBookingStatus, 'sage' | 'copper' | 'neutral' | 'rose'> = {
+export const BOOKING_STATUS_TONES: Record<string, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
+    pending: 'amber',
     confirmed: 'sage',
     active: 'copper',
     completed: 'neutral',
     cancelled: 'rose',
-    no_show: 'rose',
+    overstay: 'rose',
 };
 
-export const DRIVER_VERIFICATION_LABELS: Record<ParkingDriverVerification, string> = {
+export const DRIVER_VERIFICATION_LABELS: Record<string, string> = {
     pending: 'Pendiente de verificación',
-    verified: 'Verificado',
-    rejected: 'Rechazado',
+    verified: 'Vehículo Verificado',
+    rejected: 'Verificación rechazada',
 };
 
-/** "10 ago, 14:30" — suficiente para una reserva del mismo mes o del siguiente. */
-export function formatParkingMoment(iso: string): string {
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return '—';
-    return date.toLocaleString('es-CL', {
+export const FLOOR_LEVEL_LABELS: Record<ParkingFloorLevel, string> = {
+    S1: 'Subterráneo -1 (S1)',
+    S2: 'Subterráneo -2 (S2)',
+    S3: 'Subterráneo -3 (S3)',
+    PB: 'Planta Baja / Nivel 1',
+    EXT: 'Exterior / Superficie',
+};
+
+export const SUGGESTED_HOURLY_RATES = [
+    { label: 'Económica', rate: 1500 },
+    { label: 'Estándar', rate: 2000 },
+    { label: 'Techado / Amplio', rate: 2500 },
+    { label: 'Con Cargador EV', rate: 3200 },
+];
+
+export const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+/** Convierte "YYYY-MM-DDTHH:mm" a Date válido o null si es inválido */
+export function parseLocalDateTime(value: string): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** Devuelve la fecha actual + N horas en formato "YYYY-MM-DDTHH:mm" */
+export function nextHourInputValue(plusHours = 1): string {
+    const d = new Date();
+    d.setHours(d.getHours() + plusHours);
+    d.setMinutes(0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Rangos de búsqueda predefinidos */
+export function getPresetSearchRange(preset: '2h' | 'afternoon' | 'night' | 'fullday'): { start: string; end: string } {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    if (preset === '2h') {
+        const start = nextHourInputValue(0);
+        const end = nextHourInputValue(2);
+        return { start, end };
+    }
+
+    if (preset === 'afternoon') {
+        return {
+            start: `${todayStr}T14:00`,
+            end: `${todayStr}T19:30`,
+        };
+    }
+
+    if (preset === 'night') {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+        return {
+            start: `${todayStr}T20:00`,
+            end: `${tomorrowStr}T08:00`,
+        };
+    }
+
+    // fullday
+    return {
+        start: `${todayStr}T08:30`,
+        end: `${todayStr}T19:30`,
+    };
+}
+
+/** Formatea una fecha ISO para Chile */
+export function formatChileanDateTime(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString('es-CL', {
+        timeZone: 'America/Santiago',
+        weekday: 'short',
         day: 'numeric',
         month: 'short',
         hour: '2-digit',
@@ -71,75 +135,51 @@ export function formatParkingMoment(iso: string): string {
     });
 }
 
-/** Rango compacto: colapsa el día cuando la reserva empieza y termina el mismo día. */
-export function formatParkingRange(startIso: string, endIso: string): string {
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '—';
-
-    const sameDay = start.toDateString() === end.toDateString();
-    if (!sameDay) return `${formatParkingMoment(startIso)} → ${formatParkingMoment(endIso)}`;
-
-    const day = start.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-    const from = start.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-    const to = end.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-    return `${day}, ${from} – ${to}`;
+/** Formatea un rango de reserva para Chile */
+export function formatParkingRange(startsAt: string, endsAt: string): string {
+    const s = new Date(startsAt);
+    const e = new Date(endsAt);
+    const dateStr = s.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+    });
+    const startTime = s.toLocaleTimeString('es-CL', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+    const endTime = e.toLocaleTimeString('es-CL', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+    return `${dateStr} · ${startTime} - ${endTime}`;
 }
 
-export function parkingDurationHours(startIso: string, endIso: string): number {
-    const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
-    if (!Number.isFinite(ms) || ms <= 0) return 0;
-    return Math.ceil(ms / 3_600_000);
+/** Calcula la cantidad de horas (decimales con 1 dígito) entre dos fechas */
+export function parkingDurationHours(startsAt: string, endsAt: string): number {
+    const s = new Date(startsAt).getTime();
+    const e = new Date(endsAt).getTime();
+    const diffMs = Math.max(0, e - s);
+    return Math.max(1, Math.round((diffMs / 3600000) * 10) / 10);
 }
 
-/**
- * Convierte los valores de un <input type="datetime-local"> a Date.
- * El input entrega hora local del navegador, que es la que el conductor tiene en
- * mente; el Date resultante ya lleva el offset correcto al serializarse a ISO.
- */
-export function parseLocalDateTime(value: string): Date | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
-/** Valor inicial para un <input type="datetime-local"> redondeado a la hora siguiente. */
-export function nextHourInputValue(offsetHours = 1): string {
-    const date = new Date();
-    date.setMinutes(0, 0, 0);
-    date.setHours(date.getHours() + offsetHours);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-export const FLOOR_LEVEL_LABELS: Record<string, string> = {
-    S1: 'Subterráneo -1',
-    S2: 'Subterráneo -2',
-    S3: 'Subterráneo -3',
-    PB: 'Planta Baja',
-    EXT: 'Exterior / Visitas',
-};
-
-export const SUGGESTED_HOURLY_RATES = [
-    { label: 'Económica', rate: 1500, desc: 'Ideal para alta rotación' },
-    { label: 'Estándar', rate: 2200, desc: 'Tarifa recomendada' },
-    { label: 'Techado / EV', rate: 3000, desc: 'Con cargador o extra amplio' },
-];
-
-/** Construye URL directa para abrir la ubicación en Waze */
-export function buildWazeNavigationUrl(addressOrDestination: string, coords?: { lat: number; lng: number }): string {
-    if (coords && coords.lat && coords.lng) {
-        return `https://waze.com/ul?ll=${coords.lat},${coords.lng}&navigate=yes`;
+/** Construye enlace directo a Waze para llegar al estacionamiento */
+export function buildWazeNavigationUrl(address: string, lat?: number, lng?: number): string {
+    if (lat && lng) {
+        return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
     }
-    return `https://waze.com/ul?q=${encodeURIComponent(addressOrDestination)}&navigate=yes`;
+    return `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
 }
 
-/** Construye URL directa para abrir en Google Maps */
-export function buildGoogleMapsNavigationUrl(addressOrDestination: string, coords?: { lat: number; lng: number }): string {
-    if (coords && coords.lat && coords.lng) {
-        return `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`;
+/** Construye enlace directo a Google Maps */
+export function buildGoogleMapsNavigationUrl(address: string, lat?: number, lng?: number): string {
+    if (lat && lng) {
+        return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     }
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressOrDestination)}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 }
 
 export interface ParkingTimeStatus {
@@ -174,7 +214,7 @@ export function calculateParkingTimeStatus(
         const overdueMs = current - end;
         const overdueMinutes = Math.ceil(overdueMs / 60000);
         const hoursOverdue = Math.ceil(overdueMinutes / 60);
-        // Recargo de sobreestadía Vimba: 1.5x la tarifa por hora proporcional
+        // Recargo de sobreestadía: 1.5x la tarifa por hora proporcional
         const overstayPenaltyAmount = Math.round(hoursOverdue * (hourlyRate * 1.5));
 
         const hrs = Math.floor(overdueMinutes / 60);
@@ -215,7 +255,7 @@ export function calculateParkingTimeStatus(
 }
 
 /** Genera la carga útil (payload) para el código QR del pase digital */
-export function buildVimbaAccessQrPayload(data: {
+export function buildAccessQrPayload(data: {
     bookingId: string;
     accessCode: string;
     spotLabel: string;
@@ -223,7 +263,7 @@ export function buildVimbaAccessQrPayload(data: {
     driverName: string;
 }): string {
     return JSON.stringify({
-        app: 'VIMBA_CONVIVE',
+        app: 'CONVIVE_ACCESS',
         v: 1,
         bid: data.bookingId,
         code: data.accessCode,
@@ -233,3 +273,23 @@ export function buildVimbaAccessQrPayload(data: {
     });
 }
 
+/** Construye enlace de WhatsApp para compartir el pase digital */
+export function buildParkingShareWhatsAppUrl(params: {
+    spotLabel: string;
+    accessCode: string;
+    plate: string;
+    buildingName: string;
+    buildingAddress: string;
+    range: string;
+}): string {
+    const text = `🚗 *Pase Digital de Estacionamiento - ${params.buildingName}*
+📍 Dirección: ${params.buildingAddress}
+🅿️ Puesto asignado: *${params.spotLabel}*
+🔑 Código de Portería: *${params.accessCode}*
+🚙 Patente autorizada: *${params.plate}*
+⏰ Horario: ${params.range}
+
+_Muestra este mensaje o código al ingresar por la barrera de conserjería._`;
+
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+}
