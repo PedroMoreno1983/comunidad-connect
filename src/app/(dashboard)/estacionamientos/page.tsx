@@ -39,6 +39,8 @@ import {
   BOOKING_STATUS_TONES,
   DRIVER_VERIFICATION_LABELS,
   VEHICLE_SIZE_LABELS,
+  calculateCommercialSavings,
+  formatMinuteRate,
   formatParkingRange,
   getPresetSearchRange,
   nextHourInputValue,
@@ -189,6 +191,8 @@ function SpotCard({
   onBook: (spot: ParkingSearchResult) => void;
   booking: boolean;
 }) {
+  const savings = calculateCommercialSavings(spot.quotedAmount);
+
   return (
     <div className="rounded-2xl border border-subtle bg-surface p-5 hover:shadow-xs transition-shadow">
       <div className="flex items-start justify-between gap-4">
@@ -198,6 +202,9 @@ function SpotCard({
               Estacionamiento {spot.label}
             </h3>
             <Tag tone="neutral">{VEHICLE_SIZE_LABELS[spot.vehicleSize]}</Tag>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              -{savings.savingsPercent}% vs Mall/Calle
+            </span>
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-[12px] cc-text-secondary">
             <MapPin size={12} className="text-[var(--cc-copper)]" />
@@ -219,7 +226,7 @@ function SpotCard({
               </Tag>
             )}
             <Tag tone="neutral">
-              <Clock size={11} /> Mínimo {spot.minHours} h
+              <Clock size={11} /> {formatMinuteRate(spot.hourlyRate)}
             </Tag>
           </div>
         </div>

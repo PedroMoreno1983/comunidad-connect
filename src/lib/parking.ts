@@ -293,3 +293,26 @@ _Muestra este mensaje o código al ingresar por la barrera de conserjería._`;
 
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 }
+
+/** Calcula el ahorro estimado frente a un estacionamiento comercial / público tradicional */
+export function calculateCommercialSavings(communityAmount: number): {
+    commercialEstimate: number;
+    savingsAmount: number;
+    savingsPercent: number;
+} {
+    // Tarifa comercial promedio en Santiago/capital suele ser ~1.6x - 1.8x
+    const commercialEstimate = Math.round(communityAmount * 1.65);
+    const savingsAmount = Math.max(0, commercialEstimate - communityAmount);
+    const savingsPercent = Math.round((savingsAmount / commercialEstimate) * 100);
+    return {
+        commercialEstimate,
+        savingsAmount,
+        savingsPercent,
+    };
+}
+
+/** Formatea tarifa por minuto (ej: $33/min) */
+export function formatMinuteRate(hourlyRate: number): string {
+    const minRate = Math.round(hourlyRate / 60);
+    return `$${minRate.toLocaleString('es-CL')}/min`;
+}
