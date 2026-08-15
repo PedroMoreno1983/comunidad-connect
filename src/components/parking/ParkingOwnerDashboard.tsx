@@ -18,6 +18,8 @@ import {
   CreditCard,
   Edit2,
   Trash2,
+  Calculator,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
@@ -86,7 +88,7 @@ export function ParkingOwnerDashboard({
     vehicleSize: "auto",
     isCovered: true,
     hasEvCharger: false,
-    hourlyRate: 2200,
+    hourlyRate: 2000,
     minHours: 1,
     allowsExternal: true,
   });
@@ -104,10 +106,21 @@ export function ParkingOwnerDashboard({
     }
   };
 
+  // Cálculo de estimación mensual: horas por día * días por semana * 4 semanas * tarifa * 0.9 (neto dueño) * 60% ocupación media
+  const calculateEstimatedMonthly = () => {
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    const dailyHours = Math.max(1, (endH + endM / 60) - (startH + startM / 60));
+    const weeklyHours = dailyHours * weekdays.length;
+    const monthlyHours = weeklyHours * 4.3;
+    const estimatedNet = Math.round(monthlyHours * form.hourlyRate * 0.9 * 0.65);
+    return Math.max(0, estimatedNet);
+  };
+
   const handleCreateSubmit = async () => {
     if (!form.label.trim()) {
       toast({
-        title: "Falta el número",
+        title: "Falta el identificador",
         description: "Indica el número o etiqueta de tu estacionamiento.",
         variant: "destructive",
       });
@@ -117,7 +130,7 @@ export function ParkingOwnerDashboard({
     if (form.hourlyRate <= 0) {
       toast({
         title: "Tarifa inválida",
-        description: "La tarifa por hora debe ser mayor a 0.",
+        description: "La tarifa por hora debe ser mayor a $0.",
         variant: "destructive",
       });
       return;
@@ -148,8 +161,8 @@ export function ParkingOwnerDashboard({
       );
 
       toast({
-        title: "Estacionamiento publicado",
-        description: "Tu puesto ya está disponible para arriendo en la plataforma.",
+        title: "Estacionamiento publicado con éxito",
+        description: "Tu puesto ya está disponible para generar ingresos en la comunidad.",
         variant: "success",
       });
       setShowAddModal(false);
@@ -180,7 +193,7 @@ export function ParkingOwnerDashboard({
       await onApplyToExpenses(offsetAmount);
       toast({
         title: "Descuento aplicado con éxito",
-        description: `Se abonaron ${formatCurrency(offsetAmount)} a tu próximo aviso de gastos comunes.`,
+        description: `Se abonaron ${formatCurrency(offsetAmount)} como rebaja en tu próximo aviso de gastos comunes.`,
         variant: "success",
       });
       setShowExpenseOffsetModal(false);
@@ -216,20 +229,20 @@ export function ParkingOwnerDashboard({
             {formatCurrency(earnings?.currentMonthEarnings || 0)}
           </p>
           <p className="text-[11px] cc-text-secondary mt-0.5">
-            {earnings?.totalHoursRented || 0} hrs arrendadas
+            {earnings?.totalHoursRented || 0} hrs arrendadas este mes
           </p>
         </div>
 
         <div className="rounded-2xl border border-subtle bg-surface p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider cc-text-tertiary">
-              Saldo Disponible
+              Saldo para Descuento GGCC
             </span>
             <div className="p-2 rounded-xl bg-[var(--cc-copper-tint)] text-[var(--cc-copper)]">
-              <DollarSign size={16} />
+              <Receipt size={16} />
             </div>
           </div>
-          <p className="mt-3 text-[22px] font-bold text-[var(--cc-copper)]">
+          <p className="mt-3 text-[22px] font-bold text-emerald-600">
             {formatCurrency(earnings?.availableBalance || 0)}
           </p>
           <button
@@ -238,9 +251,9 @@ export function ParkingOwnerDashboard({
               setShowExpenseOffsetModal(true);
             }}
             disabled={!earnings || earnings.availableBalance <= 0}
-            className="mt-1 text-[11px] font-semibold text-emerald-600 hover:underline flex items-center gap-1 disabled:opacity-50 disabled:no-underline text-left cursor-pointer"
+            className="mt-1 text-[11px] font-semibold text-[var(--cc-copper)] hover:underline flex items-center gap-1 disabled:opacity-50 disabled:no-underline text-left cursor-pointer"
           >
-            <Receipt size={12} />
+            <ArrowDownToLine size={12} />
             Abonar a Gastos Comunes →
           </button>
         </div>
@@ -248,7 +261,7 @@ export function ParkingOwnerDashboard({
         <div className="rounded-2xl border border-subtle bg-surface p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider cc-text-tertiary">
-              Histórico Total
+              Histórico Acumulado
             </span>
             <div className="p-2 rounded-xl bg-zinc-500/10 text-zinc-600">
               <CreditCard size={16} />
@@ -258,19 +271,19 @@ export function ParkingOwnerDashboard({
             {formatCurrency(earnings?.totalHistoricalEarnings || 0)}
           </p>
           <p className="text-[11px] cc-text-secondary mt-0.5">
-            {earnings?.totalBookingsCount || 0} arriendos completados
+            {earnings?.totalBookingsCount || 0} reservas completadas
           </p>
         </div>
 
-        <div className="rounded-2xl border border-subtle bg-[var(--cc-copper-tint)]/40 border-[rgba(156,86,54,0.2)] p-4 flex flex-col justify-between">
+        <div className="rounded-2xl border border-subtle bg-[var(--cc-copper-tint)]/30 border-[rgba(156,86,54,0.2)] p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[var(--cc-copper)] uppercase tracking-wider">
-              Beneficio Vimba
+              Ahorro Vecinal
             </span>
-            <Shield size={16} style={{ color: "var(--cc-copper)" }} />
+            <Sparkles size={16} style={{ color: "var(--cc-copper)" }} />
           </div>
           <p className="mt-2 text-[12px] cc-text-secondary">
-            Convierte tu estacionamiento ocioso en un descuento directo para tu GGCC mensual.
+            Rentabiliza tu puesto cuando estés trabajando o de viaje y descuéntalo de tus gastos comunes.
           </p>
           <Button
             size="sm"
@@ -285,13 +298,13 @@ export function ParkingOwnerDashboard({
 
       {/* Mis Estacionamientos Publicados */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-[16px] font-semibold cc-text-primary">
-              Mis Estacionamientos Registrados ({spots.length})
+              Mis Estacionamientos ({spots.length})
             </h2>
             <p className="text-[12px] cc-text-secondary">
-              Gestiona tus cupos, horarios disponibles y activa o pausa arriendos instantáneamente.
+              Controla tus cupos, fija tarifas por hora y activa o pausa la disponibilidad con un clic.
             </p>
           </div>
           <Button size="sm" onClick={() => setShowAddModal(true)}>
@@ -305,10 +318,10 @@ export function ParkingOwnerDashboard({
               <Car size={24} />
             </div>
             <h3 className="text-[15px] font-semibold cc-text-primary">
-              No tienes estacionamientos publicados
+              No tienes estacionamientos registrados
             </h3>
             <p className="text-[13px] cc-text-secondary max-w-md mx-auto">
-              Si sales a trabajar en el día o no utilizas tu estacionamiento, publícalo y empieza a generar ingresos automáticamente.
+              Si sales a trabajar durante el día o tienes un cupo desocupado, publícalo y empieza a generar ingresos automáticamente.
             </p>
             <Button size="sm" variant="copper" onClick={() => setShowAddModal(true)}>
               <Plus size={14} /> Publicar mi estacionamiento
@@ -374,14 +387,14 @@ export function ParkingOwnerDashboard({
                   <div className="flex items-center justify-between border-t border-subtle pt-3">
                     <button
                       onClick={() => onToggleSpot(spot.id, !isPublished)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all cursor-pointer ${
                         isPublished
                           ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
                           : "bg-zinc-500/10 text-zinc-700 hover:bg-zinc-500/20"
                       }`}
                     >
                       <Power size={13} />
-                      {isPublished ? "Disponible para arriendo" : "Pausado"}
+                      {isPublished ? "Disponible para arriendos" : "Pausado"}
                     </button>
 
                     <Button
@@ -405,13 +418,13 @@ export function ParkingOwnerDashboard({
         <div className="flex items-center gap-2">
           <Receipt size={16} style={{ color: "var(--cc-copper)" }} />
           <h2 className="text-[15px] font-semibold cc-text-primary">
-            Arriendos Recibidos en mis Estacionamientos
+            Historial de Arriendos en mis Puestos
           </h2>
         </div>
 
         {bookings.length === 0 ? (
           <div className="rounded-2xl border border-subtle bg-surface p-6 text-center text-[13px] cc-text-secondary">
-            Aún no has recibido reservas en tus estacionamientos. Cuando un vecino arriende tu espacio, aparecerá aquí.
+            Aún no registras reservas en tus estacionamientos. Cuando un vecino o visita arriende tu puesto, aparecerá aquí en tiempo real.
           </div>
         ) : (
           <div className="divide-y divide-subtle rounded-2xl border border-subtle bg-surface overflow-hidden">
@@ -422,7 +435,7 @@ export function ParkingOwnerDashboard({
                     <span className="font-semibold text-[14px] cc-text-primary">
                       Puesto {b.spotLabel || "—"}
                     </span>
-                    <span className="font-mono text-[12px] bg-subtle/50 px-2 py-0.5 rounded">
+                    <span className="font-mono text-[12px] bg-subtle/50 px-2 py-0.5 rounded font-bold">
                       {b.driverPlate || "Patente"}
                     </span>
                     <Tag tone="sage" solid>
@@ -447,13 +460,13 @@ export function ParkingOwnerDashboard({
 
       {/* Modal: Publicar Nuevo Estacionamiento */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg rounded-3xl border border-subtle bg-surface p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-[17px] font-semibold cc-text-primary">
               Publicar Estacionamiento para Arriendo
             </h3>
             <p className="text-[12px] cc-text-secondary">
-              Indica los datos de tu puesto y los horarios en que estará libre.
+              Ingresa los datos de tu puesto y los horarios semanales en que estará disponible.
             </p>
 
             <div className="space-y-3">
@@ -463,7 +476,7 @@ export function ParkingOwnerDashboard({
                 </label>
                 <input
                   className={field}
-                  placeholder="Ej: 104, S1-22, etc."
+                  placeholder="Ej: S1-104, 201, Torre B-15, etc."
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
                 />
@@ -506,15 +519,15 @@ export function ParkingOwnerDashboard({
               </div>
 
               {/* Suggestions */}
-              <div className="flex gap-2 text-[11px]">
+              <div className="flex flex-wrap gap-2 text-[11px]">
                 {SUGGESTED_HOURLY_RATES.map((s) => (
                   <button
                     key={s.rate}
                     type="button"
                     onClick={() => setForm({ ...form, hourlyRate: s.rate })}
-                    className={`px-2 py-1 rounded-lg border transition-colors ${
+                    className={`px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
                       form.hourlyRate === s.rate
-                        ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)] font-semibold"
+                        ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)] font-semibold text-[var(--cc-copper)]"
                         : "border-subtle hover:bg-subtle/50 text-zinc-600"
                     }`}
                   >
@@ -562,7 +575,7 @@ export function ParkingOwnerDashboard({
                         key={idx}
                         type="button"
                         onClick={() => toggleWeekday(idx)}
-                        className={`w-9 h-9 rounded-xl text-[11px] font-semibold transition-all ${
+                        className={`w-9 h-9 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                           active
                             ? "bg-[var(--cc-copper)] text-white shadow-xs"
                             : "bg-surface border border-subtle text-zinc-500 hover:border-zinc-400"
@@ -598,16 +611,27 @@ export function ParkingOwnerDashboard({
                     />
                   </div>
                 </div>
+
+                {/* Live Estimator Badge */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[12px]">
+                  <div className="flex items-center gap-1.5">
+                    <Calculator size={14} className="text-emerald-600" />
+                    <span>Ingreso estimado:</span>
+                  </div>
+                  <strong className="font-bold">
+                    ~{formatCurrency(calculateEstimatedMonthly())} / mes
+                  </strong>
+                </div>
               </div>
 
               <div>
                 <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
-                  Instrucciones Secretas de Acceso (Solo para quien reserva)
+                  Instrucciones Secretas de Acceso (Solo para quien reserve)
                 </label>
                 <textarea
                   className={field}
                   rows={2}
-                  placeholder="Ej: Bajar por rampa norte, puesto al lado del pilar 14 frente a la torre B."
+                  placeholder="Ej: Bajar por rampa poniente, puesto al lado del pilar 14 frente al ascensor."
                   value={form.accessNotes}
                   onChange={(e) =>
                     setForm({ ...form, accessNotes: e.target.value })
@@ -640,7 +664,7 @@ export function ParkingOwnerDashboard({
 
       {/* Modal: Abonar a Gastos Comunes */}
       {showExpenseOffsetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="relative w-full max-w-md rounded-3xl border border-subtle bg-surface p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
@@ -651,7 +675,7 @@ export function ParkingOwnerDashboard({
                   Abonar a Gastos Comunes
                 </h3>
                 <p className="text-[12px] cc-text-secondary">
-                  Aplica tu saldo disponible directamente a tu próximo recibo.
+                  Aplica tu saldo acumulado directamente como descuento en tu próximo cobro.
                 </p>
               </div>
             </div>

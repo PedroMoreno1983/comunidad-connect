@@ -2726,7 +2726,7 @@ export const ParkingService = {
         if (error) throw error;
     },
 
-    /* — Billetera y Ganancias del Propietario (Vimba Monetización) — */
+    /* — Billetera y Ganancias del Propietario (Monetización) — */
 
     async getOwnerEarnings(): Promise<ParkingOwnerEarnings> {
         const { data: authData } = await supabase.auth.getUser();
@@ -2769,7 +2769,7 @@ export const ParkingService = {
                     id: `tx-${b.id}`,
                     bookingId: b.id,
                     spotLabel: b.spotLabel || 'Estacionamiento',
-                    driverName: b.driverName || 'Conductor Vimba',
+                    driverName: b.driverName || 'Conductor Registrado',
                     plate: b.driverPlate || '—',
                     type: 'rental_income',
                     description: `Arriendo ${durationHours}h (${b.spotLabel || 'Puesto'})`,
@@ -2923,7 +2923,7 @@ export const ParkingService = {
         ];
     },
 
-    /* — Pase Digital Vimba (Credencial de Acceso Inteligente) — */
+    /* — Pase Digital de Acceso (Credencial Inteligente) — */
 
     async getPassDetail(booking: ParkingBooking, communityName = 'Condominio Convive', communityAddress = 'Av. Las Condes 12340, Santiago'): Promise<ParkingPassDetail> {
         const now = new Date();
@@ -2934,7 +2934,7 @@ export const ParkingService = {
         const remainingMinutes = !isOverdue ? Math.max(0, Math.floor(diffMs / 60000)) : 0;
 
         const qrPayload = JSON.stringify({
-            app: 'VIMBA_CONVIVE',
+            app: 'CONVIVE_ACCESS',
             bookingId: booking.id,
             code: booking.accessCode,
             spot: booking.spotLabel || 'E-01',
@@ -2959,7 +2959,7 @@ export const ParkingService = {
             vehicleDescription: 'Vehículo Verificado',
             communityName,
             communityAddress,
-            accessNotes: 'Acceso por barrera poniente. Avisar en portería código digital Vimba y dirigirse directo al piso asignado.',
+            accessNotes: 'Acceso por barrera de portería. Avisar código digital de reserva y dirigirse directo al piso asignado.',
             wazeUrl,
             googleMapsUrl,
             status: booking.status,
