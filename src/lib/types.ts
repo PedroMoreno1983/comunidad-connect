@@ -1474,10 +1474,13 @@ export interface ParkingSpot {
   hourlyRate: number;
   dailyRate?: number;
   monthlyRate?: number;
+  minuteRate?: number;
   minHours: number;
   allowsExternal: boolean;
   status: ParkingSpotStatus;
   rejectionReason?: string;
+  rating?: number;
+  ratingCount?: number;
   createdAt: string;
   availability?: ParkingAvailabilityRule[];
 }
@@ -1492,6 +1495,7 @@ export interface ParkingSpotInput {
   hourlyRate: number;
   dailyRate?: number | null;
   monthlyRate?: number | null;
+  minuteRate?: number | null;
   minHours: number;
   allowsExternal: boolean;
   status?: ParkingSpotStatus;
@@ -1511,9 +1515,13 @@ export interface ParkingSearchResult {
   hourlyRate: number;
   dailyRate?: number;
   monthlyRate?: number;
+  minuteRate?: number;
   minHours: number;
   ownerName: string;
   quotedAmount: number;
+  commercialEstimateAmount?: number;
+  savingsPercent?: number;
+  rating?: number;
 }
 
 export interface ParkingBooking {
@@ -1537,7 +1545,10 @@ export interface ParkingBooking {
   paymentStatus: ParkingPaymentStatus;
   /** Código que el conductor muestra en portería. */
   accessCode: string;
+  allowExtension?: boolean;
   cancellationReason?: string;
+  rating?: number;
+  ratingComment?: string;
   createdAt: string;
 }
 
