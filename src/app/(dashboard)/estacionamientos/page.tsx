@@ -20,6 +20,10 @@ import {
   Shield,
   Settings,
   CheckCircle2,
+  Calendar,
+  Sun,
+  Moon,
+  ZapOff,
 } from "lucide-react";
 import { ParkingService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
@@ -36,6 +40,7 @@ import {
   DRIVER_VERIFICATION_LABELS,
   VEHICLE_SIZE_LABELS,
   formatParkingRange,
+  getPresetSearchRange,
   nextHourInputValue,
   parkingDurationHours,
   parseLocalDateTime,
@@ -58,7 +63,7 @@ import type {
   ParkingVehicleSize,
 } from "@/lib/types";
 
-type VimbaTab = "search" | "owner" | "bookings" | "gate" | "admin";
+type ParkingTab = "search" | "owner" | "bookings" | "gate" | "admin";
 
 function DriverForm({
   driver,
@@ -91,7 +96,7 @@ function DriverForm({
     try {
       await ParkingService.saveMyDriver(form);
       toast({
-        title: driver ? "Vehículo actualizado" : "Vehículo verificado en Vimba",
+        title: driver ? "Vehículo actualizado" : "Vehículo verificado",
         description: "Ya puedes reservar estacionamientos en cualquier condominio habilitado.",
         variant: "success",
       });
@@ -118,7 +123,7 @@ function DriverForm({
         </div>
         <div>
           <h3 className="text-[15px] font-semibold cc-text-primary">
-            {driver ? "Mi Vehículo Registrado" : "3 Filtros de Seguridad Vimba"}
+            {driver ? "Mi Vehículo Registrado" : "Validación de Seguridad Comunitaria"}
           </h3>
           <p className="text-[12px] cc-text-secondary">
             Conserjería requiere tu nombre, RUT, teléfono y patente para habilitar la barrera.
@@ -290,13 +295,13 @@ function EstacionamientosContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get("tab") as VimbaTab) || "search";
+  const initialTab = (searchParams.get("tab") as ParkingTab) || "search";
 
-  const [activeTab, setActiveTab] = useState<VimbaTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<ParkingTab>(initialTab);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   useEffect(() => {
-    const tabFromUrl = searchParams.get("tab") as VimbaTab | null;
+    const tabFromUrl = searchParams.get("tab") as ParkingTab | null;
     if (tabFromUrl && ["search", "owner", "bookings", "gate", "admin"].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -424,6 +429,12 @@ function EstacionamientosContent() {
     loadAdminSettings();
   }, [user, loadDriver, loadBookings, loadOwnerData, loadMapData, loadGateData, loadAdminSettings]);
 
+  const applyPreset = (preset: "2h" | "afternoon" | "night" | "fullday") => {
+    const range = getPresetSearchRange(preset);
+    setStartValue(range.start);
+    setEndValue(range.end);
+  };
+
   const runSearch = async () => {
     const start = parseLocalDateTime(startValue);
     const end = parseLocalDateTime(endValue);
@@ -442,7 +453,7 @@ function EstacionamientosContent() {
       const searchRes = await ParkingService.search(start, end, user?.communityId);
       setResults(searchRes);
     } catch (error: unknown) {
-      // Fallback demo results if table not yet migrated
+      // Fallback demo results
       const hours = parkingDurationHours(start.toISOString(), end.toISOString());
       setResults([
         {
@@ -494,7 +505,7 @@ function EstacionamientosContent() {
       try {
         bookingId = await ParkingService.book(spotId, start, end);
       } catch {
-        bookingId = `vmb-${Date.now()}`;
+        bookingId = `est-${Date.now()}`;
       }
 
       toast({
@@ -522,7 +533,7 @@ function EstacionamientosContent() {
         ownerPayoutAmount: 1800,
         status: "confirmed",
         paymentStatus: "paid",
-        accessCode: `VMB-${Math.floor(1000 + Math.random() * 9000)}`,
+        accessCode: `EST-${Math.floor(1000 + Math.random() * 9000)}`,
         createdAt: new Date().toISOString(),
       };
 
@@ -617,29 +628,31 @@ function EstacionamientosContent() {
       {/* Hero Header */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[var(--cc-copper)] text-white flex items-center justify-center font-bold text-[15px] shadow-sm">
-              V
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[var(--cc-copper)] text-white flex items-center justify-center font-bold text-[16px] shadow-sm">
+              <Car size={20} />
             </div>
-            <h1
-              className="text-[22px] font-semibold cc-text-primary"
-              style={{ fontFamily: "var(--cc-font-display)" }}
-            >
-              Estacionamientos Vimba
-            </h1>
+            <div>
+              <h1
+                className="text-[22px] font-semibold cc-text-primary"
+                style={{ fontFamily: "var(--cc-font-display)" }}
+              >
+                Estacionamientos
+              </h1>
+              <p className="text-[12px] cc-text-secondary">
+                {isAdmin
+                  ? "Panel de administración y gobernanza de estacionamientos del condominio."
+                  : "Arrienda cupos desocupados por horas o rentabiliza tu puesto con descuento directo a tus gastos comunes."}
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-[13px] cc-text-secondary">
-            {isAdmin
-              ? "Panel administrativo y gestión comunitaria de arriendos vehiculares Vimba."
-              : "Arrienda por horas espacios desocupados o rentabiliza tu estacionamiento con abono directo a tus gastos comunes."}
-          </p>
         </div>
 
         {/* Persona Tabs Navigation */}
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-subtle/50 border border-subtle">
           <button
             onClick={() => setActiveTab("search")}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
               activeTab === "search"
                 ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
                 : "cc-text-secondary hover:cc-text-primary"
@@ -651,7 +664,7 @@ function EstacionamientosContent() {
 
           <button
             onClick={() => setActiveTab("owner")}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
               activeTab === "owner"
                 ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
                 : "cc-text-secondary hover:cc-text-primary"
@@ -663,7 +676,7 @@ function EstacionamientosContent() {
 
           <button
             onClick={() => setActiveTab("bookings")}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
               activeTab === "bookings"
                 ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
                 : "cc-text-secondary hover:cc-text-primary"
@@ -676,7 +689,7 @@ function EstacionamientosContent() {
           {(isConcierge || isAdmin) && (
             <button
               onClick={() => setActiveTab("gate")}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
                 activeTab === "gate"
                   ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
                   : "cc-text-secondary hover:cc-text-primary"
@@ -690,7 +703,7 @@ function EstacionamientosContent() {
           {isAdmin && (
             <button
               onClick={() => setActiveTab("admin")}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
                 activeTab === "admin"
                   ? "bg-surface shadow-xs font-semibold cc-text-primary border border-subtle"
                   : "cc-text-secondary hover:cc-text-primary"
@@ -738,6 +751,37 @@ function EstacionamientosContent() {
             </div>
           )}
 
+          {/* Quick Preset Range Buttons */}
+          <div className="flex flex-wrap items-center gap-2 text-[12px]">
+            <span className="text-[11px] uppercase tracking-wider cc-text-tertiary mr-1">
+              Accesos Rápidos:
+            </span>
+            <button
+              onClick={() => applyPreset("2h")}
+              className="px-3 py-1.5 rounded-xl border border-subtle bg-surface hover:bg-subtle/40 cc-text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Clock size={13} className="text-[var(--cc-copper)]" /> Próximas 2 Horas
+            </button>
+            <button
+              onClick={() => applyPreset("afternoon")}
+              className="px-3 py-1.5 rounded-xl border border-subtle bg-surface hover:bg-subtle/40 cc-text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Sun size={13} className="text-amber-500" /> Tarde (14:00 - 19:30)
+            </button>
+            <button
+              onClick={() => applyPreset("night")}
+              className="px-3 py-1.5 rounded-xl border border-subtle bg-surface hover:bg-subtle/40 cc-text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Moon size={13} className="text-indigo-400" /> Noche (20:00 - 08:00)
+            </button>
+            <button
+              onClick={() => applyPreset("fullday")}
+              className="px-3 py-1.5 rounded-xl border border-subtle bg-surface hover:bg-subtle/40 cc-text-primary transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Calendar size={13} className="text-emerald-500" /> Jornada Completa
+            </button>
+          </div>
+
           {/* Search Controls */}
           <div className="rounded-2xl border border-subtle bg-surface p-5 space-y-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -778,7 +822,7 @@ function EstacionamientosContent() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCoveredOnly(!coveredOnly)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer ${
                     coveredOnly
                       ? "border-emerald-600 bg-emerald-50 text-emerald-800"
                       : "border-subtle hover:bg-subtle/50 text-zinc-600"
@@ -788,7 +832,7 @@ function EstacionamientosContent() {
                 </button>
                 <button
                   onClick={() => setEvOnly(!evOnly)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer ${
                     evOnly
                       ? "border-[var(--cc-copper)] bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] font-semibold"
                       : "border-subtle hover:bg-subtle/50 text-zinc-600"
@@ -802,7 +846,7 @@ function EstacionamientosContent() {
               <div className="flex items-center gap-1 p-1 rounded-xl bg-subtle/40 border border-subtle">
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-1.5 rounded-lg transition-colors ${
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                     viewMode === "list"
                       ? "bg-surface shadow-xs text-zinc-900"
                       : "text-zinc-500 hover:text-zinc-800"
@@ -813,7 +857,7 @@ function EstacionamientosContent() {
                 </button>
                 <button
                   onClick={() => setViewMode("map")}
-                  className={`p-1.5 rounded-lg transition-colors ${
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                     viewMode === "map"
                       ? "bg-surface shadow-xs text-zinc-900"
                       : "text-zinc-500 hover:text-zinc-800"
@@ -905,7 +949,7 @@ function EstacionamientosContent() {
                 Mis Reservas Vehiculares ({myBookings.length})
               </h2>
               <p className="text-[12px] cc-text-secondary">
-                Accede a tu código de acceso digital Vimba y muéstralo en la portería del edificio.
+                Accede a tu código de acceso digital y muéstralo en la portería del edificio.
               </p>
             </div>
           </div>
@@ -950,7 +994,7 @@ function EstacionamientosContent() {
           <div className="flex items-center gap-2">
             <Settings size={18} style={{ color: "var(--cc-copper)" }} />
             <h3 className="text-[16px] font-semibold cc-text-primary">
-              Gobernanza de Estacionamientos Vimba
+              Gobernanza de Estacionamientos
             </h3>
           </div>
 
@@ -1025,7 +1069,7 @@ function EstacionamientosContent() {
   );
 }
 
-export default function EstacionamientosVimbaPage() {
+export default function EstacionamientosPage() {
   return (
     <ErrorBoundary name="Estacionamientos">
       <Suspense fallback={<SkeletonList rows={3} />}>

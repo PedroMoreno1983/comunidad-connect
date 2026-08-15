@@ -14,6 +14,7 @@ import {
   QrCode,
   User,
   Phone,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
@@ -43,6 +44,7 @@ export function ParkingConciergeGate({
   const [searching, setSearching] = useState(false);
   const [lookupResults, setLookupResults] = useState<ParkingAccessLookup[] | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<"all" | "active" | "overdue">("all");
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -73,7 +75,7 @@ export function ParkingConciergeGate({
   const handleAction = async (bookingId: string, type: "entry" | "exit") => {
     setProcessingId(bookingId);
     try {
-      await onRecordAccess(bookingId, type, `Registrado por conserje`);
+      await onRecordAccess(bookingId, type, `Registrado por conserjería`);
       toast({
         title: type === "entry" ? "Entrada registrada" : "Salida registrada",
         description: `Vehículo ${type === "entry" ? "ingresó" : "salió"} del estacionamiento.`,
@@ -95,6 +97,14 @@ export function ParkingConciergeGate({
     }
   };
 
+  const filteredBookings = todayBookings.filter((b) => {
+    if (filterMode === "all") return true;
+    const timeStatus = calculateParkingTimeStatus(b.startsAt, b.endsAt, 2000, new Date());
+    if (filterMode === "overdue") return timeStatus.isOverdue;
+    if (filterMode === "active") return b.status === "active" || b.status === "confirmed";
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {/* Search Header Banner */}
@@ -108,10 +118,10 @@ export function ParkingConciergeGate({
           </div>
           <div>
             <h2 className="text-[17px] font-semibold">
-              Control Portería & Barrera Vimba
+              Control Portería & Acceso Vehicular
             </h2>
             <p className="text-[12px] text-white/70">
-              Valida patentes, códigos QR y registra accesos de vehículos en tiempo real.
+              Valida patentes, credenciales de acceso y registra entradas y salidas en tiempo real.
             </p>
           </div>
         </div>
@@ -121,7 +131,7 @@ export function ParkingConciergeGate({
             <Search size={16} className="absolute left-3.5 top-3.5 text-zinc-400" />
             <input
               type="text"
-              placeholder="Ingresa código (ej: VMB-123) o patente (ej: BBCC12)…"
+              placeholder="Ingresa código (ej: EST-104) o patente (ej: BBCC12)…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white placeholder:text-white/50 text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--cc-copper)]"
@@ -145,7 +155,7 @@ export function ParkingConciergeGate({
                 setLookupResults(null);
                 setQuery("");
               }}
-              className="text-[12px] text-zinc-500 hover:text-zinc-700"
+              className="text-[12px] text-zinc-500 hover:text-zinc-700 cursor-pointer"
             >
               Limpiar búsqueda
             </button>
@@ -215,7 +225,12 @@ export function ParkingConciergeGate({
                         <Phone size={14} className="text-zinc-500" />
                         <div>
                           <span className="text-[10px] uppercase cc-text-tertiary block">Teléfono</span>
-                          <span className="font-medium cc-text-primary">{item.driverPhone}</span>
+                          <a
+                            href={`tel:${item.driverPhone}`}
+                            className="font-medium text-[var(--cc-copper)] hover:underline"
+                          >
+                            {item.driverPhone}
+                          </a>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:col-span-1 col-span-2">
@@ -258,22 +273,49 @@ export function ParkingConciergeGate({
 
       {/* Tablero de Ocupación Hoy */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Clock size={16} style={{ color: "var(--cc-copper)" }} />
             <h3 className="text-[15px] font-semibold cc-text-primary">
               Reservas Programadas para Hoy ({todayBookings.length})
             </h3>
           </div>
+
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-subtle/40 border border-subtle text-[12px]">
+            <button
+              onClick={() => setFilterMode("all")}
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                filterMode === "all" ? "bg-surface shadow-xs font-semibold cc-text-primary" : "text-zinc-500"
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFilterMode("active")}
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                filterMode === "active" ? "bg-surface shadow-xs font-semibold cc-text-primary" : "text-zinc-500"
+              }`}
+            >
+              Activos
+            </button>
+            <button
+              onClick={() => setFilterMode("overdue")}
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                filterMode === "overdue" ? "bg-rose-100 text-rose-800 font-semibold" : "text-zinc-500"
+              }`}
+            >
+              Excedidos
+            </button>
+          </div>
         </div>
 
-        {todayBookings.length === 0 ? (
+        {filteredBookings.length === 0 ? (
           <div className="p-6 rounded-2xl border border-subtle bg-surface text-center text-[13px] cc-text-secondary">
-            No hay arriendos vehiculares programados para el turno de hoy.
+            No hay registros para este filtro en el turno de hoy.
           </div>
         ) : (
           <div className="divide-y divide-subtle rounded-2xl border border-subtle bg-surface overflow-hidden">
-            {todayBookings.map((b) => {
+            {filteredBookings.map((b) => {
               const timeStatus = calculateParkingTimeStatus(
                 b.startsAt,
                 b.endsAt,
