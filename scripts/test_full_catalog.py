@@ -15,6 +15,7 @@ from full_catalog import (
     extract_santa_render_data,
     extract_next_flight_stream,
     jumbo_page_count_from_links,
+    jumbo_pagination_target,
     jumbo_payload_candidates,
     parse_acuenta_categories,
     parse_acuenta_category_page,
@@ -137,6 +138,21 @@ class FullCatalogParserTests(unittest.TestCase):
             None,
         ]
         self.assertEqual(jumbo_page_count_from_links(hrefs), 16)
+
+    def test_jumbo_pagination_uses_anchor_target_instead_of_click(self) -> None:
+        self.assertEqual(
+            jumbo_pagination_target(
+                "https://www.jumbo.cl/frutas-y-verduras",
+                "/frutas-y-verduras?page=2",
+            ),
+            "https://www.jumbo.cl/frutas-y-verduras?page=2",
+        )
+        self.assertIsNone(
+            jumbo_pagination_target(
+                "https://www.jumbo.cl/frutas-y-verduras",
+                None,
+            )
+        )
 
     def test_jumbo_payload_candidates_find_nested_browser_response(self) -> None:
         payload = {

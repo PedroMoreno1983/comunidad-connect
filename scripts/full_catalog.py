@@ -14,7 +14,7 @@ from dataclasses import asdict
 from http.client import IncompleteRead
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
 from scrape_supermarkets import Product, pack_units_from_name, utc_now
@@ -555,6 +555,14 @@ def jumbo_page_count_from_links(hrefs: Iterable[Any]) -> int:
     return page_count
 
 
+def jumbo_pagination_target(current_url: str, href: str | None) -> str | None:
+    """Resolve a Jumbo page link so cookie overlays cannot block pagination."""
+    normalized_href = str(href or "").strip()
+    if not normalized_href:
+        return None
+    return urljoin(current_url, normalized_href)
+
+
 
 def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
     for match in re.finditer(
@@ -962,8 +970,15 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     f"Jumbo category {category} does not expose a visible control "
                     f"for page {page_number}"
                 )
+            target_url = jumbo_pagination_target(
+                page.url,
+                control.get_attribute("href"),
+            )
+            if target_url is not None:
+                return load_catalog_url(target_url, category)
+
             captured_payloads.clear()
-            control.click(timeout=15_000)
+            control.click(timeout=15_000, force=True)
             page.wait_for_timeout(3_000)
             return current_catalog_page(category)
 
