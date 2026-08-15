@@ -14,7 +14,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from full_catalog import CRAWLERS, product_key, serialize_product
+from full_catalog import CatalogCoverageWarning, CRAWLERS, product_key, serialize_product
 
 
 DEFAULT_BATCH_SIZE = 350
@@ -186,6 +186,20 @@ def crawl_store(
             if len(batch) >= batch_size:
                 flush()
         flush()
+    except CatalogCoverageWarning as warning:
+        flush()
+        return {
+            "store": display_store,
+            "status": "refreshed",
+            "warning": str(warning),
+            "reconciliation_skipped": True,
+            "scraped_count": scraped_count,
+            "persisted_count": persisted_count,
+            "database_count": None if dry_run else catalog_count(display_store),
+            "batch_count": len(batch_results),
+            "elapsed_seconds": round(time.time() - started, 2),
+            "dry_run": dry_run,
+        }
     except Exception as error:  # noqa: BLE001 - source failures are part of the report.
         flush()
         return {
@@ -272,13 +286,17 @@ def main() -> int:
         "started_at": started_at,
         "stores": results,
         "completed": sum(result["status"] == "completed" for result in results),
+        "refreshed": sum(result["status"] == "refreshed" for result in results),
         "blocked": sum(result["status"] == "blocked" for result in results),
         "partial": sum(result["status"] == "partial" for result in results),
         "total_scraped": sum(int(result.get("scraped_count") or 0) for result in results),
         "total_persisted": sum(int(result.get("persisted_count") or 0) for result in results),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2 if args.pretty else None))
-    return 0 if all(result["status"] == "completed" for result in results) else 2
+    return 0 if all(
+        result["status"] in {"completed", "refreshed"}
+        for result in results
+    ) else 2
 
 
 if __name__ == "__main__":
