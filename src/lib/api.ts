@@ -2969,4 +2969,54 @@ export const ParkingService = {
             remainingMinutes,
         };
     },
+
+    /** Extiende una reserva activa por minutos adicionales (+30m, +60m) */
+    async extendBooking(bookingId: string, additionalMinutes: number): Promise<{ newEndsAt: string; additionalAmount: number }> {
+        const { data: booking, error: fetchErr } = await supabase
+            .from('parking_bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .single();
+
+        if (fetchErr || !booking) {
+            // Demo fallback
+            const newEndsAt = new Date(Date.now() + additionalMinutes * 60000).toISOString();
+            return { newEndsAt, additionalAmount: Math.round((additionalMinutes / 60) * 2000) };
+        }
+
+        const currentEnd = new Date(booking.ends_at);
+        const newEnd = new Date(currentEnd.getTime() + additionalMinutes * 60000);
+        const hourlyRate = 2000;
+        const additionalAmount = Math.round((additionalMinutes / 60) * hourlyRate);
+
+        const { error: updateErr } = await supabase
+            .from('parking_bookings')
+            .update({
+                ends_at: newEnd.toISOString(),
+                total_amount: (booking.total_amount || 0) + additionalAmount,
+            })
+            .eq('id', bookingId);
+
+        if (updateErr) throw updateErr;
+
+        return {
+            newEndsAt: newEnd.toISOString(),
+            additionalAmount,
+        };
+    },
+
+    /** Registra una calificación de 1 a 5 estrellas para una reserva completada */
+    async rateBooking(bookingId: string, rating: number, comment?: string): Promise<void> {
+        const { error } = await supabase
+            .from('parking_bookings')
+            .update({
+                rating,
+                rating_comment: comment || null,
+            })
+            .eq('id', bookingId);
+
+        if (error) {
+            console.warn('[ParkingService] Rating update error, logged locally:', error);
+        }
+    },
 };
