@@ -3,7 +3,7 @@ import 'server-only';
 import {
   buildBasketComparison,
   buildSupermarketCandidate,
-  isProductMeasurementCompatible,
+  isProductSuitableForRequest,
   normalizeRequestedQuantity,
   SUPERMARKET_STORES,
 } from '@/lib/supermarketBasket';
@@ -16,6 +16,7 @@ import type { SupermarketMeasurementUnit } from '@/lib/types';
 const MAX_PRICE_AGE_MS = 96 * 60 * 60 * 1000;
 const GLOBAL_CANDIDATE_LIMIT = 200;
 const STORE_FALLBACK_LIMIT = 250;
+const PACK_CANDIDATE_LIMIT = 300;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -57,7 +58,7 @@ export async function comparePersistedSupermarkets(
     const pattern = anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`;
     const { data, error } = await supabaseAdmin
       .from('supermarket_products')
-      .select('id,sku,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+      .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
       .eq('in_stock', true)
       .gte('last_seen_at', cutoff)
       .ilike('name', pattern)
@@ -73,7 +74,7 @@ export async function comparePersistedSupermarkets(
     const fallbackRows = (await Promise.all(missingStores.map(async store => {
       const { data: storeData, error: storeError } = await supabaseAdmin
         .from('supermarket_products')
-        .select('id,sku,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+        .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
         .eq('in_stock', true)
         .eq('store', store)
         .gte('last_seen_at', cutoff)
@@ -90,7 +91,10 @@ export async function comparePersistedSupermarkets(
         ...row,
         match_relevance: productMatchScore(term, String(row.name || '')),
       }))
-      .filter(row => row.match_relevance >= 0);
+      .filter(row => (
+        row.match_relevance >= 0
+        && isProductSuitableForRequest(String(row.name || ''), term, requestedUnits[term])
+      ));
     const bestRelevanceByStore = new Map<string, number>();
     for (const row of scored) {
       const store = String(row.store || '');
@@ -110,16 +114,53 @@ export async function comparePersistedSupermarkets(
     return [term, refined] as [string, Record<string, unknown>[]];
   }));
 
-  const rowsByTerm = Object.fromEntries(entries);
+  const supplementalPackEntries = await Promise.all(terms
+    .filter(term => !requestedUnits[term] && (requestedQuantities[term] || 1) >= 4)
+    .map(async term => {
+      const anchor = matchAnchor(term);
+      const pattern = anchor.length <= 2 ? `${anchor}%` : `%${anchor}%`;
+      const { data, error } = await supabaseAdmin
+        .from('supermarket_products')
+        .select('id,store,name,brand,product_url,image_url,price,list_price,in_stock,last_seen_at,channel_type,pack_units,minimum_packs')
+        .eq('in_stock', true)
+        .gte('last_seen_at', cutoff)
+        .ilike('name', pattern)
+        .ilike('name', '%pack%')
+        .order('price', { ascending: true })
+        .limit(PACK_CANDIDATE_LIMIT);
+
+      if (error) throw error;
+      const rows = normalizeRows(data)
+        .map((row): Record<string, unknown> & { match_relevance: number } => ({
+          ...row,
+          match_relevance: productMatchScore(term, String(row.name || '')),
+        }))
+        .filter(row => (
+          row.match_relevance >= 0
+          && isProductSuitableForRequest(String(row.name || ''), term, undefined)
+        ));
+      return [term, rows] as const;
+    }));
+  const supplementalPackRows = Object.fromEntries(supplementalPackEntries);
+  const enrichedEntries = entries.map(([term, rows]) => [
+    term,
+    deduplicateRows([...rows, ...(supplementalPackRows[term] || [])]),
+  ] as [string, Record<string, unknown>[]]);
+
+  const rowsByTerm = Object.fromEntries(enrichedEntries);
   const comparison = buildBasketComparison(terms, rowsByTerm, requestedQuantities, requestedUnits);
-  const alternativesByTerm = Object.fromEntries(entries.map(([term, rows]) => {
+  const alternativesByTerm = Object.fromEntries(enrichedEntries.map(([term, rows]) => {
     const requestedQuantity = normalizeRequestedQuantity(
       requestedQuantities[term] || 1,
       requestedUnits[term],
     );
     const seen = new Set<string>();
     const alternatives = rows
-      .filter(row => isProductMeasurementCompatible(String(row.name || ''), requestedUnits[term]))
+      .filter(row => isProductSuitableForRequest(
+        String(row.name || ''),
+        term,
+        requestedUnits[term],
+      ))
       .map(row => buildSupermarketCandidate(row, term, requestedQuantity, requestedUnits[term]))
       .filter(candidate => {
         const key = `${candidate.store}:${candidate.name}:${candidate.lineTotal}`;

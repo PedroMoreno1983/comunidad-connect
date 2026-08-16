@@ -26,7 +26,7 @@ check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el lo
 
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.10', 'La versión con lectura automática del panel del carro debe ser 0.3.10.');
+check(manifest.version === '0.3.11', 'La versión que rechaza carros vacíos debe ser 0.3.11.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -64,7 +64,8 @@ check(
     && bridge.includes('cart-baseline-v1')
     && bridge.includes('cart-auto-open-v2')
     && bridge.includes('cart-replace-v1')
-    && bridge.includes('cart-stale-job-recovery-v1'),
+    && bridge.includes('cart-stale-job-recovery-v1')
+    && bridge.includes('cart-zero-proof-v1'),
   'El puente no informa una versión y capacidades verificables.',
 );
 
@@ -106,7 +107,10 @@ check(
   'Una carga huérfana puede seguir bloqueando el cargador o una carga activa no vuelve a enfocar su pestaña.',
 );
 check(
-  background.includes('initialCartCount')
+  background.includes('cartStayedEmpty')
+    && background.includes("job.status = cartStayedEmpty")
+    && background.includes('El contador sigue en 0')
+    && background.includes('initialCartCount')
     && background.includes('latestCartCount')
     && background.includes('previousCartCount')
     && background.includes('currentCartCount')
@@ -142,7 +146,10 @@ check(
   'Al terminar no se encuentra o abre el carro oficial, o no se registra su conteo previo.',
 );
 check(
-  loader.includes('el carro no cambió') && loader.includes('éxito falso'),
+  loader.includes('before.cartCount !== null && afterCount !== null')
+    && loader.includes('return afterCount > before.cartCount')
+    && loader.includes('el carro no cambió')
+    && loader.includes('éxito falso'),
   'Un clic sin efecto puede seguir reportándose como éxito.',
 );
 check(!/\b(click|submit)\s*\(\s*['"`]?(comprar|pagar|confirmar)/i.test(loader), 'El cargador intenta comprar o pagar.');
@@ -173,7 +180,7 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador temporal 0.3.10')
+  activationPage.includes('Descargar cargador temporal 0.3.11')
     && activationPage.includes('Cargar lista nueva')
     && activationPage.includes('Confirma que quieres reemplazar el carro anterior'),
   'La guía del cargador no explica ni enlaza la versión que realmente reemplaza el carro.',
@@ -216,8 +223,16 @@ check(
     && button.includes('cartLoader.start({ replaceCart: true })')
     && button.includes('Vaciar carro anterior y cargar')
     && loaderHook.includes("'cart-replace-v1'")
-    && loaderHook.includes("'cart-stale-job-recovery-v1'"),
+    && loaderHook.includes("'cart-stale-job-recovery-v1'")
+    && loaderHook.includes("'cart-zero-proof-v1'"),
   'El botón visible no usa el puente de la extensión como flujo principal.',
+);
+check(
+  button.includes('No se pudo confirmar el carro de')
+    && button.includes('Carga incompleta en')
+    && button.includes('Carro de ${basket.store} confirmado')
+    && !button.includes('Carro de ${basket.store} listo'),
+  'La web todavía presenta una carga fallida o incompleta como carro listo.',
 );
 check(
   !button.includes('/api/supermarket/cart-plan')

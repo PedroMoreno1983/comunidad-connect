@@ -1,94 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
-import { buildDirectCartUrl, storeSupportsDirectCart, directCartConfidence } from '@/lib/supermarket/cartUrl';
-import { buildSharedCart, storeSupportsSharedCart } from '@/lib/supermarket/vtexSharedCart';
-import { storeSearchUrl } from '@/lib/supermarketText';
+import {
+    buildDirectCartUrl,
+    storeSupportsDirectCart,
+    directCartConfidence,
+    MAX_ITEMS_PER_URL,
+} from '@/lib/supermarket/cartUrl';
+import { quoteVtexBasket, storeSupportsVtexQuote } from '@/lib/supermarket/vtexQuote';
 
 export const runtime = 'nodejs';
 
 const MAX_ITEMS = 200;
 
-function cleanText(value: unknown, max: number): string {
+function cleanText(value: unknown, max: number) {
     return typeof value === 'string' || typeof value === 'number'
         ? String(value).replace(/\s+/g, ' ').trim().slice(0, max)
         : '';
 }
 
 /**
- * Intenta extraer el SKU numérico o identificador del producto desde su URL.
- */
-function extractSkuFromUrl(store: string, url: string): string {
-    if (!url) return '';
-    try {
-        const decoded = decodeURIComponent(url);
-
-        // Patrones específicos de tiendas chilenas
-        if (store === 'Lider') {
-            const match = decoded.match(/\/sku\/(\d+)/i) || decoded.match(/\/ip\/[^/]+\/(\d+)/i) || decoded.match(/\/(\d{5,12})(?:\/|\?|$)/);
-            if (match) return match[1];
-        }
-
-        if (store === 'Jumbo' || store === 'Santa Isabel') {
-            const match = decoded.match(/\/p\?id=(\d+)/i) || decoded.match(/\/(\d{5,12})\/p/i) || decoded.match(/id=(\d{5,12})/i);
-            if (match) return match[1];
-        }
-
-        if (store === 'Unimarc') {
-            const match = decoded.match(/\/product\/.*-(\d+)/i) || decoded.match(/\/(\d{5,12})(?:\/|\?|$)/);
-            if (match) return match[1];
-        }
-
-        if (store === 'Tottus') {
-            const match = decoded.match(/\/p\/(\d+)/i) || decoded.match(/\/(\d{5,12})(?:\/|\?|$)/);
-            if (match) return match[1];
-        }
-
-        // Genérico: número de 5 a 10 dígitos antes de /p o en la URL
-        const genericMatch = decoded.match(/(\d{5,10})/);
-        if (genericMatch) return genericMatch[1];
-    } catch {
-        // Ignore parsing errors
-    }
-    return '';
-}
-
-/**
- * Devuelve el enlace que deja el carro cargado en la tienda o las URLs directas de compra.
+ * Devuelve un enlace que agrega productos dentro de la sesión del navegador de
+ * la tienda. No crea carros server-to-server: un orderForm remoto no transfiere
+ * su cookie ni su propiedad al navegador de la persona.
+ *
+ * En tiendas VTEX, los productos y precios se vuelven a resolver contra la
+ * tienda antes de construir el enlace. El resultado dice cuántos productos
+ * viajan en el enlace, nunca cuántos quedaron en el carro; eso solo lo confirma
+ * la persona en el checkout de la tienda.
  */
 export async function POST(req: NextRequest) {
     const limited = await enforceDistributedRateLimit(req, 'supermarket.cart_url', {
-        limit: 50,
+        limit: 30,
         windowMs: 60_000,
     });
     if (limited) return limited;
 
     try {
+        const supabaseUser = await getSupabaseUserClient();
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+        }
+
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const store = cleanText(body.store, 40);
 
-        if (!store) {
-            return NextResponse.json({ error: 'Supermercado requerido.' }, { status: 400 });
+        if (!storeSupportsDirectCart(store)) {
+            return NextResponse.json({
+                supported: false,
+                store,
+                reason: `${store || 'Esa tienda'} no permite cargar el carro desde un enlace. `
+                    + 'Usa el cargador asistido para agregar los productos dentro de su sitio.',
+            });
         }
 
         const rawItems = Array.isArray(body.items) ? body.items.slice(0, MAX_ITEMS) : [];
         const requested = rawItems.map(entry => {
             const item = entry as Record<string, unknown>;
-            const rawSku = cleanText(item.sku, 60);
-            const rawUrl = cleanText(item.productUrl, 600);
-            const name = cleanText(item.name, 240);
-            const quantity = Math.min(99, Math.max(1, Math.round(Number(item.quantity) || 1)));
-
-            const sku = rawSku || extractSkuFromUrl(store, rawUrl);
-
             return {
                 id: cleanText(item.id, 100),
-                name,
-                sku,
-                productUrl: rawUrl || storeSearchUrl(store, name),
-                searchUrl: storeSearchUrl(store, name),
-                quantity,
+                requestedTerm: cleanText(item.requestedTerm, 80),
+                name: cleanText(item.name, 240),
+                productUrl: cleanText(item.productUrl, 600),
+                quantity: Math.min(99, Math.max(1, Math.round(Number(item.quantity) || 1))),
+                catalogLineTotal: Math.max(0, Number(item.lineTotal) || 0),
             };
         }).filter(item => item.name || item.productUrl);
 
@@ -96,117 +74,119 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'La lista llegó vacía.' }, { status: 400 });
         }
 
-        const admin = getSupabaseAdmin();
+        if (storeSupportsVtexQuote(store)) {
+            const quoteInput = requested.slice(0, MAX_ITEMS_PER_URL).map((item, index) => ({
+                id: item.id || `item-${index + 1}`,
+                requestedTerm: item.requestedTerm || item.name,
+                name: item.name,
+                productUrl: item.productUrl || undefined,
+                quantity: item.quantity,
+                catalogLineTotal: item.catalogLineTotal,
+            }));
+            const overflow = requested.slice(MAX_ITEMS_PER_URL);
+            const quote = await quoteVtexBasket(store, quoteInput);
+            const cartUrl = buildDirectCartUrl(store, quote.items);
+            const allMissingTerms = [
+                ...quote.missingTerms,
+                ...overflow.map(item => item.requestedTerm || item.name),
+            ];
+            const unresolvedNames = quote.missingTerms.map(term => (
+                quoteInput.find(item => item.requestedTerm === term)?.name || term
+            ));
 
-        // Resolver SKUs faltantes desde la base de datos
-        const itemsNeedingSku = requested.filter(item => !item.sku);
-        if (itemsNeedingSku.length > 0) {
-            const urls = itemsNeedingSku.map(item => item.productUrl).filter(Boolean);
-            const names = itemsNeedingSku.map(item => item.name).filter(Boolean);
-
-            const [byUrl, byName] = await Promise.all([
-                urls.length
-                    ? admin.from('supermarket_products')
-                        .select('name, sku, product_url')
-                        .eq('store', store)
-                        .in('product_url', urls)
-                    : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
-                names.length
-                    ? admin.from('supermarket_products')
-                        .select('name, sku, product_url')
-                        .eq('store', store)
-                        .in('name', names)
-                    : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
-            ]);
-
-            const skuByUrl = new Map<string, string>();
-            const skuByName = new Map<string, string>();
-
-            for (const row of (byUrl.data ?? []) as Array<Record<string, unknown>>) {
-                const sku = cleanText(row.sku, 60);
-                const url = cleanText(row.product_url, 600);
-                if (sku && url && !skuByUrl.has(url)) skuByUrl.set(url, sku);
-            }
-            for (const row of (byName.data ?? []) as Array<Record<string, unknown>>) {
-                const sku = cleanText(row.sku, 60);
-                const name = cleanText(row.name, 240);
-                if (sku && name && !skuByName.has(name)) skuByName.set(name, sku);
-            }
-
-            for (const item of requested) {
-                if (!item.sku) {
-                    item.sku = (item.productUrl && skuByUrl.get(item.productUrl))
-                        || skuByName.get(item.name)
-                        || extractSkuFromUrl(store, item.productUrl || '')
-                        || '';
-                }
-            }
-        }
-
-        const withSku = requested.filter(item => item.sku);
-        const missing = requested.filter(item => !item.sku);
-
-        const canShare = storeSupportsSharedCart(store);
-
-        // 1. Camino preferido para tiendas VTEX (Jumbo, Santa Isabel, Unimarc)
-        if (canShare && withSku.length > 0) {
-            try {
-                const shared = await buildSharedCart(store, withSku.map(item => ({
-                    sku: item.sku,
-                    quantity: item.quantity,
-                    name: item.name,
-                })));
-
-                if (shared.ok && shared.checkoutUrl) {
-                    return NextResponse.json({
-                        supported: true,
-                        mode: 'shared-cart',
-                        store,
-                        confidence: 'verified',
-                        cartUrl: shared.checkoutUrl,
-                        loadedCount: shared.added.length,
-                        cartTotal: shared.cartTotal,
-                        items: requested,
-                        missingItems: [
-                            ...shared.rejected.map(item => item.name),
-                            ...missing.map(item => item.name),
-                        ].filter(Boolean),
-                        rejectedDetail: shared.rejected,
-                    });
-                }
-            } catch {
-                // Fallback directo si el shared cart falla por timeout o red
-            }
-        }
-
-        // 2. Camino Direct Link (GET /checkout/cart/add?... o búsqueda directa)
-        if (withSku.length > 0) {
-            const directUrl = buildDirectCartUrl(store, withSku.map(item => ({ sku: item.sku, quantity: item.quantity })));
-            if (directUrl) {
+            if (!cartUrl) {
                 return NextResponse.json({
-                    supported: true,
-                    mode: 'direct-link',
+                    supported: false,
                     store,
-                    cartUrl: directUrl,
-                    confidence: directCartConfidence(store) || 'verified',
-                    loadedCount: withSku.length,
-                    items: requested,
-                    missingItems: missing.map(item => item.name).filter(Boolean),
+                    reason: 'La tienda no confirmo ningun SKU disponible para esta lista. '
+                        + 'No abrimos un carro con productos distintos; usa otra tienda o el cargador asistido.',
+                    quotedAt: quote.quotedAt,
+                    missingItems: [...unresolvedNames, ...overflow.map(item => item.name)],
                 });
             }
+
+            return NextResponse.json({
+                supported: true,
+                mode: 'browser-session-link',
+                store,
+                cartUrl,
+                confidence: directCartConfidence(store),
+                plannedCount: quote.items.length,
+                missingItems: [...unresolvedNames, ...overflow.map(item => item.name)].filter(Boolean),
+                missingTerms: allMissingTerms,
+                quotedItems: quote.items,
+                quotedTotal: quote.subtotal,
+                catalogTotal: quote.catalogSubtotal,
+                quotedAt: quote.quotedAt,
+                quoteSource: 'retailer_checkout',
+            });
         }
 
-        // 3. Fallback inteligente: Tienda asistida con URLs directas de producto
-        const storeHome = storeSearchUrl(store, requested[0]?.name || '');
+        const admin = getSupabaseAdmin();
+
+        // La URL identifica el producto sin ambigüedad. El nombre se usa solo
+        // cuando la canasta no trae URL.
+        const urls = requested.map(item => item.productUrl).filter(Boolean);
+        const names = requested.filter(item => !item.productUrl).map(item => item.name);
+
+        const [byUrl, byName] = await Promise.all([
+            urls.length
+                ? admin.from('supermarket_products')
+                    .select('name, sku, product_url')
+                    .eq('store', store)
+                    .in('product_url', urls)
+                : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+            names.length
+                ? admin.from('supermarket_products')
+                    .select('name, sku, product_url')
+                    .eq('store', store)
+                    .in('name', names)
+                : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+        ]);
+
+        const skuByUrl = new Map<string, string>();
+        const skuByName = new Map<string, string>();
+        for (const row of (byUrl.data ?? []) as Array<Record<string, unknown>>) {
+            const sku = cleanText(row.sku, 60);
+            const url = cleanText(row.product_url, 600);
+            if (sku && url && !skuByUrl.has(url)) skuByUrl.set(url, sku);
+        }
+        for (const row of (byName.data ?? []) as Array<Record<string, unknown>>) {
+            const sku = cleanText(row.sku, 60);
+            const name = cleanText(row.name, 240);
+            if (sku && name && !skuByName.has(name)) skuByName.set(name, sku);
+        }
+
+        const resolved = requested.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            sku: (item.productUrl && skuByUrl.get(item.productUrl)) || skuByName.get(item.name) || '',
+        }));
+
+        const withSku = resolved.filter(item => item.sku);
+        const missing = resolved.filter(item => !item.sku);
+        const planned = withSku.slice(0, MAX_ITEMS_PER_URL);
+        const overflow = withSku.slice(MAX_ITEMS_PER_URL);
+        const cartUrl = buildDirectCartUrl(store, planned);
+
+        if (!cartUrl) {
+            return NextResponse.json({
+                supported: false,
+                store,
+                reason: 'No pudimos identificar los productos en el catálogo de la tienda. '
+                    + 'Usa el cargador asistido para agregarlos en su sitio.',
+            });
+        }
+
         return NextResponse.json({
             supported: true,
-            mode: 'assisted-links',
+            mode: 'browser-session-link',
             store,
-            cartUrl: storeHome,
-            confidence: 'attempt',
-            loadedCount: requested.length,
-            items: requested,
-            missingItems: [],
+            cartUrl,
+            // Confirma el mecanismo, no el stock de los productos.
+            confidence: directCartConfidence(store),
+            plannedCount: planned.length,
+            missingItems: [...missing, ...overflow].map(item => item.name).filter(Boolean),
         });
     } catch (error) {
         return apiErrorResponse(req, '/api/supermarket/cart-url', error, {

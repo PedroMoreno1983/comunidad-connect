@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { calculateProductQuantity } from '@/lib/supermarketBasket';
+import { calculateProductQuantity, isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -31,7 +31,6 @@ type SupermarketResultItem = {
   id: string;
   name: string;
   brand?: string;
-  sku?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -77,14 +76,12 @@ function toSupermarketResultItem(
     : calculated.suppliedQuantity;
   const brand = typeof item.brand === 'string' ? item.brand : undefined;
   const store = typeof item.store === 'string' ? item.store : undefined;
-  const sku = typeof item.sku === 'string' && item.sku.trim() ? item.sku.trim() : undefined;
   const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
   const rawProductUrl = typeof item.productUrl === 'string' && item.productUrl.trim() ? item.productUrl : undefined;
   return {
     id: typeof item.id === 'string' ? item.id : randomUUID(),
     name,
     brand,
-    sku,
     requestedTerm: requested.term,
     requestedQuantity,
     requestedUnit,
@@ -145,8 +142,19 @@ export async function POST(req: NextRequest) {
       const selected = comparison.recommended ?? comparison.bestAvailable;
       if (selected) {
         const selectedStore = selected.store;
+        const safeSelectedItems = requestedItems.flatMap((requested: RequestedItem) => {
+          const selectedItem = selected.items.find(item => item.requestedTerm === requested.term);
+          if (selectedItem && isProductSuitableForRequest(selectedItem.name, requested.term, requested.unit)) {
+            return [selectedItem];
+          }
+          const recovered = (comparison.alternativesByTerm?.[requested.term] || []).find(item => (
+            item.store === selectedStore
+            && isProductSuitableForRequest(item.name, requested.term, requested.unit)
+          ));
+          return recovered ? [recovered] : [];
+        });
         const persistedByTerm = new Map<string, SupermarketResultItem>(
-          selected.items.map(item => {
+          safeSelectedItems.map(item => {
             const itemRecord: Record<string, unknown> = { ...item };
             const term = typeof itemRecord.requestedTerm === 'string' ? itemRecord.requestedTerm : '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
@@ -154,8 +162,10 @@ export async function POST(req: NextRequest) {
             return [term, toSupermarketResultItem(itemRecord, req, 'catalog', optionCount)];
           })
         );
-        const liveItems = selected.missingTerms.length > 0
-          ? (await searchLiveSupermarkets(selected.missingTerms.join(', '))).items
+        const safeSelectedTerms = new Set(safeSelectedItems.map(item => item.requestedTerm));
+        const termsMissingFromSafeSelection = terms.filter(term => !safeSelectedTerms.has(term));
+        const liveItems = termsMissingFromSafeSelection.length > 0
+          ? (await searchLiveSupermarkets(termsMissingFromSafeSelection.join(', '))).items
           : [];
         const liveByTerm = new Map<string, SupermarketResultItem>(
           liveItems
@@ -245,8 +255,7 @@ export async function POST(req: NextRequest) {
               complete: ready,
             },
             ...comparison.comparisons
-              .filter(basket => basket.store !== selectedStore)
-              .slice(0, 2),
+              .filter(basket => basket.store !== selectedStore),
           ],
           checkout: {
             status: checkoutPlan.status,
