@@ -357,11 +357,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? ` Se eliminaron ${job.removedCartCount || 0} unidades anteriores y el carro nuevo ahora marca ${currentCartCount}.`
             : ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
           : '';
-        job.status = failed > 0 ? 'completed_with_issues' : 'completed';
+        const cartStayedEmpty = job.replaceCart === true
+          && job.cartResetStatus === 'completed'
+          && added > 0
+          && currentCartCount === 0;
+        job.status = cartStayedEmpty
+          ? 'failed'
+          : failed > 0
+            ? 'completed_with_issues'
+            : 'completed';
         await saveJob(job);
-        const detail = failed > 0
-          ? `Carro de ${job.store} procesado. ${added} productos de tu lista quedaron preparados y ${failed} pendientes para revisar.${observedCartDetail}`
-          : `Carro de ${job.store} listo: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
+        const detail = cartStayedEmpty
+          ? `No se pudo confirmar ningún producto en el carro de ${job.store}. El contador sigue en 0; vuelve a intentarlo o agrégalos manualmente desde las fichas.`
+          : failed > 0
+            ? `Carga incompleta en ${job.store}: ${added} productos confirmados y ${failed} pendientes para revisar.${observedCartDetail}`
+            : `Carro de ${job.store} confirmado: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
         sendResponse({ ok: true, done: true, progress: payload });

@@ -10,7 +10,6 @@
     'security verification',
     'verificacion de seguridad en curso',
     'verificación de seguridad en curso',
-    'un momento',
   ];
 
   const commonLocationText = [
@@ -24,19 +23,11 @@
     'despacho a domicilio retiro en tienda',
   ];
 
-  const commonOutOfStockText = [
-    'justo se agoto',
-    'justo se agotó',
-    'agotado',
-    'producto agotado',
-    'sin stock',
-    'no disponible',
-    'temporalmente no disponible',
-    'producto temporalmente fuera de stock',
-    'out of stock',
-    'no hay stock',
-    'no encontramos resultados',
-    'este producto no se encuentra disponible',
+  const commonEmptyCartLabels = [
+    'vaciar carro',
+    'vaciar carrito',
+    'eliminar todos',
+    'eliminar todo',
   ];
 
   const cencosud = {
@@ -52,7 +43,19 @@
       '.product-control input[type="number"]',
       '.product-control [data-quantity]',
     ],
-    cartSelectors: ['button[aria-label*="carro de compras"]'],
+    cartSelectors: [
+      'button[aria-label*="carro" i]',
+      'a[aria-label*="carro" i]',
+      '[data-testid*="cart" i]',
+      'header a[href*="cart" i]',
+      'header a[href*="carro" i]',
+      'header button[class*="cart" i]',
+      'header [role="button"][class*="cart" i]',
+    ],
+    emptyCartSelectors: [
+      'button[data-gtm-tag="Vaciar carro"]',
+    ],
+    emptyCartLabels: commonEmptyCartLabels,
   };
 
   const configs = {
@@ -61,33 +64,25 @@
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
       searchUrl: query => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`,
       addSelectors: [
-        'button[data-automation-id="add-to-cart"]',
-        'button[data-testid*="add-to-cart"]',
+        '[data-testid*="add-to-cart"]',
         'button[aria-label*="Agregar al carro"]',
-        'button[aria-label*="Agregar"]',
+        'button[aria-label="Agregar"]',
         'button[class*="add-to-cart"]',
-        'button[class*="AddToCart"]',
-        'button[data-tl-id*="add-to-cart"]',
-        'button.product-add-cart',
       ],
       plusSelectors: [
         'button[aria-label*="Aumentar"]',
         'button[aria-label*="Agregar otro"]',
         'button[data-testid*="increment"]',
-        'button[data-automation-id*="increment"]',
       ],
       quantitySelectors: [
         'input[aria-label*="Cantidad"]',
         '[data-testid*="quantity"] input',
-        '[data-automation-id*="quantity"]',
       ],
       cartSelectors: [
         'button[aria-label*="El carro tiene"]',
-        'button[aria-label*="carro"]',
         '[data-testid*="cart"]',
-        'a[href*="/cart"]',
-        'header a[href*="cart"] span',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -130,6 +125,7 @@
         '[aria-label*="carrito"]',
         '[class*="Cart"] [class*="quantity"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -156,6 +152,7 @@
         '[data-testid*="cart"]',
         'button[aria-label*="carro"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -182,6 +179,7 @@
         '[data-testid="header-cart-button"]',
         '[data-testid*="cart-count"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       blockedText: commonBlockedText,
       locationText: commonLocationText,
     },
@@ -206,6 +204,7 @@
         '[data-testid="cart-drawer-trigger"]',
         'button[aria-label="Carrito"]',
       ],
+      emptyCartLabels: commonEmptyCartLabels,
       allowHiddenControls: true,
       quantityBeforeAdd: true,
       quantityControlAddsToCart: true,
