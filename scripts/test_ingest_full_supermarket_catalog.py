@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import ingest_full_supermarket_catalog as ingest
+from full_catalog import CatalogCoverageWarning
 from scrape_supermarkets import Product
 
 
@@ -78,6 +79,24 @@ class FullCatalogIngestionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "partial")
         self.assertIn("retailer stopped responding", result["error"])
+        finalize.assert_not_called()
+
+    def test_refreshed_crawl_persists_coverage_without_reconciling_stock(self) -> None:
+        def refreshed_crawler(_max_pages: int | None):
+            yield sample_product()
+            raise CatalogCoverageWarning("terminal page was empty")
+
+        with (
+            patch.dict(ingest.CRAWLERS, {"tottus": refreshed_crawler}),
+            patch.object(ingest, "persist_batch", return_value={"product_count": 1}),
+            patch.object(ingest, "finalize_stock_reconciliation") as finalize,
+            patch.object(ingest, "catalog_count", return_value=1),
+        ):
+            result = ingest.crawl_store("tottus", 50, None, False)
+
+        self.assertEqual(result["status"], "refreshed")
+        self.assertTrue(result["reconciliation_skipped"])
+        self.assertIn("terminal page was empty", result["warning"])
         finalize.assert_not_called()
 
     def test_reconciliation_failure_fails_the_job(self) -> None:

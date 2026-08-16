@@ -90,6 +90,10 @@ ACUENTA_FALLBACK_CATEGORIES = (
     ("Frutas y Verduras", "frutas-y-verduras/06"),
     ("Hogar, entretencion y tecnologia", "hogar-entretencion-y-tecnologia/47"),
 )
+
+
+class CatalogCoverageWarning(RuntimeError):
+    """Catalog products were refreshed, but stock reconciliation is unsafe."""
 IRURZUN_PRODUCTS_URL = "https://irurzun.cl/collections/all/products.json?limit=250"
 
 
@@ -983,6 +987,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
             return current_catalog_page(category)
 
         page.on("response", capture_catalog_response)
+        coverage_warnings: list[str] = []
         try:
             for category in JUMBO_CATEGORIES:
                 base_url = f"https://www.jumbo.cl/{category}"
@@ -1005,15 +1010,17 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
 
                 first_signature = tuple(product_key(product) for product in first_products)
                 seen_pages = {first_signature}
+                category_product_count = len(first_products)
                 repeated_page = False
                 for page_number in range(2, final_page + 1):
                     products, _ = click_catalog_page(page_number, category)
                     signature = tuple(product_key(product) for product in products)
                     if not products:
-                        raise RuntimeError(
-                            f"Jumbo category {category} returned an empty page "
-                            "before completion"
+                        coverage_warnings.append(
+                            f"{category}: page {page_number} was empty after "
+                            f"{category_product_count} of {total} advertised products"
                         )
+                        break
                     if signature in seen_pages:
                         if probes_until_repeat:
                             repeated_page = True
@@ -1023,6 +1030,7 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                             f"before published page {published_page_count}"
                         )
                     seen_pages.add(signature)
+                    category_product_count += len(products)
                     yield from products
 
                 if (
@@ -1033,6 +1041,8 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                     raise RuntimeError(
                         f"Jumbo category {category} exceeded the 200-page safety limit"
                     )
+            if coverage_warnings:
+                raise CatalogCoverageWarning("; ".join(coverage_warnings))
         finally:
             browser.close()
 
