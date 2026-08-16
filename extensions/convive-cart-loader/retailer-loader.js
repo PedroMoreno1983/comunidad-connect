@@ -1,6 +1,23 @@
 (() => {
   const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
 
+  const COMMON_OUT_OF_STOCK = [
+    'justo se agoto',
+    'justo se agotó',
+    'agotado',
+    'producto agotado',
+    'sin stock',
+    'no disponible',
+    'temporalmente no disponible',
+    'producto temporalmente fuera de stock',
+    'out of stock',
+    'no hay stock',
+    'no encontramos resultados',
+    'este producto no se encuentra disponible',
+    'producto no disponible',
+    'sin existencias',
+  ];
+
   function runtimeMessage(message) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(message, response => {
@@ -93,6 +110,12 @@
     return config.blockedText.some(fragment => text.includes(normalize(fragment)));
   }
 
+  function pageIsOutOfStock(config) {
+    const text = normalize(document.body?.innerText).slice(0, 20000);
+    const fragments = [...(config?.outOfStockText || []), ...COMMON_OUT_OF_STOCK];
+    return fragments.some(fragment => text.includes(normalize(fragment)));
+  }
+
   function interventionPrompt(config) {
     const containers = [...document.querySelectorAll(
       'dialog,[role="dialog"],[aria-modal="true"],[class*="modal"],[class*="Modal"],[class*="drawer"],[class*="Drawer"]',
@@ -118,6 +141,16 @@
     return Boolean(targetPath) && window.location.pathname.replace(/\/+$/, '') === targetPath;
   }
 
+  function isProductDetailPage() {
+    const path = window.location.pathname.toLowerCase();
+    return path.includes('/articulo/')
+      || path.includes('/p/')
+      || path.includes('/product/')
+      || path.includes('/ip/')
+      || path.includes('/item/')
+      || Boolean(document.querySelector('h1') && (document.querySelector('meta[property="og:type"][content="product"]') || document.querySelector('[data-testid*="price"], [class*="price"], [class*="Price"]')));
+  }
+
   function tokenScore(candidate, expected) {
     const candidateTokens = new Set(normalize(candidate).split(' ').filter(token => token.length > 1));
     const expectedTokens = normalize(expected).split(' ').filter(token => token.length > 1);
@@ -136,7 +169,7 @@
           anchor.closest('[data-cnstrc-item-name]')?.getAttribute('data-cnstrc-item-name'),
         ].filter(Boolean).join(' '), item.name),
       }))
-      .filter(candidate => candidate.score >= 0.72)
+      .filter(candidate => candidate.score >= 0.65)
       .sort((left, right) => right.score - left.score);
     return candidates[0]?.anchor || null;
   }
@@ -181,7 +214,7 @@
           window.clearInterval(timer);
           resolve(result || null);
         }
-      }, 350);
+      }, 300);
     });
   }
 
@@ -247,7 +280,7 @@
       element.dispatchEvent(new PointerEvent('pointerup', opts));
       element.dispatchEvent(new MouseEvent('mouseup', opts));
     } catch {
-      // Fallback to basic click if PointerEvent not supported
+      // Fallback
     }
     if (typeof element.click === 'function') {
       element.click();
@@ -258,7 +291,7 @@
     if (quantity <= 1) return { complete: true, clicks: 0 };
     let clicks = 0;
     for (let index = 1; index < quantity; index += 1) {
-      const plus = await waitFor(() => findPlusControl(config, preferredRoot), 5000);
+      const plus = await waitFor(() => findPlusControl(config, preferredRoot), 3000);
       if (!plus) return { complete: false, clicks };
       triggerClick(plus);
       clicks += 1;
@@ -350,11 +383,22 @@
       return;
     }
 
+    // Comprobación rápida de stock agotado
+    if (pageIsOutOfStock(config)) {
+      await completeItem(
+        overlay,
+        item,
+        false,
+        `El producto (${item.name}) está agotado en ${job.store}. Se continuó con los siguientes.`,
+      );
+      return;
+    }
+
     const initialAddControl = findAddControl(config);
-    const targetIsProduct = item.productUrl && sameProductPage(item.productUrl);
-    const looksLikeProductPage = Boolean(initialAddControl && document.querySelector('h1'));
-    if (!targetIsProduct && !looksLikeProductPage) {
-      const productLink = await waitFor(() => findBestProductLink(item), 15000);
+    const isProductPage = isProductDetailPage() || (item.productUrl && sameProductPage(item.productUrl)) || Boolean(initialAddControl && document.querySelector('h1'));
+
+    if (!isProductPage) {
+      const productLink = await waitFor(() => findBestProductLink(item), 3500);
       if (productLink) {
         productLink.click();
         return;
@@ -365,9 +409,17 @@
       }
     }
 
-    let addControl = initialAddControl || await waitFor(() => findAddControl(config), 10000);
+    let addControl = initialAddControl || await waitFor(() => findAddControl(config), 3000);
     if (!addControl) {
-      await completeItem(overlay, item, false, 'No se encontró un botón de agregar disponible.');
+      const outOfStock = pageIsOutOfStock(config);
+      await completeItem(
+        overlay,
+        item,
+        false,
+        outOfStock
+          ? `El producto (${item.name}) está agotado en ${job.store}. Se omitió.`
+          : `No se encontró botón de compra para ${item.name}.`,
+      );
       return;
     }
 
@@ -405,7 +457,7 @@
     const before = additionSnapshot(config, addControl);
     if (!addedDuringQuantity) {
       triggerClick(addControl);
-      // Dar tiempo a que la mutación GraphQL / API del supermercado se envíe por red
+      // Dar tiempo a que la mutación de red del supermercado se envíe
       await new Promise(resolve => window.setTimeout(resolve, 1800));
     }
     const outcome = addedDuringQuantity ? 'added' : await waitFor(() => {
@@ -413,7 +465,7 @@
       if (interventionPrompt(config) === 'delivery') return 'delivery';
       if (additionWasVerified(config, addControl, before)) return 'added';
       return null;
-    }, 8000);
+    }, 6000);
 
     if (outcome === 'blocked') {
       await pause(
@@ -450,8 +502,8 @@
       };
     }
 
-    // Espera final para asegurar persistencia en el servidor antes de cambiar de página
-    await new Promise(resolve => window.setTimeout(resolve, 1200));
+    // Espera para asegurar persistencia en el servidor antes de navegar al siguiente producto
+    await new Promise(resolve => window.setTimeout(resolve, 1000));
 
     const detail = quantityResult.complete
       ? `Agregado y verificado con cantidad ${item.quantity}.`

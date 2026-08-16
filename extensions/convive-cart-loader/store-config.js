@@ -24,6 +24,21 @@
     'despacho a domicilio retiro en tienda',
   ];
 
+  const commonOutOfStockText = [
+    'justo se agoto',
+    'justo se agotó',
+    'agotado',
+    'producto agotado',
+    'sin stock',
+    'no disponible',
+    'temporalmente no disponible',
+    'producto temporalmente fuera de stock',
+    'out of stock',
+    'no hay stock',
+    'no encontramos resultados',
+    'este producto no se encuentra disponible',
+  ];
+
   const cencosud = {
     addSelectors: [
       'button[data-cnstrc-btn="add_to_cart"]',
