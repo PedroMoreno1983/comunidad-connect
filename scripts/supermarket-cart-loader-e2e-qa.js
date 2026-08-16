@@ -222,10 +222,11 @@ async function main() {
     }));
     if (
       !extensionIdentity
-      || extensionIdentity.version !== '0.3.7'
+      || extensionIdentity.version !== '0.3.11'
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
       || !extensionIdentity.capabilities?.includes('cart-replace-v1')
+      || !extensionIdentity.capabilities?.includes('cart-zero-proof-v1')
     ) {
       throw new Error(`La extensión no informó una identidad compatible: ${JSON.stringify(extensionIdentity)}`);
     }

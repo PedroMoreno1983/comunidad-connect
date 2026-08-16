@@ -137,6 +137,20 @@ function sendStart(state) {
   });
 }
 
+function sendMessage(state, message) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`${message.type} no respondió.`)), 1_000);
+    state.runtimeListener(
+      message,
+      { tab: { id: 77 } },
+      response => {
+        clearTimeout(timeout);
+        resolve(response);
+      },
+    );
+  });
+}
+
 async function main() {
   const orphaned = createHarness({ activeJob: sampleJob(), retailerTab: null });
   const orphanedResponse = await sendStart(orphaned);
@@ -173,7 +187,32 @@ async function main() {
     'La web no fue notificada al cerrar la pestaña del supermercado.',
   );
 
-  console.log('Cart loader stale-job recovery QA passed.');
+  const emptyAfterAdds = createHarness({
+    activeJob: sampleJob({
+      inFlightItemId: 'item-1',
+      initialCartCount: 0,
+      latestCartCount: 0,
+      removedCartCount: 0,
+      cartResetStatus: 'completed',
+    }),
+    retailerTab: { id: 77, url: 'https://www.jumbo.cl/longaniza/p' },
+  });
+  const emptyResponse = await sendMessage(emptyAfterAdds, {
+    type: 'COMPLETE_CART_ITEM',
+    itemId: 'item-1',
+    added: true,
+    cartCountAfter: 0,
+    detail: 'El botón cambió visualmente.',
+  });
+  check(emptyResponse.done === true, 'La carga vacía no emitió un resultado final.');
+  check(emptyResponse.progress?.status === 'failed', 'Un carro en cero todavía se marcó como completado.');
+  check(emptyAfterAdds.job.status === 'failed', 'El trabajo persistido conserva un éxito falso.');
+  check(
+    emptyResponse.progress?.detail?.includes('contador sigue en 0'),
+    'La web no recibe una explicación clara cuando el carro queda vacío.',
+  );
+
+  console.log('Cart loader stale-job and zero-cart QA passed.');
 }
 
 main().catch(error => {

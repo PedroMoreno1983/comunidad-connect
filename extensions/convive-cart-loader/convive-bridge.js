@@ -4,6 +4,7 @@ const LOADER_CAPABILITIES = [
   'loader-version-handshake-v1',
   'cart-replace-v1',
   'cart-stale-job-recovery-v1',
+  'cart-zero-proof-v1',
 ];
 
 const ALLOWED_ORIGINS = new Set([
