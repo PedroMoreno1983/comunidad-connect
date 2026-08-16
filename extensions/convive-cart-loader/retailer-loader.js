@@ -238,15 +238,31 @@
     return afterPlusCount > before.plusCount;
   }
 
+  function triggerClick(element) {
+    if (!element) return;
+    try {
+      const opts = { bubbles: true, cancelable: true, view: window };
+      element.dispatchEvent(new PointerEvent('pointerdown', opts));
+      element.dispatchEvent(new MouseEvent('mousedown', opts));
+      element.dispatchEvent(new PointerEvent('pointerup', opts));
+      element.dispatchEvent(new MouseEvent('mouseup', opts));
+    } catch {
+      // Fallback to basic click if PointerEvent not supported
+    }
+    if (typeof element.click === 'function') {
+      element.click();
+    }
+  }
+
   async function clickQuantities(config, quantity, preferredRoot) {
     if (quantity <= 1) return { complete: true, clicks: 0 };
     let clicks = 0;
     for (let index = 1; index < quantity; index += 1) {
       const plus = await waitFor(() => findPlusControl(config, preferredRoot), 5000);
       if (!plus) return { complete: false, clicks };
-      plus.click();
+      triggerClick(plus);
       clicks += 1;
-      await new Promise(resolve => window.setTimeout(resolve, 500));
+      await new Promise(resolve => window.setTimeout(resolve, 800));
     }
     return { complete: true, clicks };
   }
@@ -387,7 +403,11 @@
     }
 
     const before = additionSnapshot(config, addControl);
-    if (!addedDuringQuantity) addControl.click();
+    if (!addedDuringQuantity) {
+      triggerClick(addControl);
+      // Dar tiempo a que la mutación GraphQL / API del supermercado se envíe por red
+      await new Promise(resolve => window.setTimeout(resolve, 1800));
+    }
     const outcome = addedDuringQuantity ? 'added' : await waitFor(() => {
       if (pageIsBlocked(config)) return 'blocked';
       if (interventionPrompt(config) === 'delivery') return 'delivery';
@@ -429,6 +449,10 @@
         clicks: quantityResult.clicks + afterAddQuantity.clicks,
       };
     }
+
+    // Espera final para asegurar persistencia en el servidor antes de cambiar de página
+    await new Promise(resolve => window.setTimeout(resolve, 1200));
+
     const detail = quantityResult.complete
       ? `Agregado y verificado con cantidad ${item.quantity}.`
       : `Producto agregado y verificado, pero ${job.store} no permitió ajustar automáticamente toda la cantidad ${item.quantity}.`;

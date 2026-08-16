@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
   Copy,
@@ -12,6 +12,7 @@ import {
   ListChecks,
   AlertCircle,
   CheckCircle2,
+  Puzzle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -37,7 +38,15 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cart' | 'items'>('cart');
+  const [hasExtension, setHasExtension] = useState(false);
+  const [extensionProgress, setExtensionProgress] = useState<{
+    status?: string;
+    added?: number;
+    total?: number;
+    failed?: number;
+    detail?: string;
+  } | null>(null);
+
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const [directResult, setDirectResult] = useState<{
@@ -51,6 +60,22 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   } | null>(null);
 
   const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
+
+  // Detectar si la extensión de Chrome está instalada
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
+      if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
+        setHasExtension(true);
+      }
+      if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
+        setExtensionProgress(event.data.payload);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    window.postMessage({ source: 'convive-connect', type: 'CONVIVE_CART_LOADER_PING' }, '*');
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const formatListText = () => {
     const header = `🛒 *Lista de Compras · ${basket.store}*\n`;
@@ -93,6 +118,37 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     setLoading(true);
     setError(null);
     try {
+      // 1. Si la extensión de Chrome está presente y es Líder/Tottus, lanzar el loader
+      if (hasExtension && (basket.store === 'Lider' || basket.store === 'Tottus')) {
+        window.postMessage(
+          {
+            source: 'convive-connect',
+            type: 'CONVIVE_CART_LOADER_START',
+            payload: {
+              version: 1,
+              store: basket.store,
+              items: basket.items.map((item, idx) => ({
+                id: item.id || `item-${idx + 1}`,
+                name: item.name,
+                requestedTerm: item.requestedTerm || item.name,
+                quantity: Math.max(1, Math.round(item.quantity)),
+                productUrl: item.productUrl,
+              })),
+            },
+          },
+          '*'
+        );
+        setOpened(true);
+        toast({
+          title: `Cargando en ${basket.store}`,
+          description: 'La extensión está agregando tus productos y verificando el carro.',
+          variant: 'success',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 2. Enlace Directo / Carro VTEX
       const response = await fetch('/api/supermarket/cart-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,6 +258,13 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </button>
       </div>
 
+      {hasExtension && (
+        <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+          <Puzzle className="h-3.5 w-3.5 shrink-0" />
+          <span>Extensión de navegador activa: carga y verificación automática habilitada.</span>
+        </div>
+      )}
+
       {error && (
         <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -221,6 +284,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 {basket.store} abierto
               </p>
+              {extensionProgress?.detail && (
+                <p className="mt-1 text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
+                  {extensionProgress.detail}
+                </p>
+              )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
                 {directResult?.mode === 'shared-cart'
                   ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
