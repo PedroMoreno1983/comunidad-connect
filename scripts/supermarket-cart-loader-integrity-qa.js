@@ -180,7 +180,9 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador temporal 0.3.11')
+  activationPage.includes('Descargar cargador 0.3.11')
+    && activationPage.includes("'/downloads/convive-cart-loader.zip'")
+    && activationPage.includes('Actualización manual disponible')
     && activationPage.includes('Cargar lista nueva')
     && activationPage.includes('Confirma que quieres reemplazar el carro anterior'),
   'La guía del cargador no explica ni enlaza la versión que realmente reemplaza el carro.',
@@ -243,8 +245,8 @@ check(
 );
 check(
   activationPage.includes('NEXT_PUBLIC_CART_LOADER_INSTALL_URL')
-    && activationPage.includes('Publicación pendiente'),
-  'La activación oculta el estado real de publicación en Chrome Web Store.',
+    && activationPage.includes('La publicación en Chrome Web Store sigue pendiente'),
+  'La actualización manual oculta el estado real de publicación en Chrome Web Store.',
 );
 for (const store of stores) {
   const homeKey = store.includes(' ') ? `'${store}'` : `${store}:`;
