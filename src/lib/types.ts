@@ -272,6 +272,7 @@ export interface SupermarketSearchCandidate {
   price: number;
   lineTotal: number;
   store?: string;
+  sku?: string;
   productUrl?: string;
   originalPrice?: number;
   isOffer?: boolean;
@@ -299,37 +300,6 @@ export interface SupermarketBasketCandidate extends SupermarketBasketSummary {
   channelType: SupermarketChannelType;
   items: SupermarketSearchCandidate[];
   fetchedAt?: string;
-  quoteStatus?: 'catalog' | 'retailer';
-  quotedAt?: string;
-}
-
-export interface SupermarketCheckoutQuoteItem {
-  id: string;
-  requestedTerm: string;
-  name: string;
-  sku: string;
-  productUrl?: string;
-  quantity: number;
-  price: number;
-  lineTotal: number;
-}
-
-export interface SupermarketCheckoutQuoteRequestItem {
-  id: string;
-  requestedTerm: string;
-  name: string;
-  productUrl?: string;
-  quantity: number;
-  catalogLineTotal: number;
-}
-
-export interface SupermarketCheckoutQuote {
-  store: string;
-  subtotal: number;
-  catalogSubtotal: number;
-  items: SupermarketCheckoutQuoteItem[];
-  missingTerms: string[];
-  quotedAt: string;
 }
 export type SupermarketPurchasePlanStatus = 'single_store' | 'split_store' | 'needs_substitution';
 
@@ -381,7 +351,6 @@ export interface SupermarketCartLoadRequest {
   store: string;
   items: SupermarketCartLoadItem[];
   createdAt: string;
-  replaceCart: boolean;
 }
 
 export interface SupermarketCartLoadProgress {
@@ -392,20 +361,7 @@ export interface SupermarketCartLoadProgress {
   added: number;
   failed: number;
   currentItem?: string;
-  previousCartCount?: number;
-  currentCartCount?: number;
-  removedCartCount?: number;
-  cartReplaced?: boolean;
   detail: string;
-}
-
-export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'outdated' | 'unavailable';
-
-export interface SupermarketCartLoaderBridge {
-  availability: SupermarketCartLoaderAvailability;
-  installedVersion?: string;
-  progress: SupermarketCartLoadProgress | null;
-  start: (options?: { replaceCart?: boolean }) => boolean;
 }
 
 

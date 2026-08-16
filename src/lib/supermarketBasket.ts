@@ -1,5 +1,4 @@
 import { buildResilientPurchasePlan } from '@/lib/supermarketPurchasePlan';
-import { foldAccents, matchAnchor, significantWords } from '@/lib/supermarketText';
 import type { SupermarketBasketCandidate, SupermarketMeasurementUnit } from '@/lib/types';
 
 
@@ -28,19 +27,8 @@ function inferredCountPackUnits(name: string, requestedTerm: string): number {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  const explicitPack = normalizedName.match(
-    /\bpack(?:\s+de)?(?:\s+(?:latas?|botellas?|unidades?|un))?\s+(\d{1,3})\b(?!\s*(?:ml|cc|g|gr|kg|l|lt)\b)/,
-  ) ?? normalizedName.match(
-    /\bpack\b(?:\s+[a-z]+){0,6}\s+(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/,
-  ) ?? normalizedName.match(
-    /\bpack\b[^0-9]{0,80}\b(\d{1,3})\s*x\s*\d+(?:[.,]\d+)?\s*(?:ml|cc|g|gr|kg|l|lt)\b/,
-  );
-  if (explicitPack) return Math.max(1, Number(explicitPack[1]));
-  if (/\b(?:six pack|sixpack)\b/.test(normalizedName)) return 6;
-
   // "12 huevos" means twelve units, not twelve trays. Keep this inference
-  // narrow when the product name does not explicitly declare a pack, so
-  // "2 arroz" still means two products, not units inside a package.
+  // narrow so "2 arroz" still means two products, not units inside a pack.
   if (!/\bhuevos?\b/.test(normalizedTerm)) return 1;
   if (/\bdocena\b/.test(normalizedName)) return 12;
   const match = normalizedName.match(/\b(\d{1,3})\s*(?:un\.?|unidades?|uds?)\b/);
@@ -85,81 +73,6 @@ function parseProductMeasurement(name: string) {
   };
 }
 
-function productMeasurementInBaseUnits(name: string): { dimension: 'mass' | 'volume'; amount: number } | null {
-  const measurement = parseProductMeasurement(name);
-  if (!measurement) return null;
-  return {
-    dimension: unitDimension(measurement.unit),
-    amount: measurement.amount * unitBaseFactor(measurement.unit),
-  };
-}
-
-/**
- * A bare category word is not permission to choose the cheapest tiny serving.
- * These defaults mirror what a Chilean household normally means in a shopping
- * list while preserving explicit requests such as "bebida lactea 200 ml".
- */
-export function isProductSuitableForRequest(
-  name: string,
-  requestedTerm: string,
-  requestedUnit: SupermarketMeasurementUnit | undefined,
-): boolean {
-  if (!isProductMeasurementCompatible(name, requestedUnit)) return false;
-  const normalizedName = foldAccents(name);
-  const normalizedTerm = foldAccents(requestedTerm);
-  const measurement = productMeasurementInBaseUnits(name);
-  const family = matchAnchor(requestedTerm);
-
-  if (family === 'coca' && /\b(sprite|fanta)\b/.test(normalizedName)) return false;
-  if (
-    family === 'cerveza'
-    && !/\bsin alcohol\b/.test(normalizedTerm)
-    && /\b(?:sin alcohol|0(?:[,.]0)?°)\b/.test(normalizedName)
-  ) {
-    return false;
-  }
-
-  if (!requestedUnit && /\bpechuga\b/.test(normalizedTerm) && /\bpollo\b/.test(normalizedTerm)) {
-    if (!/\bpechuga\b/.test(normalizedName) || !/\bpollo\b/.test(normalizedName) || /\bpavo\b/.test(normalizedName)) {
-      return false;
-    }
-    if (/\b(apanad|asada|acaramelad|cocida|fiambre|jamon|rebozad)\w*\b/.test(normalizedName)) {
-      return false;
-    }
-    return measurement === null
-      || measurement.dimension === 'mass' && measurement.amount >= 500;
-  }
-
-  if (requestedUnit || significantWords(requestedTerm).length !== 1) return true;
-
-  if (family === 'carne') {
-    return Boolean(
-      measurement?.dimension === 'mass'
-      && measurement.amount >= 400
-      && /\b(vacuno|res)\b/.test(normalizedName),
-    );
-  }
-  if (family === 'longaniza') {
-    return Boolean(measurement?.dimension === 'mass' && measurement.amount >= 400);
-  }
-  if (family === 'pisco') {
-    return !/\b(sour|cocktail|coctel|mix|base|ice)\b/.test(normalizedName);
-  }
-  if (family === 'bebida') {
-    if (/\b(lactea|vegetal|isotonica|energetica|polvo|vino|cerveza|alcohol)\b/.test(normalizedName)) {
-      return false;
-    }
-    return Boolean(measurement?.dimension === 'volume' && measurement.amount >= 1_000);
-  }
-  if (family === 'leche') {
-    if (/\b(avena|almendra|soya|coco|vegetal|manzana|frutilla|chocolate|platano|vainilla|sabor|bebida lactea|polvo)\b/.test(normalizedName)) {
-      return false;
-    }
-    return Boolean(measurement?.dimension === 'volume' && measurement.amount >= 900);
-  }
-  return true;
-}
-
 export function isProductMeasurementCompatible(
   name: string,
   requestedUnit: SupermarketMeasurementUnit | undefined,
@@ -202,8 +115,7 @@ function formatSignature(name: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
-  const match = normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc)\b/)
-    ?? normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(un|unidad|unidades)\b/);
+  const match = normalized.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|lt|ml|cc|un|unidad|unidades)\b/);
   if (!match) return '';
   const unit = match[2] === 'gr' ? 'g' : match[2] === 'lt' ? 'l' : match[2];
   return `${match[1].replace(',', '.')}${unit}`;
@@ -285,6 +197,7 @@ export function buildSupermarketCandidate(
     price,
     lineTotal: price * selection.packs,
     store,
+    sku: asString(row.sku) || undefined,
     matchRelevance,
     channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
     originalPrice: listPrice > price ? listPrice : undefined,
@@ -304,11 +217,7 @@ export function buildBasketComparison(
 ) {
   const comparableByTerm = terms.map(term => {
     const requestedUnit = requestedUnits[term];
-    const rows = (rowsByTerm[term] ?? []).filter(row => isProductSuitableForRequest(
-      asString(row.name),
-      term,
-      requestedUnit,
-    ));
+    const rows = rowsByTerm[term] ?? [];
     return {
       term,
       rows,
@@ -319,11 +228,7 @@ export function buildBasketComparison(
   const comparisons = SUPERMARKET_STORES.map(store => {
     const items = comparableByTerm.flatMap(({ term, rows, comparableRows }) => {
       const candidate = selectStoreRows(rows, comparableRows, store)
-        .filter(row => isProductSuitableForRequest(
-          asString(row.name),
-          term,
-          requestedUnits[term],
-        ))
+        .filter(row => isProductMeasurementCompatible(asString(row.name), requestedUnits[term]))
         .map(row => buildSupermarketCandidate(
           row,
           term,

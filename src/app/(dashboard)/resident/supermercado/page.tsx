@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  ExternalLink,
   Loader2,
   ShoppingCart,
   Sparkles,
@@ -15,10 +16,10 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
+import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/supermarket/cartUrl';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
   SupermarketBasketCandidate,
-  SupermarketCheckoutQuote,
   SupermarketRequestedItem,
   SupermarketSearchResponse,
   SupermarketShoppingItem,
@@ -26,7 +27,7 @@ import type {
 
 const LIST_SUGGESTIONS = [
   { title: 'Compra semanal', items: ['Pechuga de pollo', 'Arroz', 'Paltas', 'Huevos', 'Leche', 'Pan molde'] },
-  { title: 'Asado', items: ['500 g carne molida de vacuno', '500 g longanizas', '1 kg cebollas', '2 kg papas', '500 g tomates', '2 l bebida cola'] },
+  { title: 'Asado', items: ['Carne', 'Longanizas', 'Cebollas', 'Papas', 'Tomates', 'Bebidas'] },
   { title: 'Desayunos', items: ['Avena', 'Leche', 'Yogur', 'Plátanos', 'Huevos', 'Pan'] },
 ];
 
@@ -34,33 +35,31 @@ function money(value: number) {
   return `$${Math.round(value).toLocaleString('es-CL')}`;
 }
 
-function cartLoaderKey(basket: SupermarketBasketCandidate): string {
-  const itemsKey = basket.items
-    .map(item => `${item.requestedTerm}:${item.id}:${item.quantity}`)
-    .join('|');
-
-  return `${basket.store}:${itemsKey}`;
-}
+const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
+  direct: { label: 'Carga automática', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
+  attempt: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
+  manual: { label: 'Requiere un paso extra', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
+};
 
 /**
- * Todas las cadenas se cargan con el cargador de Convive. Por eso el orden
- * vuelve a responder a la compra: canasta completa, mayor cobertura y precio.
+ * Ordena priorizando las tiendas donde la carga del carro SÍ funciona (rank 0-1:
+ * enlace/carro directo) por sobre las manuales (rank 2: Tottus/aCuenta), aunque
+ * estas sean más baratas — a pedido: que lo que se puede cargar salga primero.
+ * Dentro de cada grupo: más cobertura, luego mejor precio.
  */
 function orderBaskets(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate[] {
+  const worksGroup = (store: string) => (loadabilityRank(store) <= 1 ? 0 : 1);
   return [...baskets].sort((a, b) => {
+    const ga = worksGroup(a.store);
+    const gb = worksGroup(b.store);
+    if (ga !== gb) return ga - gb; // primero las que cargan
     if (a.complete !== b.complete) return a.complete ? -1 : 1;
     if (a.coveredCount !== b.coveredCount) return b.coveredCount - a.coveredCount;
-    return a.subtotal - b.subtotal;
+    // leve desempate fino: 'verified' sobre 'attempt' a precio parecido
+    const sa = a.subtotal * (1 + loadabilityRank(a.store) * 0.01);
+    const sb = b.subtotal * (1 + loadabilityRank(b.store) * 0.01);
+    return sa - sb;
   });
-}
-
-/**
- * La opción más barata de todas, sirva o no para cargar. Se usa para avisar
- * cuando la recomendada NO es la más económica: ocultar esa diferencia sería
- * cobrarle de más a la persona sin decírselo.
- */
-function cheapestBasket(baskets: SupermarketBasketCandidate[]): SupermarketBasketCandidate | null {
-  return [...baskets].sort((a, b) => a.subtotal - b.subtotal)[0] ?? null;
 }
 
 function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingItem {
@@ -80,22 +79,6 @@ function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingIt
     available: false,
     source: 'missing',
   };
-}
-
-function shoppingListForBasket(
-  basket: SupermarketBasketCandidate,
-  requested: SupermarketRequestedItem[],
-): SupermarketShoppingItem[] {
-  const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
-  return requested.map(requestedItem => {
-    const candidate = byTerm.get(requestedItem.term);
-    return candidate ? {
-      ...candidate,
-      checked: false,
-      available: true,
-      source: 'catalog' as const,
-    } : missingItem(requestedItem);
-  });
 }
 
 export default function SupermarketPage() {
@@ -122,71 +105,23 @@ export default function SupermarketPage() {
     [basketOptions, selectedStore],
   );
   const completeBasketCount = basketOptions.filter(basket => basket.complete).length;
-  const featuredBasketOptions = basketOptions.slice(0, 3);
-  const additionalBasketOptions = basketOptions.slice(3);
 
   const selectBasket = (
     basket: SupermarketBasketCandidate,
     requested = requestedItems,
   ) => {
+    const byTerm = new Map(basket.items.map(item => [item.requestedTerm, item]));
     setSelectedStore(basket.store);
-    setList(shoppingListForBasket(basket, requested));
+    setList(requested.map(requestedItem => {
+      const candidate = byTerm.get(requestedItem.term);
+      return candidate ? {
+        ...candidate,
+        checked: false,
+        available: true,
+        source: 'catalog' as const,
+      } : missingItem(requestedItem);
+    }));
   };
-
-  const applyCheckoutQuote = useCallback((quote: SupermarketCheckoutQuote) => {
-    const quotedByTerm = new Map(quote.items.map(item => [item.requestedTerm, item]));
-    const missing = new Set(quote.missingTerms);
-
-    setBasketOptions(current => current.map(basket => {
-      if (basket.store !== quote.store) return basket;
-      const items = basket.items.flatMap(item => {
-        const confirmed = quotedByTerm.get(item.requestedTerm);
-        if (!confirmed || missing.has(item.requestedTerm)) return [];
-        return [{
-          ...item,
-          name: confirmed.name,
-          productUrl: confirmed.productUrl,
-          quantity: confirmed.quantity,
-          price: confirmed.price,
-          lineTotal: confirmed.lineTotal,
-          fetchedAt: quote.quotedAt,
-        }];
-      });
-      const missingTerms = [...new Set([...basket.missingTerms, ...quote.missingTerms])];
-      return {
-        ...basket,
-        items,
-        subtotal: quote.subtotal,
-        coveredCount: items.length,
-        coveragePercent: basket.requestedCount > 0
-          ? Math.round(items.length * 100 / basket.requestedCount)
-          : 0,
-        missingTerms,
-        complete: missingTerms.length === 0 && items.length === basket.requestedCount,
-        quoteStatus: 'retailer' as const,
-        quotedAt: quote.quotedAt,
-      };
-    }));
-
-    setList(current => current.map(item => {
-      const confirmed = quotedByTerm.get(item.requestedTerm);
-      if (confirmed) {
-        return {
-          ...item,
-          name: confirmed.name,
-          productUrl: confirmed.productUrl,
-          quantity: confirmed.quantity,
-          price: confirmed.price,
-          lineTotal: confirmed.lineTotal,
-          fetchedAt: quote.quotedAt,
-          available: true,
-        };
-      }
-      return missing.has(item.requestedTerm)
-        ? { ...item, available: false, source: 'missing' as const }
-        : item;
-    }));
-  }, []);
 
   const processShoppingList = async () => {
     if (!shoppingInput.trim()) return;
@@ -208,25 +143,16 @@ export default function SupermarketPage() {
       // Se reordena con desempate por cargabilidad: a precios parecidos, primero
       // la tienda más fácil de cargar. La selección por defecto sigue ese orden.
       const nextOptions = orderBaskets(data.basketOptions ?? []);
-      const initialBasket = nextOptions[0] ?? null;
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
-      if (initialBasket) {
-        // La API puede recomendar la más barata, pero la UI reordena para poner
-        // primero una tienda cargable. La tabla debe seguir esa misma elección.
-        selectBasket(initialBasket, nextRequested);
-      } else {
-        setSelectedStore(data.recommendedStore ?? null);
-        setList(data.items);
-      }
+      setSelectedStore(nextOptions[0]?.store ?? data.recommendedStore ?? null);
+      setList(data.items);
 
       toast({
         title: nextOptions.some(basket => basket.complete)
           ? 'Comparación completa'
           : 'Comparación con faltantes',
-        description: initialBasket
-          ? `${initialBasket.store}: ${initialBasket.coveredCount} de ${initialBasket.requestedCount} productos por ${money(initialBasket.subtotal)}.`
-          : data.message,
+        description: data.message,
         variant: nextOptions.some(basket => basket.complete) ? 'success' : undefined,
       });
     } catch (error) {
@@ -252,8 +178,8 @@ export default function SupermarketPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
         <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo compara tu lista en las cadenas con catálogo vigente y, con el cargador activado, prepara el carro oficial
-          de la tienda que elijas. Tú revisas disponibilidad, eliges entrega y pagas.
+          CoCo busca toda tu compra dentro de cada cadena, compara las canastas completas y te muestra primero
+          la más barata, luego la segunda y la tercera.
         </p>
       </header>
 
@@ -340,7 +266,7 @@ export default function SupermarketPage() {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {featuredBasketOptions.map((basket, index) => {
+              {basketOptions.map((basket, index) => {
                 const selected = basket.store === selectedBasket?.store;
                 return (
                   <button
@@ -361,26 +287,21 @@ export default function SupermarketPage() {
                       >
                         {index + 1}
                       </span>
-                      {/* El trofeo solo si esta canasta es además la más barata:
-                          ahora el orden lo decide la carga del carro, y premiar
-                          con trofeo a una que no es la más económica engaña. */}
-                      {index === 0 && basket.complete
-                        && basket.store === cheapestBasket(basketOptions)?.store
-                        && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
+                      {index === 0 && basket.complete && <Trophy className="h-5 w-5" style={{ color: 'var(--cc-copper)' }} />}
                     </div>
                     <p className="mt-4 text-xl font-bold cc-text-primary">{basket.store}</p>
-                    <span
-                      className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                      style={{ background: 'var(--cc-sage-tint)', color: 'var(--cc-sage)' }}
-                    >
-                      Carga automática
-                    </span>
-                    <p className="mt-1 text-2xl font-bold cc-text-primary">
-                      {basket.quoteStatus === 'retailer' ? money(basket.subtotal) : `Est. ${money(basket.subtotal)}`}
-                    </p>
-                    <p className="mt-0.5 text-[10px] cc-text-tertiary">
-                      {basket.quoteStatus === 'retailer' ? 'Confirmado por la tienda' : 'Estimado del catalogo'}
-                    </p>
+                    {(() => {
+                      const badge = LOADABILITY_BADGE[storeLoadability(basket.store)];
+                      return (
+                        <span
+                          className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          style={{ background: badge.bg, color: badge.fg }}
+                        >
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
+                    <p className="mt-1 text-2xl font-bold cc-text-primary">{money(basket.subtotal)}</p>
                     <p className="mt-2 text-sm cc-text-secondary">
                       {basket.coveredCount} de {basket.requestedCount} productos
                     </p>
@@ -394,84 +315,12 @@ export default function SupermarketPage() {
                       />
                     </div>
                     <p className="mt-3 text-xs font-semibold" style={{ color: basket.complete ? 'var(--cc-sage)' : 'var(--cc-amber)' }}>
-                      {basket.complete
-                        ? 'Lista lista para cargar'
-                        : `${basket.missingTerms.length} por reemplazar en esta tienda`}
+                      {basket.complete ? 'Canasta completa' : `${basket.missingTerms.length} por reemplazar en esta tienda`}
                     </p>
                   </button>
                 );
               })}
             </div>
-
-            {additionalBasketOptions.length > 0 && (
-              <div
-                className="mt-6 rounded-2xl border p-4 md:p-5"
-                style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
-              >
-                <div>
-                  <p className="text-sm font-bold cc-text-primary">Otros supermercados</p>
-                  <p className="mt-1 text-xs leading-5 cc-text-secondary">
-                    También puedes comprar en cualquiera de estas tiendas. Al cargar el carro,
-                    esa tienda queda seleccionada y el cargador prepara su carro en una sola pestaña.
-                  </p>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {additionalBasketOptions.map(basket => (
-                    <div
-                      key={basket.store}
-                      data-store-option={basket.store}
-                      className="rounded-xl border p-4"
-                      style={{
-                        borderColor: basket.store === selectedBasket?.store
-                          ? 'var(--cc-copper)'
-                          : 'var(--cc-line)',
-                        background: 'var(--cc-paper)',
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold cc-text-primary">{basket.store}</p>
-                          <p className="mt-1 text-xs cc-text-secondary">
-                            {basket.coveredCount} de {basket.requestedCount} productos
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold cc-text-primary">
-                            {basket.quoteStatus === 'retailer'
-                              ? money(basket.subtotal)
-                              : `Est. ${money(basket.subtotal)}`}
-                          </p>
-                          <p className="text-[10px] cc-text-tertiary">
-                            {basket.complete ? 'Lista completa' : `${basket.missingTerms.length} por reemplazar`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        {basket.items.length > 0 ? (
-                          <CartLoaderButton
-                            key={cartLoaderKey(basket)}
-                            basket={basket}
-                            onQuote={applyCheckoutQuote}
-                            onSelect={() => selectBasket(basket)}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => selectBasket(basket)}
-                            className="h-11 w-full rounded-lg border text-sm font-semibold cc-text-primary"
-                            style={{ borderColor: 'var(--cc-line)' }}
-                          >
-                            Ver opción en {basket.store}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
 
           {selectedBasket && (
@@ -485,30 +334,26 @@ export default function SupermarketPage() {
                     <p className="text-xs font-bold uppercase tracking-wider cc-text-tertiary">Tu elección</p>
                     <h2 className="mt-1 text-2xl font-bold cc-text-primary">{selectedBasket.store}</h2>
                     <p className="mt-1 text-sm cc-text-secondary">
-                      {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos ·{' '}
-                      {selectedBasket.quoteStatus === 'retailer' ? 'confirmado ' : 'estimado '}
-                      {money(selectedBasket.subtotal)}
+                      {selectedBasket.coveredCount} de {selectedBasket.requestedCount} productos · {money(selectedBasket.subtotal)}
                     </p>
                   </div>
                 </div>
                 <div className="w-full space-y-2 sm:w-80">
-                  {selectedBasket.coveredCount > 0 ? (
+                  {selectedBasket.complete ? (
+                    <CartLoaderButton basket={selectedBasket} />
+                  ) : selectedBasket.coveredCount > 0 ? (
                     <>
-                      {!selectedBasket.complete && (
-                        <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
-                          <p className="text-sm font-bold cc-text-primary">
-                            Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
-                          </p>
-                          <p className="mt-1 text-xs cc-text-secondary">
-                            {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
-                          </p>
-                        </div>
-                      )}
-                      <CartLoaderButton
-                        key={cartLoaderKey(selectedBasket)}
-                        basket={selectedBasket}
-                        onQuote={applyCheckoutQuote}
-                      />
+                      {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
+                          Ahora se puede cargar lo encontrado y agregar el resto a mano. */}
+                      <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
+                        <p className="text-sm font-bold cc-text-primary">
+                          Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
+                        </p>
+                        <p className="mt-1 text-xs cc-text-secondary">
+                          {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
+                        </p>
+                      </div>
+                      <CartLoaderButton basket={selectedBasket} />
                     </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
@@ -551,7 +396,19 @@ export default function SupermarketPage() {
                       <td className="px-5 py-3">
                         {item.available ? (
                           <>
-                            <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
+                            {item.productUrl ? (
+                              <a
+                                href={item.productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center gap-1.5 text-sm font-semibold cc-text-primary hover:text-[var(--cc-copper)] transition-colors"
+                              >
+                                <span>{item.name}</span>
+                                <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
+                              </a>
+                            ) : (
+                              <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
+                            )}
                             <p className="mt-0.5 text-xs cc-text-tertiary">{item.brand || selectedBasket?.store}</p>
                           </>
                         ) : (
@@ -589,14 +446,12 @@ export default function SupermarketPage() {
               <div>
                 <p className="font-bold cc-text-primary">
                   {selectedBasket.complete
-                    ? `Lista lista para cargar en ${selectedBasket.store}`
+                    ? `Canasta completa en ${selectedBasket.store}`
                     : `Faltan ${selectedBasket.missingTerms.length} productos en ${selectedBasket.store}`}
                 </p>
                 <p className="mt-1 text-sm cc-text-secondary">
                   {selectedBasket.complete
-                    ? selectedBasket.quoteStatus === 'retailer'
-                      ? 'La tienda confirmó cada producto disponible y el total actual antes de abrir el checkout.'
-                      : 'Es un estimado del catálogo. El cargador verificará cada alta dentro del carro oficial.'
+                    ? 'El total incluye todos los productos y cantidades de tu lista.'
                     : 'El subtotal no se compara como si fuera una compra completa. CoCo mantiene la búsqueda dentro de esta misma cadena.'}
                 </p>
               </div>
