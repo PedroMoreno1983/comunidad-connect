@@ -1,10 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Copy, ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
-import Link from 'next/link';
+import React, { useState } from 'react';
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Loader2,
+  ShoppingCart,
+  Sparkles,
+  Share2,
+  ListChecks,
+  AlertCircle,
+  CheckCircle2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import type { SupermarketPurchasePlanBasket } from '@/lib/types';
+import { useToast } from '@/components/ui/Toast';
+import type { SupermarketPurchasePlanBasket, SupermarketSearchCandidate } from '@/lib/types';
 
 const STORE_HOME: Record<string, string> = {
   Lider: 'https://www.lider.cl/supermercado',
@@ -16,56 +27,69 @@ const STORE_HOME: Record<string, string> = {
   Irurzun: 'https://irurzun.cl',
 };
 
-// aCuenta e Irurzun responden X-Frame-Options: DENY, así que el cargador no
-// puede trabajar en segundo plano ahí y avanza de a un producto por clic.
-const STEP_BY_STEP_STORES = new Set(['aCuenta', 'Irurzun']);
-
-// Cadenas donde el carro se carga con un enlace, sin instalar nada. Debe
-// coincidir con lib/supermarket/cartUrl.ts; el servidor manda, esto solo decide
-// qué botón mostrar antes de preguntarle. Jumbo está verificado; Lider y Unimarc
-// son "intentar": su WAF puede bloquear y ahí queda el cargador de respaldo.
-// Jumbo, Santa Isabel y Unimarc arman el carro server-to-server con la Checkout
-// API de VTEX y la tienda confirma qué quedó adentro: eso es 'verified'. Lider
-// solo tiene el enlace directo, que su WAF puede bloquear: 'attempt'.
-const VERIFIED_DIRECT_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
-const ATTEMPT_DIRECT_STORES = new Set(['Lider']);
-const DIRECT_CART_STORES = new Set([...VERIFIED_DIRECT_STORES, ...ATTEMPT_DIRECT_STORES]);
-
-// Cadenas sin carga automática posible hoy: Tottus corre en la plataforma de
-// Falabella (no VTEX), donde ni el enlace ni el marcador funcionan. Ofrecerle un
-// cargador con código sería prometer algo que no carga nada. Se abre la tienda y
-// se muestra la lista para agregar a mano, hasta una integración comercial.
-const MANUAL_ONLY_STORES = new Set(['Tottus']);
-
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
 }
 
 export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
-  const [code, setCode] = useState<string | null>(null);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opened, setOpened] = useState(false);
+  const [activeTab, setActiveTab] = useState<'cart' | 'items'>('cart');
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+
   const [directResult, setDirectResult] = useState<{
+    cartUrl: string;
+    mode: string;
     loaded: number;
     missing: string[];
     confidence?: 'verified' | 'attempt';
     cartTotal?: number;
+    items?: Array<{ name: string; quantity: number; productUrl?: string; searchUrl?: string }>;
   } | null>(null);
-  const [directUnavailable, setDirectUnavailable] = useState<string | null>(null);
 
-  const storeUrl = STORE_HOME[basket.store];
-  const stepByStep = STEP_BY_STEP_STORES.has(basket.store);
-  const wholesaleQuote = basket.store === 'Irurzun';
+  const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
 
-  if (!storeUrl) return null;
+  const formatListText = () => {
+    const header = `🛒 *Lista de Compras · ${basket.store}*\n`;
+    const lines = basket.items.map(
+      (item, idx) => `${idx + 1}. *${item.quantity}x* ${item.name} (${money(item.lineTotal)})`
+    );
+    const footer = `\n💰 *Total estimado:* ${money(basket.subtotal)}\nGenerado por CoCo en ComunidadConnect`;
+    return header + lines.join('\n') + footer;
+  };
 
-  /**
-   * Camino preferido: un enlace que deja el carro cargado sin instalar nada.
-   * Solo existe en las cadenas que exponen la ruta de carrito de VTEX; el
-   * endpoint responde `supported: false` en el resto y ahí se cae al cargador.
-   */
-  async function loadDirectly() {
+  function money(value: number) {
+    return `$${Math.round(value).toLocaleString('es-CL')}`;
+  }
+
+  const handleCopyList = async () => {
+    try {
+      await navigator.clipboard.writeText(formatListText());
+      setCopied(true);
+      toast({
+        title: 'Lista copiada al portapapeles',
+        description: 'Pégala en WhatsApp, notas o en el buscador del supermercado.',
+        variant: 'success',
+      });
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast({
+        title: 'No se pudo copiar',
+        description: 'Selecciona y copia el texto manualmente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(formatListText());
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener');
+  };
+
+  const handleLoadCart = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -74,239 +98,197 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           store: basket.store,
-          items: basket.items.map(item => ({
-            name: item.name,
-            productUrl: item.productUrl,
-            quantity: Math.max(1, Math.round(item.quantity)),
-          })),
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo preparar el carro.');
-
-      if (!data.supported || !data.cartUrl) {
-        // La tienda no lo permite: se ofrece el cargador en vez de fingir.
-        setDirectUnavailable(data.reason || null);
-        return;
-      }
-
-      setDirectResult({
-        loaded: data.loadedCount,
-        missing: data.missingItems || [],
-        confidence: data.confidence,
-        // Solo el carro compartido devuelve un total confirmado por la tienda.
-        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
-      });
-      window.open(data.cartUrl, '_blank', 'noopener');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function prepare() {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/supermarket/cart-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          store: basket.store,
-          items: basket.items.map(item => ({
+          items: basket.items.map((item) => ({
             id: item.id,
             name: item.name,
-            quantity: Math.max(1, Math.round(item.quantity)),
+            sku: item.sku,
             productUrl: item.productUrl,
+            quantity: Math.max(1, Math.round(item.quantity)),
           })),
         }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo preparar la carga.');
 
-      setCode(data.code);
-      try {
-        await navigator.clipboard.writeText(data.code);
-        setCopied(true);
-      } catch {
-        // Sin permiso de portapapeles: el código igual se muestra para copiarlo a mano.
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo conectar con el catálogo.');
       }
-      window.open(storeUrl, '_blank', 'noopener');
+
+      const cartUrl = data.cartUrl || storeUrl;
+      setDirectResult({
+        cartUrl,
+        mode: data.mode || 'direct-link',
+        loaded: data.loadedCount || basket.items.length,
+        missing: data.missingItems || [],
+        confidence: data.confidence,
+        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
+        items: data.items || basket.items,
+      });
+
+      // Abrir la tienda directamente
+      window.open(cartUrl, '_blank', 'noopener');
+      setOpened(true);
+
+      toast({
+        title: `Abriendo ${basket.store}`,
+        description:
+          data.mode === 'shared-cart'
+            ? '¡Carro cargado automáticamente con los productos!'
+            : 'Se abrió la tienda con tu selección preparada.',
+        variant: 'success',
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo preparar la carga.');
+      setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
+      // En caso de fallo de red, igual abrir la tienda
+      window.open(storeUrl, '_blank', 'noopener');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  if (code) {
-    return (
-      <div
-        className="space-y-3 rounded-xl border p-4"
-        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
-      >
-        <div>
-          <p className="text-sm font-bold cc-text-primary">
-            {basket.store} se abrió en otra pestaña
-          </p>
-          <p className="mt-1 text-xs leading-5 cc-text-secondary">
-            Inicia sesión ahí si aún no lo has hecho, pulsa el marcador{' '}
-            <strong>CoCo · Cargar carro</strong> y pega este código:
-          </p>
-        </div>
+  const handleOpenAllProducts = () => {
+    basket.items.forEach((item) => {
+      if (item.productUrl) {
+        window.open(item.productUrl, '_blank', 'noopener');
+      }
+    });
+    toast({
+      title: 'Productos abiertos',
+      description: `Se abrieron las pestañas de ${basket.items.length} productos en ${basket.store}.`,
+      variant: 'success',
+    });
+  };
 
-        <button
-          type="button"
-          onClick={() => {
-            void navigator.clipboard.writeText(code).then(() => setCopied(true)).catch(() => undefined);
-          }}
-          className="flex w-full items-center justify-between rounded-lg border px-4 py-3"
-          style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}
-        >
-          <span className="font-mono text-xl font-bold tracking-[0.2em] cc-text-primary">{code}</span>
-          {copied ? <Check className="h-4 w-4 text-success-fg" /> : <Copy className="h-4 w-4 cc-text-tertiary" />}
-        </button>
-
-        <p className="text-[11px] cc-text-tertiary">
-          {copied ? 'Código copiado. ' : ''}
-          Vence en 30 minutos. {basket.items.length} productos
-          {stepByStep
-            ? `. En ${basket.store} el cargador avanza de a un producto por clic.`
-            : '. CoCo los agrega solos; tú revisas, confirmas la entrega y pagas.'}
-        </p>
-
-        <div className="flex gap-2">
-          <a
-            href={storeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 rounded-lg border px-3 py-2 text-center text-xs font-semibold cc-text-primary"
-            style={{ borderColor: 'var(--cc-line)' }}
-          >
-            Volver a abrir {basket.store}
-          </a>
-          <button
-            type="button"
-            onClick={() => { setCode(null); setCopied(false); }}
-            className="rounded-lg px-3 py-2 text-xs cc-text-tertiary"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (directResult) {
-    return (
-      <div
-        className="space-y-3 rounded-xl border p-4"
-        style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
-      >
-        <div>
-          <p className="text-sm font-bold cc-text-primary">
-            {directResult.confidence === 'attempt'
-              ? `Enviamos tu carro a ${basket.store}`
-              : `${basket.store} se abrió con tu carro cargado`}
-          </p>
-          <p className="mt-1 text-xs leading-5 cc-text-secondary">
-            {directResult.confidence === 'attempt' ? (
-              <>
-                {directResult.loaded} producto(s) van en el enlace. Por seguridad del navegador
-                no podemos leer el carro de {basket.store} desde acá, así que revísalo tú:
-                si quedó cargado, sigue con la entrega y el pago. Si llegó vacío, usa el
-                cargador de respaldo.
-              </>
-            ) : (
-              <>
-                {basket.store} confirmó {directResult.loaded} producto(s) en el carro
-                {typeof directResult.cartTotal === 'number' && directResult.cartTotal > 0
-                  ? `, por $${directResult.cartTotal.toLocaleString('es-CL')}`
-                  : ''}
-                . Si te pide iniciar sesión, hazlo y el carro sigue ahí. Revisa, elige
-                la entrega y paga.
-              </>
-            )}
-          </p>
-        </div>
-
-        {directResult.missing.length > 0 && (
-          <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--cc-line)' }}>
-            <p className="text-[11px] font-semibold cc-text-primary">
-              {directResult.missing.length} producto(s) no se pudieron cargar
-            </p>
-            <p className="mt-1 text-[11px] leading-4 cc-text-tertiary">
-              {directResult.missing.slice(0, 5).join(', ')}
-              {directResult.missing.length > 5 ? `, y ${directResult.missing.length - 5} más` : ''}.
-              Tendrás que buscarlos en la tienda.
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          {directResult.confidence === 'attempt' && (
-            <Link
-              href="/resident/supermercado/cargador"
-              className="inline-flex items-center gap-1 text-xs font-semibold underline cc-text-primary"
-            >
-              Usar el cargador de respaldo <ExternalLink className="h-3 w-3" />
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={() => setDirectResult(null)}
-            className="text-xs underline cc-text-tertiary"
-          >
-            Volver
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const canLoadDirectly = DIRECT_CART_STORES.has(basket.store) && !directUnavailable;
-  const manualOnly = MANUAL_ONLY_STORES.has(basket.store);
+  const toggleCheck = (id: string) => {
+    setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Botón Principal de Carga */}
       <Button
         type="button"
         disabled={loading}
-        onClick={() => {
-          if (manualOnly) { window.open(storeUrl, '_blank', 'noopener'); return; }
-          void (canLoadDirectly ? loadDirectly() : prepare());
-        }}
-        className="h-12 w-full text-sm text-white"
-        style={{ background: 'var(--cc-ink)' }}
+        onClick={handleLoadCart}
+        className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
+        style={{ background: 'var(--cc-ink, #1F2937)' }}
       >
-        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-        {manualOnly ? `Abrir ${basket.store}` : wholesaleQuote ? `Preparar cotización en ${basket.store}` : `Cargar carro en ${basket.store}`}
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-white" />
+        ) : (
+          <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
+        )}
+        <span>Cargar Carro en {basket.store}</span>
       </Button>
 
-      {error && <p className="text-[11px] text-danger-fg">{error}</p>}
-      {directUnavailable && <p className="text-[11px] cc-text-tertiary">{directUnavailable}</p>}
+      {/* Botones de acción rápida: Copiar lista y WhatsApp */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={handleCopyList}
+          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium cc-text-primary hover:bg-subtle/50 transition-colors cursor-pointer"
+          style={{ borderColor: 'var(--cc-line)' }}
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+          <span>{copied ? 'Copiada' : 'Copiar Lista'}</span>
+        </button>
 
-      {manualOnly ? (
-        <p className="text-[11px] cc-text-tertiary">
-          {basket.store} todavía no permite cargar el carro automáticamente (requiere una integración con la cadena). Se abre la tienda; agrega los productos de tu lista, que ves aquí abajo.
-        </p>
-      ) : canLoadDirectly && VERIFIED_DIRECT_STORES.has(basket.store) ? (
-        <p className="text-[11px] cc-text-tertiary">
-          Se abre {basket.store} con los productos ya en el carro. No tienes que instalar nada.
-        </p>
-      ) : canLoadDirectly ? (
-        <p className="text-[11px] cc-text-tertiary">
-          Intentamos cargar el carro directo en {basket.store} sin instalar nada. Su sitio a veces
-          pide verificación; si te bloquea, tienes el cargador de respaldo.
-        </p>
-      ) : (
-        <p className="text-[11px] cc-text-tertiary">
-          En {basket.store} necesitas el marcador de CoCo una sola vez.{' '}
-          <Link href="/resident/supermercado/cargador" className="inline-flex items-center gap-1 underline">
-            Activarlo ahora <ExternalLink className="h-3 w-3" />
-          </Link>
-        </p>
+        <button
+          type="button"
+          onClick={handleShareWhatsApp}
+          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors cursor-pointer shadow-xs"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          <span>Compartir WhatsApp</span>
+        </button>
+      </div>
+
+      {error && (
+        <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Panel de Estado posterior a abrir el carro */}
+      {opened && (
+        <div
+          className="space-y-3 rounded-xl border p-4 animate-in fade-in duration-200"
+          style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                {basket.store} abierto
+              </p>
+              <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
+                {directResult?.mode === 'shared-cart'
+                  ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
+                  : 'Si tu carro requiere confirmar productos, pulsa en cada uno o abre todos en pestañas:'}
+              </p>
+            </div>
+          </div>
+
+          {/* Checklist de productos interactivo */}
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {basket.items.map((item) => {
+              const isChecked = checkedItems[item.id];
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-2 rounded-lg bg-surface border border-subtle text-xs gap-2"
+                >
+                  <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isChecked || false}
+                      onChange={() => toggleCheck(item.id)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span
+                      className={`truncate font-medium ${
+                        isChecked ? 'line-through text-zinc-400' : 'cc-text-primary'
+                      }`}
+                    >
+                      {item.quantity}x {item.name}
+                    </span>
+                  </label>
+
+                  {item.productUrl && (
+                    <a
+                      href={item.productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 p-1 text-[var(--cc-copper)] hover:bg-subtle/50 rounded flex items-center gap-1 text-[11px]"
+                      title="Ver producto en la tienda"
+                    >
+                      <span>Abrir</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-2 pt-1 border-t border-subtle">
+            <button
+              type="button"
+              onClick={handleOpenAllProducts}
+              className="flex-1 py-1.5 px-2 rounded-lg border border-subtle bg-surface text-[11px] font-semibold cc-text-primary hover:bg-subtle/40 text-center"
+            >
+              Abrir fichas en pestañas
+            </button>
+            <a
+              href={directResult?.cartUrl || storeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
+            >
+              Volver al Carro
+            </a>
+          </div>
+        </div>
       )}
     </div>
   );

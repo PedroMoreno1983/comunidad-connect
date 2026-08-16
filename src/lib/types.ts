@@ -272,6 +272,7 @@ export interface SupermarketSearchCandidate {
   price: number;
   lineTotal: number;
   store?: string;
+  sku?: string;
   productUrl?: string;
   originalPrice?: number;
   isOffer?: boolean;

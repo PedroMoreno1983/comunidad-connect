@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  ExternalLink,
   Loader2,
   ShoppingCart,
   Sparkles,
@@ -395,7 +396,19 @@ export default function SupermarketPage() {
                       <td className="px-5 py-3">
                         {item.available ? (
                           <>
-                            <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
+                            {item.productUrl ? (
+                              <a
+                                href={item.productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center gap-1.5 text-sm font-semibold cc-text-primary hover:text-[var(--cc-copper)] transition-colors"
+                              >
+                                <span>{item.name}</span>
+                                <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
+                              </a>
+                            ) : (
+                              <p className="text-sm font-semibold cc-text-primary">{item.name}</p>
+                            )}
                             <p className="mt-0.5 text-xs cc-text-tertiary">{item.brand || selectedBasket?.store}</p>
                           </>
                         ) : (

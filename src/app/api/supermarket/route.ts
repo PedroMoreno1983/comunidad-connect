@@ -31,6 +31,7 @@ type SupermarketResultItem = {
   id: string;
   name: string;
   brand?: string;
+  sku?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -76,12 +77,14 @@ function toSupermarketResultItem(
     : calculated.suppliedQuantity;
   const brand = typeof item.brand === 'string' ? item.brand : undefined;
   const store = typeof item.store === 'string' ? item.store : undefined;
+  const sku = typeof item.sku === 'string' && item.sku.trim() ? item.sku.trim() : undefined;
   const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
   const rawProductUrl = typeof item.productUrl === 'string' && item.productUrl.trim() ? item.productUrl : undefined;
   return {
     id: typeof item.id === 'string' ? item.id : randomUUID(),
     name,
     brand,
+    sku,
     requestedTerm: requested.term,
     requestedQuantity,
     requestedUnit,

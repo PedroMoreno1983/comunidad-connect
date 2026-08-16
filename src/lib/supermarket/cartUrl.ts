@@ -34,25 +34,17 @@ export interface CartUrlItem {
 
 export type DirectCartConfidence = 'verified' | 'attempt';
 
-/** Jumbo: enlace directo verificado de punta a punta. */
+/** Jumbo, Santa Isabel y Unimarc: plataforma VTEX con enlace directo verificado. */
 const VERIFIED_DIRECT_CART_STORES: Record<string, string> = {
     Jumbo: 'https://www.jumbo.cl',
+    'Santa Isabel': 'https://www.santaisabel.cl',
+    Unimarc: 'https://www.unimarc.cl',
 };
 
-/**
- * Lider: solo enlace directo. Su WAF bloquea las llamadas desde servidor, pero
- * eso NO invalida el mecanismo: una navegación del navegador del usuario no
- * está sujeta al mismo bloqueo que un fetch desde Vercel. Por eso Convive arma
- * la URL y no intenta abrirla ni validarla antes: sería pedirle permiso a un
- * portero que solo nos rechaza a nosotros.
- *
- * La contrapartida es que después tampoco podemos leer el carro de Lider desde
- * nuestro dominio, así que el resultado se declara "pendiente de que lo
- * revises", no "verificado". Unimarc salió de acá: ahora arma el carro por la
- * Checkout API y la tienda confirma lo que quedó (ver vtexSharedCart.ts).
- */
+/** Lider y Tottus: enlaces directos en el navegador del usuario. */
 const ATTEMPT_DIRECT_CART_STORES: Record<string, string> = {
     Lider: 'https://www.lider.cl',
+    Tottus: 'https://www.tottus.cl',
 };
 
 const DIRECT_CART_STORES: Record<string, string> = {
