@@ -1,8 +1,6 @@
 importScripts('store-config.js');
 
 const ACTIVE_JOB_KEY = 'conviveActiveCartJob';
-const ACTIVE_JOB_STATUSES = new Set(['opening', 'loading', 'paused']);
-const OPENING_TAB_GRACE_MS = 15_000;
 const MAX_ITEMS = 200;
 const MAX_QUANTITY = 99;
 const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
@@ -49,14 +47,10 @@ function sanitizeRequest(payload) {
   return {
     store: payload.store,
     items,
-    replaceCart: payload.replaceCart === true,
   };
 }
 
 function progress(job, detail, status = job.status) {
-  const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : undefined;
-  const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : undefined;
-  const removedCartCount = Number.isInteger(job.removedCartCount) ? job.removedCartCount : undefined;
   return {
     jobId: job.id,
     store: job.store,
@@ -65,63 +59,17 @@ function progress(job, detail, status = job.status) {
     added: job.results.filter(result => result.status === 'added').length,
     failed: job.results.filter(result => result.status === 'failed').length,
     currentItem: job.items[job.currentIndex]?.name,
-    previousCartCount,
-    currentCartCount,
-    removedCartCount,
-    cartReplaced: job.replaceCart === true && job.cartResetStatus === 'completed',
     detail,
   };
 }
 
 async function saveJob(job) {
-  job.updatedAt = new Date().toISOString();
   await chrome.storage.local.set({ [ACTIVE_JOB_KEY]: job });
 }
 
 async function getJob() {
   const stored = await chrome.storage.local.get(ACTIVE_JOB_KEY);
   return stored[ACTIVE_JOB_KEY] || null;
-}
-
-function jobIsActive(job) {
-  return Boolean(job && ACTIVE_JOB_STATUSES.has(job.status));
-}
-
-function jobAgeMs(job) {
-  const createdAt = Date.parse(job?.createdAt || '');
-  return Number.isFinite(createdAt) ? Math.max(0, Date.now() - createdAt) : Infinity;
-}
-
-async function liveRetailerTab(job) {
-  if (!jobIsActive(job) || !Number.isInteger(job.retailerTabId)) return null;
-  let tab;
-  try {
-    tab = await chrome.tabs.get(job.retailerTabId);
-  } catch {
-    return null;
-  }
-
-  const tabUrl = tab.pendingUrl || tab.url || '';
-  if (tabUrl === 'about:blank') {
-    return jobAgeMs(job) <= OPENING_TAB_GRACE_MS ? tab : null;
-  }
-
-  try {
-    const config = storeConfig(job.store);
-    const url = new URL(tabUrl);
-    return config?.hosts.includes(url.hostname) ? tab : null;
-  } catch {
-    return null;
-  }
-}
-
-async function abandonJob(job, detail) {
-  job.status = 'abandoned';
-  job.inFlightItemId = null;
-  await saveJob(job);
-  const payload = progress(job, detail, 'failed');
-  await notifySource(job, payload);
-  return payload;
 }
 
 async function notifySource(job, payload) {
@@ -164,30 +112,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      // Limpiar cualquier trabajo anterior para no bloquear nuevas cargas
       const activeJob = await getJob();
-      if (jobIsActive(activeJob)) {
-        const activeTab = await liveRetailerTab(activeJob);
-        if (activeTab) {
-          activeJob.sourceTabId = sender.tab.id;
-          await saveJob(activeJob);
-          await chrome.tabs.update(activeTab.id, { active: true });
-          const resumedStatus = activeJob.status === 'paused' ? 'paused' : 'loading';
-          const payload = progress(
-            activeJob,
-            activeJob.status === 'paused'
-              ? `La carga de ${activeJob.store} necesita tu intervención en la pestaña que acabamos de abrir.`
-              : `Retomando la carga de ${activeJob.store} en su pestaña.`,
-            resumedStatus,
-          );
-          await notifySource(activeJob, payload);
-          sendResponse({ ok: true, resumed: true, progress: payload });
-          return;
+      if (activeJob?.retailerTabId) {
+        try {
+          await chrome.tabs.remove(activeJob.retailerTabId);
+        } catch {
+          // Pestaña ya cerrada
         }
-
-        await abandonJob(
-          activeJob,
-          `La pestaña de ${activeJob.store} se cerró antes de terminar. La carga anterior fue liberada para poder empezar de nuevo.`,
-        );
       }
 
       const job = {
@@ -199,11 +131,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         retailerTabId: null,
         status: 'opening',
         inFlightItemId: null,
-        initialCartCount: null,
-        latestCartCount: null,
-        removedCartCount: null,
-        replaceCart: request.replaceCart,
-        cartResetStatus: request.replaceCart ? 'pending' : 'skipped',
         results: [],
         createdAt: new Date().toISOString(),
       };
@@ -241,44 +168,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? targetUrl(job.store, job.items[job.currentIndex])
             : null,
           inFlightItemId: job.inFlightItemId,
-          replaceCart: job.replaceCart === true,
-          cartResetStatus: job.cartResetStatus || 'skipped',
         },
       });
-      return;
-    }
-
-    if (message?.type === 'COMPLETE_CART_RESET') {
-      if (!job.replaceCart || job.currentIndex !== 0 || job.cartResetStatus !== 'pending') {
-        sendResponse({ ok: false });
-        return;
-      }
-      const cartCountBefore = Number(message.cartCountBefore);
-      const cartCountAfter = Number(message.cartCountAfter);
-      if (
-        !Number.isInteger(cartCountBefore)
-        || !Number.isInteger(cartCountAfter)
-        || cartCountBefore < 0
-        || cartCountAfter !== 0
-        || cartCountBefore > 10_000
-      ) {
-        sendResponse({ ok: false });
-        return;
-      }
-      job.initialCartCount = cartCountBefore;
-      job.latestCartCount = 0;
-      job.removedCartCount = cartCountBefore;
-      job.cartResetStatus = 'completed';
-      await saveJob(job);
-      const payload = progress(
-        job,
-        cartCountBefore > 0
-          ? `Carro anterior vaciado: se retiraron ${cartCountBefore} unidades. Cargando la lista nueva…`
-          : 'El carro ya estaba vacío. Cargando la lista nueva…',
-        'loading',
-      );
-      await notifySource(job, payload);
-      sendResponse({ ok: true, progress: payload });
       return;
     }
 
@@ -287,17 +178,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!item || message.itemId !== item.id || job.inFlightItemId) {
         sendResponse({ ok: false, alreadyClaimed: Boolean(job.inFlightItemId) });
         return;
-      }
-      const cartCountBefore = Number(message.cartCountBefore);
-      if (
-        job.currentIndex === 0
-        && job.initialCartCount === null
-        && Number.isInteger(cartCountBefore)
-        && cartCountBefore >= 0
-        && cartCountBefore <= 10_000
-      ) {
-        job.initialCartCount = cartCountBefore;
-        job.latestCartCount = cartCountBefore;
       }
       job.inFlightItemId = item.id;
       job.status = 'loading';
@@ -328,20 +208,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: false });
         return;
       }
-      const cartCountAfter = Number(message.cartCountAfter);
-      if (
-        Number.isInteger(cartCountAfter)
-        && cartCountAfter >= 0
-        && cartCountAfter <= 10_000
-      ) {
-        job.latestCartCount = cartCountAfter;
-      }
       const resultStatus = message.added ? 'added' : 'failed';
       job.results.push({
         itemId: item.id,
         name: item.name,
         status: resultStatus,
-        quantity: item.quantity,
         detail: safeText(message.detail, 300),
       });
       job.currentIndex += 1;
@@ -349,29 +220,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (job.currentIndex >= job.items.length) {
         const failed = job.results.filter(result => result.status === 'failed').length;
-        const added = job.results.length - failed;
-        const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : null;
-        const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : null;
-        const observedCartDetail = previousCartCount !== null && currentCartCount !== null
-          ? job.replaceCart && job.cartResetStatus === 'completed'
-            ? ` Se eliminaron ${job.removedCartCount || 0} unidades anteriores y el carro nuevo ahora marca ${currentCartCount}.`
-            : ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
-          : '';
-        const cartStayedEmpty = job.replaceCart === true
-          && job.cartResetStatus === 'completed'
-          && added > 0
-          && currentCartCount === 0;
-        job.status = cartStayedEmpty
-          ? 'failed'
-          : failed > 0
-            ? 'completed_with_issues'
-            : 'completed';
+        job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);
-        const detail = cartStayedEmpty
-          ? `No se pudo confirmar ningún producto en el carro de ${job.store}. El contador sigue en 0; vuelve a intentarlo o agrégalos manualmente desde las fichas.`
-          : failed > 0
-            ? `Carga incompleta en ${job.store}: ${added} productos confirmados y ${failed} pendientes para revisar.${observedCartDetail}`
-            : `Carro de ${job.store} confirmado: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
+        const detail = failed > 0
+          ? `Carro de ${job.store} procesado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
+          : `Carro de ${job.store} listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
         sendResponse({ ok: true, done: true, progress: payload });
@@ -405,15 +258,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   });
   return true;
-});
-
-chrome.tabs.onRemoved.addListener(tabId => {
-  void (async () => {
-    const job = await getJob();
-    if (!jobIsActive(job) || job.retailerTabId !== tabId) return;
-    await abandonJob(
-      job,
-      `La pestaña de ${job.store} se cerró antes de terminar. Pulsa "Cargar lista nueva" para comenzar otra vez.`,
-    );
-  })();
 });
