@@ -190,7 +190,7 @@
       <button type="button" class="coco-loader__retry" hidden>Reanudar carga</button>
       <p class="coco-loader__safety">CoCo agrega productos. Nunca confirma ni paga la compra.</p>
     `;
-    overlay.querySelector('.coco-loader__badge').textContent = store;
+    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v1.0.0`;
     document.documentElement.appendChild(overlay);
     return overlay;
   }
