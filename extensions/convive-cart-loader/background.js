@@ -112,20 +112,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      // Limpiar cualquier trabajo anterior para no bloquear nuevas cargas
       const activeJob = await getJob();
-      if (activeJob && ['opening', 'loading', 'paused'].includes(activeJob.status)) {
-        sendResponse({
-          ok: false,
-          progress: {
-            store: request.store,
-            status: 'failed',
-            total: request.items.length,
-            added: 0,
-            failed: 0,
-            detail: `Ya hay una carga de ${activeJob.store} en curso. Termínala o reanúdala en su pestaña antes de abrir otra.`,
-          },
-        });
-        return;
+      if (activeJob?.retailerTabId) {
+        try {
+          await chrome.tabs.remove(activeJob.retailerTabId);
+        } catch {
+          // Pestaña ya cerrada
+        }
       }
 
       const job = {

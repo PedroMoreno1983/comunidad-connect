@@ -13,10 +13,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Puzzle,
+  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
-import type { SupermarketPurchasePlanBasket, SupermarketSearchCandidate } from '@/lib/types';
+import type { SupermarketPurchasePlanBasket } from '@/lib/types';
 
 const STORE_HOME: Record<string, string> = {
   Lider: 'https://www.lider.cl/supermercado',
@@ -61,7 +62,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
 
   const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
 
-  // Detectar si la extensión de Chrome está instalada
+  // Detectar si la extensión de Chrome está activa
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
@@ -114,11 +115,58 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener');
   };
 
+  const handleOpenAllProducts = () => {
+    let openedCount = 0;
+    basket.items.forEach((item) => {
+      const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
+      if (url) {
+        window.open(url, '_blank', 'noopener');
+        openedCount += 1;
+      }
+    });
+    toast({
+      title: 'Productos abiertos',
+      description: `Se abrieron las pestañas de ${openedCount} productos en ${basket.store}.`,
+      variant: 'success',
+    });
+  };
+
   const handleLoadCart = async () => {
     setLoading(true);
     setError(null);
+    setOpened(true);
+
     try {
-      // 1. Si la extensión de Chrome está presente y es Líder/Tottus, lanzar el loader
+      // Si la tienda es VTEX (Jumbo, Santa Isabel, Unimarc), obtener el enlace directo de carro
+      const response = await fetch('/api/supermarket/cart-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store: basket.store,
+          items: basket.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            sku: item.sku,
+            productUrl: item.productUrl,
+            quantity: Math.max(1, Math.round(item.quantity)),
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      const cartUrl = data.cartUrl || storeUrl;
+
+      setDirectResult({
+        cartUrl,
+        mode: data.mode || 'direct-link',
+        loaded: data.loadedCount || basket.items.length,
+        missing: data.missingItems || [],
+        confidence: data.confidence,
+        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
+        items: data.items || basket.items,
+      });
+
+      // Si tiene extensión y es Líder/Tottus, lanzar el asistente automatizado
       if (hasExtension && (basket.store === 'Lider' || basket.store === 'Tottus')) {
         window.postMessage(
           {
@@ -138,80 +186,29 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           },
           '*'
         );
-        setOpened(true);
         toast({
           title: `Cargando en ${basket.store}`,
-          description: 'La extensión está agregando tus productos y verificando el carro.',
+          description: 'La extensión está cargando y verificando cada producto.',
           variant: 'success',
         });
-        setLoading(false);
-        return;
+      } else {
+        // Abrir la tienda directamente
+        window.open(cartUrl, '_blank', 'noopener');
+        toast({
+          title: `Abriendo ${basket.store}`,
+          description:
+            data.mode === 'shared-cart'
+              ? '¡Carro cargado automáticamente con los productos!'
+              : 'Se abrió la tienda con tu selección preparada.',
+          variant: 'success',
+        });
       }
-
-      // 2. Enlace Directo / Carro VTEX
-      const response = await fetch('/api/supermarket/cart-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          store: basket.store,
-          items: basket.items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            sku: item.sku,
-            productUrl: item.productUrl,
-            quantity: Math.max(1, Math.round(item.quantity)),
-          })),
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'No se pudo conectar con el catálogo.');
-      }
-
-      const cartUrl = data.cartUrl || storeUrl;
-      setDirectResult({
-        cartUrl,
-        mode: data.mode || 'direct-link',
-        loaded: data.loadedCount || basket.items.length,
-        missing: data.missingItems || [],
-        confidence: data.confidence,
-        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
-        items: data.items || basket.items,
-      });
-
-      // Abrir la tienda directamente
-      window.open(cartUrl, '_blank', 'noopener');
-      setOpened(true);
-
-      toast({
-        title: `Abriendo ${basket.store}`,
-        description:
-          data.mode === 'shared-cart'
-            ? '¡Carro cargado automáticamente con los productos!'
-            : 'Se abrió la tienda con tu selección preparada.',
-        variant: 'success',
-      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
-      // En caso de fallo de red, igual abrir la tienda
       window.open(storeUrl, '_blank', 'noopener');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOpenAllProducts = () => {
-    basket.items.forEach((item) => {
-      if (item.productUrl) {
-        window.open(item.productUrl, '_blank', 'noopener');
-      }
-    });
-    toast({
-      title: 'Productos abiertos',
-      description: `Se abrieron las pestañas de ${basket.items.length} productos en ${basket.store}.`,
-      variant: 'success',
-    });
   };
 
   const toggleCheck = (id: string) => {
@@ -235,6 +232,16 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         )}
         <span>Cargar Carro en {basket.store}</span>
       </Button>
+
+      {/* Botón rápido para abrir todos los productos en pestañas */}
+      <button
+        type="button"
+        onClick={handleOpenAllProducts}
+        className="w-full py-2.5 px-3 rounded-xl border border-subtle bg-surface text-xs font-semibold cc-text-primary hover:bg-subtle/40 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+      >
+        <Layers className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
+        <span>Abrir todos los productos en pestañas ({basket.items.length})</span>
+      </button>
 
       {/* Botones de acción rápida: Copiar lista y WhatsApp */}
       <div className="grid grid-cols-2 gap-2">
@@ -261,7 +268,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       {hasExtension && (
         <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
           <Puzzle className="h-3.5 w-3.5 shrink-0" />
-          <span>Extensión de navegador activa: carga y verificación automática habilitada.</span>
+          <span>Extensión activa: Carga automatizada habilitada.</span>
         </div>
       )}
 
@@ -272,7 +279,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </div>
       )}
 
-      {/* Panel de Estado posterior a abrir el carro */}
+      {/* Panel de Estado / Checklist de productos */}
       {opened && (
         <div
           className="space-y-3 rounded-xl border p-4 animate-in fade-in duration-200"
@@ -282,7 +289,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                {basket.store} abierto
+                {basket.store} preparado
               </p>
               {extensionProgress?.detail && (
                 <p className="mt-1 text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
@@ -290,9 +297,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
                 </p>
               )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
-                {directResult?.mode === 'shared-cart'
-                  ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
-                  : 'Si tu carro requiere confirmar productos, pulsa en cada uno o abre todos en pestañas:'}
+                Haz clic en **Abrir** en cada producto o usa **Abrir fichas en pestañas** para agregarlos rápidamente en {basket.store}:
               </p>
             </div>
           </div>
@@ -327,7 +332,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
                       href={item.productUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 p-1 text-[var(--cc-copper)] hover:bg-subtle/50 rounded flex items-center gap-1 text-[11px]"
+                      className="shrink-0 p-1 text-[var(--cc-copper)] hover:bg-subtle/50 rounded flex items-center gap-1 text-[11px] font-semibold"
                       title="Ver producto en la tienda"
                     >
                       <span>Abrir</span>
@@ -345,7 +350,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               onClick={handleOpenAllProducts}
               className="flex-1 py-1.5 px-2 rounded-lg border border-subtle bg-surface text-[11px] font-semibold cc-text-primary hover:bg-subtle/40 text-center"
             >
-              Abrir fichas en pestañas
+              Abrir todas las pestañas
             </button>
             <a
               href={directResult?.cartUrl || storeUrl}
@@ -353,7 +358,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               rel="noopener noreferrer"
               className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
             >
-              Volver al Carro
+              Ir a la Tienda
             </a>
           </div>
         </div>
