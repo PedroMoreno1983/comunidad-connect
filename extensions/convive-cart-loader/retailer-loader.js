@@ -334,6 +334,73 @@
     await retryFromOverlay(overlay);
   }
 
+  function extractSkuFromLink(url) {
+    if (!url) return '';
+    const match = url.match(/-([0-9]{5,12})(?:\?|#|$)/) || url.match(/\/p\/.*?(\d+)(?:\?|#|$)/);
+    return match ? match[1] : '';
+  }
+
+  async function tryBatchCartAddition(job, overlay) {
+    if (!job.allItems || job.allItems.length === 0) return false;
+    if (job.currentIndex > 0) return false;
+
+    let successCount = 0;
+    for (const entry of job.allItems) {
+      const sku = entry.sku || extractSkuFromLink(entry.productUrl);
+      if (!sku) continue;
+
+      try {
+        if (job.store === 'Lider' || job.store === 'aCuenta') {
+          const res = await window.fetch('/api/cart/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ sku: String(sku), quantity: Number(entry.quantity) || 1 }),
+          }).catch(() => null);
+
+          if (res && (res.ok || res.status === 200 || res.status === 201)) {
+            successCount += 1;
+            continue;
+          }
+
+          const gqlRes = await window.fetch('/api/graphql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              operationName: 'AddItemToCart',
+              query: 'mutation AddItemToCart($sku: String!, $quantity: Int!) { addItem(sku: $sku, quantity: $quantity) { id } }',
+              variables: { sku: String(sku), quantity: Number(entry.quantity) || 1 },
+            }),
+          }).catch(() => null);
+
+          if (gqlRes && gqlRes.ok) {
+            successCount += 1;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (successCount >= Math.ceil(job.allItems.length * 0.5)) {
+      await runtimeMessage({ type: 'COMPLETE_BATCH_CART' });
+      render(overlay, {
+        added: successCount,
+        failed: job.allItems.length - successCount,
+        total: job.allItems.length,
+        item: null,
+        detail: `Carro de ${job.store} listo: ${successCount} productos agregados.`,
+      });
+      const config = STORE_CONFIGS[job.store];
+      if (window.location.pathname.includes('/cart') || window.location.pathname.includes('/carro')) {
+        window.location.reload();
+      } else if (config?.cartUrl) {
+        window.location.assign(config.cartUrl);
+      }
+      return true;
+    }
+    return false;
+  }
+
   async function run() {
     const response = await runtimeMessage({ type: 'GET_CART_LOAD_JOB' });
     const job = response?.job;
@@ -350,7 +417,7 @@
       item: item.name,
       detail: job.status === 'paused'
         ? 'La carga está pausada. Completa el paso solicitado y reanuda.'
-        : `Buscando ${item.name}…`,
+        : `Preparando ${item.name}…`,
     });
 
     if (job.status === 'paused') {
@@ -358,6 +425,12 @@
       return;
     }
     if (job.status !== 'loading') return;
+
+    // Intento de carga batch directa por API antes de navegación individual
+    if (job.currentIndex === 0 && (job.store === 'Lider' || job.store === 'aCuenta')) {
+      const batchSuccess = await tryBatchCartAddition(job, overlay);
+      if (batchSuccess) return;
+    }
 
     if (pageIsBlocked(config)) {
       await pause(
