@@ -223,10 +223,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         job.status = failed > 0 ? 'completed_with_issues' : 'completed';
         await saveJob(job);
         const detail = failed > 0
-          ? `Carro de ${job.store} procesado. ${job.results.length - failed} productos agregados y ${failed} pendientes para revisar.`
-          : `Carro de ${job.store} listo: ${job.results.length} productos agregados. Revisa disponibilidad y continúa al pago cuando quieras.`;
+          ? `Carro de ${job.store} listo: ${job.results.length - failed} productos agregados y ${failed} agotados.`
+          : `Carro de ${job.store} listo: ${job.results.length} productos agregados al carro.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
+
+        // Redirigir la pestaña del supermercado directamente al carro oficial
+        if (job.retailerTabId) {
+          const config = storeConfig(job.store);
+          const finalUrl = config?.cartUrl || 'https://www.google.com';
+          try {
+            await chrome.tabs.update(job.retailerTabId, { url: finalUrl });
+          } catch {
+            // Tab might be closed
+          }
+        }
+
         sendResponse({ ok: true, done: true, progress: payload });
         return;
       }
