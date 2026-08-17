@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Puzzle,
   Layers,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -29,6 +30,8 @@ const STORE_HOME: Record<string, string> = {
   Irurzun: 'https://irurzun.cl',
 };
 
+const VTEX_STORES = new Set(['Jumbo', 'Santa Isabel', 'Unimarc']);
+
 interface CartLoaderButtonProps {
   basket: SupermarketPurchasePlanBasket;
 }
@@ -40,14 +43,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
   const [hasExtension, setHasExtension] = useState(false);
-  const [extensionProgress, setExtensionProgress] = useState<{
-    status?: string;
-    added?: number;
-    total?: number;
-    failed?: number;
-    detail?: string;
-  } | null>(null);
-
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const [directResult, setDirectResult] = useState<{
@@ -60,6 +55,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     items?: Array<{ name: string; quantity: number; productUrl?: string; searchUrl?: string }>;
   } | null>(null);
 
+  const isVtex = VTEX_STORES.has(basket.store);
   const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
 
   // Detectar si la extensión de Chrome está activa
@@ -68,9 +64,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
       if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
         setHasExtension(true);
-      }
-      if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
-        setExtensionProgress(event.data.payload);
       }
     };
     window.addEventListener('message', handleMessage);
@@ -116,6 +109,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   };
 
   const handleOpenAllProducts = () => {
+    setOpened(true);
     let openedCount = 0;
     basket.items.forEach((item) => {
       const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
@@ -137,71 +131,45 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     setOpened(true);
 
     try {
-      // Si la tienda es VTEX (Jumbo, Santa Isabel, Unimarc), obtener el enlace directo de carro
-      const response = await fetch('/api/supermarket/cart-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          store: basket.store,
-          items: basket.items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            sku: item.sku,
-            productUrl: item.productUrl,
-            quantity: Math.max(1, Math.round(item.quantity)),
-          })),
-        }),
-      });
+      if (isVtex) {
+        // Carga nativa de VTEX (Jumbo, Santa Isabel, Unimarc)
+        const response = await fetch('/api/supermarket/cart-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            store: basket.store,
+            items: basket.items.map((item) => ({
+              id: item.id,
+              name: item.name,
+              sku: item.sku,
+              productUrl: item.productUrl,
+              quantity: Math.max(1, Math.round(item.quantity)),
+            })),
+          }),
+        });
 
-      const data = await response.json().catch(() => ({}));
-      const cartUrl = data.cartUrl || storeUrl;
+        const data = await response.json().catch(() => ({}));
+        const cartUrl = data.cartUrl || storeUrl;
 
-      setDirectResult({
-        cartUrl,
-        mode: data.mode || 'direct-link',
-        loaded: data.loadedCount || basket.items.length,
-        missing: data.missingItems || [],
-        confidence: data.confidence,
-        cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
-        items: data.items || basket.items,
-      });
+        setDirectResult({
+          cartUrl,
+          mode: data.mode || 'direct-link',
+          loaded: data.loadedCount || basket.items.length,
+          missing: data.missingItems || [],
+          confidence: data.confidence,
+          cartTotal: typeof data.cartTotal === 'number' ? data.cartTotal : undefined,
+          items: data.items || basket.items,
+        });
 
-      // Si tiene extensión y es Líder/Tottus, lanzar el asistente automatizado
-      if (hasExtension && (basket.store === 'Lider' || basket.store === 'Tottus')) {
-        window.postMessage(
-          {
-            source: 'convive-connect',
-            type: 'CONVIVE_CART_LOADER_START',
-            payload: {
-              version: 1,
-              store: basket.store,
-              items: basket.items.map((item, idx) => ({
-                id: item.id || `item-${idx + 1}`,
-                name: item.name,
-                requestedTerm: item.requestedTerm || item.name,
-                quantity: Math.max(1, Math.round(item.quantity)),
-                productUrl: item.productUrl,
-              })),
-            },
-          },
-          '*'
-        );
+        window.open(cartUrl, '_blank', 'noopener');
         toast({
-          title: `Cargando en ${basket.store}`,
-          description: 'La extensión está cargando y verificando cada producto.',
+          title: `Carro cargado en ${basket.store}`,
+          description: 'Se abrió la tienda con todos tus productos en el carro.',
           variant: 'success',
         });
       } else {
-        // Abrir la tienda directamente
-        window.open(cartUrl, '_blank', 'noopener');
-        toast({
-          title: `Abriendo ${basket.store}`,
-          description:
-            data.mode === 'shared-cart'
-              ? '¡Carro cargado automáticamente con los productos!'
-              : 'Se abrió la tienda con tu selección preparada.',
-          variant: 'success',
-        });
+        // Tiendas no-VTEX (Tottus, Líder, aCuenta)
+        handleOpenAllProducts();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
@@ -217,31 +185,46 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
 
   return (
     <div className="space-y-3">
-      {/* Botón Principal de Carga */}
-      <Button
-        type="button"
-        disabled={loading}
-        onClick={handleLoadCart}
-        className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
-        style={{ background: 'var(--cc-ink, #1F2937)' }}
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-white" />
-        ) : (
-          <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
-        )}
-        <span>Cargar Carro en {basket.store}</span>
-      </Button>
+      {/* Botón Principal */}
+      {isVtex ? (
+        <Button
+          type="button"
+          disabled={loading}
+          onClick={handleLoadCart}
+          className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
+          style={{ background: 'var(--cc-ink, #1F2937)' }}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-white" />
+          ) : (
+            <Zap className="h-4 w-4 text-amber-400" />
+          )}
+          <span>Cargar Carro Automático en {basket.store}</span>
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          disabled={loading}
+          onClick={handleOpenAllProducts}
+          className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
+          style={{ background: 'var(--cc-ink, #1F2937)' }}
+        >
+          <Layers className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
+          <span>Abrir todos los productos en {basket.store} ({basket.items.length})</span>
+        </Button>
+      )}
 
-      {/* Botón rápido para abrir todos los productos en pestañas */}
-      <button
-        type="button"
-        onClick={handleOpenAllProducts}
-        className="w-full py-2.5 px-3 rounded-xl border border-subtle bg-surface text-xs font-semibold cc-text-primary hover:bg-subtle/40 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-      >
-        <Layers className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
-        <span>Abrir todos los productos en pestañas ({basket.items.length})</span>
-      </button>
+      {/* Botón secundario si es VTEX */}
+      {isVtex && (
+        <button
+          type="button"
+          onClick={handleOpenAllProducts}
+          className="w-full py-2 px-3 rounded-lg border border-subtle bg-surface text-xs font-medium cc-text-primary hover:bg-subtle/40 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>Abrir fichas individuales en pestañas</span>
+        </button>
+      )}
 
       {/* Botones de acción rápida: Copiar lista y WhatsApp */}
       <div className="grid grid-cols-2 gap-2">
@@ -265,13 +248,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         </button>
       </div>
 
-      {hasExtension && (
-        <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-          <Puzzle className="h-3.5 w-3.5 shrink-0" />
-          <span>Extensión activa: Carga automatizada habilitada.</span>
-        </div>
-      )}
-
       {error && (
         <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -289,15 +265,12 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                {basket.store} preparado
+                {basket.store} listo
               </p>
-              {extensionProgress?.detail && (
-                <p className="mt-1 text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
-                  {extensionProgress.detail}
-                </p>
-              )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
-                Haz clic en **Abrir** en cada producto o usa **Abrir fichas en pestañas** para agregarlos rápidamente en {basket.store}:
+                {isVtex
+                  ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
+                  : `Se abrieron las pestañas de tus productos en ${basket.store}. Agrega los que tengan stock y continúa al pago:`}
               </p>
             </div>
           </div>
@@ -358,7 +331,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               rel="noopener noreferrer"
               className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
             >
-              Ir a la Tienda
+              Ir a {basket.store}
             </a>
           </div>
         </div>
