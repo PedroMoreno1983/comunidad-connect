@@ -56,8 +56,8 @@
         "https://irurzun.cl/*",
         "https://www.irurzun.cl/*"
       ],
-      "css": ["loader.css"],
       "js": ["store-config.js", "retailer-loader.js"],
+      "css": ["loader.css"],
       "run_at": "document_idle"
     }
   ]
