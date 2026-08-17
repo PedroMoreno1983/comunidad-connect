@@ -161,6 +161,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           status: job.status,
           currentIndex: job.currentIndex,
           item: job.items[job.currentIndex],
+          allItems: job.items,
           total: job.items.length,
           added: job.results.filter(result => result.status === 'added').length,
           failed: job.results.filter(result => result.status === 'failed').length,
@@ -170,6 +171,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           inFlightItemId: job.inFlightItemId,
         },
       });
+      return;
+    }
+
+    if (message?.type === 'COMPLETE_BATCH_CART') {
+      job.status = 'completed';
+      job.results = job.items.map(item => ({
+        itemId: item.id,
+        name: item.name,
+        status: 'added',
+        detail: 'Agregado al carro directamente.',
+      }));
+      job.currentIndex = job.items.length;
+      await saveJob(job);
+      const detail = `Carro de ${job.store} listo: ${job.items.length} productos agregados al carro.`;
+      const payload = progress(job, detail, 'completed');
+      await notifySource(job, payload);
+      sendResponse({ ok: true, done: true, progress: payload });
       return;
     }
 
