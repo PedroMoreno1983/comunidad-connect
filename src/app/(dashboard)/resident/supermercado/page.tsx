@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
+  Download,
   ExternalLink,
   Loader2,
   ShoppingCart,
@@ -172,15 +173,25 @@ export default function SupermarketPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 pb-20 sm:px-0">
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>
-          Supermercado
-        </p>
-        <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
-        <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
-          CoCo busca toda tu compra dentro de cada cadena, compara las canastas completas y te muestra primero
-          la más barata, luego la segunda y la tercera.
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--cc-copper)' }}>
+            Supermercado
+          </p>
+          <h1 className="mt-2 text-3xl font-bold cc-text-primary">Una lista. Un supermercado. Un solo total.</h1>
+          <p className="mt-2 max-w-3xl text-sm cc-text-secondary">
+            CoCo busca toda tu compra dentro de cada cadena, compara las canastas completas y te muestra primero
+            la más barata, luego la segunda y la tercera.
+          </p>
+        </div>
+        <a
+          href="/downloads/convive-cart-loader.zip"
+          download="convive-cart-loader.zip"
+          className="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-subtle bg-surface text-xs font-semibold cc-text-primary hover:bg-subtle/50 transition-colors shadow-xs"
+        >
+          <Download className="h-4 w-4 text-[var(--cc-copper)]" />
+          <span>Descargar Extensión Chrome (ZIP)</span>
+        </a>
       </header>
 
       <section
