@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Puzzle,
   Layers,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -43,6 +42,14 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
   const [hasExtension, setHasExtension] = useState(false);
+  const [extensionProgress, setExtensionProgress] = useState<{
+    status?: string;
+    added?: number;
+    total?: number;
+    failed?: number;
+    detail?: string;
+  } | null>(null);
+
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const [directResult, setDirectResult] = useState<{
@@ -64,6 +71,9 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
       if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
       if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
         setHasExtension(true);
+      }
+      if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
+        setExtensionProgress(event.data.payload);
       }
     };
     window.addEventListener('message', handleMessage);
@@ -108,23 +118,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener');
   };
 
-  const handleOpenAllProducts = () => {
-    setOpened(true);
-    let openedCount = 0;
-    basket.items.forEach((item) => {
-      const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
-      if (url) {
-        window.open(url, '_blank', 'noopener');
-        openedCount += 1;
-      }
-    });
-    toast({
-      title: 'Productos abiertos',
-      description: `Se abrieron las pestañas de ${openedCount} productos en ${basket.store}.`,
-      variant: 'success',
-    });
-  };
-
   const handleLoadCart = async () => {
     setLoading(true);
     setError(null);
@@ -132,7 +125,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
 
     try {
       if (isVtex) {
-        // Carga nativa de VTEX (Jumbo, Santa Isabel, Unimarc)
+        // 1. Carga nativa directa de VTEX (Santa Isabel, Jumbo, Unimarc)
         const response = await fetch('/api/supermarket/cart-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -164,12 +157,46 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         window.open(cartUrl, '_blank', 'noopener');
         toast({
           title: `Carro cargado en ${basket.store}`,
-          description: 'Se abrió la tienda con todos tus productos en el carro.',
+          description: 'Se abrió la tienda oficial con todos tus productos en el carro.',
+          variant: 'success',
+        });
+      } else if (hasExtension) {
+        // 2. Carga automatizada en 1 sola pestaña vía extensión de navegador (Líder, Tottus, aCuenta)
+        window.postMessage(
+          {
+            source: 'convive-connect',
+            type: 'CONVIVE_CART_LOADER_START',
+            payload: {
+              version: 1,
+              store: basket.store,
+              items: basket.items.map((item, idx) => ({
+                id: item.id || `item-${idx + 1}`,
+                name: item.name,
+                requestedTerm: item.requestedTerm || item.name,
+                quantity: Math.max(1, Math.round(item.quantity)),
+                productUrl: item.productUrl,
+              })),
+            },
+          },
+          '*'
+        );
+        toast({
+          title: `Preparando carro en ${basket.store}`,
+          description: 'Cargando productos en tu sesión y abriendo el carro oficial.',
           variant: 'success',
         });
       } else {
-        // Tiendas no-VTEX (Tottus, Líder, aCuenta)
-        handleOpenAllProducts();
+        // 3. Fallback directo sin extensión: abre la tienda y las fichas
+        basket.items.forEach((item) => {
+          if (item.productUrl) {
+            window.open(item.productUrl, '_blank', 'noopener');
+          }
+        });
+        toast({
+          title: `Abriendo ${basket.store}`,
+          description: 'Se prepararon las pestañas de tus productos en la tienda.',
+          variant: 'success',
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo preparar el carro.');
@@ -179,52 +206,43 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
     }
   };
 
+  const handleOpenAllProducts = () => {
+    let openedCount = 0;
+    basket.items.forEach((item) => {
+      const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
+      if (url) {
+        window.open(url, '_blank', 'noopener');
+        openedCount += 1;
+      }
+    });
+    toast({
+      title: 'Productos abiertos',
+      description: `Se abrieron las pestañas de ${openedCount} productos en ${basket.store}.`,
+      variant: 'success',
+    });
+  };
+
   const toggleCheck = (id: string) => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
     <div className="space-y-3">
-      {/* Botón Principal */}
-      {isVtex ? (
-        <Button
-          type="button"
-          disabled={loading}
-          onClick={handleLoadCart}
-          className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
-          style={{ background: 'var(--cc-ink, #1F2937)' }}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
-          ) : (
-            <Zap className="h-4 w-4 text-amber-400" />
-          )}
-          <span>Cargar Carro Automático en {basket.store}</span>
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          disabled={loading}
-          onClick={handleOpenAllProducts}
-          className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl"
-          style={{ background: 'var(--cc-ink, #1F2937)' }}
-        >
-          <Layers className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
-          <span>Abrir todos los productos en {basket.store} ({basket.items.length})</span>
-        </Button>
-      )}
-
-      {/* Botón secundario si es VTEX */}
-      {isVtex && (
-        <button
-          type="button"
-          onClick={handleOpenAllProducts}
-          className="w-full py-2 px-3 rounded-lg border border-subtle bg-surface text-xs font-medium cc-text-primary hover:bg-subtle/40 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-        >
-          <Layers className="h-3.5 w-3.5" />
-          <span>Abrir fichas individuales en pestañas</span>
-        </button>
-      )}
+      {/* Botón Principal Homologado */}
+      <Button
+        type="button"
+        disabled={loading}
+        onClick={handleLoadCart}
+        className="h-12 w-full text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all flex items-center justify-center gap-2 rounded-xl cursor-pointer"
+        style={{ background: 'var(--cc-ink, #1F2937)' }}
+      >
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-white" />
+        ) : (
+          <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
+        )}
+        <span>Cargar Carro en {basket.store}</span>
+      </Button>
 
       {/* Botones de acción rápida: Copiar lista y WhatsApp */}
       <div className="grid grid-cols-2 gap-2">
@@ -265,12 +283,17 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                {basket.store} listo
+                {basket.store} preparado
               </p>
+              {extensionProgress?.detail && (
+                <p className="mt-1 text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
+                  {extensionProgress.detail}
+                </p>
+              )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
                 {isVtex
                   ? 'Revisa el carro en la pestaña del supermercado, confirma tu dirección y paga.'
-                  : `Se abrieron las pestañas de tus productos en ${basket.store}. Agrega los que tengan stock y continúa al pago:`}
+                  : `Se abrió ${basket.store}. Puedes revisar el carro oficial o abrir cualquier producto puntual:`}
               </p>
             </div>
           </div>
@@ -323,7 +346,7 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               onClick={handleOpenAllProducts}
               className="flex-1 py-1.5 px-2 rounded-lg border border-subtle bg-surface text-[11px] font-semibold cc-text-primary hover:bg-subtle/40 text-center"
             >
-              Abrir todas las pestañas
+              Abrir fichas en pestañas
             </button>
             <a
               href={directResult?.cartUrl || storeUrl}
