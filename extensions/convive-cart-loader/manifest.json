@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "CoCo · Cargador de carros",
-  "version": "0.2.0",
-  "description": "Carga el carro preparado por CoCo en supermercados compatibles. Nunca compra ni paga por ti.",
+  "name": "CoCo · Cargador Oficial v1.0",
+  "version": "1.0.0",
+  "description": "Carga el carro preparado por CoCo en supermercados compatibles con inyección API directa.",
   "permissions": [
     "storage",
     "tabs"
