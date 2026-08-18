@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/Toast';
 import { CommercialService } from '@/lib/api';
 import type { ContactAdminModalProps } from '@/lib/types';
 import { DynamicHeroBackground } from '@/components/landing/DynamicHeroBackground';
+import { HeroLivePreview } from '@/components/landing/HeroLivePreview';
 import { motion } from 'framer-motion';
 
 /* ── Hand-drawn annotation mark — dot + dashed leader + italic label ── */
@@ -200,93 +201,110 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <div className="relative min-h-[680px] overflow-hidden px-4 py-12 sm:min-h-[720px] sm:px-6 md:px-12 md:py-16 lg:min-h-[780px]" style={{ background: 'var(--cc-carbon)' }}>
+      <div className="relative min-h-[720px] overflow-hidden px-4 py-12 sm:min-h-[760px] sm:px-6 md:px-12 md:py-18 lg:min-h-[820px] flex items-center" style={{ background: 'var(--cc-carbon)' }}>
         <DynamicHeroBackground
           imageSrc="/hero-condominio-bg.jpg"
           alt="Comunidad moderna de condominios conectada con Convive Connect"
         />
 
-        <div className="relative mx-auto flex min-h-[576px] w-full max-w-7xl flex-col justify-end sm:min-h-[616px] lg:min-h-[660px]">
-          {/* Animated Status Pill */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-4 inline-flex w-fit items-center gap-2.5 rounded-full border px-3.5 py-1.5 backdrop-blur-md"
-            style={{
-              background: 'rgba(23,21,18,0.65)',
-              borderColor: 'rgba(224,134,76,0.35)',
-            }}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-[12px] font-medium tracking-wide text-white/90">
-              CoCo IA en vivo · Edificio conectado 24/7
-            </span>
-          </motion.div>
+        <div className="relative mx-auto w-full max-w-7xl pt-6 pb-4">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-8">
+            {/* Left Column: Headlines & Actions */}
+            <div className="lg:col-span-7 flex flex-col justify-center">
+              {/* Animated Status Pill */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="mb-5 inline-flex w-fit items-center gap-2.5 rounded-full border px-3.5 py-1.5 backdrop-blur-md"
+                style={{
+                  background: 'rgba(23,21,18,0.7)',
+                  borderColor: 'rgba(224,134,76,0.4)',
+                }}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="text-[12px] font-medium tracking-wide text-white/90">
+                  CoCo IA en vivo · Edificio conectado 24/7
+                </span>
+              </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="max-w-5xl text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[6.25rem]"
-            style={{ fontFamily: 'var(--cc-font-display)' }}
-          >
-            Tu edificio,<br />
-            <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
-          </motion.h1>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[5.5rem] xl:text-[6.25rem]"
+                style={{ fontFamily: 'var(--cc-font-display)' }}
+              >
+                Tu edificio,<br />
+                <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
+              </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.35 }}
-            className="mt-6 max-w-md text-base leading-relaxed sm:text-lg"
-            style={{ color: 'rgba(255,255,255,0.85)' }}
-          >
-            Gastos comunes, reservas, conserjería y vecinos — todo resuelto en un solo lugar, sin planillas ni WhatsApp perdido.
-          </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.35 }}
+                className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg"
+                style={{ color: 'rgba(255,255,255,0.85)' }}
+              >
+                Gastos comunes, reservas de quinchos, conserjería y vecinos — todo resuelto en un solo lugar, sin planillas interminables ni WhatsApp perdido.
+              </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
-            className="mt-8 flex flex-col gap-3 sm:flex-row"
-          >
-            <button
-              onClick={() => router.push('/admin-onboarding')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium shadow-lg transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ color: 'var(--cc-ink)' }}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.5 }}
+                className="mt-8 flex flex-col gap-3 sm:flex-row"
+              >
+                <button
+                  onClick={() => router.push('/admin-onboarding')}
+                  className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium shadow-xl transition-all hover:bg-amber-50 active:scale-[0.98]"
+                  style={{ color: 'var(--cc-ink)' }}
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Activar con CoCo <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                  </span>
+                </button>
+                <button
+                  onClick={() => router.push('/recorrido')}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-[0.98]"
+                  style={{ borderColor: 'rgba(255,255,255,0.38)' }}
+                >
+                  Ver recorrido comercial
+                </button>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.65 }}
+                className="mt-10 flex max-w-xl gap-8 border-t pt-6 sm:gap-10"
+                style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+              >
+                {[['24/7', 'CoCo siempre disponible'], ['3', 'roles en una sola app'], ['<30s', 'resolución de reservas']].map(([v, l], i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="mt-1 h-8 w-px shrink-0" style={{ background: 'var(--cc-copper-soft)' }} />
+                    <div>
+                      <div className="text-2xl leading-none text-white font-semibold" style={{ fontFamily: 'var(--cc-font-display)' }}>{v}</div>
+                      <div className="mt-1.5 max-w-[130px] text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>{l}</div>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Right Column: Interactive Live Simulation HUD */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="lg:col-span-5 flex items-center justify-center lg:justify-end mt-4 lg:mt-0"
             >
-              Activar con CoCo <ArrowRight size={14} />
-            </button>
-            <button
-              onClick={() => router.push('/recorrido')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-[0.98]"
-              style={{ borderColor: 'rgba(255,255,255,0.4)' }}
-            >
-              Ver recorrido comercial
-            </button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.65 }}
-            className="mt-11 flex max-w-xl gap-10 border-t pt-6"
-            style={{ borderColor: 'rgba(255,255,255,0.18)' }}
-          >
-            {[['24/7', 'CoCo siempre disponible'], ['3', 'roles en una sola app']].map(([v, l], i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="mt-1 h-8 w-px shrink-0" style={{ background: 'var(--cc-copper-soft)' }} />
-                <div>
-                  <div className="text-2xl leading-none text-white" style={{ fontFamily: 'var(--cc-font-display)' }}>{v}</div>
-                  <div className="mt-1.5 max-w-[140px] text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>{l}</div>
-                </div>
-              </div>
-            ))}
-          </motion.div>
+              <HeroLivePreview />
+            </motion.div>
+          </div>
         </div>
       </div>
 
