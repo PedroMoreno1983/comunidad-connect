@@ -2,25 +2,21 @@
 
 import React, { useState } from "react";
 import {
-  DollarSign,
   Plus,
   Car,
   Zap,
   Umbrella,
-  Calendar,
   Clock,
   ArrowDownToLine,
   TrendingUp,
   Receipt,
-  Check,
   Power,
-  Shield,
   CreditCard,
-  Edit2,
   Trash2,
   Calculator,
   Sparkles,
 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
@@ -317,7 +313,11 @@ export function ParkingOwnerDashboard({
           </Button>
         </div>
 
-        {spots.length === 0 ? (
+        {/* Mismo motivo: mostrar el estado vacío mientras carga hacía creer
+            al dueño que sus estacionamientos habían desaparecido. */}
+        {loading ? (
+          <SkeletonList rows={2} />
+        ) : spots.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-subtle bg-surface p-8 text-center space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-[var(--cc-copper-tint)] text-[var(--cc-copper)] flex items-center justify-center mx-auto">
               <Car size={24} />
