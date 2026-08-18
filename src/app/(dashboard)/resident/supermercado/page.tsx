@@ -38,7 +38,7 @@ function money(value: number) {
 
 const LOADABILITY_BADGE: Record<StoreLoadability, { label: string; bg: string; fg: string }> = {
   direct: { label: 'Carga automática', bg: 'var(--cc-sage-tint)', fg: 'var(--cc-sage)' },
-  attempt: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
+  offsite: { label: 'Carga directa*', bg: 'var(--cc-amber-tint)', fg: 'var(--cc-amber)' },
   manual: { label: 'Requiere un paso extra', bg: 'var(--cc-paper-warm)', fg: 'var(--cc-ink-tertiary)' },
 };
 
