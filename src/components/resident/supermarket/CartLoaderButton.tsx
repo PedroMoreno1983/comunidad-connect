@@ -134,7 +134,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             items: basket.items.map((item) => ({
               id: item.id,
               name: item.name,
-              sku: item.sku,
               productUrl: item.productUrl,
               quantity: Math.max(1, Math.round(item.quantity)),
             })),
