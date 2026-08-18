@@ -33,7 +33,10 @@ import {
     ParkingCommunitySettings,
     ParkingDriver,
     ParkingDriverInput,
-    ParkingDriverVerification,
+    ParkingAccessRequest,
+    ParkingAccessRequestStatus,
+    ParkingCommunityAccess,
+    ParkingFloorLevel,
     ParkingEarningsTransaction,
     ParkingMapLevel,
     ParkingMapSpot,
@@ -2231,6 +2234,7 @@ type ParkingSpotRow = {
     description: string | null;
     access_notes?: string | null;
     vehicle_size: ParkingVehicleSize;
+    floor_level: ParkingFloorLevel | null;
     is_covered: boolean;
     has_ev_charger: boolean;
     hourly_rate: number;
@@ -2282,6 +2286,7 @@ type ParkingSearchRow = {
     unit_label: string | null;
     description: string | null;
     vehicle_size: ParkingVehicleSize;
+    floor_level: ParkingFloorLevel | null;
     is_covered: boolean;
     has_ev_charger: boolean;
     hourly_rate: number;
@@ -2318,7 +2323,6 @@ type ParkingDriverRow = {
     national_id: string | null;
     plate: string;
     vehicle_description: string | null;
-    verification_status: ParkingDriverVerification;
 };
 
 function mapParkingAvailability(row: ParkingAvailabilityRow): ParkingAvailabilityRule {
@@ -2343,6 +2347,7 @@ function mapParkingSpot(row: ParkingSpotRow): ParkingSpot {
         description: row.description || '',
         accessNotes: row.access_notes ?? undefined,
         vehicleSize: row.vehicle_size,
+        floorLevel: row.floor_level || 'S1',
         isCovered: row.is_covered,
         hasEvCharger: row.has_ev_charger,
         hourlyRate: Number(row.hourly_rate),
@@ -2394,18 +2399,44 @@ function mapParkingDriver(row: ParkingDriverRow): ParkingDriver {
         nationalId: row.national_id || undefined,
         plate: row.plate,
         vehicleDescription: row.vehicle_description || '',
-        verificationStatus: row.verification_status,
     };
 }
 
 const PARKING_SPOT_COLUMNS =
-    'id,community_id,owner_id,unit_label,label,description,access_notes,vehicle_size,is_covered,' +
-    'has_ev_charger,hourly_rate,daily_rate,monthly_rate,min_hours,allows_external,status,' +
+    'id,community_id,owner_id,unit_label,label,description,access_notes,vehicle_size,floor_level,' +
+    'is_covered,has_ev_charger,hourly_rate,daily_rate,monthly_rate,min_hours,allows_external,status,' +
     'rejection_reason,created_at';
 
 const PARKING_BOOKING_COLUMNS =
     'id,community_id,spot_id,driver_id,owner_id,driver_is_resident,starts_at,ends_at,total_amount,' +
     'community_fee_amount,owner_payout_amount,status,payment_status,access_code,cancellation_reason,created_at';
+
+/** Orden de arriba hacia abajo del edificio, como lo lee un conductor. */
+const PARKING_LEVEL_ORDER: { id: ParkingFloorLevel; name: string }[] = [
+    { id: 'EXT', name: 'Exterior / Superficie' },
+    { id: 'PB', name: 'Planta Baja / Nivel 1' },
+    { id: 'S1', name: 'Subterráneo -1' },
+    { id: 'S2', name: 'Subterráneo -2' },
+    { id: 'S3', name: 'Subterráneo -3' },
+];
+
+/**
+ * Arma los niveles del plano. Solo devuelve los pisos que existen en la
+ * comunidad: dibujar un subterráneo -3 vacío en un edificio que no lo tiene solo
+ * confunde.
+ */
+function buildParkingMapLevels(byLevel: Map<ParkingFloorLevel, ParkingMapSpot[]>): ParkingMapLevel[] {
+    return PARKING_LEVEL_ORDER.filter(level => (byLevel.get(level.id)?.length ?? 0) > 0).map(level => {
+        const spots = byLevel.get(level.id) || [];
+        return {
+            levelId: level.id,
+            name: level.name,
+            totalSpots: spots.length,
+            availableSpots: spots.filter(spot => spot.status === 'available').length,
+            spots,
+        };
+    });
+}
 
 export const ParkingService = {
     /* — Conductor — */
@@ -2416,7 +2447,7 @@ export const ParkingService = {
 
         const { data, error } = await supabase
             .from('parking_drivers')
-            .select('id,user_id,profile_id,full_name,phone,national_id,plate,vehicle_description,verification_status')
+            .select('id,user_id,profile_id,full_name,phone,national_id,plate,vehicle_description')
             .eq('user_id', authData.user.id)
             .maybeSingle();
 
@@ -2469,6 +2500,7 @@ export const ParkingService = {
                 description: input.description?.trim() || '',
                 access_notes: input.accessNotes?.trim() || '',
                 vehicle_size: input.vehicleSize,
+                floor_level: input.floorLevel,
                 is_covered: input.isCovered,
                 has_ev_charger: input.hasEvCharger,
                 hourly_rate: input.hourlyRate,
@@ -2491,6 +2523,7 @@ export const ParkingService = {
         if (input.description !== undefined) payload.description = input.description.trim();
         if (input.accessNotes !== undefined) payload.access_notes = input.accessNotes.trim();
         if (input.vehicleSize !== undefined) payload.vehicle_size = input.vehicleSize;
+        if (input.floorLevel !== undefined) payload.floor_level = input.floorLevel;
         if (input.isCovered !== undefined) payload.is_covered = input.isCovered;
         if (input.hasEvCharger !== undefined) payload.has_ev_charger = input.hasEvCharger;
         if (input.hourlyRate !== undefined) payload.hourly_rate = input.hourlyRate;
@@ -2558,6 +2591,7 @@ export const ParkingService = {
             unitLabel: row.unit_label || '',
             description: row.description || '',
             vehicleSize: row.vehicle_size,
+            floorLevel: row.floor_level || 'S1',
             isCovered: row.is_covered,
             hasEvCharger: row.has_ev_charger,
             hourlyRate: Number(row.hourly_rate),
@@ -2810,11 +2844,13 @@ export const ParkingService = {
         if (!authData?.user) throw new Error('Debes iniciar sesión.');
         if (amount <= 0) throw new Error('Monto inválido para abonar.');
 
-        // Se registra la intención de abono directo en el balance
+        // El gasto común se emite exclusivamente desde billingService: el abono
+        // tiene que pasar por ahí para no descuadrar la cuenta de la comunidad.
+        // Mientras ese puente no exista, no se declara un éxito que no ocurrió.
         return {
-            success: true,
+            success: false,
             newBalance: 0,
-            message: `Se aplicó un descuento de $${amount.toLocaleString('es-CL')} a tu próximo gasto común.`,
+            message: 'El abono al gasto común aún no está habilitado. Coordina el descuento con la administración.',
         };
     },
 
@@ -2827,9 +2863,10 @@ export const ParkingService = {
         if (amount <= 0) throw new Error('Monto inválido.');
         if (!bankDetails.accountNumber || !bankDetails.rut) throw new Error('Datos bancarios incompletos.');
 
+        // Los retiros quedan pendientes de las credenciales de Haulmer.
         return {
-            success: true,
-            message: `Solicitud de retiro de $${amount.toLocaleString('es-CL')} enviada. Se transferirá a tu cuenta ${bankDetails.bank} en 24-48 hrs hábiles.`,
+            success: false,
+            message: 'Los retiros automáticos aún no están habilitados. Solicita la transferencia a la administración.',
         };
     },
 
@@ -2847,86 +2884,65 @@ export const ParkingService = {
 
     /* — Mapa Interactivo del Subterráneo (Niveles y Puestos) — */
 
+    /**
+     * Plano por niveles a partir de los estacionamientos reales de la comunidad.
+     *
+     * Si la comunidad no tiene cupos publicados devuelve una lista vacía: mostrar
+     * un plano con puestos inventados llevaría al residente a intentar reservar
+     * estacionamientos que no existen.
+     */
     async getParkingMapLevels(communityId?: string): Promise<ParkingMapLevel[]> {
-        const targetCommunityId = communityId || '11111111-1111-1111-1111-111111111111';
-        let spots: ParkingSpot[] = [];
+        const byLevel = new Map<ParkingFloorLevel, ParkingMapSpot[]>();
+        if (!communityId) return buildParkingMapLevels(byLevel);
 
+        let spotList: ParkingSpot[] = [];
         try {
-            spots = await ParkingService.getCommunitySpots(targetCommunityId);
+            spotList = await ParkingService.getCommunitySpots(communityId);
         } catch {
-            spots = [];
+            spotList = [];
         }
 
-        // Si no hay datos en la BD aún, armamos la cuadrícula estructurada por pisos
-        const s1Spots: ParkingMapSpot[] = [];
-        const s2Spots: ParkingMapSpot[] = [];
-        const extSpots: ParkingMapSpot[] = [];
+        // El nivel lo declara el dueño al publicar. Antes se deducía del nombre
+        // del cupo, así que un "205" del subterráneo -1 se dibujaba en el -2.
+        const perLevelIndex: Partial<Record<ParkingFloorLevel, number>> = {};
 
-        // Distribuir spots existentes o generar plano demo interactivo
-        const spotList = spots.length > 0 ? spots : [
-            { id: 'spot-101', label: '101', unitLabel: '14B', hourlyRate: 2000, vehicleSize: 'auto' as const, isCovered: true, hasEvCharger: false, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-102', label: '102', unitLabel: '12A', hourlyRate: 2500, vehicleSize: 'suv' as const, isCovered: true, hasEvCharger: true, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-103', label: '103', unitLabel: '8C', hourlyRate: 2000, vehicleSize: 'auto' as const, isCovered: true, hasEvCharger: false, status: 'paused' as const, allowsExternal: false },
-            { id: 'spot-104', label: '104', unitLabel: '5D', hourlyRate: 1500, vehicleSize: 'moto' as const, isCovered: true, hasEvCharger: false, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-201', label: '201', unitLabel: '21A', hourlyRate: 2200, vehicleSize: 'camioneta' as const, isCovered: true, hasEvCharger: false, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-202', label: '202', unitLabel: '17B', hourlyRate: 3000, vehicleSize: 'suv' as const, isCovered: true, hasEvCharger: true, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-e01', label: 'V-01', unitLabel: 'Visitas', hourlyRate: 1800, vehicleSize: 'auto' as const, isCovered: false, hasEvCharger: false, status: 'published' as const, allowsExternal: true },
-            { id: 'spot-e02', label: 'V-02', unitLabel: 'Visitas', hourlyRate: 1800, vehicleSize: 'auto' as const, isCovered: false, hasEvCharger: false, status: 'published' as const, allowsExternal: true },
-        ];
-
-        spotList.forEach((s, idx) => {
-            const isS2 = s.label.startsWith('2') || idx % 2 === 1;
-            const isExt = s.label.startsWith('V') || s.label.startsWith('E');
-            const level = isExt ? 'EXT' : isS2 ? 'S2' : 'S1';
+        spotList.forEach((spot) => {
+            const level = spot.floorLevel || 'S1';
+            const idx = perLevelIndex[level] ?? 0;
+            perLevelIndex[level] = idx + 1;
 
             const mapSpot: ParkingMapSpot = {
-                id: `map-${s.id}`,
-                spotId: s.id,
-                label: s.label,
+                id: `map-${spot.id}`,
+                spotId: spot.id,
+                label: spot.label,
                 floorLevel: level,
                 position: { x: (idx % 4) * 80 + 20, y: Math.floor(idx / 4) * 110 + 20, width: 70, height: 95 },
-                status: s.status === 'published' ? 'available' : s.status === 'paused' ? 'occupied' : 'unavailable',
-                hourlyRate: s.hourlyRate || 2000,
-                isCovered: s.isCovered ?? true,
-                hasEvCharger: s.hasEvCharger ?? false,
-                vehicleSize: s.vehicleSize || 'auto',
-                ownerName: ('ownerName' in s ? (s as { ownerName?: string }).ownerName : undefined) || 'Propietario Vecino',
-                unitLabel: s.unitLabel || '—',
+                status: spot.status === 'published' ? 'available' : spot.status === 'paused' ? 'occupied' : 'unavailable',
+                hourlyRate: spot.hourlyRate,
+                isCovered: spot.isCovered,
+                hasEvCharger: spot.hasEvCharger,
+                vehicleSize: spot.vehicleSize,
+                ownerName: spot.ownerName || 'Residente',
+                unitLabel: spot.unitLabel || '—',
             };
 
-            if (level === 'S1') s1Spots.push(mapSpot);
-            else if (level === 'S2') s2Spots.push(mapSpot);
-            else extSpots.push(mapSpot);
+            const bucket = byLevel.get(level);
+            if (bucket) bucket.push(mapSpot);
+            else byLevel.set(level, [mapSpot]);
         });
 
-        return [
-            {
-                levelId: 'S1',
-                name: 'Subterráneo -1 (Acceso Principal)',
-                totalSpots: s1Spots.length,
-                availableSpots: s1Spots.filter(s => s.status === 'available').length,
-                spots: s1Spots,
-            },
-            {
-                levelId: 'S2',
-                name: 'Subterráneo -2 (Bodegas y Cargadores EV)',
-                totalSpots: s2Spots.length,
-                availableSpots: s2Spots.filter(s => s.status === 'available').length,
-                spots: s2Spots,
-            },
-            {
-                levelId: 'EXT',
-                name: 'Exterior / Estacionamiento Visitas',
-                totalSpots: extSpots.length,
-                availableSpots: extSpots.filter(s => s.status === 'available').length,
-                spots: extSpots,
-            },
-        ];
+        return buildParkingMapLevels(byLevel);
     },
 
     /* — Pase Digital de Acceso (Credencial Inteligente) — */
 
-    async getPassDetail(booking: ParkingBooking, communityName = 'Condominio Convive', communityAddress = 'Av. Las Condes 12340, Santiago'): Promise<ParkingPassDetail> {
+    /**
+     * Pase que el conductor muestra en portería. Los datos salen de su registro
+     * real: conserjería compara este pase contra la persona que tiene enfrente,
+     * así que un teléfono o una patente de relleno lo vuelven inútil.
+     */
+    async getPassDetail(booking: ParkingBooking, communityName = '', communityAddress = ''): Promise<ParkingPassDetail> {
+        const driver = await ParkingService.getMyDriver();
         const now = new Date();
         const end = new Date(booking.endsAt);
         const diffMs = end.getTime() - now.getTime();
@@ -2934,33 +2950,42 @@ export const ParkingService = {
         const overdueMinutes = isOverdue ? Math.ceil(Math.abs(diffMs) / 60000) : 0;
         const remainingMinutes = !isOverdue ? Math.max(0, Math.floor(diffMs / 60000)) : 0;
 
+        const plate = driver?.plate || booking.driverPlate || '';
+        const driverName = driver?.fullName || booking.driverName || '';
+
         const qrPayload = JSON.stringify({
             app: 'CONVIVE_ACCESS',
             bookingId: booking.id,
             code: booking.accessCode,
-            spot: booking.spotLabel || 'E-01',
-            plate: booking.driverPlate || 'AUTO',
-            driver: booking.driverName || 'Conductor',
+            spot: booking.spotLabel || '',
+            plate,
+            driver: driverName,
         });
 
-        const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(communityAddress)}&navigate=yes`;
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(communityAddress)}`;
+        // Sin dirección conocida no se arman enlaces de navegación: un link a una
+        // dirección inventada manda al conductor a otra parte.
+        const wazeUrl = communityAddress
+            ? `https://waze.com/ul?q=${encodeURIComponent(communityAddress)}&navigate=yes`
+            : '';
+        const googleMapsUrl = communityAddress
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(communityAddress)}`
+            : '';
 
         return {
             bookingId: booking.id,
-            spotLabel: booking.spotLabel || 'E-01',
-            unitLabel: booking.unitLabel || '101',
+            spotLabel: booking.spotLabel || '',
+            unitLabel: booking.unitLabel || '',
             accessCode: booking.accessCode,
             qrPayload,
             startsAt: booking.startsAt,
             endsAt: booking.endsAt,
-            driverName: booking.driverName || 'Conductor Registrado',
-            driverPhone: '+56 9 8765 4321',
-            plate: booking.driverPlate || 'AB-CD-12',
-            vehicleDescription: 'Vehículo Verificado',
+            driverName,
+            driverPhone: driver?.phone || '',
+            plate,
+            vehicleDescription: driver?.vehicleDescription || '',
             communityName,
             communityAddress,
-            accessNotes: 'Acceso por barrera de portería. Avisar código digital de reserva y dirigirse directo al piso asignado.',
+            accessNotes: '',
             wazeUrl,
             googleMapsUrl,
             status: booking.status,
@@ -2971,38 +2996,104 @@ export const ParkingService = {
     },
 
     /** Extiende una reserva activa por minutos adicionales (+30m, +60m) */
+    /**
+     * Extiende una reserva en curso. Va por RPC y no por un UPDATE directo porque
+     * el recálculo tiene que usar la tarifa real del cupo y porque el choque con
+     * la reserva siguiente lo resuelve la exclusion constraint en la misma
+     * transacción.
+     */
     async extendBooking(bookingId: string, additionalMinutes: number): Promise<{ newEndsAt: string; additionalAmount: number }> {
-        const { data: booking, error: fetchErr } = await supabase
-            .from('parking_bookings')
-            .select('*')
-            .eq('id', bookingId)
-            .single();
+        const { data, error } = await supabase.rpc('extend_parking_booking', {
+            p_booking_id: bookingId,
+            p_additional_minutes: additionalMinutes,
+        });
 
-        if (fetchErr || !booking) {
-            // Demo fallback
-            const newEndsAt = new Date(Date.now() + additionalMinutes * 60000).toISOString();
-            return { newEndsAt, additionalAmount: Math.round((additionalMinutes / 60) * 2000) };
-        }
+        if (error) throw error;
 
-        const currentEnd = new Date(booking.ends_at);
-        const newEnd = new Date(currentEnd.getTime() + additionalMinutes * 60000);
-        const hourlyRate = 2000;
-        const additionalAmount = Math.round((additionalMinutes / 60) * hourlyRate);
+        const row = (Array.isArray(data) ? data[0] : data) as
+            | { new_ends_at: string; additional_amount: number }
+            | undefined;
+        if (!row) throw new Error('No se pudo extender la reserva.');
 
-        const { error: updateErr } = await supabase
-            .from('parking_bookings')
-            .update({
-                ends_at: newEnd.toISOString(),
-                total_amount: (booking.total_amount || 0) + additionalAmount,
-            })
-            .eq('id', bookingId);
+        return { newEndsAt: row.new_ends_at, additionalAmount: Number(row.additional_amount) };
+    },
 
-        if (updateErr) throw updateErr;
+    /* — Acceso de conductores externos — */
 
-        return {
-            newEndsAt: newEnd.toISOString(),
-            additionalAmount,
-        };
+    /** El conductor pide permiso al condominio donde quiere estacionar. */
+    async requestCommunityAccess(communityId: string, message = ''): Promise<string> {
+        const { data, error } = await supabase.rpc('request_parking_community_access', {
+            p_community_id: communityId,
+            p_message: message.trim(),
+        });
+        if (error) throw error;
+        if (typeof data !== 'string') throw new Error('No se pudo enviar la solicitud.');
+        return data;
+    },
+
+    async getMyCommunityAccess(): Promise<ParkingCommunityAccess[]> {
+        const { data, error } = await supabase.rpc('my_parking_community_access');
+        if (error) throw error;
+
+        return ((data || []) as {
+            access_id: string;
+            community_id: string;
+            community_name: string;
+            status: ParkingAccessRequestStatus;
+            review_reason: string | null;
+            created_at: string;
+        }[]).map(row => ({
+            accessId: row.access_id,
+            communityId: row.community_id,
+            communityName: row.community_name,
+            status: row.status,
+            reviewReason: row.review_reason || undefined,
+            createdAt: row.created_at,
+        }));
+    },
+
+    /** Bandeja de solicitudes de la administración. Pendientes primero. */
+    async listAccessRequests(): Promise<ParkingAccessRequest[]> {
+        const { data, error } = await supabase.rpc('list_parking_access_requests');
+        if (error) throw error;
+
+        return ((data || []) as {
+            access_id: string;
+            driver_id: string;
+            full_name: string;
+            phone: string;
+            national_id: string | null;
+            plate: string;
+            vehicle_description: string | null;
+            status: ParkingAccessRequestStatus;
+            message: string | null;
+            review_reason: string | null;
+            created_at: string;
+            reviewed_at: string | null;
+        }[]).map(row => ({
+            accessId: row.access_id,
+            driverId: row.driver_id,
+            fullName: row.full_name,
+            phone: row.phone,
+            nationalId: row.national_id || undefined,
+            plate: row.plate,
+            vehicleDescription: row.vehicle_description || '',
+            status: row.status,
+            message: row.message || '',
+            reviewReason: row.review_reason || undefined,
+            createdAt: row.created_at,
+            reviewedAt: row.reviewed_at || undefined,
+        }));
+    },
+
+    /** Rechazar cancela además las reservas futuras que ese conductor tuviera. */
+    async reviewAccessRequest(accessId: string, approved: boolean, reason?: string): Promise<void> {
+        const { error } = await supabase.rpc('review_parking_community_access', {
+            p_access_id: accessId,
+            p_approved: approved,
+            p_reason: reason?.trim() || null,
+        });
+        if (error) throw error;
     },
 
     /** Registra una calificación de 1 a 5 estrellas para una reserva completada */

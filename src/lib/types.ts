@@ -1469,7 +1469,12 @@ export type ParkingVehicleSize = 'moto' | 'auto' | 'suv' | 'camioneta';
 export type ParkingSpotStatus = 'draft' | 'pending_approval' | 'published' | 'paused' | 'rejected';
 export type ParkingBookingStatus = 'confirmed' | 'active' | 'completed' | 'cancelled' | 'no_show';
 export type ParkingPaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed';
-export type ParkingDriverVerification = 'pending' | 'verified' | 'rejected';
+/**
+ * Autorización de un conductor para operar en un condominio concreto.
+ * Es por comunidad y no un estado global del conductor: que un comité lo acepte
+ * no dice nada sobre otro edificio.
+ */
+export type ParkingAccessRequestStatus = 'pending' | 'approved' | 'rejected';
 export type ParkingAccessEventType = 'entry' | 'exit' | 'denied';
 
 /** Conductor: puede ser un residente o alguien externo al condominio. */
@@ -1483,7 +1488,32 @@ export interface ParkingDriver {
   nationalId?: string;
   plate: string;
   vehicleDescription: string;
-  verificationStatus: ParkingDriverVerification;
+}
+
+/** Solicitud de acceso de un conductor externo, vista por él mismo. */
+export interface ParkingCommunityAccess {
+  accessId: string;
+  communityId: string;
+  communityName: string;
+  status: ParkingAccessRequestStatus;
+  reviewReason?: string;
+  createdAt: string;
+}
+
+/** Solicitud pendiente en la bandeja de la administración. */
+export interface ParkingAccessRequest {
+  accessId: string;
+  driverId: string;
+  fullName: string;
+  phone: string;
+  nationalId?: string;
+  plate: string;
+  vehicleDescription: string;
+  status: ParkingAccessRequestStatus;
+  message: string;
+  reviewReason?: string;
+  createdAt: string;
+  reviewedAt?: string;
 }
 
 export interface ParkingDriverInput {
@@ -1514,6 +1544,8 @@ export interface ParkingSpot {
   /** Instrucciones de acceso: solo llegan al conductor con reserva confirmada. */
   accessNotes?: string;
   vehicleSize: ParkingVehicleSize;
+  /** Nivel del edificio donde está el cupo. Lo declara el dueño al publicar. */
+  floorLevel: ParkingFloorLevel;
   isCovered: boolean;
   hasEvCharger: boolean;
   hourlyRate: number;
@@ -1535,6 +1567,8 @@ export interface ParkingSpotInput {
   description?: string;
   accessNotes?: string;
   vehicleSize: ParkingVehicleSize;
+  /** Nivel del edificio donde está el cupo. Lo declara el dueño al publicar. */
+  floorLevel: ParkingFloorLevel;
   isCovered: boolean;
   hasEvCharger: boolean;
   hourlyRate: number;
@@ -1555,6 +1589,8 @@ export interface ParkingSearchResult {
   unitLabel: string;
   description: string;
   vehicleSize: ParkingVehicleSize;
+  /** Nivel del edificio donde está el cupo. Lo declara el dueño al publicar. */
+  floorLevel: ParkingFloorLevel;
   isCovered: boolean;
   hasEvCharger: boolean;
   hourlyRate: number;

@@ -4,7 +4,12 @@
  * cálculos de sobreestadía, navegación GPS y códigos de acceso.
  */
 
-import type { ParkingFloorLevel } from './types';
+import type {
+    ParkingAccessRequestStatus,
+    ParkingBookingStatus,
+    ParkingFloorLevel,
+    ParkingSpotStatus,
+} from './types';
 
 export const VEHICLE_SIZE_LABELS: Record<string, string> = {
     moto: 'Moto',
@@ -13,44 +18,52 @@ export const VEHICLE_SIZE_LABELS: Record<string, string> = {
     camioneta: 'Camioneta',
 };
 
-export const SPOT_STATUS_LABELS: Record<string, string> = {
+// Los estados replican exactamente los CHECK de la base. Cualquier valor de más
+// aquí es una etiqueta que nunca se muestra; cualquiera de menos deja la UI
+// imprimiendo "undefined".
+export const SPOT_STATUS_LABELS: Record<ParkingSpotStatus, string> = {
     draft: 'Borrador',
+    pending_approval: 'En revisión',
     published: 'Disponible',
     paused: 'Pausado',
-    occupied: 'Ocupado',
-    archived: 'Archivado',
+    rejected: 'Rechazado',
 };
 
-export const SPOT_STATUS_TONES: Record<string, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
+export const SPOT_STATUS_TONES: Record<ParkingSpotStatus, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
     draft: 'neutral',
+    pending_approval: 'amber',
     published: 'sage',
     paused: 'amber',
-    occupied: 'rose',
-    archived: 'neutral',
+    rejected: 'rose',
 };
 
-export const BOOKING_STATUS_LABELS: Record<string, string> = {
-    pending: 'Pendiente',
+export const BOOKING_STATUS_LABELS: Record<ParkingBookingStatus, string> = {
     confirmed: 'Confirmada',
     active: 'En curso',
     completed: 'Finalizada',
     cancelled: 'Cancelada',
-    overstay: 'Tiempo Excedido',
+    no_show: 'No se presentó',
 };
 
-export const BOOKING_STATUS_TONES: Record<string, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
-    pending: 'amber',
+export const BOOKING_STATUS_TONES: Record<ParkingBookingStatus, 'neutral' | 'sage' | 'amber' | 'rose' | 'copper'> = {
     confirmed: 'sage',
     active: 'copper',
     completed: 'neutral',
     cancelled: 'rose',
-    overstay: 'rose',
+    no_show: 'rose',
 };
 
-export const DRIVER_VERIFICATION_LABELS: Record<string, string> = {
-    pending: 'Pendiente de verificación',
-    verified: 'Vehículo Verificado',
-    rejected: 'Verificación rechazada',
+/** Estado de la autorización del conductor para un condominio concreto. */
+export const ACCESS_STATUS_LABELS: Record<ParkingAccessRequestStatus, string> = {
+    pending: 'Acceso pendiente de aprobación',
+    approved: 'Acceso aprobado',
+    rejected: 'Acceso rechazado',
+};
+
+export const ACCESS_STATUS_TONES: Record<ParkingAccessRequestStatus, 'amber' | 'sage' | 'rose'> = {
+    pending: 'amber',
+    approved: 'sage',
+    rejected: 'rose',
 };
 
 export const FLOOR_LEVEL_LABELS: Record<ParkingFloorLevel, string> = {
