@@ -4,22 +4,17 @@ import React, { useState } from "react";
 import {
   ShieldCheck,
   Search,
-  CheckCircle2,
-  XCircle,
   Clock,
   Car,
-  AlertTriangle,
   LogIn,
   LogOut,
-  QrCode,
   User,
   Phone,
-  MessageSquare,
 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
-import { formatCurrency } from "@/lib/utils";
 import {
   calculateParkingTimeStatus,
   formatParkingRange,
@@ -309,7 +304,11 @@ export function ParkingConciergeGate({
           </div>
         </div>
 
-        {filteredBookings.length === 0 ? (
+        {/* La prop loading la envía el padre mientras consulta: sin esto la
+            lista aparecía vacía por un instante como si no hubiera reservas. */}
+        {loading ? (
+          <SkeletonList rows={3} />
+        ) : filteredBookings.length === 0 ? (
           <div className="p-6 rounded-2xl border border-subtle bg-surface text-center text-[13px] cc-text-secondary">
             No hay registros para este filtro en el turno de hoy.
           </div>

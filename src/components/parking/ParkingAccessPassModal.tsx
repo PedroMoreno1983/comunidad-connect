@@ -2,14 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  Car,
   Clock,
   MapPin,
-  QrCode,
   Copy,
   Check,
   Navigation,
-  ExternalLink,
   ShieldCheck,
   AlertTriangle,
   X,
@@ -18,10 +15,8 @@ import {
   PlusCircle,
   TrendingDown,
   Star,
-  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/cc/Button";
-import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -30,8 +25,6 @@ import {
   buildWazeNavigationUrl,
   calculateCommercialSavings,
   calculateParkingTimeStatus,
-  formatChileanDateTime,
-  formatMinuteRate,
   formatParkingRange,
   type ParkingTimeStatus,
 } from "@/lib/parking";

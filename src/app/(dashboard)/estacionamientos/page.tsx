@@ -11,19 +11,15 @@ import {
   MapPin,
   KeyRound,
   XCircle,
-  ShieldCheck,
   Layers,
   List,
-  Sparkles,
   QrCode,
   DollarSign,
   Shield,
   Settings,
-  CheckCircle2,
   Calendar,
   Sun,
   Moon,
-  ZapOff,
 } from "lucide-react";
 import { ParkingService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
@@ -65,7 +61,6 @@ import type {
   ParkingSearchResult,
   ParkingSpot,
   ParkingSpotInput,
-  ParkingVehicleSize,
 } from "@/lib/types";
 
 type ParkingTab = "search" | "owner" | "bookings" | "gate" | "admin";
