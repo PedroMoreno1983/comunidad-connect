@@ -310,13 +310,25 @@ export async function askCoCo(
     // turno de la conversación, para no consultar la base en cada mensaje.
     const isFirstTurn = !(session?.conversation && session.conversation.length > 0);
     const proactiveContext = isFirstTurn && !isResuming ? await getProactiveContext(userCtx) : '';
-    const systemPrompt = [
-        COCO_SYSTEM_PROMPT,
+    // Todo lo que varía por request (ley, memoria, proactivo, contexto del usuario)
+    // va DESPUÉS del prefijo cacheado; si se colara antes invalidaría la cache.
+    const volatileSystem = [
         legalKnowledge,
         memoryContext,
         proactiveContext,
         contextLine ? `**Contexto del usuario:** ${contextLine}` : '',
-    ].filter(Boolean).join('\n\n');
+    ].filter(Boolean);
+
+    // Solo para estimar el presupuesto antes de la llamada.
+    const systemPrompt = [COCO_SYSTEM_PROMPT, ...volatileSystem].join('\n\n');
+
+    // Prompt caching: COCO_SYSTEM_PROMPT es idéntico byte a byte en toda la app y
+    // el orden de render es tools -> system -> messages, así que el breakpoint en
+    // este primer bloque cachea las TOOL_DEFINITIONS y el prompt maestro juntos.
+    const systemBlocks: Anthropic.TextBlockParam[] = [
+        { type: 'text', text: COCO_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+        ...volatileSystem.map(text => ({ type: 'text' as const, text })),
+    ];
 
     if (isResuming) {
         // 3a. Resolver la tanda de tool_use pendiente (el último turno del historial).
@@ -416,7 +428,7 @@ export async function askCoCo(
         response = await anthropic.messages.create({
             model: MODEL,
             max_tokens: 2048,
-            system: systemPrompt,
+            system: systemBlocks,
             messages: history,
             tools: TOOL_DEFINITIONS
                 .filter(tool => isToolAllowedForRole(tool.name, userCtx.role)) as unknown as Anthropic.Tool[],
@@ -424,7 +436,14 @@ export async function askCoCo(
         });
 
         const usage = response.usage;
-        const promptTokens = usage?.input_tokens ?? estimatedPromptTokens;
+        // input_tokens es SOLO el remanente no cacheado. El input real es la suma de
+        // los tres campos; sin sumarlos, el control de presupuesto subcontaría casi
+        // todo el prefijo apenas la cache empieza a acertar.
+        const cacheWriteTokens = usage?.cache_creation_input_tokens ?? 0;
+        const cacheReadTokens = usage?.cache_read_input_tokens ?? 0;
+        const promptTokens = usage
+            ? usage.input_tokens + cacheWriteTokens + cacheReadTokens
+            : estimatedPromptTokens;
         const completionTokens = usage?.output_tokens ?? estimateTokensFromMessages(response.content);
         await recordAiUsage({
             communityId: userCtx.community_id,
