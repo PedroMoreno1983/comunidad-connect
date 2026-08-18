@@ -20,6 +20,8 @@ import { Brand } from '@/components/cc/Brand';
 import { useToast } from '@/components/ui/Toast';
 import { CommercialService } from '@/lib/api';
 import type { ContactAdminModalProps } from '@/lib/types';
+import { DynamicHeroBackground } from '@/components/landing/DynamicHeroBackground';
+import { motion } from 'framer-motion';
 
 /* ── Hand-drawn annotation mark — dot + dashed leader + italic label ── */
 function Annotation({ className = '', label, color = 'var(--cc-copper)' }: { className?: string; label: string; color?: string }) {
@@ -198,52 +200,93 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <div className="relative min-h-[660px] overflow-hidden px-4 py-12 sm:min-h-[700px] sm:px-6 md:px-12 md:py-14 lg:min-h-[760px]" style={{ background: 'var(--cc-carbon)' }}>
-        <Image
-          src="/edificio-malaga-exterior.jpg"
-          alt="Edificio Málaga, comunidad conectada con Convive Connect"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[58%_center] sm:object-center"
+      <div className="relative min-h-[680px] overflow-hidden px-4 py-12 sm:min-h-[720px] sm:px-6 md:px-12 md:py-16 lg:min-h-[780px]" style={{ background: 'var(--cc-carbon)' }}>
+        <DynamicHeroBackground
+          imageSrc="/hero-condominio-bg.jpg"
+          alt="Comunidad moderna de condominios conectada con Convive Connect"
         />
-        <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(23,21,18,0.96) 0%, rgba(23,21,18,0.34) 56%, rgba(23,21,18,0.58) 100%)' }} />
-        <div className="relative mx-auto flex min-h-[566px] w-full max-w-7xl flex-col justify-end sm:min-h-[606px] lg:min-h-[652px]">
-          <h1 className="max-w-5xl text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[6.25rem]" style={{ fontFamily: 'var(--cc-font-display)' }}>
+
+        <div className="relative mx-auto flex min-h-[576px] w-full max-w-7xl flex-col justify-end sm:min-h-[616px] lg:min-h-[660px]">
+          {/* Animated Status Pill */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-4 inline-flex w-fit items-center gap-2.5 rounded-full border px-3.5 py-1.5 backdrop-blur-md"
+            style={{
+              background: 'rgba(23,21,18,0.65)',
+              borderColor: 'rgba(224,134,76,0.35)',
+            }}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="text-[12px] font-medium tracking-wide text-white/90">
+              CoCo IA en vivo · Edificio conectado 24/7
+            </span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="max-w-5xl text-[3.25rem] font-normal leading-[0.92] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl lg:text-[6.25rem]"
+            style={{ fontFamily: 'var(--cc-font-display)' }}
+          >
             Tu edificio,<br />
             <em className="not-italic italic" style={{ color: 'var(--cc-copper-soft)' }}>en una sola conversación.</em>
-          </h1>
-          <p className="mt-6 max-w-md text-base leading-relaxed sm:text-lg" style={{ color: 'rgba(255,255,255,0.78)' }}>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.35 }}
+            className="mt-6 max-w-md text-base leading-relaxed sm:text-lg"
+            style={{ color: 'rgba(255,255,255,0.85)' }}
+          >
             Gastos comunes, reservas, conserjería y vecinos — todo resuelto en un solo lugar, sin planillas ni WhatsApp perdido.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.5 }}
+            className="mt-8 flex flex-col gap-3 sm:flex-row"
+          >
             <button
               onClick={() => router.push('/admin-onboarding')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium transition-all hover:opacity-90"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-medium shadow-lg transition-all hover:opacity-90 active:scale-[0.98]"
               style={{ color: 'var(--cc-ink)' }}
             >
               Activar con CoCo <ArrowRight size={14} />
             </button>
             <button
               onClick={() => router.push('/recorrido')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-medium text-white transition-all hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.35)' }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-[0.98]"
+              style={{ borderColor: 'rgba(255,255,255,0.4)' }}
             >
               Ver recorrido comercial
             </button>
-          </div>
+          </motion.div>
 
-          <div className="mt-11 flex max-w-xl gap-10 border-t pt-6" style={{ borderColor: 'rgba(255,255,255,0.16)' }}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.65 }}
+            className="mt-11 flex max-w-xl gap-10 border-t pt-6"
+            style={{ borderColor: 'rgba(255,255,255,0.18)' }}
+          >
             {[['24/7', 'CoCo siempre disponible'], ['3', 'roles en una sola app']].map(([v, l], i) => (
               <div key={i} className="flex items-start gap-2">
                 <div className="mt-1 h-8 w-px shrink-0" style={{ background: 'var(--cc-copper-soft)' }} />
                 <div>
                   <div className="text-2xl leading-none text-white" style={{ fontFamily: 'var(--cc-font-display)' }}>{v}</div>
-                  <div className="mt-1.5 max-w-[140px] text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>{l}</div>
+                  <div className="mt-1.5 max-w-[140px] text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>{l}</div>
                 </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
 
