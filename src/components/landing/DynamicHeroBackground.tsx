@@ -22,24 +22,31 @@ export function DynamicHeroBackground({
   const yParallax = useTransform(scrollY, [0, 800], [0, 110]);
   const opacityFade = useTransform(scrollY, [0, 700], [1, 0.45]);
 
-  // Subtle mouse interactive parallax
+  // Mouse interactive spotlight & parallax
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 45, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 45, damping: 25 });
+  const mouseClientX = useMotionValue(-1000);
+  const mouseClientY = useMotionValue(-1000);
+
+  const springX = useSpring(mouseX, { stiffness: 40, damping: 25 });
+  const springY = useSpring(mouseY, { stiffness: 40, damping: 25 });
+  const spotX = useSpring(mouseClientX, { stiffness: 60, damping: 30 });
+  const spotY = useSpring(mouseClientY, { stiffness: 60, damping: 30 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const { innerWidth, innerHeight } = window;
-      const xNorm = (e.clientX / innerWidth - 0.5) * 20; // -10px to +10px
-      const yNorm = (e.clientY / innerHeight - 0.5) * 14; // -7px to +7px
+      const xNorm = (e.clientX / innerWidth - 0.5) * 24; // -12px to +12px
+      const yNorm = (e.clientY / innerHeight - 0.5) * 16; // -8px to +8px
       mouseX.set(xNorm);
       mouseY.set(yNorm);
+      mouseClientX.set(e.clientX);
+      mouseClientY.set(e.clientY);
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
+  }, [mouseX, mouseY, mouseClientX, mouseClientY]);
 
   // Floating ambient light particles canvas
   useEffect(() => {
@@ -61,14 +68,14 @@ export function DynamicHeroBackground({
     window.addEventListener('resize', handleResize);
 
     // Particle pool with warm ambient embers/bokeh
-    const particleCount = 42;
+    const particleCount = 48;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 2.8 + 0.8,
       speedY: Math.random() * 0.45 + 0.15,
       speedX: (Math.random() - 0.5) * 0.25,
-      opacity: Math.random() * 0.55 + 0.2,
+      opacity: Math.random() * 0.6 + 0.2,
       opacitySpeed: Math.random() * 0.01 + 0.004,
       opacityDir: Math.random() > 0.5 ? 1 : -1,
       color:
@@ -106,8 +113,8 @@ export function DynamicHeroBackground({
 
           // Pulse opacity
           p.opacity += p.opacitySpeed * p.opacityDir;
-          if (p.opacity > 0.8) {
-            p.opacity = 0.8;
+          if (p.opacity > 0.85) {
+            p.opacity = 0.85;
             p.opacityDir = -1;
           } else if (p.opacity < 0.15) {
             p.opacity = 0.15;
@@ -118,8 +125,8 @@ export function DynamicHeroBackground({
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
-          ctx.shadowBlur = p.size * 3;
-          ctx.shadowColor = `rgba(${p.color}, 0.75)`;
+          ctx.shadowBlur = p.size * 3.5;
+          ctx.shadowColor = `rgba(${p.color}, 0.8)`;
           ctx.fill();
         }
       }
@@ -148,16 +155,16 @@ export function DynamicHeroBackground({
           x: springX,
           opacity: opacityFade,
         }}
-        className="absolute -inset-10"
+        className="absolute -inset-12"
       >
         <motion.div
           animate={{
-            scale: [1.02, 1.09, 1.05, 1.02],
-            x: ['0%', '-2%', '1.5%', '0%'],
-            y: ['0%', '-1.5%', '1%', '0%'],
+            scale: [1.02, 1.10, 1.05, 1.02],
+            x: ['0%', '-2.2%', '1.8%', '0%'],
+            y: ['0%', '-1.8%', '1.2%', '0%'],
           }}
           transition={{
-            duration: 26,
+            duration: 28,
             repeat: Infinity,
             repeatType: 'reverse',
             ease: 'easeInOut',
@@ -169,10 +176,10 @@ export function DynamicHeroBackground({
             alt={alt}
             fill
             priority
-            quality={92}
+            quality={95}
             sizes="100vw"
             onLoad={() => setIsLoaded(true)}
-            className={`object-cover object-[62%_center] sm:object-center transition-opacity duration-1000 ${
+            className={`object-cover object-[60%_center] sm:object-center transition-opacity duration-1000 ${
               isLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -183,10 +190,10 @@ export function DynamicHeroBackground({
       {/* Amber Sunset Flare */}
       <motion.div
         animate={{
-          scale: [1, 1.25, 1],
-          opacity: [0.35, 0.58, 0.35],
-          x: [0, 25, 0],
-          y: [0, -20, 0],
+          scale: [1, 1.28, 1],
+          opacity: [0.35, 0.6, 0.35],
+          x: [0, 30, 0],
+          y: [0, -25, 0],
         }}
         transition={{
           duration: 12,
@@ -194,19 +201,19 @@ export function DynamicHeroBackground({
           repeatType: 'reverse',
           ease: 'easeInOut',
         }}
-        className="absolute -top-32 right-1/4 h-[520px] w-[520px] rounded-full blur-3xl"
+        className="absolute -top-32 right-1/4 h-[560px] w-[560px] rounded-full blur-3xl"
         style={{
           background:
-            'radial-gradient(circle, rgba(224,134,76,0.4) 0%, rgba(224,134,76,0.1) 50%, transparent 75%)',
+            'radial-gradient(circle, rgba(224,134,76,0.42) 0%, rgba(224,134,76,0.12) 50%, transparent 75%)',
         }}
       />
 
       {/* Turquoise Pool Reflection Flare */}
       <motion.div
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.25, 0.48, 0.25],
-          x: [0, -18, 0],
+          scale: [1, 1.22, 1],
+          opacity: [0.28, 0.52, 0.28],
+          x: [0, -20, 0],
         }}
         transition={{
           duration: 10,
@@ -215,18 +222,18 @@ export function DynamicHeroBackground({
           ease: 'easeInOut',
           delay: 1.5,
         }}
-        className="absolute bottom-8 right-1/3 h-[420px] w-[420px] rounded-full blur-3xl"
+        className="absolute bottom-10 right-1/3 h-[460px] w-[460px] rounded-full blur-3xl"
         style={{
           background:
-            'radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(45,212,191,0.08) 50%, transparent 75%)',
+            'radial-gradient(circle, rgba(56,189,248,0.32) 0%, rgba(45,212,191,0.1) 50%, transparent 75%)',
         }}
       />
 
       {/* Sage Community Aura */}
       <motion.div
         animate={{
-          scale: [1, 1.15, 1],
-          opacity: [0.2, 0.38, 0.2],
+          scale: [1, 1.18, 1],
+          opacity: [0.22, 0.42, 0.22],
         }}
         transition={{
           duration: 14,
@@ -235,44 +242,56 @@ export function DynamicHeroBackground({
           ease: 'easeInOut',
           delay: 3,
         }}
-        className="absolute -bottom-24 -left-20 h-[460px] w-[460px] rounded-full blur-3xl"
+        className="absolute -bottom-24 -left-20 h-[480px] w-[480px] rounded-full blur-3xl"
         style={{
           background:
-            'radial-gradient(circle, rgba(142,168,112,0.32) 0%, transparent 70%)',
+            'radial-gradient(circle, rgba(142,168,112,0.36) 0%, transparent 70%)',
         }}
       />
 
-      {/* ── Layer 3: Floating Dust / Ember Particles Canvas ── */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 h-full w-full opacity-80"
+      {/* ── Layer 3: Interactive Mouse Spotlight ── */}
+      <motion.div
+        style={{
+          left: spotX,
+          top: spotY,
+          translateX: '-50%',
+          translateY: '-50%',
+          background: 'radial-gradient(circle, rgba(224,134,76,0.35) 0%, rgba(245,230,200,0.1) 40%, transparent 70%)',
+        }}
+        className="pointer-events-none absolute h-[380px] w-[380px] rounded-full opacity-40 blur-3xl"
       />
 
-      {/* ── Layer 4: Ambient Grid Mesh Texture ── */}
+      {/* ── Layer 4: Floating Dust / Ember Particles Canvas ── */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full opacity-85"
+      />
+
+      {/* ── Layer 5: Ambient Grid Mesh Texture ── */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.035]"
         style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)',
           backgroundSize: '32px 32px',
         }}
       />
 
-      {/* ── Layer 5: Precision Vignette & Gradient Overlays ── */}
-      {/* Vertical Gradient for Header & Content */}
+      {/* ── Layer 6: Precision Vignette & Gradient Overlays ── */}
+      {/* Top and Bottom blend */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgba(23,21,18,0.68) 0%, rgba(23,21,18,0.22) 30%, rgba(23,21,18,0.78) 72%, rgba(23,21,18,0.98) 100%)',
+            'linear-gradient(180deg, rgba(23,21,18,0.62) 0%, rgba(23,21,18,0.18) 28%, rgba(23,21,18,0.68) 70%, rgba(23,21,18,0.98) 100%)',
         }}
       />
 
-      {/* Horizontal Radial Vignette to focus left-side copy & hero typography */}
+      {/* Left Radial Vignette to focus left-side copy & hero typography */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 18% 70%, rgba(23,21,18,0.90) 0%, rgba(23,21,18,0.60) 45%, transparent 80%)',
+            'radial-gradient(circle at 20% 60%, rgba(23,21,18,0.85) 0%, rgba(23,21,18,0.45) 50%, transparent 85%)',
         }}
       />
     </div>
