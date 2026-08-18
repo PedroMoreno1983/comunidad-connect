@@ -50,8 +50,10 @@ export function ParkingAccessPassModal({
   booking,
   isOpen,
   onClose,
-  buildingName = "Condominio Convive",
-  buildingAddress = "Av. Las Condes 12340, Santiago",
+  // Sin nombre ni dirección reales se muestra vacío: un edificio inventado en
+  // el pase que el conductor enseña en portería es peor que un campo en blanco.
+  buildingName = "",
+  buildingAddress = "",
 }: ParkingAccessPassModalProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);

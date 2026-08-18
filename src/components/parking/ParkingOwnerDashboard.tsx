@@ -26,6 +26,7 @@ import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import {
+  FLOOR_LEVEL_LABELS,
   SPOT_STATUS_LABELS,
   SPOT_STATUS_TONES,
   VEHICLE_SIZE_LABELS,
@@ -34,6 +35,7 @@ import {
 } from "@/lib/parking";
 import type {
   ParkingAvailabilityRule,
+  ParkingFloorLevel,
   ParkingBooking,
   ParkingOwnerEarnings,
   ParkingSpot,
@@ -76,6 +78,7 @@ export function ParkingOwnerDashboard({
     description: string;
     accessNotes: string;
     vehicleSize: ParkingVehicleSize;
+    floorLevel: ParkingFloorLevel;
     isCovered: boolean;
     hasEvCharger: boolean;
     hourlyRate: number;
@@ -86,6 +89,7 @@ export function ParkingOwnerDashboard({
     description: "",
     accessNotes: "",
     vehicleSize: "auto",
+    floorLevel: "S1",
     isCovered: true,
     hasEvCharger: false,
     hourlyRate: 2000,
@@ -150,6 +154,7 @@ export function ParkingOwnerDashboard({
           description: form.description,
           accessNotes: form.accessNotes,
           vehicleSize: form.vehicleSize,
+          floorLevel: form.floorLevel,
           isCovered: form.isCovered,
           hasEvCharger: form.hasEvCharger,
           hourlyRate: form.hourlyRate,
@@ -502,6 +507,27 @@ export function ParkingOwnerDashboard({
                     <option value="camioneta">Camioneta</option>
                     <option value="moto">Moto</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">
+                    Nivel del Edificio
+                  </label>
+                  <select
+                    className={field}
+                    value={form.floorLevel}
+                    onChange={(e) =>
+                      setForm({ ...form, floorLevel: e.target.value as ParkingFloorLevel })
+                    }
+                  >
+                    {(Object.keys(FLOOR_LEVEL_LABELS) as ParkingFloorLevel[]).map((level) => (
+                      <option key={level} value={level}>
+                        {FLOOR_LEVEL_LABELS[level]}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] cc-text-secondary mt-1 block">
+                    Define en qué piso se dibuja tu puesto en el plano del edificio.
+                  </span>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">

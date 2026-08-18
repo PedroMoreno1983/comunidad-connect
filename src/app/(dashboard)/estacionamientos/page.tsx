@@ -35,9 +35,10 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { formatCurrency } from "@/lib/utils";
 import {
+  ACCESS_STATUS_LABELS,
+  ACCESS_STATUS_TONES,
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_TONES,
-  DRIVER_VERIFICATION_LABELS,
   VEHICLE_SIZE_LABELS,
   calculateCommercialSavings,
   formatMinuteRate,
@@ -52,6 +53,8 @@ import { ParkingAccessPassModal } from "@/components/parking/ParkingAccessPassMo
 import { ParkingOwnerDashboard } from "@/components/parking/ParkingOwnerDashboard";
 import { ParkingConciergeGate } from "@/components/parking/ParkingConciergeGate";
 import type {
+  ParkingAccessRequest,
+  ParkingCommunityAccess,
   ParkingAvailabilityRule,
   ParkingBooking,
   ParkingCommunitySettings,
@@ -167,11 +170,9 @@ function DriverForm({
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-2">
-        {driver && (
-          <Tag tone={driver.verificationStatus === "verified" ? "sage" : "amber"} solid>
-            {DRIVER_VERIFICATION_LABELS[driver.verificationStatus]}
-          </Tag>
-        )}
+        {/* La autorización es por condominio, no un estado global del conductor:
+            se muestra junto a cada comunidad, no aquí. */}
+        {driver && <Tag tone="sage" solid>Vehículo registrado</Tag>}
         <Button size="sm" variant="copper" onClick={submit} disabled={saving} className="ml-auto">
           {saving ? "Guardando…" : driver ? "Actualizar Datos" : "Verificar y Continuar"}
         </Button>
@@ -180,18 +181,31 @@ function DriverForm({
   );
 }
 
+/**
+ * Estado del conductor frente al condominio dueño del cupo.
+ * "resident" es su propia comunidad; el resto exige aprobación del comité.
+ */
+type SpotAccessState = "resident" | "approved" | "pending" | "rejected" | "none";
+
 function SpotCard({
   spot,
   hours,
   onBook,
   booking,
+  accessState,
+  onRequestAccess,
+  requestingAccess,
 }: {
   spot: ParkingSearchResult;
   hours: number;
   onBook: (spot: ParkingSearchResult) => void;
   booking: boolean;
+  accessState: SpotAccessState;
+  onRequestAccess: (spot: ParkingSearchResult) => void;
+  requestingAccess: boolean;
 }) {
   const savings = calculateCommercialSavings(spot.quotedAmount);
+  const canBook = accessState === "resident" || accessState === "approved";
 
   return (
     <div className="rounded-2xl border border-subtle bg-surface p-5 hover:shadow-xs transition-shadow">
@@ -238,17 +252,48 @@ function SpotCard({
           <p className="text-[11px] cc-text-tertiary">
             {hours} h · {formatCurrency(spot.hourlyRate)}/h
           </p>
-          <Button
-            size="sm"
-            variant="copper"
-            className="mt-3"
-            onClick={() => onBook(spot)}
-            disabled={booking}
-          >
-            {booking ? "Reservando…" : "Reservar Puesto"}
-          </Button>
+          {canBook ? (
+            <Button
+              size="sm"
+              variant="copper"
+              className="mt-3"
+              onClick={() => onBook(spot)}
+              disabled={booking}
+            >
+              {booking ? "Reservando…" : "Reservar Puesto"}
+            </Button>
+          ) : accessState === "pending" || accessState === "rejected" ? (
+            <div className="mt-3">
+              <Tag tone={ACCESS_STATUS_TONES[accessState]} solid>
+                {ACCESS_STATUS_LABELS[accessState]}
+              </Tag>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="mt-3"
+              onClick={() => onRequestAccess(spot)}
+              disabled={requestingAccess}
+            >
+              {requestingAccess ? "Enviando…" : "Solicitar acceso"}
+            </Button>
+          )}
         </div>
       </div>
+
+      {accessState === "none" && (
+        <p className="mt-3 border-t border-subtle pt-3 text-[12px] cc-text-secondary">
+          No eres residente de {spot.communityName}. La administración del condominio debe
+          aprobar tu vehículo antes de que puedas reservar aquí.
+        </p>
+      )}
+
+      {accessState === "pending" && (
+        <p className="mt-3 border-t border-subtle pt-3 text-[12px] cc-text-secondary">
+          Tu solicitud está esperando respuesta de la administración de {spot.communityName}.
+        </p>
+      )}
     </div>
   );
 }
@@ -316,6 +361,8 @@ function EstacionamientosContent() {
 
   // Driver data
   const [driver, setDriver] = useState<ParkingDriver | null>(null);
+  const [communityAccess, setCommunityAccess] = useState<ParkingCommunityAccess[]>([]);
+  const [requestingAccessFor, setRequestingAccessFor] = useState<string | null>(null);
   const [driverLoaded, setDriverLoaded] = useState(false);
   const [showDriverForm, setShowDriverForm] = useState(false);
 
@@ -355,6 +402,18 @@ function EstacionamientosContent() {
     try {
       const current = await ParkingService.getMyDriver();
       setDriver(current);
+
+      // Las autorizaciones son por condominio: sin ellas no se sabe en cuáles
+      // de los cupos encontrados este conductor puede efectivamente reservar.
+      if (current) {
+        try {
+          setCommunityAccess(await ParkingService.getMyCommunityAccess());
+        } catch {
+          setCommunityAccess([]);
+        }
+      } else {
+        setCommunityAccess([]);
+      }
       setShowDriverForm(!current);
     } catch {
       setDriver(null);
@@ -422,7 +481,8 @@ function EstacionamientosContent() {
       const settings = await ParkingService.getCommunitySettings(communityId);
       setCommunitySettings(settings);
     } catch {
-      setCommunitySettings({ externalEnabled: true, commissionPercent: 10 });
+      // Sin datos reales se asume lo más restrictivo: externos cerrados.
+      setCommunitySettings({ externalEnabled: false, commissionPercent: 0 });
     }
   }, [user?.role, user?.communityId]);
 
@@ -460,40 +520,14 @@ function EstacionamientosContent() {
       const searchRes = await ParkingService.search(start, end, user?.communityId);
       setResults(searchRes);
     } catch (error: unknown) {
-      // Fallback demo results
-      const hours = parkingDurationHours(start.toISOString(), end.toISOString());
-      setResults([
-        {
-          spotId: "spot-demo-1",
-          communityId: user?.communityId || "1111",
-          communityName: "Condominio Convive",
-          label: "104",
-          unitLabel: "14B",
-          description: "Subterráneo -1, cerca del ascensor poniente. Techado y amplio.",
-          vehicleSize: "auto",
-          isCovered: true,
-          hasEvCharger: false,
-          hourlyRate: 2000,
-          minHours: 1,
-          ownerName: "Carlos Muñoz",
-          quotedAmount: 2000 * hours,
-        },
-        {
-          spotId: "spot-demo-2",
-          communityId: user?.communityId || "1111",
-          communityName: "Condominio Convive",
-          label: "201",
-          unitLabel: "18A",
-          description: "Subterráneo -2, puesto con cargador eléctrico EV habilitado.",
-          vehicleSize: "suv",
-          isCovered: true,
-          hasEvCharger: true,
-          hourlyRate: 2800,
-          minHours: 1,
-          ownerName: "María José Valenzuela",
-          quotedAmount: 2800 * hours,
-        },
-      ]);
+      // Una búsqueda fallida devuelve vacío y lo dice. Antes rellenaba con dos
+      // cupos inventados que el conductor intentaba reservar sin éxito.
+      setResults([]);
+      toast({
+        title: "No se pudo buscar",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
     } finally {
       setSearching(false);
     }
@@ -508,44 +542,28 @@ function EstacionamientosContent() {
     setBookingSpotId(spotId);
 
     try {
-      let bookingId = "";
-      try {
-        bookingId = await ParkingService.book(spotId, start, end);
-      } catch {
-        bookingId = `est-${Date.now()}`;
-      }
+      // Si la reserva falla hay que decirlo. Antes se capturaba el error y se
+      // seguía con un id inventado, así que el conductor veía "confirmada" una
+      // reserva que la base había rechazado.
+      const bookingId = await ParkingService.book(spotId, start, end);
+
+      // El pase se arma con la fila real: el código de acceso lo genera la base
+      // y es el que conserjería valida en la barrera. Uno inventado aquí no
+      // coincidiría con nada y el conductor se quedaría fuera.
+      const bookings = await ParkingService.getMyBookings();
+      setMyBookings(bookings);
+
+      const created = bookings.find((b) => b.id === bookingId);
+      if (created) setSelectedPassBooking(created);
 
       toast({
-        title: "Reserva confirmada con éxito",
-        description: `Estacionamiento ${spot.label}. Se ha generado tu pase digital de acceso.`,
+        title: "Reserva confirmada",
+        description: created
+          ? `Estacionamiento ${spot.label}. Tu código de portería es ${created.accessCode}.`
+          : `Estacionamiento ${spot.label}. Revisa el código en "Mis reservas".`,
         variant: "success",
       });
 
-      // Crear objeto de reserva para modal inmediato
-      const newBooking: ParkingBooking = {
-        id: bookingId,
-        communityId: user?.communityId || "11111111-1111-1111-1111-111111111111",
-        spotId,
-        spotLabel: spot.label,
-        unitLabel: spot.unitLabel || "101",
-        driverId: driver?.id || "driver-1",
-        driverName: driver?.fullName || user?.name || "Conductor",
-        driverPlate: driver?.plate || "AB-CD-12",
-        ownerId: "owner-1",
-        driverIsResident: true,
-        startsAt: start.toISOString(),
-        endsAt: end.toISOString(),
-        totalAmount: (spot.hourlyRate || 2000) * parkingDurationHours(start.toISOString(), end.toISOString()),
-        communityFeeAmount: 200,
-        ownerPayoutAmount: 1800,
-        status: "confirmed",
-        paymentStatus: "paid",
-        accessCode: `EST-${Math.floor(1000 + Math.random() * 9000)}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      setSelectedPassBooking(newBooking);
-      setMyBookings((prev) => [newBooking, ...prev]);
       await runSearch();
     } catch (error: unknown) {
       toast({
@@ -610,7 +628,11 @@ function EstacionamientosContent() {
   };
 
   const handleApplyToExpenses = async (amount: number) => {
-    await ParkingService.applyEarningsToExpenses(amount);
+    const result = await ParkingService.applyEarningsToExpenses(amount);
+    // El abono todavía no está conectado a billingService. Si el servicio dice
+    // que no se aplicó, hay que lanzar: si no, el dashboard celebra un descuento
+    // que nunca llegó al gasto común.
+    if (!result.success) throw new Error(result.message);
   };
 
   const start = parseLocalDateTime(startValue);
@@ -627,7 +649,46 @@ function EstacionamientosContent() {
     return true;
   });
 
+  /** Estado del conductor frente al condominio dueño de un cupo. */
+  const accessStateFor = (communityId: string): SpotAccessState => {
+    if (user?.communityId && communityId === user.communityId) return "resident";
+    const record = communityAccess.find((access) => access.communityId === communityId);
+    if (!record) return "none";
+    return record.status === "approved"
+      ? "approved"
+      : record.status === "pending"
+        ? "pending"
+        : "rejected";
+  };
+
+  const requestAccess = async (spot: ParkingSearchResult) => {
+    setRequestingAccessFor(spot.communityId);
+    try {
+      await ParkingService.requestCommunityAccess(spot.communityId);
+      toast({
+        title: "Solicitud enviada",
+        description: `La administración de ${spot.communityName} revisará tu vehículo.`,
+        variant: "success",
+      });
+      setCommunityAccess(await ParkingService.getMyCommunityAccess());
+    } catch (error: unknown) {
+      toast({
+        title: "No se pudo enviar la solicitud",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingAccessFor(null);
+    }
+  };
+
   const isAdmin = user?.role === "admin";
+  // Nombre real del condominio para el pase. Si el perfil no lo trae, se deja
+  // vacío en vez de rellenar con un edificio inventado.
+  const communityName =
+    (user as (typeof user & { condoName?: string; communityName?: string }) | null)?.condoName ||
+    (user as (typeof user & { condoName?: string; communityName?: string }) | null)?.communityName ||
+    "";
   const isConcierge = user?.role === "concierge";
 
   return (
@@ -744,9 +805,7 @@ function EstacionamientosContent() {
                 Vehículo verificado: <span className="font-mono font-bold">{driver.plate}</span>
                 {driver.vehicleDescription ? ` · ${driver.vehicleDescription}` : ""}
               </span>
-              <Tag tone={driver.verificationStatus === "verified" ? "sage" : "amber"} solid>
-                {DRIVER_VERIFICATION_LABELS[driver.verificationStatus]}
-              </Tag>
+              <Tag tone="sage" solid>Registrado</Tag>
               <Button
                 size="sm"
                 variant="ghost"
@@ -884,23 +943,10 @@ function EstacionamientosContent() {
             <ParkingMap
               levels={mapLevels}
               hours={hours}
-              onSelectSpot={(spot) => {
-                bookSpot({
-                  spotId: spot.spotId,
-                  communityId: user?.communityId || "1111",
-                  communityName: "Condominio Convive",
-                  label: spot.label,
-                  unitLabel: spot.unitLabel || "—",
-                  description: "Puesto seleccionado desde el mapa.",
-                  vehicleSize: spot.vehicleSize,
-                  isCovered: spot.isCovered,
-                  hasEvCharger: spot.hasEvCharger,
-                  hourlyRate: spot.hourlyRate,
-                  minHours: 1,
-                  ownerName: spot.ownerName || "Propietario",
-                  quotedAmount: spot.hourlyRate * hours,
-                });
-              }}
+              // Se pasa el cupo del mapa tal cual. Envolverlo en un
+              // ParkingSearchResult obligaba a inventar comunidad y tarifa; el
+              // precio real lo calcula la base al reservar.
+              onSelectSpot={(spot) => bookSpot(spot)}
             />
           )}
 
@@ -925,6 +971,9 @@ function EstacionamientosContent() {
                   hours={hours}
                   onBook={bookSpot}
                   booking={bookingSpotId === spot.spotId}
+                  accessState={accessStateFor(spot.communityId)}
+                  onRequestAccess={requestAccess}
+                  requestingAccess={requestingAccessFor === spot.communityId}
                 />
               ))}
             </div>
@@ -1062,15 +1111,151 @@ function EstacionamientosContent() {
         </div>
       )}
 
+      {activeTab === "admin" && isAdmin && (
+        <AccessRequestsInbox externalEnabled={Boolean(communitySettings?.externalEnabled)} />
+      )}
+
       {/* Digital Access Pass Modal */}
       {selectedPassBooking && (
         <ParkingAccessPassModal
           booking={selectedPassBooking}
           isOpen={Boolean(selectedPassBooking)}
           onClose={() => setSelectedPassBooking(null)}
-          buildingName="Condominio Convive"
-          buildingAddress="Av. Las Condes 12340, Santiago"
+          buildingName={communityName}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Bandeja de conductores externos que piden entrar al condominio.
+ *
+ * Sin esta pantalla el arriendo a externos no funciona: la reserva exige una
+ * solicitud aprobada y nadie más puede aprobarla.
+ */
+function AccessRequestsInbox({ externalEnabled }: { externalEnabled: boolean }) {
+  const { toast } = useToast();
+  const [requests, setRequests] = useState<ParkingAccessRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setRequests(await ParkingService.listAccessRequests());
+    } catch {
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const review = async (request: ParkingAccessRequest, approved: boolean) => {
+    if (!approved) {
+      const confirmed = window.confirm(
+        `¿Rechazar a ${request.fullName} (${request.plate})? Se cancelarán sus reservas futuras.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setBusyId(request.accessId);
+    try {
+      await ParkingService.reviewAccessRequest(request.accessId, approved);
+      toast({
+        title: approved ? "Conductor aprobado" : "Conductor rechazado",
+        description: approved
+          ? `${request.fullName} ya puede reservar estacionamientos en el condominio.`
+          : `${request.fullName} no podrá reservar y se cancelaron sus reservas futuras.`,
+        variant: "success",
+      });
+      await load();
+    } catch (error: unknown) {
+      toast({
+        title: "No se pudo procesar",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const pending = requests.filter((r) => r.status === "pending");
+
+  return (
+    <div className="max-w-xl rounded-2xl border border-subtle bg-surface p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Shield size={18} style={{ color: "var(--cc-copper)" }} />
+        <h3 className="text-[16px] font-semibold cc-text-primary">Conductores externos</h3>
+        {pending.length > 0 && <Tag tone="amber" solid>{pending.length} por revisar</Tag>}
+      </div>
+
+      {!externalEnabled && (
+        <p className="text-[12px] cc-text-secondary">
+          El arriendo a externos está desactivado. Las solicitudes quedan registradas, pero
+          ningún conductor externo podrá reservar mientras siga apagado.
+        </p>
+      )}
+
+      {loading ? (
+        <SkeletonList rows={2} />
+      ) : requests.length === 0 ? (
+        <EmptyState
+          icon={<Shield size={22} />}
+          title="Sin solicitudes"
+          description="Cuando un conductor externo pida acceso al condominio, aparecerá aquí con sus datos para que decidas."
+          tone="neutral"
+          dashed={false}
+        />
+      ) : (
+        <div className="space-y-3">
+          {requests.map((request) => (
+            <div key={request.accessId} className="rounded-xl border border-subtle p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[14px] font-medium cc-text-primary">{request.fullName}</span>
+                    <span className="font-mono text-[13px] cc-text-secondary">{request.plate}</span>
+                    <Tag tone={ACCESS_STATUS_TONES[request.status]} solid>
+                      {ACCESS_STATUS_LABELS[request.status]}
+                    </Tag>
+                  </div>
+                  <p className="mt-1 text-[12px] cc-text-secondary">
+                    {request.phone}
+                    {request.nationalId ? ` · ${request.nationalId}` : ""}
+                    {request.vehicleDescription ? ` · ${request.vehicleDescription}` : ""}
+                  </p>
+                </div>
+
+                {request.status === "pending" && (
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      size="sm"
+                      variant="copper"
+                      disabled={busyId === request.accessId}
+                      onClick={() => review(request, true)}
+                    >
+                      Aprobar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyId === request.accessId}
+                      onClick={() => review(request, false)}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
