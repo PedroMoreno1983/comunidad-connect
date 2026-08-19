@@ -83,6 +83,25 @@ export const SUGGESTED_HOURLY_RATES = [
 
 export const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
+/**
+ * Mensaje legible de un fallo del módulo.
+ *
+ * Los errores de Supabase/PostgREST son objetos planos { message, details, hint,
+ * code }, no instancias de Error, así que `err instanceof Error` daba false y la
+ * UI mostraba "Intenta nuevamente" ocultando el motivo real — que en los RPC de
+ * estacionamientos ya viene redactado para el usuario.
+ */
+export function parkingErrorMessage(err: unknown, fallback = 'Intenta nuevamente.'): string {
+    if (err instanceof Error && err.message) return err.message;
+    if (err && typeof err === 'object') {
+        const record = err as { message?: unknown; details?: unknown; hint?: unknown };
+        for (const value of [record.message, record.details, record.hint]) {
+            if (typeof value === 'string' && value.trim()) return value;
+        }
+    }
+    return fallback;
+}
+
 /** Convierte "YYYY-MM-DDTHH:mm" a Date válido o null si es inválido */
 export function parseLocalDateTime(value: string): Date | null {
     if (!value) return null;

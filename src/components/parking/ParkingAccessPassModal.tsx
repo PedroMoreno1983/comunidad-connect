@@ -26,6 +26,7 @@ import {
   calculateCommercialSavings,
   calculateParkingTimeStatus,
   formatParkingRange,
+  parkingErrorMessage,
   type ParkingTimeStatus,
 } from "@/lib/parking";
 import { ParkingService } from "@/lib/api";
@@ -119,7 +120,7 @@ export function ParkingAccessPassModal({
     } catch (err: unknown) {
       toast({
         title: "No se pudo extender",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(err),
         variant: "destructive",
       });
     } finally {

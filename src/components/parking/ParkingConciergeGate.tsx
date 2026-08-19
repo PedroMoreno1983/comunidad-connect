@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import {
   calculateParkingTimeStatus,
   formatParkingRange,
+  parkingErrorMessage,
 } from "@/lib/parking";
 import type { ParkingAccessLookup, ParkingBooking } from "@/lib/types";
 
@@ -59,7 +60,7 @@ export function ParkingConciergeGate({
     } catch (err: unknown) {
       toast({
         title: "Error en búsqueda",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -84,7 +85,7 @@ export function ParkingConciergeGate({
     } catch (err: unknown) {
       toast({
         title: "Error al registrar",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(err),
         variant: "destructive",
       });
     } finally {
