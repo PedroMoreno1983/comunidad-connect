@@ -1,6 +1,6 @@
 import { formatWhatsAppPhone } from '@/lib/whatsapp';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-import { findPaymentTemplateSid } from '@/lib/server/twilioContentTemplate';
+import { findTemplateSid, type WhatsAppTemplateKey } from '@/lib/server/twilioContentTemplate';
 
 type WhatsAppNotificationType = 'info' | 'alert' | 'success' | 'warning';
 
@@ -24,7 +24,7 @@ type WhatsAppNotificationInput = {
     communityId?: string | null;
     actorId?: string | null;
     metadata?: Record<string, unknown>;
-    templateKey?: 'payment_reminder';
+    templateKey?: WhatsAppTemplateKey;
     templateVariables?: Record<string, string>;
 };
 
@@ -86,7 +86,28 @@ async function auditWhatsApp(input: WhatsAppNotificationInput, result: WhatsAppN
     }
 }
 
-async function sendWhatsApp(toPhoneNumber: string, message: string, input: WhatsAppNotificationInput): Promise<TwilioMessageResponse> {
+/**
+ * WhatsApp solo acepta texto libre dentro de las 24 horas siguientes al último
+ * mensaje del residente. Fuera de esa ventana hay que usar plantilla aprobada:
+ * mandar texto libre devuelve el error 63016 de Twilio y el aviso nunca llega.
+ */
+const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function serviceWindowIsOpen(lastInboundAt: unknown): boolean {
+    if (typeof lastInboundAt !== 'string' || !lastInboundAt) return false;
+    const last = new Date(lastInboundAt).getTime();
+    if (Number.isNaN(last)) return false;
+    // Se deja un margen de 5 minutos: si la ventana está por cerrarse, es
+    // preferible la plantilla antes que arriesgar un envío rechazado.
+    return Date.now() - last < SERVICE_WINDOW_MS - 5 * 60 * 1000;
+}
+
+async function sendWhatsApp(
+    toPhoneNumber: string,
+    message: string,
+    input: WhatsAppNotificationInput,
+    windowOpen: boolean,
+): Promise<TwilioMessageResponse> {
     const { accountSid, authToken, from } = getTwilioConfig();
     if (!accountSid || !authToken || !from) {
         throw new Error('twilio_not_configured');
@@ -95,11 +116,25 @@ async function sendWhatsApp(toPhoneNumber: string, message: string, input: Whats
     const formattedTo = `whatsapp:${formatWhatsAppPhone(toPhoneNumber)}`;
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const params = new URLSearchParams({ From: from, To: formattedTo });
-    if (input.templateKey === 'payment_reminder') {
-        const contentSid = await findPaymentTemplateSid({ accountSid, authToken });
-        if (!contentSid) throw new Error('twilio_payment_template_not_configured');
+    // Con la ventana abierta el texto libre llega tal cual y sale más barato;
+    // cerrada, la unica via es la plantilla.
+    const templateKey: WhatsAppTemplateKey | null = input.templateKey
+        ? input.templateKey
+        : windowOpen ? null : 'community_notice';
+
+    if (templateKey) {
+        const contentSid = await findTemplateSid(templateKey, { accountSid, authToken });
+        if (!contentSid) {
+            throw new Error(
+                templateKey === 'payment_reminder'
+                    ? 'twilio_payment_template_not_configured'
+                    : 'twilio_notice_template_not_configured',
+            );
+        }
         params.set('ContentSid', contentSid);
-        params.set('ContentVariables', JSON.stringify(input.templateVariables || {}));
+        params.set('ContentVariables', JSON.stringify(
+            input.templateVariables || { '1': clean(input.title, 140) },
+        ));
     } else {
         params.set('Body', message);
     }
@@ -131,7 +166,7 @@ export async function sendWhatsAppNotificationForUser(input: WhatsAppNotificatio
     const admin = getSupabaseAdmin();
     const { data: profile, error } = await admin
         .from('profiles')
-        .select('id, phone_number, whatsapp_enabled, community_id')
+        .select('id, phone_number, whatsapp_enabled, community_id, whatsapp_last_inbound_at')
         .eq('id', userId)
         .maybeSingle();
 
@@ -154,7 +189,8 @@ export async function sendWhatsAppNotificationForUser(input: WhatsAppNotificatio
     }
 
     try {
-        const twilio = await sendWhatsApp(profile.phone_number, buildMessage(input), input);
+        const windowOpen = serviceWindowIsOpen(profile.whatsapp_last_inbound_at);
+        const twilio = await sendWhatsApp(profile.phone_number, buildMessage(input), input, windowOpen);
         const result: WhatsAppNotificationResult = {
             status: twilio.status === 'delivered' || twilio.status === 'read' ? 'sent' : 'queued',
             sid: twilio.sid,
@@ -164,7 +200,7 @@ export async function sendWhatsAppNotificationForUser(input: WhatsAppNotificatio
     } catch (error) {
         const reason = error instanceof Error ? clean(error.message, 180) : 'twilio_error';
         const result: WhatsAppNotificationResult = {
-            status: reason === 'twilio_not_configured' || reason === 'twilio_payment_template_not_configured' ? 'skipped' : 'failed',
+            status: reason.startsWith('twilio_not_configured') || reason.endsWith('_template_not_configured') ? 'skipped' : 'failed',
             reason,
         };
         await auditWhatsApp(input, result, communityId);

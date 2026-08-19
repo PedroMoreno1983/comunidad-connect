@@ -3,7 +3,7 @@ import { getWhatsAppConfigStatus } from "@/lib/whatsapp";
 import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
-import { ensurePaymentReminderTemplate } from "@/lib/server/twilioContentTemplate";
+import { ensureAllTemplates } from "@/lib/server/twilioContentTemplate";
 
 async function requirePlatformCreator(request: NextRequest, rateLimitKey: string) {
     const limited = enforceRateLimit(request, rateLimitKey, { limit: 10, windowMs: 60_000 });
@@ -39,8 +39,11 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response;
 
     try {
-        const template = await ensurePaymentReminderTemplate();
-        return NextResponse.json({ ok: true, template });
+        // Registra y manda a aprobacion todas las plantillas del modulo, no solo
+        // la de cobranza: sin la de avisos, las notificaciones generales fallan
+        // fuera de la ventana de 24 horas.
+        const templates = await ensureAllTemplates();
+        return NextResponse.json({ ok: true, templates });
     } catch (error) {
         const message = error instanceof Error ? error.message : "No se pudo configurar la plantilla.";
         return NextResponse.json({ error: message }, { status: 502 });
