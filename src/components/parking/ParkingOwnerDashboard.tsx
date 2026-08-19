@@ -28,6 +28,7 @@ import {
   VEHICLE_SIZE_LABELS,
   WEEKDAY_LABELS,
   SUGGESTED_HOURLY_RATES,
+  parkingErrorMessage,
 } from "@/lib/parking";
 import type {
   ParkingAvailabilityRule,
@@ -49,6 +50,8 @@ interface ParkingOwnerDashboardProps {
   onToggleSpot: (spotId: string, isAvailable: boolean) => Promise<void>;
   onDeleteSpot: (spotId: string) => Promise<void>;
   onApplyToExpenses: (amount: number) => Promise<void>;
+  /** El comité habilitó el arriendo a conductores ajenos al condominio. */
+  externalEnabled: boolean;
 }
 
 export function ParkingOwnerDashboard({
@@ -61,6 +64,7 @@ export function ParkingOwnerDashboard({
   onToggleSpot,
   onDeleteSpot,
   onApplyToExpenses,
+  externalEnabled,
 }: ParkingOwnerDashboardProps) {
   const { toast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -90,7 +94,7 @@ export function ParkingOwnerDashboard({
     hasEvCharger: false,
     hourlyRate: 2000,
     minHours: 1,
-    allowsExternal: true,
+    allowsExternal: false,
   });
 
   // Weekly availability builder state (Lun a Vie 08:30 a 18:30 by default)
@@ -171,7 +175,7 @@ export function ParkingOwnerDashboard({
     } catch (err: unknown) {
       toast({
         title: "Error al publicar",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -202,7 +206,7 @@ export function ParkingOwnerDashboard({
     } catch (err: unknown) {
       toast({
         title: "No se pudo aplicar",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -528,6 +532,30 @@ export function ParkingOwnerDashboard({
                   <span className="text-[11px] cc-text-secondary mt-1 block">
                     Define en qué piso se dibuja tu puesto en el plano del edificio.
                   </span>
+                </div>
+                <div className="col-span-2">
+                  <label
+                    className="flex items-start gap-3 p-3.5 rounded-xl border border-subtle"
+                    style={{ opacity: externalEnabled ? 1 : 0.55 }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 rounded border-subtle"
+                      disabled={!externalEnabled}
+                      checked={form.allowsExternal}
+                      onChange={(e) => setForm({ ...form, allowsExternal: e.target.checked })}
+                    />
+                    <div>
+                      <span className="text-[13px] font-semibold cc-text-primary block">
+                        Abrir también a conductores externos
+                      </span>
+                      <span className="text-[12px] cc-text-secondary">
+                        {externalEnabled
+                          ? "Además de tus vecinos, podrán reservarlo conductores de fuera aprobados por la administración."
+                          : "La administración de tu condominio no habilitó el arriendo a externos, así que tu puesto queda solo para vecinos."}
+                      </span>
+                    </div>
+                  </label>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider cc-text-tertiary block mb-1">

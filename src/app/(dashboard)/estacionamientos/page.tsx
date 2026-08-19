@@ -39,6 +39,7 @@ import {
   calculateCommercialSavings,
   formatMinuteRate,
   formatParkingRange,
+  parkingErrorMessage,
   getPresetSearchRange,
   nextHourInputValue,
   parkingDurationHours,
@@ -104,7 +105,7 @@ function DriverForm({
     } catch (error: unknown) {
       toast({
         title: "No se pudo guardar",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -520,7 +521,7 @@ function EstacionamientosContent() {
       setResults([]);
       toast({
         title: "No se pudo buscar",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -563,7 +564,7 @@ function EstacionamientosContent() {
     } catch (error: unknown) {
       toast({
         title: "No se pudo reservar",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -583,7 +584,7 @@ function EstacionamientosContent() {
     } catch (error: unknown) {
       toast({
         title: "No se pudo cancelar",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -669,7 +670,7 @@ function EstacionamientosContent() {
     } catch (error: unknown) {
       toast({
         title: "No se pudo enviar la solicitud",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -988,6 +989,7 @@ function EstacionamientosContent() {
           onToggleSpot={handleToggleSpot}
           onDeleteSpot={handleDeleteSpot}
           onApplyToExpenses={handleApplyToExpenses}
+          externalEnabled={Boolean(communitySettings?.externalEnabled)}
         />
       )}
 
@@ -1053,7 +1055,7 @@ function EstacionamientosContent() {
             <label className="flex items-start gap-3 p-3.5 rounded-xl border border-subtle bg-subtle/20 cursor-pointer">
               <input
                 type="checkbox"
-                checked={communitySettings?.externalEnabled ?? true}
+                checked={communitySettings?.externalEnabled ?? false}
                 onChange={(e) =>
                   setCommunitySettings((prev) =>
                     prev ? { ...prev, externalEnabled: e.target.checked } : null
@@ -1080,7 +1082,7 @@ function EstacionamientosContent() {
                 min={0}
                 max={50}
                 className={field}
-                value={communitySettings?.commissionPercent ?? 10}
+                value={communitySettings?.commissionPercent ?? 0}
                 onChange={(e) =>
                   setCommunitySettings((prev) =>
                     prev ? { ...prev, commissionPercent: Number(e.target.value) } : null
@@ -1172,7 +1174,7 @@ function AccessRequestsInbox({ externalEnabled }: { externalEnabled: boolean }) 
     } catch (error: unknown) {
       toast({
         title: "No se pudo procesar",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        description: parkingErrorMessage(error),
         variant: "destructive",
       });
     } finally {
