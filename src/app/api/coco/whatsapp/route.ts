@@ -166,6 +166,17 @@ export async function POST(req: NextRequest) {
                 return twiml('Tu sesion de CoCo debe verificarse nuevamente. Envia otro mensaje para comenzar.');
             }
 
+            // Este mensaje abre (o renueva) la ventana de 24 horas en la que
+            // WhatsApp permite responder con texto libre. Sin registrarlo, cada
+            // aviso posterior tendria que salir como plantilla.
+            void getSupabaseAdmin()
+                .from('profiles')
+                .update({ whatsapp_last_inbound_at: new Date().toISOString() })
+                .eq('id', currentProfile.id)
+                .then(({ error }) => {
+                    if (error) console.error('[whatsapp] No se pudo marcar la ventana de servicio', error.message);
+                });
+
             const verifiedContext = {
                 user_id: String(currentProfile.id),
                 unit_id: typeof currentProfile.unit_id === 'string' ? currentProfile.unit_id : undefined,
