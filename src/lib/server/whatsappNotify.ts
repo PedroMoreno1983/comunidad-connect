@@ -93,13 +93,18 @@ async function auditWhatsApp(input: WhatsAppNotificationInput, result: WhatsAppN
  */
 const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-function serviceWindowIsOpen(lastInboundAt: unknown): boolean {
+export function serviceWindowIsOpen(lastInboundAt: unknown, now = Date.now()): boolean {
     if (typeof lastInboundAt !== 'string' || !lastInboundAt) return false;
     const last = new Date(lastInboundAt).getTime();
     if (Number.isNaN(last)) return false;
     // Se deja un margen de 5 minutos: si la ventana está por cerrarse, es
     // preferible la plantilla antes que arriesgar un envío rechazado.
-    return Date.now() - last < SERVICE_WINDOW_MS - 5 * 60 * 1000;
+    const elapsed = now - last;
+    // Una marca futura (reloj desincronizado o dato corrupto) daría un elapsed
+    // negativo y dejaría la ventana abierta para siempre, con cada aviso
+    // rebotando en Twilio. Se trata como cerrada.
+    if (elapsed < 0) return false;
+    return elapsed < SERVICE_WINDOW_MS - 5 * 60 * 1000;
 }
 
 async function sendWhatsApp(

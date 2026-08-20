@@ -38,11 +38,25 @@ async function main() {
   const from = env("TWILIO_WHATSAPP_FROM") || "whatsapp:+14155238886";
   const to = process.env.TEST_PHONE || localEnv["TEST_PHONE"] || "";
 
-  console.log("=== Twilio WhatsApp Integration Diagnostic Tool ===");
-  console.log(`Account SID: ${accountSid ? "Configured" : "MISSING"}`);
-  console.log(`Auth Token:  ${authToken ? "Configured" : "MISSING"}`);
-  console.log(`From (Twilio Number): ${from}`);
-  
+  console.log("=== Diagnostico de WhatsApp (Twilio) ===");
+
+  // Verificar solo que la variable no este vacia no sirve: un placeholder pasa
+  // esa prueba y despues Twilio responde 401 sin explicar por que.
+  const sidOk = /^AC[0-9a-f]{32}$/i.test(accountSid);
+  const tokenOk = /^[0-9a-f]{32}$/i.test(authToken);
+  const fromOk = /^whatsapp:\+\d{8,15}$/.test(from);
+
+  console.log(`Account SID: ${!accountSid ? "AUSENTE" : sidOk ? "OK" : "FORMATO INVALIDO (debe ser 'AC' + 32 hex)"}`);
+  console.log(`Auth Token:  ${!authToken ? "AUSENTE" : tokenOk ? "OK" : "FORMATO INVALIDO (deben ser 32 caracteres hex)"}`);
+  console.log(`From:        ${from} ${fromOk ? "OK" : "<- debe ser 'whatsapp:+56XXXXXXXXX'"}`);
+
+  if (!sidOk || !tokenOk || !fromOk) {
+    console.error("\nX Las credenciales no tienen el formato de Twilio.");
+    console.error("  Copialas desde https://console.twilio.com (Account Info).");
+    console.error("  Mientras sigan asi, ningun envio va a funcionar.");
+    process.exit(1);
+  }
+
   if (!to) {
     console.error("\n❌ Error: Debes configurar TEST_PHONE en tu .env.local para realizar el envío.");
     console.log("Ejemplo: TEST_PHONE=+56912345678");
@@ -80,6 +94,17 @@ async function main() {
 
     if (!res.ok) {
       console.error(`\n❌ Twilio API Error (${res.status}):`, data.message || data);
+      // Los dos rechazos que mas confunden al configurar por primera vez.
+      if (String(data.code) === "63016") {
+        console.error("\n  Codigo 63016: fuera de la ventana de 24 horas.");
+        console.error("  Este script manda texto libre, que WhatsApp solo permite si el");
+        console.error("  destinatario te escribio en las ultimas 24 horas. Escribele primero");
+        console.error("  desde ese telefono al numero del negocio y vuelve a correrlo.");
+      }
+      if (String(data.code) === "63007" || String(data.code) === "21910") {
+        console.error("\n  El numero de TWILIO_WHATSAPP_FROM no esta registrado como");
+        console.error("  remitente de WhatsApp en Twilio (Messaging > Senders).");
+      }
       process.exit(1);
     }
 
