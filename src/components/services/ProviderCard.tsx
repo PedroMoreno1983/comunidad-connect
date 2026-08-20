@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { ServiceProvider } from "@/lib/types";
 import { ArrowRight, BadgeCheck, Star } from "lucide-react";
 import Link from "next/link";
@@ -31,12 +32,20 @@ export function ProviderCard({ provider, showCategory = false, compact = false }
             >
                 <div className="flex items-start gap-4">
                     <div className="relative shrink-0">
-                        <div
-                            className="grid h-20 w-20 place-items-center rounded-2xl text-2xl text-white"
-                            style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
-                        >
-                            {getInitials(provider.name)}
-                        </div>
+                        {provider.photo ? (
+                            <img
+                                src={provider.photo}
+                                alt={provider.name}
+                                className="h-20 w-20 rounded-2xl object-cover"
+                            />
+                        ) : (
+                            <div
+                                className="grid h-20 w-20 place-items-center rounded-2xl text-2xl text-white"
+                                style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
+                            >
+                                {getInitials(provider.name)}
+                            </div>
+                        )}
                         <span
                             className="absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full ring-2"
                             style={{ background: availability.tone, ["--tw-ring-color" as string]: "var(--cc-paper)" }}
