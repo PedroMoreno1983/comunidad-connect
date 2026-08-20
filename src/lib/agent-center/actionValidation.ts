@@ -122,6 +122,28 @@ export function validateAgentActionArgs(action: AgentAction): Record<string, unk
         };
     }
 
+    if (action.toolName === 'coco_action') {
+        // Puente al cerebro de CoCo. La clave de sesion NO se guarda en args: se
+        // deriva del perfil autenticado al ejecutar, para que un cliente no pueda
+        // apuntar a la sesion de otra persona. Aqui solo se validan los tool_use
+        // pendientes que la aprobacion confirmara.
+        const rawPending = Array.isArray(args.pending) ? args.pending : [];
+        if (!rawPending.length) throw new Error('La accion propuesta por CoCo no tiene pasos que ejecutar.');
+        const pending = rawPending.slice(0, 10).map((raw, index) => {
+            const step = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+            const toolUseId = typeof step.toolUseId === 'string' ? step.toolUseId.trim().slice(0, 100) : '';
+            if (!toolUseId) throw new Error(`Paso ${index + 1} de CoCo perdio su identificador de confirmacion.`);
+            return {
+                toolUseId,
+                name: typeof step.name === 'string' ? step.name.slice(0, 80) : '',
+                title: typeof step.title === 'string' ? step.title.slice(0, 140) : '',
+                summary: typeof step.summary === 'string' ? step.summary.slice(0, 400) : '',
+                input: step.input && typeof step.input === 'object' ? step.input as Record<string, unknown> : {},
+            };
+        });
+        return { pending, reply: typeof args.reply === 'string' ? args.reply.slice(0, 2000) : '' };
+    }
+
     if (action.toolName === 'run_mission') {
         const goal = typeof args.goal === 'string' ? args.goal.trim().slice(0, 280) : '';
         const rawSteps = Array.isArray(args.steps) ? args.steps : [];
