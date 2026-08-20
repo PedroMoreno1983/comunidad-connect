@@ -15,6 +15,7 @@ import { ModuleHeader } from "@/components/ui/ModuleHeader";
 import { Tag } from "@/components/cc/Tag";
 import { Button } from "@/components/cc/Button";
 import { providersService } from "@/lib/services/providersService";
+import { INTERNAL_SERVICE_PROVIDER_IDS } from "@/lib/config";
 import { DirectoryNeighbor, ServiceProvider } from "@/lib/types";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { getInitials } from "@/lib/utils/avatar";
@@ -71,7 +72,7 @@ export default function DirectoryPage() {
                 providersService.getAll(),
                 DirectoryService.getNeighbors(user),
             ]);
-            setProviders(allProviders);
+            setProviders(allProviders.filter(provider => !INTERNAL_SERVICE_PROVIDER_IDS.includes(provider.id)));
             setNeighbors(allNeighbors);
         } catch (error) {
             console.error("Error loading directory data:", error);
