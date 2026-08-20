@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Clock3, Search, Star, X } from "lucide-react";
@@ -156,12 +157,20 @@ export function ServicesCatalogClient({ categories, providers }: ServicesCatalog
                                 >
                                     {/* Avatar tipo foto */}
                                     <div className="relative shrink-0">
-                                        <div
-                                            className="grid h-24 w-24 place-items-center rounded-2xl text-3xl text-white sm:h-28 sm:w-28"
-                                            style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
-                                        >
-                                            {getInitials(provider.name)}
-                                        </div>
+                                        {provider.photo ? (
+                                            <img
+                                                src={provider.photo}
+                                                alt={provider.name}
+                                                className="h-24 w-24 rounded-2xl object-cover sm:h-28 sm:w-28"
+                                            />
+                                        ) : (
+                                            <div
+                                                className="grid h-24 w-24 place-items-center rounded-2xl text-3xl text-white sm:h-28 sm:w-28"
+                                                style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
+                                            >
+                                                {getInitials(provider.name)}
+                                            </div>
+                                        )}
                                         <span
                                             className="absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full ring-2"
                                             style={{ background: status.color, ["--tw-ring-color" as string]: "var(--cc-paper)" }}

@@ -187,13 +187,23 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                 <section className="overflow-hidden rounded-3xl border shadow-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
                     {/* "Foto" del proveedor */}
                     <div className="relative aspect-[4/3] w-full" style={{ background: visual.gradient }}>
-                        <visual.Icon className="absolute -bottom-8 right-2 h-40 w-40 text-white" style={{ opacity: 0.12 }} strokeWidth={1} />
-                        <span
-                            className="absolute inset-0 grid place-items-center text-7xl text-white"
-                            style={{ fontFamily: "var(--cc-font-display)" }}
-                        >
-                            {getInitials(provider.name)}
-                        </span>
+                        {provider.photo ? (
+                            <img
+                                src={provider.photo}
+                                alt={provider.name}
+                                className="absolute inset-0 h-full w-full object-cover"
+                            />
+                        ) : (
+                            <>
+                                <visual.Icon className="absolute -bottom-8 right-2 h-40 w-40 text-white" style={{ opacity: 0.12 }} strokeWidth={1} />
+                                <span
+                                    className="absolute inset-0 grid place-items-center text-7xl text-white"
+                                    style={{ fontFamily: "var(--cc-font-display)" }}
+                                >
+                                    {getInitials(provider.name)}
+                                </span>
+                            </>
+                        )}
                         <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold shadow-sm" style={{ color: availability.text }}>
                             <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
                             {availability.label}
