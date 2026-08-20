@@ -14,6 +14,7 @@ import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule 
 import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
 import { upgradeClarificationWithCoCo } from '@/lib/agent-center/conversationalFallback';
+import { buildCapabilitiesAction, isCapabilityOrGreeting } from '@/lib/agent-center/capabilities';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
@@ -816,6 +817,12 @@ async function inferActionUnenriched(message: string, profile: AgentProfile, his
 }
 
 async function resolveRawAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
+    // Saludos y preguntas por capacidades ("hola", "que puedes hacer") reciben una
+    // tarjeta curada e instantanea antes de gastar una llamada al planner/LLM.
+    if (isCapabilityOrGreeting(message)) {
+        return finalizeInferredAction(message, buildCapabilitiesAction(message));
+    }
+
     if (isIndividualDebtQuery(message)) {
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
