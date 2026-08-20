@@ -4,16 +4,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    Award,
     BadgeCheck,
     Briefcase,
     Calendar,
     CheckCircle,
     Clock,
     Mail,
-    MessageSquare,
+    MessageCircle,
     Phone,
-    Send,
     ShieldCheck,
     Star,
 } from "lucide-react";
@@ -30,58 +28,38 @@ import {
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { getInitials } from "@/lib/utils/avatar";
+import { getCategoryVisual } from "@/components/services/categoryVisuals";
 
 interface ProviderProfileClientProps {
     provider: ServiceProvider;
     reviews: Review[];
 }
 
-
-const CATEGORY_LABELS: Record<string, string> = {
-    plumbing: "Gasfiteria",
-    electrical: "Electricidad",
-    locksmith: "Cerrajeria",
-    cleaning: "Limpieza",
-    general: "Multiservicios",
-};
-
-
 function getAvailabilityConfig(availability: string) {
     if (availability === "available") {
-        return {
-            dot: "bg-emerald-500",
-            label: "Disponible hoy",
-            bg: "bg-success-bg",
-            text: "text-success-fg",
-        };
+        return { dot: "bg-emerald-500", label: "Disponible hoy", text: "#047857" };
     }
     if (availability === "busy") {
-        return {
-            dot: "bg-amber-500",
-            label: "Agenda ocupada",
-            bg: "bg-warning-bg",
-            text: "text-warning-fg",
-        };
+        return { dot: "bg-amber-500", label: "Agenda ocupada", text: "#B45309" };
     }
-    return {
-        dot: "bg-red-500",
-        label: "Sin cupos",
-        bg: "bg-danger-bg",
-        text: "text-danger-fg",
-    };
+    return { dot: "bg-red-500", label: "Sin cupos", text: "#B5524E" };
 }
 
-function ProviderProfileAvatar({ provider }: { provider: ServiceProvider }) {
-    const initials = getInitials(provider.name);
+function whatsappUrl(phone: string) {
+    return `https://wa.me/${phone.replace(/\D/g, "")}`;
+}
 
-    return (
-        <div
-            className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl sm:h-28 sm:w-28"
-            style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)", fontSize: 36 }}
-        >
-            {initials}
-        </div>
-    );
+function ratingBreakdown(reviews: Review[]) {
+    const counts = [0, 0, 0, 0, 0];
+    for (const review of reviews) {
+        const star = Math.min(5, Math.max(1, Math.round(review.rating)));
+        counts[star - 1] += 1;
+    }
+    return [5, 4, 3, 2, 1].map(star => ({
+        star,
+        count: counts[star - 1],
+        pct: reviews.length > 0 ? Math.round((counts[star - 1] / reviews.length) * 100) : 0,
+    }));
 }
 
 export function ProviderProfileClient({ provider, reviews }: ProviderProfileClientProps) {
@@ -94,7 +72,9 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     const { toast } = useToast();
     const router = useRouter();
     const availability = getAvailabilityConfig(provider.availability);
-    const categoryLabel = CATEGORY_LABELS[provider.category] || provider.category;
+    const visual = getCategoryVisual(provider.category);
+    const hasReviews = provider.reviewCount > 0;
+    const breakdown = ratingBreakdown(reviews);
 
     const handleRequestService = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -201,230 +181,293 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
     };
 
     return (
-        <>
-            <section className="rounded-[20px] border p-6 sm:p-7" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                <p className="mb-3 text-[10px] uppercase tracking-[0.16em] cc-text-tertiary">Red de proveedores de tu comunidad</p>
-                <span
-                    className="mb-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
-                    style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}
-                >
-                    <BadgeCheck className="h-3.5 w-3.5" />
-                    Perfil profesional verificado
-                </span>
-
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                        <ProviderProfileAvatar provider={provider} />
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="font-display text-3xl leading-none tracking-tight cc-text-primary md:text-4xl" style={{ fontFamily: "var(--cc-font-display)" }}>
-                                    {provider.name}
-                                </h1>
-                                {provider.verified && <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-sage)" }} />}
-                            </div>
-                            <p className="mt-2 text-sm cc-text-secondary">
-                                {categoryLabel} para comunidades residenciales
-                            </p>
-                            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm cc-text-secondary">
-                                <span className="inline-flex items-center gap-1.5">
-                                    <Star className="h-4 w-4" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
-                                    <strong className="font-mono cc-text-primary">{provider.rating}</strong>
-                                    ({provider.reviewCount} reseñas)
-                                </span>
-                                <span style={{ color: "var(--cc-line-strong)" }}>·</span>
-                                <span>{provider.yearsExperience} años de experiencia</span>
-                            </div>
-                        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_1fr]">
+            {/* Columna de reserva estilo Preply */}
+            <aside className="lg:sticky lg:top-24 lg:self-start">
+                <section className="overflow-hidden rounded-3xl border shadow-sm" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                    {/* "Foto" del proveedor */}
+                    <div className="relative aspect-[4/3] w-full" style={{ background: visual.gradient }}>
+                        <visual.Icon className="absolute -bottom-8 right-2 h-40 w-40 text-white" style={{ opacity: 0.12 }} strokeWidth={1} />
+                        <span
+                            className="absolute inset-0 grid place-items-center text-7xl text-white"
+                            style={{ fontFamily: "var(--cc-font-display)" }}
+                        >
+                            {getInitials(provider.name)}
+                        </span>
+                        <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold shadow-sm" style={{ color: availability.text }}>
+                            <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
+                            {availability.label}
+                        </span>
                     </div>
 
-                    <div className="hidden flex-wrap gap-2.5 lg:flex">
-                        <Button onClick={() => setIsRequestDialogOpen(true)} className="hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
+                    <div className="p-5">
+                        <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-sm cc-text-tertiary">Tarifa</p>
+                            <p className="text-2xl font-bold cc-text-primary">
+                                {provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}` : "A convenir"}
+                                {provider.hourlyRate ? <span className="text-sm font-normal cc-text-tertiary"> /hora</span> : null}
+                            </p>
+                        </div>
+
+                        <Button
+                            onClick={() => setIsRequestDialogOpen(true)}
+                            className="mt-4 h-12 w-full rounded-full text-[15px] font-semibold hover:opacity-90"
+                            style={{ backgroundColor: "var(--cc-ink)" }}
+                        >
                             <Calendar className="mr-2 h-4 w-4" />
                             Solicitar servicio
                         </Button>
-                        <a
-                            href={`tel:${provider.contactPhone}`}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium cc-text-primary transition hover:bg-[var(--cc-paper-warm)]"
-                            style={{ borderColor: "var(--cc-line-strong)" }}
-                        >
-                            <Phone className="h-4 w-4" />
-                            Llamar
-                        </a>
-                    </div>
-                </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                            <a
+                                href={`tel:${provider.contactPhone}`}
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border text-sm font-semibold cc-text-primary transition hover:bg-[var(--cc-paper-warm)]"
+                                style={{ borderColor: "var(--cc-line-strong)" }}
+                            >
+                                <Phone className="h-4 w-4" />
+                                Llamar
+                            </a>
+                            <a
+                                href={whatsappUrl(provider.contactPhone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition hover:bg-[rgba(5,150,105,0.08)]"
+                                style={{ borderColor: "#059669", color: "#047857" }}
+                            >
+                                <MessageCircle className="h-4 w-4" />
+                                WhatsApp
+                            </a>
+                        </div>
 
-                <div className="mt-6 flex flex-wrap gap-x-7 gap-y-3 border-t pt-5" style={{ borderColor: "var(--cc-line)" }}>
+                        <div className="mt-5 space-y-3 border-t pt-4 text-sm" style={{ borderColor: "var(--cc-line)" }}>
+                            <p className="flex items-center gap-3 cc-text-secondary">
+                                <Clock className="h-4 w-4 shrink-0" style={{ color: visual.accent }} />
+                                Suele responder en {provider.responseTime}
+                            </p>
+                            <a href={`tel:${provider.contactPhone}`} className="flex items-center gap-3 cc-text-secondary transition hover:cc-text-primary">
+                                <Phone className="h-4 w-4 shrink-0" style={{ color: visual.accent }} />
+                                {provider.contactPhone}
+                            </a>
+                            {provider.email && (
+                                <a href={`mailto:${provider.email}`} className="flex items-center gap-3 break-all cc-text-secondary transition hover:cc-text-primary">
+                                    <Mail className="h-4 w-4 shrink-0" style={{ color: visual.accent }} />
+                                    {provider.email}
+                                </a>
+                            )}
+                            {provider.verified && (
+                                <p className="flex items-center gap-3 cc-text-secondary">
+                                    <ShieldCheck className="h-4 w-4 shrink-0" style={{ color: "var(--cc-sage)" }} />
+                                    Identidad y datos verificados por la comunidad
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            </aside>
+
+            {/* Contenido principal */}
+            <main className="min-w-0 space-y-8">
+                <header>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <h1 className="text-3xl font-bold leading-tight tracking-tight cc-text-primary sm:text-4xl">
+                            {provider.name}
+                        </h1>
+                        {provider.verified && <BadgeCheck className="h-6 w-6" style={{ color: "var(--cc-sage)" }} />}
+                    </div>
+                    <p className="mt-2 text-base cc-text-secondary">
+                        {visual.label} · Comunidades residenciales
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm cc-text-secondary">
+                        {hasReviews ? (
+                            <span className="inline-flex items-center gap-1.5">
+                                <Star className="h-4 w-4" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
+                                <strong className="cc-text-primary">{provider.rating}</strong>
+                                <span className="cc-text-tertiary">{provider.reviewCount} reseña{provider.reviewCount === 1 ? "" : "s"}</span>
+                            </span>
+                        ) : (
+                            <span
+                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+                                style={{ background: visual.soft, color: visual.accent }}
+                            >
+                                <Star className="h-3.5 w-3.5" />
+                                Nuevo en la red
+                            </span>
+                        )}
+                        {provider.completedJobs > 0 && (
+                            <span className="inline-flex items-center gap-1.5">
+                                <Briefcase className="h-4 w-4 cc-text-tertiary" />
+                                {provider.completedJobs} trabajos realizados
+                            </span>
+                        )}
+                    </div>
+                </header>
+
+                {/* Barra de datos estilo Preply */}
+                <section
+                    className="grid grid-cols-2 divide-x rounded-2xl border py-5 sm:grid-cols-4"
+                    style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)", ["--tw-divide-opacity" as string]: "1" }}
+                >
                     {[
-                        { label: "Trabajos", value: provider.completedJobs },
-                        { label: "Respuesta", value: provider.responseTime },
-                        { label: "Tarifa", value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}/h` : "Cotiza" },
-                        { label: "Estado", value: availability.label },
+                        { value: provider.completedJobs > 0 ? String(provider.completedJobs) : "Nuevo", label: "Trabajos" },
+                        { value: provider.yearsExperience > 0 ? `${provider.yearsExperience}` : "—", label: "Años de experiencia" },
+                        { value: provider.responseTime, label: "Tiempo de respuesta" },
+                        { value: provider.hourlyRate ? `$${provider.hourlyRate.toLocaleString("es-CL")}` : "Cotiza", label: "Tarifa por hora" },
                     ].map(stat => (
-                        <div key={stat.label} className="flex items-baseline gap-1.5">
-                            <p className="text-xl leading-none cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>{stat.value}</p>
-                            <p className="text-[11px] cc-text-tertiary">{stat.label.toLowerCase()}</p>
+                        <div key={stat.label} className="px-4 text-center" style={{ borderColor: "var(--cc-line)" }}>
+                            <p className="truncate text-xl font-bold cc-text-primary">{stat.value}</p>
+                            <p className="mt-1 text-xs cc-text-tertiary">{stat.label}</p>
                         </div>
                     ))}
-                </div>
-            </section>
+                </section>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-                <main className="space-y-6">
-                    <section className="rounded-[18px] border border-default bg-surface p-6">
-                        <div className="mb-4 flex items-center gap-2">
-                            <Briefcase className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                            <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Acerca del proveedor</h2>
-                        </div>
-                        <p className="text-sm leading-7 cc-text-secondary">{provider.bio}</p>
-                    </section>
+                <section>
+                    <h2 className="text-xl font-bold cc-text-primary">Acerca de {provider.name.split(" ")[0]}</h2>
+                    {provider.bio ? (
+                        <p className="mt-3 text-[15px] leading-7 cc-text-secondary">{provider.bio}</p>
+                    ) : (
+                        <p className="mt-3 text-[15px] leading-7 cc-text-tertiary">
+                            Este proveedor aún no agregó una descripción. Solicita una cotización para conocer más sobre su trabajo.
+                        </p>
+                    )}
+                </section>
 
-                    <section className="rounded-[18px] border border-default bg-surface p-6">
-                        <div className="mb-4 flex items-center gap-2">
-                            <Award className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                            <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Habilidades principales</h2>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
+                {provider.specialties.length > 0 && (
+                    <section>
+                        <h2 className="text-xl font-bold cc-text-primary">Especialidades</h2>
+                        <div className="mt-3 flex flex-wrap gap-2">
                             {provider.specialties.map((specialty) => (
                                 <span
                                     key={specialty}
-                                    className="rounded-full px-4 py-2 text-sm font-medium"
-                                    style={{ background: "var(--cc-copper-tint)", color: "var(--cc-copper-deep)" }}
+                                    className="rounded-full border px-4 py-1.5 text-sm font-medium cc-text-secondary"
+                                    style={{ borderColor: "var(--cc-line-strong)" }}
                                 >
                                     {specialty}
                                 </span>
                             ))}
                         </div>
                     </section>
+                )}
 
-                    {provider.certifications.length > 0 && (
-                        <section className="rounded-[18px] border border-default bg-surface p-6">
-                            <div className="mb-4 flex items-center gap-2">
-                                <ShieldCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                                <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Credenciales</h2>
+                {provider.certifications.length > 0 && (
+                    <section>
+                        <h2 className="text-xl font-bold cc-text-primary">Credenciales</h2>
+                        <div className="mt-3 space-y-3">
+                            {provider.certifications.map((cert) => (
+                                <div key={cert} className="flex items-start gap-3">
+                                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: "var(--cc-sage-tint)", color: "var(--cc-sage)" }}>
+                                        <CheckCircle className="h-5 w-5" />
+                                    </span>
+                                    <span className="pt-2 text-sm font-semibold cc-text-secondary">{cert}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                <section>
+                    <h2 className="text-xl font-bold cc-text-primary">Reseñas</h2>
+
+                    {reviews.length > 0 && (
+                        <div className="mt-4 flex flex-col gap-6 rounded-2xl border p-6 sm:flex-row sm:items-center" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                            <div className="text-center sm:w-36">
+                                <p className="text-5xl font-bold cc-text-primary">{provider.rating}</p>
+                                <div className="mt-2 flex justify-center gap-0.5">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <Star
+                                            key={i}
+                                            className={`h-4 w-4 ${i < Math.round(provider.rating) ? "fill-amber-500 text-amber-500" : "cc-text-tertiary"}`}
+                                        />
+                                    ))}
+                                </div>
+                                <p className="mt-2 text-xs cc-text-tertiary">{reviews.length} reseña{reviews.length === 1 ? "" : "s"}</p>
                             </div>
-                            <div className="space-y-3">
-                                {provider.certifications.map((cert) => (
-                                    <div key={cert} className="flex items-start gap-3 rounded-xl border border-default bg-elevated p-4">
-                                        <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-success-fg" />
-                                        <span className="text-sm font-semibold cc-text-secondary">{cert}</span>
+                            <div className="flex-1 space-y-2">
+                                {breakdown.map(row => (
+                                    <div key={row.star} className="flex items-center gap-3 text-xs cc-text-secondary">
+                                        <span className="w-3 text-right font-semibold">{row.star}</span>
+                                        <Star className="h-3 w-3" style={{ color: "var(--cc-amber)", fill: "var(--cc-amber)" }} />
+                                        <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "var(--cc-paper-warm)" }}>
+                                            <div
+                                                className="h-full rounded-full"
+                                                style={{ width: `${row.pct}%`, background: "var(--cc-amber)" }}
+                                            />
+                                        </div>
+                                        <span className="w-8 cc-text-tertiary">{row.count}</span>
                                     </div>
                                 ))}
                             </div>
-                        </section>
+                        </div>
                     )}
 
-                    <section className="rounded-[18px] border border-default bg-surface p-6">
-                        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                                <h2 className="text-xl font-normal tracking-normal cc-text-primary" style={{ fontFamily: "var(--cc-font-display)" }}>Reseñas ({reviews.length})</h2>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => setIsReviewDialogOpen(true)}>
-                                Dejar resena
-                            </Button>
-                        </div>
+                    {/* Composer */}
+                    <button
+                        type="button"
+                        onClick={() => setIsReviewDialogOpen(true)}
+                        className="mt-5 flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition hover:bg-[var(--cc-paper-warm)]"
+                        style={{ borderColor: "var(--cc-line)" }}
+                    >
+                        <span
+                            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold"
+                            style={{ background: visual.soft, color: visual.accent, fontFamily: "var(--cc-font-display)" }}
+                        >
+                            Tú
+                        </span>
+                        <span className="text-sm cc-text-tertiary">¿Trabajó contigo? Comparte tu experiencia…</span>
+                    </button>
 
-                        <div className="space-y-4">
-                            {reviews.length > 0 ? (
-                                reviews.map((review) => (
-                                    <article key={review.id} className="rounded-xl border border-default bg-elevated p-4">
-                                        <div className="flex items-start gap-3">
-                                            {review.userAvatar ? (
-                                                <div className="relative h-11 w-11 overflow-hidden rounded-full">
-                                                    <img
-                                                        src={review.userAvatar}
-                                                        alt={review.userName}
-                                                        className="h-full w-full object-cover"
+                    <div className="mt-6 space-y-6">
+                        {reviews.length > 0 ? (
+                            reviews.map((review) => (
+                                <article key={review.id} className="flex items-start gap-3.5">
+                                    {review.userAvatar ? (
+                                        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full">
+                                            <img src={review.userAvatar} alt={review.userName} className="h-full w-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
+                                            style={{ background: visual.gradient, fontFamily: "var(--cc-font-display)" }}
+                                        >
+                                            {review.userName.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="text-sm font-bold cc-text-primary">{review.userName}</h3>
+                                            <div className="flex items-center gap-0.5">
+                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                    <Star
+                                                        key={i}
+                                                        className={`h-3.5 w-3.5 ${i < review.rating ? "fill-amber-500 text-amber-500" : "cc-text-tertiary"}`}
                                                     />
-                                                </div>
-                                            ) : (
-                                                <div
-                                                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold"
-                                                    style={{ background: "var(--cc-ink)", color: "var(--cc-copper-soft)", fontFamily: "var(--cc-font-display)" }}
-                                                >
-                                                    {review.userName.charAt(0)}
-                                                </div>
-                                            )}
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <h3 className="font-bold cc-text-primary">{review.userName}</h3>
-                                                    <div className="flex items-center gap-1">
-                                                        {Array.from({ length: 5 }).map((_, i) => (
-                                                            <Star
-                                                                key={i}
-                                                                className={`h-4 w-4 ${i < review.rating ? "fill-amber-500 text-amber-500" : "cc-text-tertiary"}`}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <p className="mt-1 text-xs font-semibold cc-text-tertiary">
-                                                    {review.serviceType} | {new Date(review.createdAt).toLocaleDateString("es-CL")}
-                                                </p>
-                                                <p className="mt-3 text-sm leading-6 cc-text-secondary">{review.comment}</p>
+                                                ))}
                                             </div>
                                         </div>
-                                    </article>
-                                ))
-                            ) : (
-                                <div className="rounded-xl border border-dashed border-default bg-elevated p-8 text-center text-sm cc-text-secondary">
-                                    Aun no hay resenas para este proveedor.
-                                </div>
-                            )}
-                        </div>
-                    </section>
-                </main>
-
-                <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-                    <section className="rounded-[18px] border border-default bg-surface p-5">
-                        <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${availability.bg} ${availability.text}`}>
-                            <span className={`h-2 w-2 rounded-full ${availability.dot}`} />
-                            <span className="text-xs font-bold">{availability.label}</span>
-                        </div>
-                        <Button onClick={() => setIsRequestDialogOpen(true)} className="w-full hover:opacity-90" style={{ backgroundColor: "var(--cc-copper)" }}>
-                            <Send className="mr-2 h-4 w-4" />
-                            Solicitar cotización
-                        </Button>
-                        <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: "var(--cc-line)" }}>
-                            <a href={`tel:${provider.contactPhone}`} className="flex items-center gap-3 text-sm cc-text-secondary transition hover:cc-text-primary">
-                                <Phone className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
-                                {provider.contactPhone}
-                            </a>
-                            {provider.email && (
-                                <a href={`mailto:${provider.email}`} className="flex items-center gap-3 break-all text-sm cc-text-secondary transition hover:cc-text-primary">
-                                    <Mail className="h-4 w-4 shrink-0" style={{ color: "var(--cc-copper)" }} />
-                                    {provider.email}
-                                </a>
-                            )}
-                            <p className="flex items-center gap-3 text-sm cc-text-secondary">
-                                <Clock className="h-4 w-4" style={{ color: "var(--cc-copper)" }} />
-                                Responde en {provider.responseTime}
+                                        <p className="mt-0.5 text-xs cc-text-tertiary">
+                                            {new Date(review.createdAt).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })}
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 cc-text-secondary">{review.comment}</p>
+                                    </div>
+                                </article>
+                            ))
+                        ) : (
+                            <p className="rounded-2xl border border-dashed p-8 text-center text-sm cc-text-tertiary" style={{ borderColor: "var(--cc-line-strong)" }}>
+                                Aún no hay reseñas. Sé el primero en compartir tu experiencia con {provider.name.split(" ")[0]}.
                             </p>
-                        </div>
-                    </section>
+                        )}
+                    </div>
+                </section>
+            </main>
 
-                    {provider.verified && (
-                        <section className="rounded-[18px] border p-5" style={{ borderColor: "rgba(156, 86, 54,0.20)", background: "var(--cc-copper-tint)" }}>
-                            <div className="mb-2.5 flex items-center gap-2.5">
-                                <BadgeCheck className="h-5 w-5" style={{ color: "var(--cc-copper)" }} />
-                                <h3 className="text-sm font-semibold cc-text-primary">Proveedor verificado</h3>
-                            </div>
-                            <p className="text-sm leading-6 cc-text-secondary">
-                                Perfil revisado para operar dentro de comunidades, con reputación y datos de contacto visibles.
-                            </p>
-                        </section>
-                    )}
-                </aside>
-            </div>
-
-            <div className="fixed bottom-4 left-4 right-20 z-30 flex gap-2 rounded-2xl border p-2 shadow-lg lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
-                <Button onClick={() => setIsRequestDialogOpen(true)} className="h-12 flex-1 hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
+            {/* Barra móvil fija */}
+            <div className="fixed bottom-4 left-4 right-20 z-30 flex gap-2 rounded-full border p-2 shadow-lg lg:hidden" style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper)" }}>
+                <Button onClick={() => setIsRequestDialogOpen(true)} className="h-12 flex-1 rounded-full hover:opacity-90" style={{ backgroundColor: "var(--cc-ink)" }}>
                     <Calendar className="mr-2 h-4 w-4" />
                     Solicitar servicio
                 </Button>
                 <a
                     href={`tel:${provider.contactPhone}`}
                     aria-label={`Llamar a ${provider.name}`}
-                    className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border cc-text-primary"
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-full border cc-text-primary"
                     style={{ borderColor: "var(--cc-line-strong)" }}
                 >
                     <Phone className="h-4 w-4" />
@@ -521,6 +564,6 @@ export function ProviderProfileClient({ provider, reviews }: ProviderProfileClie
                     </form>
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 }
