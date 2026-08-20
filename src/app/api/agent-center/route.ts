@@ -13,6 +13,7 @@ import { runAgentPlaybook } from '@/lib/agent-center/taskPlaybooks';
 import { getAgentTriggerRules, getPendingAgentProposals, updateAgentTriggerRule } from '@/lib/agent-center/proactiveEngine';
 import { getAgentPlannerModel, planAgentAction, type PlannerTurn } from '@/lib/agent-center/planner';
 import { getSession, saveSession, deleteSession } from '@/lib/coco/session-store';
+import { upgradeClarificationWithCoCo } from '@/lib/agent-center/conversationalFallback';
 import { buildMissionAction, detectMultiIntent, executeAgentMission, planAgentMission } from '@/lib/agent-center/orchestrator';
 import { researchCommunityQuestion } from '@/lib/agent-center/communityResearch';
 import { chileTodayISO } from '@/lib/agent-center/chileDate';
@@ -804,6 +805,17 @@ async function inferAction(message: string, profile: AgentProfile, history: Plan
 }
 
 async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
+    const action = await resolveRawAction(message, profile, history);
+    // Un cerebro, no dos: cuando el router operativo no reconoce una accion
+    // concreta y cae en clarify_intent (saludo, pregunta abierta, meta como
+    // "que puedes hacer"), en vez del stonewall generico delegamos en el mismo
+    // motor conversacional de CoCo para dar una respuesta real. Las acciones
+    // reconocidas (cobranza, comunicados, reservas, etc.) NO pasan por aqui:
+    // siguen su flujo de propuesta -> aprobacion -> bitacora intacto.
+    return upgradeClarificationWithCoCo(message, profile, action);
+}
+
+async function resolveRawAction(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
     if (isIndividualDebtQuery(message)) {
         return finalizeInferredAction(message, buildIndividualDebtAction(message, profile));
     }
