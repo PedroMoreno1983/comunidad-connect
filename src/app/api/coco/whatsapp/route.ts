@@ -13,8 +13,8 @@ import {
 } from '@/lib/coco/session-store';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { formatWhatsAppPhone, getWhatsAppConfigStatus } from '@/lib/whatsapp';
-import { PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
-import { verifyTwilioSignature } from '@/lib/security/twilioSignature';
+import { CANONICAL_SITE_URL, PUBLIC_SITE_URL, WHATSAPP_WEBHOOK_PATH } from '@/lib/config';
+import { publicRequestUrl, verifyTwilioSignatureForUrls } from '@/lib/security/twilioSignature';
 import { checkDistributedRateLimitBySubject } from '@/lib/security/rateLimit';
 
 function twiml(text: string): NextResponse {
@@ -111,9 +111,19 @@ export async function POST(req: NextRequest) {
 
     const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
     if (!authToken) console.error('[CoCo WhatsApp] TWILIO_AUTH_TOKEN no configurado');
-    const webhookUrl = `${PUBLIC_SITE_URL}${WHATSAPP_WEBHOOK_PATH}`;
-    if (!verifyTwilioSignature(req.headers.get('x-twilio-signature'), params, webhookUrl, authToken)) {
-        console.warn('[CoCo WhatsApp] Firma de Twilio invalida o ausente; peticion rechazada.');
+    // El sitio responde en el dominio propio y en el de Vercel. Twilio firma la
+    // URL que efectivamente invoco, asi que se valida contra ambas: comparar solo
+    // contra PUBLIC_SITE_URL rechazaba con 401 los mensajes legitimos que
+    // entraban por el otro dominio.
+    const candidateUrls = [
+        publicRequestUrl(req, WHATSAPP_WEBHOOK_PATH),
+        `${PUBLIC_SITE_URL}${WHATSAPP_WEBHOOK_PATH}`,
+        `${CANONICAL_SITE_URL}${WHATSAPP_WEBHOOK_PATH}`,
+    ];
+    if (!verifyTwilioSignatureForUrls(req.headers.get('x-twilio-signature'), params, candidateUrls, authToken)) {
+        console.warn(
+            `[CoCo WhatsApp] Firma invalida o ausente; peticion rechazada. URLs probadas: ${candidateUrls.filter(Boolean).join(', ')}`,
+        );
         return new NextResponse('', { status: 401 });
     }
 
