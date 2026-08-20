@@ -7,6 +7,15 @@ vi.mock('@/lib/coco/agent', () => ({
     askCoCo: (...args: unknown[]) => askCoCoMock(...args),
 }));
 
+// La sesion tambien se mockea: probamos que la memoria se persista de forma
+// segura, sin tocar Supabase.
+const getSessionMock = vi.fn();
+const saveSessionMock = vi.fn();
+vi.mock('@/lib/coco/session-store', () => ({
+    getSession: (...args: unknown[]) => getSessionMock(...args),
+    saveSession: (...args: unknown[]) => saveSessionMock(...args),
+}));
+
 import { upgradeClarificationWithCoCo, conversationalCoCoReply } from '@/lib/agent-center/conversationalFallback';
 
 const profile: AgentProfile = {
@@ -30,9 +39,30 @@ function clarifyAction(): AgentAction {
     };
 }
 
+function resetMocks() {
+    askCoCoMock.mockReset();
+    getSessionMock.mockReset();
+    saveSessionMock.mockReset();
+    getSessionMock.mockResolvedValue(null);
+    saveSessionMock.mockResolvedValue(undefined);
+}
+
 describe('upgradeClarificationWithCoCo', () => {
-    beforeEach(() => {
-        askCoCoMock.mockReset();
+    beforeEach(resetMocks);
+
+    it('NO sobreescribe la tarjeta curada de capacidades (args.capabilities) ni llama a CoCo', async () => {
+        const capabilities: AgentAction = {
+            agentKey: 'community',
+            toolName: 'clarify_intent',
+            args: { requestedText: 'hola', capabilities: true },
+            requiresConfirmation: false,
+            title: 'Esto es lo que puedo preparar para ti',
+            summary: 'lista curada...',
+            targetHref: '/agent-center',
+        };
+        const result = await upgradeClarificationWithCoCo('hola', profile, capabilities);
+        expect(result).toEqual(capabilities);
+        expect(askCoCoMock).not.toHaveBeenCalled();
     });
 
     it('reemplaza el stonewall de clarify_intent por la respuesta real de CoCo', async () => {
@@ -77,18 +107,40 @@ describe('upgradeClarificationWithCoCo', () => {
 });
 
 describe('conversationalCoCoReply', () => {
-    beforeEach(() => {
-        askCoCoMock.mockReset();
-    });
+    beforeEach(resetMocks);
 
-    it('mapea AgentProfile a CoCoUserContext y llama sin sesion', async () => {
-        askCoCoMock.mockResolvedValue({ reply: 'Hola, soy CoCo.', updatedHistory: [] });
+    it('carga la sesion del Agent Center, mapea el perfil y devuelve el reply', async () => {
+        const priorSession = { conversation: [{ role: 'user', content: 'antes' }], user_context: {} };
+        getSessionMock.mockResolvedValue(priorSession);
+        askCoCoMock.mockResolvedValue({ reply: 'Hola, soy CoCo.', updatedHistory: [{ role: 'assistant', content: 'Hola' }] });
         const reply = await conversationalCoCoReply('hola', profile);
         expect(reply).toBe('Hola, soy CoCo.');
         const [message, session, ctx] = askCoCoMock.mock.calls[0];
         expect(message).toBe('hola');
-        expect(session).toBeNull();
+        expect(session).toBe(priorSession); // usa memoria: la sesion cargada
         expect(ctx).toMatchObject({ user_id: 'user-1', role: 'admin', community_id: 'community-1', currentPage: '/agent-center' });
+        // clave de sesion propia del Agent Center, separada del chat
+        expect(getSessionMock).toHaveBeenCalledWith('agentcoco:web:user-1');
+    });
+
+    it('persiste memoria en turnos LIMPIOS (sin acciones pendientes)', async () => {
+        askCoCoMock.mockResolvedValue({ reply: 'ok', updatedHistory: [{ role: 'assistant', content: 'ok' }] });
+        await conversationalCoCoReply('cuenta cuantas unidades hay', profile);
+        expect(saveSessionMock).toHaveBeenCalledTimes(1);
+        expect(saveSessionMock).toHaveBeenCalledWith('agentcoco:web:user-1', expect.objectContaining({
+            conversation: [{ role: 'assistant', content: 'ok' }],
+        }));
+    });
+
+    it('NO persiste cuando CoCo deja una accion pendiente (evita bloquear el proximo mensaje)', async () => {
+        askCoCoMock.mockResolvedValue({
+            reply: 'Confirma para emitir el cobro.',
+            updatedHistory: [{ role: 'assistant', content: 'tool_use...' }],
+            pendingActions: [{ toolUseId: 't1', name: 'create_expense', input: {}, title: 'Cobro', summary: '...' }],
+        });
+        const reply = await conversationalCoCoReply('emite un cobro', profile);
+        expect(reply).toBe('Confirma para emitir el cobro.');
+        expect(saveSessionMock).not.toHaveBeenCalled();
     });
 
     it('devuelve cadena vacia ante un error en vez de propagarlo', async () => {
