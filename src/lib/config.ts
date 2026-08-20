@@ -17,6 +17,12 @@ export const SUPPORT_EMAIL = 'soporte@conviveconnect.com';
 export const WHATSAPP_WEBHOOK_PATH = '/api/coco/whatsapp';
 export const DEMO_COMMUNITY_ID = '11111111-1111-1111-1111-111111111111';
 
+// Proveedores internos del sistema (p. ej. la mesa de ayuda que usa Agent
+// Center para crear tickets). No deben aparecer en el directorio publico.
+export const INTERNAL_SERVICE_PROVIDER_IDS: readonly string[] = [
+    'b392cf17-0006-4000-8000-000000000010', // Mesa de ayuda interna
+];
+
 // Detectar si estamos corriendo en un dispositivo movil (Capacitor).
 export const isNative = typeof window !== 'undefined' &&
   window.location.protocol === 'capacitor:';

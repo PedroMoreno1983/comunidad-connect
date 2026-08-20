@@ -1,4 +1,5 @@
 import { providerServerService } from "@/lib/services/providerServerService";
+import { INTERNAL_SERVICE_PROVIDER_IDS } from "@/lib/config";
 import { CategoryClient } from "@/components/services/CategoryClient";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -55,7 +56,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         notFound();
     }
 
-    const categoryProviders = await providerServerService.getByCategory(category);
+    const categoryProviders = (await providerServerService.getByCategory(category))
+        .filter(provider => !INTERNAL_SERVICE_PROVIDER_IDS.includes(provider.id));
 
     return (
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
