@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { insertCommunityNotification } from '@/lib/server/data/notifications';
 import type { ServiceProviderCategory } from '@/lib/types';
 
 const VALID_CATEGORIES = ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'] as const satisfies readonly ServiceProviderCategory[];
 type ProviderCategory = ServiceProviderCategory;
-
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -41,10 +27,8 @@ function cleanStringList(value: unknown, maxItems = 12) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabaseUser = await getSupabaseUserClient();
-        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-        if (authError || !user) {
+        const profile = await getAuthenticatedAgentProfile();
+        if (!profile) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
@@ -65,17 +49,6 @@ export async function POST(request: NextRequest) {
         if (!VALID_CATEGORIES.includes(category)) {
             return NextResponse.json({ error: 'Categoria no valida' }, { status: 400 });
         }
-
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, name, email, role, community_id')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-            return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
-        }
-
 
         if (external && profile.role !== 'admin') {
             return NextResponse.json({ error: 'Solo administración puede registrar proveedores externos.' }, { status: 403 });
@@ -128,8 +101,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        await supabaseAdmin.from('notifications').insert({
-            user_id: profile.id,
+        await insertCommunityNotification(supabaseAdmin, {
+            userId: profile.id,
             type: 'success',
             category: 'service_provider',
             title: external ? 'Proveedor externo creado' : 'Perfil de técnico creado',
@@ -137,7 +110,7 @@ export async function POST(request: NextRequest) {
                 ? `El proveedor ${provider.name} quedó disponible en la red de la comunidad.`
                 : 'Tu perfil quedó registrado y pendiente de verificación.',
             link: `/services/provider/${provider.id}`,
-            community_id: profile.community_id,
+            communityId: profile.community_id,
         });
 
         await recordOperationEvent({

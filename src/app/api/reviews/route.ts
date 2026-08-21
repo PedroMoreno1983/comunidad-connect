@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
-
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { getServiceProviderById } from '@/lib/server/data/serviceProviders';
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -23,10 +9,8 @@ function cleanText(value: unknown, max: number) {
 
 export async function POST(req: NextRequest) {
     try {
-        const supabaseUser = await getSupabaseUserClient();
-        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-        if (authError || !user) {
+        const profile = await getAuthenticatedAgentProfile();
+        if (!profile) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
@@ -40,25 +24,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Datos de resena no validos' }, { status: 400 });
         }
 
-        const [{ data: profile, error: profileError }, { data: provider, error: providerError }] = await Promise.all([
-            supabaseAdmin
-                .from('profiles')
-                .select('id, name, email, community_id')
-                .eq('id', user.id)
-                .single(),
-            supabaseAdmin
-                .from('service_providers')
-                .select('id, name, community_id')
-                .eq('id', providerId)
-                .single(),
-        ]);
-
-        if (profileError || !profile) {
-            return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
-        }
-
-
-        if (providerError || !provider) {
+        const provider = await getServiceProviderById(supabaseAdmin, providerId);
+        if (!provider) {
             return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
         }
 

@@ -18,7 +18,8 @@ buena parte de lo que parecía trabajo de las siguientes.
 | `src/lib/services/*.ts` (dominio) | no existía | un archivo por dominio, p. ej. `parking.ts`, `concierge.ts` |
 | `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | eliminado |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
-| Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
+| Rutas API con Supabase inline | 51 de 78 | aún hay consultas únicas en línea; los duplicados vivos ya salieron |
+| Copias locales de `getSupabaseUserClient` en `/api` | 11 | 0 (queda la canónica en `agentIdentity.ts`) |
 | Tipos de datos inline en páginas de dashboard (filas/API/entidades) | ~40 + este corte | 0 en los dominios migrados |
 
 Lo que **no** es un problema, y conviene no "arreglar": ninguna página ni
@@ -125,7 +126,7 @@ servicio. `Priority` / `CategoryId` reutilizan `Announcement["priority"]` y
 de UI (`ParkingTab`, `FilterTab`, `ActiveLane`, `RoleFilter`, `SpotAccessState`)
 y el resumen local de publicación del marketplace se quedan en la página.
 
-## Etapa 5 — Rutas API (la más grande)
+## Etapa 5 — Rutas API (primer corte) ✅ hecha
 
 51 de 78 rutas construyen sus consultas a Supabase en línea y **ninguna** importa
 `@/lib/api`. Esta es la parte que de verdad cuesta, y por eso va al final.
@@ -133,17 +134,29 @@ y el resumen local de publicación del marketplace se quedan en la página.
 La razón por la que no se puede reutilizar `api.ts` tal cual es real, no
 histórica: `api.ts` usa el cliente de navegador y las rutas necesitan un cliente
 con la sesión del llamante (`getSupabaseUserClient`) o la service role key. Ya
-hay 35 rutas usando `getAuthenticatedAgentProfile`, así que el patrón existe.
+había 35 rutas usando `getAuthenticatedAgentProfile`.
 
-Propuesta: `src/lib/server/data/<dominio>.ts` con funciones que **reciben el
-cliente como parámetro**, igual que se hizo al arreglar `SearchService` (ver
-`src/lib/search.ts`). Eso permite que una misma consulta sirva a una ruta con
-sesión de usuario y a un job con service role, sin duplicarla y sin ambigüedad
-sobre qué permisos aplica.
+El patrón acordado es `src/lib/server/data/<dominio>.ts` con funciones que
+**reciben el cliente como parámetro**, igual que se hizo al arreglar
+`SearchService` (ver `src/lib/search.ts`). Eso permite que una misma consulta
+sirva a una ruta con sesión de usuario y a un job con service role, sin
+duplicarla y sin ambigüedad sobre qué permisos aplica.
 
-**No hacerlo de golpe.** Migrar solo cuando una consulta esté repetida en dos
-sitios o cuando ya haya que tocar la ruta por otro motivo. Una ruta corta con
-una consulta que nadie más usa no gana nada por mudarse.
+**No se migró de golpe.** Solo se extrajo lo que estaba repetido en dos sitios:
+
+- `getAuthenticatedAgentProfile` reemplaza las 11 copias locales de
+  `getSupabaseUserClient()` en rutas API. Sin perfil o sin sesión ahora es 401,
+  alineado con el resto de rutas (antes esas copias devolvían 403 si faltaba el
+  perfil).
+- `createPollWithOptions` unifica crear votación + opciones + rollback entre
+  `POST /api/polls` y la tool `create_poll` de CoCo.
+- `insertCommunityNotification(s)` concentra el insert a `notifications`.
+- Casos CoCo, solicitudes de servicio y lookup de proveedores dejan de repetir
+  el fetch/update entre sus rutas.
+
+**Aún no en esta etapa:** una ruta corta con una consulta que nadie más usa no
+gana nada por mudarse. El resto de inserts (finanzas, Agent Center, export de
+privacidad) se mueven cuando haya que tocar esos flujos.
 
 ---
 

@@ -1,44 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { timingSafeEqual } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceDistributedRateLimit, enforceRateLimit } from "@/lib/security/rateLimit";
-
-async function getSupabaseUserClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
-}
+import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
+import { insertCommunityNotification } from "@/lib/server/data/notifications";
 
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "solidarity.tasks.get", { limit: 100, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
 
     const { data: tasks, error: tasksError } = await supabaseAdmin
@@ -71,21 +48,12 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
 
     const { taskId } = await request.json();
@@ -115,7 +83,7 @@ export async function POST(request: NextRequest) {
       .from("solidarity_tasks")
       .update({
         status: "reserved",
-        reserved_by: user.id,
+        reserved_by: profile.id,
         reserved_at: new Date().toISOString()
       })
       .eq("id", taskId)
@@ -143,21 +111,12 @@ export async function PUT(request: NextRequest) {
   if (limited) return limited;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id, role, name")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
 
     // Staff check: only admin or concierge can verify tasks
@@ -199,7 +158,7 @@ export async function PUT(request: NextRequest) {
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
-        verified_by: user.id
+        verified_by: profile.id
       })
       .eq("id", taskId);
 
@@ -234,16 +193,14 @@ export async function PUT(request: NextRequest) {
 
     // 4. Notify worker
     if (task.reserved_by) {
-      const { error: notifyError } = await supabaseAdmin
-        .from("notifications")
-        .insert({
-          user_id: task.reserved_by,
+      const { error: notifyError } = await insertCommunityNotification(supabaseAdmin, {
+          userId: task.reserved_by,
           type: "success",
           category: "reservation",
           title: "Horas de retribución verificadas",
           body: `Se han verificado tus ${task.hours} horas de retribución por la tarea "${task.title}". ¡Gracias por tu aporte a la comunidad!`,
           link: "/expenses/solidaridad",
-          community_id: profile.community_id
+          communityId: profile.community_id
         });
 
       if (notifyError) {
