@@ -14,12 +14,12 @@ buena parte de lo que parecía trabajo de las siguientes.
 
 | Métrica | Antes de la etapa 0 | Ahora |
 |---|---|---|
-| `src/lib/api.ts` | 3.113 líneas, 22 servicios | barrel de reexports (~30 líneas, 21 servicios) |
-| `src/lib/services/*.ts` (dominio) | no existía | un archivo por dominio, p. ej. `parking.ts` |
-| `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | 424 líneas, 6 servicios |
+| `src/lib/api.ts` | 3.113 líneas, 22 servicios | barrel de reexports (~30 líneas) |
+| `src/lib/services/*.ts` (dominio) | no existía | un archivo por dominio, p. ej. `parking.ts`, `concierge.ts` |
+| `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | eliminado |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
 | Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
-| Tipos definidos fuera de `types.ts` | 171 en 92 archivos | 171 en 92 archivos |
+| Tipos definidos fuera de `types.ts` | 171 en 92 archivos | 168 en 91 archivos |
 
 Lo que **no** es un problema, y conviene no "arreglar": ninguna página ni
 componente llama a Supabase directamente, y no hay un solo `any` en `src/`. Esas
@@ -73,18 +73,21 @@ siendo "un solo lugar canónico y ninguna consulta suelta en las páginas", no
 **Riesgo:** bajo. Fue mover bloques y reexportar; `tsc` cubre importaciones
 que se queden cortas.
 
-## Etapa 3 — Disolver `supabaseServices.ts`
+## Etapa 3 — Disolver `supabaseServices.ts` ✅ hecha
 
-Los 6 servicios que quedan (`CondoFee`, `Invitation`, `Visitor`, `Package`,
-`Concierge`, `Social`) **no tienen equivalente en `api.ts`**: no son duplicados,
-solo están en el archivo equivocado. Con la etapa 2 hecha, cada uno se mueve a
-su dominio (`services/finanzas.ts`, `services/conserjeria.ts`,
-`services/social.ts`) y el archivo desaparece.
+Los 6 servicios que quedaban (`CondoFee`, `Invitation`, `Visitor`, `Package`,
+`Concierge`, `Social`) **no tenían equivalente en `api.ts`**: no eran
+duplicados, solo estaban en el archivo equivocado. Cada uno vive ahora en su
+dominio (`expenses.ts`, `concierge.ts`, `social.ts`) y se reexporta desde el
+barrel. `supabaseServices.ts` desapareció.
 
-Aquí también van los tres tipos que hoy viven ahí y deberían estar en
-`types.ts`: `ConciergeVisitorRow`, `ConciergePackageRow` y `ConciergeCaseRow`.
+Los tres tipos de filas del panel de conserje
+(`ConciergeVisitorRow`, `ConciergePackageRow`, `ConciergeCaseRow`) pasaron a
+`types.ts`. Las 10 importaciones que apuntaban al archivo viejo ahora usan
+`@/lib/api` o `@/lib/types`.
 
-**Riesgo:** bajo. Son 10 importaciones que actualizar.
+**Riesgo:** bajo. Fue mover bloques y actualizar importaciones; `tsc` cubre
+las que se queden cortas.
 
 ## Etapa 4 — Tipos a `types.ts`
 

@@ -3,7 +3,7 @@
 import { GeneratedInvitation, QRInvitationGenerator } from "@/components/resident/QRInvitationGenerator";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/authContext";
-import { InvitationService } from "@/lib/services/supabaseServices";
+import { InvitationService } from "@/lib/api";
 import {
     QrCode, Clock, Share2,
     ShieldCheck, History

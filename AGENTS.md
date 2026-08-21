@@ -131,7 +131,7 @@ Services existentes:
 - `PollsService` — Votaciones
 - `ExpensesService` — Gastos comunes (pagos via Haulmer, pendiente de permisos)
 - `AnnouncementsService` — Anuncios del feed
-- `ParkingService`, `SupermarketGroupService`, `AdminDashboardService`, y el resto del barrel — ver `src/lib/api.ts`
+- `ParkingService`, `SupermarketGroupService`, `AdminDashboardService`, `ConciergeService`, `SocialService`, y el resto del barrel — ver `src/lib/api.ts`
 
 ---
 

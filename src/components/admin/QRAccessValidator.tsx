@@ -5,7 +5,7 @@ import { CheckCircle2, KeyRound, ShieldCheck, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { VisitorService } from "@/lib/services/supabaseServices";
+import { VisitorService } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { VisitorLog } from "@/lib/types";
 

@@ -8,13 +8,16 @@ import { Eyebrow } from "@/components/cc/Eyebrow";
 import { KpiCard } from "@/components/cc/KpiCard";
 import { Tag as CcTag } from "@/components/cc/Tag";
 import { useAuth } from "@/lib/authContext";
-import { ConciergeService, ConciergeVisitorRow, ConciergePackageRow, ConciergeCaseRow } from "@/lib/services/supabaseServices";
+import { ConciergeService } from "@/lib/api";
 import type {
+    ConciergeCaseRow,
     ConciergeHandoverForm,
     ConciergeOperationEvent,
     ConciergeOperationsResponse,
+    ConciergePackageRow,
     ConciergeQuickActionProps,
     ConciergeShiftEvent,
+    ConciergeVisitorRow,
 } from "@/lib/types";
 
 function timeLabel(value?: string | null) {

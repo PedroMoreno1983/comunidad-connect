@@ -706,6 +706,35 @@ export interface CreatePackageInput {
   communityId: string;
 }
 
+export interface ConciergeVisitorRow {
+  id: string;
+  visitor_name?: string | null;
+  unit_id?: string | null;
+  entry_time?: string | null;
+  exit_time?: string | null;
+  is_qr?: boolean | null;
+  units?: { number?: string | null } | null;
+}
+
+export interface ConciergePackageRow {
+  id: string;
+  recipient_unit_id?: string | null;
+  description?: string | null;
+  received_at?: string | null;
+  status?: string | null;
+  picked_up_at?: string | null;
+  units?: { number?: string | null } | null;
+}
+
+export interface ConciergeCaseRow {
+  id: string;
+  title?: string | null;
+  category?: string | null;
+  urgency?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+}
+
 export interface PackageSummaryCardProps {
   label: string;
   value: number;

@@ -1,71 +1,22 @@
+/**
+ * Conserjería: invitaciones QR, visitas, encomiendas y resumen del turno.
+ *
+ * Extraído de `src/lib/services/supabaseServices.ts`. Se importa desde
+ * `@/lib/api`. Ver docs/deuda-arquitectonica.md.
+ */
+
 import { supabase } from '../supabase';
-import {
-    CreatePackageInput, Package as CommunityPackage, PackageDatabaseRow, PackageUnitLookupRow, VisitorLogDatabaseRow
+import type {
+    ConciergeCaseRow,
+    ConciergePackageRow,
+    ConciergeVisitorRow,
+    CreatePackageInput,
+    Package as CommunityPackage,
+    PackageDatabaseRow,
+    PackageUnitLookupRow,
+    VisitorLogDatabaseRow,
 } from '../types';
-export const CondoFeeService = {
-    async getAll() {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .order('month', { ascending: false });
 
-        if (error) throw error;
-
-        const expenses = data || [];
-        const unitIds = Array.from(new Set(expenses.map((expense: { unit_id?: string }) => expense.unit_id).filter(Boolean)));
-
-        if (unitIds.length === 0) {
-            return expenses.map((expense: { unit_id?: string }) => ({
-                ...expense,
-                units: {
-                    number: expense.unit_id || 'Sin unidad',
-                    tower: 'A',
-                },
-            }));
-        }
-
-        const { data: units, error: unitsError } = await supabase
-            .from('units')
-            .select('id, number, unit_number, tower')
-            .in('id', unitIds);
-
-        if (unitsError) {
-            console.warn('[CondoFeeService] Units lookup unavailable, using unit ids as labels:', unitsError.message || unitsError);
-        }
-
-        type UnitLookup = { id: string; number?: string; unit_number?: string; tower?: string };
-        const unitsById = new Map<string, UnitLookup>(
-            ((units || []) as UnitLookup[]).map(unit => [unit.id, unit])
-        );
-
-        return expenses.map((expense: { unit_id?: string }) => {
-            const unit = expense.unit_id ? unitsById.get(expense.unit_id) : null;
-            return {
-                ...expense,
-                units: {
-                    number: unit?.number || unit?.unit_number || expense.unit_id || 'Sin unidad',
-                    tower: unit?.tower || 'A',
-                },
-            };
-        });
-    },
-
-    async markAsPaid(expenseId: string) {
-        const { error } = await supabase
-            .from('expenses')
-            .update({
-                status: 'paid',
-                paid_at: new Date().toISOString(),
-            })
-            .eq('id', expenseId);
-
-        if (error) throw error;
-    }
-};
-
-// ==========================================
-// QR Invitations Service
-// ==========================================
 export const InvitationService = {
     async getByResident(residentId: string) {
         const { data, error } = await supabase
@@ -107,9 +58,6 @@ export const InvitationService = {
     },
 };
 
-// ==========================================
-// Visitor & Package Services (Concierge)
-// ==========================================
 export const VisitorService = {
     async getAll(): Promise<VisitorLogDatabaseRow[]> {
         const { data, error } = await supabase
@@ -271,35 +219,6 @@ export const PackageService = {
     },
 };
 
-export interface ConciergeVisitorRow {
-    id: string;
-    visitor_name?: string | null;
-    unit_id?: string | null;
-    entry_time?: string | null;
-    exit_time?: string | null;
-    is_qr?: boolean | null;
-    units?: { number?: string | null } | null;
-}
-
-export interface ConciergePackageRow {
-    id: string;
-    recipient_unit_id?: string | null;
-    description?: string | null;
-    received_at?: string | null;
-    status?: string | null;
-    picked_up_at?: string | null;
-    units?: { number?: string | null } | null;
-}
-
-export interface ConciergeCaseRow {
-    id: string;
-    title?: string | null;
-    category?: string | null;
-    urgency?: string | null;
-    status?: string | null;
-    created_at?: string | null;
-}
-
 export const ConciergeService = {
     async getDashboardOverview(): Promise<{
         visitors: ConciergeVisitorRow[];
@@ -338,88 +257,4 @@ export const ConciergeService = {
             cases: casesRes.data || [],
         };
     },
-};
-export const SocialService = {
-    async uploadPostImage(userId: string, file: File): Promise<string> {
-        const ext = file.name.split('.').pop() || 'jpg';
-        const path = `posts/${userId}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-            .from('social-images')
-            .upload(path, file, { upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('social-images')
-            .getPublicUrl(path);
-
-        return publicUrl;
-    },
-
-    async getPosts() {
-        const { data, error } = await supabase
-            .from('social_posts')
-            .select(`
-                *,
-                profiles:author_id (name, avatar_url, unit_id),
-                comments:social_comments(count)
-            `)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        // Transform the nested comments count
-        return data?.map((post: { comments?: { count: number }[] } & Record<string, unknown>) => ({
-            ...post,
-            comments_count: (post.comments && post.comments.length > 0) ? post.comments[0].count : 0
-        }));
-    },
-
-    async createPost(post: { author_id: string; content: string; image_url?: string }) {
-        const { data, error } = await supabase
-            .from('social_posts')
-            .insert(post)
-            .select(`
-                *,
-                profiles:author_id (name, avatar_url, unit_id)
-            `)
-            .single();
-
-        if (error) throw error;
-        return { ...data, comments_count: 0 };
-    },
-
-    async likePost(postId: string) {
-        // Increment likes count via rpc or simple update if RLS allows
-        const { error } = await supabase.rpc('increment_post_likes', { post_id: postId });
-        if (error) throw error;
-    },
-
-    async getComments(postId: string) {
-        const { data, error } = await supabase
-            .from('social_comments')
-            .select(`
-                *,
-                profiles:author_id (name, avatar_url)
-            `)
-            .eq('post_id', postId)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
-        return data;
-    },
-
-    async createComment(comment: { post_id: string; author_id: string; content: string }) {
-        const { data, error } = await supabase
-            .from('social_comments')
-            .insert(comment)
-            .select(`
-                *,
-                profiles:author_id (name, avatar_url)
-            `)
-            .single();
-
-        if (error) throw error;
-        return data;
-    }
 };

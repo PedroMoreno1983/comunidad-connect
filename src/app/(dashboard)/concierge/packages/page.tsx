@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/lib/authContext";
-import { PackageService } from "@/lib/services/supabaseServices";
-import { WaterService } from "@/lib/api";
+import { PackageService, WaterService } from "@/lib/api";
 import {
     Package as PackageIcon, Check, Clock, Plus,
     CheckCircle2, Package2, Search, Scan,

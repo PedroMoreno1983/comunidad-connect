@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
-import { CondoFeeService } from "@/lib/services/supabaseServices";
+import { CondoFeeService } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { CreditCard, CheckCircle2, Clock, AlertCircle, Mail, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";

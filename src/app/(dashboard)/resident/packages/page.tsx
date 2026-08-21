@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, Package as PackageIcon } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { useAuth } from "@/lib/authContext";
-import { PackageService } from "@/lib/services/supabaseServices";
+import { PackageService } from "@/lib/api";
 import type { Package as CommunityPackage, PackageSummaryCardProps } from "@/lib/types";
 
 function receivedLabel(value: string) {
