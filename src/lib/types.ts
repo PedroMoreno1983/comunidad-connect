@@ -799,19 +799,6 @@ export interface ExpenseRecord {
   paidAt?: string;
 }
 
-export interface ResidentFinanceExpense {
-  id: string;
-  unit_id: string;
-  month: string;
-  amount: number;
-  status: 'pending' | 'paid' | 'overdue';
-  due_date: string;
-  paid_at?: string;
-  units?: {
-    number: string;
-  };
-}
-
 export type HaulmerFeeMode = 'base_percent' | 'mixed';
 
 export interface HaulmerTariffRange {
