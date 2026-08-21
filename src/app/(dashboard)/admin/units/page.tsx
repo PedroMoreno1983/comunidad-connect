@@ -11,21 +11,9 @@ import { ModuleHeader, ModuleStat } from "@/components/ui/ModuleHeader";
 import { useToast } from "@/components/ui/Toast";
 import { WaterService } from "@/lib/api";
 import { equalSplitPermille } from "@/lib/finance/prorration";
-import { Unit } from "@/lib/types";
+import type { UnitAssignmentProfile, UnitWithResident } from "@/lib/services/water";
 
-interface Profile {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-}
-
-type UnitRow = Unit & {
-    profiles?: { name: string; email: string } | null;
-    share_permille?: number | string | null;
-};
-
-function getResidentName(unit: UnitRow) {
+function getResidentName(unit: UnitWithResident) {
     return unit.profiles?.name || unit.profiles?.email || "";
 }
 
@@ -33,7 +21,7 @@ function getResidentName(unit: UnitRow) {
 const TOTAL_PERMILLE = 1000;
 
 /** Lee la alícuota cruda (share_permille, snake_case desde la BD) como número o null. */
-function readPermille(unit: UnitRow): number | null {
+function readPermille(unit: UnitWithResident): number | null {
     const raw = unit.share_permille;
     if (raw === null || raw === undefined || raw === "") return null;
     const n = Number(raw);
@@ -57,8 +45,8 @@ function parsePermille(raw: string): number | null | undefined {
 
 export default function UnitsPage() {
     const { toast } = useToast();
-    const [units, setUnits] = useState<UnitRow[]>([]);
-    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [units, setUnits] = useState<UnitWithResident[]>([]);
+    const [profiles, setProfiles] = useState<UnitAssignmentProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
 
@@ -72,7 +60,7 @@ export default function UnitsPage() {
     const [equalizing, setEqualizing] = useState(false);
 
     const [isAssignOpen, setIsAssignOpen] = useState(false);
-    const [selectedUnit, setSelectedUnit] = useState<UnitRow | null>(null);
+    const [selectedUnit, setSelectedUnit] = useState<UnitWithResident | null>(null);
     const [selectedResident, setSelectedResident] = useState("");
     const [assigning, setAssigning] = useState(false);
 
@@ -83,10 +71,10 @@ export default function UnitsPage() {
                 WaterService.getUnits(),
                 WaterService.getProfiles(),
             ]);
-            const rows = unitsData as UnitRow[];
+            const rows = unitsData;
             setUnits(rows);
             setPermilleDrafts(Object.fromEntries(rows.map(unit => [unit.id, fmtPermille(readPermille(unit))])));
-            setProfiles(profilesData as Profile[]);
+            setProfiles(profilesData);
         } catch (error) {
             console.error("Error loading units:", error);
             toast({
@@ -195,7 +183,7 @@ export default function UnitsPage() {
     }
 
     // Guarda la alícuota de una unidad al salir del campo, solo si cambió.
-    async function handleSaveAlicuota(unit: UnitRow) {
+    async function handleSaveAlicuota(unit: UnitWithResident) {
         const draft = permilleDrafts[unit.id] ?? "";
         const parsed = parsePermille(draft);
         const current = readPermille(unit);
@@ -240,7 +228,7 @@ export default function UnitsPage() {
         }
     }
 
-    const openAssign = (unit: UnitRow) => {
+    const openAssign = (unit: UnitWithResident) => {
         setSelectedUnit(unit);
         const matchingProfile = profiles.find(profile => profile.email === unit.profiles?.email);
         setSelectedResident(matchingProfile?.id || "");

@@ -3,9 +3,10 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import type { ServiceProviderCategory } from '@/lib/types';
 
-const VALID_CATEGORIES = ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'] as const;
-type ProviderCategory = typeof VALID_CATEGORIES[number];
+const VALID_CATEGORIES = ['plumbing', 'electrical', 'locksmith', 'cleaning', 'general'] as const satisfies readonly ServiceProviderCategory[];
+type ProviderCategory = ServiceProviderCategory;
 
 async function getSupabaseUserClient() {
     const cookieStore = await cookies();

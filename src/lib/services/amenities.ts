@@ -9,8 +9,62 @@
 import { supabase } from '../supabase';
 import type {
     AdminBooking,
+    Amenity,
+    Booking,
     CreateAmenityInput,
 } from '../types';
+
+export type AmenityDatabaseRow = {
+    id?: string | null;
+    name?: string | null;
+    description?: string | null;
+    max_capacity?: number | string | null;
+    maxCapacity?: number | string | null;
+    hourly_rate?: number | string | null;
+    hourlyRate?: number | string | null;
+    icon_name?: string | null;
+    iconName?: string | null;
+    gradient?: string | null;
+    is_active?: boolean | null;
+};
+
+export type BookingDatabaseRow = {
+    id?: string | null;
+    amenity_id?: string | null;
+    amenityId?: string | null;
+    user_id?: string | null;
+    userId?: string | null;
+    date?: string | null;
+    start_time?: string | null;
+    startTime?: string | null;
+    end_time?: string | null;
+    endTime?: string | null;
+    status?: string | null;
+};
+
+export function mapAmenity(row: AmenityDatabaseRow): Amenity {
+    return {
+        id: String(row.id || ""),
+        name: String(row.name || "Espacio común"),
+        description: String(row.description || "Disponible para residentes de la comunidad."),
+        maxCapacity: Number(row.max_capacity ?? row.maxCapacity ?? 0),
+        hourlyRate: Number(row.hourly_rate ?? row.hourlyRate ?? 0),
+        iconName: String(row.icon_name ?? row.iconName ?? "Calendar"),
+        gradient: String(row.gradient || "from-[#3B82F6] to-[#6D28D9]"),
+    };
+}
+
+export function mapBooking(row: BookingDatabaseRow): Booking {
+    return {
+        id: String(row.id || ""),
+        amenityId: String(row.amenity_id ?? row.amenityId ?? ""),
+        userId: String(row.user_id ?? row.userId ?? ""),
+        date: String(row.date || ""),
+        startTime: String(row.start_time ?? row.startTime ?? ""),
+        endTime: String(row.end_time ?? row.endTime ?? ""),
+        status: (row.status === "pending" || row.status === "cancelled" ? row.status : "confirmed"),
+    };
+}
 
 // ==========================================
 // AMENITIES & BOOKINGS
@@ -26,7 +80,7 @@ async function sendBookingConfirmation(payload: {
 }
 
 export const AmenitiesService = {
-    async getAmenities() {
+    async getAmenities(): Promise<Amenity[]> {
         const { data, error } = await supabase
             .from('amenities')
             .select('*')
@@ -36,7 +90,9 @@ export const AmenitiesService = {
             console.error("Error fetching amenities:", error);
             throw error;
         }
-        return (data || []).filter((amenity: Record<string, unknown>) => amenity.is_active !== false);
+        return ((data || []) as AmenityDatabaseRow[])
+            .filter(amenity => amenity.is_active !== false)
+            .map(mapAmenity);
     },
 
     async createAmenity(input: CreateAmenityInput) {
@@ -62,10 +118,10 @@ export const AmenitiesService = {
             throw error;
         }
 
-        return data;
+        return mapAmenity(data as AmenityDatabaseRow);
     },
 
-    async getAllBookings() {
+    async getAllBookings(): Promise<Booking[]> {
         const { data, error } = await supabase
             .from('bookings')
             .select('*, amenities(name, icon_name, gradient)')
@@ -76,7 +132,7 @@ export const AmenitiesService = {
             console.error("Error fetching all bookings:", error);
             throw error;
         }
-        return data;
+        return ((data || []) as BookingDatabaseRow[]).map(mapBooking);
     },
 
     async getAdminBookings(): Promise<AdminBooking[]> {
@@ -102,7 +158,7 @@ export const AmenitiesService = {
         if (error) throw error;
     },
 
-    async getBookings(userId: string) {
+    async getBookings(userId: string): Promise<Booking[]> {
         const { data, error } = await supabase
             .from('bookings')
             .select('*, amenities(name, icon_name, gradient)')
@@ -114,7 +170,7 @@ export const AmenitiesService = {
             console.error("Error fetching bookings:", error);
             throw error;
         }
-        return data;
+        return ((data || []) as BookingDatabaseRow[]).map(mapBooking);
     },
 
     async createBooking(bookingData: {
@@ -171,6 +227,6 @@ export const AmenitiesService = {
             console.warn('[Email] Booking confirmation failed to send:', emailError);
         }
 
-        return data;
+        return mapBooking(data as BookingDatabaseRow);
     }
 };

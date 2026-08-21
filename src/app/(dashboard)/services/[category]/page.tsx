@@ -4,8 +4,9 @@ import { CategoryClient } from "@/components/services/CategoryClient";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ServiceProviderCategory } from "@/lib/types";
 
-type CategoryId = "plumbing" | "electrical" | "locksmith" | "cleaning" | "general";
+type CategoryId = ServiceProviderCategory;
 
 const CATEGORY_CONFIG: Record<CategoryId, {
     name: string;

@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { AnnouncementsService } from "@/lib/api";
-import type { Announcement, AnnouncementDatabaseRow } from "@/lib/types";
+import type { Announcement } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/cc/Button";
 import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Tag } from "@/components/cc/Tag";
 import { CheckCircle2, Send, Users } from "lucide-react";
 
-type Priority = 'info' | 'alert' | 'event';
 export default function ComunicacionesPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -21,7 +20,7 @@ export default function ComunicacionesPage() {
     // Form state
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
-    const [priority, setPriority] = useState<Priority>("info");
+    const [priority, setPriority] = useState<Announcement["priority"]>("info");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Channels selection
@@ -38,15 +37,7 @@ export default function ComunicacionesPage() {
 
         const fetch = async () => {
             try {
-                const data = await AnnouncementsService.getAnnouncements();
-                const mapped = (data as AnnouncementDatabaseRow[]).map((ann): Announcement => ({
-                    id: ann.id,
-                    title: ann.title,
-                    content: ann.content,
-                    author: ann.author_name || "Administración",
-                    priority: ann.priority,
-                    createdAt: ann.created_at,
-                }));
+                const mapped = await AnnouncementsService.getAnnouncements();
                 setAnnouncements(mapped);
             } catch {
                 toast({ title: "Error de conexión", description: "No se pudieron cargar los comunicados.", variant: "destructive" });
@@ -68,7 +59,7 @@ export default function ComunicacionesPage() {
 
         setIsSubmitting(true);
         try {
-            const data = await AnnouncementsService.createAnnouncement({
+            const newAnn = await AnnouncementsService.createAnnouncement({
                 title: title.trim(),
                 content: content.trim(),
                 priority,
@@ -76,15 +67,6 @@ export default function ComunicacionesPage() {
                 authorName: user.name || "Administración",
                 communityId: user.communityId,
             });
-
-            const newAnn: Announcement = {
-                id: data.id,
-                title: data.title,
-                content: data.content,
-                author: data.author_name || "Administración",
-                priority: data.priority,
-                createdAt: data.created_at,
-            };
 
             setAnnouncements([newAnn, ...announcements]);
             setTitle("");
@@ -150,7 +132,7 @@ export default function ComunicacionesPage() {
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold uppercase tracking-wider cc-text-tertiary">Categoría / Prioridad</label>
                             <div className="flex gap-2">
-                                {(['info', 'event', 'alert'] as Priority[]).map(p => {
+                                {(['info', 'event', 'alert'] as Announcement["priority"][]).map(p => {
                                     const isSelected = priority === p;
                                     return (
                                         <button
