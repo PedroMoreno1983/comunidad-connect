@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.communities (
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
-  name TEXT, -- Compatibilidad con api.ts y supabaseServices.ts
+  name TEXT, -- Compatibilidad con los services de perfiles
   full_name TEXT,
   role TEXT NOT NULL DEFAULT 'resident' CHECK (role IN ('superadmin', 'admin', 'resident', 'concierge')),
   avatar_url TEXT,

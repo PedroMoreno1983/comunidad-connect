@@ -3,8 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/authContext";
-import { SocialService } from "@/lib/services/supabaseServices";
-import { CommunityCollaborationService } from "@/lib/api";
+import { CommunityCollaborationService, SocialService } from "@/lib/api";
 import { CommunityProject, SocialPost, SocialComment } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";

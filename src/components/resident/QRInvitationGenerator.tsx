@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
-import { InvitationService } from "@/lib/services/supabaseServices";
+import { InvitationService } from "@/lib/api";
 
 export interface GeneratedInvitation {
     id: string;

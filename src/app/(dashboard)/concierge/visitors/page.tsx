@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { QRAccessValidator } from "@/components/admin/QRAccessValidator";
 import { useAuth } from "@/lib/authContext";
 import { VisitorLog } from "@/lib/types";
-import { VisitorService } from "@/lib/services/supabaseServices";
-import { WaterService } from "@/lib/api";
+import { VisitorService, WaterService } from "@/lib/api";
 import {
     Plus, ClipboardList, MoreHorizontal, QrCode, Search, ShieldCheck, UserCheck
 } from "lucide-react";
