@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Monitor, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { CART_LOADER_VERSION } from '@/lib/supermarket/cartLoader';
 
 const SUPPORTED_STORES = [
   'Lider',
@@ -85,7 +86,7 @@ export default function CargadorPage() {
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador 0.3.11
+              Descargar cargador {CART_LOADER_VERSION}
             </a>
           </div>
         )}

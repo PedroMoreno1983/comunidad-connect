@@ -4,6 +4,9 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const extensionPath = path.resolve(__dirname, '..', 'extensions', 'convive-cart-loader');
+const expectedLoaderVersion = JSON.parse(
+  fs.readFileSync(path.join(extensionPath, 'manifest.json'), 'utf8'),
+).version;
 const profilePath = fs.mkdtempSync(path.join(os.tmpdir(), 'convive-cart-loader-'));
 const stores = [
   {
@@ -222,7 +225,7 @@ async function main() {
     }));
     if (
       !extensionIdentity
-      || extensionIdentity.version !== '0.3.11'
+      || extensionIdentity.version !== expectedLoaderVersion
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
       || !extensionIdentity.capabilities?.includes('cart-replace-v1')
