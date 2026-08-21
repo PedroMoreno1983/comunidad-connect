@@ -110,18 +110,20 @@ export async function addReserveFundMovement(
     return data;
 }
 
+export interface BudgetLine {
+    category: string;
+    categoryLabel: string;
+    annualBudget: number;
+    /** Presupuesto proporcional a los meses ya transcurridos del año. */
+    expectedToDate: number;
+    actualToDate: number;
+    variance: number;
+    variancePercent: number;
+}
+
 export interface BudgetComparison {
     year: number;
-    lines: Array<{
-        category: string;
-        categoryLabel: string;
-        annualBudget: number;
-        /** Presupuesto proporcional a los meses ya transcurridos del año. */
-        expectedToDate: number;
-        actualToDate: number;
-        variance: number;
-        variancePercent: number;
-    }>;
+    lines: BudgetLine[];
     totals: { annualBudget: number; expectedToDate: number; actualToDate: number; variance: number };
     monthsElapsed: number;
 }
@@ -239,6 +241,17 @@ export interface MonthlyReport {
     collectionRate: number;
     reserveFund: { contributions: number; withdrawals: number; balance: number };
     result: number;
+}
+
+export interface CommunityFinanceSettings {
+    lateInterestMonthlyRate: number;
+    reserveFundRate: number;
+}
+
+export interface MonthlyFinanceReportPayload {
+    report: MonthlyReport;
+    fund: ReserveFundState;
+    settings: CommunityFinanceSettings;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {

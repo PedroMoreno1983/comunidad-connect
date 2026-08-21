@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Target } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import type { BudgetComparison, BudgetLine } from "@/lib/finance/reportingService";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -17,29 +18,12 @@ const CATEGORIES = [
     { value: "other", label: "Otros" },
 ] as const;
 
-interface BudgetLine {
-    category: string;
-    categoryLabel: string;
-    annualBudget: number;
-    expectedToDate: number;
-    actualToDate: number;
-    variance: number;
-    variancePercent: number;
-}
-
-interface Comparison {
-    year: number;
-    lines: BudgetLine[];
-    totals: { annualBudget: number; expectedToDate: number; actualToDate: number; variance: number };
-    monthsElapsed: number;
-}
-
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 
 export default function PresupuestoPage() {
     const { toast } = useToast();
     const [year, setYear] = useState(() => new Date().getFullYear());
-    const [data, setData] = useState<Comparison | null>(null);
+    const [data, setData] = useState<BudgetComparison | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [drafts, setDrafts] = useState<Record<string, string>>({});

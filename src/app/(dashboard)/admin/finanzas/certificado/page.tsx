@@ -6,18 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-
-interface Certificate {
-    community: { name: string; address: string | null };
-    unit: { label: string; ownerName: string | null };
-    issuedAt: string;
-    issuedBy: string | null;
-    balance: number;
-    overdueAmount: number;
-    oldestOverdueMonth: string | null;
-    pendingByMonth: Array<{ month: string; concepts: Array<{ label: string; amount: number }>; total: number }>;
-    isUpToDate: boolean;
-}
+import type { DebtCertificate } from "@/lib/finance/collectionService";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 
@@ -33,7 +22,7 @@ function formatLongDate(iso: string) {
 function CertificateContent() {
     const params = useSearchParams();
     const unitId = params.get("unitId") || "";
-    const [certificate, setCertificate] = useState<Certificate | null>(null);
+    const [certificate, setCertificate] = useState<DebtCertificate | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {

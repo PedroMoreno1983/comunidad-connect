@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
+import type { BillingPreview, CommunityExpenseRow, IssuedRunSummary } from "@/lib/finance/billingService";
+import type { ProrateMethod } from "@/lib/finance/prorration";
 
 const CATEGORIES = [
     { value: "electricity", label: "Electricidad" },
@@ -19,39 +21,6 @@ const CATEGORIES = [
     { value: "security", label: "Seguridad" },
     { value: "other", label: "Otros" },
 ] as const;
-
-interface CommunityExpense {
-    id: string;
-    category: string;
-    label: string;
-    amount: number;
-    provider: string | null;
-    prorate_method: "share" | "equal";
-}
-
-interface IssuedRun {
-    id: string;
-    total_amount: number;
-    units_count: number;
-    due_date: string;
-    issued_at: string;
-}
-
-interface PreviewUnit {
-    unitId: string;
-    label: string;
-    sharePermille: number | null;
-    total: number;
-}
-
-interface Preview {
-    unitCount: number;
-    totalExpenses: number;
-    totalCharged: number;
-    fellBackToEqualSplit: boolean;
-    warnings: string[];
-    units: PreviewUnit[];
-}
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const currentMonth = () => new Date().toISOString().slice(0, 7);
@@ -65,9 +34,9 @@ export default function EgresosPage() {
     const { toast } = useToast();
     const [month, setMonth] = useState(currentMonth);
     const [dueDate, setDueDate] = useState(defaultDueDate);
-    const [expenses, setExpenses] = useState<CommunityExpense[]>([]);
-    const [issuedRun, setIssuedRun] = useState<IssuedRun | null>(null);
-    const [preview, setPreview] = useState<Preview | null>(null);
+    const [expenses, setExpenses] = useState<CommunityExpenseRow[]>([]);
+    const [issuedRun, setIssuedRun] = useState<IssuedRunSummary | null>(null);
+    const [preview, setPreview] = useState<BillingPreview | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [issuing, setIssuing] = useState(false);
@@ -75,7 +44,7 @@ export default function EgresosPage() {
     const [label, setLabel] = useState("");
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState<string>("other");
-    const [prorateMethod, setProrateMethod] = useState<"share" | "equal">("share");
+    const [prorateMethod, setProrateMethod] = useState<ProrateMethod>("share");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -343,7 +312,7 @@ export default function EgresosPage() {
                             </select>
                             <select
                                 value={prorateMethod}
-                                onChange={event => setProrateMethod(event.target.value as "share" | "equal")}
+                                onChange={event => setProrateMethod(event.target.value as ProrateMethod)}
                                 className="rounded-lg border px-3 py-2 text-sm"
                                 style={{ borderColor: "var(--cc-line)", background: "var(--cc-paper-warm)" }}
                             >

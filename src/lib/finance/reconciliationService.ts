@@ -13,7 +13,9 @@ import {
     suggestMatches,
     summarize,
     type BankMovement,
+    type MatchSuggestion,
     type RecordedPayment,
+    type ReconciliationSummary,
 } from './reconciliation';
 
 export interface BankTransactionInput {
@@ -23,6 +25,34 @@ export interface BankTransactionInput {
     reference?: string | null;
 }
 
+export interface BankTransactionRow {
+    id: string;
+    txnDate: string;
+    amount: number;
+    description: string;
+    reference: string | null;
+    status: string;
+    matchedPaymentId: string | null;
+}
+
+export interface ReconciliationPayment {
+    id: string;
+    unitId: string;
+    unitLabel: string;
+    amount: number;
+    paidAt: string;
+    method: string;
+    reference: string | null;
+    matched: boolean;
+}
+
+export interface ReconciliationView {
+    transactions: BankTransactionRow[];
+    unmatchedPayments: ReconciliationPayment[];
+    suggestions: MatchSuggestion[];
+    summary: ReconciliationSummary;
+}
+
 function unitLabel(row: { number?: unknown; tower?: unknown }) {
     const number = String(row.number ?? '');
     const tower = String(row.tower ?? '');
@@ -30,7 +60,7 @@ function unitLabel(row: { number?: unknown; tower?: unknown }) {
 }
 
 /** Movimientos de la cartola + pagos sin conciliar + sugerencias + resumen. */
-export async function getReconciliation(communityId: string) {
+export async function getReconciliation(communityId: string): Promise<ReconciliationView> {
     const admin = getSupabaseAdmin();
 
     const [txnResult, paymentsResult, unitsResult] = await Promise.all([
