@@ -1338,6 +1338,13 @@ export interface ProductionHealthSnapshot {
   };
 }
 
+/** Respuesta completa de `/api/health`, incluida la que consume el centro operativo. */
+export interface ProductionHealthResponse extends ProductionHealthSnapshot {
+  checkedAt?: string;
+  service?: string;
+  checks?: Record<string, Record<string, unknown>>;
+}
+
 export interface DebugEndpointResult {
   status?: number;
   ok?: boolean;

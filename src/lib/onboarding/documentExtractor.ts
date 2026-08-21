@@ -8,6 +8,7 @@ export const MAX_ONBOARDING_BATCH_BYTES = 50 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_FILES = 20;
 
 export type ExtractedResident = { name: string; unit_id: string; email: string; phone: string };
+export type ExtractedResidentDraft = ExtractedResident & { id: string };
 export type OnboardingAssessment = {
     totalRows: number;
     validRows: number;
@@ -17,6 +18,13 @@ export type OnboardingAssessment = {
     duplicateUnits: string[];
     confidenceScore: number;
     warnings: string[];
+};
+export type OnboardingSyncResult = {
+    fileName: string;
+    rows: number;
+    success: number;
+    errors: number;
+    unitOnly: number;
 };
 export type ExtractedDocumentKnowledge = { title: string; documentKind: string; summary: string; searchText: string };
 

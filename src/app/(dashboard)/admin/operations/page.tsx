@@ -14,45 +14,17 @@ import {
     Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
+import type { OperationEventRecord, OperationsListResponse } from "@/lib/operations/audit";
+import type { ProductionHealthResponse } from "@/lib/types";
 
-type OperationEvent = {
-    id: string;
-    action: string;
-    entity_type: string;
-    entity_id?: string | null;
-    severity: "info" | "success" | "warning" | "error";
-    status: "success" | "error" | "blocked" | "pending";
-    summary: string;
-    metadata?: Record<string, unknown> | null;
-    created_at: string;
-};
-
-type OperationsResponse = {
-    summary: {
-        total: number;
-        success: number;
-        warnings: number;
-        errors: number;
-        pending: number;
-    };
-    events: OperationEvent[];
-};
-
-type HealthResponse = {
-    status?: string;
-    checkedAt?: string;
-    checks?: Record<string, Record<string, boolean>>;
-};
-
-
-function statusTone(status: OperationEvent["status"], severity: OperationEvent["severity"]) {
+function statusTone(status: OperationEventRecord["status"], severity: OperationEventRecord["severity"]) {
     if (status === "error" || severity === "error") return "border-danger-border bg-danger-bg text-danger-fg";
     if (status === "blocked" || severity === "warning") return "border-warning-border bg-warning-bg text-warning-fg";
     if (status === "pending") return "border-brand-200 bg-brand-50 text-brand-700";
     return "border-success-border bg-success-bg text-success-fg";
 }
 
-function statusLabel(status: OperationEvent["status"]) {
+function statusLabel(status: OperationEventRecord["status"]) {
     if (status === "blocked") return "Bloqueado";
     if (status === "pending") return "Pendiente";
     if (status === "error") return "Error";
@@ -71,7 +43,7 @@ function timeAgo(value: string) {
     return date.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
 }
 
-function countHealthyChecks(health: HealthResponse | null) {
+function countHealthyChecks(health: ProductionHealthResponse | null) {
     const groups = Object.values(health?.checks || {});
     const total = groups.flatMap(group => Object.values(group)).length;
     const ok = groups.flatMap(group => Object.values(group)).filter(Boolean).length;
@@ -82,15 +54,15 @@ export default function AdminOperationsPage() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [events, setEvents] = useState<OperationEvent[]>([]);
-    const [summary, setSummary] = useState<OperationsResponse["summary"]>({
+    const [events, setEvents] = useState<OperationEventRecord[]>([]);
+    const [summary, setSummary] = useState<OperationsListResponse["summary"]>({
         total: 0,
         success: 0,
         warnings: 0,
         errors: 0,
         pending: 0,
     });
-    const [health, setHealth] = useState<HealthResponse | null>(null);
+    const [health, setHealth] = useState<ProductionHealthResponse | null>(null);
 
     async function load() {
         setLoading(true);
@@ -108,8 +80,8 @@ export default function AdminOperationsPage() {
                 throw new Error(data.error || "No se pudo cargar el centro operativo");
             }
 
-            const ops = await opsRes.json() as OperationsResponse;
-            const healthData = await healthRes.json().catch(() => null) as HealthResponse | null;
+            const ops = await opsRes.json() as OperationsListResponse;
+            const healthData = await healthRes.json().catch(() => null) as ProductionHealthResponse | null;
 
             setEvents(ops.events);
             setSummary(ops.summary);

@@ -139,7 +139,7 @@ Carpetas principales, agrupadas por dominio:
 
 **Los dos archivos centrales que dicta `CLAUDE.md`:**
 - `lib/api.ts` — barrel que reexporta los Services de `lib/services/<dominio>.ts`
-- `lib/types.ts` — todos los tipos TypeScript centralizados
+- `lib/types.ts` — tipos compartidos; los de un dominio viven junto al módulo que los produce
 
 **Capa de datos.** Las páginas no llaman a Supabase: importan un `XxxService`
 desde `@/lib/api`. La implementación vive en `src/lib/services/` por dominio

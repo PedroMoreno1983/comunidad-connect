@@ -53,6 +53,25 @@ export interface CoCoResponse {
 /** Resoluciones del usuario a una tanda de acciones pendientes, indexadas por tool_use_id. */
 export type CoCoResolutions = Record<string, 'approved' | 'rejected'>;
 
+/** Respuesta JSON que ve el cliente de `/api/coco` (sin el historial de servidor). */
+export type CoCoClientResponse = {
+    reply?: string;
+    navigate?: string;
+    action?: string;
+    pendingActions?: CoCoPendingAction[];
+    error?: string;
+};
+
+export type CoCoChatMessage = {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    nav?: string;
+    action?: string;
+    pendingActions?: CoCoPendingAction[];
+    resolvedActions?: CoCoResolutions;
+};
+
 export class CoCoPendingResolutionError extends Error {
     constructor(message: string) {
         super(message);
