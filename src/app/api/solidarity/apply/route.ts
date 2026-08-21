@@ -1,44 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
 import { PRIVACY_POLICY_VERSION } from "@/lib/privacy";
-
-async function getSupabaseUserClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
-}
+import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "solidarity.apply.get", { limit: 100, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id, role")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
 
     let query = supabaseAdmin
@@ -51,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // If resident, filter to only show their own applications
     if (profile.role !== "admin") {
-      query = query.eq("user_id", user.id);
+      query = query.eq("user_id", profile.id);
     }
 
     const { data: applications, error: queryError } = await query.order("created_at", { ascending: false });
@@ -76,21 +52,12 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id, email")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
 
     const { category, description, amountRequested, sensitiveConsent } = await request.json();
@@ -115,7 +82,7 @@ export async function POST(request: NextRequest) {
       .from("solidarity_applications")
       .insert({
         community_id: profile.community_id,
-        user_id: user.id,
+        user_id: profile.id,
         category,
         description: description.trim(),
         amount_requested: amount,
@@ -134,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: consentError } = await supabaseAdmin.from("privacy_consent_events").insert({
-      user_id: user.id,
+      user_id: profile.id,
       community_id: profile.community_id,
       consent_type: "sensitive_data",
       action: "granted",
@@ -144,7 +111,7 @@ export async function POST(request: NextRequest) {
       evidence: { scope: "solidarity_application", application_id: application.id, explicit_checkbox: true },
     });
     if (consentError) {
-      await supabaseAdmin.from("solidarity_applications").delete().eq("id", application.id).eq("user_id", user.id);
+      await supabaseAdmin.from("solidarity_applications").delete().eq("id", application.id).eq("user_id", profile.id);
       console.error("[solidarity] consent evidence failed:", consentError);
       return NextResponse.json({ error: "No se pudo guardar la evidencia de consentimiento." }, { status: 500 });
     }

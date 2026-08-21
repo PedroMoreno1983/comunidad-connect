@@ -1,51 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { insertCommunityNotification } from '@/lib/server/data/notifications';
+import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
 
 const VALID_STATUSES = ['available', 'reserved', 'sold', 'hidden'] as const;
 type MarketplaceStatus = typeof VALID_STATUSES[number];
 
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
+type MarketplaceItemRow = {
+    id: string;
+    title: string;
+    seller_id: string | null;
+    status: string | null;
+    community_id: string | null;
+};
 
-async function getActorAndItem(id: string) {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+type ItemAccess =
+    | { error: NextResponse }
+    | { actor: ServerAgentProfile; item: MarketplaceItemRow; isAdmin: boolean };
 
-    if (authError || !user) {
+async function getActorAndItem(id: string): Promise<ItemAccess> {
+    const actor = await getAuthenticatedAgentProfile();
+    if (!actor) {
         return { error: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) };
     }
 
-    const [{ data: actor, error: profileError }, { data: item, error: itemError }] = await Promise.all([
-        supabaseAdmin
-            .from('profiles')
-            .select('id, role, community_id, name, email')
-            .eq('id', user.id)
-            .single(),
-        supabaseAdmin
-            .from('marketplace_items')
-            .select('id, title, seller_id, status, community_id')
-            .eq('id', id)
-            .single(),
-    ]);
-
-    if (profileError || !actor) {
-        return { error: NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 }) };
-    }
-
+    const { data: item, error: itemError } = await supabaseAdmin
+        .from('marketplace_items')
+        .select('id, title, seller_id, status, community_id')
+        .eq('id', id)
+        .single();
 
     if (itemError || !item) {
         return { error: NextResponse.json({ error: 'Publicacion no encontrada' }, { status: 404 }) };
@@ -80,7 +65,7 @@ export async function PATCH(
         }
 
         const context = await getActorAndItem(id);
-        if (context.error) return context.error;
+        if ('error' in context) return context.error;
 
         if (status === 'hidden' && !context.isAdmin) {
             return NextResponse.json({ error: 'Solo administracion puede ocultar publicaciones' }, { status: 403 });
@@ -98,15 +83,15 @@ export async function PATCH(
             return NextResponse.json({ error: 'No se pudo actualizar la publicación.' }, { status: 500 });
         }
 
-        if (context.isAdmin && context.item.seller_id && context.item.seller_id !== context.actor?.id) {
-            await supabaseAdmin.from('notifications').insert({
-                user_id: context.item.seller_id,
+        if (context.isAdmin && context.item.seller_id && context.item.seller_id !== context.actor.id) {
+            await insertCommunityNotification(supabaseAdmin, {
+                userId: context.item.seller_id,
                 type: status === 'hidden' ? 'warning' : 'info',
                 category: 'marketplace',
                 title: status === 'hidden' ? 'Publicacion ocultada' : 'Publicacion actualizada',
                 body: `${context.item.title} ahora figura como ${status}.`,
                 link: '/marketplace/my-listings',
-                community_id: context.actor?.community_id,
+                communityId: context.actor.community_id,
             });
         }
 
@@ -146,7 +131,7 @@ export async function DELETE(
 
     try {
         const context = await getActorAndItem(id);
-        if (context.error) return context.error;
+        if ('error' in context) return context.error;
 
         const { error } = await supabaseAdmin
             .from('marketplace_items')
