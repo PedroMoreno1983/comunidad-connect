@@ -5,39 +5,25 @@
  * key, así que nunca debe quedar accesible sin el secreto compartido.
  */
 
-import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { denyUnlessSharedSecret } from '@/lib/security/sharedSecret';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import type { ScrapedItem } from '@/lib/supermarketLive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-function matchesSecret(provided: string | null, secret: string): boolean {
-  if (!provided) return false;
-  const providedBuf = Buffer.from(provided, 'utf8');
-  const secretBuf = Buffer.from(secret, 'utf8');
-  return providedBuf.length === secretBuf.length && crypto.timingSafeEqual(providedBuf, secretBuf);
-}
-
 /**
- * Autoriza la ejecución programada. Devuelve la respuesta de rechazo o `null`
- * si el llamante es legítimo.
- *
- * Vercel Cron manda el secreto como `Authorization: Bearer $CRON_SECRET`; se
- * acepta además `x-cron-secret` para invocaciones manuales.
+ * Autoriza la ejecución programada. Vercel Cron manda el secreto como
+ * `Authorization: Bearer $CRON_SECRET`; se acepta además `x-cron-secret` para
+ * invocaciones manuales.
  */
 function denyUnlessCron(req: NextRequest): NextResponse | null {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) {
-    return NextResponse.json({ error: 'Refresco de catálogo no configurado.' }, { status: 503 });
-  }
-  const bearer = req.headers.get('authorization')?.replace(/^Bearer /, '') ?? null;
-  if (matchesSecret(bearer, secret) || matchesSecret(req.headers.get('x-cron-secret'), secret)) {
-    return null;
-  }
-  return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
+  return denyUnlessSharedSecret(req, process.env.CRON_SECRET, {
+    headers: ['x-cron-secret'],
+    notConfiguredMessage: 'Refresco de catálogo no configurado.',
+  });
 }
 
 /** Delay entre términos para no saturar los servidores (ms). */
