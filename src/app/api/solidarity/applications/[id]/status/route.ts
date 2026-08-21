@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
 import type { SolidarityResolutionResult } from "@/lib/types";
-
-async function getSupabaseUserClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
-}
+import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
+import { insertCommunityNotification } from "@/lib/server/data/notifications";
 
 export async function PATCH(
   request: NextRequest,
@@ -32,21 +18,12 @@ export async function PATCH(
   const { id: applicationId } = await props.params;
 
   try {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+    const profile = await getAuthenticatedAgentProfile();
+    if (!profile) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("community_id, role")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 403 });
+    if (!profile.community_id) {
+      return NextResponse.json({ error: "Tu cuenta no está asociada a una comunidad." }, { status: 403 });
     }
     if (profile.role !== "admin") {
       return NextResponse.json(
@@ -114,14 +91,14 @@ export async function PATCH(
           body: "Tu solicitud fue revisada y no fue aprobada en esta ocasión. Comunícate con Administración si necesitas más información.",
         };
 
-    const { error: notifyError } = await supabaseAdmin.from("notifications").insert({
-      user_id: resolution.user_id,
+    const { error: notifyError } = await insertCommunityNotification(supabaseAdmin, {
+      userId: resolution.user_id,
       type: notification.type,
       category: "payment",
       title: notification.title,
       body: notification.body,
       link: "/expenses/solidaridad",
-      community_id: profile.community_id,
+      communityId: profile.community_id,
     });
     if (notifyError) {
       console.error("[solidarity application] notification failed", notifyError);

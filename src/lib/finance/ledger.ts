@@ -57,6 +57,8 @@ export interface AccountStatement {
     oldestOverdueMonth: string | null;
 }
 
+export type UnitStatement = AccountStatement & { unitLabel: string };
+
 /**
  * Fecha usada para ordenar un movimiento en la cartola. Para un cargo se
  * prefiere el vencimiento (es la fecha que el residente reconoce como "cuándo

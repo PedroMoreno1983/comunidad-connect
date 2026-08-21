@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import type { GeocodeSuggestion } from '@/lib/geocode';
 
 export const dynamic = 'force-dynamic';
-
-type GeocodeSuggestion = {
-    label: string;
-    latitude: number;
-    longitude: number;
-    placeId: string;
-    source: 'mapbox' | 'nominatim';
-};
 
 function cleanQuery(value: string | null) {
     return (value || '').replace(/\s+/g, ' ').trim().slice(0, 160);

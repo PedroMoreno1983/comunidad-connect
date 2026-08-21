@@ -4,9 +4,17 @@
  * Combines PostgreSQL full text search, Voyage AI embeddings and pgvector.
  * If Voyage is not configured or unavailable, the endpoint keeps returning
  * lexical results instead of breaking the user flow.
+ *
+ * El cliente de Supabase se recibe como parámetro a propósito. Las RPC de
+ * búsqueda acotan el tenant con `get_my_community_id()`, que necesita
+ * `auth.uid()`; este módulo importaba el cliente de navegador (anon, sin
+ * sesión), así que en el servidor `auth.uid()` era NULL y toda búsqueda
+ * devolvía cero resultados. Debe recibir siempre un cliente con la sesión de
+ * quien busca, nunca la service role key: con ella las RPC no tendrían tenant
+ * y devolverían datos de todas las comunidades.
  */
 
-import { supabase } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface SearchResultItem {
   id: string;
@@ -98,17 +106,20 @@ function reciprocalRankFusion<T extends { id: string }>(lists: T[][]): Map<strin
   return scores;
 }
 
+/** Cliente de Supabase con la sesión de quien busca. */
+export type SearchClient = SupabaseClient;
+
 export const SearchService = {
-  async searchMarketplace(query: string): Promise<SearchResultItem[]> {
+  async searchMarketplace(client: SearchClient, query: string): Promise<SearchResultItem[]> {
     if (!query.trim()) return [];
 
     const [lexicalResults, embedding] = await Promise.all([
-      SearchService._lexicalMarketplace(query),
+      SearchService._lexicalMarketplace(client, query),
       generateEmbedding(query),
     ]);
 
     const semanticResults = embedding
-      ? await SearchService._semanticMarketplace(embedding)
+      ? await SearchService._semanticMarketplace(client, embedding)
       : [];
 
     if (semanticResults.length === 0) {
@@ -140,16 +151,16 @@ export const SearchService = {
     return results.sort((a, b) => b.score - a.score).slice(0, 20);
   },
 
-  async searchProfiles(query: string): Promise<SearchResultProfile[]> {
+  async searchProfiles(client: SearchClient, query: string): Promise<SearchResultProfile[]> {
     if (!query.trim()) return [];
 
     const [lexicalResults, embedding] = await Promise.all([
-      SearchService._lexicalProfiles(query),
+      SearchService._lexicalProfiles(client, query),
       generateEmbedding(query),
     ]);
 
     const semanticResults = embedding
-      ? await SearchService._semanticProfiles(embedding)
+      ? await SearchService._semanticProfiles(client, embedding)
       : [];
 
     if (semanticResults.length === 0) {
@@ -181,12 +192,12 @@ export const SearchService = {
     return results.sort((a, b) => b.score - a.score).slice(0, 20);
   },
 
-  async searchAll(query: string): Promise<SearchResults> {
+  async searchAll(client: SearchClient, query: string): Promise<SearchResults> {
     const start = Date.now();
 
     const [marketplace, profiles] = await Promise.all([
-      SearchService.searchMarketplace(query),
-      SearchService.searchProfiles(query),
+      SearchService.searchMarketplace(client, query),
+      SearchService.searchProfiles(client, query),
     ]);
 
     return {
@@ -197,8 +208,11 @@ export const SearchService = {
     };
   },
 
-  async _lexicalMarketplace(query: string): Promise<(SearchResultItem & { rank: number })[]> {
-    const { data, error } = await supabase.rpc('search_marketplace_lexical', {
+  async _lexicalMarketplace(
+    client: SearchClient,
+    query: string,
+  ): Promise<(SearchResultItem & { rank: number })[]> {
+    const { data, error } = await client.rpc('search_marketplace_lexical', {
       query: query.trim(),
     });
 
@@ -210,8 +224,8 @@ export const SearchService = {
     return (data ?? []) as (SearchResultItem & { rank: number })[];
   },
 
-  async _semanticMarketplace(embedding: number[]): Promise<SearchResultItem[]> {
-    const { data, error } = await supabase.rpc('search_marketplace_semantic', {
+  async _semanticMarketplace(client: SearchClient, embedding: number[]): Promise<SearchResultItem[]> {
+    const { data, error } = await client.rpc('search_marketplace_semantic', {
       query_embedding: embedding,
       match_count: 10,
     });
@@ -228,8 +242,11 @@ export const SearchService = {
     }));
   },
 
-  async _lexicalProfiles(query: string): Promise<(SearchResultProfile & { rank: number })[]> {
-    const { data, error } = await supabase.rpc('search_profiles_lexical', {
+  async _lexicalProfiles(
+    client: SearchClient,
+    query: string,
+  ): Promise<(SearchResultProfile & { rank: number })[]> {
+    const { data, error } = await client.rpc('search_profiles_lexical', {
       query: query.trim(),
     });
 
@@ -241,8 +258,8 @@ export const SearchService = {
     return (data ?? []) as (SearchResultProfile & { rank: number })[];
   },
 
-  async _semanticProfiles(embedding: number[]): Promise<SearchResultProfile[]> {
-    const { data, error } = await supabase.rpc('search_profiles_semantic', {
+  async _semanticProfiles(client: SearchClient, embedding: number[]): Promise<SearchResultProfile[]> {
+    const { data, error } = await client.rpc('search_profiles_semantic', {
       query_embedding: embedding,
       match_count: 10,
     });

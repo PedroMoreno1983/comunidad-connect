@@ -4,6 +4,7 @@ import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { apiErrorResponse } from '@/lib/observability/logger';
+import { insertCommunityNotification } from '@/lib/server/data/notifications';
 
 function clean(value: unknown, max = 200) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -60,14 +61,14 @@ export async function POST(req: NextRequest) {
         }
 
         if (!existingNotifications?.length) {
-            const { error: notificationError } = await supabaseAdmin.from('notifications').insert({
-                user_id: profile.id,
+            const { error: notificationError } = await insertCommunityNotification(supabaseAdmin, {
+                userId: profile.id,
                 type: 'success',
                 category: 'amenity_booking',
                 title: 'Reserva confirmada',
                 body: `${amenityName}: ${date}, de ${startTime} a ${endTime}. Comprobante ${bookingId.slice(0, 8).toUpperCase()}.`,
                 link: notificationLink,
-                community_id: profile.community_id,
+                communityId: profile.community_id,
             });
 
             if (notificationError) {

@@ -66,6 +66,25 @@ export interface IssuedRunSummary {
     issued_at: string;
 }
 
+export interface CommunityExpenseRow {
+    id: string;
+    month: string;
+    category: string;
+    label: string;
+    amount: number;
+    provider: string | null;
+    notes: string | null;
+    prorate_method: 'share' | 'equal';
+    created_at: string;
+}
+
+export interface CommunityExpensesList {
+    month: string;
+    expenses: CommunityExpenseRow[];
+    total: number;
+    issuedRun: IssuedRunSummary | null;
+}
+
 export interface BillingIssueResult {
     runId: string;
     month: string;
@@ -136,7 +155,7 @@ async function loadProrationInputs(communityId: string, month: string) {
 }
 
 /** Egresos cargados del mes + total + si ya fue emitido. */
-export async function listCommunityExpenses(communityId: string, month: string) {
+export async function listCommunityExpenses(communityId: string, month: string): Promise<CommunityExpensesList> {
     if (!MONTH_PATTERN.test(month)) {
         throw new BillingError('bad_month', 'Indica el mes en formato AAAA-MM.');
     }
@@ -158,11 +177,21 @@ export async function listCommunityExpenses(communityId: string, month: string) 
     ]);
     if (expensesResult.error) throw expensesResult.error;
 
-    const expenses = expensesResult.data ?? [];
+    const expenses = (expensesResult.data ?? []).map((row): CommunityExpenseRow => ({
+        id: String(row.id),
+        month: String(row.month),
+        category: String(row.category || 'other'),
+        label: String(row.label || ''),
+        amount: Number(row.amount || 0),
+        provider: row.provider ? String(row.provider) : null,
+        notes: row.notes ? String(row.notes) : null,
+        prorate_method: row.prorate_method === 'equal' ? 'equal' : 'share',
+        created_at: String(row.created_at),
+    }));
     return {
         month,
         expenses,
-        total: expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+        total: expenses.reduce((sum, row) => sum + row.amount, 0),
         issuedRun: (runResult.data ?? null) as IssuedRunSummary | null,
     };
 }

@@ -15,6 +15,13 @@ export const CANONICAL_SITE_URL = (
 
 export const SUPPORT_EMAIL = 'soporte@conviveconnect.com';
 export const WHATSAPP_WEBHOOK_PATH = '/api/coco/whatsapp';
+/**
+ * Comunidad de demostración de los datos semilla.
+ *
+ * Es solo para seeds y scripts locales. Nunca debe usarse como respaldo cuando
+ * el perfil no trae comunidad: eso le mostraba a ese usuario los datos de otro
+ * condominio. Sin comunidad, la vista se queda vacía.
+ */
 export const DEMO_COMMUNITY_ID = '11111111-1111-1111-1111-111111111111';
 
 // Proveedores internos del sistema (p. ej. la mesa de ayuda que usa Agent

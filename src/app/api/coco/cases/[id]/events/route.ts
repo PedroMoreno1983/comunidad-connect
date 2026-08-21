@@ -1,49 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { recordAiEvent } from '@/lib/ai/telemetry';
+import { insertCommunityNotification } from '@/lib/server/data/notifications';
+import { getCocoCaseById, insertCocoCaseEvent, listCocoCaseEvents } from '@/lib/server/data/cocoCases';
+import type { ServerAgentProfile } from '@/lib/server/agentIdentity';
+import type { CocoCaseRow } from '@/lib/server/data/cocoCases';
 
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
+type CaseAccess =
+    | { error: NextResponse }
+    | { actorProfile: ServerAgentProfile; currentCase: CocoCaseRow; isStaff: boolean };
 
-async function getActorAndCase(caseId: string) {
-    const supabaseUser = await getSupabaseUserClient();
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
+async function getActorAndCase(caseId: string): Promise<CaseAccess> {
+    const actorProfile = await getAuthenticatedAgentProfile();
+    if (!actorProfile) {
         return { error: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) };
     }
 
-    const [{ data: actorProfile, error: profileError }, { data: currentCase, error: caseError }] = await Promise.all([
-        supabaseAdmin
-            .from('profiles')
-            .select('id, role, community_id, name, email')
-            .eq('id', user.id)
-            .single(),
-        supabaseAdmin
-            .from('coco_cases')
-            .select('id, title, user_id, community_id')
-            .eq('id', caseId)
-            .single(),
-    ]);
-
-    if (profileError || !actorProfile) {
-        return { error: NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 }) };
-    }
-
-    if (caseError || !currentCase) {
+    const currentCase = await getCocoCaseById(supabaseAdmin, caseId);
+    if (!currentCase) {
         return { error: NextResponse.json({ error: 'Caso no encontrado' }, { status: 404 }) };
     }
 
@@ -64,20 +39,15 @@ export async function GET(
 ) {
     const { id } = await params;
     const access = await getActorAndCase(id);
-    if (access.error) return access.error;
+    if ('error' in access) return access.error;
 
-    const { data, error } = await supabaseAdmin
-        .from('coco_case_events')
-        .select('id, case_id, event_type, from_status, to_status, body, actor_role, created_at')
-        .eq('case_id', id)
-        .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+        const events = await listCocoCaseEvents(supabaseAdmin, id);
+        return NextResponse.json({ events }, { status: 200 });
+    } catch (error) {
         console.error('[case events] query failed', error);
         return NextResponse.json({ error: 'No se pudieron cargar los eventos del caso.' }, { status: 500 });
     }
-
-    return NextResponse.json({ events: data || [] }, { status: 200 });
 }
 
 export async function POST(
@@ -89,13 +59,12 @@ export async function POST(
 
     try {
         const access = await getActorAndCase(id);
-        if (access.error) return access.error;
+        if ('error' in access) return access.error;
 
         const { actorProfile, currentCase, isStaff } = access;
         if (!isStaff) {
             return NextResponse.json({ error: 'Solo administracion o conserjeria pueden comentar' }, { status: 403 });
         }
-
 
         const body = await req.json();
         const comment = typeof body.body === 'string' ? body.body.trim().slice(0, 1200) : '';
@@ -104,48 +73,42 @@ export async function POST(
             return NextResponse.json({ error: 'Comentario requerido' }, { status: 400 });
         }
 
-        const { data: event, error: eventError } = await supabaseAdmin
-            .from('coco_case_events')
-            .insert({
-                case_id: currentCase.id,
-                community_id: currentCase.community_id || actorProfile.community_id,
-                actor_id: actorProfile.id,
-                actor_role: actorProfile.role,
-                event_type: 'comment',
-                body: comment,
-                metadata: {
-                    source: 'admin_dashboard',
-                    visible_to_resident: true,
-                },
-            })
-            .select('id, case_id, event_type, from_status, to_status, body, actor_role, created_at')
-            .single();
+        const event = await insertCocoCaseEvent(supabaseAdmin, {
+            caseId: currentCase.id,
+            communityId: currentCase.community_id || actorProfile.community_id,
+            actorId: actorProfile.id,
+            actorRole: actorProfile.role,
+            eventType: 'comment',
+            body: comment,
+            metadata: {
+                source: 'admin_dashboard',
+                visible_to_resident: true,
+            },
+        });
 
-        if (eventError || !event) {
+        if (!event) {
             recordAiEvent({
                 provider: 'system',
                 feature: 'coco.case_comment',
                 status: 'error',
                 model: 'api-v1',
                 latencyMs: Date.now() - started,
-                error: eventError,
+                error: 'comment insert returned null',
             });
-            console.error('[case events] comment insert failed', eventError);
+            console.error('[case events] comment insert failed');
             return NextResponse.json({ error: 'No se pudo comentar el caso.' }, { status: 500 });
         }
 
         if (currentCase.user_id && currentCase.user_id !== actorProfile.id) {
-            const { error: notificationError } = await supabaseAdmin
-                .from('notifications')
-                .insert({
-                    user_id: currentCase.user_id,
-                    type: 'info',
-                    category: 'coco_case',
-                    title: 'Tu caso CoCo tiene una nueva actualizacion',
-                    body: comment,
-                    link: '/resident/cases',
-                    community_id: currentCase.community_id || actorProfile.community_id,
-                });
+            const { error: notificationError } = await insertCommunityNotification(supabaseAdmin, {
+                userId: currentCase.user_id,
+                type: 'info',
+                category: 'coco_case',
+                title: 'Tu caso CoCo tiene una nueva actualizacion',
+                body: comment,
+                link: '/resident/cases',
+                communityId: currentCase.community_id || actorProfile.community_id,
+            });
 
             if (notificationError) {
                 recordAiEvent({

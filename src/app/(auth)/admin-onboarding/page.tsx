@@ -7,6 +7,8 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BrandWordmark } from "@/components/BrandWordmark";
+import type { GeocodeSuggestion } from "@/lib/geocode";
+import type { AdminOnboardingRegisterResponse } from "@/lib/onboarding/adminRegister";
 import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Crown, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Star, User, Zap } from "lucide-react";
 
 const PLANS = [
@@ -38,20 +40,6 @@ const PLANS = [
 ];
 
 const STEP_LABELS = ["Plan", "Edificio", "Activador"];
-
-type GeocodeSuggestion = {
-    label: string;
-    latitude: number;
-    longitude: number;
-    placeId: string;
-    source: string;
-};
-
-type RegisterResponse = {
-    error?: string;
-    code?: string;
-    loginUrl?: string;
-};
 
 export default function AdminOnboardingPage() {
     const [step, setStep] = useState(0);
@@ -148,7 +136,7 @@ export default function AdminOnboardingPage() {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as RegisterResponse;
+                const data = await response.json().catch(() => ({})) as AdminOnboardingRegisterResponse;
                 if (response.status === 409 && data.code === "EMAIL_ALREADY_REGISTERED") {
                     toast({
                         title: "Cuenta existente",

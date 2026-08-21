@@ -1,17 +1,30 @@
 /**
  * /api/supermarket/refresh/route.ts
  * Endpoint para actualizar el catálogo de supermercados.
- * Puede ser llamado manualmente o por un cron job.
- * Requiere el header x-cron-secret para ejecución autenticada.
+ * Solo lo invoca el cron: dispara scraping caro y escribe con la service role
+ * key, así que nunca debe quedar accesible sin el secreto compartido.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
+import { denyUnlessSharedSecret } from '@/lib/security/sharedSecret';
 import { searchAllRetailerProducts } from '@/lib/supermarketLive';
 import type { ScrapedItem } from '@/lib/supermarketLive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+/**
+ * Autoriza la ejecución programada. Vercel Cron manda el secreto como
+ * `Authorization: Bearer $CRON_SECRET`; se acepta además `x-cron-secret` para
+ * invocaciones manuales.
+ */
+function denyUnlessCron(req: NextRequest): NextResponse | null {
+  return denyUnlessSharedSecret(req, process.env.CRON_SECRET, {
+    headers: ['x-cron-secret'],
+    notConfiguredMessage: 'Refresco de catálogo no configurado.',
+  });
+}
 
 /** Delay entre términos para no saturar los servidores (ms). */
 const TERM_DELAY_MS = 800;
@@ -95,13 +108,8 @@ function delay(ms: number): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
-  // Verificar autenticación para ejecución programada
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('x-cron-secret');
-  
-  if (cronSecret && authHeader !== cronSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = denyUnlessCron(req);
+  if (denied) return denied;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -212,15 +220,11 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET handler para health check o ejecución manual simple.
- * Requiere x-cron-secret.
+ * Requiere el mismo secreto de cron que el POST.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('x-cron-secret');
-  
-  if (cronSecret && authHeader !== cronSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = denyUnlessCron(req);
+  if (denied) return denied;
 
   // Reenviar a POST con el catálogo base
   const fakeRequest = new NextRequest(req.url, {

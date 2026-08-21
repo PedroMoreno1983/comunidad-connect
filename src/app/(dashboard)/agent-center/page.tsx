@@ -12,100 +12,20 @@ import {
 } from "lucide-react";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
-import type { AgentTaskStatus, AgentTaskSummary, AgentTriggerRuleSummary } from "@/lib/agent-center/domain";
-
-type AgentKey = "finance" | "maintenance" | "concierge" | "community";
-
-type AgentStep = {
-  kind: "reasoning" | "tool" | "confirmation" | "result" | "warning";
-  title: string;
-  detail: string;
-  metadata?: Record<string, unknown>;
-};
-
-type AgentAction = {
-  agentKey: AgentKey;
-  toolName: string;
-  args: Record<string, unknown>;
-  requiresConfirmation: boolean;
-  title: string;
-  summary: string;
-  targetHref: string;
-  proposalId?: string | null;
-  runId?: string | null;
-};
-
-type AgentMessage = {
-  id: string;
-  role: "user" | "agent";
-  content: string;
-  status?: "awaiting_confirmation" | "executed" | "error" | "rejected";
-  steps?: AgentStep[];
-  action?: AgentAction;
-  result?: {
-    title?: string;
-    message?: string;
-    targetHref?: string;
-  };
-};
-
-type ActivityRow = {
-  id: string;
-  agent_key: AgentKey;
-  action: string;
-  severity: "info" | "success" | "warning" | "error";
-  summary: string;
-  created_at: string;
-  metadata?: {
-    displayAction?: string;
-    displaySummary?: string;
-    proposedAction?: {
-      title?: string;
-      summary?: string;
-      args?: Record<string, unknown>;
-    };
-  } | null;
-};
-
-type AgentPolicy = {
-  agentKey: AgentKey;
-  autonomyLevel: "manual" | "semi_autonomous" | "autonomous";
-  active: boolean;
-  maxDailyActions: number;
-  updatedAt?: string | null;
-};
-
-type AgentSummary = {
-  totalRuns: number;
-  executedRuns: number;
-  pendingProposals: number;
-  failedRuns: number;
-  successRate: number;
-  estimatedMinutesSaved: number;
-};
-
-
-type AgentPlaybook = {
-  key: string;
-  agentKey: AgentKey;
-  name: string;
-  description: string;
-  targetHref: string;
-  requiresAdmin: boolean;
-  steps: string[];
-};
-
-type AgentCenterGetResponse = {
-  conversation?: { role: "user" | "assistant"; content: string }[];
-  activity?: ActivityRow[];
-  policies?: AgentPolicy[];
-  summary?: AgentSummary;
-
-  playbooks?: AgentPlaybook[];
-  tasks?: AgentTaskSummary[];
-  triggers?: AgentTriggerRuleSummary[];
-  proposals?: AgentAction[];
-};
+import type {
+  AgentAction,
+  AgentActivityRow,
+  AgentCenterSnapshot,
+  AgentKey,
+  AgentMessage,
+  AgentPlaybook,
+  AgentPolicy,
+  AgentStep,
+  AgentSummary,
+  AgentTaskStatus,
+  AgentTaskSummary,
+  AgentTriggerRuleSummary,
+} from "@/lib/agent-center/domain";
 
 const TASK_STATUS_LABELS: Record<AgentTaskStatus, string> = {
   planned: "Planificada",
@@ -219,7 +139,7 @@ function policyListToMap(policies?: AgentPolicy[]) {
 export default function AgentCenterPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [activity, setActivity] = useState<AgentActivityRow[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(DEFAULT_SUMMARY);
 
   const [policies, setPolicies] = useState<Record<AgentKey, AgentPolicy>>(DEFAULT_POLICIES);
@@ -235,7 +155,7 @@ export default function AgentCenterPage() {
   async function loadActivity() {
     const response = await fetch("/api/agent-center", { cache: "no-store" });
     if (!response.ok) return;
-    const data = await response.json() as AgentCenterGetResponse;
+    const data = await response.json() as AgentCenterSnapshot;
 
     // Al entrar, se siembra el hilo persistido (memoria del Agent Center) una sola
     // vez, para no pisar los mensajes vivos de la sesión en recargas posteriores.
@@ -305,7 +225,7 @@ export default function AgentCenterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & {
+      const data = await response.json().catch(() => ({})) as AgentCenterSnapshot & {
         error?: string;
         reply?: string;
         status?: AgentMessage["status"];
@@ -429,7 +349,7 @@ export default function AgentCenterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "trigger_update", ruleId: rule.id, enabled: !rule.enabled }),
       });
-      const data = await response.json().catch(() => ({})) as AgentCenterGetResponse & { error?: string };
+      const data = await response.json().catch(() => ({})) as AgentCenterSnapshot & { error?: string };
       if (!response.ok) throw new Error(data.error || "No se pudo actualizar la regla.");
       setTriggers(Array.isArray(data.triggers) ? data.triggers : []);
     } catch (error) {

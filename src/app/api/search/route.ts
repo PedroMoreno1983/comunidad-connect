@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchService } from '@/lib/search';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
-import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { getAuthenticatedAgentProfile, getSupabaseUserClient } from '@/lib/server/agentIdentity';
 import { logApiError } from '@/lib/observability/logger';
 
 export const runtime = 'nodejs';
@@ -48,9 +48,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Con la sesión de quien busca, no con la service role: las RPC derivan el
+    // tenant de `auth.uid()` y sin él no filtrarían por comunidad.
+    const client = await getSupabaseUserClient();
+
     switch (scope) {
       case 'marketplace': {
-        const results = await SearchService.searchMarketplace(query);
+        const results = await SearchService.searchMarketplace(client, query);
         return NextResponse.json({
           query,
           scope,
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'profiles': {
-        const results = await SearchService.searchProfiles(query);
+        const results = await SearchService.searchProfiles(client, query);
         return NextResponse.json({
           query,
           scope,
@@ -70,7 +74,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'all': {
-        const results = await SearchService.searchAll(query);
+        const results = await SearchService.searchAll(client, query);
         return NextResponse.json({
           query,
           scope,

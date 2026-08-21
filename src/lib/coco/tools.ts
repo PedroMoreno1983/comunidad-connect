@@ -25,6 +25,8 @@ import {
     parseGroupShoppingList,
 } from '@/lib/supermarketGroupOrders';
 import type { UserRole } from '@/lib/types';
+import { createPollWithOptions } from '@/lib/server/data/polls';
+import { insertCommunityNotifications } from '@/lib/server/data/notifications';
 
 // ── Definiciones de herramientas para Anthropic ──────────────────────────────
 
@@ -1160,27 +1162,22 @@ export async function executeTool(
                 if (!endDate || Number.isNaN(Date.parse(endDate)) || Date.parse(endDate) <= Date.now()) {
                     return { error: 'La fecha de cierre debe ser valida y posterior al momento actual.' };
                 }
-                const { data: poll, error: pollErr } = await supabaseAdmin
-                    .from('polls')
-                    .insert({
-                        community_id: communityId,
-                        title: input.title,
-                        description: input.description || input.title,
-                        end_date: new Date(endDate).toISOString(),
-                        status: 'active',
-                        created_by: userCtx.user_id || null,
-                    })
-                    .select('id')
-                    .single();
-                if (pollErr) return { error: 'No se pudo crear la votación.' };
-                const { error: optionsError } = await supabaseAdmin.from('poll_options').insert(
-                    options.map((text, display_order) => ({ poll_id: poll.id, text, display_order, votes: 0 }))
-                );
-                if (optionsError) {
-                    await supabaseAdmin.from('polls').delete().eq('id', poll.id).eq('community_id', communityId);
-                    return { error: 'No se pudieron crear las opciones. La votacion fue revertida.' };
+                const created = await createPollWithOptions(supabaseAdmin, {
+                    title: input.title,
+                    description: input.description || input.title,
+                    endDate: new Date(endDate).toISOString(),
+                    createdBy: userCtx.user_id || null,
+                    communityId,
+                    options,
+                });
+                if (!created.ok) {
+                    return {
+                        error: created.reason === 'options'
+                            ? 'No se pudieron crear las opciones. La votacion fue revertida.'
+                            : 'No se pudo crear la votación.',
+                    };
                 }
-                return { success: true, poll_id: poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
+                return { success: true, poll_id: created.poll.id, message: `Votación "${input.title}" creada con ${options.length} opciones.` };
             }
 
             case 'update_unit_data': {
@@ -1368,18 +1365,18 @@ export async function executeTool(
                 if (residentsError) return { error: 'No se pudieron consultar los residentes de la unidad.' };
 
                 const notifications = (residents || []).map(resident => ({
-                    user_id: resident.id,
+                    userId: resident.id,
                     type: 'alert',
                     category: 'iot_access_approval',
                     title: 'Solicitud urgente de acceso',
                     body: input.reason,
                     link: '/resident/cases',
-                    community_id: communityId,
+                    communityId,
                 }));
 
                 let notificationError: string | null = null;
                 if (notifications.length > 0) {
-                    const { error } = await supabaseAdmin.from('notifications').insert(notifications);
+                    const { error } = await insertCommunityNotifications(supabaseAdmin, notifications);
                     notificationError = error?.message || null;
                 }
 
@@ -1421,17 +1418,20 @@ export async function executeTool(
 
                 let staffNotificationError: string | null = null;
                 if (staff?.length) {
-                    const { error } = await supabaseAdmin.from('notifications').insert(staff.map(member => ({
-                        user_id: member.id,
-                        type: input.urgency === 'URGENTE' ? 'alert' : 'warning',
-                        category: 'iot_provider_dispatch',
-                        title: provider ? 'Proveedor sugerido por CoCo' : 'Proveedor requerido por CoCo',
-                        body: provider
-                            ? `${provider.name} (${provider.contact_phone}) calza con ${input.category}. Detalle: ${input.details}`
-                            : `No hay proveedor disponible para ${input.category}. Detalle: ${input.details}`,
-                        link: '/admin/mantenimiento',
-                        community_id: communityId,
-                    })));
+                    const { error } = await insertCommunityNotifications(
+                        supabaseAdmin,
+                        staff.map(member => ({
+                            userId: member.id,
+                            type: input.urgency === 'URGENTE' ? 'alert' : 'warning',
+                            category: 'iot_provider_dispatch',
+                            title: provider ? 'Proveedor sugerido por CoCo' : 'Proveedor requerido por CoCo',
+                            body: provider
+                                ? `${provider.name} (${provider.contact_phone}) calza con ${input.category}. Detalle: ${input.details}`
+                                : `No hay proveedor disponible para ${input.category}. Detalle: ${input.details}`,
+                            link: '/admin/mantenimiento',
+                            communityId,
+                        })),
+                    );
                     staffNotificationError = error?.message || null;
                 }
 

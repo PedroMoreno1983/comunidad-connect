@@ -36,6 +36,7 @@
     "qa:profiles": "node scripts/profile-boundaries-qa.js",
     "qa:supabase-schema": "node scripts/supabase-schema-qa.js",
     "qa:responsive": "node scripts/responsive-audit-qa.js",
+    "pack:cart-loader": "node scripts/pack-cart-loader.js",
     "search:backfill": "node scripts/backfill-marketplace-embeddings.js",
     "test:whatsapp": "node scripts/test-whatsapp.js",
     "test:e2e:security": "playwright test tests/e2e/security-boundaries.spec.ts",

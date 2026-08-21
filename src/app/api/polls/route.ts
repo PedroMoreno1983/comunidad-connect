@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { getRequestId, recordOperationEvent } from '@/lib/operations/audit';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
+import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
+import { createPollWithOptions } from '@/lib/server/data/polls';
+import { insertCommunityNotifications } from '@/lib/server/data/notifications';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -23,20 +24,6 @@ type PollCreateBody = {
     options?: string[];
     channels?: DeliveryChannels;
 };
-
-async function getSupabaseUserClient() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-}
 
 function cleanText(value: unknown, max: number) {
     return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -90,21 +77,9 @@ export async function POST(request: NextRequest) {
     if (limited) return limited;
 
     try {
-        const supabaseUser = await getSupabaseUserClient();
-        const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-
-        if (authError || !user) {
+        const profile = await getAuthenticatedAgentProfile();
+        if (!profile) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-        }
-
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, name, email, role, community_id')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-            return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
         }
 
         if (profile.role !== 'admin') {
@@ -123,42 +98,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Titulo, descripcion, fecha y al menos dos opciones son obligatorios' }, { status: 400 });
         }
 
-        const { data: poll, error: pollError } = await supabaseAdmin
-            .from('polls')
-            .insert({
-                title,
-                description,
-                category,
-                end_date: endDate,
-                status: 'active',
-                created_by: profile.id,
-                community_id: profile.community_id,
-            })
-            .select('*')
-            .single();
-
-        if (pollError || !poll) {
-            console.error('[polls] poll insert failed', pollError);
-            return NextResponse.json({ error: 'No se pudo crear la votación.' }, { status: 500 });
+        if (!profile.community_id) {
+            return NextResponse.json({ error: 'Tu cuenta no está asociada a una comunidad.' }, { status: 400 });
         }
 
-        const optionRows = options.map((text, index) => ({
-            poll_id: poll.id,
-            text,
-            display_order: index,
-            votes: 0,
-        }));
+        const created = await createPollWithOptions(supabaseAdmin, {
+            title,
+            description,
+            category,
+            endDate,
+            createdBy: profile.id,
+            communityId: profile.community_id,
+            options,
+        });
 
-        const { data: createdOptions, error: optionsError } = await supabaseAdmin
-            .from('poll_options')
-            .insert(optionRows)
-            .select('*');
-
-        if (optionsError) {
-            await supabaseAdmin.from('polls').delete().eq('id', poll.id);
-            console.error('[polls] option insert failed', optionsError);
-            return NextResponse.json({ error: 'No se pudieron crear las opciones de la votación.' }, { status: 500 });
+        if (!created.ok) {
+            console.error('[polls] poll insert failed', created.reason);
+            return NextResponse.json(
+                { error: created.reason === 'options'
+                    ? 'No se pudieron crear las opciones de la votación.'
+                    : 'No se pudo crear la votación.' },
+                { status: 500 },
+            );
         }
+
+        const { poll, options: createdOptions } = created;
 
         const pollUrl = '/votaciones';
         const announcement = [
@@ -197,24 +161,23 @@ export async function POST(request: NextRequest) {
         const recipients = residents || [];
 
         if (channels.notifications && recipients.length > 0) {
-            const notificationRows = recipients.map(resident => ({
-                user_id: resident.id,
-                type: 'info',
-                category: 'poll',
-                title: 'Nueva votacion disponible',
-                body: title,
-                link: pollUrl,
-                community_id: profile.community_id,
-            }));
-
-            const { error: notificationError } = await supabaseAdmin
-                .from('notifications')
-                .insert(notificationRows);
+            const { error: notificationError } = await insertCommunityNotifications(
+                supabaseAdmin,
+                recipients.map(resident => ({
+                    userId: resident.id,
+                    type: 'info',
+                    category: 'poll',
+                    title: 'Nueva votacion disponible',
+                    body: title,
+                    link: pollUrl,
+                    communityId: profile.community_id,
+                })),
+            );
 
             if (notificationError) {
-                delivery.notifications.failed = notificationRows.length;
+                delivery.notifications.failed = recipients.length;
             } else {
-                delivery.notifications.sent = notificationRows.length;
+                delivery.notifications.sent = recipients.length;
             }
         }
 
@@ -266,7 +229,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             poll,
-            options: createdOptions || [],
+            options: createdOptions,
             delivery,
         }, { status: 201 });
     } catch (error) {

@@ -6,6 +6,8 @@ import type {
     InstagramConnectionSummary,
     MarketingCampaign,
     MarketingCampaignStatus,
+    MarketingCapabilities,
+    MarketingReelsDashboard,
     MarketingReelRecord,
     MarketingReelStatus,
     ReelAgentInput,
@@ -151,7 +153,7 @@ function mapConnection(row: ConnectionRow | null): InstagramConnectionSummary {
     };
 }
 
-export async function getMarketingReelsDashboard(profile: MarketingProfile) {
+export async function getMarketingReelsDashboard(profile: MarketingProfile): Promise<MarketingReelsDashboard> {
     requireAdmin(profile);
     const admin = getSupabaseAdmin();
     const communityId = communityIdFor(profile);
@@ -184,7 +186,7 @@ export async function getMarketingReelsDashboard(profile: MarketingProfile) {
     };
 }
 
-export function getMarketingCapabilities() {
+export function getMarketingCapabilities(): MarketingCapabilities {
     const useCreatomateTemplate = process.env.CREATOMATE_USE_TEMPLATE === 'true';
     const creatomateReady = Boolean(process.env.CREATOMATE_API_KEY)
         && (!useCreatomateTemplate || Boolean(process.env.CREATOMATE_TEMPLATE_ID));

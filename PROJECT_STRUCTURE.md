@@ -138,19 +138,15 @@ Carpetas principales, agrupadas por dominio:
 ### 2.4 `src/lib/` — lógica de negocio y servicios
 
 **Los dos archivos centrales que dicta `CLAUDE.md`:**
-- `lib/api.ts` (2000+ líneas) — capa de Services (`XxxService.metodo()`)
-- `lib/types.ts` — todos los tipos TypeScript centralizados
+- `lib/api.ts` — barrel que reexporta los Services de `lib/services/<dominio>.ts`
+- `lib/types.ts` — tipos compartidos; los de un dominio viven junto al módulo que los produce
 
-**⚠️ Importante para entender el código:** `CLAUDE.md` dice "las páginas NO
-hacen llamadas directas a Supabase, todo pasa por `lib/api.ts`" — en la
-práctica **eso ya no es cierto en todo el código**. Existe una segunda capa
-paralela, `lib/services/supabaseServices.ts` (1000+ líneas), con servicios
-que se solapan casi nombre a nombre con los de `api.ts`
-(`AmenitiesService`/`AmenityService`, `PollsService`/`PollService`, etc.), y
-además 57 rutas en `app/api/` acceden a Supabase directamente con
-`supabaseAdmin`. Antes de agregar una función nueva, busca si ya existe en
-ambas capas para no triplicarla otra vez. Este es un ítem P2 pendiente en
-`SECURITY_AUDIT_STATUS.md`.
+**Capa de datos.** Las páginas no llaman a Supabase: importan un `XxxService`
+desde `@/lib/api`. La implementación vive en `src/lib/services/` por dominio
+(`parking.ts`, `concierge.ts`, `social.ts`, …). `supabaseServices.ts` ya no
+existe. Las rutas en `app/api/` siguen usando el cliente de servidor
+(`getSupabaseUserClient` o service role); esa consolidación es la etapa 5 de
+`docs/deuda-arquitectonica.md`.
 
 Subcarpetas:
 
@@ -267,8 +263,8 @@ removidos del tracking.
 
 Cuando busques dónde vive algo, en este orden:
 1. `src/app/(dashboard)/<módulo>/page.tsx` — la UI de esa pantalla.
-2. `src/lib/api.ts` **y** `src/lib/services/supabaseServices.ts` — busca en
-   ambos, la función que necesitas puede estar en cualquiera de los dos.
+2. `src/lib/api.ts` (barrel) y `src/lib/services/<dominio>.ts` — la
+   implementación del Service.
 3. `src/app/api/<módulo>/route.ts` — si la página llama a un endpoint
    propio en vez de a un Service directamente.
 4. `supabase/migrations/` (grep por nombre de tabla) — para entender el

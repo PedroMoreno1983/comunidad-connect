@@ -10,7 +10,6 @@
     'security verification',
     'verificacion de seguridad en curso',
     'verificación de seguridad en curso',
-    'un momento',
   ];
 
   const commonLocationText = [
@@ -28,21 +27,6 @@
     'selecciona una comuna',
     'selecciona tu tienda',
     'despacho a domicilio retiro en tienda',
-  ];
-
-  const commonOutOfStockText = [
-    'justo se agoto',
-    'justo se agotó',
-    'agotado',
-    'producto agotado',
-    'sin stock',
-    'no disponible',
-    'temporalmente no disponible',
-    'producto temporalmente fuera de stock',
-    'out of stock',
-    'no hay stock',
-    'no encontramos resultados',
-    'este producto no se encuentra disponible',
   ];
 
   const cencosud = {

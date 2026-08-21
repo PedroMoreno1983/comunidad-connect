@@ -9,18 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
-import { InvitationService } from "@/lib/services/supabaseServices";
+import { InvitationService } from "@/lib/api";
+import type { ResidentInvitation } from "@/lib/services/concierge";
 
-export interface GeneratedInvitation {
-    id: string;
-    residentId: string;
-    guestName: string;
-    guestDni: string;
-    status: "active";
-    validFrom: string;
-    validTo: string;
-    qrCode: string;
-}
+export type GeneratedInvitation = ResidentInvitation;
 
 export function QRInvitationGenerator({ onGenerated }: { onGenerated?: (invitation: GeneratedInvitation) => void }) {
     const { user } = useAuth();

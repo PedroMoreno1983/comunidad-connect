@@ -1,10 +1,12 @@
+// Solo se anuncia lo que el cargador implementa de verdad. Antes seguian aqui
+// 'cart-replace-v1', 'cart-stale-job-recovery-v1' y 'cart-zero-proof-v1'
+// despues de que su codigo se eliminara, asi que la web daba por buena una
+// extension que ya no vaciaba el carro anterior ni comprobaba el contador.
 const LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
   'loader-version-handshake-v1',
-  'cart-replace-v1',
-  'cart-stale-job-recovery-v1',
-  'cart-zero-proof-v1',
+  'cart-batch-inject-v1',
 ];
 
 const ALLOWED_ORIGINS = new Set([

@@ -381,7 +381,6 @@ export interface SupermarketCartLoadRequest {
   store: string;
   items: SupermarketCartLoadItem[];
   createdAt: string;
-  replaceCart: boolean;
 }
 
 export interface SupermarketCartLoadProgress {
@@ -392,10 +391,6 @@ export interface SupermarketCartLoadProgress {
   added: number;
   failed: number;
   currentItem?: string;
-  previousCartCount?: number;
-  currentCartCount?: number;
-  removedCartCount?: number;
-  cartReplaced?: boolean;
   detail: string;
 }
 
@@ -405,7 +400,7 @@ export interface SupermarketCartLoaderBridge {
   availability: SupermarketCartLoaderAvailability;
   installedVersion?: string;
   progress: SupermarketCartLoadProgress | null;
-  start: (options?: { replaceCart?: boolean }) => boolean;
+  start: () => boolean;
 }
 
 
@@ -612,6 +607,8 @@ export interface ServiceProvider {
   verified: boolean;
 }
 
+export type ServiceProviderCategory = ServiceProvider['category'];
+
 export interface ServiceProviderDatabaseRow {
   id: string;
   name: string;
@@ -711,6 +708,35 @@ export interface CreatePackageInput {
   communityId: string;
 }
 
+export interface ConciergeVisitorRow {
+  id: string;
+  visitor_name?: string | null;
+  unit_id?: string | null;
+  entry_time?: string | null;
+  exit_time?: string | null;
+  is_qr?: boolean | null;
+  units?: { number?: string | null } | null;
+}
+
+export interface ConciergePackageRow {
+  id: string;
+  recipient_unit_id?: string | null;
+  description?: string | null;
+  received_at?: string | null;
+  status?: string | null;
+  picked_up_at?: string | null;
+  units?: { number?: string | null } | null;
+}
+
+export interface ConciergeCaseRow {
+  id: string;
+  title?: string | null;
+  category?: string | null;
+  urgency?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+}
+
 export interface PackageSummaryCardProps {
   label: string;
   value: number;
@@ -802,19 +828,6 @@ export interface ExpenseRecord {
   status: 'paid' | 'pending' | 'overdue';
   dueDate: string;
   paidAt?: string;
-}
-
-export interface ResidentFinanceExpense {
-  id: string;
-  unit_id: string;
-  month: string;
-  amount: number;
-  status: 'pending' | 'paid' | 'overdue';
-  due_date: string;
-  paid_at?: string;
-  units?: {
-    number: string;
-  };
 }
 
 export type HaulmerFeeMode = 'base_percent' | 'mixed';
@@ -1197,6 +1210,26 @@ export interface InstagramConnectionSummary {
   lastError?: string | null;
 }
 
+export interface MarketingCapabilities {
+  aiScriptGeneration: boolean;
+  videoRendering: boolean;
+  professionalAudio?: boolean;
+  videoAiGeneration?: boolean;
+  videoAiProvider?: string | null;
+  instagramPublishing: boolean;
+  instagramOAuth: boolean;
+  cronSecretConfigured: boolean;
+}
+
+export interface MarketingReelsDashboard {
+  reel?: MarketingReelRecord;
+  reels?: MarketingReelRecord[];
+  campaigns?: MarketingCampaign[];
+  instagram?: InstagramConnectionSummary;
+  capabilities?: MarketingCapabilities;
+  error?: string;
+}
+
 export interface MarketingReelRecord {
   id: string;
   campaignId?: string | null;
@@ -1325,6 +1358,13 @@ export interface ProductionHealthSnapshot {
     fullPaidProductionReady?: boolean;
     deferredProduction?: string[];
   };
+}
+
+/** Respuesta completa de `/api/health`, incluida la que consume el centro operativo. */
+export interface ProductionHealthResponse extends ProductionHealthSnapshot {
+  checkedAt?: string;
+  service?: string;
+  checks?: Record<string, Record<string, unknown>>;
 }
 
 export interface DebugEndpointResult {

@@ -23,57 +23,13 @@ import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/components/ui/Toast";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
+import type { BuildingAsset, CocoCase, MaintenanceLog, MaintenanceServiceRow } from "@/lib/types";
 
-type ServiceRow = {
-    id: string;
-    service_type?: string | null;
-    category?: string | null;
-    description?: string | null;
-    status?: string | null;
-    scheduled_date?: string | null;
-    preferred_date?: string | null;
-    created_at?: string | null;
-};
-
-type CaseRow = {
-    id: string;
-    title?: string | null;
-    category?: string | null;
-    urgency?: string | null;
-    status?: string | null;
-    unit_label?: string | null;
-    source_message?: string | null;
-    created_at?: string | null;
-};
-
-type AssetRow = {
-    id: string;
-    name?: string | null;
-    category?: string | null;
-    brand?: string | null;
-    model?: string | null;
-    location?: string | null;
-    health_status?: string | null;
-    healthStatus?: string | null;
-    next_maintenance?: string | null;
-    nextMaintenance?: string | null;
-};
-
-type LogRow = {
-    id: string;
-    description?: string | null;
-    cost?: number | null;
-    date?: string | null;
-    performed_by?: string | null;
-};
-
-const emptyServices: ServiceRow[] = [];
-const emptyCases: CaseRow[] = [];
-const emptyAssets: AssetRow[] = [];
-const emptyLogs: LogRow[] = [];
-
+const emptyServices: MaintenanceServiceRow[] = [];
+const emptyCases: CocoCase[] = [];
+const emptyAssets: BuildingAsset[] = [];
+const emptyLogs: MaintenanceLog[] = [];
 const categories = ["plomeria", "electrico", "ascensor", "seguridad", "limpieza", "otro"] as const;
-
 
 function dateLabel(value?: string | null) {
     if (!value) return "Sin fecha";
@@ -92,15 +48,15 @@ function statusLabel(status?: string | null) {
     return "Pendiente";
 }
 
-function healthOf(asset: AssetRow) {
-    return asset.health_status || asset.healthStatus || "optimal";
+function healthOf(asset: BuildingAsset) {
+    return asset.healthStatus || "optimal";
 }
 
-function serviceTypeOf(item: ServiceRow) {
+function serviceTypeOf(item: MaintenanceServiceRow) {
     return item.service_type || item.category || "otro";
 }
 
-function serviceDateOf(item: ServiceRow) {
+function serviceDateOf(item: MaintenanceServiceRow) {
     return item.scheduled_date || item.preferred_date || item.created_at;
 }
 
@@ -109,10 +65,10 @@ export default function MantenimientoAdminPage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"operacion" | "activos" | "sensores">("operacion");
-    const [services, setServices] = useState<ServiceRow[]>([]);
-    const [cases, setCases] = useState<CaseRow[]>([]);
-    const [assets, setAssets] = useState<AssetRow[]>([]);
-    const [logs, setLogs] = useState<LogRow[]>([]);
+    const [services, setServices] = useState<MaintenanceServiceRow[]>([]);
+    const [cases, setCases] = useState<CocoCase[]>([]);
+    const [assets, setAssets] = useState<BuildingAsset[]>([]);
+    const [logs, setLogs] = useState<MaintenanceLog[]>([]);
     const [showTask, setShowTask] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -366,7 +322,7 @@ export default function MantenimientoAdminPage() {
                                 <p className="mt-4 text-xs font-bold uppercase tracking-widest cc-text-tertiary">{asset.location || "Sin ubicación"}</p>
                                 <div className="mt-5 flex items-center justify-between rounded-xl px-4 py-3" style={{ background: "var(--cc-paper-warm)" }}>
                                     <span className="text-xs font-bold cc-text-secondary">Próxima revisión</span>
-                                    <span className="text-xs font-bold cc-text-primary">{dateLabel(asset.next_maintenance || asset.nextMaintenance)}</span>
+                                    <span className="text-xs font-bold cc-text-primary">{dateLabel(asset.nextMaintenance)}</span>
                                 </div>
                             </article>
                         );

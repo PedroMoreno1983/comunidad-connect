@@ -10,31 +10,7 @@ import remarkGfm from "remark-gfm";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useRouter } from "next/navigation";
 import { getSafeCoCoNavigation } from "@/lib/coco/navigation";
-
-interface PendingAction {
-    toolUseId: string;
-    name: string;
-    input: Record<string, unknown>;
-    title: string;
-    summary: string;
-}
-
-interface Message {
-    id: string;
-    role: "user" | "assistant";
-    text: string;
-    nav?: string;
-    action?: string;
-    pendingActions?: PendingAction[];
-    resolvedActions?: Record<string, "approved" | "rejected">;
-}
-
-interface CoCoApiResponse {
-    reply?: string;
-    navigate?: string;
-    action?: string;
-    pendingActions?: PendingAction[];
-}
+import type { CoCoChatMessage, CoCoClientResponse, CoCoPendingAction, CoCoResolutions } from "@/lib/coco/agent";
 
 function CoCoMarkdown({ text }: { text: string }) {
     return (
@@ -66,7 +42,7 @@ const CHIPS = [
 export default function CoCoChatPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
-    const [msgs, setMsgs] = useState<Message[]>([
+    const [msgs, setMsgs] = useState<CoCoChatMessage[]>([
         {
             id: "welcome",
             role: "assistant",
@@ -84,18 +60,18 @@ export default function CoCoChatPage() {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
 
-    const postToCoCo = async (body: Record<string, unknown>): Promise<CoCoApiResponse> => {
+    const postToCoCo = async (body: Record<string, unknown>): Promise<CoCoClientResponse> => {
         const res = await fetch(getApiUrl("/api/coco"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ currentPage: "/chat", ...body }),
         });
-        const data = await res.json().catch(() => ({})) as CoCoApiResponse;
+        const data = await res.json().catch(() => ({})) as CoCoClientResponse;
         if (!res.ok) throw new Error(data.reply || `HTTP ${res.status}`);
         return data;
     };
 
-    const appendAssistantReply = (data: CoCoApiResponse) => {
+    const appendAssistantReply = (data: CoCoClientResponse) => {
         const safeNavigate = getSafeCoCoNavigation(data.navigate);
         setMsgs(previous => [...previous, {
             id: (Date.now() + 1).toString(),
@@ -174,12 +150,12 @@ export default function CoCoChatPage() {
 
     const resolveAction = async (
         messageId: string,
-        pendingActions: PendingAction[],
+        pendingActions: CoCoPendingAction[],
         toolUseId: string,
         decision: "approved" | "rejected",
     ) => {
         if (loading) return;
-        const resolutions: Record<string, "approved" | "rejected"> = Object.fromEntries(
+        const resolutions: CoCoResolutions = Object.fromEntries(
             pendingActions.map(action => [
                 action.toolUseId,
                 action.toolUseId === toolUseId ? decision : "rejected",

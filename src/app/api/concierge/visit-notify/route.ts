@@ -3,6 +3,7 @@ import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
 import { apiErrorResponse } from '@/lib/observability/logger';
+import { insertCommunityNotification } from '@/lib/server/data/notifications';
 
 export const runtime = 'nodejs';
 
@@ -50,14 +51,14 @@ export async function POST(req: NextRequest) {
         if (!unit?.owner_id) return NextResponse.json({ notified: false });
 
         const time = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        const { error } = await admin.from('notifications').insert({
-            user_id: String(unit.owner_id),
+        const { error } = await insertCommunityNotification(admin, {
+            userId: String(unit.owner_id),
             type: 'info',
             category: 'visitor_arrival',
             title: 'Tu visita ingresó al edificio',
             body: `Conserjería registró el ingreso de ${visitorName} a tu unidad ${unit.number ?? ''} a las ${time}.`,
             link: '/resident/invitations',
-            community_id: profile.community_id,
+            communityId: profile.community_id,
         });
         if (error) throw error;
 
