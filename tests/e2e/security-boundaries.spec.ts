@@ -46,6 +46,10 @@ test('signup rejects incomplete and forged invitations', async ({ request }) => 
     const incomplete = await request.post('/api/auth/signup', { data: {} });
     expect(incomplete.status()).toBe(400);
 
+    // Los consentimientos se validan antes que el codigo de invitacion, asi que
+    // hay que aceptarlos para que la peticion llegue de verdad a esa barrera:
+    // sin ellos esto solo comprobaba el 400 de terminos y dejaba de cubrir la
+    // escalada de rol, que es lo que la prueba dice vigilar.
     const forged = await request.post('/api/auth/signup', {
         data: {
             fullName: 'Security Boundary QA',
@@ -53,6 +57,8 @@ test('signup rejects incomplete and forged invitations', async ({ request }) => 
             password: 'Boundary-QA-2026!',
             accessCode: 'FORGED-CODE-2026',
             role: 'admin',
+            acceptTerms: true,
+            acceptPrivacy: true,
         },
     });
     expect(forged.status()).toBe(403);
