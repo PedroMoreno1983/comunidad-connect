@@ -31,6 +31,8 @@ type SupermarketResultItem = {
   id: string;
   name: string;
   brand?: string;
+  /** Código de la tienda: necesario para la carga directa del carro (VTEX). */
+  sku?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -82,6 +84,7 @@ function toSupermarketResultItem(
     id: typeof item.id === 'string' ? item.id : randomUUID(),
     name,
     brand,
+    sku: typeof item.sku === 'string' && item.sku.trim() ? item.sku : undefined,
     requestedTerm: requested.term,
     requestedQuantity,
     requestedUnit,
@@ -177,6 +180,7 @@ export async function POST(req: NextRequest) {
               id: randomUUID(),
               name: item.name,
               brand: item.brand,
+              sku: item.sku,
               price: item.price,
               store: item.store,
               productUrl: item.productUrl,
@@ -319,6 +323,7 @@ export async function POST(req: NextRequest) {
           id: randomUUID(),
           name: item.name,
           brand: item.brand,
+          sku: item.sku,
           price: item.price,
           store: item.store,
           productUrl: item.productUrl,
@@ -356,6 +361,7 @@ export async function POST(req: NextRequest) {
         id: randomUUID(),
         name: item.name,
         brand: item.brand,
+        sku: item.sku,
         price: item.price,
         store: item.store,
         productUrl: item.productUrl,

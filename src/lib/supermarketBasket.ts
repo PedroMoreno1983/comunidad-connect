@@ -285,6 +285,8 @@ export function buildSupermarketCandidate(
     price,
     lineTotal: price * selection.packs,
     store,
+    sku: asString(row.sku) || undefined,
+    offerId: asString(row.offer_id) || undefined,
     matchRelevance,
     channelType: asString(row.channel_type) || (WHOLESALE_STORES.has(store) ? 'wholesale' : 'retail'),
     originalPrice: listPrice > price ? listPrice : undefined,
