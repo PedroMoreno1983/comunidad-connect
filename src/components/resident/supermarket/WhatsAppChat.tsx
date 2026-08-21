@@ -68,6 +68,8 @@ interface Message {
     audioDuration?: string;
     orderData?: { items: ApiCartItem[]; total: number; savings: number };
     basketChoices?: BasketComparisonItem[];
+    /** Productos de todas las tiendas, para poder rearmar la canasta elegida. */
+    basketItems?: ApiCartItem[];
     recipeData?: import('@/lib/agentBrain').RecipeSuggestion;
     isSender: boolean;
     timestamp: string;
@@ -128,6 +130,14 @@ export function WhatsAppChat() {
 
     const handleSwitchBasket = (basket: BasketComparisonItem, allItems: ApiCartItem[]) => {
         const storeItems = allItems.filter(i => i.store === basket.store);
+        if (storeItems.length === 0) {
+            addMessage({
+                type: 'text',
+                content: `No conservo los productos de ${basket.store}. Escríbeme de nuevo tu lista indicando "en ${basket.store}".`,
+                isSender: false,
+            });
+            return;
+        }
         const total = storeItems.reduce((sum, item) => sum + (item.totalPrice ?? item.price), 0);
         const savings = storeItems.reduce((sum, item) => sum + ((item.originalPrice && item.originalPrice > item.price) ? (item.originalPrice - item.price) * (item.userQuantity ?? 1) : 0), 0);
 
@@ -254,6 +264,7 @@ export function WhatsAppChat() {
                             type: 'basket_choice',
                             isSender: false,
                             basketChoices: alternatives,
+                            basketItems: data.items,
                             status: 'read'
                         });
                     }, 1200);
@@ -375,16 +386,7 @@ export function WhatsAppChat() {
                                         {msg.basketChoices.map(basket => (
                                             <button
                                                 key={basket.store}
-                                                onClick={() => {
-                                                    // Reconstruir items de la canasta seleccionada
-                                                    // Necesitamos los items originales; como no los tenemos en este mensaje,
-                                                    // mostramos un mensaje indicando que debe volver a consultar
-                                                    addMessage({
-                                                        type: 'text',
-                                                        content: `Para comprar en ${basket.store}, escríbeme de nuevo tu lista y especifica "en ${basket.store}".`,
-                                                        isSender: false,
-                                                    });
-                                                }}
+                                                onClick={() => handleSwitchBasket(basket, msg.basketItems ?? [])}
                                                 className="w-full text-left p-2 rounded-lg border border-subtle hover:bg-canvas transition-all"
                                             >
                                                 <div className="flex justify-between items-center">

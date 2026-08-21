@@ -22,31 +22,27 @@ export function DynamicHeroBackground({
   const yParallax = useTransform(scrollY, [0, 800], [0, 110]);
   const opacityFade = useTransform(scrollY, [0, 700], [1, 0.45]);
 
-  // Mouse interactive spotlight & parallax
+  // Mouse interactive spotlight & parallax. El eje vertical de la capa lo
+  // ocupa el parallax de scroll (yParallax), así que el ratón solo mueve X.
   const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
   const mouseClientX = useMotionValue(-1000);
   const mouseClientY = useMotionValue(-1000);
 
   const springX = useSpring(mouseX, { stiffness: 40, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 40, damping: 25 });
   const spotX = useSpring(mouseClientX, { stiffness: 60, damping: 30 });
   const spotY = useSpring(mouseClientY, { stiffness: 60, damping: 30 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const { innerWidth, innerHeight } = window;
-      const xNorm = (e.clientX / innerWidth - 0.5) * 24; // -12px to +12px
-      const yNorm = (e.clientY / innerHeight - 0.5) * 16; // -8px to +8px
+      const xNorm = (e.clientX / window.innerWidth - 0.5) * 24; // -12px to +12px
       mouseX.set(xNorm);
-      mouseY.set(yNorm);
       mouseClientX.set(e.clientX);
       mouseClientY.set(e.clientY);
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY, mouseClientX, mouseClientY]);
+  }, [mouseX, mouseClientX, mouseClientY]);
 
   // Floating ambient light particles canvas
   useEffect(() => {
