@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Poll } from "@/lib/types";
-import { PollService } from "@/lib/services/supabaseServices";
+import { PollsService } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/authContext";
 
@@ -131,7 +131,7 @@ export function PollManager() {
             setIsLoading(true);
             try {
 
-                const data = await PollService.getAll();
+                const data = await PollsService.getAllPolls();
                 setPolls(((data || []) as PollRecord[]).map(mapPollRecord));
             } catch (err) {
                 console.error("Error loading polls:", err);

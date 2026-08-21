@@ -53,7 +53,6 @@ import {
     ResidentCasesSummary,
     ResidentHomeSummary,
     ResidentNavigationContext,
-    ResidentFinanceExpense,
     ServiceRequestQueueItem,
     SupermarketGroupComparison,
     SupermarketGroupCreateInput,
@@ -1792,6 +1791,30 @@ export const AmenitiesService = {
 // ==========================================
 export const PollsService = {
     /**
+     * Todas las votaciones, sin filtrar. Es la vista de administración: quien
+     * las gestiona necesita ver también las cerradas y las vencidas.
+     *
+     * Los residentes deben usar getActivePolls/getClosedPolls, que aplican el
+     * filtro de plazo.
+     */
+    async getAllPolls() {
+        const { data: polls, error } = await supabase
+            .from('polls')
+            .select(`
+                *,
+                options:poll_options(*)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching all polls:', error);
+            throw error;
+        }
+
+        return polls;
+    },
+
+    /**
      * Votaciones abiertas de verdad: status 'active' Y con plazo vigente.
      *
      * Sin la condición de fecha, una votación cuyo plazo venció seguía contando
@@ -2030,49 +2053,6 @@ export const AdminFinanceService = {
         };
     },
 };
-
-export const ResidentFinanceService = {
-    async getExpensesForResident(user: Pick<User, "id" | "unitId" | "unitName">): Promise<ResidentFinanceExpense[]> {
-        let targetUnitId = user.unitId;
-
-        if (!targetUnitId) {
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('unit_id')
-                .eq('id', user.id)
-                .maybeSingle();
-
-            if (error) throw error;
-            targetUnitId = typeof profile?.unit_id === "string" ? profile.unit_id : undefined;
-        }
-
-        if (!targetUnitId) return [];
-
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('unit_id', targetUnitId)
-            .order('month', { ascending: false });
-
-        if (error) throw error;
-
-        const fallbackUnitNumber = user.unitName?.replace(/^Depto\s+/i, "") || targetUnitId;
-        return ((data || []) as Array<Record<string, unknown>>).map(row => ({
-            id: String(row.id),
-            unit_id: String(row.unit_id || targetUnitId),
-            month: String(row.month || new Date().toISOString().slice(0, 7)),
-            amount: Number(row.amount || 0),
-            status: (String(row.status || "pending") as ResidentFinanceExpense["status"]),
-            due_date: String(row.due_date || new Date().toISOString()),
-            paid_at: typeof row.paid_at === "string" ? row.paid_at : undefined,
-            units: { number: fallbackUnitNumber },
-        }));
-    },
-};
-
-// ==========================================
-// FEED / ANUNCIOS (ANNOUNCEMENTS)
-// ==========================================
 export const AnnouncementsService = {
     async getAnnouncements() {
         const { data, error } = await supabase
