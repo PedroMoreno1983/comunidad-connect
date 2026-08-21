@@ -24,9 +24,19 @@ for (const file of requiredFiles) {
 }
 check(!fs.existsSync(path.join(extensionRoot, 'lider-loader.js')), 'Quedó el loader antiguo de Lider sin usar.');
 
+// La versión vive en un solo sitio (src/lib/supermarket/cartLoader.ts) y aquí
+// sólo se comprueba que el manifiesto y la web no se separen de ella.
+const declaredVersion = /CART_LOADER_VERSION = '([^']+)'/.exec(
+  fs.readFileSync(path.join(root, 'src', 'lib', 'supermarket', 'cartLoader.ts'), 'utf8'),
+)?.[1];
+check(Boolean(declaredVersion), 'No se pudo leer CART_LOADER_VERSION.');
+
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
-check(manifest.version === '0.3.11', 'La versión que rechaza carros vacíos debe ser 0.3.11.');
+check(
+  manifest.version === declaredVersion,
+  `El manifiesto (${manifest.version}) no coincide con CART_LOADER_VERSION (${declaredVersion}).`,
+);
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
@@ -180,7 +190,7 @@ const supermarketRoute = fs.readFileSync(
   'utf8',
 );
 check(
-  activationPage.includes('Descargar cargador 0.3.11')
+  activationPage.includes('Descargar cargador {CART_LOADER_VERSION}')
     && activationPage.includes("'/downloads/convive-cart-loader.zip'")
     && activationPage.includes('Actualización manual disponible')
     && activationPage.includes('Cargar lista nueva')

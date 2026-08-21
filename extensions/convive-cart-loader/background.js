@@ -246,14 +246,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
 
-        // Redirigir la pestaña del supermercado directamente al carro oficial
-        if (job.retailerTabId) {
-          const config = storeConfig(job.store);
-          const finalUrl = config?.cartUrl || 'https://www.google.com';
+        // Redirigir la pestaña del supermercado al carro oficial. Ninguna
+        // tienda declara `cartUrl` todavía, y mandar al comprador a un destino
+        // inventado es peor que dejarlo donde está: sin URL conocida la
+        // pestaña se queda en el supermercado, igual que hace retailer-loader.
+        const cartUrl = storeConfig(job.store)?.cartUrl;
+        if (job.retailerTabId && cartUrl) {
           try {
-            await chrome.tabs.update(job.retailerTabId, { url: finalUrl });
+            await chrome.tabs.update(job.retailerTabId, { url: cartUrl });
           } catch {
-            // Tab might be closed
+            // La pestaña pudo cerrarse mientras terminaba la carga.
           }
         }
 
