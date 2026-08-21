@@ -14,7 +14,8 @@ buena parte de lo que parecía trabajo de las siguientes.
 
 | Métrica | Antes de la etapa 0 | Ahora |
 |---|---|---|
-| `src/lib/api.ts` | 3.113 líneas, 22 servicios | 3.093 líneas, 21 servicios |
+| `src/lib/api.ts` | 3.113 líneas, 22 servicios | barrel de reexports (~30 líneas, 21 servicios) |
+| `src/lib/services/*.ts` (dominio) | no existía | un archivo por dominio, p. ej. `parking.ts` |
 | `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | 424 líneas, 6 servicios |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
 | Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
@@ -47,15 +48,15 @@ plazo. Se resolvió con `PollsService.getAllPolls()`.
 
 ---
 
-## Etapa 2 — Partir `api.ts` por dominio
+## Etapa 2 — Partir `api.ts` por dominio ✅ hecha
 
 **Problema.** 3.093 líneas y 21 servicios en un archivo hacen que cualquier
 cambio choque en los merges y que las revisiones sean inmanejables.
 `ParkingService` solo ya son 674 líneas; `SupermarketGroupService`, 266;
 `AdminDashboardService`, 249.
 
-**Cómo, sin tocar a los 39 consumidores.** Mover cada servicio a
-`src/lib/services/<dominio>.ts` y dejar `src/lib/api.ts` como *barrel* que los
+**Cómo, sin tocar a los 39 consumidores.** Cada servicio vive en
+`src/lib/services/<dominio>.ts` y `src/lib/api.ts` es un *barrel* que los
 reexporta:
 
 ```ts
@@ -65,18 +66,12 @@ export { WaterService } from './services/water';
 ```
 
 Así `import { ParkingService } from '@/lib/api'` sigue funcionando en los 39
-archivos y el reparto se puede hacer servicio a servicio, en PRs pequeños.
-Sugerencia de orden: empezar por los grandes y aislados (`ParkingService`,
-`SupermarketGroupService`, `WaterService`), que son los que más ruido meten en
-los merges.
+archivos. `AGENTS.md` y `CLAUDE.md` ya describen el barrel: la regla sigue
+siendo "un solo lugar canónico y ninguna consulta suelta en las páginas", no
+"un solo archivo".
 
-**Ojo con `AGENTS.md`.** La regla dice literalmente que *todos* los servicios
-van en `api.ts`. Hay que actualizarla junto con esta etapa: la intención real de
-la regla es "un solo lugar canónico y ninguna consulta suelta en las páginas",
-no "un solo archivo". El barrel conserva la intención.
-
-**Riesgo:** bajo. Es mover bloques y reexportar; `tsc` detecta cualquier
-importación que se quede corta.
+**Riesgo:** bajo. Fue mover bloques y reexportar; `tsc` cubre importaciones
+que se queden cortas.
 
 ## Etapa 3 — Disolver `supabaseServices.ts`
 

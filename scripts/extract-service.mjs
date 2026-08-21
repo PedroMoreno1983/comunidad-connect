@@ -84,24 +84,54 @@ const apiHelpers = [...source.matchAll(/^(?:async )?function (\w+)|^const ([A-Z_
     .filter(Boolean);
 const pendingHelpers = [...new Set(apiHelpers.filter(name => new RegExp(`\\b${name}\\b`).test(block)))];
 
-const header = [
-    '/**',
-    ` * ${title || `${serviceName}: acceso a datos del dominio ${domain}.`}`,
-    ' *',
-    " * Extraído de `src/lib/api.ts`, que reexporta este servicio para no romper",
-    ' * a quienes lo importan desde `@/lib/api`. Ver docs/deuda-arquitectonica.md.',
-    ' */',
-    '',
-];
-if (usesSupabase) header.push("import { supabase } from '../supabase';");
-if (usesWhatsApp) header.push("import { formatWhatsAppPhone } from '../whatsapp';");
-if (neededTypes.length > 0) {
-    header.push('import type {', ...neededTypes.map(name => `    ${name},`), "} from '../types';");
-}
-header.push('');
-
 fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-fs.writeFileSync(targetPath, `${header.join('\n')}\n${block}\n`, 'utf8');
+
+if (fs.existsSync(targetPath)) {
+    // Un dominio puede alojar varios servicios: se fusionan los imports en vez
+    // de sobrescribir lo que ya hay.
+    let existing = fs.readFileSync(targetPath, 'utf8');
+    if (usesSupabase && !/import \{ supabase \}/.test(existing)) {
+        existing = existing.replace(/(^\/\*\*[\s\S]*?\*\/\n)/, `$1\nimport { supabase } from '../supabase';`);
+    }
+    if (usesWhatsApp && !/formatWhatsAppPhone/.test(existing)) {
+        existing = existing.replace(/(^\/\*\*[\s\S]*?\*\/\n)/, `$1\nimport { formatWhatsAppPhone } from '../whatsapp';`);
+    }
+    const typeBlock = /import type \{([^{}]*?)\} from '\.\.\/types';/.exec(existing);
+    if (typeBlock) {
+        const merged = [...new Set([
+            ...typeBlock[1].split(',').map(entry => entry.trim()).filter(Boolean),
+            ...neededTypes,
+        ])].sort();
+        existing = existing.replace(
+            typeBlock[0],
+            `import type {\n${merged.map(name => `    ${name},`).join('\n')}\n} from '../types';`,
+        );
+    } else if (neededTypes.length > 0) {
+        existing = existing.replace(
+            /(^\/\*\*[\s\S]*?\*\/\n)/,
+            `$1\nimport type {\n${neededTypes.map(name => `    ${name},`).join('\n')}\n} from '../types';`,
+        );
+    }
+    fs.writeFileSync(targetPath, `${existing.replace(/\n+$/, '')}\n\n${block}\n`, 'utf8');
+} else {
+    const header = [
+        '/**',
+        ` * ${title || `Acceso a datos del dominio ${domain}.`}`,
+        ' *',
+        " * Extraído de `src/lib/api.ts`, que reexporta estos servicios para no",
+        ' * romper a quienes los importan desde `@/lib/api`.',
+        ' * Ver docs/deuda-arquitectonica.md.',
+        ' */',
+        '',
+    ];
+    if (usesSupabase) header.push("import { supabase } from '../supabase';");
+    if (usesWhatsApp) header.push("import { formatWhatsAppPhone } from '../whatsapp';");
+    if (neededTypes.length > 0) {
+        header.push('import type {', ...neededTypes.map(name => `    ${name},`), "} from '../types';");
+    }
+    header.push('');
+    fs.writeFileSync(targetPath, `${header.join('\n')}\n${block}\n`, 'utf8');
+}
 
 // --- Sustituir el bloque en api.ts por un reexport --------------------------
 const reexport = `export { ${serviceName} } from './services/${domain}';`;
