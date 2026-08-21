@@ -19,6 +19,14 @@ export interface ScrapedItem {
   imageUrl?: string;
   /** SKU or EAN, when available. */
   sku?: string;
+  /**
+   * Lider/Walmart: identificador de oferta, distinto del SKU y exigido por la
+   * mutacion `updateItems` para cargar el carro. Ver
+   * extensions/convive-cart-loader/ADAPTADORES.md.
+   */
+  offerId?: string;
+  /** Unidad de venta que espera la tienda al agregar al carro ('EACH', etc). */
+  salesUnit?: string;
   /** EAN, when available. */
   ean?: string;
   /** Explicación del criterio de selección de marca/presentación. */
@@ -329,15 +337,106 @@ export function extractSupermarketTerms(message: string): Array<{ term: string; 
   }).filter(t => t.term.length >= 2);
 }
 
+/**
+ * Jumbo migró su sitio a Next.js: el estado ya no llega en
+ * `__REACT_QUERY_STATE__`, sino en el payload RSC (`self.__next_f.push`).
+ * Esta función une todos los chunks de texto del payload.
+ */
+function extractJumboRscText(html: string): string {
+  const chunks: string[] = [];
+  const pushRegex = /self\.__next_f\.push\(\[1,"((?:\\.|[^"\\])*)"\]\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pushRegex.exec(html)) !== null) {
+    try {
+      chunks.push(JSON.parse(`"${match[1]}"`) as string);
+    } catch {
+      // Chunk malformado: se ignora y se sigue con el resto.
+    }
+  }
+  return chunks.join('');
+}
+
+/** Extrae objetos JSON balanceados que siguen a un marcador (ej: `"product":{"productId"`). */
+function extractBalancedJsonObjects(text: string, marker: string): Record<string, unknown>[] {
+  const results: Record<string, unknown>[] = [];
+  let idx = text.indexOf(marker);
+  while (idx !== -1) {
+    // El marcador puede contener '{' (ej: `"product":{"productId"`); la llave
+    // de apertura del objeto es la primera '{' dentro del propio marcador.
+    const start = text.indexOf('{', idx);
+    if (start === -1) break;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let end = -1;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
+    }
+    if (end === -1) break;
+    try {
+      results.push(JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>);
+    } catch {
+      // Objeto incompleto (referencias RSC sin resolver): se ignora.
+    }
+    idx = text.indexOf(marker, end + 1);
+  }
+  return results;
+}
+
+/** Parser para el sitio actual de Jumbo (Next.js + payload RSC). */
+function parseJumboRscProducts(html: string, query: string): ScrapedItem[] {
+  const text = extractJumboRscText(html);
+  if (!text) return [];
+
+  const products = extractBalancedJsonObjects(text, '"product":{"productId"');
+  const seenSkus = new Set<string>();
+
+  return products.flatMap(product => {
+    const item = asRecord(asArray(product?.items)[0]);
+    const price = asNumber(item?.price);
+    const listPrice = asNumber(item?.listPrice);
+    const name = asString(item?.name);
+    const slug = asString(product?.slug);
+    const imageUrl = asString(asArray(item?.images)[0]) || undefined;
+    const sku = asString(item?.skuId) || undefined;
+    if (!name || price <= 0 || item?.stock === false) return [];
+    if (sku && seenSkus.has(sku)) return [];
+    if (sku) seenSkus.add(sku);
+
+    return [{
+      name,
+      brand: asString(product.brand),
+      quantity: 1,
+      price,
+      store: 'Jumbo' as const,
+      isOffer: listPrice > price,
+      originalPrice: listPrice > price ? listPrice : undefined,
+      query,
+      productUrl: slug ? `https://www.jumbo.cl/${slug}/p` : undefined,
+      imageUrl,
+      sku,
+    }];
+  });
+}
+
 export function parseJumboProducts(html: string, query: string): ScrapedItem[] {
   const match = html.match(/<script[^>]+id=["']__REACT_QUERY_STATE__["'][^>]*>([\s\S]*?)<\/script>/i);
-  if (!match) return [];
+  if (!match) return parseJumboRscProducts(html, query);
 
   const root = asRecord(JSON.parse(match[1]));
   const queries = asArray(getPath(root, ['dehydratedState', 'queries']));
   const products = queries.flatMap(query => asArray(getPath(query, ['state', 'data', 'products'])));
 
-  return products.flatMap(productValue => {
+  const items = products.flatMap(productValue => {
     const product = asRecord(productValue);
     const item = asRecord(asArray(product?.items)[0]);
     const price = asNumber(item?.price);
@@ -363,6 +462,9 @@ export function parseJumboProducts(html: string, query: string): ScrapedItem[] {
       sku: asString(item?.itemId) || undefined,
     }];
   });
+
+  // Si el script legado existe pero ya no trae productos, usar el payload RSC.
+  return items.length > 0 ? items : parseJumboRscProducts(html, query);
 }
 
 export function parseSantaIsabelProducts(html: string, query: string): ScrapedItem[] {
@@ -426,6 +528,62 @@ function detectLiderOffer(html: string, productName: string): { isOffer: boolean
   ];
   const hasOfferBadge = offerPatterns.some(p => p.test(html));
   return { isOffer: hasOfferBadge };
+}
+
+export interface LiderOfferRef {
+  /** Es el mismo string que guardamos como `sku`, con sus ceros a la izquierda. */
+  usItemId: string;
+  offerId: string;
+  salesUnit: string;
+  name: string;
+}
+
+/**
+ * Extrae los pares usItemId <-> offerId del `__NEXT_DATA__` de una ficha de Lider.
+ *
+ * La mutacion `updateItems` de Orchestra exige `offerId`, que NO es el SKU y no
+ * aparece en el ld+json del que sale todo lo demas. Si viene en el
+ * `__NEXT_DATA__`, y no solo para el producto de la ficha: el carrusel de
+ * relacionados aporta ~23 pares por pagina, asi que recorrer fichas converge
+ * mucho mas rapido que una peticion por producto.
+ *
+ * Dos detalles que rompen las versiones ingenuas: el HTML viene minificado y los
+ * atributos del `<script>` van SIN comillas, y el `usItemId` debe conservarse
+ * como string porque sus ceros a la izquierda son parte del codigo.
+ *
+ * Verificado contra super.lider.cl el 2026-08-16: 23 pares en una ficha, con
+ * offerId 821920 para el SKU 00780433000693.
+ */
+export function parseLiderOfferRefs(html: string): LiderOfferRef[] {
+  const match = html.match(/<script[^>]*id=["']?__NEXT_DATA__["']?[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return [];
+
+  let root: unknown;
+  try {
+    root = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+
+  const refs = new Map<string, LiderOfferRef>();
+  const walk = (node: unknown): void => {
+    if (!node || typeof node !== 'object') return;
+    const record = node as Record<string, unknown>;
+    const usItemId = asString(record.usItemId);
+    const offerId = asString(record.offerId);
+    if (usItemId && offerId && !refs.has(usItemId)) {
+      refs.set(usItemId, {
+        usItemId,
+        offerId,
+        salesUnit: asString(record.salesUnit) || 'EACH',
+        name: asString(record.name),
+      });
+    }
+    for (const value of Object.values(record)) walk(value);
+  };
+  walk(root);
+
+  return [...refs.values()];
 }
 
 export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
