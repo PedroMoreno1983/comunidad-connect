@@ -61,6 +61,8 @@ export function useSupermarketCartLoader(
       requestedTerm: item.requestedTerm || item.name,
       quantity: Math.max(1, Math.round(item.quantity)),
       productUrl: item.productUrl,
+      sku: item.sku,
+      offerId: item.offerId,
     })),
   }), [basket]);
 
