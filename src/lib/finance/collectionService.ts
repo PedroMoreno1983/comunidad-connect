@@ -16,10 +16,12 @@ import {
     buildAccountStatement,
     calculateLateInterest,
     monthsBetween,
-    type AccountStatement,
     type LedgerCharge,
     type LedgerPayment,
+    type UnitStatement,
 } from './ledger';
+
+export type { UnitStatement };
 
 export const CHARGE_KINDS = new Set(['fine', 'interest', 'extraordinary', 'service', 'other']);
 export const PAYMENT_METHODS = new Set(['transfer', 'cash', 'check', 'card', 'online', 'other']);
@@ -316,7 +318,7 @@ export async function reconcileUnitStatuses(communityId: string, unitId: string)
 export async function getUnitStatement(
     communityId: string,
     unitId: string,
-): Promise<AccountStatement & { unitLabel: string }> {
+): Promise<UnitStatement> {
     const unit = await assertUnitBelongsToCommunity(communityId, unitId);
     const admin = getSupabaseAdmin();
 
@@ -368,8 +370,27 @@ export async function getUnitStatement(
     return { ...buildAccountStatement(charges, payments), unitLabel: unitLabel(unit) };
 }
 
+export interface UnitBalance {
+    unitId: string;
+    label: string;
+    hasOwner: boolean;
+    balance: number;
+    overdueAmount: number;
+    oldestOverdueMonth: string | null;
+    totalCharged: number;
+    totalPaid: number;
+}
+
+export interface CommunityBalances {
+    units: UnitBalance[];
+    totalDebt: number;
+    totalOverdue: number;
+    unitsWithDebt: number;
+    unitsOverdue: number;
+}
+
 /** Resumen de saldos de todas las unidades: la vista de cobranza del admin. */
-export async function getCommunityBalances(communityId: string) {
+export async function getCommunityBalances(communityId: string): Promise<CommunityBalances> {
     const admin = getSupabaseAdmin();
     const { data: units, error } = await admin
         .from('units')

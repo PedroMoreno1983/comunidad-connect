@@ -19,7 +19,7 @@ buena parte de lo que parecía trabajo de las siguientes.
 | `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | eliminado |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
 | Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
-| Tipos definidos fuera de `types.ts` | 171 en 92 archivos | 168 en 91 archivos |
+| Tipos de datos inline en páginas de Agent Center y `admin/finanzas` | 9 + ~18 | 0 (reutilizan el módulo de dominio) |
 
 Lo que **no** es un problema, y conviene no "arreglar": ninguna página ni
 componente llama a Supabase directamente, y no hay un solo `any` en `src/`. Esas
@@ -100,8 +100,16 @@ respuesta de API, una entidad del negocio) va a `types.ts`; si describe las
 **props** de un componente, se queda donde está. Mover props a `types.ts` no
 aporta nada y aleja la definición de su único uso.
 
-Los peores casos por volumen son `agent-center/page.tsx` (9 definiciones,
-incluidas respuestas de API) y las cuatro páginas de `admin/finanzas`.
+Los peores casos por volumen eran `agent-center/page.tsx` (9 definiciones,
+incluidas respuestas de API) y las páginas de `admin/finanzas`. **Primer corte
+hecho:** esas páginas ya no definen tipos de datos. Reutilizan los del módulo
+que ya era la fuente de verdad (`lib/agent-center/domain.ts`, `lib/finance/*`),
+con `import type` para no arrastrar código de servidor al cliente. No se
+volcaron a `types.ts`: ahí se mezclarían con el dump global y se alejarían de
+las funciones que los producen.
+
+Quedan otros dominios (CoCo, supermarket, onboarding, props de UI que se quedan
+donde están). El criterio sigue: datos sí, props de componente no.
 
 ## Etapa 5 — Rutas API (la más grande)
 

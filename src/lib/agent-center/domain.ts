@@ -206,6 +206,50 @@ export type AgentPlaybook = {
     steps: string[];
 };
 
+export type AgentMessage = {
+    id: string;
+    role: 'user' | 'agent';
+    content: string;
+    status?: 'awaiting_confirmation' | 'executed' | 'error' | 'rejected';
+    steps?: AgentStep[];
+    action?: AgentAction;
+    result?: {
+        title?: string;
+        message?: string;
+        targetHref?: string;
+    };
+};
+
+export type AgentActivityRow = {
+    id: string;
+    agent_key: AgentKey;
+    action: string;
+    severity: 'info' | 'success' | 'warning' | 'error';
+    summary: string;
+    created_at: string;
+    metadata?: {
+        displayAction?: string;
+        displaySummary?: string;
+        proposedAction?: {
+            title?: string;
+            summary?: string;
+            args?: Record<string, unknown>;
+        };
+    } | null;
+};
+
+export type AgentCenterSnapshot = {
+    conversation?: { role: 'user' | 'assistant'; content: string }[];
+    activity?: AgentActivityRow[];
+    policies?: AgentPolicy[];
+    summary?: AgentSummary;
+    playbooks?: AgentPlaybook[];
+    tasks?: AgentTaskSummary[];
+    triggers?: AgentTriggerRuleSummary[];
+    proposals?: AgentAction[];
+    workflows?: AgentWorkflow[];
+};
+
 export type AgentWorkflow = {
     key: PlaybookKey;
     agentKey: AgentKey;

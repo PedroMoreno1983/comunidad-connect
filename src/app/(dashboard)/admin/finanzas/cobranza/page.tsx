@@ -10,43 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
 import { useToast } from "@/components/ui/Toast";
-
-interface UnitBalance {
-    unitId: string;
-    label: string;
-    balance: number;
-    overdueAmount: number;
-    oldestOverdueMonth: string | null;
-    totalCharged: number;
-    totalPaid: number;
-}
-
-interface CommunityBalances {
-    units: UnitBalance[];
-    totalDebt: number;
-    totalOverdue: number;
-    unitsWithDebt: number;
-    unitsOverdue: number;
-}
-
-interface StatementEntry {
-    id: string;
-    date: string;
-    kind: string;
-    label: string;
-    amount: number;
-    balance: number;
-    reference: string | null;
-}
-
-interface UnitStatement {
-    unitLabel: string;
-    entries: StatementEntry[];
-    balance: number;
-    overdueAmount: number;
-    totalCharged: number;
-    totalPaid: number;
-}
+import type { CommunityBalances, UnitBalance, UnitStatement } from "@/lib/finance/collectionService";
 
 const money = (value: number) => `$${Math.round(value).toLocaleString("es-CL")}`;
 const today = () => new Date().toISOString().slice(0, 10);
