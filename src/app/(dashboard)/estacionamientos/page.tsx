@@ -449,10 +449,15 @@ function EstacionamientosContent() {
   }, []);
 
   const loadGateData = useCallback(async () => {
+    // Sin comunidad no se cae al condominio de demo: eso mostraba las reservas
+    // de otro tenant a quien no tuviera comunidad asignada.
+    if (!user?.communityId) {
+      setTodayBookings([]);
+      return;
+    }
     setGateLoading(true);
     try {
-      const communityId = user?.communityId || "11111111-1111-1111-1111-111111111111";
-      const list = await ParkingService.getTodayCommunityBookings(communityId);
+      const list = await ParkingService.getTodayCommunityBookings(user.communityId);
       setTodayBookings(list);
     } catch {
       setTodayBookings([]);
@@ -472,9 +477,12 @@ function EstacionamientosContent() {
 
   const loadAdminSettings = useCallback(async () => {
     if (user?.role !== "admin") return;
+    if (!user?.communityId) {
+      setCommunitySettings({ externalEnabled: false, commissionPercent: 0 });
+      return;
+    }
     try {
-      const communityId = user?.communityId || "11111111-1111-1111-1111-111111111111";
-      const settings = await ParkingService.getCommunitySettings(communityId);
+      const settings = await ParkingService.getCommunitySettings(user.communityId);
       setCommunitySettings(settings);
     } catch {
       // Sin datos reales se asume lo más restrictivo: externos cerrados.
