@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, recordAiUsage } from '@/lib/ai/budget';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
+import { verifyUploadSignature } from '@/lib/server/fileSignature';
 
 export const MAX_ONBOARDING_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_ONBOARDING_BATCH_BYTES = 50 * 1024 * 1024;
@@ -106,17 +107,24 @@ async function callGemini(text: string, inlineData: { mimeType: string; data: st
 
 export async function extractResidentsFromBuffer(fileName: string, mimeType: string, buffer: Buffer, context: ExtractionContext) {
     if (buffer.byteLength > MAX_ONBOARDING_FILE_BYTES) throw new Error('Archivo demasiado grande. Maximo 10 MB por archivo.');
-    const lower = fileName.toLowerCase();
+
+    // El parser se elegía por la extensión del nombre, que la manda quien sube
+    // el archivo. Se comprueba la firma real del contenido primero.
+    const signature = verifyUploadSignature(fileName, buffer);
+    if (!signature.ok) throw new Error(signature.reason);
+
     let text = '';
     let inlineData: { mimeType: string; data: string } | undefined;
-    if (lower.endsWith('.pdf')) inlineData = { mimeType: 'application/pdf', data: buffer.toString('base64') };
-    else if (lower.endsWith('.docx') || lower.endsWith('.doc')) {
+    if (signature.extension === 'pdf') {
+        inlineData = { mimeType: 'application/pdf', data: buffer.toString('base64') };
+    } else if (signature.extension === 'docx') {
         const mammoth = await import('mammoth');
         text = (await mammoth.extractRawText({ buffer })).value;
-    } else if (lower.endsWith('.xlsx')) text = await spreadsheetBufferToText(buffer, { maxRows: 10_000 });
-    else if (lower.endsWith('.xls')) inlineData = { mimeType: 'application/vnd.ms-excel', data: buffer.toString('base64') };
-    else if (lower.endsWith('.txt') || lower.endsWith('.csv')) text = buffer.toString('utf-8');
-    else throw new Error('Formato no soportado (.pdf, .doc, .docx, .xls, .xlsx, .txt, .csv).');
+    } else if (signature.extension === 'xlsx') {
+        text = await spreadsheetBufferToText(buffer, { maxRows: 10_000 });
+    } else {
+        text = buffer.toString('utf-8');
+    }
     if (!text.trim() && !inlineData) throw new Error('El documento esta vacio o no se puede procesar.');
     const output = await callGemini(text.slice(0, 400_000), inlineData, context);
     let parsed: unknown;

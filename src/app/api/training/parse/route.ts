@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { spreadsheetBufferToText } from '@/lib/server/spreadsheetText';
+import { verifyUploadSignature } from '@/lib/server/fileSignature';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { enforceDistributedRateLimit } from '@/lib/security/rateLimit';
@@ -49,11 +50,19 @@ export async function POST(request: Request) {
 
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const fileName = file.name.toLowerCase();
+
+        // El parser se elegía sólo por la extensión del nombre, que la manda
+        // quien sube el archivo. Se comprueba la firma real antes de entregarle
+        // el contenido a Gemini, a mammoth o a exceljs.
+        const signature = verifyUploadSignature(file.name, buffer);
+        if (!signature.ok) {
+            return NextResponse.json({ error: signature.reason }, { status: 400 });
+        }
+        const { extension } = signature;
 
         let extractedText = '';
 
-        if (fileName.endsWith('.pdf')) {
+        if (extension === 'pdf') {
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Imposible leer PDFs en Vercel.');
 
@@ -123,24 +132,14 @@ export async function POST(request: Request) {
                 status: 'success',
                 metadata: { latencyMs: Date.now() - startedAt },
             });
-        } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+        } else if (extension === 'docx') {
             const mammoth = await import('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             extractedText = result.value;
-        } else if (fileName.endsWith('.xlsx')) {
+        } else if (extension === 'xlsx') {
             extractedText = await spreadsheetBufferToText(buffer, { maxRows: 500 });
-        } else if (fileName.endsWith('.xls')) {
-            return NextResponse.json({
-                error: 'Excel .xls antiguo no soportado por seguridad. Guarda el archivo como .xlsx o CSV y vuelve a subirlo.',
-            }, { status: 400 });
-        } else if (fileName.endsWith('.csv')) {
-            extractedText = buffer.toString('utf-8');
-        } else if (fileName.endsWith('.txt')) {
-            extractedText = buffer.toString('utf-8');
         } else {
-            return NextResponse.json({
-                error: 'Formato de archivo no soportado. Por favor sube PDF, Word, Excel, CSV o TXT.',
-            }, { status: 400 });
+            extractedText = buffer.toString('utf-8');
         }
 
         const cleanedText = extractedText
