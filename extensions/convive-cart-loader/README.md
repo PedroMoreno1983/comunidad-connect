@@ -1,9 +1,15 @@
 # CoCo · Cargador de carros
 
 Extensión Manifest V3 que recibe una canasta de Convive Connect y agrega los
-productos en la sesión real del comprador. La versión 0.3.11 conecta el botón de Convive, libera automáticamente cargas cuya pestaña fue cerrada, exige que el contador aumente cuando la tienda lo expone, evita falsos éxitos con el carro en cero, reemplaza el carro anterior sólo después de una confirmación explícita, reconoce el estado visual de carro vacío, abre el carro al terminar e incluye adaptadores
-independientes para Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e
-Irurzun.
+productos en la sesión real del comprador. Conecta el botón de Convive, abre una
+única pestaña del supermercado, recorre la lista producto por producto
+conservando el avance, e incluye adaptadores independientes para Lider, Jumbo,
+Santa Isabel, Unimarc, Tottus, aCuenta e Irurzun.
+
+Las capacidades que anuncia al sitio (`convive-bridge.js`) deben corresponder
+siempre con lo que el código hace. Este README describió durante un tiempo un
+vaciado del carro anterior y una comprobación del contador que ya no existían,
+y la web las siguió dando por buenas.
 
 ## Alcance de seguridad
 
@@ -13,11 +19,13 @@ Irurzun.
 - No lee contraseñas, medios de pago ni datos del checkout.
 - No confirma pedidos, no reserva horarios y no ejecuta pagos.
 - Pausa ante CAPTCHA, verificación humana o selección de entrega y permite reanudar.
-- Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
-- Informa el contador observado antes y después sin asumir que cada producto crea una línea nueva.
-- Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo; si la tienda no permite verificar el vaciado, pausa la carga.
 - Expone versión y capacidades para impedir que Convive use un cargador antiguo.
 - Persiste el avance para continuar producto por producto y no detiene toda la lista por un faltante.
+
+### Lo que este cargador **no** hace
+
+No vacía ni reemplaza el carro anterior de la tienda: la lista nueva se agrega
+sobre lo que ya hubiera. El comprador debe revisar el carro antes de pagar.
 
 ## Comportamiento por tienda
 
@@ -51,8 +59,6 @@ Google; el código no puede saltarse ese proceso.
 
 1. CoCo envía productos exactos, cantidades y URLs al puente de la extensión.
 2. La extensión abre una única pestaña del supermercado en la sesión del comprador.
-3. Si la persona eligió reemplazar, verifica y vacía el carro anterior antes de agregar el primer producto.
-4. Recorre los productos, verifica cada alta, ajusta cantidades y conserva el avance.
-5. Los faltantes se registran y la carga continúa con el siguiente producto.
-6. Al finalizar, abre el carro oficial mediante el control visible de la tienda.
-7. El comprador revisa disponibilidad, reemplazos, despacho y pago.
+3. Recorre los productos, ajusta cantidades y conserva el avance.
+4. Los faltantes se registran y la carga continúa con el siguiente producto.
+5. El comprador revisa disponibilidad, reemplazos, despacho y pago.

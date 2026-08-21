@@ -96,11 +96,11 @@ export default function CargadorPage() {
         <h2 className="text-sm font-bold cc-text-primary">Así funciona</h2>
         <ol className="mt-3 space-y-3 text-sm cc-text-secondary">
           {[
-            'Elige el supermercado y pulsa “Cargar lista nueva”.',
-            'Confirma que quieres reemplazar el carro anterior de esa tienda.',
-            'CoCo abre una sola pestaña, comprueba que el carro quedó en cero y agrega cada producto.',
+            'Elige el supermercado y pulsa “Cargar Carro”.',
+            'CoCo abre una sola pestaña de la tienda y agrega cada producto de la lista.',
             'Si la tienda pide login, ubicación o CAPTCHA, CoCo espera y luego continúa.',
-            'Al terminar abre el carro oficial. Tú revisas, eliges entrega y pagas.',
+            'El cargador no vacía tu carro anterior: la lista se agrega sobre lo que ya tuvieras.',
+            'Al terminar, tú revisas el carro, eliges entrega y pagas.',
           ].map((step, index) => (
             <li key={step} className="flex gap-3">
               <span
@@ -128,8 +128,9 @@ export default function CargadorPage() {
               tarjetas ni medios de pago, y nunca confirma una compra.
             </p>
             <p>
-              Un producto solo se informa como agregado cuando la tienda muestra un cambio
-              verificable en el carro. Los faltantes quedan identificados para revisión.
+              Los productos que no se pudieron agregar quedan identificados para que los
+              revises. Confirma siempre el carro en la tienda antes de pagar: el cargador
+              no reemplaza tu carro anterior ni confirma el total por ti.
             </p>
           </div>
         </div>

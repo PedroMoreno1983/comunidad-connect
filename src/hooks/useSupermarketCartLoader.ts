@@ -12,12 +12,12 @@ import type {
 const CONVIVE_SOURCE = 'convive-connect';
 const LOADER_SOURCE = 'convive-cart-loader';
 const READY_TIMEOUT_MS = 1_500;
+// Se exige el minimo que el cargador publicado implementa. Pedir capacidades
+// que ya nadie implementa marcaria 'outdated' a todas las instalaciones; pedir
+// menos de esto dejaria pasar versiones que no saben abrir la pestana.
 const REQUIRED_LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
-  'cart-replace-v1',
-  'cart-stale-job-recovery-v1',
-  'cart-zero-proof-v1',
 ] as const;
 
 function loaderIdentity(value: unknown): { version?: string; capabilities: string[] } {
@@ -51,7 +51,7 @@ export function useSupermarketCartLoader(
   const [progress, setProgress] = useState<SupermarketCartLoadProgress | null>(null);
   const [installedVersion, setInstalledVersion] = useState<string>();
 
-  const request = useMemo<Omit<SupermarketCartLoadRequest, 'replaceCart'>>(() => ({
+  const request = useMemo<SupermarketCartLoadRequest>(() => ({
     version: 1,
     store: basket.store,
     createdAt: new Date().toISOString(),
@@ -117,23 +117,20 @@ export function useSupermarketCartLoader(
     };
   }, [basket.store]);
 
-  const start = useCallback((options?: { replaceCart?: boolean }) => {
+  const start = useCallback(() => {
     if (availability !== 'ready' || request.items.length === 0) return false;
-    const replaceCart = options?.replaceCart === true;
     setProgress({
       store: request.store,
       status: 'opening',
       total: request.items.length,
       added: 0,
       failed: 0,
-      detail: replaceCart
-        ? `Abriendo ${request.store} para reemplazar el carro anterior…`
-        : `Abriendo ${request.store} para cargar el carro…`,
+      detail: `Abriendo ${request.store} para cargar el carro…`,
     });
     window.postMessage({
       source: CONVIVE_SOURCE,
       type: 'CONVIVE_CART_LOADER_START',
-      payload: { ...request, replaceCart },
+      payload: request,
     }, window.location.origin);
     return true;
   }, [availability, request]);

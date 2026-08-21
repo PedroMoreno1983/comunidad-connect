@@ -82,6 +82,15 @@ function missingItem(requested: SupermarketRequestedItem): SupermarketShoppingIt
   };
 }
 
+/**
+ * Identidad del cargador para React. Sin ella el componente se reutiliza al
+ * cambiar de supermercado y arrastra el panel "preparado" y los faltantes de la
+ * tienda anterior.
+ */
+function cartLoaderKey(basket: SupermarketBasketCandidate): string {
+  return `${basket.store}:${basket.items.map(item => `${item.id}x${item.quantity}`).join('|')}`;
+}
+
 export default function SupermarketPage() {
   const { toast } = useToast();
   const [shoppingInput, setShoppingInput] = useState('');
@@ -351,7 +360,7 @@ export default function SupermarketPage() {
                 </div>
                 <div className="w-full space-y-2 sm:w-80">
                   {selectedBasket.complete ? (
-                    <CartLoaderButton basket={selectedBasket} />
+                    <CartLoaderButton key={cartLoaderKey(selectedBasket)} basket={selectedBasket} />
                   ) : selectedBasket.coveredCount > 0 ? (
                     <>
                       {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
@@ -364,7 +373,7 @@ export default function SupermarketPage() {
                           {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
                         </p>
                       </div>
-                      <CartLoaderButton basket={selectedBasket} />
+                      <CartLoaderButton key={cartLoaderKey(selectedBasket)} basket={selectedBasket} />
                     </>
                   ) : (
                     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
