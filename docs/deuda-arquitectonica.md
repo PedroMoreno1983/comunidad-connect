@@ -19,7 +19,7 @@ buena parte de lo que parecía trabajo de las siguientes.
 | `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | eliminado |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
 | Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
-| Tipos de datos inline en páginas de Agent Center y `admin/finanzas` | 9 + ~18 | 0 (reutilizan el módulo de dominio) |
+| Tipos de datos inline en Agent Center, finanzas, CoCo, onboarding, mantenimiento, operaciones, WhatsApp y gastos | ~40 | 0 (reutilizan el módulo de dominio) |
 
 Lo que **no** es un problema, y conviene no "arreglar": ninguna página ni
 componente llama a Supabase directamente, y no hay un solo `any` en `src/`. Esas
@@ -89,27 +89,34 @@ Los tres tipos de filas del panel de conserje
 **Riesgo:** bajo. Fue mover bloques y actualizar importaciones; `tsc` cubre
 las que se queden cortas.
 
-## Etapa 4 — Tipos a `types.ts`
+## Etapa 4 — Tipos de datos fuera de las páginas 🟡 segundo corte hecho
 
 171 definiciones repartidas en 92 archivos. No conviene un PR único de 92
 archivos: hacerlo por dominio, aprovechando que la etapa 2 ya obliga a pasar por
 cada uno.
 
 Criterio para decidir qué se mueve: si el tipo describe **datos** (una fila, una
-respuesta de API, una entidad del negocio) va a `types.ts`; si describe las
-**props** de un componente, se queda donde está. Mover props a `types.ts` no
-aporta nada y aleja la definición de su único uso.
+respuesta de API, una entidad del negocio) va al módulo que los produce; si
+describe las **props** de un componente o un tab/filtro de UI, se queda donde
+está. Mover props a `types.ts` no aporta nada y aleja la definición de su único
+uso. Tampoco se vuelcan todos los tipos al dump global: viven junto a las
+funciones que los producen, con `import type` desde las páginas cliente para no
+arrastrar código de servidor.
 
-Los peores casos por volumen eran `agent-center/page.tsx` (9 definiciones,
-incluidas respuestas de API) y las páginas de `admin/finanzas`. **Primer corte
-hecho:** esas páginas ya no definen tipos de datos. Reutilizan los del módulo
-que ya era la fuente de verdad (`lib/agent-center/domain.ts`, `lib/finance/*`),
-con `import type` para no arrastrar código de servidor al cliente. No se
-volcaron a `types.ts`: ahí se mezclarían con el dump global y se alejarían de
-las funciones que los producen.
+**Primer corte:** Agent Center y `admin/finanzas` reutilizan
+`lib/agent-center/domain.ts` y `lib/finance/*`.
 
-Quedan otros dominios (CoCo, supermarket, onboarding, props de UI que se quedan
-donde están). El criterio sigue: datos sí, props de componente no.
+**Segundo corte:** CoCo (`lib/coco/agent.ts`), onboarding
+(`lib/onboarding/documentExtractor.ts`), mantenimiento (`BuildingAsset` /
+`CocoCase` / etc. en `types.ts`), operaciones (`lib/operations/audit.ts` +
+`ProductionHealthResponse`), WhatsApp (`lib/whatsapp.ts`) y gastos del
+residente (`ResidentExpense` en `lib/services/expenses.ts`). El mapper de la
+fila de Supabase vive en el servicio, no en la página.
+
+**Aún no en esta etapa:** el chat de supermercado (`WhatsAppChat`) tiene un
+`ApiCartItem` local que no encaja limpio con `SupermarketShoppingItem` /
+`CartItem`; unificarlos es un cambio de modelo, no un move de tipos. Las uniones
+de UI (`ParkingTab`, `FilterTab`, `ActiveLane`, `RoleFilter`) se quedan locales.
 
 ## Etapa 5 — Rutas API (la más grande)
 

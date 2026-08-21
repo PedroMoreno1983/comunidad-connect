@@ -1,8 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { logger, resolveRequestId } from '@/lib/observability/logger';
 
-type OperationSeverity = 'info' | 'success' | 'warning' | 'error';
-type OperationStatus = 'success' | 'error' | 'blocked' | 'pending';
+export type OperationSeverity = 'info' | 'success' | 'warning' | 'error';
+export type OperationStatus = 'success' | 'error' | 'blocked' | 'pending';
 
 type JsonLike =
     | string
@@ -24,6 +24,29 @@ export type OperationEventInput = {
     summary: string;
     metadata?: Record<string, unknown>;
     requestId?: string | null;
+};
+
+export type OperationEventRecord = {
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id?: string | null;
+    severity: OperationSeverity;
+    status: OperationStatus;
+    summary: string;
+    metadata?: Record<string, unknown> | null;
+    created_at: string;
+};
+
+export type OperationsListResponse = {
+    summary: {
+        total: number;
+        success: number;
+        warnings: number;
+        errors: number;
+        pending: number;
+    };
+    events: OperationEventRecord[];
 };
 
 const SENSITIVE_KEY = /(password|token|secret|api[_-]?key|authorization|cookie|session|credential)/i;

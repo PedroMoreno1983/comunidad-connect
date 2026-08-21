@@ -19,35 +19,11 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
-
-interface ExtractedUser {
-    id: string;
-    name: string;
-    unit_id: string;
-    email: string;
-    phone: string;
-}
-
-interface SyncResult {
-    fileName: string;
-    rows: number;
-    success: number;
-    errors: number;
-    unitOnly: number;
-}
-
-interface OnboardingAssessment {
-    totalRows: number;
-    validRows: number;
-    missingNameRows: number;
-    missingUnitRows: number;
-    missingContactRows: number;
-    duplicateUnits: string[];
-    confidenceScore: number;
-    warnings: string[];
-}
-
-
+import type {
+    ExtractedResidentDraft,
+    OnboardingAssessment,
+    OnboardingSyncResult,
+} from "@/lib/onboarding/documentExtractor";
 
 
 function friendlyError(message?: string) {
@@ -70,7 +46,7 @@ export default function AdminOnboardingPage() {
     const { toast } = useToast();
 
     const [isExtracting, setIsExtracting] = useState(false);
-    const [extractedData, setExtractedData] = useState<ExtractedUser[] | null>(null);
+    const [extractedData, setExtractedData] = useState<ExtractedResidentDraft[] | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -78,8 +54,8 @@ export default function AdminOnboardingPage() {
     const [lastFileName, setLastFileName] = useState("");
     const [batchId, setBatchId] = useState("");
     const [failedDocumentCount, setFailedDocumentCount] = useState(0);
-    const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-    const [syncedPreview, setSyncedPreview] = useState<ExtractedUser[]>([]);
+    const [syncResult, setSyncResult] = useState<OnboardingSyncResult | null>(null);
+    const [syncedPreview, setSyncedPreview] = useState<ExtractedResidentDraft[]>([]);
     const [agentAssessment, setAgentAssessment] = useState<OnboardingAssessment | null>(null);
     const activeSectionRef = useRef<HTMLElement | null>(null);
     const batchLoadedRef = useRef(false);
@@ -190,7 +166,7 @@ export default function AdminOnboardingPage() {
         if (droppedFiles.length) await processFiles(droppedFiles);
     };
 
-    const handleFieldChange = (id: string, field: keyof ExtractedUser, value: string) => {
+    const handleFieldChange = (id: string, field: keyof ExtractedResidentDraft, value: string) => {
         setExtractedData(prev =>
             prev ? prev.map(row => row.id === id ? { ...row, [field]: value } : row) : null
         );

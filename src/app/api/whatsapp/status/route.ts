@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWhatsAppConfigStatus } from "@/lib/whatsapp";
+import { getWhatsAppConfigStatus, getWhatsAppSetupInfo } from "@/lib/whatsapp";
 import { getAuthenticatedAgentProfile } from "@/lib/server/agentIdentity";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
@@ -23,14 +23,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
         ...getWhatsAppConfigStatus(),
-        setup: {
-            provider: "Twilio WhatsApp",
-            inboundMethod: "POST",
-            inboundContentType: "application/x-www-form-urlencoded",
-            inboundPath: "/api/coco/whatsapp",
-            outboundPath: "/api/whatsapp-notify",
-            paymentTemplateSetupPath: "/api/whatsapp/status",
-        },
+        setup: getWhatsAppSetupInfo(),
     });
 }
 

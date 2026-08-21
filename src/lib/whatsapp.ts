@@ -38,3 +38,41 @@ export function getWhatsAppConfigStatus() {
         },
     };
 }
+
+export type WhatsAppConfigStatus = ReturnType<typeof getWhatsAppConfigStatus>;
+
+export type WhatsAppSetupInfo = {
+    provider: string;
+    inboundMethod: string;
+    inboundContentType: string;
+    inboundPath: string;
+    outboundPath: string;
+    paymentTemplateSetupPath?: string;
+};
+
+export function getWhatsAppSetupInfo(): WhatsAppSetupInfo {
+    return {
+        provider: "Twilio WhatsApp",
+        inboundMethod: "POST",
+        inboundContentType: "application/x-www-form-urlencoded",
+        inboundPath: "/api/coco/whatsapp",
+        outboundPath: "/api/whatsapp-notify",
+        paymentTemplateSetupPath: "/api/whatsapp/status",
+    };
+}
+
+export type WhatsAppStatusResponse = WhatsAppConfigStatus & {
+    setup?: WhatsAppSetupInfo;
+};
+
+export type WhatsAppBroadcastResult = {
+    sent: number;
+    skipped: number;
+    failed: number;
+    recipients: number;
+    truncated?: boolean;
+    detail?: string;
+    dryRun?: boolean;
+    limit?: number;
+    failures?: { userId: string; reason: string }[];
+};

@@ -6,32 +6,7 @@ import { DisplayHeading, Eyebrow } from "@/components/cc/Eyebrow";
 import { Button } from "@/components/cc/Button";
 import { Tag } from "@/components/cc/Tag";
 import { useToast } from "@/components/ui/Toast";
-
-type WhatsAppStatus = {
-    configured: boolean;
-    webhookConfigured: boolean;
-    accountSidMasked: string;
-    fromMasked: string;
-    webhookUrl: string;
-    requiredEnv: Record<string, boolean>;
-    setup?: {
-        provider: string;
-        inboundMethod: string;
-        inboundContentType: string;
-        inboundPath: string;
-        outboundPath: string;
-    };
-};
-
-type BroadcastResult = {
-    sent: number;
-    skipped: number;
-    failed: number;
-    recipients: number;
-    truncated?: boolean;
-    detail?: string;
-    failures?: { userId: string; reason: string }[];
-};
+import type { WhatsAppBroadcastResult, WhatsAppStatusResponse } from "@/lib/whatsapp";
 
 /**
  * Envio de un aviso a toda la comunidad.
@@ -47,7 +22,7 @@ function BroadcastPanel() {
     const [audience, setAudience] = useState<number | null>(null);
     const [checking, setChecking] = useState(false);
     const [sending, setSending] = useState(false);
-    const [result, setResult] = useState<BroadcastResult | null>(null);
+    const [result, setResult] = useState<WhatsAppBroadcastResult | null>(null);
 
     const checkAudience = async () => {
         setChecking(true);
@@ -200,7 +175,7 @@ function BroadcastPanel() {
 
 export default function AdminWhatsAppPage() {
     const { toast } = useToast();
-    const [status, setStatus] = useState<WhatsAppStatus | null>(null);
+    const [status, setStatus] = useState<WhatsAppStatusResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     const loadStatus = async () => {
