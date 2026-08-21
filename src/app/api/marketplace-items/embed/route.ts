@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/supabaseAdmin";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { denyUnlessSharedSecret } from "@/lib/security/sharedSecret";
 
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 const VOYAGE_EMBEDDING_MODEL = process.env.VOYAGE_EMBEDDING_MODEL || "voyage-3.5-lite";
-const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET;
 
 async function generateEmbedding(text: string): Promise<number[] | null> {
     if (!VOYAGE_API_KEY) {
@@ -40,17 +40,14 @@ export async function POST(req: NextRequest) {
     const limited = enforceRateLimit(req, "marketplace.embed", { limit: 120, windowMs: 60_000 });
     if (limited) return limited;
 
-    try {
-        // --- Auth gate: validate internal webhook secret ---
-        if (WEBHOOK_SECRET) {
-            const token = req.headers.get("authorization")?.replace("Bearer ", "");
-            if (token !== WEBHOOK_SECRET) {
-                return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-            }
-        } else if (process.env.NODE_ENV === "production") {
-            return NextResponse.json({ error: "WHATSAPP_WEBHOOK_SECRET no configurado" }, { status: 500 });
-        }
+    // Escribe embeddings con la service role key, así que nunca puede quedar
+    // accesible sin el secreto compartido.
+    const denied = denyUnlessSharedSecret(req, process.env.WHATSAPP_WEBHOOK_SECRET, {
+        notConfiguredMessage: "WHATSAPP_WEBHOOK_SECRET no configurado.",
+    });
+    if (denied) return denied;
 
+    try {
         const body = await req.json();
         
         // Supabase Webhook payload has { type: 'INSERT'|'UPDATE'|'DELETE', record: {...}, old_record: {...} }
@@ -102,8 +99,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, id });
 
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Error desconocido";
-        console.error("[Embed Pipeline] Error:", message);
-        return NextResponse.json({ error: message }, { status: 500 });
+        // El mensaje crudo puede traer la respuesta completa de Voyage.
+        console.error("[Embed Pipeline] Error:", err);
+        return NextResponse.json({ error: "No se pudo generar el embedding." }, { status: 500 });
     }
 }
