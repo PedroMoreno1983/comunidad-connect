@@ -23,11 +23,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Solo administradores pueden enviar alertas.' }, { status: 403 });
         }
 
+        const admin = getSupabaseAdmin();
         const body = await req.json() as Record<string, unknown>;
         const requestedEmail = clean(body.to, 320).toLowerCase();
-        const { data: resident } = await getSupabaseAdmin()
+        const { data: resident } = await admin
             .from('profiles')
-            .select('email,name')
+            .select('email,name,unit_id')
             .eq('community_id', profile.community_id)
             .eq('role', 'resident')
             .ilike('email', requestedEmail)
@@ -36,25 +37,41 @@ export async function POST(req: NextRequest) {
         if (!resident?.email) {
             return NextResponse.json({ error: 'Destinatario no autorizado para esta comunidad.' }, { status: 404 });
         }
-
-        const to = resident.email;
-        const residentName = clean(resident.name, 120) || 'Residente';
-        const unitName = clean(body.unitName, 50) || 'Unidad';
-        const month = clean(body.month, 30) || 'Este mes';
-        const amount = Number(body.amount);
-        const dueDate = clean(body.dueDate, 30);
-
-        if (!to || isNaN(amount) || !dueDate) {
-            return NextResponse.json({ error: 'Faltan datos obligatorios (to, amount, dueDate)' }, { status: 400 });
+        if (!resident.unit_id) {
+            return NextResponse.json({ error: 'El residente no tiene una unidad asociada.' }, { status: 409 });
         }
 
+        // El monto, el mes y el vencimiento salen del gasto real, nunca del
+        // cuerpo de la petición: antes un administrador podía enviar a un vecino
+        // un correo con la marca de Convive anunciando la cifra que quisiera.
+        const requestedExpenseId = clean(body.expenseId, 40);
+        let query = admin
+            .from('expenses')
+            .select('total_amount,month,due_date,units(tower,number)')
+            .eq('community_id', profile.community_id)
+            .eq('unit_id', resident.unit_id);
+
+        query = requestedExpenseId
+            ? query.eq('id', requestedExpenseId)
+            : query.neq('status', 'paid').order('due_date', { ascending: true }).limit(1);
+
+        const { data: expense } = await query.maybeSingle();
+
+        if (!expense) {
+            return NextResponse.json(
+                { error: 'No hay un gasto pendiente para esa unidad en tu comunidad.' },
+                { status: 404 },
+            );
+        }
+
+        const unit = Array.isArray(expense.units) ? expense.units[0] : expense.units;
         const { error } = await sendExpenseAlert({
-            to,
-            residentName,
-            unitName,
-            month,
-            amount,
-            dueDate,
+            to: resident.email,
+            residentName: clean(resident.name, 120) || 'Residente',
+            unitName: unit ? `${unit.tower} ${unit.number}`.trim() : 'Unidad',
+            month: clean(expense.month, 30) || 'Este mes',
+            amount: Number(expense.total_amount),
+            dueDate: clean(String(expense.due_date ?? ''), 30),
         });
 
         if (error) {
