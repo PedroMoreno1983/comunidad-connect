@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   AlertCircle,
   Check,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useSupermarketCartLoader } from '@/hooks/useSupermarketCartLoader';
 import type { SupermarketPurchasePlanBasket } from '@/lib/types';
 
 const STORE_HOME: Record<string, string> = {
@@ -37,14 +38,12 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
-  const [hasExtension, setHasExtension] = useState(false);
-  const [extensionProgress, setExtensionProgress] = useState<{
-    status?: string;
-    added?: number;
-    total?: number;
-    failed?: number;
-    detail?: string;
-  } | null>(null);
+
+  // El hook hace el handshake de version/capacidades con la extension y filtra
+  // el progreso por tienda. El componente lo reimplementaba con un postMessage
+  // crudo que daba por buena cualquier version instalada.
+  const cartLoader = useSupermarketCartLoader(basket);
+  const extensionProgress = cartLoader.progress;
 
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -60,22 +59,6 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
 
   const isVtex = VTEX_STORES.has(basket.store);
   const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
-
-  // Detectar si la extensión de Chrome está activa
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
-      if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
-        setHasExtension(true);
-      }
-      if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
-        setExtensionProgress(event.data.payload);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    window.postMessage({ source: 'convive-connect', type: 'CONVIVE_CART_LOADER_PING' }, '*');
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   const formatListText = () => {
     const header = `🛒 *Lista de Compras · ${basket.store}*\n`;
@@ -158,29 +141,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
             : 'Se abrió la tienda oficial. Revisa el carro antes de pagar.',
           variant: missingCount > 0 ? 'default' : 'success',
         });
-      } else if (hasExtension) {
+      } else if (cartLoader.availability === 'ready' && cartLoader.start()) {
         // 2. Carga automatizada en 1 sola pestaña vía extensión de navegador (Líder, Tottus, aCuenta)
-        window.postMessage(
-          {
-            source: 'convive-connect',
-            type: 'CONVIVE_CART_LOADER_START',
-            payload: {
-              version: 1,
-              store: basket.store,
-              items: basket.items.map((item, idx) => ({
-                id: item.id || `item-${idx + 1}`,
-                name: item.name,
-                requestedTerm: item.requestedTerm || item.name,
-                quantity: Math.max(1, Math.round(item.quantity)),
-                productUrl: item.productUrl,
-              })),
-            },
-          },
-          '*'
-        );
         toast({
           title: `Preparando carro en ${basket.store}`,
-          description: 'Cargando productos en tu sesión y abriendo el carro oficial.',
+          description: 'Cargando productos en tu sesión. Revisa el carro antes de pagar.',
           variant: 'success',
         });
       } else {
@@ -263,6 +228,22 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           <span>Compartir WhatsApp</span>
         </button>
       </div>
+
+      {/* Una extension instalada que ya no cumple el contrato debe pedir
+          actualizacion en vez de intentar una carga que fallara a medias. */}
+      {!isVtex && cartLoader.availability === 'outdated' && (
+        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            Tu cargador de Convive
+            {cartLoader.installedVersion ? ` (${cartLoader.installedVersion})` : ''} está
+            desactualizado y no puede cargar el carro.{' '}
+            <a href="/resident/supermercado/cargador" className="font-bold underline">
+              Actualizar cargador
+            </a>
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
