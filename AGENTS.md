@@ -93,7 +93,8 @@ src/
 │   ├── api/             # Route Handlers de Next.js
 │   └── page.tsx         # Landing page pública
 ├── lib/
-│   ├── api.ts           # ← TODOS los Services de datos van aquí
+│   ├── api.ts           # Barrel: reexporta Services de src/lib/services/
+│   ├── services/        # Implementación de cada Service por dominio
 │   ├── types.ts         # ← TODOS los tipos TypeScript centralizados
 │   ├── agentBrain.ts    # Lógica del agente de supermercado/recetas
 │   ├── authContext.tsx  # Contexto global de autenticación
@@ -105,15 +106,15 @@ src/
 
 ### 2. Reglas de arquitectura — NO ROMPER
 
-- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` dentro de `src/lib/api.ts`.
+- **Las páginas NO hacen llamadas directas a Supabase.** Toda lógica de datos va encapsulada en un `Service` en `src/lib/services/` y se importa desde `@/lib/api`.
 - **Todos los tipos van en `src/lib/types.ts`.** No definir tipos inline en componentes o páginas.
 - **Las rutas de API van en `src/app/api/`** como Route Handlers de Next.js (`route.ts`).
 - **`src/lib/supabase.ts`** exporta el cliente Supabase — importar siempre desde ahí, nunca instanciar Supabase directamente.
 - **No usar `any` en TypeScript.** El modo strict está activo.
 
-### 3. Patrón de Services (api.ts)
+### 3. Patrón de Services (`src/lib/services/` + barrel `api.ts`)
 
-Todos los servicios siguen este patrón:
+La implementación vive en `src/lib/services/<dominio>.ts`. `src/lib/api.ts` solo reexporta para que `import { XxxService } from '@/lib/api'` siga funcionando. Los servicios siguen este patrón:
 
 ```typescript
 export const XxxService = {
@@ -130,6 +131,7 @@ Services existentes:
 - `PollsService` — Votaciones
 - `ExpensesService` — Gastos comunes (pagos via Haulmer, pendiente de permisos)
 - `AnnouncementsService` — Anuncios del feed
+- `ParkingService`, `SupermarketGroupService`, `AdminDashboardService`, y el resto del barrel — ver `src/lib/api.ts`
 
 ---
 
