@@ -2,18 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  AlertCircle,
   Check,
+  CheckCircle2,
   Copy,
   ExternalLink,
   Loader2,
-  ShoppingCart,
-  Sparkles,
   Share2,
-  ListChecks,
-  AlertCircle,
-  CheckCircle2,
-  Puzzle,
-  Layers,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -154,10 +150,13 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
         });
 
         window.open(cartUrl, '_blank', 'noopener');
+        const missingCount = (data.missingItems || []).length;
         toast({
-          title: `Carro cargado en ${basket.store}`,
-          description: 'Se abrió la tienda oficial con todos tus productos en el carro.',
-          variant: 'success',
+          title: `Carro preparado en ${basket.store}`,
+          description: missingCount > 0
+            ? `Se abrió la tienda oficial. ${missingCount} producto(s) no pudieron cargarse: revísalos antes de pagar.`
+            : 'Se abrió la tienda oficial. Revisa el carro antes de pagar.',
+          variant: missingCount > 0 ? 'default' : 'success',
         });
       } else if (hasExtension) {
         // 2. Carga automatizada en 1 sola pestaña vía extensión de navegador (Líder, Tottus, aCuenta)
@@ -281,7 +280,11 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                {directResult && directResult.missing.length > 0 ? (
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                )}
                 {basket.store} preparado
               </p>
               {extensionProgress?.detail && (
@@ -296,6 +299,27 @@ export function CartLoaderButton({ basket }: CartLoaderButtonProps) {
               </p>
             </div>
           </div>
+
+          {/* La API ya informa qué productos no entraron al carro; ocultarlos
+              hacía que el comprador pagara una lista incompleta sin saberlo. */}
+          {directResult && directResult.missing.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-900">
+              <p className="flex items-start gap-1.5 font-semibold">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                <span>
+                  {directResult.missing.length} producto(s) no entraron al carro de {basket.store}
+                </span>
+              </p>
+              <ul className="mt-1 list-disc pl-6 leading-4">
+                {directResult.missing.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+              <p className="mt-1.5 leading-4">
+                Agrégalos a mano en la tienda o revisa si están agotados antes de pagar.
+              </p>
+            </div>
+          )}
 
           {/* Checklist de productos interactivo */}
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
