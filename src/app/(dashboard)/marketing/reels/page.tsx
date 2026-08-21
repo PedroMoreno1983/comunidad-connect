@@ -29,30 +29,13 @@ import type {
   MarketingCampaign,
   MarketingReelRecord,
   MarketingReelStatus,
+  MarketingReelsDashboard,
   ReelAgentInput,
   ReelAudience,
   ReelTone,
 } from "@/lib/types";
 import { useAuth } from "@/lib/authContext";
 import { isPlatformCreatorEmail } from "@/lib/platformAccess";
-
-type DashboardResponse = {
-  reel?: MarketingReelRecord;
-  reels?: MarketingReelRecord[];
-  campaigns?: MarketingCampaign[];
-  instagram?: InstagramConnectionSummary;
-  capabilities?: {
-    aiScriptGeneration: boolean;
-    videoRendering: boolean;
-    professionalAudio?: boolean;
-    videoAiGeneration?: boolean;
-    videoAiProvider?: string | null;
-    instagramPublishing: boolean;
-    instagramOAuth: boolean;
-    cronSecretConfigured: boolean;
-  };
-  error?: string;
-};
 
 const AUDIENCE_OPTIONS: Array<{ value: ReelAudience; label: string }> = [
   { value: "administrators", label: "Administradores" },
@@ -445,7 +428,7 @@ export default function MarketingReelsPage() {
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [selectedReelId, setSelectedReelId] = useState<string | null>(null);
   const [instagram, setInstagram] = useState<InstagramConnectionSummary>({ status: "not_connected" });
-  const [capabilities, setCapabilities] = useState<DashboardResponse["capabilities"]>();
+  const [capabilities, setCapabilities] = useState<MarketingReelsDashboard["capabilities"]>();
   const [scheduleByReel, setScheduleByReel] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -462,7 +445,7 @@ export default function MarketingReelsPage() {
   const hasVideoAiGeneration = Boolean(capabilities?.videoAiGeneration);
   const videoAiProvider = capabilities?.videoAiProvider || null;
 
-  function hydrate(data: DashboardResponse) {
+  function hydrate(data: MarketingReelsDashboard) {
     const nextReels = Array.isArray(data.reels) ? data.reels : [];
     setReels(nextReels);
     setCampaigns(Array.isArray(data.campaigns) ? data.campaigns : []);
@@ -474,7 +457,7 @@ export default function MarketingReelsPage() {
 
   async function loadDashboard() {
     const response = await fetch("/api/marketing/reels", { cache: "no-store" });
-    const data = await response.json().catch(() => ({})) as DashboardResponse;
+    const data = await response.json().catch(() => ({})) as MarketingReelsDashboard;
     if (!response.ok) throw new Error(data.error || "No se pudo cargar Reels Agent.");
     hydrate(data);
   }
@@ -520,7 +503,7 @@ export default function MarketingReelsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = await response.json().catch(() => ({})) as DashboardResponse;
+    const data = await response.json().catch(() => ({})) as MarketingReelsDashboard;
     if (!response.ok) throw new Error(data.error || "No se pudo procesar la accion.");
     hydrate(data);
     return data.reel || null;
@@ -538,8 +521,8 @@ export default function MarketingReelsPage() {
     });
     const contentType = response.headers.get("content-type") || "";
     const data = contentType.includes("application/json")
-      ? await response.json().catch(() => ({})) as DashboardResponse
-      : {} as DashboardResponse;
+      ? await response.json().catch(() => ({})) as MarketingReelsDashboard
+      : {} as MarketingReelsDashboard;
     if (!response.ok) {
       if (response.status === 413) throw new Error("El video quedo demasiado pesado para subirlo. Intenta renderizar nuevamente.");
       throw new Error(data.error || `No se pudo guardar el video renderizado. HTTP ${response.status}`);

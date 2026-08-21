@@ -9,29 +9,16 @@ import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
-
-interface Course {
-    id: string;
-    title: string;
-    description: string;
-    community_id?: string | null;
-    training_lessons: { content: string }[];
-}
-
-interface TrainingProgress {
-    module_id: string;
-    status: 'in_progress' | 'completed';
-    last_slide_index: number;
-}
+import type { TrainingCourse, TrainingProgressRecord } from "@/lib/training/domain";
 
 export default function StaffTrainingPage() {
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [courses, setCourses] = useState<TrainingCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCourseContent, setSelectedCourseContent] = useState<string | null>(null);
     const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [resumeSlideIndex, setResumeSlideIndex] = useState(0);
-    const [progress, setProgress] = useState<Record<string, TrainingProgress>>({});
+    const [progress, setProgress] = useState<Record<string, TrainingProgressRecord>>({});
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const { user } = useAuth();
     const { toast } = useToast();
@@ -49,7 +36,7 @@ export default function StaffTrainingPage() {
             body: JSON.stringify({ moduleId, status, lastSlideIndex }),
         });
         if (!response.ok) throw new Error("No se pudo guardar el progreso");
-        const saved = await response.json() as TrainingProgress;
+        const saved = await response.json() as TrainingProgressRecord;
         setProgress(previous => ({ ...previous, [moduleId]: saved }));
         if (status === "completed") toast({ title: "Curso completado", description: "Tu avance quedo registrado.", variant: "success" });
     }, [toast]);
@@ -69,7 +56,7 @@ export default function StaffTrainingPage() {
         }
     }, [saveProgress, selectedCourseId, toast]);
 
-    const openCourse = (course: Course) => {
+    const openCourse = (course: TrainingCourse) => {
         setSelectedCourseId(course.id);
         setResumeSlideIndex(progress[course.id]?.last_slide_index || 0);
         setSelectedCourseContent(course.training_lessons?.[0]?.content || "Sin contenido.");
@@ -107,7 +94,7 @@ export default function StaffTrainingPage() {
                 const progressData = await progressResponse.json();
                 setCourses(modulesResponse.ok && Array.isArray(modulesData) ? modulesData : []);
                 if (progressResponse.ok && Array.isArray(progressData)) {
-                    setProgress(Object.fromEntries(progressData.map((item: TrainingProgress) => [item.module_id, item])));
+                    setProgress(Object.fromEntries(progressData.map((item: TrainingProgressRecord) => [item.module_id, item])));
                 }
             })
             .catch(error => console.warn("Training data load failed:", error))

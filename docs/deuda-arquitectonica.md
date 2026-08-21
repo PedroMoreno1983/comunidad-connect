@@ -19,7 +19,7 @@ buena parte de lo que parecía trabajo de las siguientes.
 | `src/lib/services/supabaseServices.ts` | 1.043 líneas, 13 servicios | eliminado |
 | Duplicados vivos entre ambos | 1 (`PollService`) | 0 |
 | Rutas API con Supabase inline | 51 de 78 | 51 de 78 |
-| Tipos de datos inline en Agent Center, finanzas, CoCo, onboarding, mantenimiento, operaciones, WhatsApp y gastos | ~40 | 0 (reutilizan el módulo de dominio) |
+| Tipos de datos inline en páginas de dashboard (filas/API/entidades) | ~40 + este corte | 0 en los dominios migrados |
 
 Lo que **no** es un problema, y conviene no "arreglar": ninguna página ni
 componente llama a Supabase directamente, y no hay un solo `any` en `src/`. Esas
@@ -89,7 +89,7 @@ Los tres tipos de filas del panel de conserje
 **Riesgo:** bajo. Fue mover bloques y actualizar importaciones; `tsc` cubre
 las que se queden cortas.
 
-## Etapa 4 — Tipos de datos fuera de las páginas 🟡 segundo corte hecho
+## Etapa 4 — Tipos de datos fuera de las páginas 🟡 tercer corte hecho
 
 171 definiciones repartidas en 92 archivos. No conviene un PR único de 92
 archivos: hacerlo por dominio, aprovechando que la etapa 2 ya obliga a pasar por
@@ -113,10 +113,17 @@ arrastrar código de servidor.
 residente (`ResidentExpense` en `lib/services/expenses.ts`). El mapper de la
 fila de Supabase vive en el servicio, no en la página.
 
+**Tercer corte:** conserjería (visitas + invitaciones), anuncios, amenidades,
+unidades (`UnitWithResident`), aula virtual, reels, geocoding y alta de
+edificio. Los mappers de visitas, invitaciones, avisos y reservas viven en el
+servicio. `Priority` / `CategoryId` reutilizan `Announcement["priority"]` y
+`ServiceProviderCategory`.
+
 **Aún no en esta etapa:** el chat de supermercado (`WhatsAppChat`) tiene un
 `ApiCartItem` local que no encaja limpio con `SupermarketShoppingItem` /
 `CartItem`; unificarlos es un cambio de modelo, no un move de tipos. Las uniones
-de UI (`ParkingTab`, `FilterTab`, `ActiveLane`, `RoleFilter`) se quedan locales.
+de UI (`ParkingTab`, `FilterTab`, `ActiveLane`, `RoleFilter`, `SpotAccessState`)
+y el resumen local de publicación del marketplace se quedan en la página.
 
 ## Etapa 5 — Rutas API (la más grande)
 

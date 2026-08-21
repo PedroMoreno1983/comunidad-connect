@@ -5,6 +5,8 @@ import { QRAccessValidator } from "@/components/admin/QRAccessValidator";
 import { useAuth } from "@/lib/authContext";
 import { VisitorLog } from "@/lib/types";
 import { VisitorService, WaterService } from "@/lib/api";
+import { mapVisitorLog } from "@/lib/services/concierge";
+import type { UnitWithResident } from "@/lib/services/water";
 import {
     Plus, ClipboardList, MoreHorizontal, QrCode, Search, ShieldCheck, UserCheck
 } from "lucide-react";
@@ -21,36 +23,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { Eyebrow, DisplayHeading } from "@/components/cc/Eyebrow";
-
-// interface VisitorLog moved to @/lib/types.ts
-
-interface Unit {
-    id: string;
-    number: string;
-}
-
-type VisitorRow = {
-    id: string;
-    visitor_name?: string | null;
-    unit_id?: string | null;
-    entry_time?: string | null;
-    exit_time?: string | null;
-    is_qr?: boolean | null;
-    units?: {
-        number?: string | null;
-    } | null;
-};
-
-function mapVisitorRow(row: VisitorRow): VisitorLog {
-    return {
-        id: row.id,
-        visitorName: row.visitor_name || "Visita",
-        unitId: row.units?.number || row.unit_id || "Sin unidad",
-        entryTime: row.entry_time || new Date().toISOString(),
-        exitTime: row.exit_time || undefined,
-        isQr: Boolean(row.is_qr),
-    };
-}
 
 /**
  * Avisa al residente que su visita ingresó. Best-effort: la notificación la
@@ -70,11 +42,10 @@ async function notifyResidentOfVisit(unitId: string, visitorName: string, unitNu
     }
 }
 
-
 export default function VisitorsPage() {
     const { user } = useAuth();
     const [visitors, setVisitors] = useState<VisitorLog[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [units, setUnits] = useState<UnitWithResident[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedVisitor, setSelectedVisitor] = useState<VisitorLog | null>(null);
     const [newVisitor, setNewVisitor] = useState({ name: "", unit: "" });
@@ -91,7 +62,7 @@ export default function VisitorsPage() {
             try {
 
                 const logs = await VisitorService.getAll();
-                setVisitors(((logs || []) as VisitorRow[]).map(mapVisitorRow));
+                setVisitors(logs);
 
                 const uns = await WaterService.getUnits();
                 setUnits(uns);
@@ -117,9 +88,14 @@ export default function VisitorsPage() {
             // Avisa al residente que su visita ingresó (best-effort, server-side).
             void notifyResidentOfVisit(newVisitor.unit, newVisitor.name);
 
-            const visitor = mapVisitorRow({
-                ...(data as VisitorRow),
-                units: { number: units.find(unit => unit.id === (data as VisitorRow).unit_id)?.number },
+            const visitor = mapVisitorLog({
+                id: String(data.id),
+                visitor_name: data.visitor_name,
+                unit_id: data.unit_id,
+                entry_time: data.entry_time,
+                exit_time: data.exit_time,
+                is_qr: data.is_qr,
+                units: { number: units.find(unit => unit.id === data.unit_id)?.number },
             });
 
             setVisitors([visitor, ...visitors]);

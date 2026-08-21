@@ -14,11 +14,59 @@ import type {
     Package as CommunityPackage,
     PackageDatabaseRow,
     PackageUnitLookupRow,
-    VisitorLogDatabaseRow,
+    VisitorLog,
 } from '../types';
 
+export type ResidentInvitationStatus = 'active' | 'used' | 'expired' | 'cancelled';
+
+export type ResidentInvitation = {
+    id: string;
+    residentId: string;
+    guestName: string;
+    guestDni: string;
+    status: ResidentInvitationStatus;
+    validFrom: string;
+    validTo: string;
+    qrCode: string;
+};
+
+export type InvitationDatabaseRow = {
+    id: string;
+    resident_id?: string | null;
+    guest_name?: string | null;
+    guest_dni?: string | null;
+    status?: ResidentInvitationStatus | null;
+    valid_from?: string | null;
+    valid_to?: string | null;
+    qr_code?: string | null;
+};
+
+export function mapInvitationRow(invitation: InvitationDatabaseRow): ResidentInvitation {
+    return {
+        id: invitation.id,
+        residentId: invitation.resident_id || "",
+        guestName: invitation.guest_name || "Invitado",
+        guestDni: invitation.guest_dni || "",
+        status: invitation.status || "active",
+        validFrom: invitation.valid_from || new Date().toISOString(),
+        validTo: invitation.valid_to || new Date().toISOString(),
+        qrCode: invitation.qr_code || "",
+    };
+}
+
+export function mapVisitorLog(row: ConciergeVisitorRow): VisitorLog {
+    return {
+        id: row.id,
+        visitorName: row.visitor_name || "Visita",
+        unitId: row.units?.number || row.unit_id || "Sin unidad",
+        entryTime: row.entry_time || new Date().toISOString(),
+        exitTime: row.exit_time || undefined,
+        isQr: Boolean(row.is_qr),
+    };
+}
+
 export const InvitationService = {
-    async getByResident(residentId: string) {
+    async getByResident(residentId: string): Promise<ResidentInvitation[]> {
         const { data, error } = await supabase
             .from('qr_invitations')
             .select('*')
@@ -26,7 +74,7 @@ export const InvitationService = {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return ((data || []) as InvitationDatabaseRow[]).map(mapInvitationRow);
     },
 
     async create(invitation: {
@@ -59,7 +107,7 @@ export const InvitationService = {
 };
 
 export const VisitorService = {
-    async getAll(): Promise<VisitorLogDatabaseRow[]> {
+    async getAll(): Promise<VisitorLog[]> {
         const { data, error } = await supabase
             .from('visitor_logs')
             .select(`
@@ -69,7 +117,7 @@ export const VisitorService = {
             .order('entry_time', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+        return ((data || []) as ConciergeVisitorRow[]).map(mapVisitorLog);
     },
 
     async register(visitor: {
@@ -86,7 +134,7 @@ export const VisitorService = {
             .single();
 
         if (error) throw error;
-        return data;
+        return data as ConciergeVisitorRow;
     },
 
     async redeemInvitation(qrCode: string, registeredBy: string) {

@@ -607,6 +607,8 @@ export interface ServiceProvider {
   verified: boolean;
 }
 
+export type ServiceProviderCategory = ServiceProvider['category'];
+
 export interface ServiceProviderDatabaseRow {
   id: string;
   name: string;
@@ -1206,6 +1208,26 @@ export interface InstagramConnectionSummary {
   pageId?: string | null;
   connectedAt?: string | null;
   lastError?: string | null;
+}
+
+export interface MarketingCapabilities {
+  aiScriptGeneration: boolean;
+  videoRendering: boolean;
+  professionalAudio?: boolean;
+  videoAiGeneration?: boolean;
+  videoAiProvider?: string | null;
+  instagramPublishing: boolean;
+  instagramOAuth: boolean;
+  cronSecretConfigured: boolean;
+}
+
+export interface MarketingReelsDashboard {
+  reel?: MarketingReelRecord;
+  reels?: MarketingReelRecord[];
+  campaigns?: MarketingCampaign[];
+  instagram?: InstagramConnectionSummary;
+  capabilities?: MarketingCapabilities;
+  error?: string;
 }
 
 export interface MarketingReelRecord {

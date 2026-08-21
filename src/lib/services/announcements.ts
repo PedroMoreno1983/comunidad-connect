@@ -8,21 +8,34 @@
 
 import { supabase } from '../supabase';
 import type {
+    Announcement,
+    AnnouncementDatabaseRow,
     CreateAnnouncementInput,
 } from '../types';
 
+export function mapAnnouncement(row: AnnouncementDatabaseRow): Announcement {
+    return {
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        author: row.author_name || 'Administración',
+        priority: row.priority,
+        createdAt: row.created_at,
+    };
+}
+
 export const AnnouncementsService = {
-    async getAnnouncements() {
+    async getAnnouncements(): Promise<Announcement[]> {
         const { data, error } = await supabase
             .from('announcements')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return ((data || []) as AnnouncementDatabaseRow[]).map(mapAnnouncement);
     },
 
-    async createAnnouncement(announcementData: CreateAnnouncementInput) {
+    async createAnnouncement(announcementData: CreateAnnouncementInput): Promise<Announcement> {
         const { data, error } = await supabase
             .from('announcements')
             .insert([{
@@ -38,13 +51,13 @@ export const AnnouncementsService = {
 
         if (error) throw error;
 
-        return {
+        return mapAnnouncement({
             id: data.id,
             title: data.title,
             content: data.content,
             priority: data.priority,
             author_name: data.author_name || announcementData.authorName,
-            created_at: data.created_at
-        };
+            created_at: data.created_at,
+        });
     }
 };

@@ -11,8 +11,9 @@ import { useRouter } from "next/navigation";
 import { ModuleFlow } from "@/components/ui/ModuleFlow";
 import { DisplayHeading } from "@/components/cc/Eyebrow";
 import { useAuth } from "@/lib/authContext";
+import type { ServiceProviderCategory } from "@/lib/types";
 
-type ProviderCategory = 'plumbing' | 'electrical' | 'locksmith' | 'cleaning' | 'general';
+type ProviderCategory = ServiceProviderCategory;
 
 export default function ProviderRegisterPage() {
     const router = useRouter();

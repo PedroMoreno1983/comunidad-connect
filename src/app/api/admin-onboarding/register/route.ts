@@ -5,14 +5,9 @@ import { sendWelcomeEmail, resend, FROM_EMAIL, SUPERADMIN_EMAIL, emailWrapper } 
 import { PUBLIC_SITE_URL } from "@/lib/config";
 import { logApiError } from "@/lib/observability/logger";
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/privacy";
+import type { GeocodeSuggestion } from "@/lib/geocode";
 
-type GeocodeSelection = {
-    label?: string;
-    latitude?: number;
-    longitude?: number;
-    placeId?: string;
-    source?: string;
-};
+type GeocodeSelection = Partial<GeocodeSuggestion>;
 
 function cleanText(value: unknown, max = 200) {
     return typeof value === "string" ? value.trim().slice(0, max) : "";

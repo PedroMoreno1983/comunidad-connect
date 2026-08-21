@@ -26,41 +26,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Gamepad2,
 };
 
-type AmenityRow = Record<string, unknown>;
-type BookingRow = Record<string, unknown> & {
-    amenities?: AmenityRow | AmenityRow[] | null;
-};
-
-function firstRelation<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) return value[0] ?? null;
-    return value ?? null;
-}
-
-function toAmenity(row: AmenityRow): Amenity {
-    return {
-        id: String(row.id || ""),
-        name: String(row.name || "Espacio común"),
-        description: String(row.description || "Disponible para residentes de la comunidad."),
-        maxCapacity: Number(row.max_capacity ?? row.maxCapacity ?? 0),
-        hourlyRate: Number(row.hourly_rate ?? row.hourlyRate ?? 0),
-        iconName: String(row.icon_name ?? row.iconName ?? "Calendar"),
-        gradient: String(row.gradient || "from-[#3B82F6] to-[#6D28D9]"),
-    };
-}
-
-function toBooking(row: BookingRow): Booking & { amenities?: AmenityRow | null } {
-    return {
-        id: String(row.id || ""),
-        amenityId: String(row.amenity_id ?? row.amenityId ?? ""),
-        userId: String(row.user_id ?? row.userId ?? ""),
-        date: String(row.date || ""),
-        startTime: String(row.start_time ?? row.startTime ?? ""),
-        endTime: String(row.end_time ?? row.endTime ?? ""),
-        status: (row.status === "pending" || row.status === "cancelled" ? row.status : "confirmed"),
-        amenities: firstRelation(row.amenities),
-    };
-}
-
 function formatTime(value?: string) {
     return value ? value.slice(0, 5) : "--:--";
 }
@@ -101,10 +66,8 @@ export default function AmenitiesPage() {
                 AmenitiesService.getAmenities(),
                 AmenitiesService.getAllBookings()
             ]);
-            const normalizedAmenities = ((amenitiesData as AmenityRow[]) || []).map(toAmenity);
-            const normalizedBookings = ((bookingsData as BookingRow[]) || []).map(toBooking);
-            setAmenities(normalizedAmenities);
-            setBookings(normalizedBookings);
+            setAmenities(amenitiesData);
+            setBookings(bookingsData);
         } catch (error: unknown) {
             console.error("Error loading amenities data:", error);
             setAmenities([]);
