@@ -94,6 +94,42 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+
+/**
+ * Terminos cuyo catalogo esta mas cerca de vencer.
+ *
+ * La rotacion por dia del año era ciega: refrescaba una lista fija de terminos
+ * sin mirar que estaba quedando rancio. Medido el 2026-08-24, eso dejaba a
+ * Jumbo con 2.570 filas usables de 31.076 (8%): el resto caia fuera del TTL de
+ * 96h y por eso "faltaban" productos que si estan en el catalogo.
+ *
+ * Ahora se leen las filas mas antiguas y se refrescan SUS terminos primero, de
+ * modo que el refresco se auto-dirige a lo que de verdad esta por vencer. La
+ * lista base sigue detras, para descubrir productos nuevos.
+ */
+async function stalestTerms(limit: number): Promise<string[]> {
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('supermarket_products')
+      .select('last_query')
+      .order('last_seen_at', { ascending: true })
+      .limit(4000);
+    if (error || !data) return [];
+    const counts = new Map<string, number>();
+    for (const row of data as Array<Record<string, unknown>>) {
+      const term = String(row.last_query ?? '').trim().toLowerCase();
+      if (term) counts.set(term, (counts.get(term) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, limit)
+      .map(([term]) => term);
+  } catch {
+    // Si la consulta falla, la lista base sigue cubriendo el catalogo.
+    return [];
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Verificar autenticación para ejecución programada
   const cronSecret = process.env.CRON_SECRET;
@@ -105,9 +141,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
+    // Primero lo que esta por vencer, despues la lista base (que descubre
+    // productos nuevos). Sin duplicados y conservando ese orden de prioridad.
     const requestedTerms: string[] = Array.isArray(body.terms) && body.terms.length > 0
       ? body.terms
-      : rotatedTerms(BASE_CATALOG_TERMS);
+      : [...new Set([...(await stalestTerms(40)), ...rotatedTerms(BASE_CATALOG_TERMS)])];
 
     const allItems: ScrapedItem[] = [];
     const sourceStatus: { store: string; status: string; term: string; error?: string }[] = [];
@@ -125,7 +163,9 @@ export async function POST(req: NextRequest) {
       terms.push(term);
       try {
         const perStore = await Promise.all(REFRESH_STORES.map(store => searchAllRetailerProducts(
-          store, term, { pages: store === 'Unimarc' || store === 'Tottus' ? 2 : 1 },
+          // Jumbo necesita mas paginas que nadie: es el catalogo mas grande
+          // (31k) y el que peor se mantenia fresco.
+          store, term, { pages: store === 'Jumbo' ? 3 : store === 'Unimarc' || store === 'Tottus' ? 2 : 1 },
         )));
         const items = perStore.flat();
         if (items.length > 0) {

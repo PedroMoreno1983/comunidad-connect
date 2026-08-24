@@ -5,6 +5,9 @@ const LOADER_CAPABILITIES = [
   'cart-replace-v1',
   'cart-stale-job-recovery-v1',
   'cart-zero-proof-v1',
+  // Carga la canasta completa por la API de la tienda y solo informa lo que la
+  // tienda confirmo al releer el carro. Verificado contra Lider el 2026-08-17.
+  'cart-api-load-v1',
 ];
 
 const ALLOWED_ORIGINS = new Set([

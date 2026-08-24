@@ -859,11 +859,22 @@ export async function searchAllRetailerProducts(
   query: string,
   options: { pages?: number } = {},
 ): Promise<ScrapedItem[]> {
-  const pages = Math.min(2, Math.max(1, Math.round(options.pages ?? 1)));
+  // Tope 4: con 2 paginas el catalogo de Jumbo no alcanzaba a refrescarse
+  // dentro del TTL. Cada pagina aporta ~40 productos nuevos.
+  const pages = Math.min(4, Math.max(1, Math.round(options.pages ?? 1)));
   try {
     if (store === 'Jumbo') {
-      const html = await fetchRetailerHtml(`https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`, store);
-      return parseJumboProducts(html, query);
+      // Jumbo pagina igual que las demas (verificado el 2026-08-24: page=2 y
+      // page=3 devuelven ~40 productos nuevos cada una). Traia UNA sola pagina,
+      // asi que su catalogo de 31k filas era imposible de mantener fresco: solo
+      // el 8% entraba en el TTL de 96h y por eso "faltaban" productos en Jumbo.
+      const payloads = await Promise.all(Array.from({ length: pages }, (_, index) => (
+        fetchRetailerHtml(
+          `https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}${index > 0 ? `&page=${index + 1}` : ''}`,
+          store,
+        )
+      )));
+      return uniqueScrapedItems(payloads.flatMap(payload => parseJumboProducts(payload, query)));
     }
     if (store === 'Santa Isabel') {
       const html = await fetchRetailerHtml(`https://www.santaisabel.cl/busqueda?ft=${encodeURIComponent(query)}`, store);

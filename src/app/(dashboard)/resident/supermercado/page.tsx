@@ -17,6 +17,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/Toast';
 import { DisplayHeading } from '@/components/cc/Eyebrow';
 import { CartLoaderButton } from '@/components/resident/supermarket/CartLoaderButton';
+import { storeSearchUrl } from '@/lib/supermarketText';
 import { storeLoadability, loadabilityRank, type StoreLoadability } from '@/lib/supermarket/cartUrl';
 import { MAX_SHOPPING_LIST_CHARS, MAX_SHOPPING_LIST_ITEMS } from '@/lib/supermarketGroupDomain';
 import type {
@@ -377,13 +378,55 @@ export default function SupermarketPage() {
                     <>
                       {/* Antes esto bloqueaba toda la carga por 1 producto sin resolver.
                           Ahora se puede cargar lo encontrado y agregar el resto a mano. */}
+                      {/*
+                          Que falte un producto pasa en todas las tiendas. Antes se
+                          nombraba el faltante y nada mas, asi que la persona quedaba
+                          sin saber que hacer. Ahora cada faltante trae las dos salidas
+                          reales: buscarlo en esta tienda, o cambiarse a una que si lo
+                          tiene (que es el dato mas util y el que nadie estaba dando).
+                      */}
                       <div className="rounded-xl border p-3" style={{ borderColor: 'var(--cc-amber)', background: 'var(--cc-amber-tint)' }}>
                         <p className="text-sm font-bold cc-text-primary">
                           Cargamos {selectedBasket.coveredCount} de {selectedBasket.requestedCount}; {selectedBasket.missingTerms.length} lo agregas tú
                         </p>
-                        <p className="mt-1 text-xs cc-text-secondary">
-                          {selectedBasket.store} no tenía: <strong>{selectedBasket.missingTerms.join(', ')}</strong>. Busca ese(esos) en la tienda; el resto va en el carro.
-                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {selectedBasket.missingTerms.map((term) => {
+                            const search = storeSearchUrl(selectedBasket.store, term);
+                            const alternativas = basketOptions.filter(
+                              (option) => option.store !== selectedBasket.store && !option.missingTerms.includes(term),
+                            );
+                            return (
+                              <li key={term} className="text-xs cc-text-secondary">
+                                <strong className="cc-text-primary">{term}</strong>
+                                {search && (
+                                  <>
+                                    {' · '}
+                                    <a href={search} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                                      buscarlo en {selectedBasket.store}
+                                    </a>
+                                  </>
+                                )}
+                                {alternativas.length > 0 && (
+                                  <>
+                                    {' · sí está en '}
+                                    {alternativas.map((option, index) => (
+                                      <span key={option.store}>
+                                        {index > 0 && ', '}
+                                        <button
+                                          type="button"
+                                          onClick={() => selectBasket(option)}
+                                          className="font-semibold underline"
+                                        >
+                                          {option.store}
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
                       </div>
                       <CartLoaderButton basket={selectedBasket} autoLoadKey={autoLoadKey} />
                     </>

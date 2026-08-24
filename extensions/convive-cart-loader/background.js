@@ -1,6 +1,8 @@
 importScripts('store-config.js');
 
 const ACTIVE_JOB_KEY = 'conviveActiveCartJob';
+const ACTIVE_JOB_STATUSES = new Set(['opening', 'loading', 'paused']);
+const OPENING_TAB_GRACE_MS = 15_000;
 const MAX_ITEMS = 200;
 const MAX_QUANTITY = 99;
 const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
@@ -42,21 +44,24 @@ function sanitizeRequest(payload) {
     requestedTerm: safeText(item?.requestedTerm, 240),
     quantity: Math.min(MAX_QUANTITY, Math.max(1, Math.round(Number(item?.quantity) || 1))),
     productUrl: safeProductUrl(item?.productUrl, config),
-    // El codigo de la tienda es lo unico que permite cargar por API y, sobre
-    // todo, cruzar despues lo que la tienda confirmo contra lo que se pidio.
+    // Codigo de la tienda: unico modo de cargar por API y de cruzar despues
+    // lo que la tienda confirmo contra lo que la persona pidio.
     sku: safeText(item?.sku, 60),
-    // Lider exige este identificador ademas del sku; el resto de las tiendas
-    // lo dejan vacio y caen al recorrido por la interfaz.
+    // Lider lo exige ademas del sku; el resto de las tiendas lo dejan vacio.
     offerId: safeText(item?.offerId, 60),
   }));
   if (items.some(item => !item.name)) return null;
   return {
     store: payload.store,
     items,
+    replaceCart: payload.replaceCart === true,
   };
 }
 
 function progress(job, detail, status = job.status) {
+  const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : undefined;
+  const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : undefined;
+  const removedCartCount = Number.isInteger(job.removedCartCount) ? job.removedCartCount : undefined;
   return {
     jobId: job.id,
     store: job.store,
@@ -65,17 +70,66 @@ function progress(job, detail, status = job.status) {
     added: job.results.filter(result => result.status === 'added').length,
     failed: job.results.filter(result => result.status === 'failed').length,
     currentItem: job.items[job.currentIndex]?.name,
+    // Los nombres de lo que NO entro: sin esto la web solo puede decir
+    // "falta 1 producto" y la persona no sabe cual ni como agregarlo.
+    failedItems: job.results.filter(result => result.status === 'failed').map(result => result.name),
+    previousCartCount,
+    currentCartCount,
+    removedCartCount,
+    cartReplaced: job.replaceCart === true && job.cartResetStatus === 'completed',
     detail,
   };
 }
 
 async function saveJob(job) {
+  job.updatedAt = new Date().toISOString();
   await chrome.storage.local.set({ [ACTIVE_JOB_KEY]: job });
 }
 
 async function getJob() {
   const stored = await chrome.storage.local.get(ACTIVE_JOB_KEY);
   return stored[ACTIVE_JOB_KEY] || null;
+}
+
+function jobIsActive(job) {
+  return Boolean(job && ACTIVE_JOB_STATUSES.has(job.status));
+}
+
+function jobAgeMs(job) {
+  const createdAt = Date.parse(job?.createdAt || '');
+  return Number.isFinite(createdAt) ? Math.max(0, Date.now() - createdAt) : Infinity;
+}
+
+async function liveRetailerTab(job) {
+  if (!jobIsActive(job) || !Number.isInteger(job.retailerTabId)) return null;
+  let tab;
+  try {
+    tab = await chrome.tabs.get(job.retailerTabId);
+  } catch {
+    return null;
+  }
+
+  const tabUrl = tab.pendingUrl || tab.url || '';
+  if (tabUrl === 'about:blank') {
+    return jobAgeMs(job) <= OPENING_TAB_GRACE_MS ? tab : null;
+  }
+
+  try {
+    const config = storeConfig(job.store);
+    const url = new URL(tabUrl);
+    return config?.hosts.includes(url.hostname) ? tab : null;
+  } catch {
+    return null;
+  }
+}
+
+async function abandonJob(job, detail) {
+  job.status = 'abandoned';
+  job.inFlightItemId = null;
+  await saveJob(job);
+  const payload = progress(job, detail, 'failed');
+  await notifySource(job, payload);
+  return payload;
 }
 
 async function notifySource(job, payload) {
@@ -93,10 +147,9 @@ async function notifySource(job, payload) {
 /**
  * Traduce lo que la tienda confirmo a los resultados del trabajo.
  *
- * `confirmed` viene del content script como pares itemId -> cantidad LEIDA del
- * carro, nunca como una lista de exitos. Un producto que la tienda no devolvio
- * queda en 'failed' aunque la llamada haya respondido 200: el status HTTP y el
- * arreglo `errors` de GraphQL no dicen nada sobre si el producto entro.
+ * `confirmed` son pares itemId -> cantidad LEIDA del carro, nunca una lista de
+ * exitos. Un producto ausente de esa lectura queda en 'failed' aunque la llamada
+ * haya respondido 200: ni el status HTTP ni `errors` dicen si el producto entro.
  */
 function resultsFromConfirmation(job, confirmed) {
   const quantityByItemId = new Map(
@@ -104,7 +157,6 @@ function resultsFromConfirmation(job, confirmed) {
       .map(entry => [safeText(entry?.itemId, 100), Math.max(0, Math.round(Number(entry?.quantity) || 0))])
       .filter(([itemId, quantity]) => itemId && quantity > 0),
   );
-
   return job.items.map(item => {
     const quantity = quantityByItemId.get(item.id) || 0;
     if (quantity <= 0) {
@@ -154,14 +206,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      // Limpiar cualquier trabajo anterior para no bloquear nuevas cargas
       const activeJob = await getJob();
-      if (activeJob?.retailerTabId) {
-        try {
-          await chrome.tabs.remove(activeJob.retailerTabId);
-        } catch {
-          // Pestaña ya cerrada
+      if (jobIsActive(activeJob)) {
+        const activeTab = await liveRetailerTab(activeJob);
+        if (activeTab) {
+          activeJob.sourceTabId = sender.tab.id;
+          await saveJob(activeJob);
+          await chrome.tabs.update(activeTab.id, { active: true });
+          const resumedStatus = activeJob.status === 'paused' ? 'paused' : 'loading';
+          const payload = progress(
+            activeJob,
+            activeJob.status === 'paused'
+              ? `La carga de ${activeJob.store} necesita tu intervención en la pestaña que acabamos de abrir.`
+              : `Retomando la carga de ${activeJob.store} en su pestaña.`,
+            resumedStatus,
+          );
+          await notifySource(activeJob, payload);
+          sendResponse({ ok: true, resumed: true, progress: payload });
+          return;
         }
+
+        await abandonJob(
+          activeJob,
+          `La pestaña de ${activeJob.store} se cerró antes de terminar. La carga anterior fue liberada para poder empezar de nuevo.`,
+        );
       }
 
       const job = {
@@ -173,6 +241,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         retailerTabId: null,
         status: 'opening',
         inFlightItemId: null,
+        initialCartCount: null,
+        latestCartCount: null,
+        removedCartCount: null,
+        replaceCart: request.replaceCart,
+        cartResetStatus: request.replaceCart ? 'pending' : 'skipped',
         results: [],
         createdAt: new Date().toISOString(),
       };
@@ -203,7 +276,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           status: job.status,
           currentIndex: job.currentIndex,
           item: job.items[job.currentIndex],
-          allItems: job.items,
           total: job.items.length,
           added: job.results.filter(result => result.status === 'added').length,
           failed: job.results.filter(result => result.status === 'failed').length,
@@ -211,35 +283,67 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? targetUrl(job.store, job.items[job.currentIndex])
             : null,
           inFlightItemId: job.inFlightItemId,
+          replaceCart: job.replaceCart === true,
+          cartResetStatus: job.cartResetStatus || 'skipped',
         },
       });
       return;
     }
 
+    if (message?.type === 'COMPLETE_CART_RESET') {
+      if (!job.replaceCart || job.currentIndex !== 0 || job.cartResetStatus !== 'pending') {
+        sendResponse({ ok: false });
+        return;
+      }
+      const cartCountBefore = Number(message.cartCountBefore);
+      const cartCountAfter = Number(message.cartCountAfter);
+      if (
+        !Number.isInteger(cartCountBefore)
+        || !Number.isInteger(cartCountAfter)
+        || cartCountBefore < 0
+        || cartCountAfter !== 0
+        || cartCountBefore > 10_000
+      ) {
+        sendResponse({ ok: false });
+        return;
+      }
+      job.initialCartCount = cartCountBefore;
+      job.latestCartCount = 0;
+      job.removedCartCount = cartCountBefore;
+      job.cartResetStatus = 'completed';
+      await saveJob(job);
+      const payload = progress(
+        job,
+        cartCountBefore > 0
+          ? `Carro anterior vaciado: se retiraron ${cartCountBefore} unidades. Cargando la lista nueva…`
+          : 'El carro ya estaba vacío. Cargando la lista nueva…',
+        'loading',
+      );
+      await notifySource(job, payload);
+      sendResponse({ ok: true, progress: payload });
+      return;
+    }
+
     if (message?.type === 'REPORT_CART_API_RESULTS') {
-      // Cierre de la carga por API. El content script solo puede informar lo
-      // que leyo de vuelta del carro de la tienda: aca no se asume nada, y un
-      // producto ausente de esa lectura se cierra como no cargado.
+      // Cierre de la carga por API: solo entra lo que el content script leyo de
+      // vuelta del carro. Un producto ausente se cierra como no cargado.
       job.results = resultsFromConfirmation(job, message.confirmed);
       job.currentIndex = job.items.length;
       job.inFlightItemId = null;
+      const reportedCount = Number(message.cartCount);
+      if (Number.isInteger(reportedCount)) job.latestCartCount = reportedCount;
       const failedCount = job.results.filter(result => result.status === 'failed').length;
       job.status = failedCount > 0 ? 'completed_with_issues' : 'completed';
       await saveJob(job);
       const addedCount = job.results.length - failedCount;
-      const apiDetail = failedCount > 0
-        ? `Carro de ${job.store}: ${addedCount} productos agregados y ${failedCount} que la tienda no cargo.`
-        : `Carro de ${job.store} listo: ${addedCount} productos agregados al carro.`;
-      const apiPayload = progress(job, apiDetail, job.status);
+      const apiPayload = progress(
+        job,
+        failedCount > 0
+          ? `Carro de ${job.store}: ${addedCount} productos agregados y ${failedCount} que la tienda no cargo.`
+          : `Carro de ${job.store} listo: ${addedCount} productos agregados al carro.`,
+        job.status,
+      );
       await notifySource(job, apiPayload);
-      const apiConfig = storeConfig(job.store);
-      if (job.retailerTabId && apiConfig?.cartUrl) {
-        try {
-          await chrome.tabs.update(job.retailerTabId, { url: apiConfig.cartUrl });
-        } catch {
-          // La pestana pudo cerrarse; el carro ya quedo cargado igual.
-        }
-      }
       sendResponse({ ok: true, done: true, progress: apiPayload });
       return;
     }
@@ -249,6 +353,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!item || message.itemId !== item.id || job.inFlightItemId) {
         sendResponse({ ok: false, alreadyClaimed: Boolean(job.inFlightItemId) });
         return;
+      }
+      const cartCountBefore = Number(message.cartCountBefore);
+      if (
+        job.currentIndex === 0
+        && job.initialCartCount === null
+        && Number.isInteger(cartCountBefore)
+        && cartCountBefore >= 0
+        && cartCountBefore <= 10_000
+      ) {
+        job.initialCartCount = cartCountBefore;
+        job.latestCartCount = cartCountBefore;
       }
       job.inFlightItemId = item.id;
       job.status = 'loading';
@@ -275,15 +390,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message?.type === 'COMPLETE_CART_ITEM') {
       const item = job.items[job.currentIndex];
-      if (!item || item.id !== message.itemId || job.inFlightItemId !== item.id) {
+      /*
+       * El reclamo previo existe para que una recarga no agregue dos veces el
+       * mismo producto. Pero un FALLO no agrega nada, y el content script lo
+       * reporta antes de reclamar (p. ej. una ficha que hoy da 404 y no tiene
+       * boton de agregar). Exigir reclamo tambien ahi dejaba el trabajo
+       * congelado para siempre en ese producto: el job nunca avanzaba.
+       */
+      const claimedByThisItem = job.inFlightItemId === item?.id;
+      const unclaimedFailure = message.added !== true && !job.inFlightItemId;
+      if (!item || item.id !== message.itemId || !(claimedByThisItem || unclaimedFailure)) {
         sendResponse({ ok: false });
         return;
+      }
+      const cartCountAfter = Number(message.cartCountAfter);
+      if (
+        Number.isInteger(cartCountAfter)
+        && cartCountAfter >= 0
+        && cartCountAfter <= 10_000
+      ) {
+        job.latestCartCount = cartCountAfter;
       }
       const resultStatus = message.added ? 'added' : 'failed';
       job.results.push({
         itemId: item.id,
         name: item.name,
         status: resultStatus,
+        quantity: item.quantity,
         detail: safeText(message.detail, 300),
       });
       job.currentIndex += 1;
@@ -291,23 +424,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (job.currentIndex >= job.items.length) {
         const failed = job.results.filter(result => result.status === 'failed').length;
-        job.status = failed > 0 ? 'completed_with_issues' : 'completed';
+        const added = job.results.length - failed;
+        const previousCartCount = Number.isInteger(job.initialCartCount) ? job.initialCartCount : null;
+        const currentCartCount = Number.isInteger(job.latestCartCount) ? job.latestCartCount : null;
+        const observedCartDetail = previousCartCount !== null && currentCartCount !== null
+          ? job.replaceCart && job.cartResetStatus === 'completed'
+            ? ` Se eliminaron ${job.removedCartCount || 0} unidades anteriores y el carro nuevo ahora marca ${currentCartCount}.`
+            : ` El contador del carro marcaba ${previousCartCount} antes de CoCo y ahora marca ${currentCartCount}.`
+          : '';
+        const cartStayedEmpty = job.replaceCart === true
+          && job.cartResetStatus === 'completed'
+          && added > 0
+          && currentCartCount === 0;
+        job.status = cartStayedEmpty
+          ? 'failed'
+          : failed > 0
+            ? 'completed_with_issues'
+            : 'completed';
         await saveJob(job);
-        const detail = failed > 0
-          ? `Carro de ${job.store} listo: ${job.results.length - failed} productos agregados y ${failed} agotados.`
-          : `Carro de ${job.store} listo: ${job.results.length} productos agregados al carro.`;
+        const detail = cartStayedEmpty
+          ? `No se pudo confirmar ningún producto en el carro de ${job.store}. El contador sigue en 0; vuelve a intentarlo o agrégalos manualmente desde las fichas.`
+          : failed > 0
+            ? `Carga incompleta en ${job.store}: ${added} productos confirmados y ${failed} pendientes para revisar.${observedCartDetail}`
+            : `Carro de ${job.store} confirmado: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
-
-        // Redirigir la pestaña del supermercado directamente al carro oficial
-        if (job.retailerTabId && storeConfig(job.store)?.cartUrl) {
-          try {
-            await chrome.tabs.update(job.retailerTabId, { url: storeConfig(job.store).cartUrl });
-          } catch {
-            // Tab might be closed
-          }
-        }
-
         sendResponse({ ok: true, done: true, progress: payload });
         return;
       }
@@ -339,4 +480,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   });
   return true;
+});
+
+chrome.tabs.onRemoved.addListener(tabId => {
+  void (async () => {
+    const job = await getJob();
+    if (!jobIsActive(job) || job.retailerTabId !== tabId) return;
+    await abandonJob(
+      job,
+      `La pestaña de ${job.store} se cerró antes de terminar. Pulsa "Cargar lista nueva" para comenzar otra vez.`,
+    );
+  })();
 });
