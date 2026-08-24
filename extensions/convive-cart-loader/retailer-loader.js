@@ -132,6 +132,26 @@
       || path.includes('/products/'); // Irurzun (Shopify)
   }
 
+  /**
+   * Si hay un panel modal tapando la pagina.
+   *
+   * `interventionPrompt` solo reconoce los modales cuya frase esta catalogada.
+   * Cuando aparece uno nuevo -Tottus estreno "Ingresa tu ubicacion"- el cargador
+   * no encontraba boton de agregar y cerraba el producto como faltante, que es
+   * una conclusion falsa: el producto existe, solo estaba tapado. Ante un modal
+   * desconocido conviene pausar y pedir ayuda, no inventar un faltante.
+   */
+  function blockingOverlay() {
+    return [...document.querySelectorAll(
+      'dialog,[role="dialog"],[aria-modal="true"],[class*="modal" i],[class*="overlay" i]',
+    )].filter(element => {
+      if (!isVisible(element) || element.closest('#convive-cart-loader')) return false;
+      const rect = element.getBoundingClientRect();
+      // Solo cuenta si cubre parte real de la pantalla, no un tooltip.
+      return rect.width > 200 && rect.height > 120;
+    })[0] || null;
+  }
+
   function findAddControl(config) {
     const configured = firstVisible(config.addSelectors, document, config.allowHiddenControls);
     if (configured) return configured;
@@ -712,6 +732,17 @@
 
     let addControl = initialAddControl || await waitFor(() => findAddControl(config), 10000);
     if (!addControl) {
+      // Un modal tapando la ficha no significa que el producto no exista.
+      const overlayPanel = blockingOverlay();
+      if (overlayPanel) {
+        const pista = normalize(overlayPanel.textContent).slice(0, 80);
+        await pause(
+          overlay,
+          `${job.store} muestra una ventana que tapa el producto${pista ? ` ("${pista}")` : ''}. `
+          + 'Resuélvela aquí y pulsa “Reanudar carga”.',
+        );
+        return;
+      }
       await completeItem(overlay, config, item, false, 'No se encontró un botón de agregar disponible.');
       return;
     }
