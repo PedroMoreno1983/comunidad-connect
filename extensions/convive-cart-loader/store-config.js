@@ -13,6 +13,15 @@
   ];
 
   const commonLocationText = [
+    // Tottus bloquea la ficha con "Ingresa tu ubicacion" y sin ella no renderiza
+    // el boton de agregar (verificado el 2026-08-24). Sin esta frase el cargador
+    // no pausaba: no encontraba boton y marcaba el producto como faltante.
+    'ingresa tu ubicacion',
+    'ingresa tu ubicación',
+    'ingresa tu direccion',
+    'ingresa tu dirección',
+    'selecciona tu ubicacion',
+    'selecciona tu ubicación',
     'como quieres recibir tu compra',
     'cómo quieres recibir tu compra',
     'elige un metodo de entrega',
