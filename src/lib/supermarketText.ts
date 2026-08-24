@@ -96,6 +96,31 @@ const PROCESSED_PRODUCE_MARKERS = new Set([
     'sazonador', 'snack', 'sopa', 'souffle',
 ]);
 
+/**
+ * Palabras que convierten un producto base en OTRO producto.
+ *
+ * Distinto de PROCESSED_PRODUCE_MARKERS, que solo aplica a frutas y verduras y
+ * contiene palabras inseguras fuera de ese contexto ("sal" descartaria la
+ * mantequilla con sal, que es mantequilla normal). Estas son seguras en
+ * cualquier categoria: quien pide "leche" no quiere leche condensada.
+ *
+ * Se PENALIZA, no se descarta: si la tienda solo tiene la variante, mostrarla
+ * con su nombre completo es mejor que declarar el producto inexistente. La
+ * penalizacion basta para que una coincidencia simple siempre gane.
+ *
+ * Motivo: pidiendo "leche", cuatro candidatos empataban en 135 puntos -entera,
+ * descremada, condensada y en polvo- y el desempate terminaba eligiendo la
+ * condensada (observado el 2026-08-24).
+ */
+const VARIANT_SHIFT_MARKERS = new Set([
+    'condensada', 'condensado', 'evaporada', 'evaporado', 'polvo',
+    'helado', 'galleta', 'bebida', 'jugo', 'mermelada', 'sopa', 'caldo',
+    'salsa', 'snack', 'postre', 'budin', 'flan', 'alfajor', 'cereal',
+]);
+
+/** Cuanto se castiga cada marcador: suficiente para perder contra un match simple. */
+const VARIANT_SHIFT_PENALTY = 60;
+
 export type SupermarketProductIntent = 'fresh_produce' | 'general';
 
 export function productIntent(term: string): SupermarketProductIntent {
@@ -157,7 +182,18 @@ export function productMatchScore(term: string, productName: string): number {
         sum + Math.max(0, nameWords.indexOf(word) - firstPosition)
     ), 0);
 
-    return directBonus + phraseBonus + termWords.length * 5 - compactnessPenalty;
+    /*
+     * Una variante que cambia el producto pierde contra la coincidencia simple.
+     * Solo aplica cuando la persona NO la pidio: si escribe "leche condensada",
+     * el marcador esta en su termino y no se castiga.
+     */
+    const variantPenalty = termWords.length === 1
+        ? nameWords.filter(word => (
+            VARIANT_SHIFT_MARKERS.has(word) && !termWords.includes(word)
+        )).length * VARIANT_SHIFT_PENALTY
+        : 0;
+
+    return directBonus + phraseBonus + termWords.length * 5 - compactnessPenalty - variantPenalty;
 }
 
 /**
