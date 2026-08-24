@@ -143,3 +143,38 @@ describe('supermarketText buildSelectionReason', () => {
             .toContain('además está en oferta');
     });
 });
+
+describe('variantes que cambian el producto', () => {
+    // Observado el 2026-08-24: pidiendo "leche", cuatro candidatos empataban en
+    // 135 puntos -entera, descremada, condensada y en polvo- porque todos
+    // empiezan con "leche". El desempate terminaba eligiendo la condensada.
+    it('una leche normal le gana a la condensada y a la en polvo', () => {
+        const entera = productMatchScore('leche', 'Leche Entera Soprole 1 L');
+        const descremada = productMatchScore('leche', 'Leche Descremada Colun 1 L');
+        const condensada = productMatchScore('leche', 'Leche Condensada Azucarada Lata Nestle 397 gr');
+        const polvo = productMatchScore('leche', 'Leche en Polvo Nido 3+ 700 g');
+
+        expect(entera).toBeGreaterThan(condensada);
+        expect(descremada).toBeGreaterThan(condensada);
+        expect(entera).toBeGreaterThan(polvo);
+    });
+
+    it('no castiga la variante cuando la persona la pidio', () => {
+        // Quien escribe "leche condensada" quiere exactamente eso.
+        expect(productMatchScore('leche condensada', 'Leche Condensada Azucarada Lata Nestle 397 gr'))
+            .toBeGreaterThan(productMatchScore('leche', 'Leche Condensada Azucarada Lata Nestle 397 gr'));
+    });
+
+    it('la variante sigue siendo valida: se penaliza, no se descarta', () => {
+        // Si la tienda solo tiene esa, mostrarla con su nombre completo es mejor
+        // que declarar el producto inexistente.
+        expect(productMatchScore('leche', 'Leche Condensada Azucarada Lata Nestle 397 gr')).toBeGreaterThanOrEqual(0);
+    });
+
+    it('no toca calificativos que NO cambian el producto', () => {
+        // "con sal" es mantequilla normal; "sabor vainilla" es yogur normal.
+        expect(productMatchScore('mantequilla', 'Mantequilla Con Sal Soprole 250 g')).toBe(135);
+        expect(productMatchScore('yogur', 'Yoghurt Batido Sabor Vainilla Soprole 120 GR')).toBe(135);
+        expect(productMatchScore('pan', 'Pan de Molde Integral Castaño 400 GR')).toBe(135);
+    });
+});
