@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import type { SupermarketPurchasePlanBasket } from '@/lib/types';
+import { useSupermarketCartLoader } from '@/hooks/useSupermarketCartLoader';
+import { storeSearchUrl } from '@/lib/supermarketText';
 
 const STORE_HOME: Record<string, string> = {
   Lider: 'https://www.lider.cl/supermercado',
@@ -58,16 +60,18 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [opened, setOpened] = useState(false);
-  const [hasExtension, setHasExtension] = useState(false);
-  const [extensionVersion, setExtensionVersion] = useState<string | null>(null);
+  /**
+   * El puente con la extension vive en useSupermarketCartLoader, no aca.
+   *
+   * Esta UI mantenia su propio listener y su propio postMessage, saltandose el
+   * hook: por eso el gate de capacidades nunca corria y `replaceCart` no se
+   * enviaba nunca, dejando el vaciado del carro anterior como codigo muerto.
+   */
+  const cartLoader = useSupermarketCartLoader(basket);
+  const hasExtension = cartLoader.availability === 'ready';
+  const extensionVersion = cartLoader.installedVersion ?? null;
+  const extensionProgress = cartLoader.progress;
   const [loadStarted, setLoadStarted] = useState(false);
-  const [extensionProgress, setExtensionProgress] = useState<{
-    status?: string;
-    added?: number;
-    total?: number;
-    failed?: number;
-    detail?: string;
-  } | null>(null);
 
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -85,23 +89,6 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
     ]);
     return `https://www.jumbo.cl/checkout/cart/add?${params.join('&')}&redirect=true&sc=1`;
   }, [basket]);
-
-  // Detectar si la extensión de Chrome está activa
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.source !== 'convive-cart-loader') return;
-      if (event.data.type === 'CONVIVE_CART_LOADER_READY') {
-        setHasExtension(true);
-        setExtensionVersion(event.data.payload?.version ?? null);
-      }
-      if (event.data.type === 'CONVIVE_CART_LOADER_PROGRESS') {
-        setExtensionProgress(event.data.payload);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    window.postMessage({ source: 'convive-connect', type: 'CONVIVE_CART_LOADER_PING' }, '*');
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   const formatListText = () => {
     const header = `🛒 *Lista de Compras · ${basket.store}*\n`;
@@ -152,29 +139,18 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
       return;
     }
 
-    // Carga automatizada en 1 sola pestaña via extensión (todas las tiendas).
+    // Si el cargador ya corrio, la lista nueva reemplaza a la anterior en vez de
+    // sumarse: mezclarlas deja un carro que la persona no pidio. Se pregunta
+    // antes porque borrar el carro de alguien no es reversible.
+    const replaceCart = loadStarted
+      && window.confirm(
+        `¿Reemplazar el carro anterior de ${basket.store}?\n\n`
+        + 'Aceptar vacía lo que haya y deja sólo esta lista. '
+        + 'Cancelar agrega esta lista encima de lo que ya tenías.',
+      );
+
     setLoadStarted(true);
-    setExtensionProgress(null);
-    window.postMessage(
-      {
-        source: 'convive-connect',
-        type: 'CONVIVE_CART_LOADER_START',
-        payload: {
-          version: 1,
-          store: basket.store,
-          items: basket.items.map((item, idx) => ({
-            id: item.id || `item-${idx + 1}`,
-            name: item.name,
-            requestedTerm: item.requestedTerm || item.name,
-            quantity: Math.max(1, Math.round(item.quantity)),
-            productUrl: item.productUrl,
-            sku: item.sku,
-            offerId: item.offerId,
-          })),
-        },
-      },
-      '*'
-    );
+    cartLoader.start({ replaceCart });
     toast({
       title: `Cargando tu carro en ${basket.store}`,
       description: 'CoCo agrega y verifica cada producto en una pestaña del supermercado. Luego revisas, aceptas y pagas ahí.',
@@ -193,26 +169,16 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoadKey]);
 
-  const handleOpenAllProducts = () => {
-    let openedCount = 0;
-    basket.items.forEach((item) => {
-      const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
-      if (url) {
-        window.open(url, '_blank', 'noopener');
-        openedCount += 1;
-      }
-    });
-    toast({
-      title: 'Productos abiertos',
-      description: `Se abrieron las pestañas de ${openedCount} productos en ${basket.store}.`,
-      variant: 'success',
-    });
-  };
-
   const toggleCheck = (id: string) => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  /**
+   * Lo que la tienda NO cargo. Antes solo se sabia el numero, asi que la
+   * persona leia "falta 1 producto" sin saber cual ni como agregarlo. Se listan
+   * con un enlace de busqueda en la tienda para que pueda resolverlo en el acto.
+   */
+  const missingItems = extensionProgress?.failedItems ?? [];
   const progressFailed = extensionProgress?.status === 'failed';
   const progressDone = extensionProgress
     && typeof extensionProgress.total === 'number'
@@ -232,12 +198,20 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
         <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
         <span>{loadStarted ? `Recargar Carro en ${basket.store}` : `Cargar Carro en ${basket.store}`}</span>
       </Button>
-      {hasExtension && (
+      {basket.store === 'Irurzun' && (
         <p className="text-[11px] cc-text-secondary text-center leading-4">
-          Se carga automáticamente al elegir la tienda. Al terminar, revisa el carro en
-          la pestaña de {basket.store}, acepta y paga — ese paso es siempre tuyo.
+          Irurzun es un carro mayorista: lo que se prepara es una cotización, no un
+          precio final de compra.
         </p>
       )}
+      {/* El límite vale siempre, haya o no extensión: CoCo agrega productos y
+          nunca confirma la entrega ni paga. */}
+      <p className="text-[11px] cc-text-secondary text-center leading-4">
+        {hasExtension
+          ? `Se carga automáticamente al elegir la tienda. Al terminar, revisa el carro en la pestaña de ${basket.store}, `
+          : `Revisa el carro en la pestaña de ${basket.store}, `}
+        acepta y paga — <strong>confirmas la entrega y pagas</strong> tú, ese paso es siempre tuyo.
+      </p>
 
       {/* Botones de acción rápida: Copiar lista y WhatsApp */}
       <div className="grid grid-cols-2 gap-2">
@@ -292,6 +266,29 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                     : 'text-emerald-800 bg-emerald-50 border-emerald-200'
                 }`}>
                   {extensionProgress.detail}
+                  {missingItems.length > 0 && (
+                    <span className="mt-2 block">
+                      <span className="block font-semibold">No se pudieron agregar:</span>
+                      {missingItems.map((name) => {
+                        const search = storeSearchUrl(basket.store, name);
+                        return (
+                          <span key={name} className="mt-1 flex items-center justify-between gap-2">
+                            <span className="truncate">{name}</span>
+                            {search && (
+                              <a
+                                href={search}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 font-semibold underline"
+                              >
+                                Buscarlo en {basket.store}
+                              </a>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  )}
                 </p>
               )}
               <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
@@ -385,20 +382,14 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
           </div>
 
           <div className="flex gap-2 pt-1 border-t border-subtle">
-            <button
-              type="button"
-              onClick={handleOpenAllProducts}
-              className="flex-1 py-1.5 px-2 rounded-lg border border-subtle bg-surface text-[11px] font-semibold cc-text-primary hover:bg-subtle/40 text-center"
-            >
-              Abrir fichas en pestañas
-            </button>
             <a
               href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
+              className="w-full py-2 px-3 rounded-lg bg-zinc-900 text-white text-xs font-semibold text-center hover:bg-zinc-800 flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              Ir a {basket.store}
+              <span>Ir a la tienda de {basket.store}</span>
+              <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
         </div>

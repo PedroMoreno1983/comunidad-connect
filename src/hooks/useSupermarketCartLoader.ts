@@ -12,6 +12,42 @@ import type {
 const CONVIVE_SOURCE = 'convive-connect';
 const LOADER_SOURCE = 'convive-cart-loader';
 const READY_TIMEOUT_MS = 1_500;
+/**
+ * Capacidades que el cargador debe tener para que la app confie en el.
+ *
+ * Tiene que reflejar lo que la extension IMPLEMENTA, no lo que nos gustaria.
+ * Exigia `cart-replace-v1`, `cart-stale-job-recovery-v1` y `cart-zero-proof-v1`,
+ * que la reescritura a 1.2.0 dejo fuera; el puente las declaraba igual, asi que
+ * el handshake pasaba y la app confiaba en comportamientos ausentes. Cuando esas
+ * funciones se porten desde codex/fix-supermarket-updater, se vuelven a exigir
+ * aqui y a declarar alla, en ese orden.
+ */
+/**
+ * Capacidades que el cargador debe tener para que la app confie en el.
+ *
+ * Tiene que reflejar lo que la extension IMPLEMENTA, no lo que nos gustaria:
+ * una build que declare algo ausente hace que la app confie en comportamientos
+ * que no ocurren. El QA de la extension verifica ambos lados.
+ */
+/**
+ * Capacidades que el cargador debe tener para que la app confie en el.
+ *
+ * Debe reflejar lo que la extension IMPLEMENTA, no lo que nos gustaria. Exigia
+ * `cart-replace-v1`, `cart-stale-job-recovery-v1` y `cart-zero-proof-v1`, que la
+ * reescritura a 1.2.0 dejo fuera; el puente las declaraba igual, asi que el
+ * handshake pasaba y la app confiaba en comportamientos ausentes. Cuando se
+ * porten desde codex/fix-supermarket-updater se vuelven a exigir aqui.
+ */
+/**
+ * Capacidades que el cargador debe tener para que la app confie en el.
+ *
+ * Debe reflejar lo que la extension IMPLEMENTA, no lo que nos gustaria: una
+ * build que declare algo ausente hace que la app confie en comportamientos que
+ * no ocurren. El QA de la extension verifica AMBOS lados (declarado vs codigo).
+ *
+ * `cart-api-load-v1` no se exige: es una mejora por tienda (hoy solo Lider) y
+ * un cargador sin ella sigue siendo correcto, solo mas lento.
+ */
 const REQUIRED_LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
