@@ -21,6 +21,7 @@
     "qa:agents-wholesale": "node scripts/agents-wholesale-integrity-qa.js",
     "qa:supermarket-group-live": "node scripts/supermarket-group-live-qa.js",
     "qa:supermarket-ui": "node scripts/supermarket-ui-qa.js",
+    "supermarket:catalog-status": "node scripts/supermarket-catalog-status.js",
     "supermarket:backfill-lider-offer-id": "node scripts/backfill-lider-offer-id.js",
     "qa:supermarket-cart-loader": "node scripts/supermarket-cart-loader-integrity-qa.js && node scripts/supermarket-cart-loader-background-qa.mjs",
     "qa:supermarket-cart-loader:e2e": "node scripts/supermarket-cart-loader-e2e-qa.js",

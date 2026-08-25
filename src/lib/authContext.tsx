@@ -198,7 +198,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const ensureResidentUnitForUser = async () => {
         try {
             const response = await fetch('/api/profile/ensure-resident-unit', { method: 'POST' });
-            if (!response.ok) return;
+            if (!response.ok) {
+                // A resident with no unit loses gastos comunes, cartola and the debt
+                // certificate, so a failure here must never pass unnoticed.
+                console.error(
+                    `[auth] Resident unit auto-link failed (${response.status}); the profile stays without a unit.`,
+                );
+                return;
+            }
             const data = await response.json().catch(() => ({})) as { unitId?: string; unitName?: string };
             if (data.unitId) {
                 setUser(prev => prev ? ({ ...prev, unitId: data.unitId, unitName: data.unitName || prev.unitName }) : null);

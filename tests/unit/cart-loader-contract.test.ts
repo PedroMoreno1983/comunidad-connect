@@ -24,7 +24,7 @@ function extensionFile(name: string): string {
 
 interface StoreConfig {
     hosts: string[];
-    cartUrl?: string;
+    emptyCartLabels?: string[];
     addSelectors: string[];
     cartApi?: { load?: unknown };
     cartApiHosts?: string[];
@@ -46,7 +46,6 @@ describe('store-config', () => {
         for (const [store, config] of Object.entries(configs)) {
             if (!config.cartApi) continue;
             expect(typeof config.cartApi.load, `${store}.cartApi.load debe ser función`).toBe('function');
-            expect(config.cartUrl, `${store} con cartApi debe declarar cartUrl`).toBeTruthy();
         }
     });
 
@@ -58,11 +57,11 @@ describe('store-config', () => {
         expect(configs.Lider.cartApiHosts).toEqual(['super.lider.cl']);
     });
 
-    it('toda tienda con carro declara a dónde llevar la pestaña al terminar', () => {
-        // Sin cartUrl el cierre mandaba al usuario a google.com en vez de su carro.
+    it('toda tienda declara cómo vaciar el carro anterior', () => {
+        // Sin emptyCartLabels la lista nueva se mezcla con la anterior y deja un
+        // carro que la persona no pidió.
         for (const [store, config] of Object.entries(configs)) {
-            if (store === 'Irurzun') continue;
-            expect(config.cartUrl, `${store} sin cartUrl`).toBeTruthy();
+            expect(config.emptyCartLabels?.length, `${store} sin emptyCartLabels`).toBeGreaterThan(0);
         }
     });
 });
@@ -85,6 +84,25 @@ describe('retailer-loader', () => {
         expect(source).toContain('parseCartCount');
     });
 
+    it('no confunde una lista de resultados con una ficha de producto', () => {
+        // Regresion real (Santa Isabel, 2026-08-18): la heuristica era
+        // `initialAddControl && document.querySelector('h1')`, y una busqueda
+        // tiene ambas cosas. El cargador pulsaba el PRIMER "Agregar" de 40 y
+        // reportaba como exito un producto que la persona no pidio.
+        // Ni el <h1> (lo tiene una lista de resultados) ni "un solo boton de
+        // agregar" (una ficha de Jumbo tiene 32 por los carruseles) sirven.
+        // La ruta si es inequivoca en las seis cadenas.
+        expect(source).toContain('isProductDetailPage');
+        expect(source).not.toMatch(/looksLikeProductPage = Boolean\(initialAddControl/);
+        expect(source).not.toContain('visibleAddControlCount(config) === 1');
+    });
+
+    it('no agrega nada si no pudo abrir la ficha exacta', () => {
+        // Agregar "algo parecido" es peor que no agregar: la persona paga otro
+        // producto sin enterarse.
+        expect(source).toContain('No se pudo abrir la ficha exacta');
+    });
+
     it('la carga por API sólo informa lo que la tienda devolvió', () => {
         expect(source).toContain('tryCartApi');
         expect(source).toContain('REPORT_CART_API_RESULTS');
@@ -103,6 +121,16 @@ describe('background', () => {
 
     it('no tiene un camino que marque todos los productos como agregados', () => {
         expect(source).not.toContain('COMPLETE_BATCH_CART');
+    });
+
+    it('un producto fallido puede cerrarse sin reclamo previo', () => {
+        // Regresion real (Unimarc, 2026-08-18): el guard exigia reclamo para
+        // CUALQUIER cierre, pero el content script reporta un fallo antes de
+        // reclamar (ficha 404 sin boton de agregar). El job quedaba congelado
+        // en ese producto para siempre. Un fallo no agrega nada, asi que el
+        // reclamo solo debe exigirse para un alta.
+        expect(source).toContain('unclaimedFailure');
+        expect(source).toMatch(/message\.added !== true && !job\.inFlightItemId/);
     });
 
     it('cierra la carga por API con lo que la tienda confirmó', () => {

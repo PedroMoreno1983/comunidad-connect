@@ -37,7 +37,7 @@ async function main() {
     const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const runId = crypto.randomUUID().slice(0, 8);
-    const cleanup = { userIds: [], communityId: null };
+    const cleanup = { userIds: [], communityIds: [] };
 
     try {
         const publicCodes = await anon
@@ -65,11 +65,11 @@ async function main() {
         assert(Boolean(bypass.error) && !bypass.data?.user, 'Forged role and community metadata are rejected');
 
         const communityId = crypto.randomUUID();
-        cleanup.communityId = communityId;
+        cleanup.communityIds.push(communityId);
         const { data: community, error: communityError } = await admin
             .from('communities')
             .insert({ id: communityId, name: `Auth QA ${runId}`, subscription_status: 'active' })
-            .select('id,admin_code')
+            .select('id,admin_code,resident_code')
             .single();
         if (communityError || !community?.admin_code) throw communityError || new Error('No se creó comunidad QA.');
 
@@ -95,13 +95,79 @@ async function main() {
             { role: profile.role },
         );
 
+        // Regression guard for the 2026-08-24 audit. handle_new_user() creates the
+        // resident's unit on the fly, and public.units was missing the `type` and
+        // `resident_profile_id` columns that INSERT references. The trigger raised,
+        // so any resident who typed their unit number got "Database error creating
+        // new user" and simply could not register. Fixed by migration
+        // 20260824180000_fix_units_schema_drift.sql.
+        const unitNumber = `R${runId.slice(0, 4)}`;
+        const resident = await admin.auth.admin.createUser({
+            email: `auth-resident-${runId}@qa.convive.local`,
+            password: `Resident-${runId}!2026`,
+            email_confirm: true,
+            user_metadata: {
+                name: 'Auth QA Resident',
+                invite_code: community.resident_code,
+                department_number: unitNumber,
+            },
+        });
+        if (resident.data?.user?.id) cleanup.userIds.push(resident.data.user.id);
+        assert(
+            !resident.error && Boolean(resident.data?.user),
+            'Resident can sign up with a unit number',
+            { error: resident.error?.message },
+        );
+
+        const { data: residentProfile } = await admin
+            .from('profiles')
+            .select('role,unit_id')
+            .eq('id', resident.data.user.id)
+            .single();
+        assert(
+            residentProfile?.role === 'resident' && Boolean(residentProfile?.unit_id),
+            'Resident signup links a real unit',
+            { unitLinked: Boolean(residentProfile?.unit_id) },
+        );
+
+        // Same guard from the other side: unit numbers must be unique per
+        // community, never globally. A stray units_number_key meant the second
+        // building to onboard a "101" could not register that resident at all.
+        const neighbourId = crypto.randomUUID();
+        cleanup.communityIds.push(neighbourId);
+        const { data: neighbour } = await admin
+            .from('communities')
+            .insert({ id: neighbourId, name: `Auth QA vecino ${runId}`, subscription_status: 'active' })
+            .select('id,resident_code')
+            .single();
+
+        const twin = await admin.auth.admin.createUser({
+            email: `auth-twin-${runId}@qa.convive.local`,
+            password: `Twin-${runId}!2026`,
+            email_confirm: true,
+            user_metadata: {
+                name: 'Auth QA Twin',
+                invite_code: neighbour.resident_code,
+                department_number: unitNumber,
+            },
+        });
+        if (twin.data?.user?.id) cleanup.userIds.push(twin.data.user.id);
+        assert(
+            !twin.error && Boolean(twin.data?.user),
+            'Two communities can each have a unit with the same number',
+            { error: twin.error?.message },
+        );
+
         report.passed = true;
     } finally {
         for (const userId of cleanup.userIds) {
             await admin.auth.admin.deleteUser(userId).catch(() => undefined);
         }
-        if (cleanup.communityId) {
-            await admin.from('communities').delete().eq('id', cleanup.communityId);
+        for (const communityId of cleanup.communityIds) {
+            // The query builder is a thenable, not a Promise: it has no .catch().
+            try {
+                await admin.from('communities').delete().eq('id', communityId);
+            } catch { /* best effort */ }
         }
     }
 }

@@ -69,12 +69,26 @@ function assertStaticRoleBoundaries() {
   assert(sidebar.includes('{ href: "/agent-center", label: "Agent Center", icon: Sparkles, roles: ["admin"]'), 'Agent Center navigation is admin-only');
   assert(agentApi.includes("Agent Center es exclusivo de administracion."), 'Agent Center API rejects non-admin profiles');
   assert(proxy.includes('"/agent-center"'), 'Agent Center page is covered by the protected route matcher');
-  assert(proxy.includes('pathname.startsWith("/resident/training")') && proxy.includes('role === "admin" || role === "concierge"'), 'Aula route is limited to admin and concierge');
+  // The Aula lives at /staff/training. The old assertion guarded
+  // /resident/training, a route that does not exist, so it proved nothing.
+  const staffRule = proxy.match(/pathname\.startsWith\("\/staff"\)\s*\)\s*\{\s*allowed\s*=\s*([^;]+);/);
+  assert(proxy.includes('"/staff"'), 'Aula route is covered by the protected route matcher');
+  assert(
+    Boolean(staffRule) && /role === "admin" \|\| role === "concierge"/.test(staffRule[1]),
+    'Aula route is limited to admin and concierge',
+  );
   assert(trainingApi.includes("!['admin', 'concierge'].includes(profile.role)"), 'Aula API rejects resident profiles');
   assert(proxy.includes('pathname.startsWith("/comunicaciones") && role === "resident"') && proxy.includes('new URL("/feed", req.url)'), 'Residents are redirected to the read-only communications feed');
   assert(proxy.includes('"/feed"'), 'Read-only communications feed requires authentication');
   assert(sidebar.includes('{ href: "/feed", label: "Comunicaciones", icon: MessageSquare, roles: ["resident"]'), 'Resident communications navigation opens the read-only feed');
-  assert(sidebar.includes('{ href: "/comunicaciones", label: "Comunicaciones", icon: MessageSquare, roles: ["admin", "concierge"]'), 'Publishing navigation is limited to admin and concierge');
+  // Assert on the roles, not on the label: the concierge copy is chosen at render
+  // time, so matching the literal string turned this guard permanently red and
+  // hid whatever regression it was meant to catch.
+  const publishingNav = sidebar.match(/\{\s*href:\s*"\/comunicaciones"[^}]*\}/);
+  assert(
+    Boolean(publishingNav) && /roles:\s*\["admin",\s*"concierge"\]/.test(publishingNav[0]),
+    'Publishing navigation is limited to admin and concierge',
+  );
   assert(sidebar.includes('{ href: "/convivencia", label: "Convivencia", icon: HeartHandshake, roles: ["resident"]'), 'Resident convivencia navigation is resident-only');
   assert(sidebar.includes('{ href: "/admin/convivencia", label: "Gestion de Convivencia", icon: HeartHandshake, roles: ["admin"]'), 'Admin receives a distinct convivencia management route');
   assert(proxy.includes('pathname.startsWith("/convivencia")') && proxy.includes('allowed = role === "resident"'), 'Resident convivencia route rejects staff profiles');
