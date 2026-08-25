@@ -868,9 +868,16 @@ async function enrichPlaybookPreview(action: AgentAction, profile: AgentProfile)
         if (expensesError || !expenses?.length) return action;
 
         const unitIds = Array.from(new Set(expenses.map(row => String(row.unit_id || '')).filter(Boolean)));
-        const { data: units } = unitIds.length
+        const { data: units, error: unitsError } = unitIds.length
             ? await admin.from('units').select('id, owner_id, resident_profile_id').in('id', unitIds)
-            : { data: [] };
+            : { data: [], error: null };
+        // Without this check a failed lookup was indistinguishable from "no unit
+        // has a resident", and the preview told the admin to go fix a roster that
+        // was already correct. Better to show no preview than a false one.
+        if (unitsError) {
+            console.error('[agent-center] Could not resolve unit recipients for the collection preview:', unitsError);
+            return action;
+        }
         const recipientByUnit = new Map((units || []).map(unit => [String(unit.id), String(unit.owner_id || unit.resident_profile_id || '')]));
         const recipients = new Set(expenses.map(row => recipientByUnit.get(String(row.unit_id))).filter(Boolean));
         const total = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);

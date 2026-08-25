@@ -518,7 +518,7 @@ function collectLiderItems(value: unknown): Record<string, unknown>[] {
   return Object.values(record).flatMap(collectLiderItems);
 }
 
-function detectLiderOffer(html: string, productName: string): { isOffer: boolean; originalPrice?: number } {
+function detectLiderOffer(html: string): { isOffer: boolean; originalPrice?: number } {
   const offerPatterns = [
     /oferta/i,
     /\d+%\s*off/i,
@@ -606,7 +606,7 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
     const imageUrl = typeof image === 'string' ? image : undefined;
     if (product['@type'] !== 'Product' || !name || price <= 0) return [];
 
-    const offerInfo = detectLiderOffer(html, name);
+    const offerInfo = detectLiderOffer(html);
     const listPrice = asNumber(offer?.priceValidUntil ? offer?.price : undefined);
     const productUrl = asString(product.url) || undefined;
 
