@@ -1393,6 +1393,8 @@ export async function POST(req: NextRequest) {
     const limited = enforceRateLimit(req, 'agent_center.execute', { limit: 30, windowMs: 60_000 });
     if (limited) return limited;
 
+    let persistTurn: (assistantContent: string) => Promise<void> = async () => undefined;
+
     try {
         const profile = await getAuthenticatedAgentProfile();
         if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 403 });
@@ -1481,7 +1483,7 @@ export async function POST(req: NextRequest) {
                 ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
             : await inferAction(message, profile, agentHistory);
 
-        const persistTurn = async (assistantContent: string) => {
+        persistTurn = async (assistantContent: string) => {
             if (!isFreeMessage) return;
             await saveSession(agentSessionKey, {
                 conversation: [
@@ -1595,8 +1597,10 @@ export async function POST(req: NextRequest) {
         const detail = error instanceof Error && error.message && !/stack|undefined|null/i.test(error.message)
             ? error.message.slice(0, 280)
             : '';
+        const failReply = detail ? `No se pudo ejecutar la acción: ${detail}` : 'No se pudo ejecutar la acción.';
+        await persistTurn(failReply);
         return NextResponse.json({
-            error: detail ? `No se pudo ejecutar la acción: ${detail}` : 'No se pudo ejecutar la acción.',
+            error: failReply,
         }, { status: 500 });
     }
 }
