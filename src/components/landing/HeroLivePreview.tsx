@@ -3,18 +3,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Building2,
   CalendarCheck,
   PackageCheck,
   Receipt,
   HeartHandshake,
-  CheckCircle2,
   ShieldCheck,
   Smartphone,
   Check,
   Clock,
-  Send,
-  Zap,
 } from 'lucide-react';
 
 const liveEvents = [

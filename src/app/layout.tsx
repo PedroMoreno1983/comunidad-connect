@@ -157,21 +157,26 @@ export default async function RootLayout({
         <meta name="theme-color" content="#FBF8F3" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#1E1E24" media="(prefers-color-scheme: dark)" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        {/*
+          JSON-LD blocks are data, not executable code, so CSP script-src never
+          gates them and they need no nonce. Passing one only guaranteed a
+          hydration mismatch: browsers blank the nonce attribute in the DOM, so
+          the client always read "" where the server had sent a value.
+        */}
         <script
-          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
         <script
-          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
         />
         {GA_ID ? (
           <>
-            <script nonce={nonce} async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+            <script nonce={nonce} async suppressHydrationWarning src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
             <script
               nonce={nonce}
+              suppressHydrationWarning
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
@@ -190,8 +195,14 @@ export default async function RootLayout({
             {children}
           </AppProviders>
         </ThemeProviders>
+        {/*
+          These scripts do execute, so they keep their nonce. The browser blanks
+          the attribute in the DOM once CSP has read it, which React would
+          otherwise report as a hydration mismatch on every page load.
+        */}
         <script
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

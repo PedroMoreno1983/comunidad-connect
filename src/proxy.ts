@@ -12,6 +12,7 @@ const PROTECTED_DASHBOARD_PREFIXES = [
   "/concierge",
   "/convivencia",
   "/directorio",
+  "/estacionamientos",
   "/expenses",
   "/feed",
   "/home",
@@ -146,8 +147,6 @@ export async function proxy(req: NextRequest) {
     || pathname.startsWith("/expenses")
   ) {
     allowed = role === "admin" || role === "resident";
-  } else if (pathname.startsWith("/resident/training")) {
-    allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/comunicaciones")) {
     allowed = role === "admin" || role === "concierge";
   } else if (pathname.startsWith("/staff")) {
