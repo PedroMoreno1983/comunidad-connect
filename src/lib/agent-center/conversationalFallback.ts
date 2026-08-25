@@ -56,11 +56,17 @@ export async function conversationalCoCoReply(message: string, profile: AgentPro
     }
 }
 
+const COCO_INFORMATIONAL_TOOLS = new Set([
+    'clarify_intent',
+    'answer_community_question',
+    'get_community_snapshot',
+]);
+
 /**
- * Si la accion resuelta es una clarificacion generica (el router no reconocio una
- * accion), la reemplaza por una respuesta conversacional real de CoCo. Cualquier
- * otra accion (cobranza, comunicados, reservas, etc.) pasa intacta a su flujo de
- * propuesta -> aprobacion -> bitacora. La tarjeta curada de capacidades
+ * Si la accion resuelta es una consulta (clarificacion, snapshot o investigacion)
+ * y no una mutacion, la responde CoCo con el mismo cerebro del chat. Cualquier
+ * escritura (cobranza, comunicados, reservas, playbooks) pasa intacta a su flujo
+ * de propuesta -> aprobacion -> bitacora. La tarjeta curada de capacidades
  * (args.capabilities) tampoco se sobreescribe: es instantanea y no depende del LLM.
  */
 export async function upgradeClarificationWithCoCo(
@@ -68,9 +74,17 @@ export async function upgradeClarificationWithCoCo(
     profile: AgentProfile,
     action: AgentAction,
 ): Promise<AgentAction> {
-    if (action.toolName !== 'clarify_intent') return action;
-    if (Boolean(action.args.capabilities)) return action;
+    if (!COCO_INFORMATIONAL_TOOLS.has(action.toolName)) return action;
+    if (action.toolName === 'clarify_intent' && Boolean(action.args.capabilities)) return action;
     const reply = await conversationalCoCoReply(message, profile);
     if (!reply) return action;
-    return { ...action, title: 'CoCo', summary: reply };
+    return {
+        ...action,
+        toolName: 'clarify_intent',
+        title: 'CoCo',
+        summary: reply,
+        requiresConfirmation: false,
+        args: { ...action.args, requestedText: message },
+        targetHref: '/agent-center',
+    };
 }

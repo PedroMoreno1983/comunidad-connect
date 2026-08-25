@@ -19,7 +19,7 @@ import { useSupermarketCartLoader } from '@/hooks/useSupermarketCartLoader';
 import type { SupermarketPurchasePlanBasket } from '@/lib/types';
 
 const STORE_HOME: Record<string, string> = {
-  Lider: 'https://www.lider.cl/supermercado',
+  Lider: 'https://super.lider.cl',
   Jumbo: 'https://www.jumbo.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
   Unimarc: 'https://www.unimarc.cl',
@@ -66,7 +66,7 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   const [loadStarted, setLoadStarted] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
-  const storeUrl = STORE_HOME[basket.store] || 'https://www.google.com';
+  const storeUrl = STORE_HOME[basket.store];
   const extensionProgress = cartLoader.progress;
   const hasReadyLoader = cartLoader.availability === 'ready';
   const loaderOutdated = cartLoader.availability === 'outdated';
@@ -152,11 +152,12 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   // Elegir la tienda gatilla la carga sin pasar por este botón. La llave 0 es
   // el estado inicial (selección por defecto tras comparar): ahí no se carga
   // nada hasta que la persona elija explícitamente. Si el handshake todavía
-  // no terminó, se espera a `ready`/`outdated`/`unavailable`.
+  // no terminó (o llegó tarde), se espera a `ready`/`outdated` y no se consume
+  // la llave en `unavailable`: la extensión puede responder después del timeout.
   const lastAutoLoadKey = React.useRef(0);
   useEffect(() => {
     if (autoLoadKey <= 0 || autoLoadKey === lastAutoLoadKey.current) return;
-    if (cartLoader.availability === 'checking') return;
+    if (cartLoader.availability === 'checking' || cartLoader.availability === 'unavailable') return;
     lastAutoLoadKey.current = autoLoadKey;
     handleLoadCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,7 +166,8 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   const handleOpenAllProducts = () => {
     let openedCount = 0;
     basket.items.forEach((item) => {
-      const url = item.productUrl || (item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
+      const url = item.productUrl
+        || (storeUrl && item.name ? `${storeUrl}/search?q=${encodeURIComponent(item.name)}` : '');
       if (url) {
         window.open(url, '_blank', 'noopener');
         openedCount += 1;
@@ -388,14 +390,16 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
             >
               Abrir fichas en pestañas
             </button>
-            <a
-              href={storeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
-            >
-              Ir a {basket.store}
-            </a>
+            {storeUrl && (
+              <a
+                href={storeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-900 text-white text-[11px] font-semibold text-center hover:bg-zinc-800"
+              >
+                Ir a {basket.store}
+              </a>
+            )}
           </div>
         </div>
       )}

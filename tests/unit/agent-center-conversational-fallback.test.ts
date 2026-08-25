@@ -104,6 +104,46 @@ describe('upgradeClarificationWithCoCo', () => {
         expect(result).toEqual(announcement);
         expect(askCoCoMock).not.toHaveBeenCalled();
     });
+
+    it('responde con CoCo las consultas de snapshot e investigacion, no solo clarify_intent', async () => {
+        askCoCoMock.mockResolvedValue({ reply: 'Hay 4 unidades con mas de 2 cuotas vencidas.', updatedHistory: [] });
+        const snapshot: AgentAction = {
+            agentKey: 'finance',
+            toolName: 'get_community_snapshot',
+            args: { focus: 'finance' },
+            requiresConfirmation: false,
+            title: 'Indicadores de comunidad',
+            summary: 'CoCo revisará indicadores operacionales reales.',
+            targetHref: '/admin',
+        };
+        const result = await upgradeClarificationWithCoCo(
+            'como viene la morosidad y quienes deben mas de 2 cuotas?',
+            profile,
+            snapshot,
+        );
+        expect(askCoCoMock).toHaveBeenCalledTimes(1);
+        expect(result.toolName).toBe('clarify_intent');
+        expect(result.title).toBe('CoCo');
+        expect(result.summary).toBe('Hay 4 unidades con mas de 2 cuotas vencidas.');
+        expect(result.requiresConfirmation).toBe(false);
+    });
+
+    it('responde con CoCo las investigaciones de comunidad (answer_community_question)', async () => {
+        askCoCoMock.mockResolvedValue({ reply: 'El quincho esta reservado el sabado 10-14.', updatedHistory: [] });
+        const research: AgentAction = {
+            agentKey: 'community',
+            toolName: 'answer_community_question',
+            args: { question: 'quien reservo el quincho?' },
+            requiresConfirmation: false,
+            title: 'Investigar comunidad',
+            summary: 'CoCo investigara en las fuentes del edificio.',
+            targetHref: '/agent-center',
+        };
+        const result = await upgradeClarificationWithCoCo('quien reservo el quincho?', profile, research);
+        expect(askCoCoMock).toHaveBeenCalledTimes(1);
+        expect(result.toolName).toBe('clarify_intent');
+        expect(result.summary).toBe('El quincho esta reservado el sabado 10-14.');
+    });
 });
 
 describe('conversationalCoCoReply', () => {

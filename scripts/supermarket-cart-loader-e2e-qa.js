@@ -228,8 +228,7 @@ async function main() {
       || extensionIdentity.version !== expectedLoaderVersion
       || !extensionIdentity.capabilities?.includes('cart-baseline-v1')
       || !extensionIdentity.capabilities?.includes('cart-auto-open-v2')
-      || !extensionIdentity.capabilities?.includes('cart-replace-v1')
-      || !extensionIdentity.capabilities?.includes('cart-zero-proof-v1')
+      || !extensionIdentity.capabilities?.includes('cart-ui-complete-v1')
     ) {
       throw new Error(`La extensión no informó una identidad compatible: ${JSON.stringify(extensionIdentity)}`);
     }
@@ -246,7 +245,6 @@ async function main() {
         version: 1,
         store: store.name,
         createdAt: new Date().toISOString(),
-        replaceCart: true,
         items: [
           {
             id: `${store.name}-milk`,
@@ -355,7 +353,6 @@ async function main() {
           version: 1,
           store: 'Jumbo',
           createdAt: new Date().toISOString(),
-          replaceCart: true,
           items,
         },
       }, window.location.origin);

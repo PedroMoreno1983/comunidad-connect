@@ -190,7 +190,7 @@
       <button type="button" class="coco-loader__retry" hidden>Reanudar carga</button>
       <p class="coco-loader__safety">CoCo agrega productos. Nunca confirma ni paga la compra.</p>
     `;
-    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v1.2.0`;
+    overlay.querySelector('.coco-loader__badge').textContent = `${store} · v1.2.1`;
     document.documentElement.appendChild(overlay);
     return overlay;
   }
@@ -350,8 +350,11 @@
     if (!config.cartApi || job.currentIndex > 0) return false;
     if (config.cartApiHosts && !config.cartApiHosts.includes(window.location.hostname)) return false;
 
-    const items = (job.allItems || []).filter(entry => entry.sku && entry.offerId);
-    if (items.length === 0) return false;
+    const allItems = job.allItems || [];
+    const items = allItems.filter(entry => entry.sku && entry.offerId);
+    // Solo Orchestra cuando TODA la canasta trae sku+offerId. Si falta uno,
+    // una carga parcial cerraba el trabajo y los demas nunca pasaban por la UI.
+    if (items.length === 0 || items.length !== allItems.length) return false;
 
     render(overlay, {
       added: 0,
@@ -405,6 +408,14 @@
         ? 'La carga está pausada. Completa el paso solicitado y reanuda.'
         : `Preparando ${item.name}…`,
     });
+
+    if (job.store === 'Lider' && window.location.hostname !== 'super.lider.cl') {
+      const liderTarget = (typeof job.targetUrl === 'string' && job.targetUrl.includes('super.lider.cl'))
+        ? job.targetUrl
+        : `https://super.lider.cl/search?query=${encodeURIComponent(item.name)}`;
+      window.location.assign(liderTarget);
+      return;
+    }
 
     if (job.status === 'paused') {
       await retryFromOverlay(overlay);
@@ -516,8 +527,23 @@
         // vez de navegar a la ficha. Si aparece un control de compra, seguimos
         // en esta misma pasada; si no, la navegacion real re-ejecuta run().
         await waitFor(() => findAddControl(config), 8000);
-        // Si sigue sin haber control ni cambio de contexto, no hay mas que hacer aqui.
-        if (!findAddControl(config) && !isProductDetailPage()) return;
+        if (!findAddControl(config) && !isProductDetailPage()) {
+          const stuckClaim = await runtimeMessage({ type: 'CLAIM_CART_ITEM', itemId: item.id });
+          if (!stuckClaim?.ok) {
+            await pause(
+              overlay,
+              'Este producto ya estaba en proceso. Revisa el carro antes de reanudar para evitar duplicados.',
+            );
+            return;
+          }
+          await completeItem(
+            overlay,
+            item,
+            false,
+            `No se encontró la ficha de compra para ${item.name}.`,
+          );
+          return;
+        }
       } else if (item.productUrl && window.location.href !== item.productUrl) {
         window.location.assign(item.productUrl);
         return;

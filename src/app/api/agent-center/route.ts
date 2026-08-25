@@ -807,12 +807,9 @@ async function inferAction(message: string, profile: AgentProfile, history: Plan
 
 async function inferActionUnenriched(message: string, profile: AgentProfile, history: PlannerTurn[] = []): Promise<AgentAction> {
     const action = await resolveRawAction(message, profile, history);
-    // Un cerebro, no dos: cuando el router operativo no reconoce una accion
-    // concreta y cae en clarify_intent (saludo, pregunta abierta, meta como
-    // "que puedes hacer"), en vez del stonewall generico delegamos en el mismo
-    // motor conversacional de CoCo para dar una respuesta real. Las acciones
-    // reconocidas (cobranza, comunicados, reservas, etc.) NO pasan por aqui:
-    // siguen su flujo de propuesta -> aprobacion -> bitacora intacto.
+    // Un cerebro, no dos: las consultas (snapshot, investigacion, clarificacion)
+    // las responde CoCo con tools reales del condominio. Las mutaciones siguen
+    // su flujo de propuesta -> aprobacion -> bitacora.
     return upgradeClarificationWithCoCo(message, profile, action);
 }
 
@@ -1120,7 +1117,7 @@ async function executeAction(action: AgentAction, profile: AgentProfile) {
         return {
             entityType: 'agent_clarification',
             entityId: null,
-            title: 'Necesito mas detalle',
+            title: action.title || 'CoCo',
             message: action.summary || 'Necesito que aclares la consulta. No realice ningun cambio.',
         };
     }
@@ -1484,24 +1481,23 @@ export async function POST(req: NextRequest) {
                 ? await enrichPlaybookPreview(normalizeAction(playbookAction(requestedPlaybook, message || requestedPlaybook.description)), profile)
             : await inferAction(message, profile, agentHistory);
 
-        // Persiste el turno para dar memoria a la próxima consulta. Best-effort:
-        // si falla, la conversación sigue, solo pierde contexto.
-        if (isFreeMessage) {
-            const conversation = [
-                ...agentHistory,
-                { role: 'user' as const, content: message },
-                { role: 'assistant' as const, content: action.summary || action.title || 'Acción preparada.' },
-            ];
+        const persistTurn = async (assistantContent: string) => {
+            if (!isFreeMessage) return;
             await saveSession(agentSessionKey, {
-                conversation,
-                user_context: { user_id: profile.id, role: profile.role, community_id: profile.community_id, channel: 'agent-center' },
+                conversation: [
+                    ...agentHistory,
+                    { role: 'user' as const, content: message },
+                    { role: 'assistant' as const, content: assistantContent },
+                ],
+                user_context: { user_id: profile.id, role: profile.role, community_id: profile.community_id ?? undefined, channel: 'agent-center' },
             }).catch(() => undefined);
-        }
+        };
         if (rejected) {
             await claimPersistedProposal(action, 'rejected');
             await recordApproval(profile, action, 'rejected', 'Usuario rechazo desde Agent Center');
             await markPersistedProposal(action, 'rejected');
             await logActivity(profile, action, 'rejected');
+            await persistTurn('Entendido. He cancelado la propuesta de accion y registrado el descarte en la bitacora de auditoria.');
             const steps: AgentStep[] = [
                 {
                     kind: 'reasoning',
@@ -1552,6 +1548,7 @@ export async function POST(req: NextRequest) {
                 title: 'Revision humana requerida',
                 detail: action.summary,
             });
+            await persistTurn(action.summary || 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla.');
             return NextResponse.json({
                 status: 'awaiting_confirmation',
                 reply: 'Tengo la accion lista. Revisa la tarjeta y confirma para ejecutarla con trazabilidad.',
@@ -1582,6 +1579,7 @@ export async function POST(req: NextRequest) {
             detail: result.message,
             metadata: result,
         });
+        await persistTurn(result.message || action.summary || 'Listo.');
 
         return NextResponse.json({
             status: 'executed',

@@ -6,6 +6,7 @@ const LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
   'loader-version-handshake-v1',
+  'cart-ui-complete-v1',
 ];
 
 const ALLOWED_ORIGINS = new Set([

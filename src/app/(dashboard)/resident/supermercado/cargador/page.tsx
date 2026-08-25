@@ -30,9 +30,10 @@ export default function CargadorPage() {
 
       <h1 className="mt-6 text-2xl font-bold cc-text-primary">Activa la carga automática</h1>
       <p className="mt-2 text-sm leading-6 cc-text-secondary">
-        Se activa una sola vez en Chrome o Edge. Después, desde Convive pulsas
-        <strong> Cargar lista nueva</strong>, confirmas el reemplazo y CoCo vacía el carro anterior
-        antes de agregar y verificar esta compra. Tú continúas al pago.
+        Se activa una sola vez en Chrome o Edge. Después, desde Convive eliges
+        el supermercado y CoCo abre una pestaña de la tienda para agregar y
+        verificar cada producto. La lista se suma al carro que ya tuvieras; tú
+        revisas y pagas.
       </p>
 
       <section
