@@ -201,7 +201,20 @@ La validación de roles internos (admin/resident/concierge) ocurre en `src/lib/a
 1. **Build:** El proyecto debe pasar `npm run build` sin errores antes de cualquier merge.
 2. **TypeScript:** No introducir errores de compilación. Verificar con `npx tsc --noEmit`.
 3. **Lint:** Usar `npm run lint` para verificar. El archivo `eslint.config.mjs` contiene las reglas.
-4. **Supabase schema:** Los cambios de schema van en `schema.sql` en la raíz. Siempre documentar migraciones.
+4. **Supabase schema — leer esto antes de tocar la base:**
+
+   - **Toda migración se aplica con `npx supabase db push`.** Nunca por el editor SQL del panel.
+
+     El editor aplica el cambio pero **no registra la migración en el historial**, o la registra con un timestamp propio que no coincide con el archivo del repo. Eso diverge el historial, y con el historial divergido `db push` deja de arrancar, lo que obliga a volver al editor. Es un círculo que se realimenta.
+
+     Ese círculo ya ocurrió: entre julio y agosto de 2026 dejó 33 migraciones sin registrar, 13 registros duplicados, y una migración de seguridad (`harden_public_functions_and_storage_listing`) aplicada en producción y nunca versionada. Sobre todo, dejó que `public.units` perdiera las columnas `type` y `resident_profile_id` mientras el trigger `handle_new_user()` seguía usándolas: **ningún residente que escribiera su número de departamento podía registrarse**, y nadie lo detectó durante semanas.
+
+   - **`npm run qa:schema-drift` es el guard que lo detecta.** Falla si `schema.sql` declara columnas que la base no tiene, o si el historial de migraciones diverge. Correrlo antes de cualquier merge que toque la base.
+
+   - `schema.sql` es el retrato consolidado del esquema y debe coincidir con producción. La fuente de verdad para *aplicar* cambios es `supabase/migrations/`.
+
+   - Si el editor SQL es inevitable (por ejemplo, sin acceso al CLI), registrar el cambio después:
+     `INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES (...)`.
 5. **No hardcodear IDs:** El `condo_id` por defecto para demo es `11111111-1111-1111-1111-111111111111` — usar la constante, no el string suelto.
 6. **Vercel:** Los headers de seguridad están en `vercel.json`. No eliminarlos.
 7. **Mobile:** `capacitor.config.ts` apunta al directorio `out` del build estático. No cambiar sin coordinar.
