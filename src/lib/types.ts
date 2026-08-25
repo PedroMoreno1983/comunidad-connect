@@ -408,6 +408,8 @@ export interface SupermarketCartLoadProgress {
   removedCartCount?: number;
   cartReplaced?: boolean;
   detail: string;
+  /** Nombres de los productos que la tienda no cargo, para poder ofrecerlos. */
+  failedItems?: string[];
 }
 
 export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'outdated' | 'unavailable';

@@ -116,6 +116,28 @@ propia página puede leerlo). Se delimita buscando `mutation updateItems` y
 avanzando hasta la comilla de cierre no escapada. Se lee en caliente porque
 caduca con cada release.
 
+**Un producto no disponible tumba la respuesta ENTERA** (verificado el
+2026-08-18). Si cualquier item del lote esta agotado, la tienda responde:
+
+```
+"Cart item is unavailable, item not added to the cart"
+CART_ITEM_UNAVAILABLE_CODE   ·   data: null   ·   lineItems ausente
+```
+
+...**pero los demas productos del lote SI entraron al carro**. La respuesta
+simplemente no lo cuenta.
+
+Esto rompia la carga entera: el adaptador leia `lineItems` ausente como "la API
+no funciono", devolvia `null`, y la carga caia al recorrido por interfaz — que
+ademas re-visitaba productos ya agregados, con lo que parecia que no agregaba
+nada. Era exactamente el sintoma reportado: "se iban marcando pero no se
+agregaron al carro".
+
+Solucion: si el lote no devuelve carro, se reintenta **producto por producto**.
+Como la operacion es un upsert y cada respuesta trae el carro completo, la
+ultima lectura buena es el estado real. Verificado con un lote de 3 donde uno
+estaba agotado: los otros dos quedaron con sus cantidades exactas.
+
 ### `offerId`
 
 La mutación lo exige y es distinto del SKU (`821920` para el SKU
@@ -151,6 +173,30 @@ Store sin dar nada a cambio.
 El adaptador devuelve `null` ante cualquier duda — sin `offerId`, sin documento,
 sin `lineItems` — y entonces la carga sigue por el recorrido de la interfaz, que
 verifica producto a producto. Nunca reporta lo que la tienda no devolvió.
+
+---
+
+## Deuda saldada el 2026-08-18
+
+La reescritura del cargador a 1.2.0 habia dejado fuera tres funciones mientras
+el puente las seguia declarando: la app pasaba el handshake y confiaba en
+comportamientos ausentes. Se portaron desde `codex/fix-supermarket-updater`:
+
+| Capacidad | Funcion | Que hace |
+| --- | --- | --- |
+| `cart-replace-v1` | `replaceExistingCart` | Vacia el carro anterior antes de cargar la lista nueva |
+| `cart-stale-job-recovery-v1` | `liveRetailerTab` | Libera cargas cuya pestana se cerro |
+| `cart-zero-proof-v1` | `cartStayedEmpty` | Informa el contador real antes y despues |
+
+Ademas se detecto que la UI **se saltaba el hook** `useSupermarketCartLoader` y
+posteaba sus propios mensajes: por eso el gate de capacidades nunca corria y
+`replaceCart` no se enviaba nunca, dejando el vaciado como codigo muerto. Ahora
+la UI pasa por el hook, y el QA verifica las dos cosas:
+
+* que cada capacidad declarada tenga codigo que la respalde, y
+* que la UI no vuelva a postear por su cuenta.
+
+El cargador quedo en **1.3.0** (sobre 1.2.0, para no degradar a quien ya la tenia).
 
 ---
 

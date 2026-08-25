@@ -29,7 +29,6 @@ export function DynamicHeroBackground({
   const mouseClientY = useMotionValue(-1000);
 
   const springX = useSpring(mouseX, { stiffness: 40, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 40, damping: 25 });
   const spotX = useSpring(mouseClientX, { stiffness: 60, damping: 30 });
   const spotY = useSpring(mouseClientY, { stiffness: 60, damping: 30 });
 

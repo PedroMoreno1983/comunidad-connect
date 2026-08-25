@@ -1,6 +1,20 @@
 -- =====================================================================
 -- ComunidadConnect (CoCo) - Esquema de Base de Datos Maestro
--- Versión: 6.0 (Producción Hardened)
+-- Versión: 6.1 (Producción Hardened · reconciliado 2026-08-25)
+-- =====================================================================
+-- La fuente de verdad para aplicar cambios es supabase/migrations/.
+-- Este archivo es el retrato consolidado del esquema y debe coincidir
+-- con producción.
+--
+-- El 2026-08-25 se eliminaron 11 columnas que este archivo declaraba y
+-- que NO existen en la base: announcements.is_pinned, bookings.notes,
+-- coco_case_events.actor y .message, expenses.year y .total_amount,
+-- packages.registered_by, profiles.phone (la real es phone_number),
+-- social_posts.comments_count, user_training_progress.score y
+-- .created_at. Ninguna estaba en uso, pero declarar columnas
+-- inexistentes es justo lo que induce a escribir la consulta que
+-- revienta en runtime: fue el origen del incidente de units.type, que
+-- impidió registrarse a los residentes.
 -- =====================================================================
 -- Este archivo contiene la estructura completa y unificada del esquema de la base de datos
 -- de ComunidadConnect, incluyendo soporte multi-tenant (SaaS), control de acceso por roles (RLS),
@@ -60,7 +74,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   role TEXT NOT NULL DEFAULT 'resident' CHECK (role IN ('superadmin', 'admin', 'resident', 'concierge')),
   avatar_url TEXT,
-  phone TEXT,
   department_number TEXT,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   whatsapp_enabled BOOLEAN DEFAULT FALSE,
@@ -154,7 +167,6 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-  notes TEXT,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -170,7 +182,6 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   author_name TEXT DEFAULT 'Administración',
   priority TEXT DEFAULT 'info' CHECK (priority IN ('info', 'alert', 'event')),
-  is_pinned BOOLEAN DEFAULT FALSE,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -218,15 +229,13 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
   month TEXT NOT NULL, -- Formato YYYY-MM
-  year INTEGER NOT NULL,
-  total_amount NUMERIC(10, 2) NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'overdue')),
   due_date DATE NOT NULL,
   paid_at TIMESTAMPTZ,
   payment_metadata JSONB DEFAULT '{}'::jsonb, -- Datos tributarios (Haulmer Link, boleta electrónica, etc.)
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(unit_id, month, year)
+  UNIQUE(unit_id, month)
 );
 
 CREATE TABLE IF NOT EXISTS public.expense_items (
@@ -277,7 +286,6 @@ CREATE TABLE IF NOT EXISTS public.packages (
   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   picked_up_at TIMESTAMPTZ,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'picked-up')),
-  registered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -341,7 +349,6 @@ CREATE TABLE IF NOT EXISTS public.social_posts (
   content TEXT NOT NULL,
   image_url TEXT,
   likes_count INTEGER DEFAULT 0,
-  comments_count INTEGER DEFAULT 0,
   community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE DEFAULT '00000000-0000-0000-0000-000000000000',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -467,11 +474,9 @@ CREATE TABLE IF NOT EXISTS public.user_training_progress (
   community_id UUID REFERENCES public.communities(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed')),
   last_slide_index INTEGER NOT NULL DEFAULT 0 CHECK (last_slide_index >= 0),
-  score INTEGER DEFAULT 0,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, module_id)
 );
 
@@ -492,8 +497,6 @@ CREATE TABLE IF NOT EXISTS public.coco_cases (
 CREATE TABLE IF NOT EXISTS public.coco_case_events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   case_id UUID REFERENCES public.coco_cases(id) ON DELETE CASCADE NOT NULL,
-  actor TEXT NOT NULL CHECK (actor IN ('user', 'coco', 'admin')),
-  message TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

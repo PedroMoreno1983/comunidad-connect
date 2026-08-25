@@ -126,40 +126,6 @@ export function WhatsAppChat() {
         processAgentResponse(textToProcess);
     };
 
-    const handleSwitchBasket = (basket: BasketComparisonItem, allItems: ApiCartItem[]) => {
-        const storeItems = allItems.filter(i => i.store === basket.store);
-        const total = storeItems.reduce((sum, item) => sum + (item.totalPrice ?? item.price), 0);
-        const savings = storeItems.reduce((sum, item) => sum + ((item.originalPrice && item.originalPrice > item.price) ? (item.originalPrice - item.price) * (item.userQuantity ?? 1) : 0), 0);
-
-        addMessage({
-            type: 'text',
-            content: `Cambiaste a **${basket.store}**: ${basket.coveredCount}/${basket.requestedCount} productos por $${basket.subtotal.toLocaleString('es-CL')}.`,
-            isSender: false,
-        });
-
-        addMessage({
-            type: 'order',
-            isSender: false,
-            orderData: {
-                items: storeItems.map(item => ({
-                    id: item.id || Math.random().toString(),
-                    name: item.name,
-                    brand: item.brand || '',
-                    quantity: item.quantity || 1,
-                    userQuantity: item.userQuantity,
-                    totalPrice: item.totalPrice,
-                    price: item.price,
-                    store: item.store,
-                    isOffer: item.isOffer ?? false,
-                    originalPrice: item.originalPrice,
-                })),
-                total,
-                savings,
-            },
-            status: 'read'
-        });
-    };
-
     const processAgentResponse = async (userText: string) => {
         setIsProcessing(true);
 

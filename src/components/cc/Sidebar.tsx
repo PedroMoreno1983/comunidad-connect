@@ -139,9 +139,9 @@ export function Sidebar({ role: propRole, activeHref: propActiveHref, user: prop
     let cancelled = false;
 
     fetch("/api/superadmin/access", { cache: "no-store" })
-      .then(response => response.ok)
-      .then(allowed => {
-        if (!cancelled) setHasSuperAdminAccess(allowed);
+      .then(response => (response.ok ? response.json() : { allowed: false }))
+      .then((payload: { allowed?: boolean }) => {
+        if (!cancelled) setHasSuperAdminAccess(payload.allowed === true);
       })
       .catch(() => {
         if (!cancelled) setHasSuperAdminAccess(false);
