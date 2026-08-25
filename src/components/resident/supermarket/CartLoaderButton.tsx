@@ -151,13 +151,20 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
 
   // Elegir la tienda gatilla la carga sin pasar por este botón. La llave 0 es
   // el estado inicial (selección por defecto tras comparar): ahí no se carga
-  // nada hasta que la persona elija explícitamente. Si el handshake todavía
-  // no terminó (o llegó tarde), se espera a `ready`/`outdated` y no se consume
-  // la llave en `unavailable`: la extensión puede responder después del timeout.
+  // nada hasta que la persona elija explícitamente. Solo se espera `checking`:
+  // si no hay extensión, se abre la guía de instalación. Si el handshake llega
+  // tarde (`unavailable` → `ready`), la llave sigue pendiente y arranca la carga.
   const lastAutoLoadKey = React.useRef(0);
+  const shownUnavailableKey = React.useRef(0);
   useEffect(() => {
     if (autoLoadKey <= 0 || autoLoadKey === lastAutoLoadKey.current) return;
-    if (cartLoader.availability === 'checking' || cartLoader.availability === 'unavailable') return;
+    if (cartLoader.availability === 'checking') return;
+    if (cartLoader.availability === 'unavailable') {
+      if (shownUnavailableKey.current === autoLoadKey) return;
+      shownUnavailableKey.current = autoLoadKey;
+      handleLoadCart();
+      return;
+    }
     lastAutoLoadKey.current = autoLoadKey;
     handleLoadCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps

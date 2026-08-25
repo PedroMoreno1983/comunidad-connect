@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         const requestedExpenseId = clean(body.expenseId, 40);
         let query = admin
             .from('expenses')
-            .select('total_amount,month,due_date,units(tower,number)')
+            .select('amount,month,due_date,units(tower,number)')
             .eq('community_id', profile.community_id)
             .eq('unit_id', resident.unit_id);
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
             residentName: clean(resident.name, 120) || 'Residente',
             unitName: unit ? `${unit.tower} ${unit.number}`.trim() : 'Unidad',
             month: clean(expense.month, 30) || 'Este mes',
-            amount: Number(expense.total_amount),
+            amount: Number(expense.amount),
             dueDate: clean(String(expense.due_date ?? ''), 30),
         });
 

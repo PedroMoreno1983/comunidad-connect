@@ -24,6 +24,7 @@ const tools = read('src/lib/coco/tools.ts');
 const agentCenter = read('src/app/api/agent-center/route.ts');
 const financeDashboard = read('src/components/admin/FinanceDashboard.tsx');
 const emailRoute = read('src/app/api/email/send-expenses/route.ts');
+const expenseAlertRoute = read('src/app/api/email/expense-alert/route.ts');
 const migration = read('supabase/migrations/038_payment_integrity_lockdown.sql');
 
 expect('Payment amount is resolved from an authenticated database target', paymentRoute.includes('resolvePaymentTarget') && paymentRoute.includes('EXPENSE_NOT_OWNED'));
@@ -46,6 +47,7 @@ expect('CoCo uses the live expenses table', !tools.includes(".from('fees')") && 
 expect('Agent Center uses the live amount column', !agentCenter.includes('total_amount'));
 expect('Finance dashboard has no hard-coded 192-unit or fabricated chart', !financeDashboard.includes('const totalUnits = 192') && !financeDashboard.includes('12500000'));
 expect('Expense emails derive recipient amounts from server-side expenses', emailRoute.includes('expenseByUnit') && !emailRoute.includes('body.totalAmount'));
+expect('Expense alerts read the live amount column', expenseAlertRoute.includes(".select('amount,") && expenseAlertRoute.includes('expense.amount') && !expenseAlertRoute.includes('total_amount'));
 
 console.log(JSON.stringify({
   generatedAt: new Date().toISOString(),
