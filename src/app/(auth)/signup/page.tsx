@@ -49,6 +49,7 @@ export default function SignUpPage() {
 
         setAccessCodeError("");
         setLoading(true);
+        let signupResult: SignupResponse | null = null;
         try {
             const response = await fetch('/api/auth/signup', {
                 method: 'POST',
@@ -65,6 +66,7 @@ export default function SignUpPage() {
                 }),
             });
             const result = await response.json() as SignupResponse;
+            signupResult = result;
             if (!response.ok) {
                 const message = result.error || 'No se pudo crear la cuenta.';
                 if (message.toLowerCase().includes("código") || message.toLowerCase().includes("invitación")) {
@@ -80,11 +82,21 @@ export default function SignUpPage() {
             return;
         }
 
-        toast({
-            title: "Cuenta creada",
-            description: `Enviamos un enlace de verificación a ${email}. Confirma tu correo antes de iniciar sesión.`,
-            variant: "success",
-        });
+        // La cuenta ya existe aunque el correo no haya salido, así que el mensaje
+        // no puede decirle que revise una bandeja donde no va a llegar nada.
+        if (signupResult?.confirmationEmailSent === false) {
+            toast({
+                title: "Cuenta creada",
+                description: "No pudimos enviarte el correo de verificación en este momento. Tu cuenta está creada: pide el enlace de nuevo desde el inicio de sesión en unos minutos.",
+                variant: "success",
+            });
+        } else {
+            toast({
+                title: "Cuenta creada",
+                description: `Enviamos un enlace de verificación a ${email}. Confirma tu correo antes de iniciar sesión.`,
+                variant: "success",
+            });
+        }
         router.push("/login?check_email=1");
     };
 

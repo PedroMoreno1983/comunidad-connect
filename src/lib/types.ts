@@ -1390,6 +1390,8 @@ export interface SignupResponse {
   ok?: boolean;
   role?: UserRole;
   requiresEmailConfirmation?: boolean;
+  /** La cuenta existe igual si esto es false: solo falló el envío del correo. */
+  confirmationEmailSent?: boolean;
   error?: string;
 }
 
