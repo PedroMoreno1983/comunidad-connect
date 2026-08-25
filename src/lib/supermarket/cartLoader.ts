@@ -9,4 +9,4 @@
  * subir la extensión a 1.0.0 la página siguió ofreciendo "0.3.11" durante
  * varios días.
  */
-export const CART_LOADER_VERSION = '1.0.1';
+export const CART_LOADER_VERSION = '1.2.0';
