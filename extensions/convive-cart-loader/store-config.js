@@ -45,11 +45,145 @@
     cartSelectors: ['button[aria-label*="carro de compras"]'],
   };
 
+  function readCookie(name) {
+    const prefix = `${name}=`;
+    const hit = String(document.cookie || '').split('; ').find(part => part.startsWith(prefix));
+    return hit ? hit.slice(prefix.length) : '';
+  }
+
+  /**
+   * Documento de la mutacion, sacado del bundle publico del propio sitio.
+   *
+   * Orchestra solo acepta sus propios documentos: una mutacion minima nuestra,
+   * con las mismas variables y cabeceras, responde
+   * `400 {"code":400,"message":"Something went wrong while processing the query."}`.
+   * El documento mide ~47.000 caracteres y cambia con cada release, asi que se
+   * lee en caliente en vez de fijarlo aca: fijarlo garantizaria que la carga
+   * deje de funcionar en la proxima release de Lider.
+   */
+  async function liderMutationDocument() {
+    const src = [...document.querySelectorAll('script[src]')]
+      .map(script => script.src)
+      .find(url => url.includes('_app-'));
+    if (!src) return '';
+
+    const response = await fetch(src);
+    if (!response.ok) return '';
+    const source = await response.text();
+
+    const start = source.indexOf('mutation updateItems');
+    if (start < 0) return '';
+    const delimiter = source[start - 1];
+    const BACKSLASH = 92;
+    for (let index = start; index < source.length; index += 1) {
+      if (source[index] === delimiter && source.charCodeAt(index - 1) !== BACKSLASH) {
+        return source.slice(start, index);
+      }
+    }
+    return '';
+  }
+
+  /**
+   * Lider - verificado el 2026-08-17 contra super.lider.cl.
+   *
+   * Carga la canasta completa en UNA llamada y la tienda devuelve el carro en
+   * la misma respuesta, que es lo que permite reportar sin adivinar. Detalles
+   * completos en ADAPTADORES.md; los que no son obvios:
+   *
+   *   * La operacion es un upsert por `usItemId`: fija la cantidad del producto
+   *     y conserva lo que la persona ya tenia en el carro.
+   *   * `usItemId` es exactamente nuestro `sku`, ceros a la izquierda incluidos.
+   *   * `offerId` es otro identificador y tambien es obligatorio.
+   *   * Sin `x-o-platform-version` responde 200 pero no carga nada; el valor
+   *     cambia en cada release y se lee de `<script id="release-metadata">`.
+   *   * `cartId` es opcional: omitiendolo la tienda resuelve o crea el carro.
+   *   * `errors` puede venir con un 500 de otro servicio y el carro quedar
+   *     perfecto igual. Solo `lineItems` decide.
+   */
+  const liderCartApi = {
+    async load(items) {
+      const cartId = readCookie('cartId');
+
+      const metadata = document.getElementById('release-metadata');
+      if (!metadata) return null;
+      let appVersion = '';
+      try {
+        appVersion = String(JSON.parse(metadata.textContent).appVersion || '');
+      } catch {
+        return null;
+      }
+      if (!appVersion) return null;
+
+      const query = await liderMutationDocument();
+      if (!query) return null;
+
+      const response = await fetch('/orchestra/graphql', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-APOLLO-OPERATION-NAME': 'updateItems',
+          'x-o-gql-query': 'mutation updateItems',
+          'x-o-platform-version': appVersion,
+          'x-o-platform': 'rweb',
+          'x-o-bu': 'LIDER-CL',
+          'x-o-mart': 'B2C',
+          'x-o-vertical': 'OD',
+          'x-o-segment': 'oaoh',
+          'x-o-ccm': 'server',
+          WM_MP: 'true',
+        },
+        body: JSON.stringify({
+          query,
+          variables: {
+            input: {
+              ...(cartId ? { cartId } : {}),
+              items: items.map(item => ({
+                offerId: String(item.offerId),
+                quantity: item.quantity,
+                usItemId: String(item.sku),
+                salesUnit: 'EACH',
+                additionalInfo: {},
+                name: item.name,
+              })),
+              enableLiquorBox: false,
+              skipPolicyCheck: false,
+              cartLeanMode: false,
+              enableCartSplitClarity: false,
+              features: ['lmpdel'],
+            },
+          },
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      const lineItems = payload?.data?.updateItems?.lineItems;
+      // Ni el status ni `errors` sirven para decidir: lo unico que prueba que
+      // un producto entro es que la tienda lo devuelva en el carro.
+      if (!Array.isArray(lineItems)) return null;
+
+      const landed = new Map();
+      for (const lineItem of lineItems) {
+        const usItemId = String(lineItem?.product?.usItemId || '');
+        const quantity = Number(lineItem?.quantity) || 0;
+        if (usItemId && quantity > 0) landed.set(usItemId, quantity);
+      }
+      return landed;
+    },
+  };
+
   const configs = {
     Lider: {
       label: 'Lider',
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
-      searchUrl: query => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`,
+      cartUrl: 'https://super.lider.cl/cart',
+      cartApi: liderCartApi,
+      /** El adaptador solo existe en super.lider.cl: ahi vive el carro. */
+      cartApiHosts: ['super.lider.cl'],
+      // La URL antigua www.lider.cl/supermercado/search ahora redirige a la
+      // home y pierde la busqueda. La busqueda vive en super.lider.cl/search.
+      searchUrl: query => `https://super.lider.cl/search?query=${encodeURIComponent(query)}`,
       addSelectors: [
         'button[data-automation-id="add-to-cart"]',
         'button[data-testid*="add-to-cart"]',
@@ -84,6 +218,7 @@
     Jumbo: {
       label: 'Jumbo',
       hosts: ['www.jumbo.cl', 'jumbo.cl'],
+      cartUrl: 'https://www.jumbo.cl/checkout/#/cart',
       searchUrl: query => `https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`,
       ...cencosud,
       blockedText: commonBlockedText,
@@ -92,6 +227,7 @@
     'Santa Isabel': {
       label: 'Santa Isabel',
       hosts: ['www.santaisabel.cl', 'santaisabel.cl'],
+      cartUrl: 'https://www.santaisabel.cl/checkout/#/cart',
       searchUrl: query => `https://www.santaisabel.cl/busqueda?ft=${encodeURIComponent(query)}`,
       ...cencosud,
       blockedText: commonBlockedText,
@@ -100,6 +236,10 @@
     Unimarc: {
       label: 'Unimarc',
       hosts: ['www.unimarc.cl', 'unimarc.cl'],
+      // El sitio nuevo de Unimarc no tiene pagina de carro (/checkout da 404):
+      // el carro vive en el icono del header. Al terminar llevamos a la home,
+      // donde el badge muestra los productos cargados.
+      cartUrl: 'https://www.unimarc.cl/',
       searchUrl: query => `https://www.unimarc.cl/search?q=${encodeURIComponent(query)}&suggestions=true`,
       addSelectors: [
         '[aria-label="Agregar"]',
@@ -126,11 +266,14 @@
     Tottus: {
       label: 'Tottus',
       hosts: ['www.tottus.cl', 'tottus.cl'],
+      cartUrl: 'https://www.tottus.cl/tottus-cl/carro',
       searchUrl: query => `https://www.tottus.cl/tottus-cl/buscar?Ntt=${encodeURIComponent(query)}`,
       addSelectors: [
+        // El boton real de compra es `add-to-cart-button`; `add-to-cart` a secas
+        // tambien calza con el contador "0 un" y haria clic en el lugar equivocado.
+        'button[class*="add-to-cart-button"]',
         'button[data-testid*="add-to-cart"]',
         'button[aria-label*="Agregar"]',
-        'button[class*="add-to-cart"]',
         'button[class*="AddToCart"]',
       ],
       plusSelectors: [
@@ -152,7 +295,12 @@
     aCuenta: {
       label: 'aCuenta',
       hosts: ['www.acuenta.cl', 'acuenta.cl'],
+      cartUrl: 'https://www.acuenta.cl/cart',
       searchUrl: query => `https://www.acuenta.cl/busqueda?ft=${encodeURIComponent(query)}`,
+      // Sin modo de entrega elegido, aCuenta redirige la busqueda a la home.
+      // Con este texto el loader abre el selector y pausa para que la persona
+      // lo complete una vez; despues queda guardado en su navegador.
+      deliveryOpenerText: 'elige un modo de entrega',
       addSelectors: [
         'button[data-add-button="true"]',
         'button[data-automation-id="add-to-cart"]',
@@ -191,6 +339,7 @@
     Irurzun: {
       label: 'Irurzun',
       hosts: ['irurzun.cl', 'www.irurzun.cl'],
+      cartUrl: 'https://irurzun.cl/cart/',
       searchUrl: query => `https://irurzun.cl/search?q=${encodeURIComponent(query)}`,
       addSelectors: [
         'button.sticky-add-to-cart__button',
@@ -206,6 +355,8 @@
         'input[name="quantity"]',
       ],
       cartSelectors: [
+        '[data-testid="cart-bubble"]',
+        '.cart-bubble__text-count',
         '[data-testid="cart-drawer-trigger"]',
         'button[aria-label="Carrito"]',
       ],

@@ -184,8 +184,8 @@ check(
   'Una frase comercial genérica vuelve a activar un falso CAPTCHA.',
 );
 check(
-  configs.Lider.searchUrl('leche').startsWith('https://www.lider.cl/'),
-  'Lider conserva la ruta 404 de super.lider.cl para búsquedas.',
+  configs.Lider.searchUrl('leche').startsWith('https://super.lider.cl/search?'),
+  'Lider conserva la ruta antigua de www.lider.cl que hoy redirige a la home y pierde la búsqueda.',
 );
 check(
   configs.Irurzun.searchUrl('arroz').startsWith('https://irurzun.cl/search?'),
@@ -284,15 +284,18 @@ check(
   button.includes('useSupermarketCartLoader(basket)')
     && button.includes("cartLoader.availability === 'ready'")
     && button.includes("cartLoader.availability === 'outdated'")
-    && button.includes('Actualizar cargador'),
+    && button.includes('Actualizar cargador')
+    && button.includes('cartLoader.start()'),
   'El botón no negocia versión con la extensión ni ofrece actualizarla cuando está obsoleta.',
 );
 check(
-  !button.includes("type: 'CONVIVE_CART_LOADER_START'"),
+  !button.includes("window.postMessage(")
+    && !button.includes("'*'"),
   'El botón vuelve a hablar con la extensión por su cuenta en vez de usar el hook.',
 );
 check(
-  button.includes('directResult.missing.length > 0'),
+  button.includes('missingCount > 0')
+    && button.includes('no entraron al carro'),
   'La UI vuelve a ocultar los productos que no entraron al carro.',
 );
 check(
@@ -303,8 +306,8 @@ check(button.includes('Revisa el carro antes de pagar'), 'La UI perdió el lími
 
 check(
   page.includes('<CartLoaderButton')
-    && page.includes('function cartLoaderKey')
-    && page.includes('key={cartLoaderKey(selectedBasket)}')
+    && page.includes('autoLoadKey={autoLoadKey}')
+    && page.includes('setAutoLoadKey')
     && page.includes('basket={selectedBasket}'),
   'La UI no reinicia el cargador al cambiar de tienda: arrastra el estado de la anterior.',
 );

@@ -42,6 +42,12 @@ function sanitizeRequest(payload) {
     requestedTerm: safeText(item?.requestedTerm, 240),
     quantity: Math.min(MAX_QUANTITY, Math.max(1, Math.round(Number(item?.quantity) || 1))),
     productUrl: safeProductUrl(item?.productUrl, config),
+    // El codigo de la tienda es lo unico que permite cargar por API y, sobre
+    // todo, cruzar despues lo que la tienda confirmo contra lo que se pidio.
+    sku: safeText(item?.sku, 60),
+    // Lider exige este identificador ademas del sku; el resto de las tiendas
+    // lo dejan vacio y caen al recorrido por la interfaz.
+    offerId: safeText(item?.offerId, 60),
   }));
   if (items.some(item => !item.name)) return null;
   return {
@@ -82,6 +88,42 @@ async function notifySource(job, payload) {
   } catch {
     // Convive puede haberse cerrado; la carga sigue en la pestaña del comercio.
   }
+}
+
+/**
+ * Traduce lo que la tienda confirmo a los resultados del trabajo.
+ *
+ * `confirmed` viene del content script como pares itemId -> cantidad LEIDA del
+ * carro, nunca como una lista de exitos. Un producto que la tienda no devolvio
+ * queda en 'failed' aunque la llamada haya respondido 200: el status HTTP y el
+ * arreglo `errors` de GraphQL no dicen nada sobre si el producto entro.
+ */
+function resultsFromConfirmation(job, confirmed) {
+  const quantityByItemId = new Map(
+    (Array.isArray(confirmed) ? confirmed : [])
+      .map(entry => [safeText(entry?.itemId, 100), Math.max(0, Math.round(Number(entry?.quantity) || 0))])
+      .filter(([itemId, quantity]) => itemId && quantity > 0),
+  );
+
+  return job.items.map(item => {
+    const quantity = quantityByItemId.get(item.id) || 0;
+    if (quantity <= 0) {
+      return {
+        itemId: item.id,
+        name: item.name,
+        status: 'failed',
+        detail: `${job.store} no confirmo este producto en el carro.`,
+      };
+    }
+    return {
+      itemId: item.id,
+      name: item.name,
+      status: 'added',
+      detail: quantity >= item.quantity
+        ? `Confirmado en el carro con cantidad ${quantity}.`
+        : `Confirmado en el carro, pero con cantidad ${quantity} de las ${item.quantity} pedidas.`,
+    };
+  });
 }
 
 async function pauseJob(job, detail) {
@@ -174,20 +216,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
-    if (message?.type === 'COMPLETE_BATCH_CART') {
-      job.status = 'completed';
-      job.results = job.items.map(item => ({
-        itemId: item.id,
-        name: item.name,
-        status: 'added',
-        detail: 'Agregado al carro directamente.',
-      }));
+    if (message?.type === 'REPORT_CART_API_RESULTS') {
+      // Cierre de la carga por API. El content script solo puede informar lo
+      // que leyo de vuelta del carro de la tienda: aca no se asume nada, y un
+      // producto ausente de esa lectura se cierra como no cargado.
+      job.results = resultsFromConfirmation(job, message.confirmed);
       job.currentIndex = job.items.length;
+      job.inFlightItemId = null;
+      const failedCount = job.results.filter(result => result.status === 'failed').length;
+      job.status = failedCount > 0 ? 'completed_with_issues' : 'completed';
       await saveJob(job);
-      const detail = `Carro de ${job.store} listo: ${job.items.length} productos agregados al carro.`;
-      const payload = progress(job, detail, 'completed');
-      await notifySource(job, payload);
-      sendResponse({ ok: true, done: true, progress: payload });
+      const addedCount = job.results.length - failedCount;
+      const apiDetail = failedCount > 0
+        ? `Carro de ${job.store}: ${addedCount} productos agregados y ${failedCount} que la tienda no cargo.`
+        : `Carro de ${job.store} listo: ${addedCount} productos agregados al carro.`;
+      const apiPayload = progress(job, apiDetail, job.status);
+      await notifySource(job, apiPayload);
+      const apiConfig = storeConfig(job.store);
+      if (job.retailerTabId && apiConfig?.cartUrl) {
+        try {
+          await chrome.tabs.update(job.retailerTabId, { url: apiConfig.cartUrl });
+        } catch {
+          // La pestana pudo cerrarse; el carro ya quedo cargado igual.
+        }
+      }
+      sendResponse({ ok: true, done: true, progress: apiPayload });
       return;
     }
 
@@ -246,16 +299,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const payload = progress(job, detail, job.status);
         await notifySource(job, payload);
 
-        // Redirigir la pestaña del supermercado al carro oficial. Ninguna
-        // tienda declara `cartUrl` todavía, y mandar al comprador a un destino
-        // inventado es peor que dejarlo donde está: sin URL conocida la
-        // pestaña se queda en el supermercado, igual que hace retailer-loader.
-        const cartUrl = storeConfig(job.store)?.cartUrl;
-        if (job.retailerTabId && cartUrl) {
+        // Redirigir la pestaña del supermercado directamente al carro oficial
+        if (job.retailerTabId && storeConfig(job.store)?.cartUrl) {
           try {
-            await chrome.tabs.update(job.retailerTabId, { url: cartUrl });
+            await chrome.tabs.update(job.retailerTabId, { url: storeConfig(job.store).cartUrl });
           } catch {
-            // La pestaña pudo cerrarse mientras terminaba la carga.
+            // Tab might be closed
           }
         }
 
