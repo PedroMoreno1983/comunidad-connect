@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { calculateProductQuantity, isProductSuitableForRequest } from '@/lib/supermarketBasket';
+import { calculateProductQuantity, isProductSuitableForRequest, WHOLESALE_STORES } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -31,8 +31,10 @@ type SupermarketResultItem = {
   id: string;
   name: string;
   brand?: string;
-  /** Código de la tienda: necesario para la carga directa del carro (VTEX). */
+  /** Código de la tienda: necesario para la carga directa del carro (VTEX / Orchestra). */
   sku?: string;
+  /** Lider: identificador de oferta que exige `updateItems`. Distinto del SKU. */
+  offerId?: string;
   requestedTerm: string;
   requestedQuantity: number;
   requestedUnit?: SupermarketMeasurementUnit;
@@ -85,6 +87,11 @@ function toSupermarketResultItem(
     name,
     brand,
     sku: typeof item.sku === 'string' && item.sku.trim() ? item.sku : undefined,
+    offerId: (typeof item.offerId === 'string' && item.offerId.trim()
+      ? item.offerId
+      : typeof item.offer_id === 'string' && item.offer_id.trim()
+        ? item.offer_id
+        : undefined),
     requestedTerm: requested.term,
     requestedQuantity,
     requestedUnit,
@@ -181,6 +188,7 @@ export async function POST(req: NextRequest) {
               name: item.name,
               brand: item.brand,
               sku: item.sku,
+              offerId: item.offerId,
               price: item.price,
               store: item.store,
               productUrl: item.productUrl,
@@ -324,6 +332,7 @@ export async function POST(req: NextRequest) {
           name: item.name,
           brand: item.brand,
           sku: item.sku,
+          offerId: item.offerId,
           price: item.price,
           store: item.store,
           productUrl: item.productUrl,
@@ -362,6 +371,7 @@ export async function POST(req: NextRequest) {
         name: item.name,
         brand: item.brand,
         sku: item.sku,
+        offerId: item.offerId,
         price: item.price,
         store: item.store,
         productUrl: item.productUrl,
@@ -395,6 +405,34 @@ export async function POST(req: NextRequest) {
         coveragePercent: basket.coveragePercent,
         missingTerms: basket.missingTerms,
         complete: basket.complete,
+      })),
+      basketOptions: (result.basketComparison || []).map(basket => ({
+        store: basket.store,
+        channelType: WHOLESALE_STORES.has(basket.store) ? 'wholesale' as const : 'retail' as const,
+        subtotal: basket.subtotal,
+        coveredCount: basket.coveredCount,
+        requestedCount: basket.requestedCount,
+        coveragePercent: basket.coveragePercent,
+        missingTerms: basket.missingTerms,
+        complete: basket.complete,
+        items: basket.items.map(item => {
+          const req = requestedItems.find((r: RequestedItem) => r.term === item.query || r.term === item.requestedTerm)
+            ?? { term: item.query || item.requestedTerm || item.name, quantity: item.userQuantity ?? 1 };
+          return toSupermarketResultItem({
+            id: randomUUID(),
+            name: item.name,
+            brand: item.brand,
+            sku: item.sku,
+            offerId: item.offerId,
+            price: item.price,
+            store: item.store,
+            productUrl: item.productUrl,
+            originalPrice: item.originalPrice,
+            isOffer: item.isOffer,
+            selectionReason: item.selectionReason,
+            fetchedAt,
+          }, req, 'live', 0);
+        }),
       })),
       degradedStores: result.degradedStores,
       checkout: {

@@ -870,7 +870,7 @@ export async function searchAllRetailerProducts(
       return parseSantaIsabelProducts(html, query);
     }
     if (store === 'Lider') {
-      const html = await fetchRetailerHtml(`https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`, store);
+      const html = await fetchRetailerHtml(`https://super.lider.cl/search?query=${encodeURIComponent(query)}`, store);
       return parseLiderProducts(html, query);
     }
     if (store === 'Unimarc') {

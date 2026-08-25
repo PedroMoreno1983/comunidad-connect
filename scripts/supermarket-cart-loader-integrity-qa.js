@@ -156,6 +156,11 @@ const capabilityEvidence = {
   'cart-baseline-v1': () => background.includes('CLAIM_CART_ITEM') && background.includes('COMPLETE_CART_ITEM'),
   'cart-auto-open-v2': () => background.includes('chrome.tabs.create'),
   'loader-version-handshake-v1': () => bridge.includes('chrome.runtime.getManifest().version'),
+  'cart-ui-complete-v1': () => (
+    retailerLoader.includes('items.length !== allItems.length')
+    && retailerLoader.includes('No se encontró botón de compra')
+    && retailerLoader.includes("window.location.hostname !== 'super.lider.cl'")
+  ),
   'cart-batch-inject-v1': () => background.includes('COMPLETE_BATCH_CART') && retailerLoader.includes('COMPLETE_BATCH_CART'),
   'cart-replace-v1': () => retailerLoader.includes('replaceExistingCart') && background.includes('replaceCart'),
   'cart-stale-job-recovery-v1': () => background.includes('chrome.tabs.onRemoved') && background.includes("'abandoned'"),

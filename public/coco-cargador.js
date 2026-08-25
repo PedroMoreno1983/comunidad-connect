@@ -62,7 +62,7 @@
     Lider: {
       label: 'Lider',
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
-      searchUrl: q => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(q)}`,
+      searchUrl: q => `https://super.lider.cl/search?query=${encodeURIComponent(q)}`,
       addSelectors: [
         '[data-testid*="add-to-cart"]', 'button[aria-label*="Agregar al carro"]',
         'button[aria-label="Agregar"]', 'button[class*="add-to-cart"]',

@@ -11,13 +11,14 @@ import type {
 
 const CONVIVE_SOURCE = 'convive-connect';
 const LOADER_SOURCE = 'convive-cart-loader';
-const READY_TIMEOUT_MS = 1_500;
+const READY_TIMEOUT_MS = 4_000;
 // Se exige el minimo que el cargador publicado implementa. Pedir capacidades
 // que ya nadie implementa marcaria 'outdated' a todas las instalaciones; pedir
 // menos de esto dejaria pasar versiones que no saben abrir la pestana.
 const REQUIRED_LOADER_CAPABILITIES = [
   'cart-baseline-v1',
   'cart-auto-open-v2',
+  'cart-ui-complete-v1',
 ] as const;
 
 function loaderIdentity(value: unknown): { version?: string; capabilities: string[] } {

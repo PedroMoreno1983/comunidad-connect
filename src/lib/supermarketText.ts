@@ -199,11 +199,11 @@ export function termMatchesProductName(term: string, productName: string): boole
 const STORE_SEARCH_URLS: Record<string, (query: string) => string> = {
     Jumbo: query => `https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`,
     'Santa Isabel': query => `https://www.santaisabel.cl/busqueda?ft=${encodeURIComponent(query)}`,
-    Lider: query => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`,
+    Lider: query => `https://super.lider.cl/search?query=${encodeURIComponent(query)}`,
     Unimarc: query => `https://www.unimarc.cl/search?q=${encodeURIComponent(query)}&suggestions=true`,
     Tottus: query => `https://www.tottus.cl/tottus-cl/buscar?Ntt=${encodeURIComponent(query)}`,
     aCuenta: query => `https://www.acuenta.cl/busqueda?ft=${encodeURIComponent(query)}`,
-    Irurzun: query => `https://irurzun.cl/buscar?q=${encodeURIComponent(query)}`,
+    Irurzun: query => `https://irurzun.cl/search?q=${encodeURIComponent(query)}`,
 };
 
 /**
