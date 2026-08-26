@@ -21,6 +21,7 @@ export default function LoginPage() {
 function LoginForm() {
     const searchParams = useSearchParams();
     const [email, setEmail] = useState(searchParams.get("email") || "");
+    const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -31,6 +32,34 @@ function LoginForm() {
     const nextParam = searchParams.get("next");
     const checkEmail = searchParams.get("check_email") === "1";
     const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/home";
+
+    const handleResendConfirmation = async () => {
+        if (!email.trim()) {
+            toast({
+                title: "Escribe tu correo",
+                description: "Necesitamos saber a qué dirección reenviar el enlace.",
+                variant: "destructive",
+            });
+            return;
+        }
+        setResendState("sending");
+        try {
+            await fetch("/api/auth/resend-confirmation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim() }),
+            });
+        } catch {
+            // La respuesta del endpoint es deliberadamente genérica, así que un
+            // fallo de red tampoco cambia lo que se le puede decir al usuario.
+        }
+        setResendState("sent");
+        toast({
+            title: "Enlace reenviado",
+            description: "Si esa cuenta existe y aún no está verificada, recibirás un correo en unos minutos.",
+            variant: "success",
+        });
+    };
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -174,7 +203,27 @@ function LoginForm() {
 
                         {checkEmail && (
                             <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                                Revisa tu correo y abre el enlace de verificación antes de iniciar sesión.
+                                <p>Revisa tu correo y abre el enlace de verificación antes de iniciar sesión.</p>
+                                {/*
+                                  El envío puede fallar sin que la cuenta se vea afectada, así que
+                                  siempre tiene que haber una forma de pedir el enlace otra vez.
+                                */}
+                                <p className="mt-2 text-emerald-800">
+                                    ¿No te llegó?{" "}
+                                    <button
+                                        type="button"
+                                        onClick={handleResendConfirmation}
+                                        disabled={resendState === "sending" || resendState === "sent"}
+                                        className="underline underline-offset-2 font-medium disabled:no-underline disabled:opacity-70"
+                                    >
+                                        {resendState === "sending"
+                                            ? "Enviando…"
+                                            : resendState === "sent"
+                                                ? "Enlace reenviado"
+                                                : "Enviar de nuevo"}
+                                    </button>
+                                    {resendState === "idle" && !email && " (escribe tu correo arriba)"}
+                                </p>
                             </div>
                         )}
 

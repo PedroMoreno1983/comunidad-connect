@@ -9,3 +9,31 @@ entrypoint = "./functions/coco/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/coco/*.html" ]
+
+# ─────────────────────────────────────────────────────────────────────
+#  Correo de autenticacion
+#
+#  Supabase trae un servidor de correo propio pensado SOLO para
+#  desarrollo, con un limite de envios por hora muy bajo. Al topar ese
+#  limite (over_email_send_rate_limit) los correos de verificacion
+#  simplemente no salen, y un residente recien registrado se queda sin
+#  poder confirmar su cuenta.
+#
+#  Estas credenciales apuntan a Resend, que el proyecto ya usa para el
+#  resto de los correos (ver src/lib/email.ts). El remitente es el mismo
+#  FROM_EMAIL, cuyo dominio ya esta verificado alli.
+#
+#  Para aplicarlo:  npx supabase config push
+#  O a mano en el panel:  Authentication -> Emails -> SMTP Settings
+#
+#  SUPABASE_AUTH_SMTP_PASSWORD debe valer la RESEND_API_KEY. Nunca
+#  escribir la clave literal en este archivo: va versionado.
+# ─────────────────────────────────────────────────────────────────────
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(SUPABASE_AUTH_SMTP_PASSWORD)"
+admin_email = "notificaciones@datawiseconsultoria.com"
+sender_name = "Convive Connect"
