@@ -310,12 +310,22 @@ export async function sendWelcomeEmail({
     unitName,
     condoName = 'Convive Connect',
     temporaryPassword,
+    requiresConfirmation = false,
 }: {
     to: string;
     residentName: string;
     unitName: string;
     condoName?: string;
     temporaryPassword?: string;
+    /**
+     * La cuenta existe pero el correo todavía no está verificado.
+     *
+     * El registro envía este mensaje junto al de verificación, así que
+     * invitar a "entrar a la plataforma" mandaba al residente a una puerta
+     * cerrada: sin confirmar no puede iniciar sesión. Con esto el correo
+     * reconoce el paso que falta en vez de contradecirlo.
+     */
+    requiresConfirmation?: boolean;
 }) {
     residentName = escapeEmailHtml(residentName);
     unitName = escapeEmailHtml(unitName);
@@ -344,8 +354,10 @@ export async function sendWelcomeEmail({
       Bienvenido a ${condoName},<br/><em style="font-style:italic;color:${BRAND.copper};">${residentName}</em>
     </h1>
     <p style="margin:0 0 28px;color:${BRAND.inkMuted};font-size:15px;line-height:1.65;">
-      Tu cuenta quedó activada para la unidad <strong style="color:${BRAND.ink};font-weight:600;">${unitName}</strong>.
-      Desde ahora tienes acceso a todo lo de tu comunidad.
+      Tu cuenta quedó creada para la unidad <strong style="color:${BRAND.ink};font-weight:600;">${unitName}</strong>.
+      ${requiresConfirmation
+        ? 'Te enviamos aparte un correo para verificar tu dirección: al confirmarlo tendrás acceso a todo esto.'
+        : 'Desde ahora tienes acceso a todo lo de tu comunidad.'}
     </p>
 
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${BRAND.paperWarm};border:1px solid ${BRAND.line};border-radius:14px;margin-bottom:28px;">
@@ -365,6 +377,12 @@ export async function sendWelcomeEmail({
       </td></tr>
     </table>` : ''}
 
+    ${requiresConfirmation ? `
+    <p style="margin:0;color:${BRAND.inkMuted};font-size:15px;line-height:1.65;">
+      Busca el correo <strong style="color:${BRAND.ink};font-weight:600;">«Confirma tu correo»</strong> en tu bandeja.
+      Si no aparece, revisa el spam o pídelo de nuevo desde
+      <a href="${PUBLIC_SITE_URL}/login" style="color:${BRAND.copperDeep};text-decoration:underline;">el inicio de sesión</a>.
+    </p>` : `
     <table cellpadding="0" cellspacing="0" role="presentation">
       <tr><td style="background:${BRAND.ink};border-radius:10px;">
         <a href="${PUBLIC_SITE_URL}"
@@ -372,7 +390,7 @@ export async function sendWelcomeEmail({
           Entrar a la plataforma
         </a>
       </td></tr>
-    </table>`;
+    </table>`}`;
 
     return resend.emails.send({
         from: FROM_EMAIL,

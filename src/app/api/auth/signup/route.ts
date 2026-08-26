@@ -174,6 +174,9 @@ export async function POST(req: NextRequest) {
             residentName: fullName,
             unitName: departmentNumber ? `Depto ${departmentNumber}` : resolvedRole === 'admin' ? 'Administración' : 'Conserjería',
             condoName: community.name || 'Convive Connect',
+            // Este correo sale junto al de verificación: sin confirmar, el
+            // residente todavía no puede iniciar sesión.
+            requiresConfirmation: true,
         }).catch(error => logger.warn('auth.signup_welcome_email_failed', {
             requestId: resolveRequestId(req),
             error,
