@@ -150,14 +150,23 @@ export async function POST(req: NextRequest) {
             throw consentError;
         }
 
+        // El envío del correo NO es parte de la creación de la cuenta. Antes un
+        // fallo aquí borraba el usuario, con su perfil, su unidad y sus
+        // consentimientos ya creados correctamente, y el residente veía el mismo
+        // "No se pudo crear la cuenta" que produce un código inválido. Basta con
+        // topar el rate limit de Supabase (over_email_send_rate_limit) para
+        // perder un registro válido, y al reintentar se vuelve a topar.
+        // La cuenta se conserva y el correo se reintenta desde el login.
         const { error: confirmationError } = await admin.auth.resend({
             type: 'signup',
             email,
             options: { emailRedirectTo: `${PUBLIC_SITE_URL}/login?confirmed=1` },
         });
         if (confirmationError) {
-            await admin.auth.admin.deleteUser(userId);
-            throw confirmationError;
+            logger.warn('auth.signup_confirmation_email_failed', {
+                requestId: resolveRequestId(req),
+                error: confirmationError,
+            });
         }
 
         await sendWelcomeEmail({
@@ -170,7 +179,12 @@ export async function POST(req: NextRequest) {
             error,
         }));
 
-        return NextResponse.json({ ok: true, role: resolvedRole, requiresEmailConfirmation: true });
+        return NextResponse.json({
+            ok: true,
+            role: resolvedRole,
+            requiresEmailConfirmation: true,
+            confirmationEmailSent: !confirmationError,
+        });
     } catch (error) {
         logApiError(req, '/api/auth/signup', error);
         return NextResponse.json({ error: 'No se pudo crear la cuenta.' }, { status: 500 });
