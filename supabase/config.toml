@@ -10,6 +10,55 @@ entrypoint = "./functions/coco/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/coco/*.html" ]
 
+# =====================================================================
+#  AUTENTICACION
+#
+#  CUIDADO: `supabase config push` reemplaza la seccion [auth] ENTERA.
+#  Todo lo que no se declare aqui se envia con el valor por defecto del
+#  CLI, que son defaults de desarrollo local, y pisa la configuracion de
+#  produccion sin avisar.
+#
+#  Eso paso el 2026-08-25: al declarar solo el bloque SMTP, el push
+#  desactivo la confirmacion de correo y el MFA, bajo la longitud del
+#  OTP de 8 a 6 y el intervalo minimo entre correos de 1 minuto a 1
+#  segundo. Por eso ahora todos los valores estan explicitos: son los
+#  que tenia produccion, recuperados del diff de aquel push.
+#
+#  Antes de cualquier `config push`, revisar el diff que muestra el CLI
+#  linea por linea. Si algo cambia sin que lo hayas pedido, declararlo
+#  aqui primero.
+# =====================================================================
+
+[auth]
+# Supabase valida el `emailRedirectTo` que manda la app contra site_url y
+# esta lista. Si no coincide lo descarta y usa site_url, asi que con el
+# valor de desarrollo los correos de verificacion mandaban al residente a
+# localhost:3000. Se mantiene localhost para poder probar en local.
+site_url = "https://conviveconnect.com"
+additional_redirect_urls = [
+  "https://conviveconnect.com/**",
+  "http://localhost:3000/**",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
 # ─────────────────────────────────────────────────────────────────────
 #  Correo de autenticacion
 #
@@ -23,9 +72,6 @@ entrypoint = "./functions/coco/index.ts"
 #  resto de los correos (ver src/lib/email.ts). El remitente es el mismo
 #  FROM_EMAIL, cuyo dominio ya esta verificado alli.
 #
-#  Para aplicarlo:  npx supabase config push
-#  O a mano en el panel:  Authentication -> Emails -> SMTP Settings
-#
 #  SUPABASE_AUTH_SMTP_PASSWORD debe valer la RESEND_API_KEY. Nunca
 #  escribir la clave literal en este archivo: va versionado.
 # ─────────────────────────────────────────────────────────────────────
@@ -37,3 +83,11 @@ user = "resend"
 pass = "env(SUPABASE_AUTH_SMTP_PASSWORD)"
 admin_email = "notificaciones@datawiseconsultoria.com"
 sender_name = "Convive Connect"
+
+[auth.sms]
+enable_signup = false
+
+# El plan actual no incluye vector buckets: declararlo evita que el push
+# falle con 402 al intentar activarlos.
+[storage.vector]
+enabled = false
