@@ -59,6 +59,9 @@ async function sendOnboardingEmails(input: {
             residentName: input.fullName,
             unitName: "Administración",
             condoName: input.communityName,
+            // La cuenta se crea con email_confirm: false, así que todavía
+            // hace falta verificar el correo antes de poder entrar.
+            requiresConfirmation: true,
         }),
         resend.emails.send({
             from: FROM_EMAIL,
