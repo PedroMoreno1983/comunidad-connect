@@ -43,7 +43,9 @@
     "test:e2e:security": "playwright test tests/e2e/security-boundaries.spec.ts",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "qa:schema-drift": "node scripts/schema-drift-qa.js"
+    "qa:schema-drift": "node scripts/schema-drift-qa.js",
+    "qa:supabase-config": "node scripts/supabase-config-guard.js",
+    "supabase:config-push": "node scripts/supabase-config-guard.js && npx supabase config push"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
