@@ -148,8 +148,17 @@ converge mucho más rápido que una petición por producto.
 
 Dos detalles que rompen las versiones ingenuas: el HTML viene minificado con los
 atributos del `<script>` **sin comillas**, y el `usItemId` debe tratarse como
-string. Las páginas de **búsqueda** no exponen `__NEXT_DATA__` parseable: el
-`offerId` sólo se obtiene desde fichas de producto.
+string. Las páginas de **búsqueda** de 2026-08-16 no exponían `__NEXT_DATA__`
+parseable. Verificado el **2026-08-27**: `/search` sí trae `__NEXT_DATA__` con
+pares `usItemId`/`offerId` (44 en "avena") y botones
+`data-automation-id=add-to-cart`. El PDP hidrata primero un
+`<div data-testid=add-to-cart-skeleton>`: un selector `[data-testid*="add-to-cart"]`
+lo clicaba de inmediato y el carro no cambiaba.
+
+El documento GraphQL sigue en `_app-*.js` (~50k chars, `i5.walmartimages.cl`).
+Sin `host_permission` a ese CDN, el content script no puede leerlo y Orchestra
+devuelve null. `query getCart` existe; el campo raíz de la respuesta es `cart`,
+no `getCart`.
 
 Implementado en `parseLiderOfferRefs` (`src/lib/supermarketLive.ts`). Para
 completar el catálogo:
@@ -196,7 +205,8 @@ la UI pasa por el hook, y el QA verifica las dos cosas:
 * que cada capacidad declarada tenga codigo que la respalde, y
 * que la UI no vuelva a postear por su cuenta.
 
-El cargador quedo en **1.3.0** (sobre 1.2.0, para no degradar a quien ya la tenia).
+El cargador quedó en **1.3.2** (sobre 1.3.1: Orchestra leía mal `getCart`, no
+podía bajar el bundle de walmartimages, y el PDP clicaba el skeleton).
 
 ---
 

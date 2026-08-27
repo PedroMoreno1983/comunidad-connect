@@ -53,6 +53,7 @@ const expectedHosts = new Set([
   'https://acuenta.cl/*',
   'https://irurzun.cl/*',
   'https://www.irurzun.cl/*',
+  'https://i5.walmartimages.cl/*',
 ]);
 check(
   manifest.host_permissions.length === expectedHosts.size
@@ -90,6 +91,27 @@ check(
 check(
   configs.Lider.searchUrl('leche').startsWith('https://super.lider.cl/search?'),
   'Lider conserva la ruta antigua de www.lider.cl que hoy redirige a la home y pierde la búsqueda.',
+);
+check(
+  configs.Lider.addSelectors[0] === 'button[data-automation-id="add-to-cart"]',
+  'Lider volvió a clicar el skeleton en vez del botón real.',
+);
+check(
+  configs.Tottus.addSelectors[0] === '#add-to-cart-button',
+  'Tottus perdió el selector verificado #add-to-cart-button.',
+);
+check(
+  configs.aCuenta.addSelectors[0] === 'button[data-add-button="true"]',
+  'aCuenta perdió el selector verificado data-add-button.',
+);
+check(!configs.Tottus.cartApi && !configs.aCuenta.cartApi, 'Tottus o aCuenta declararon un adaptador de API sin captura.');
+check(
+  configSource.includes("padStart(14, '0')") && configSource.includes('liderGraphqlDocument'),
+  'Lider no paddea el usItemId o no lee el documento GraphQL del bundle.',
+);
+check(
+  configSource.includes('data?.cart') && configSource.includes('query getCart'),
+  'getCart de Lider no lee el campo raíz `cart` de Orchestra.',
 );
 check(
   configs.Irurzun.searchUrl('arroz').startsWith('https://irurzun.cl/search?'),
@@ -145,7 +167,9 @@ check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entre
 check(loader.includes('PAGE_SIGNALS.overlayIsBlocking'), 'La puerta de ubicación vuelve a matchear el widget del header.');
 check(loader.includes('productIsOutOfStock'), 'Una ficha agotada vuelve a congelar toda la lista en el item 1.');
 check(loader.includes('está agotado'), 'El cargador no deja nota visible al omitir un agotado.');
-check(loader.includes('additionWasVerified'), 'Falta verificar que el carro cambió.');
+check(loader.includes('isAddSkeleton'), 'El skeleton de agregar de Lider vuelve a tomarse como botón.');
+check(loader.includes('attemptedItemIds'), 'Un lote parcial de Orchestra vuelve a marcar como fallidos productos no intentados.');
+check(background.includes('attemptedItemIds'), 'El background no conserva los productos aún no intentados tras Orchestra.');
 check(loader.includes('CLAIM_CART_ITEM'), 'Falta protección contra productos duplicados por recarga.');
 check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto por producto.');
 // Se verifica el COMPORTAMIENTO, no la redaccion: que el alta se compare
@@ -383,7 +407,7 @@ check(
 // La UI debe PEDIR el reemplazo: sin esto el vaciado queda como codigo muerto,
 // que es como se perdio la primera vez.
 check(
-  button.includes('cartLoader.start({ replaceCart })') && button.includes('window.confirm'),
+  button.includes('cartLoader.start({ replaceCart: true })') && button.includes('window.confirm'),
   'La UI nunca solicita reemplazar el carro anterior.',
 );
 // Y debe pasar por el hook, no por su propio postMessage: saltarselo desactiva

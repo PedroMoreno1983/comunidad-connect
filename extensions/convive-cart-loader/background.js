@@ -349,26 +349,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === 'REPORT_CART_API_RESULTS') {
-      // Cierre de la carga por API: solo entra lo que el content script leyo de
-      // vuelta del carro. Un producto ausente se cierra como no cargado.
-      job.results = resultsFromConfirmation(job, message.confirmed);
-      job.currentIndex = job.items.length;
-      job.inFlightItemId = null;
+      const attemptedIds = new Set(
+        Array.isArray(message.attemptedItemIds) && message.attemptedItemIds.length > 0
+          ? message.attemptedItemIds.map(id => safeText(id, 100)).filter(Boolean)
+          : job.items.map(item => item.id),
+      );
+      const confirmedResults = resultsFromConfirmation(job, message.confirmed)
+        .filter(result => attemptedIds.has(result.itemId));
+      job.results = [
+        ...job.results,
+        ...confirmedResults.filter(result => !job.results.some(existing => existing.itemId === result.itemId)),
+      ];
       const reportedCount = Number(message.cartCount);
       if (Number.isInteger(reportedCount)) job.latestCartCount = reportedCount;
-      const failedCount = job.results.filter(result => result.status === 'failed').length;
-      job.status = failedCount > 0 ? 'completed_with_issues' : 'completed';
+      job.inFlightItemId = null;
+
+      const pendingIndex = job.items.findIndex(item => !job.results.some(result => result.itemId === item.id));
+      if (pendingIndex < 0) {
+        job.currentIndex = job.items.length;
+        const failedCount = job.results.filter(result => result.status === 'failed').length;
+        const addedCount = job.results.length - failedCount;
+        job.status = addedCount === 0 ? 'failed' : failedCount > 0 ? 'completed_with_issues' : 'completed';
+        await saveJob(job);
+        const apiPayload = progress(
+          job,
+          addedCount === 0
+            ? `No se agregó ningún producto de tu lista en ${job.store}. El carro no es esta compra; revísalo o vuelve a cargar.`
+            : failedCount > 0
+              ? `Carro de ${job.store}: ${addedCount} productos agregados y ${failedCount} que la tienda no cargo.`
+              : `Carro de ${job.store} listo: ${addedCount} productos agregados al carro.`,
+          job.status,
+        );
+        await notifySource(job, apiPayload);
+        sendResponse({ ok: true, done: true, progress: apiPayload });
+        return;
+      }
+
+      job.currentIndex = pendingIndex;
+      job.status = 'loading';
       await saveJob(job);
-      const addedCount = job.results.length - failedCount;
+      const nextItem = job.items[pendingIndex];
       const apiPayload = progress(
         job,
-        failedCount > 0
-          ? `Carro de ${job.store}: ${addedCount} productos agregados y ${failedCount} que la tienda no cargo.`
-          : `Carro de ${job.store} listo: ${addedCount} productos agregados al carro.`,
-        job.status,
+        `Cargando ${pendingIndex + 1} de ${job.items.length}: ${nextItem.name}`,
+        'loading',
       );
       await notifySource(job, apiPayload);
-      sendResponse({ ok: true, done: true, progress: apiPayload });
+      if (!job.retailerTabId) throw new Error(`Se perdió la pestaña de ${job.store}.`);
+      await chrome.tabs.update(job.retailerTabId, { url: targetUrl(job.store, nextItem) });
+      sendResponse({ ok: true, done: false, progress: apiPayload });
       return;
     }
 
@@ -460,7 +489,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           && job.cartResetStatus === 'completed'
           && added > 0
           && currentCartCount === 0;
-        job.status = cartStayedEmpty
+        job.status = cartStayedEmpty || added === 0
           ? 'failed'
           : failed > 0
             ? 'completed_with_issues'
@@ -468,6 +497,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await saveJob(job);
         const detail = cartStayedEmpty
           ? `No se pudo confirmar ningún producto en el carro de ${job.store}. El contador sigue en 0; vuelve a intentarlo o agrégalos manualmente desde las fichas.`
+          : added === 0
+            ? `No se agregó ningún producto de tu lista en ${job.store}. Lo que ves en el carro no es esta compra; vacíalo y vuelve a cargar.`
           : failed > 0
             ? `Carga incompleta en ${job.store}: ${added} productos confirmados y ${failed} pendientes para revisar.${observedCartDetail}`
             : `Carro de ${job.store} confirmado: ${added} productos de tu lista quedaron preparados.${observedCartDetail} Revisa disponibilidad y continúa al pago cuando quieras.`;
