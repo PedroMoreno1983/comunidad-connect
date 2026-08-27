@@ -107,6 +107,7 @@ Rutas disponibles para Todos:
 - /profile → Mi Perfil
 
 Rutas para Residentes:
+- /estacionamientos → Estacionamientos: arrendar un espacio por horas o días, o publicar el propio para que lo usen otros vecinos. Para reservar hay que tener un vehículo registrado (patente) en esa misma página.
 - /amenities → Reservar Espacios Comunes (piscina, quincho, etc)
 - /marketplace → Marketplace vecinal y Supermercado a domicilio (la página tiene dos pestañas: "Marketplace" para comprar/vender entre vecinos, y "Supermercado" para hacer pedidos de productos a domicilio con carrito de compras)
 - /resident/supermercado → Supermercado a domicilio con carrito de compras
@@ -133,6 +134,7 @@ Rutas para Administradores:
 - /admin/mantenimiento → Mantenimiento (admin)
 - /votaciones → Votaciones: el admin ve aquí la gestión (crear votaciones y ver resultados); el residente vota. Módulo unificado.
 - /marketplace → Marketplace: el admin ve aquí la moderación (revisar y ocultar publicaciones); el residente compra y vende. Módulo unificado. El admin no compra ni vende.
+- /estacionamientos?tab=admin → Estacionamientos: el admin aprueba los espacios que publican los residentes y fija las reglas de la comunidad; no arrienda ni reserva. Módulo unificado.
 - /admin/users → Usuarios (admin)
 - /admin/onboarding → Carga Masiva de Datos (admin)
 
