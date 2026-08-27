@@ -36,10 +36,10 @@ describe("classifyCoCoMessage", () => {
         expect(decision.shouldCreateCase).toBe(false);
     });
 
-    it("classifies a reservation question as areas_comunes and creates a case", () => {
+    it("classifies a reservation question as areas_comunes and does not create a case", () => {
         const decision = classifyCoCoMessage("Quiero reservar el quincho el sábado de 15 a 18");
         expect(decision.category).toBe("areas_comunes");
-        expect(decision.shouldCreateCase).toBe(true);
+        expect(decision.shouldCreateCase).toBe(false);
     });
 
     it("does not create a case for an administracion/reglamento question", () => {
@@ -75,5 +75,23 @@ describe("classifyCoCoMessage", () => {
         );
         expect(decision.shouldCreateCase).toBe(true);
         expect(decision.type).toBe("gestion_admin");
+    });
+
+    it("does not create a case for a parking search", () => {
+        // Live regression 2026-08-27: "¿tengo estacionamiento? y hay alguno libre el viernes?"
+        // was classified as seguridad (keyword estacionamiento) and auto-opened
+        // "Caso CoCo: …" with priority MEDIA without the resident confirming.
+        const decision = classifyCoCoMessage(
+            "¿tengo estacionamiento? y hay alguno libre el viernes?",
+        );
+        expect(decision.shouldCreateCase).toBe(false);
+        expect(decision.category).not.toBe("seguridad");
+    });
+
+    it("still creates a case when the resident explicitly asks to open one", () => {
+        const decision = classifyCoCoMessage(
+            "Abre un caso: el portón de estacionamiento no cierra",
+        );
+        expect(decision.shouldCreateCase).toBe(true);
     });
 });
