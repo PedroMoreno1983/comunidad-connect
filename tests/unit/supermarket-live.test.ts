@@ -113,7 +113,7 @@ describe('supermarket live catalog parsers', () => {
     });
   });
 
-  it('reads Lider products and prices from JSON-LD', () => {
+    it('reads Lider products and prices from JSON-LD', () => {
     const jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'ItemList',
@@ -132,6 +132,32 @@ describe('supermarket live catalog parsers', () => {
       name: 'Huevos blancos 12 un Lider',
       price: 2990,
       store: 'Lider',
+    });
+  });
+
+  it('reads Lider search results from __NEXT_DATA__ with sku and offerId', () => {
+    const nextData = {
+      props: {
+        pageProps: {
+          results: [{
+            usItemId: '00780226400121',
+            offerId: '973536',
+            name: 'Avena Integral Multisemilla, 600 g',
+            price: 2290,
+            canonicalUrl: '/ip/cereales/00780226400121',
+          }],
+        },
+      },
+    };
+    const html = `<script id=__NEXT_DATA__ type=application/json>${JSON.stringify(nextData)}</script>`;
+
+    expect(parseLiderProducts(html, 'avena')[0]).toMatchObject({
+      name: 'Avena Integral Multisemilla, 600 g',
+      price: 2290,
+      store: 'Lider',
+      sku: '00780226400121',
+      offerId: '973536',
+      productUrl: 'https://super.lider.cl/ip/cereales/00780226400121',
     });
   });
 

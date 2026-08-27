@@ -79,32 +79,156 @@
   }
 
   /**
-   * Documento de la mutacion, sacado del bundle publico del propio sitio.
+   * Documento GraphQL del bundle publico. Orchestra rechaza uno inventado.
    *
-   * Orchestra solo acepta sus propios documentos: una mutacion minima nuestra,
-   * con las mismas variables y cabeceras, responde
-   * `400 {"code":400,"message":"Something went wrong while processing the query."}`.
-   * Mide ~47.000 caracteres y cambia con cada release, asi que se lee en
-   * caliente: fijarlo garantizaria que deje de funcionar en la proxima release.
+   * El marcador ya no vive solo en `_app-*.js`: en 1.3.1 se buscaba únicamente
+   * esa URL y, si el fetch al CDN fallaba (sin host_permission) o el documento
+   * se había movido de chunk, la API devolvía null y toda la canasta caía al
+   * clic de interfaz. Se prueba `_app-` primero y después los chunks de página.
    */
-  async function liderMutationDocument() {
-    const src = [...document.querySelectorAll('script[src]')]
-      .map(script => script.src)
-      .find(url => url.includes('_app-'));
-    if (!src) return '';
-    const response = await fetch(src);
-    if (!response.ok) return '';
-    const source = await response.text();
-    const start = source.indexOf('mutation updateItems');
+  function extractGraphqlDocument(source, marker) {
+    const start = source.indexOf(marker);
     if (start < 0) return '';
     const delimiter = source[start - 1];
-    const BACKSLASH = 92;
+    if (delimiter !== '"' && delimiter !== "'" && delimiter !== '`') return '';
     for (let index = start; index < source.length; index += 1) {
-      if (source[index] === delimiter && source.charCodeAt(index - 1) !== BACKSLASH) {
-        return source.slice(start, index);
+      if (source[index] !== delimiter) continue;
+      let slashes = 0;
+      for (let cursor = index - 1; cursor >= 0 && source[cursor] === '\\'; cursor -= 1) slashes += 1;
+      if (slashes % 2 === 0) return source.slice(start, index);
+    }
+    return '';
+  }
+
+  function liderScriptUrls() {
+    const scripts = [...document.querySelectorAll('script[src]')]
+      .map(script => script.src)
+      .filter(url => typeof url === 'string' && url.includes('/_next/static/chunks/'));
+    const score = url => (
+      url.includes('_app-') ? 0
+        : /\/pages\/(cart|ip|search)/i.test(url) ? 1
+          : 2
+    );
+    return [...new Set(scripts)].sort((left, right) => score(left) - score(right)).slice(0, 8);
+  }
+
+  const liderGraphqlCache = new Map();
+
+  async function liderGraphqlDocument(marker) {
+    const cached = liderGraphqlCache.get(marker);
+    if (cached) return cached;
+    for (const src of liderScriptUrls()) {
+      try {
+        const response = await fetch(src, { credentials: 'omit' });
+        if (!response.ok) continue;
+        const source = await response.text();
+        for (const candidate of ['mutation updateItems', 'query getCart']) {
+          if (liderGraphqlCache.has(candidate)) continue;
+          const document = extractGraphqlDocument(source, candidate);
+          if (document) liderGraphqlCache.set(candidate, document);
+        }
+        if (liderGraphqlCache.get(marker)) return liderGraphqlCache.get(marker);
+      } catch {
+        // El siguiente chunk puede tener el documento.
       }
     }
     return '';
+  }
+
+  function liderUsItemId(value) {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.length >= 14 ? digits : digits.padStart(14, '0');
+  }
+
+  function harvestOfferPairs(node, offers) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(child => harvestOfferPairs(child, offers));
+      return;
+    }
+    const usItemId = liderUsItemId(node.usItemId);
+    const offerId = String(node.offerId || '').trim();
+    if (usItemId && offerId && !offers.has(usItemId)) offers.set(usItemId, offerId);
+    Object.values(node).forEach(child => harvestOfferPairs(child, offers));
+  }
+
+  function harvestLiderOffers() {
+    const offers = new Map();
+    const script = document.getElementById('__NEXT_DATA__');
+    try {
+      harvestOfferPairs(JSON.parse(script?.textContent || 'null'), offers);
+    } catch {
+      // Sin __NEXT_DATA__ parseable se sigue con el offerId del catálogo.
+    }
+    return offers;
+  }
+
+  function harvestLiderOffersFromHtml(html) {
+    const offers = new Map();
+    const match = String(html || '').match(/<script[^>]*id=["']?__NEXT_DATA__["']?[^>]*>([\s\S]*?)<\/script>/i);
+    if (!match) return offers;
+    try {
+      harvestOfferPairs(JSON.parse(match[1]), offers);
+    } catch {
+      // HTML de ficha sin JSON usable.
+    }
+    return offers;
+  }
+
+  function liderProductUrl(value, sku) {
+    try {
+      if (value) {
+        const url = new URL(String(value), 'https://super.lider.cl');
+        if (url.hostname === 'www.lider.cl' || url.hostname === 'lider.cl') {
+          url.hostname = 'super.lider.cl';
+        }
+        if (url.hostname === 'super.lider.cl' && url.pathname.includes('/ip/')) {
+          return url.toString();
+        }
+      }
+    } catch {
+      // Caemos a la ficha por sku.
+    }
+    return sku ? `https://super.lider.cl/ip/producto/${sku}` : '';
+  }
+
+  async function prepareLiderItems(items) {
+    const harvested = harvestLiderOffers();
+    const list = Array.isArray(items) ? items : [];
+    const prepared = list.map(item => {
+      const sku = liderUsItemId(item.sku);
+      return {
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        sku,
+        offerId: String(item.offerId || harvested.get(sku) || '').trim(),
+        productUrl: typeof item.productUrl === 'string' ? item.productUrl : '',
+      };
+    });
+    const missing = prepared.filter(item => item.sku && !item.offerId);
+    for (const item of missing.slice(0, 8)) {
+      const url = liderProductUrl(item.productUrl, item.sku);
+      if (!url) continue;
+      try {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) continue;
+        harvestLiderOffersFromHtml(await response.text()).forEach((offerId, sku) => {
+          if (!harvested.has(sku)) harvested.set(sku, offerId);
+        });
+        item.offerId = harvested.get(item.sku) || item.offerId;
+      } catch {
+        // Sigue con el resto: el recorrido por interfaz cubre este SKU.
+      }
+    }
+    return prepared.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      sku: item.sku,
+      offerId: item.offerId || harvested.get(item.sku) || '',
+    }));
   }
 
   /**
@@ -125,7 +249,7 @@
    *     servicio. Solo `lineItems` prueba que un producto entro.
    */
   const liderCartApi = {
-    async load(items) {
+    async load(items, options = {}) {
       const cartId = readCookie('cartId');
       const metadata = document.getElementById('release-metadata');
       if (!metadata) return null;
@@ -137,73 +261,99 @@
       }
       if (!appVersion) return null;
 
-      const query = await liderMutationDocument();
+      const query = await liderGraphqlDocument('mutation updateItems');
       if (!query) return null;
 
-      /** Envia un grupo y devuelve el carro leido, o null si la tienda no lo devolvio. */
-      const send = async group => {
+      const orchestraHeaders = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'x-o-platform-version': appVersion,
+        'x-o-platform': 'rweb',
+        'x-o-bu': 'LIDER-CL',
+        'x-o-mart': 'B2C',
+        'x-o-vertical': 'OD',
+        'x-o-segment': 'oaoh',
+        'x-o-ccm': 'server',
+        WM_MP: 'true',
+      };
+
+      const send = async (group, operation, document, variables) => {
         const response = await fetch('/orchestra/graphql', {
           method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-APOLLO-OPERATION-NAME': 'updateItems',
-            'x-o-gql-query': 'mutation updateItems',
-            'x-o-platform-version': appVersion,
-            'x-o-platform': 'rweb',
-            'x-o-bu': 'LIDER-CL',
-            'x-o-mart': 'B2C',
-            'x-o-vertical': 'OD',
-            'x-o-segment': 'oaoh',
-            'x-o-ccm': 'server',
-            WM_MP: 'true',
+            ...orchestraHeaders,
+            'X-APOLLO-OPERATION-NAME': operation,
+            'x-o-gql-query': operation === 'updateItems' ? 'mutation updateItems' : `query ${operation}`,
           },
-          body: JSON.stringify({
-            query,
-            variables: {
-              input: {
-                ...(cartId ? { cartId } : {}),
-                items: group.map(item => ({
-                  offerId: String(item.offerId),
-                  quantity: item.quantity,
-                  usItemId: String(item.sku),
-                  salesUnit: 'EACH',
-                  additionalInfo: {},
-                  name: item.name,
-                })),
-                enableLiquorBox: false,
-                skipPolicyCheck: false,
-                cartLeanMode: false,
-                enableCartSplitClarity: false,
-                features: ['lmpdel'],
-              },
-            },
-          }),
+          body: JSON.stringify({ query: document, variables }),
         });
-        const payload = await response.json().catch(() => null);
+        return response.json().catch(() => null);
+      };
+
+      const sendItems = async group => {
+        const payload = await send(group, 'updateItems', query, {
+          input: {
+            ...(cartId ? { cartId } : {}),
+            items: group.map(item => ({
+              offerId: String(item.offerId),
+              quantity: item.quantity,
+              usItemId: String(item.sku),
+              salesUnit: 'EACH',
+              additionalInfo: {},
+              name: item.name,
+            })),
+            enableLiquorBox: false,
+            skipPolicyCheck: false,
+            cartLeanMode: false,
+            enableCartSplitClarity: false,
+            features: ['lmpdel'],
+          },
+        });
         const lineItems = payload?.data?.updateItems?.lineItems;
-        // Ni el status ni `errors` sirven: lo unico que prueba que un producto
-        // entro es que la tienda lo devuelva en el carro.
         return Array.isArray(lineItems) ? lineItems : null;
       };
 
-      let lineItems = await send(items);
+      if (options.replace === true) {
+        const getCartQuery = await liderGraphqlDocument('query getCart');
+        if (!getCartQuery) return null;
+        const cartPayload = await send([], 'getCart', getCartQuery, {
+          cartInput: cartId ? { cartId } : {},
+        });
+        // 2026-08-27: la operación se llama getCart, pero el campo raíz es `cart`.
+        const cartNode = cartPayload?.data?.cart
+          || cartPayload?.data?.getCart?.cart
+          || cartPayload?.data?.getCart;
+        const currentLines = Array.isArray(cartNode?.lineItems) ? cartNode.lineItems : null;
+        if (!Array.isArray(currentLines)) return null;
+        const keep = new Set(items.map(item => liderUsItemId(item.sku)));
+        const toClear = currentLines.flatMap(line => {
+          const sku = liderUsItemId(line?.product?.usItemId || line?.usItemId);
+          const offerId = String(line?.product?.offerId || line?.offerId || '').trim();
+          if (!sku || keep.has(sku)) return [];
+          return [{
+            sku,
+            offerId,
+            quantity: 0,
+            name: String(line?.product?.name || line?.name || sku),
+          }];
+        }).filter(item => item.offerId);
+        if (toClear.length > 0) {
+          const cleared = await sendItems(toClear);
+          if (!cleared) return null;
+        }
+      }
+
+      let lineItems = await sendItems(items);
 
       /*
        * Un solo producto no disponible tumba la respuesta ENTERA: la tienda
        * responde `CART_ITEM_UNAVAILABLE_CODE` con `data: null`, aunque los demas
        * productos del lote SI hayan entrado al carro (verificado el 2026-08-18).
-       *
-       * Antes eso se leia como "la API no funciono" y la carga caia al recorrido
-       * por interfaz, que ademas re-visitaba productos ya agregados: parecia que
-       * no se agregaba nada. Ahora, si el lote no devuelve carro, se reintenta
-       * producto por producto. Como la operacion es un upsert y cada respuesta
-       * trae el carro completo, la ultima lectura buena es el estado real.
        */
       if (!lineItems) {
         for (const item of items) {
-          const single = await send([item]);
+          const single = await sendItems([item]);
           if (single) lineItems = single;
         }
       }
@@ -211,7 +361,7 @@
 
       const landed = new Map();
       for (const lineItem of lineItems) {
-        const usItemId = String(lineItem?.product?.usItemId || '');
+        const usItemId = liderUsItemId(lineItem?.product?.usItemId || lineItem?.usItemId);
         const quantity = Number(lineItem?.quantity) || 0;
         if (usItemId && quantity > 0) landed.set(usItemId, quantity);
       }
@@ -224,12 +374,17 @@
       label: 'Lider',
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
       cartApi: liderCartApi,
+      prepareItems: prepareLiderItems,
       /** El adaptador solo existe en super.lider.cl: ahi vive el carro. */
       cartApiHosts: ['super.lider.cl'],
       searchUrl: query => `https://super.lider.cl/search?query=${encodeURIComponent(query)}`,
       addSelectors: [
-        '[data-testid*="add-to-cart"]',
+        // 2026-08-27: el PDP hidrata un <div data-testid=add-to-cart-skeleton>
+        // que matcheaba [data-testid*="add-to-cart"] y se clicaba de inmediato.
+        'button[data-automation-id="add-to-cart"]',
         'button[aria-label*="Agregar al carro"]',
+        '[data-testid="add-to-cart-section"] button',
+        '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])',
         'button[aria-label="Agregar"]',
         'button[class*="add-to-cart"]',
       ],
@@ -243,6 +398,7 @@
         '[data-testid*="quantity"] input',
       ],
       cartSelectors: [
+        'button[data-automation-id="cart-button-header"]',
         'button[aria-label*="El carro tiene"]',
         '[data-testid*="cart"]',
       ],
@@ -306,7 +462,7 @@
         // (verificado el 2026-08-24) y por eso nunca agregaba nada.
         '#add-to-cart-button',
         'button[id*="add-to-cart"]',
-        'button[data-testid*="add-to-cart"]',
+        'button[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])',
         'button[aria-label*="Agregar"]',
         'button[class*="add-to-cart"]',
         'button[class*="AddToCart"]',
@@ -334,6 +490,7 @@
       searchUrl: query => `https://www.acuenta.cl/busqueda?ft=${encodeURIComponent(query)}`,
       addSelectors: [
         'button[data-add-button="true"]',
+        'button[data-automation-id="add-to-cart"]',
         '[data-testid="detail-cart-quantifier"] button',
         'button[class*="add__remove__product"]',
       ],

@@ -55,6 +55,13 @@ describe('handshake de la web', () => {
             path.resolve(__dirname, '../../src/components/resident/supermarket/CartLoaderButton.tsx'),
             'utf8',
         )).toContain('if (handshakePending) return');
+        const button = readFileSync(
+            path.resolve(__dirname, '../../src/components/resident/supermarket/CartLoaderButton.tsx'),
+            'utf8',
+        );
+        expect(button).toContain('cartLoader.start({ replaceCart: true })');
+        expect(button).toContain('window.confirm');
+        expect(button).toContain('Vaciar el carro');
     });
 });
 
@@ -76,6 +83,24 @@ describe('store-config', () => {
         const conApi = Object.entries(configs).filter(([, config]) => config.cartApi).map(([store]) => store);
         expect(conApi).toEqual(['Lider']);
         expect(configs.Lider.cartApiHosts).toEqual(['super.lider.cl']);
+    });
+
+    it('Tottus y aCuenta conservan los selectores verificados, sin API inventada', () => {
+        expect(configs.Tottus.cartApi).toBeUndefined();
+        expect(configs.aCuenta.cartApi).toBeUndefined();
+        expect(configs.Tottus.addSelectors[0]).toBe('#add-to-cart-button');
+        expect(configs.aCuenta.addSelectors[0]).toBe('button[data-add-button="true"]');
+        expect(configs.Tottus.addSelectors.some(selector => selector.includes('skeleton'))).toBe(true);
+        expect(configs.aCuenta.addSelectors).toContain('button[data-automation-id="add-to-cart"]');
+    });
+
+    it('Lider prioriza el botón real sobre el skeleton y paddea el usItemId a 14', () => {
+        expect(configs.Lider.addSelectors[0]).toBe('button[data-automation-id="add-to-cart"]');
+        expect(configs.Lider.addSelectors.some(selector => selector.includes('skeleton'))).toBe(true);
+        expect(extensionFile('store-config.js')).toContain("padStart(14, '0')");
+        expect(extensionFile('store-config.js')).toContain('liderGraphqlDocument');
+        expect(extensionFile('store-config.js')).toContain('data?.cart');
+        expect(extensionFile('store-config.js')).toContain('query getCart');
     });
 
     it('toda tienda declara cómo vaciar el carro anterior', () => {
@@ -129,14 +154,23 @@ describe('retailer-loader', () => {
         expect(source).toContain('REPORT_CART_API_RESULTS');
         // Un Map vacío o ausente debe caer al recorrido por interfaz.
         expect(source).toContain('landed instanceof Map');
+        expect(source).toContain('await config.prepareItems');
     });
 
-    it('no cierra la carga por API si falta sku u offerId en algún producto', () => {
-        // Si el lote se filtra a los que sí tienen identificadores, REPORT_CART_API_RESULTS
-        // marca el resto como failed y salta el recorrido por interfaz: falla en
-        // todas las tiendas que caen a ese camino.
-        expect(source).toMatch(/items\.some\(entry => !entry\.sku \|\| !entry\.offerId\)/);
-        expect(source).not.toMatch(/filter\(entry => entry\.sku && entry\.offerId\)/);
+    it('carga por API los SKU que sí tienen identificadores y deja el resto a la interfaz', () => {
+        // 1.3.1 exigía sku+offerId en TODA la canasta; si faltaba uno, Orchestra
+        // no corría y Líder caía al clic del skeleton. 1.3.2 filtra el lote y
+        // REPORT_CART_API_RESULTS solo cierra los intentados (attemptedItemIds).
+        expect(source).toMatch(/filter\(\s*entry => entry\.sku && entry\.offerId\s*\)/);
+        expect(source).toContain('attemptedItemIds');
+        expect(source).not.toMatch(/items\.some\(entry => !entry\.sku \|\| !entry\.offerId\)/);
+    });
+
+    it('no toma el skeleton de Líder como botón de agregar', () => {
+        expect(source).toContain('isAddSkeleton');
+        expect(source).toContain('isClickableAddControl');
+        expect(source).toContain('data-automation-id="add-to-cart"');
+        expect(source).toMatch(/isAddSkeleton\(element\)/);
     });
 
     it('no pausa por el widget de despacho del header: solo por un overlay que cubre el centro', () => {
@@ -184,6 +218,12 @@ describe('background', () => {
         expect(source).toContain('no confirmo este producto en el carro');
     });
 
+    it('un lote parcial de Orchestra no marca como fallidos los productos que aún no se intentaron', () => {
+        expect(source).toContain('attemptedItemIds');
+        expect(source).toContain('filter(result => attemptedIds.has(result.itemId))');
+        expect(source).toContain('El carro no es esta compra');
+    });
+
     it('entrega la canasta completa al content script para la carga por API', () => {
         expect(source).toContain('allItems: job.items');
     });
@@ -196,6 +236,11 @@ describe('background', () => {
     it('avisa a Convive cuáles productos sí entraron y cuáles se omitieron', () => {
         expect(source).toContain('addedItemIds');
         expect(source).toContain('failedItemDetails');
+    });
+
+    it('si Orchestra no agregó nada, no presenta el carro ajeno como esta compra', () => {
+        expect(source).toContain('addedCount === 0');
+        expect(source).toContain('El carro no es esta compra');
     });
 });
 
