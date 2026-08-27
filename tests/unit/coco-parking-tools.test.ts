@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TOOL_DEFINITIONS, isToolAllowedForRole, MUTATING_TOOLS } from '../../src/lib/coco/tools';
+import { TOOL_DEFINITIONS, isToolAllowedForRole, MUTATING_TOOLS, describePendingAction } from '../../src/lib/coco/tools';
 
 /**
  * CoCo no sabía nada de estacionamientos: tenía 35 herramientas y ninguna
@@ -10,7 +10,8 @@ import { TOOL_DEFINITIONS, isToolAllowedForRole, MUTATING_TOOLS } from '../../sr
  * isToolAllowedForRole la rechaza y CoCo la ignora en silencio. Ese es el
  * modo de fallo que estos tests vigilan.
  */
-const HERRAMIENTAS_PARKING = ['get_my_parking', 'search_parking'] as const;
+const HERRAMIENTAS_PARKING = ['get_my_parking', 'search_parking', 'book_parking'] as const;
+const SOLO_LECTURA = ['get_my_parking', 'search_parking'] as const;
 
 describe('CoCo conoce el módulo de estacionamientos', () => {
     const nombres = (TOOL_DEFINITIONS as ReadonlyArray<{ name: string }>).map(t => t.name);
@@ -29,10 +30,26 @@ describe('CoCo conoce el módulo de estacionamientos', () => {
         expect(isToolAllowedForRole(herramienta, 'concierge')).toBe(true);
     });
 
-    it('son de solo lectura: no piden confirmación al usuario', () => {
-        for (const herramienta of HERRAMIENTAS_PARKING) {
+    it('las de consulta no piden confirmación', () => {
+        for (const herramienta of SOLO_LECTURA) {
             expect(MUTATING_TOOLS.has(herramienta)).toBe(false);
         }
+    });
+
+    it('reservar SÍ pide confirmación: compromete dinero', () => {
+        // Si dejara de estar aquí, CoCo cobraría sin que el residente confirme.
+        expect(MUTATING_TOOLS.has('book_parking')).toBe(true);
+    });
+
+    it('la confirmación de reserva muestra fechas legibles, no ISO', () => {
+        const { title, summary } = describePendingAction('book_parking', {
+            spot_id: 'abc',
+            starts_at: '2026-09-14T09:00:00-03:00',
+            ends_at: '2026-09-14T18:00:00-03:00',
+        });
+        expect(title).toMatch(/estacionamiento/i);
+        expect(summary).not.toContain('T09:00:00');
+        expect(summary).toMatch(/septiembre/i);
     });
 
     it('describen cuándo usarlas, para que el modelo las elija', () => {
