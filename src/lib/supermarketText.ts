@@ -232,14 +232,22 @@ export function termMatchesProductName(term: string, productName: string): boole
     return productMatchScore(term, productName) >= 0;
 }
 
+/**
+ * URLs de búsqueda vigentes. Una ruta muerta aquí tumba el catálogo en vivo y
+ * el respaldo de fichas de ESA tienda; Lider e Irurzun ya cambiaron de host.
+ *
+ * Verificado 2026-08-27: `www.lider.cl/supermercado/search` entra a Queue-it y
+ * nunca muestra resultados; `super.lider.cl/search` responde 200. Irurzun
+ * sirve el catálogo en `/search`, no en `/buscar`.
+ */
 const STORE_SEARCH_URLS: Record<string, (query: string) => string> = {
     Jumbo: query => `https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(query)}`,
     'Santa Isabel': query => `https://www.santaisabel.cl/busqueda?ft=${encodeURIComponent(query)}`,
-    Lider: query => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`,
+    Lider: query => `https://super.lider.cl/search?query=${encodeURIComponent(query)}`,
     Unimarc: query => `https://www.unimarc.cl/search?q=${encodeURIComponent(query)}&suggestions=true`,
     Tottus: query => `https://www.tottus.cl/tottus-cl/buscar?Ntt=${encodeURIComponent(query)}`,
     aCuenta: query => `https://www.acuenta.cl/busqueda?ft=${encodeURIComponent(query)}`,
-    Irurzun: query => `https://irurzun.cl/buscar?q=${encodeURIComponent(query)}`,
+    Irurzun: query => `https://irurzun.cl/search?q=${encodeURIComponent(query)}`,
 };
 
 /**

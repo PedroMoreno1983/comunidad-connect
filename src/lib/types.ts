@@ -410,6 +410,10 @@ export interface SupermarketCartLoadProgress {
   detail: string;
   /** Nombres de los productos que la tienda no cargo, para poder ofrecerlos. */
   failedItems?: string[];
+  /** Ids de los productos que sí quedaron en el carro, para marcarlos en la lista. */
+  addedItemIds?: string[];
+  /** Detalle por producto omitido (agotado, sin botón, etc.). */
+  failedItemDetails?: Array<{ id: string; name: string; detail: string }>;
 }
 
 export type SupermarketCartLoaderAvailability = 'checking' | 'ready' | 'outdated' | 'unavailable';

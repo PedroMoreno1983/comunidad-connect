@@ -12,7 +12,9 @@ Irurzun.
 - Cada URL exacta de producto se valida contra los dominios de su propia tienda.
 - No lee contraseñas, medios de pago ni datos del checkout.
 - No confirma pedidos, no reserva horarios y no ejecuta pagos.
-- Pausa ante CAPTCHA, verificación humana o selección de entrega y permite reanudar.
+- Pausa ante CAPTCHA, verificación humana o un modal real de entrega (el que cubre el centro de la pantalla) y permite reanudar.
+- Omite productos agotados con una nota visible y continúa con el resto de la lista.
+- No confunde el widget permanente de despacho del header con una puerta de ubicación.
 - Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
 - Informa el contador observado antes y después sin asumir que cada producto crea una línea nueva.
 - Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo; si la tienda no permite verificar el vaciado, pausa la carga.
@@ -53,6 +55,6 @@ Google; el código no puede saltarse ese proceso.
 2. La extensión abre una única pestaña del supermercado en la sesión del comprador.
 3. Si la persona eligió reemplazar, verifica y vacía el carro anterior antes de agregar el primer producto.
 4. Recorre los productos, verifica cada alta, ajusta cantidades y conserva el avance.
-5. Los faltantes se registran y la carga continúa con el siguiente producto.
+5. Los faltantes —incluida una ficha agotada— se registran y la carga continúa con el siguiente producto.
 6. Al finalizar, abre el carro oficial mediante el control visible de la tienda.
 7. El comprador revisa disponibilidad, reemplazos, despacho y pago.

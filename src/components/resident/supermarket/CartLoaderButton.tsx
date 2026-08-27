@@ -20,7 +20,7 @@ import { useSupermarketCartLoader } from '@/hooks/useSupermarketCartLoader';
 import { storeSearchUrl } from '@/lib/supermarketText';
 
 const STORE_HOME: Record<string, string> = {
-  Lider: 'https://www.lider.cl/supermercado',
+  Lider: 'https://super.lider.cl',
   Jumbo: 'https://www.jumbo.cl',
   'Santa Isabel': 'https://www.santaisabel.cl',
   Unimarc: 'https://www.unimarc.cl',
@@ -68,7 +68,9 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
    * enviaba nunca, dejando el vaciado del carro anterior como codigo muerto.
    */
   const cartLoader = useSupermarketCartLoader(basket);
+  const handshakePending = cartLoader.availability === 'checking';
   const hasExtension = cartLoader.availability === 'ready';
+  const extensionOutdated = cartLoader.availability === 'outdated';
   const extensionVersion = cartLoader.installedVersion ?? null;
   const extensionProgress = cartLoader.progress;
   const [loadStarted, setLoadStarted] = useState(false);
@@ -130,6 +132,18 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   const handleLoadCart = () => {
     setOpened(true);
 
+    if (handshakePending) {
+      return;
+    }
+
+    if (extensionOutdated) {
+      toast({
+        title: 'Actualiza el Cargador de Convive',
+        description: 'La versión instalada no puede cargar carros. Reinstálala desde la guía (2 min).',
+      });
+      return;
+    }
+
     if (!hasExtension) {
       // Sin extension NO hay carga automatica posible: ser honestos.
       toast({
@@ -161,13 +175,19 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
   // Elegir la tienda gatilla la carga sin pasar por este botón. La llave 0 es
   // el estado inicial (selección por defecto tras comparar): ahí no se carga
   // nada hasta que la persona elija explícitamente.
+  //
+  // No consumir la llave mientras el handshake sigue en 'checking': con 1.5s
+  // de espera el auto-load de TODAS las tiendas se disparaba como "sin
+  // extensión" y nunca arrancaba, aunque el puente contestara un instante
+  // después.
   const lastAutoLoadKey = React.useRef(0);
   useEffect(() => {
     if (autoLoadKey <= 0 || autoLoadKey === lastAutoLoadKey.current) return;
+    if (handshakePending) return;
     lastAutoLoadKey.current = autoLoadKey;
     handleLoadCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoLoadKey]);
+  }, [autoLoadKey, handshakePending, hasExtension, extensionOutdated]);
 
   const toggleCheck = (id: string) => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -179,7 +199,10 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
    * con un enlace de busqueda en la tienda para que pueda resolverlo en el acto.
    */
   const missingItems = extensionProgress?.failedItems ?? [];
+  const addedItemIds = new Set(extensionProgress?.addedItemIds ?? []);
+  const failedItemDetails = extensionProgress?.failedItemDetails ?? [];
   const progressFailed = extensionProgress?.status === 'failed';
+  const progressPaused = extensionProgress?.status === 'paused';
   const progressDone = extensionProgress
     && typeof extensionProgress.total === 'number'
     && extensionProgress.total > 0
@@ -196,7 +219,11 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
         style={{ background: 'var(--cc-ink, #1F2937)' }}
       >
         <ShoppingCart className="h-4 w-4 text-[var(--cc-copper,#E07A5F)]" />
-        <span>{loadStarted ? `Recargar Carro en ${basket.store}` : `Cargar Carro en ${basket.store}`}</span>
+        <span>
+          {handshakePending && autoLoadKey > 0
+            ? `Preparando ${basket.store}…`
+            : loadStarted ? `Recargar Carro en ${basket.store}` : `Cargar Carro en ${basket.store}`}
+        </span>
       </Button>
       {basket.store === 'Irurzun' && (
         <p className="text-[11px] cc-text-secondary text-center leading-4">
@@ -241,11 +268,23 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
           className="space-y-3 rounded-xl border p-4 animate-in fade-in duration-200"
           style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper-warm)' }}
         >
-          {hasExtension ? (
+          {handshakePending ? (
+            <div>
+              <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
+                <Loader2 className="h-4 w-4 animate-spin text-[var(--cc-copper)]" />
+                Conectando el Cargador de Convive…
+              </p>
+              <p className="mt-1 text-[11px] cc-text-secondary leading-4">
+                Si en unos segundos no arranca, recarga la página con la extensión activa.
+              </p>
+            </div>
+          ) : hasExtension ? (
             <div>
               <p className="text-xs font-bold cc-text-primary flex items-center gap-1.5">
                 {progressFailed ? (
                   <AlertCircle className="h-4 w-4 text-rose-600" />
+                ) : progressPaused ? (
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
                 ) : progressDone ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 ) : (
@@ -253,6 +292,8 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                 )}
                 {progressFailed
                   ? `La carga en ${basket.store} se detuvo`
+                  : progressPaused
+                    ? `${basket.store} necesita un paso tuyo`
                   : progressDone
                     ? `${basket.store}: carga terminada`
                     : loadStarted
@@ -263,6 +304,8 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                 <p className={`mt-1 text-[11px] font-medium p-2 rounded border ${
                   progressFailed
                     ? 'text-rose-800 bg-rose-50 border-rose-200'
+                    : progressPaused
+                      ? 'text-amber-900 bg-amber-50 border-amber-200'
                     : 'text-emerald-800 bg-emerald-50 border-emerald-200'
                 }`}>
                   {extensionProgress.detail}
@@ -271,9 +314,14 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                       <span className="block font-semibold">No se pudieron agregar:</span>
                       {missingItems.map((name) => {
                         const search = storeSearchUrl(basket.store, name);
+                        const detail = failedItemDetails.find(entry => entry.name === name)?.detail || '';
+                        const outOfStock = /agotado|sin stock|no hay stock/i.test(detail);
                         return (
                           <span key={name} className="mt-1 flex items-center justify-between gap-2">
-                            <span className="truncate">{name}</span>
+                            <span className="truncate">
+                              {name}
+                              {outOfStock ? ' · agotado' : ''}
+                            </span>
                             {search && (
                               <a
                                 href={search}
@@ -305,13 +353,14 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                 <Puzzle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--cc-copper)]" />
                 <div>
                   <p className="text-xs font-bold cc-text-primary">
-                    Para cargar el carro con un click necesitas el Cargador de Convive
+                    {extensionOutdated
+                      ? 'El Cargador instalado está desactualizado'
+                      : 'Para cargar el carro con un click necesitas el Cargador de Convive'}
                   </p>
                   <p className="mt-0.5 text-[11px] cc-text-secondary leading-4">
-                    Es una extensión de Chrome/Edge que se activa una sola vez y funciona con
-                    Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e Irurzun. Las tiendas
-                    no permiten cargar carros desde fuera del navegador; el cargador lo hace
-                    dentro de tu sesión, producto por producto y con verificación.
+                    {extensionOutdated
+                      ? 'Reinstálalo desde la guía: la versión anterior no carga el carro en ninguna tienda.'
+                      : 'Es una extensión de Chrome/Edge que se activa una sola vez y funciona con Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e Irurzun. Las tiendas no permiten cargar carros desde fuera del navegador; el cargador lo hace dentro de tu sesión, producto por producto y con verificación.'}
                   </p>
                 </div>
               </div>
@@ -321,7 +370,7 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                 style={{ background: 'var(--cc-copper, #E07A5F)' }}
               >
                 <Puzzle className="h-4 w-4" />
-                Instalar el Cargador de Convive (2 min)
+                {extensionOutdated ? 'Actualizar el Cargador de Convive (2 min)' : 'Instalar el Cargador de Convive (2 min)'}
               </a>
 
               {jumboDirectUrl && (
@@ -342,7 +391,10 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
           {/* Checklist de productos interactivo */}
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {basket.items.map((item) => {
-              const isChecked = checkedItems[item.id];
+              const isAdded = addedItemIds.has(item.id);
+              const failed = failedItemDetails.find(entry => entry.id === item.id);
+              const isChecked = Boolean(checkedItems[item.id] || isAdded);
+              const outOfStock = failed ? /agotado|sin stock|no hay stock/i.test(failed.detail) : false;
               return (
                 <div
                   key={item.id}
@@ -351,7 +403,7 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                   <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1">
                     <input
                       type="checkbox"
-                      checked={isChecked || false}
+                      checked={isChecked}
                       onChange={() => toggleCheck(item.id)}
                       className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
@@ -361,6 +413,7 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
                       }`}
                     >
                       {item.quantity}x {item.name}
+                      {outOfStock ? ' · agotado' : ''}
                     </span>
                   </label>
 

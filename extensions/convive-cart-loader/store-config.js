@@ -13,9 +13,14 @@
   ];
 
   const commonLocationText = [
-    // Tottus bloquea la ficha con "Ingresa tu ubicacion" y sin ella no renderiza
-    // el boton de agregar (verificado el 2026-08-24). Sin esta frase el cargador
-    // no pausaba: no encontraba boton y marcaba el producto como faltante.
+    // Estas frases viven TANTO en el modal real de comuna/despacho COMO en el
+    // widget permanente del header ("Despacho a domicilio · Retiro en tienda").
+    // El cargador solo debe pausar si el overlay cubre el centro de la pantalla
+    // (ver page-signals.js). Escanear cualquier drawer/modal las dispara en
+    // TODAS las tiendas y congela la carga en el producto 1.
+    //
+    // Tottus sí bloquea la ficha con "Ingresa tu ubicacion" (verificado
+    // 2026-08-24). Esa ventana es un modal centrado, no el widget del header.
     'ingresa tu ubicacion',
     'ingresa tu ubicación',
     'ingresa tu direccion',

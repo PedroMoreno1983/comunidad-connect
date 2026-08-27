@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { comparePersistedSupermarkets } from '@/lib/supermarketCatalog';
-import { calculateProductQuantity, isProductSuitableForRequest } from '@/lib/supermarketBasket';
+import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import { searchLiveSupermarkets, buildLiveBasketComparison } from '@/lib/supermarketLive';
 import { buildCheckoutPlan } from '@/lib/supermarketCheckoutPlan';
 import {
@@ -9,9 +9,9 @@ import {
   MAX_SHOPPING_LIST_ITEMS,
   parseGroupShoppingList,
 } from '@/lib/supermarketGroupDomain';
-import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
+import { toSupermarketShoppingItem } from '@/lib/supermarketResultItem';
 import { createClient } from '@/lib/supabase/server';
-import type { SupermarketMeasurementUnit } from '@/lib/types';
+import type { SupermarketMeasurementUnit, SupermarketShoppingItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -27,87 +27,11 @@ const STORE_URLS: Record<string, string> = {
   Irurzun: 'https://irurzun.cl',
 };
 
-type SupermarketResultItem = {
-  id: string;
-  name: string;
-  brand?: string;
-  /** Código de la tienda: necesario para la carga directa del carro (VTEX). */
-  sku?: string;
-  requestedTerm: string;
-  requestedQuantity: number;
-  requestedUnit?: SupermarketMeasurementUnit;
-  quantity: number;
-  packUnits: number;
-  suppliedQuantity: number;
-  price: number;
-  lineTotal: number;
-  store?: string;
-  productUrl?: string;
-  originalPrice?: number;
-  isOffer?: boolean;
-  selectionReason?: string;
-  checked: boolean;
-  available: boolean;
-  source: 'catalog' | 'live' | 'missing';
-  fetchedAt?: string;
-};
-
-interface RequestedItem {
+type RequestedItem = {
   term: string;
   quantity: number;
   unit?: SupermarketMeasurementUnit;
-}
-
-function toSupermarketResultItem(
-  item: Record<string, unknown>,
-  requested: RequestedItem,
-  source: SupermarketResultItem['source'],
-  optionCount = 1,
-): SupermarketResultItem {
-  const price = typeof item.price === 'number' ? item.price : 0;
-  const requestedQuantity = requested.quantity;
-  const requestedUnit = requested.unit;
-  const packUnits = typeof item.packUnits === 'number' ? item.packUnits : 1;
-  const name = typeof item.name === 'string' ? item.name : requested.term;
-  const calculated = calculateProductQuantity(name, requestedQuantity, requestedUnit, packUnits);
-  const packs = typeof item.quantity === 'number'
-    ? Math.max(1, Math.round(item.quantity))
-    : calculated.packs;
-  const suppliedQuantity = typeof item.suppliedQuantity === 'number'
-    ? item.suppliedQuantity
-    : calculated.suppliedQuantity;
-  const brand = typeof item.brand === 'string' ? item.brand : undefined;
-  const store = typeof item.store === 'string' ? item.store : undefined;
-  const isOffer = typeof item.isOffer === 'boolean' ? item.isOffer : undefined;
-  const rawProductUrl = typeof item.productUrl === 'string' && item.productUrl.trim() ? item.productUrl : undefined;
-  return {
-    id: typeof item.id === 'string' ? item.id : randomUUID(),
-    name,
-    brand,
-    sku: typeof item.sku === 'string' && item.sku.trim() ? item.sku : undefined,
-    requestedTerm: requested.term,
-    requestedQuantity,
-    requestedUnit,
-    quantity: packs,
-    packUnits,
-    suppliedQuantity,
-    price,
-    lineTotal: price * packs,
-    store,
-    // Todo producto encontrado queda linkeable: ficha exacta si existe, o la
-    // búsqueda del nombre exacto dentro del sitio de la tienda como respaldo.
-    productUrl: rawProductUrl || storeSearchUrl(store, name),
-    originalPrice: typeof item.originalPrice === 'number' ? item.originalPrice : undefined,
-    isOffer,
-    selectionReason: typeof item.selectionReason === 'string' && item.selectionReason
-      ? item.selectionReason
-      : buildSelectionReason({ brand, explicitBrand: null, optionCount, store, isOffer }),
-    checked: false,
-    available: source !== 'missing',
-    source,
-    fetchedAt: typeof item.fetchedAt === 'string' ? item.fetchedAt : undefined,
-  };
-}
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -156,13 +80,13 @@ export async function POST(req: NextRequest) {
           ));
           return recovered ? [recovered] : [];
         });
-        const persistedByTerm = new Map<string, SupermarketResultItem>(
+        const persistedByTerm = new Map<string, SupermarketShoppingItem>(
           safeSelectedItems.map(item => {
             const itemRecord: Record<string, unknown> = { ...item };
             const term = typeof itemRecord.requestedTerm === 'string' ? itemRecord.requestedTerm : '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
             const optionCount = (comparison.alternativesByTerm?.[term] || []).length || 1;
-            return [term, toSupermarketResultItem(itemRecord, req, 'catalog', optionCount)];
+            return [term, toSupermarketShoppingItem(itemRecord, req, 'catalog', optionCount)];
           })
         );
         const safeSelectedTerms = new Set(safeSelectedItems.map(item => item.requestedTerm));
@@ -170,17 +94,18 @@ export async function POST(req: NextRequest) {
         const liveItems = termsMissingFromSafeSelection.length > 0
           ? (await searchLiveSupermarkets(termsMissingFromSafeSelection.join(', '))).items
           : [];
-        const liveByTerm = new Map<string, SupermarketResultItem>(
+        const liveByTerm = new Map<string, SupermarketShoppingItem>(
           liveItems
             .filter(item => item.store === selectedStore)
             .map(item => {
             const term = item.requestedTerm || item.query || '';
             const req = requestedItems.find((r: RequestedItem) => r.term === term) ?? { term, quantity: 1 };
-            return [term, toSupermarketResultItem({
+            return [term, toSupermarketShoppingItem({
               id: randomUUID(),
               name: item.name,
               brand: item.brand,
               sku: item.sku,
+              offerId: item.offerId,
               price: item.price,
               store: item.store,
               productUrl: item.productUrl,
@@ -190,7 +115,7 @@ export async function POST(req: NextRequest) {
             }, req, 'live', 0)];
           })
         );
-        const items: SupermarketResultItem[] = requestedItems.map((requested: RequestedItem) => (
+        const items: SupermarketShoppingItem[] = requestedItems.map((requested: RequestedItem) => (
           persistedByTerm.get(requested.term)
           || liveByTerm.get(requested.term)
           || {
@@ -294,7 +219,7 @@ export async function POST(req: NextRequest) {
       // Legacy fallback con searchLiveSupermarkets
       const legacyResult = await searchLiveSupermarkets(terms.join(', '));
       const liveByTerm = new Map(legacyResult.items.map(item => [item.requestedTerm || item.query || '', item]));
-      const items: SupermarketResultItem[] = requestedItems.map((requested: RequestedItem) => {
+      const items: SupermarketShoppingItem[] = requestedItems.map((requested: RequestedItem) => {
         const item = liveByTerm.get(requested.term);
         if (!item) {
           return {
@@ -319,11 +244,12 @@ export async function POST(req: NextRequest) {
             fetchedAt,
           };
         }
-        return toSupermarketResultItem({
+        return toSupermarketShoppingItem({
           id: randomUUID(),
           name: item.name,
           brand: item.brand,
           sku: item.sku,
+          offerId: item.offerId,
           price: item.price,
           store: item.store,
           productUrl: item.productUrl,
@@ -355,13 +281,14 @@ export async function POST(req: NextRequest) {
 
     // Construir respuesta con formato de master usando la canasta de buildLiveBasketComparison
     const ready = best.complete;
-    const items: SupermarketResultItem[] = best.items.map(item => {
+    const items: SupermarketShoppingItem[] = best.items.map(item => {
       const req = requestedItems.find((r: RequestedItem) => r.term === item.query) ?? { term: item.query, quantity: item.userQuantity ?? 1 };
-      return toSupermarketResultItem({
+      return toSupermarketShoppingItem({
         id: randomUUID(),
         name: item.name,
         brand: item.brand,
         sku: item.sku,
+        offerId: item.offerId,
         price: item.price,
         store: item.store,
         productUrl: item.productUrl,
