@@ -91,6 +91,7 @@ export default function SupermarketPage() {
   const [requestedItems, setRequestedItems] = useState<SupermarketRequestedItem[]>([]);
   const [basketOptions, setBasketOptions] = useState<SupermarketBasketCandidate[]>([]);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [compared, setCompared] = useState(false);
   // Si el Cargador de Convive (extensión) está activo, todas las tiendas
   // cargan con un click y el badge debe reflejarlo.
   const [cartLoaderReady, setCartLoaderReady] = useState(false);
@@ -166,6 +167,7 @@ export default function SupermarketPage() {
       const nextOptions = orderBaskets(data.basketOptions ?? []);
       setRequestedItems(nextRequested);
       setBasketOptions(nextOptions);
+      setCompared(true);
       setSelectedStore(nextOptions[0]?.store ?? data.recommendedStore ?? null);
       setList(data.items);
 
@@ -535,7 +537,18 @@ export default function SupermarketPage() {
         </>
       )}
 
-      {basketOptions.length === 0 && !loading && (
+      {basketOptions.length === 0 && !loading && compared && (
+        <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
+          <AlertTriangle className="mx-auto h-10 w-10" style={{ color: 'var(--cc-amber)' }} />
+          <p className="mt-3 font-bold cc-text-secondary">Ningún supermercado devolvió productos para esta lista.</p>
+          <p className="mt-1 text-sm cc-text-tertiary">
+            No es un fallo de una sola tienda: el catálogo compartido no encontró coincidencias vigentes.
+            Prueba con nombres más simples (por ejemplo “leche”, “arroz”) o vuelve a intentar en unos minutos.
+          </p>
+        </section>
+      )}
+
+      {basketOptions.length === 0 && !loading && !compared && (
         <section className="rounded-2xl border px-6 py-12 text-center" style={{ borderColor: 'var(--cc-line)', background: 'var(--cc-paper)' }}>
           <ShoppingCart className="mx-auto h-10 w-10 cc-text-disabled" />
           <p className="mt-3 font-bold cc-text-secondary">Pega tu lista para comparar compras completas.</p>

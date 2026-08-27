@@ -15,10 +15,25 @@ function storeConfig(store) {
   return typeof store === 'string' ? STORE_CONFIGS[store] : undefined;
 }
 
+function rewriteLiderUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.hostname !== 'www.lider.cl' && url.hostname !== 'lider.cl') return value;
+    url.hostname = 'super.lider.cl';
+    if (url.pathname.startsWith('/supermercado/search')) {
+      url.pathname = '/search';
+    }
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
 function safeProductUrl(value, config) {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   try {
-    const url = new URL(value);
+    const rewritten = config.label === 'Lider' ? rewriteLiderUrl(value) : value;
+    const url = new URL(rewritten);
     if (url.protocol !== 'https:' || !config.hosts.includes(url.hostname)) return undefined;
     return url.toString();
   } catch {
@@ -73,6 +88,14 @@ function progress(job, detail, status = job.status) {
     // Los nombres de lo que NO entro: sin esto la web solo puede decir
     // "falta 1 producto" y la persona no sabe cual ni como agregarlo.
     failedItems: job.results.filter(result => result.status === 'failed').map(result => result.name),
+    addedItemIds: job.results.filter(result => result.status === 'added').map(result => result.itemId),
+    failedItemDetails: job.results
+      .filter(result => result.status === 'failed')
+      .map(result => ({
+        id: result.itemId,
+        name: result.name,
+        detail: result.detail || '',
+      })),
     previousCartCount,
     currentCartCount,
     removedCartCount,
@@ -276,6 +299,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           status: job.status,
           currentIndex: job.currentIndex,
           item: job.items[job.currentIndex],
+          allItems: job.items,
           total: job.items.length,
           added: job.results.filter(result => result.status === 'added').length,
           failed: job.results.filter(result => result.status === 'failed').length,

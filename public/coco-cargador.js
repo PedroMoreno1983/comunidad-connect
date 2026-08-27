@@ -39,10 +39,20 @@
   ];
 
   const locationText = [
+    'ingresa tu ubicacion', 'ingresa tu ubicación',
+    'ingresa tu direccion', 'ingresa tu dirección',
+    'selecciona tu ubicacion', 'selecciona tu ubicación',
     'como quieres recibir tu compra', 'cómo quieres recibir tu compra',
     'elige un metodo de entrega', 'elige un método de entrega',
     'elige tu modo de entrega', 'selecciona tu comuna', 'selecciona una comuna',
     'despacho a domicilio retiro en tienda',
+  ];
+
+  const outOfStockText = [
+    'justo se agoto', 'que mal justo se agoto', 'producto agotado',
+    'agotado temporalmente', 'sin stock', 'no hay stock',
+    'producto no disponible', 'este producto no esta disponible',
+    'out of stock', 'currently unavailable',
   ];
 
   const cencosud = {
@@ -62,7 +72,7 @@
     Lider: {
       label: 'Lider',
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
-      searchUrl: q => `https://www.lider.cl/supermercado/search?query=${encodeURIComponent(q)}`,
+      searchUrl: q => `https://super.lider.cl/search?query=${encodeURIComponent(q)}`,
       addSelectors: [
         '[data-testid*="add-to-cart"]', 'button[aria-label*="Agregar al carro"]',
         'button[aria-label="Agregar"]', 'button[class*="add-to-cart"]',
@@ -110,6 +120,8 @@
       hosts: ['www.tottus.cl', 'tottus.cl'],
       searchUrl: q => `https://www.tottus.cl/tottus-cl/buscar?Ntt=${encodeURIComponent(q)}`,
       addSelectors: [
+        '#add-to-cart-button',
+        'button[id*="add-to-cart"]',
         'button[data-testid*="add-to-cart"]', 'button[aria-label*="Agregar"]',
         'button[class*="add-to-cart"]', 'button[class*="AddToCart"]',
       ],
@@ -234,12 +246,31 @@
     return blockedText.some(fragment => text.includes(normalize(fragment)));
   };
 
+  const overlayIsBlocking = (element, view) => {
+    const rect = element.getBoundingClientRect();
+    const vw = view.innerWidth || 0;
+    const vh = view.innerHeight || 0;
+    if (rect.width < 240 || rect.height < 160 || vw <= 0 || vh <= 0) return false;
+    const cx = vw / 2;
+    const cy = vh / 2;
+    return rect.left <= cx && rect.right >= cx && rect.top <= cy && rect.bottom >= cy;
+  };
+
   const needsDeliveryChoice = (doc, view) => [...doc.querySelectorAll(
-    'dialog,[role="dialog"],[aria-modal="true"],[class*="modal"],[class*="Modal"],[class*="drawer"],[class*="Drawer"]',
+    'dialog,[role="dialog"],[aria-modal="true"],[class*="modal" i],[class*="overlay" i],[class*="drawer" i]',
   )].filter(element => isVisible(element, view)).some(container => {
+    if (container.closest('#coco-cargador')) return false;
+    if (!overlayIsBlocking(container, view)) return false;
     const text = normalize(container.textContent);
     return locationText.some(fragment => text.includes(normalize(fragment)));
   });
+
+  const productIsOutOfStock = (doc, view) => {
+    if (findAddControl(doc, view)) return false;
+    const root = doc.querySelector('main, [role="main"], article') || doc.body;
+    const text = normalize(root?.innerText || root?.textContent).slice(0, 12000);
+    return outOfStockText.some(fragment => text.includes(normalize(fragment)));
+  };
 
   const tokenScore = (candidate, expected) => {
     const candidateTokens = new Set(normalize(candidate).split(' ').filter(t => t.length > 1));
@@ -393,6 +424,9 @@
   async function addItemIn(doc, view, item) {
     if (pageIsBlocked(doc)) return { status: 'blocked' };
     if (needsDeliveryChoice(doc, view)) return { status: 'delivery' };
+    if (productIsOutOfStock(doc, view)) {
+      return { status: 'failed', detail: `${item.name} está agotado. Se omitió y se continúa con el resto.` };
+    }
 
     // Si caímos en resultados de búsqueda, entrar al producto que mejor calce.
     let addControl = findAddControl(doc, view);

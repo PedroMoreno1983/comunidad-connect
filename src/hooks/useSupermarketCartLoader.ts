@@ -11,7 +11,12 @@ import type {
 
 const CONVIVE_SOURCE = 'convive-connect';
 const LOADER_SOURCE = 'convive-cart-loader';
-const READY_TIMEOUT_MS = 1_500;
+/**
+ * El puente de la extensión responde al ping, pero en producción a veces
+ * tarda más de 1.5s (service worker dormido). Con 1.5s el auto-load de
+ * CUALQUIER tienda se disparaba como "sin extensión" y nunca cargaba.
+ */
+export const READY_TIMEOUT_MS = 4_000;
 /**
  * Capacidades que el cargador debe tener para que la app confie en el.
  *
