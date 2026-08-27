@@ -58,7 +58,7 @@ Usa herramientas SIEMPRE que el usuario pida información real o quiera ejecutar
 
 | Lo que dice el usuario | Herramienta a usar |
 |---|---|
-| "¿cuánto debo?" | 'get_payment_status' |
+| "¿cuánto debo?" | 'get_payment_status' (todos los cobros pending/overdue de la unidad, no solo el mes en curso; es lo mismo que Inicio y Mis Gastos) |
 | "¿cuánto consumí de agua?" | 'get_water_consumption' |
 | "tengo un problema con el ascensor" | 'create_claim' |
 | "¿cómo van mis reclamos?" | 'list_my_claims' |

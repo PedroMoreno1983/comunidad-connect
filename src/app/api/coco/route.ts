@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { askCoCo, CoCoPendingResolutionError, type CoCoImageAttachment, type CoCoImageMediaType, type CoCoResolutions } from '@/lib/coco/agent';
 import { COCO_SYSTEM_PROMPT } from '@/lib/coco/system-prompt';
 import { getSession, saveSession, checkRateLimit } from '@/lib/coco/session-store';
-import { maybeCreateCoCoCase } from '@/lib/coco/caseService';
 import { enforceRateLimit } from '@/lib/security/rateLimit';
 import { enforceAiBudget, estimateAiCostCents, estimateTokensFromText, isAiBudgetExceededError, recordAiUsage } from '@/lib/ai/budget';
 import { getAuthenticatedAgentProfile } from '@/lib/server/agentIdentity';
@@ -539,15 +538,6 @@ export async function POST(req: NextRequest) {
         const userId = profile.id;
         const unitId = profile.unit_id || '';
         const communityId = profile.community_id || '';
-        const caseContext = {
-            userId,
-            unitId,
-            unitName: unitId,
-            communityId,
-            role: safeRole,
-            currentPage,
-            channel: 'web',
-        };
 
         if (resolutions && !process.env.ANTHROPIC_API_KEY) {
             return NextResponse.json(
@@ -559,15 +549,14 @@ export async function POST(req: NextRequest) {
         if (!process.env.ANTHROPIC_API_KEY) {
             if (imageAttachment) {
                 return NextResponse.json(
-                    { reply: 'El análisis de imágenes de CoCo requiere ANTHROPIC_API_KEY activo. Puedes describirme la imagen y gestiono el caso por texto.' },
+                    { reply: 'El análisis de imágenes de CoCo requiere ANTHROPIC_API_KEY activo. Puedes describirme la imagen y te ayudo por texto.' },
                     { status: 200 }
                 );
             }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = await runCoCoFallback(message, fallbackContext);
-            const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
-            return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
+            return NextResponse.json({ ...fallback }, { status: 200 });
         }
 
         // ── 3. Cargar sesión ─────────────────────────────────────────────────
@@ -609,15 +598,14 @@ export async function POST(req: NextRequest) {
             console.error('[CoCo Anthropic Error]', agentError);
             if (imageAttachment) {
                 return NextResponse.json(
-                    { reply: 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y dejo el caso registrado por texto.' },
+                    { reply: 'No pude analizar la imagen con el motor principal en este momento. Descríbeme lo que aparece y te ayudo por texto.' },
                     { status: 200 }
                 );
             }
             const fallbackContext = { name: userName, role: safeRole, currentPage, userId, communityId };
             const fallback = await runCoCoFallback(message, fallbackContext);
-            const cocoCase = await maybeCreateCoCoCase(message, caseContext, fallback.reply);
 
-            return NextResponse.json({ ...fallback, case: cocoCase }, { status: 200 });
+            return NextResponse.json({ ...fallback }, { status: 200 });
         }
 
         const { reply, navigate, action, updatedHistory, pendingActions } = agentResponse;
@@ -644,13 +632,12 @@ export async function POST(req: NextRequest) {
             }, { status: 200 });
         }
 
-        const cocoCase = await maybeCreateCoCoCase(message, caseContext, reply);
-
+        // Un caso operativo solo se crea si el residente confirma create_claim
+        // (herramienta que muta). No abrir casos al consultar gastos, parking, etc.
         return NextResponse.json({
             reply,
             navigate: getSafeCoCoNavigation(navigate),
             action,
-            case: cocoCase,
         }, { status: 200 });
 
     } catch (err) {

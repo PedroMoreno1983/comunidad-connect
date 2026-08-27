@@ -14,6 +14,7 @@ import {
     issueBilling,
 } from '@/lib/finance/billingService';
 import { maybeCreateCoCoCase } from './caseService';
+import { summarizeResidentPaymentStatus } from './paymentStatus';
 import { rememberFact } from './user-memory';
 import { PUBLIC_SITE_URL } from '@/lib/config';
 import {
@@ -42,12 +43,12 @@ export const TOOL_DEFINITIONS = [
     },
     {
         name: 'get_payment_status',
-        description: 'Consulta los gastos comunes del residente: monto, estado pagado/pendiente y fecha de vencimiento.',
+        description: 'Consulta los gastos comunes del residente: cobros pendientes y vencidos de la unidad (los mismos que ve en Inicio y Mis Gastos), con monto, estado y vencimiento. Si omites month, NO filtres al mes en curso: devuelve todo lo impago. Usa month solo si preguntan por un mes concreto (YYYY-MM).',
         input_schema: {
             type: 'object' as const,
             properties: {
                 unit_id: { type: 'string' },
-                month: { type: 'string', description: 'Formato YYYY-MM. Si omites, usa el mes actual.' },
+                month: { type: 'string', description: 'Formato YYYY-MM. Opcional: solo cuando preguntan por un mes concreto. Si omites, devuelve todos los cobros pendientes/vencidos de la unidad.' },
             },
             required: ['unit_id'],
         },
@@ -762,18 +763,25 @@ export async function executeTool(
             case 'get_payment_status': {
                 const unitId = await scopedUnit(userCtx, input.unit_id);
                 if (!unitId) return forbidden('No pude determinar tu unidad.');
-                const month = input.month || new Date().toISOString().slice(0, 7);
-                if (!/^\d{4}-\d{2}$/.test(month)) return { error: 'El periodo debe usar el formato YYYY-MM.' };
-                const { data, error } = await supabaseAdmin
+                const monthFilter = (input.month || '').trim() || null;
+                if (monthFilter && !/^\d{4}-\d{2}$/.test(monthFilter)) {
+                    return { error: 'El periodo debe usar el formato YYYY-MM.' };
+                }
+                // Misma fuente que HomeService.getResidentSummary y ExpensesService.getExpenses:
+                // tabla expenses de la unidad. Sin mes, todos los pending/overdue (no el mes en curso).
+                let query = supabaseAdmin
                     .from('expenses')
-                    .select('amount,status,due_date,paid_at,month')
+                    .select('amount,status,due_date,paid_at,month,items:expense_items(label,amount)')
                     .eq('unit_id', unitId)
-                    .eq('community_id', userCtx.community_id)
-                    .eq('month', month)
-                    .order('due_date', { ascending: false })
-                    .limit(3);
+                    .eq('community_id', userCtx.community_id);
+                if (monthFilter) {
+                    query = query.eq('month', monthFilter);
+                } else {
+                    query = query.in('status', ['pending', 'overdue']);
+                }
+                const { data, error } = await query.order('month', { ascending: false }).limit(24);
                 if (error) return { error: 'No se pudo consultar el estado de pago.' };
-                return data ?? { error: 'Sin datos de pago para ese período' };
+                return summarizeResidentPaymentStatus(data || [], monthFilter);
             }
 
             case 'get_water_consumption': {
@@ -844,7 +852,8 @@ export async function executeTool(
                         role: userCtx.role || 'resident',
                         channel: 'coco_tool',
                     },
-                    'Reclamo registrado desde herramienta CoCo.'
+                    'Reclamo registrado desde herramienta CoCo.',
+                    { forceCreate: true },
                 );
 
                 if (!result.created) {
