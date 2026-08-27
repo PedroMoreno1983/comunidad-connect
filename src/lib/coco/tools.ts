@@ -153,6 +153,31 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    // ── MÓDULO: ESTACIONAMIENTOS ─────────────────────────────────────────────
+    {
+        name: 'get_my_parking',
+        description: 'Consulta la situación de estacionamientos del residente: los espacios que arrienda como propietario y sus reservas vigentes como conductor. Úsalo cuando pregunten "¿tengo estacionamiento?", "¿cuándo vence mi reserva?", "¿cuál es mi código de acceso?" o similares.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {},
+            required: [],
+        },
+    },
+    {
+        name: 'search_parking',
+        description: 'Busca estacionamientos disponibles para arrendar en la comunidad, dentro de un rango de fechas y horas. Úsalo cuando pregunten "¿hay estacionamiento libre?", "necesito estacionamiento el viernes" o quieran conocer precios.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                starts_at: { type: 'string', description: 'Inicio en ISO 8601, e.g. 2026-09-14T09:00:00-03:00' },
+                ends_at: { type: 'string', description: 'Fin en ISO 8601' },
+                covered_only: { type: 'boolean', description: 'Solo espacios techados' },
+                needs_ev_charger: { type: 'boolean', description: 'Solo espacios con cargador eléctrico' },
+            },
+            required: ['starts_at', 'ends_at'],
+        },
+    },
+
     // ── MÓDULO: COMUNICACIÓN ─────────────────────────────────────────────────
     {
         name: 'create_circular',
@@ -496,6 +521,9 @@ const RESIDENT_TOOLS = new Set([
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
     'remember_preference',
+    // Estacionamientos: ambas son de lectura y estan acotadas a la comunidad
+    // del residente, asi que no necesitan confirmacion previa.
+    'get_my_parking', 'search_parking',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -862,6 +890,106 @@ export async function executeTool(
                     date: input.date,
                     occupied_slots: data ?? [],
                     available: !data || data.length === 0,
+                };
+            }
+
+            // ── ESTACIONAMIENTOS ────────────────────────────────────────────
+            case 'get_my_parking': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                if (!userCtx.user_id) return forbidden('No pude identificar al residente.');
+
+                // Como propietario: los espacios que publica.
+                const { data: spots } = await supabaseAdmin
+                    .from('parking_spots')
+                    .select('label, unit_label, floor_level, is_covered, has_ev_charger, hourly_rate, daily_rate, monthly_rate, status')
+                    .eq('community_id', communityId)
+                    .eq('owner_id', userCtx.user_id)
+                    .order('label', { ascending: true });
+
+                // Como conductor: sus reservas vigentes o futuras.
+                const { data: driver } = await supabaseAdmin
+                    .from('parking_drivers')
+                    .select('id, plate, vehicle_description')
+                    .eq('user_id', userCtx.user_id)
+                    .maybeSingle();
+
+                let bookings: unknown[] = [];
+                if (driver?.id) {
+                    const { data } = await supabaseAdmin
+                        .from('parking_bookings')
+                        .select('starts_at, ends_at, status, total_amount, access_code, parking_spots(label, floor_level)')
+                        .eq('community_id', communityId)
+                        .eq('driver_id', driver.id)
+                        .gte('ends_at', new Date().toISOString())
+                        .neq('status', 'cancelled')
+                        .order('starts_at', { ascending: true })
+                        .limit(10);
+                    bookings = data ?? [];
+                }
+
+                return {
+                    espacios_que_arriendo: spots ?? [],
+                    mis_reservas_vigentes: bookings,
+                    vehiculo_registrado: driver
+                        ? { patente: driver.plate, descripcion: driver.vehicle_description }
+                        : null,
+                    // Sin esto CoCo no sabe distinguir "no tienes nada" de "nunca
+                    // te registraste como conductor", que son cosas distintas.
+                    nota: driver
+                        ? undefined
+                        : 'El residente aun no registra un vehiculo, asi que no puede reservar hasta hacerlo en /estacionamientos.',
+                };
+            }
+
+            case 'search_parking': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+
+                const desde = new Date(String(input.starts_at ?? ''));
+                const hasta = new Date(String(input.ends_at ?? ''));
+                if (!Number.isFinite(desde.getTime()) || !Number.isFinite(hasta.getTime())) {
+                    return { error: 'Las fechas deben venir en formato ISO 8601.' };
+                }
+                if (hasta <= desde) return { error: 'El fin de la reserva debe ser posterior al inicio.' };
+
+                // El input llega tipado como Record<string, string>, pero el modelo
+                // puede mandar un booleano real. Se aceptan las dos formas.
+                const activado = (valor: unknown) => valor === true || valor === 'true';
+
+                let query = supabaseAdmin
+                    .from('parking_spots')
+                    .select('id, label, floor_level, unit_label, description, vehicle_size, is_covered, has_ev_charger, hourly_rate, daily_rate, monthly_rate, min_hours')
+                    .eq('community_id', communityId)
+                    .eq('status', 'approved');
+                if (activado(input.covered_only)) query = query.eq('is_covered', true);
+                if (activado(input.needs_ev_charger)) query = query.eq('has_ev_charger', true);
+
+                const { data: spots, error } = await query.limit(50);
+                if (error) return { error: 'No se pudieron consultar los estacionamientos.' };
+                if (!spots?.length) return { disponibles: [], nota: 'La comunidad todavia no tiene estacionamientos publicados.' };
+
+                // Descartar los que ya estan tomados en ese rango: dos reservas se
+                // solapan si cada una empieza antes de que termine la otra.
+                const { data: ocupadas } = await supabaseAdmin
+                    .from('parking_bookings')
+                    .select('spot_id')
+                    .eq('community_id', communityId)
+                    .neq('status', 'cancelled')
+                    .lt('starts_at', hasta.toISOString())
+                    .gt('ends_at', desde.toISOString());
+
+                const tomados = new Set((ocupadas ?? []).map(b => String(b.spot_id)));
+                const disponibles = spots.filter(s => !tomados.has(String(s.id)));
+
+                return {
+                    desde: desde.toISOString(),
+                    hasta: hasta.toISOString(),
+                    disponibles,
+                    total_publicados: spots.length,
+                    nota: disponibles.length === 0
+                        ? 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.'
+                        : undefined,
                 };
             }
 
