@@ -74,7 +74,9 @@
       hosts: ['super.lider.cl', 'www.lider.cl', 'lider.cl'],
       searchUrl: q => `https://super.lider.cl/search?query=${encodeURIComponent(q)}`,
       addSelectors: [
-        '[data-testid*="add-to-cart"]', 'button[aria-label*="Agregar al carro"]',
+        'button[data-automation-id="add-to-cart"]',
+        'button[aria-label*="Agregar al carro"]',
+        '[data-testid*="add-to-cart"]:not([data-testid*="skeleton"])',
         'button[aria-label="Agregar"]', 'button[class*="add-to-cart"]',
       ],
       plusSelectors: [
@@ -213,7 +215,10 @@
 
   const findAddControl = (doc, view) => {
     const configured = firstVisible(store.addSelectors, doc, view, store.allowHiddenControls);
-    if (configured) return configured;
+    if (configured) {
+      const testId = String(configured.getAttribute('data-testid') || '').toLowerCase();
+      if (!testId.includes('skeleton')) return configured;
+    }
     const forbidden = ['direccion', 'lista', 'favorito', 'medio de pago'];
     return [...doc.querySelectorAll('[data-testid*="add-to-cart"],[class*="add-to-cart"],button,[role="button"],[tabindex="0"]')]
       .filter(element => isVisible(element, view) && isEnabled(element))

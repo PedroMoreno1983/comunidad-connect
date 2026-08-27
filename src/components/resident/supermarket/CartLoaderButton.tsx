@@ -153,18 +153,22 @@ export function CartLoaderButton({ basket, autoLoadKey = 0 }: CartLoaderButtonPr
       return;
     }
 
-    // Si el cargador ya corrio, la lista nueva reemplaza a la anterior en vez de
-    // sumarse: mezclarlas deja un carro que la persona no pidio. Se pregunta
-    // antes porque borrar el carro de alguien no es reversible.
-    const replaceCart = loadStarted
-      && window.confirm(
-        `¿Reemplazar el carro anterior de ${basket.store}?\n\n`
-        + 'Aceptar vacía lo que haya y deja sólo esta lista. '
-        + 'Cancelar agrega esta lista encima de lo que ya tenías.',
-      );
+    // Vaciar primero: si se agrega encima, un Pepsi suelto parece "la carga".
+    const replaceCart = window.confirm(
+      `¿Vaciar el carro de ${basket.store} y dejar solo esta lista?\n\n`
+      + 'Aceptar elimina lo que ya había (aunque no sea de esta compra) y carga la canasta comparada.\n'
+      + 'Cancelar no toca el carro.',
+    );
+    if (!replaceCart) {
+      toast({
+        title: 'No cargamos el carro',
+        description: 'Así no mezclamos esta lista con productos que ya estaban.',
+      });
+      return;
+    }
 
     setLoadStarted(true);
-    cartLoader.start({ replaceCart });
+    cartLoader.start({ replaceCart: true });
     toast({
       title: `Cargando tu carro en ${basket.store}`,
       description: 'CoCo agrega y verifica cada producto en una pestaña del supermercado. Luego revisas, aceptas y pagas ahí.',
