@@ -1,5 +1,6 @@
 (() => {
   const STORE_CONFIGS = globalThis.CONVIVE_STORE_CONFIGS;
+  const PAGE_SIGNALS = globalThis.CONVIVE_PAGE_SIGNALS;
 
   function runtimeMessage(message) {
     return new Promise((resolve, reject) => {
@@ -140,15 +141,23 @@
    * no encontraba boton de agregar y cerraba el producto como faltante, que es
    * una conclusion falsa: el producto existe, solo estaba tapado. Ante un modal
    * desconocido conviene pausar y pedir ayuda, no inventar un faltante.
+   *
+   * El filtro de "cubre el centro" es obligatorio: `class*=drawer` y
+   * `class*=modal` matchean el widget permanente de despacho del header en
+   * Tottus, Lider y aCuenta. Ese widget no tapa el producto; pausar por el
+   * dejaba la carga congelada en el item 1 con el CTA de ubicación.
    */
   function blockingOverlay() {
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
     return [...document.querySelectorAll(
-      'dialog,[role="dialog"],[aria-modal="true"],[class*="modal" i],[class*="overlay" i]',
+      'dialog,[role="dialog"],[aria-modal="true"],[class*="modal" i],[class*="overlay" i],[class*="drawer" i]',
     )].filter(element => {
       if (!isVisible(element) || element.closest('#convive-cart-loader')) return false;
-      const rect = element.getBoundingClientRect();
-      // Solo cuenta si cubre parte real de la pantalla, no un tooltip.
-      return rect.width > 200 && rect.height > 120;
+      const inChrome = Boolean(element.closest(
+        'header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"]',
+      ));
+      if (inChrome && !element.matches('dialog, [role="dialog"], [aria-modal="true"]')) return false;
+      return PAGE_SIGNALS.overlayIsBlocking(element.getBoundingClientRect(), viewport);
     })[0] || null;
   }
 
@@ -189,15 +198,32 @@
   }
 
   function interventionPrompt(config) {
-    const containers = [...document.querySelectorAll(
-      'dialog,[role="dialog"],[aria-modal="true"],[class*="modal"],[class*="Modal"],[class*="drawer"],[class*="Drawer"]',
-    )].filter(isVisible);
-    for (const container of containers) {
-      const text = normalize(container.textContent);
-      const match = config.locationText.find(fragment => text.includes(normalize(fragment)));
-      if (match) return 'delivery';
-    }
-    return null;
+    const overlay = blockingOverlay();
+    if (!overlay) return null;
+    return PAGE_SIGNALS.overlayLooksLikeDelivery(overlay.textContent, config.locationText)
+      ? 'delivery'
+      : null;
+  }
+
+  function productDetailRoot() {
+    return document.querySelector('main, [role="main"], article') || document.body;
+  }
+
+  /**
+   * La ficha dice que no hay stock. Seguir esperando un botón de agregar
+   * congelaba TODA la lista en el producto 1 (Avena Tradicional Tottus 700 gr
+   * el 2026-08-27: "¡Qué mal! Justo se agotó").
+   */
+  function productIsOutOfStock(config) {
+    if (!isProductDetailPage()) return false;
+    if (findAddControl(config)) return false;
+    const root = productDetailRoot();
+    const text = String(root?.innerText || root?.textContent || '').slice(0, 12000);
+    return PAGE_SIGNALS.textLooksOutOfStock(text);
+  }
+
+  function outOfStockDetail(item, store) {
+    return `${item.name} está agotado en ${store}. Se omitió y se continúa con el resto de la lista.`;
   }
 
   function productPath(urlValue) {
@@ -600,8 +626,11 @@
     if (!config.cartApi || job.currentIndex > 0) return false;
     if (config.cartApiHosts && !config.cartApiHosts.includes(window.location.hostname)) return false;
 
-    const items = (job.allItems || []).filter(entry => entry.sku && entry.offerId);
-    if (items.length === 0) return false;
+    const items = Array.isArray(job.allItems) ? job.allItems : [];
+    // Orchestra solo corre cuando TODA la canasta trae sku+offerId. Un lote
+    // parcial cerraba el trabajo (REPORT_CART_API_RESULTS marca ausentes como
+    // failed) y dejaba el resto sin recorrer la interfaz.
+    if (items.length === 0 || items.some(entry => !entry.sku || !entry.offerId)) return false;
 
     let landed;
     try {
@@ -668,14 +697,6 @@
       return;
     }
 
-    if (interventionPrompt(config) === 'delivery') {
-      await pause(
-        overlay,
-        `${job.store} necesita que elijas despacho, retiro o ubicación. Hazlo aquí y luego pulsa “Reanudar carga”.`,
-      );
-      return;
-    }
-
     if (job.replaceCart && job.cartResetStatus === 'pending') {
       const replaced = await replaceExistingCart(overlay, config, job);
       if (!replaced) return;
@@ -730,17 +751,50 @@
       return;
     }
 
-    let addControl = initialAddControl || await waitFor(() => findAddControl(config), 10000);
+    if (interventionPrompt(config) === 'delivery') {
+      await pause(
+        overlay,
+        `${job.store} necesita que elijas despacho, retiro o ubicación. Hazlo aquí y luego pulsa “Reanudar carga”.`,
+      );
+      return;
+    }
+
+    let addControl = initialAddControl;
     if (!addControl) {
-      // Un modal tapando la ficha no significa que el producto no exista.
-      const overlayPanel = blockingOverlay();
-      if (overlayPanel) {
-        const pista = normalize(overlayPanel.textContent).slice(0, 80);
+      const signal = await waitFor(() => {
+        if (interventionPrompt(config) === 'delivery') return { type: 'delivery' };
+        const control = findAddControl(config);
+        if (control) return { type: 'add', control };
+        if (productIsOutOfStock(config)) return { type: 'oos' };
+        const unknown = blockingOverlay();
+        if (unknown) return { type: 'overlay', overlay: unknown };
+        return null;
+      }, 10000);
+      if (signal?.type === 'add') {
+        addControl = signal.control;
+      } else if (signal?.type === 'delivery') {
+        await pause(
+          overlay,
+          `${job.store} necesita que elijas despacho, retiro o ubicación. Hazlo aquí y luego pulsa “Reanudar carga”.`,
+        );
+        return;
+      } else if (signal?.type === 'oos') {
+        await completeItem(overlay, config, item, false, outOfStockDetail(item, job.store));
+        return;
+      } else if (signal?.type === 'overlay') {
+        const pista = normalize(signal.overlay.textContent).slice(0, 80);
         await pause(
           overlay,
           `${job.store} muestra una ventana que tapa el producto${pista ? ` ("${pista}")` : ''}. `
           + 'Resuélvela aquí y pulsa “Reanudar carga”.',
         );
+        return;
+      }
+    }
+
+    if (!addControl) {
+      if (productIsOutOfStock(config)) {
+        await completeItem(overlay, config, item, false, outOfStockDetail(item, job.store));
         return;
       }
       await completeItem(overlay, config, item, false, 'No se encontró un botón de agregar disponible.');
