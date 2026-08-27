@@ -178,6 +178,20 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
+    {
+        name: 'book_parking',
+        description: 'Reserva un estacionamiento para el residente. Usa primero search_parking para obtener el spot_id y mostrarle las opciones con su precio; nunca inventes un spot_id. Requiere que tenga un vehículo registrado.',
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                spot_id: { type: 'string', description: 'ID del estacionamiento, tal como lo devolvió search_parking' },
+                starts_at: { type: 'string', description: 'Inicio en ISO 8601, e.g. 2026-09-14T09:00:00-03:00' },
+                ends_at: { type: 'string', description: 'Fin en ISO 8601' },
+            },
+            required: ['spot_id', 'starts_at', 'ends_at'],
+        },
+    },
+
     // ── MÓDULO: COMUNICACIÓN ─────────────────────────────────────────────────
     {
         name: 'create_circular',
@@ -493,6 +507,8 @@ export const TOOL_DEFINITIONS = [
 export const MUTATING_TOOLS = new Set<string>([
     'create_claim',
     'create_reservation',
+    // Compromete dinero y un cupo del edificio: el residente confirma antes.
+    'book_parking',
     'create_circular',
     'create_social_post',
     'vote_in_poll',
@@ -521,9 +537,10 @@ const RESIDENT_TOOLS = new Set([
     'list_supermarket_group_orders', 'compare_supermarket_group_order',
     'create_supermarket_group_order', 'join_supermarket_group_order', 'lock_supermarket_group_order',
     'remember_preference',
-    // Estacionamientos: ambas son de lectura y estan acotadas a la comunidad
-    // del residente, asi que no necesitan confirmacion previa.
-    'get_my_parking', 'search_parking',
+    // Estacionamientos. Las dos primeras son de lectura y estan acotadas a la
+    // comunidad del residente. book_parking si muta, y por eso figura tambien
+    // en MUTATING_TOOLS: el residente confirma antes de que se cobre nada.
+    'get_my_parking', 'search_parking', 'book_parking',
 ]);
 
 const CONCIERGE_TOOLS = new Set([
@@ -563,6 +580,20 @@ export function describePendingAction(name: string, input: Record<string, unknow
             return { title: 'Registrar reclamo', summary: str('description') || 'Nuevo reclamo o solicitud de mantención.' };
         case 'create_reservation':
             return { title: 'Reservar espacio común', summary: `${str('space_name') || 'Espacio'} el ${str('date')} de ${str('start_time')} a ${str('end_time')}.` };
+        case 'book_parking': {
+            // Fechas en ISO: mostrarlas crudas en la confirmación no le dice
+            // nada al residente, que es justo quien tiene que decidir.
+            const legible = (key: string) => {
+                const fecha = new Date(str(key));
+                return Number.isFinite(fecha.getTime())
+                    ? fecha.toLocaleString('es-CL', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                    : str(key);
+            };
+            return {
+                title: 'Reservar estacionamiento',
+                summary: `Desde el ${legible('starts_at')} hasta el ${legible('ends_at')}. Se cobra según la tarifa del cupo.`,
+            };
+        }
         case 'create_circular':
             return { title: 'Publicar circular', summary: str('title') || 'Aviso oficial para la comunidad.' };
         case 'create_social_post':
@@ -961,7 +992,10 @@ export async function executeTool(
                     .from('parking_spots')
                     .select('id, label, floor_level, unit_label, description, vehicle_size, is_covered, has_ev_charger, hourly_rate, daily_rate, monthly_rate, min_hours')
                     .eq('community_id', communityId)
-                    .eq('status', 'approved');
+                    // 'published' es el estado real de un cupo publicado; los
+                    // valores posibles son draft, pending_approval, published,
+                    // paused y rejected. No existe 'approved'.
+                    .eq('status', 'published');
                 if (activado(input.covered_only)) query = query.eq('is_covered', true);
                 if (activado(input.needs_ev_charger)) query = query.eq('has_ev_charger', true);
 
@@ -990,6 +1024,59 @@ export async function executeTool(
                     nota: disponibles.length === 0
                         ? 'Hay estacionamientos en la comunidad, pero todos estan reservados en ese horario.'
                         : undefined,
+                };
+            }
+
+            case 'book_parking': {
+                const communityId = scopedCommunity(userCtx);
+                if (!communityId) return forbidden('No pude determinar la comunidad.');
+                if (!userCtx.user_id) return forbidden('No pude identificar al residente.');
+                if (!isUuid(String(input.spot_id ?? ''))) return { error: 'Necesito el spot_id que devuelve search_parking.' };
+
+                const desde = new Date(String(input.starts_at ?? ''));
+                const hasta = new Date(String(input.ends_at ?? ''));
+                if (!Number.isFinite(desde.getTime()) || !Number.isFinite(hasta.getTime())) {
+                    return { error: 'Las fechas deben venir en formato ISO 8601.' };
+                }
+
+                // El cupo tiene que ser de la comunidad del residente. La funcion
+                // de base lo revalida, pero comprobarlo aqui evita filtrar por
+                // error la existencia de cupos de otros condominios.
+                const { data: spot } = await supabaseAdmin
+                    .from('parking_spots')
+                    .select('label, community_id')
+                    .eq('id', String(input.spot_id))
+                    .maybeSingle();
+                if (!spot || spot.community_id !== communityId) {
+                    return { error: 'Ese estacionamiento no existe en tu comunidad.' };
+                }
+
+                const { data: bookingId, error } = await supabaseAdmin.rpc('coco_create_parking_booking', {
+                    p_user_id: userCtx.user_id,
+                    p_spot_id: String(input.spot_id),
+                    p_starts_at: desde.toISOString(),
+                    p_ends_at: hasta.toISOString(),
+                });
+
+                if (error) {
+                    // Los mensajes de la funcion ya estan escritos para el
+                    // residente ("Registra tu vehiculo antes de reservar",
+                    // "La reserva minima es de N horas"), asi que se devuelven
+                    // tal cual en vez de un error generico.
+                    return { error: error.message || 'No se pudo crear la reserva.' };
+                }
+
+                const { data: creada } = await supabaseAdmin
+                    .from('parking_bookings')
+                    .select('starts_at, ends_at, total_amount, access_code, status')
+                    .eq('id', String(bookingId))
+                    .maybeSingle();
+
+                return {
+                    reserva_id: bookingId,
+                    estacionamiento: spot.label,
+                    ...(creada ?? {}),
+                    donde_verla: '/estacionamientos',
                 };
             }
 
