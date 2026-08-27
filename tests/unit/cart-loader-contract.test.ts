@@ -47,7 +47,10 @@ describe('handshake de la web', () => {
         const timeout = hook.match(/READY_TIMEOUT_MS = ([0-9_]+)/);
         expect(timeout).not.toBeNull();
         expect(Number(timeout?.[1].replace(/_/g, ''))).toBeGreaterThanOrEqual(4_000);
-        expect(hook).toContain("availability === 'checking'");
+        expect(readFileSync(
+            path.resolve(__dirname, '../../src/components/resident/supermarket/CartLoaderButton.tsx'),
+            'utf8',
+        )).toContain("availability === 'checking'");
         expect(readFileSync(
             path.resolve(__dirname, '../../src/components/resident/supermarket/CartLoaderButton.tsx'),
             'utf8',
