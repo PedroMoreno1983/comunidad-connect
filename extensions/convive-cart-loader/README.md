@@ -25,7 +25,7 @@ Irurzun.
 
 | Tienda | Flujo |
 | --- | --- |
-| Lider | Ficha exacta o búsqueda; pausa ante el control humano de Walmart. |
+| Lider | Orchestra `updateItems` + ficha; ignora el skeleton; vacía leftovers por `getCart`. |
 | Jumbo | Ficha o búsqueda Cencosud; carga y ajusta cantidades. |
 | Santa Isabel | Ficha o búsqueda Cencosud; carga y ajusta cantidades. |
 | Unimarc | Pausa para elegir despacho/retiro cuando el sitio lo exige. |

@@ -586,7 +586,58 @@ export function parseLiderOfferRefs(html: string): LiderOfferRef[] {
   return [...refs.values()];
 }
 
+function parseLiderProductsFromNextData(html: string, query: string): ScrapedItem[] {
+  const match = html.match(/<script[^>]*id=["']?__NEXT_DATA__["']?[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return [];
+
+  let root: unknown;
+  try {
+    root = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+
+  const items: ScrapedItem[] = [];
+  const seen = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    const record = node as Record<string, unknown>;
+    const usItemId = asString(record.usItemId);
+    const offerId = asString(record.offerId);
+    const name = asString(record.name);
+    const price = asNumber(record.price);
+    const canonical = asString(record.canonicalUrl);
+    if (usItemId && offerId && name && price > 0 && !seen.has(usItemId)) {
+      seen.add(usItemId);
+      const brandRecord = asRecord(record.brand);
+      items.push({
+        name,
+        brand: asString(brandRecord?.name) || asString(record.brand),
+        quantity: 1,
+        price,
+        store: 'Lider',
+        query,
+        productUrl: canonical
+          ? (canonical.startsWith('http') ? canonical : `https://super.lider.cl${canonical}`)
+          : `https://super.lider.cl/ip/producto/${usItemId}`,
+        sku: usItemId,
+        offerId,
+      });
+    }
+    Object.values(record).forEach(walk);
+  };
+  walk(root);
+  return items;
+}
+
 export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
+  const offerBySku = new Map(
+    parseLiderOfferRefs(html).map(ref => [ref.usItemId, ref.offerId]),
+  );
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   const products = scripts.flatMap(script => {
     try {
@@ -596,7 +647,7 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
     }
   });
 
-  return products.flatMap(product => {
+  const fromLd = products.flatMap(product => {
     const offer = asRecord(product.offers);
     const price = asNumber(offer?.price);
     const name = asString(product.name);
@@ -621,9 +672,15 @@ export function parseLiderProducts(html: string, query: string): ScrapedItem[] {
       query,
       productUrl,
       sku,
+      offerId: sku ? offerBySku.get(sku) : undefined,
       imageUrl,
     }];
   });
+
+  if (fromLd.length > 0) return fromLd;
+  // 2026-08-27: la búsqueda de super.lider.cl ya no emite JSON-LD. Los pares
+  // usItemId/offerId y el precio viven en __NEXT_DATA__.
+  return parseLiderProductsFromNextData(html, query);
 }
 
 function decodeHtmlText(value: string): string {

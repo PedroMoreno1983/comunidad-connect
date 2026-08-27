@@ -85,7 +85,7 @@ export default function CargadorPage() {
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador 1.3.1
+              Descargar cargador 1.3.2
             </a>
           </div>
         )}
@@ -96,8 +96,8 @@ export default function CargadorPage() {
         <ol className="mt-3 space-y-3 text-sm cc-text-secondary">
           {[
             'Elige el supermercado y pulsa “Cargar lista nueva”.',
-            'Confirma que quieres reemplazar el carro anterior de esa tienda.',
-            'CoCo abre una sola pestaña, comprueba que el carro quedó en cero y agrega cada producto.',
+            'Confirma vaciar el carro de esa tienda: lo que ya había (aunque no sea de esta compra) se elimina.',
+            'CoCo abre una sola pestaña y agrega cada producto de la lista comparada.',
             'Si la tienda pide login, ubicación o CAPTCHA, CoCo espera y luego continúa.',
             'Al terminar abre el carro oficial. Tú revisas, eliges entrega y pagas.',
           ].map((step, index) => (

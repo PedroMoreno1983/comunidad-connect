@@ -161,22 +161,44 @@
     })[0] || null;
   }
 
+  function isAddSkeleton(element) {
+    const meta = normalize([
+      element?.getAttribute?.('data-testid'),
+      element?.getAttribute?.('class'),
+      element?.getAttribute?.('id'),
+      element?.getAttribute?.('aria-label'),
+    ].filter(Boolean).join(' '));
+    return meta.includes('skeleton') || meta.includes('placeholder') || meta.includes('add to cart skeleton');
+  }
+
+  function isClickableAddControl(element) {
+    if (!(element instanceof Element) || isAddSkeleton(element)) return false;
+    if (element.closest('#convive-cart-loader')) return false;
+    const tag = element.tagName.toLowerCase();
+    return tag === 'button'
+      || tag === 'input'
+      || element.getAttribute('role') === 'button'
+      || element.getAttribute('data-automation-id') === 'add-to-cart';
+  }
+
   function findAddControl(config) {
     const configured = firstVisible(config.addSelectors, document, config.allowHiddenControls);
-    if (configured) return configured;
-    const forbidden = ['direccion', 'lista', 'favorito', 'medio de pago'];
+    if (configured && isClickableAddControl(configured)) return configured;
+    const forbidden = ['direccion', 'lista', 'favorito', 'medio de pago', 'skeleton'];
     const candidates = [...document.querySelectorAll(
-      '[data-testid*="add-to-cart"],[class*="add-to-cart"],button,[role="button"],[tabindex="0"]',
+      'button[data-automation-id="add-to-cart"],[data-automation-id="add-to-cart"],[data-testid*="add-to-cart"],[class*="add-to-cart"],button,[role="button"]',
     )]
-      .filter(element => isVisible(element) && isEnabled(element))
+      .filter(element => isVisible(element) && isEnabled(element) && isClickableAddControl(element))
       .map(element => {
         const label = elementLabel(element);
         const insideProductLink = Boolean(element.closest('a[href]'));
         const forbiddenLabel = forbidden.some(fragment => label.includes(fragment));
         const exactAdd = label === 'agregar' || label === 'anadir' || label === 'agregar al carrito';
         const cartIntent = label.includes('agregar al carro') || label.includes('add to cart');
-        const testIdIntent = normalize(element.getAttribute('data-testid')).includes('add to cart');
-        const score = testIdIntent ? 100 : exactAdd ? 90 : cartIntent ? 80 : 0;
+        const automationIntent = normalize(element.getAttribute('data-automation-id')) === 'add to cart';
+        const testIdIntent = normalize(element.getAttribute('data-testid')).includes('add to cart')
+          && !normalize(element.getAttribute('data-testid')).includes('skeleton');
+        const score = automationIntent ? 110 : testIdIntent ? 100 : exactAdd ? 90 : cartIntent ? 80 : 0;
         return { element, insideProductLink, forbiddenLabel, score };
       })
       .filter(candidate => candidate.score > 0 && !candidate.insideProductLink && !candidate.forbiddenLabel)
@@ -626,28 +648,44 @@
     if (!config.cartApi || job.currentIndex > 0) return false;
     if (config.cartApiHosts && !config.cartApiHosts.includes(window.location.hostname)) return false;
 
-    const items = Array.isArray(job.allItems) ? job.allItems : [];
-    // Orchestra solo corre cuando TODA la canasta trae sku+offerId. Un lote
-    // parcial cerraba el trabajo (REPORT_CART_API_RESULTS marca ausentes como
-    // failed) y dejaba el resto sin recorrer la interfaz.
-    if (items.length === 0 || items.some(entry => !entry.sku || !entry.offerId)) return false;
+    const rawItems = Array.isArray(job.allItems) ? job.allItems : [];
+    const prepared = typeof config.prepareItems === 'function'
+      ? await config.prepareItems(rawItems)
+      : rawItems;
+    const ready = prepared.filter(entry => entry.sku && entry.offerId);
+    if (ready.length === 0) return false;
 
     let landed;
     try {
-      landed = await config.cartApi.load(items);
+      landed = await config.cartApi.load(ready, {
+        replace: job.replaceCart === true && job.cartResetStatus === 'pending',
+      });
     } catch {
       return false;
     }
     if (!(landed instanceof Map) || landed.size === 0) return false;
 
-    const confirmed = items
-      .map(entry => ({ itemId: entry.id, quantity: Number(landed.get(String(entry.sku))) || 0 }))
+    const skuOf = item => String(item.sku || '');
+    const confirmed = ready
+      .map(entry => ({
+        itemId: entry.id,
+        quantity: Number(landed.get(skuOf(entry))) || 0,
+      }))
       .filter(entry => entry.quantity > 0);
     if (confirmed.length === 0) return false;
+
+    if (job.replaceCart === true && job.cartResetStatus === 'pending') {
+      await runtimeMessage({
+        type: 'COMPLETE_CART_RESET',
+        cartCountBefore: job.initialCartCount ?? 0,
+        cartCountAfter: 0,
+      }).catch(() => null);
+    }
 
     const response = await runtimeMessage({
       type: 'REPORT_CART_API_RESULTS',
       confirmed,
+      attemptedItemIds: ready.map(entry => entry.id),
       cartCount: parseCartCount(config),
     });
     if (!response?.ok) return false;
@@ -659,6 +697,16 @@
       item: null,
       detail: response.progress.detail,
     });
+    if (response.done) {
+      window.setTimeout(() => {
+        if (window.location.hostname === 'super.lider.cl') {
+          window.location.assign('https://super.lider.cl/cart');
+          return;
+        }
+        findCartControl(config)?.click();
+        window.setTimeout(() => overlay.remove(), 2500);
+      }, 700);
+    }
     return true;
   }
 
@@ -697,15 +745,19 @@
       return;
     }
 
-    if (job.replaceCart && job.cartResetStatus === 'pending') {
+    if (job.replaceCart && job.cartResetStatus === 'pending' && !config.cartApi) {
       const replaced = await replaceExistingCart(overlay, config, job);
       if (!replaced) return;
     }
 
-    // Camino rapido: una sola llamada carga toda la canasta y la tienda devuelve
-    // el carro. Va DESPUES del vaciado para no borrar lo recien agregado, y si
-    // no se puede, sigue el recorrido por la interfaz.
+    // Camino rapido Lider: vacía (si se pidió reemplazo) y carga por Orchestra.
+    // Si la API no puede, recién ahí se vacía por interfaz y se recorre ficha a ficha.
     if (await tryCartApi(job, config, overlay)) return;
+
+    if (job.replaceCart && job.cartResetStatus === 'pending') {
+      const replaced = await replaceExistingCart(overlay, config, job);
+      if (!replaced) return;
+    }
 
     if (job.inFlightItemId === item.id) {
       await pause(
@@ -769,7 +821,7 @@
         const unknown = blockingOverlay();
         if (unknown) return { type: 'overlay', overlay: unknown };
         return null;
-      }, 10000);
+      }, 15000);
       if (signal?.type === 'add') {
         addControl = signal.control;
       } else if (signal?.type === 'delivery') {
