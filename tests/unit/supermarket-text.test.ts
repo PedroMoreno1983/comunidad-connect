@@ -109,10 +109,11 @@ describe('supermarketText termMatchesProductName', () => {
 describe('supermarketText storeSearchUrl', () => {
     it('builds a search URL per store with the exact product name', () => {
         expect(storeSearchUrl('Jumbo', 'Queso Gauda Colun')).toBe('https://www.jumbo.cl/busqueda?ft=Queso%20Gauda%20Colun');
-        expect(storeSearchUrl('Lider', 'Arroz')).toBe('https://www.lider.cl/supermercado/search?query=Arroz');
+        expect(storeSearchUrl('Lider', 'Arroz')).toBe('https://super.lider.cl/search?query=Arroz');
         expect(storeSearchUrl('Santa Isabel', 'Yogurt')).toBe('https://www.santaisabel.cl/busqueda?ft=Yogurt');
         expect(storeSearchUrl('Unimarc', 'Pate')).toBe('https://www.unimarc.cl/search?q=Pate&suggestions=true');
         expect(storeSearchUrl('Tottus', 'Huevos 12')).toBe('https://www.tottus.cl/tottus-cl/buscar?Ntt=Huevos%2012');
+        expect(storeSearchUrl('Irurzun', 'Arroz')).toBe('https://irurzun.cl/search?q=Arroz');
     });
 
     it('returns undefined without store or name', () => {

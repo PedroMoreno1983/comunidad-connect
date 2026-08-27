@@ -37,6 +37,24 @@ function loadStoreConfigs(): Record<string, StoreConfig> {
     return scope.CONVIVE_STORE_CONFIGS;
 }
 
+describe('handshake de la web', () => {
+    it('espera lo suficiente a que el service worker de la extensión despierte', () => {
+        // 1.5s marcaba TODAS las tiendas como "sin extensión" y se comía el auto-load.
+        const hook = readFileSync(
+            path.resolve(__dirname, '../../src/hooks/useSupermarketCartLoader.ts'),
+            'utf8',
+        );
+        const timeout = hook.match(/READY_TIMEOUT_MS = ([0-9_]+)/);
+        expect(timeout).not.toBeNull();
+        expect(Number(timeout?.[1].replace(/_/g, ''))).toBeGreaterThanOrEqual(4_000);
+        expect(hook).toContain("availability === 'checking'");
+        expect(readFileSync(
+            path.resolve(__dirname, '../../src/components/resident/supermarket/CartLoaderButton.tsx'),
+            'utf8',
+        )).toContain('if (handshakePending) return');
+    });
+});
+
 describe('store-config', () => {
     const configs = loadStoreConfigs();
 
@@ -109,6 +127,31 @@ describe('retailer-loader', () => {
         // Un Map vacío o ausente debe caer al recorrido por interfaz.
         expect(source).toContain('landed instanceof Map');
     });
+
+    it('no cierra la carga por API si falta sku u offerId en algún producto', () => {
+        // Si el lote se filtra a los que sí tienen identificadores, REPORT_CART_API_RESULTS
+        // marca el resto como failed y salta el recorrido por interfaz: falla en
+        // todas las tiendas que caen a ese camino.
+        expect(source).toMatch(/items\.some\(entry => !entry\.sku \|\| !entry\.offerId\)/);
+        expect(source).not.toMatch(/filter\(entry => entry\.sku && entry\.offerId\)/);
+    });
+
+    it('no pausa por el widget de despacho del header: solo por un overlay que cubre el centro', () => {
+        // Regresión 2026-08-27: escanear todo class*=drawer con "despacho a
+        // domicilio retiro en tienda" congelaba Tottus, Lider y aCuenta en el
+        // item 1, con el CTA de ubicación y los checkboxes vacíos.
+        expect(source).toContain('PAGE_SIGNALS.overlayIsBlocking');
+        expect(source).toContain('blockingOverlay()');
+        expect(source).not.toMatch(
+            /querySelectorAll\(\s*'dialog,\[role="dialog"\],\[aria-modal="true"\],\[class\*="modal"\],\[class\*="Modal"\],\[class\*="drawer"\],\[class\*="Drawer"\]'\s*\)\]\.filter\(isVisible\)/,
+        );
+    });
+
+    it('omite una ficha agotada y sigue con el resto de la lista', () => {
+        expect(source).toContain('productIsOutOfStock');
+        expect(source).toContain('está agotado');
+        expect(source).toContain('Se omitió y se continúa con el resto');
+    });
 });
 
 describe('background', () => {
@@ -136,6 +179,20 @@ describe('background', () => {
     it('cierra la carga por API con lo que la tienda confirmó', () => {
         expect(source).toContain('resultsFromConfirmation');
         expect(source).toContain('no confirmo este producto en el carro');
+    });
+
+    it('entrega la canasta completa al content script para la carga por API', () => {
+        expect(source).toContain('allItems: job.items');
+    });
+
+    it('reescribe www.lider.cl a super.lider.cl antes de abrir la ficha', () => {
+        expect(source).toContain('rewriteLiderUrl');
+        expect(source).toContain("url.hostname = 'super.lider.cl'");
+    });
+
+    it('avisa a Convive cuáles productos sí entraron y cuáles se omitieron', () => {
+        expect(source).toContain('addedItemIds');
+        expect(source).toContain('failedItemDetails');
     });
 });
 

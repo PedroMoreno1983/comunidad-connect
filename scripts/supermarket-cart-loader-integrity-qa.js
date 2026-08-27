@@ -7,6 +7,7 @@ const extensionRoot = path.join(root, 'extensions', 'convive-cart-loader');
 const requiredFiles = [
   'manifest.json',
   'store-config.js',
+  'page-signals.js',
   'background.js',
   'convive-bridge.js',
   'retailer-loader.js',
@@ -28,6 +29,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.j
 check(manifest.manifest_version === 3, 'La extensión debe usar Manifest V3.');
 check(/^\d+\.\d+\.\d+$/.test(manifest.version), 'La version del manifest debe ser semver.');
 check(manifest.permissions.includes('storage'), 'Falta permiso storage para reanudar.');
+check(
+  manifest.content_scripts.some(script => Array.isArray(script.js) && script.js.includes('page-signals.js') && script.js.includes('retailer-loader.js')),
+  'El content script de las tiendas no carga page-signals.js antes del cargador.',
+);
 check(manifest.permissions.includes('tabs'), 'Falta permiso tabs para usar una única pestaña.');
 check(!manifest.permissions.includes('<all_urls>'), 'No se permite acceso global a sitios.');
 check(!manifest.host_permissions.includes('<all_urls>'), 'No se permite acceso global a hosts.');
@@ -91,6 +96,44 @@ check(
   'Irurzun conserva la ruta /buscar inexistente.',
 );
 
+const supermarketText = fs.readFileSync(
+  path.join(root, 'src', 'lib', 'supermarketText.ts'),
+  'utf8',
+);
+check(
+  supermarketText.includes('Lider: query => `https://super.lider.cl/search?query=')
+    && !/Lider: query => `https:\/\/www\.lider\.cl\/supermercado\/search/.test(supermarketText),
+  'El catálogo en vivo y los enlaces de respaldo siguen usando la búsqueda muerta de Lider.',
+);
+check(
+  supermarketText.includes('Irurzun: query => `https://irurzun.cl/search?q=')
+    && !/Irurzun: query => `https:\/\/irurzun\.cl\/buscar/.test(supermarketText),
+  'El respaldo de Irurzun sigue apuntando a /buscar.',
+);
+
+const loaderHookSource = fs.readFileSync(
+  path.join(root, 'src', 'hooks', 'useSupermarketCartLoader.ts'),
+  'utf8',
+);
+check(
+  /READY_TIMEOUT_MS = 4_?000/.test(loaderHookSource),
+  'El handshake de 1.5s vuelve a marcar el cargador como ausente en todas las tiendas.',
+);
+
+const resultItem = fs.readFileSync(
+  path.join(root, 'src', 'lib', 'supermarketResultItem.ts'),
+  'utf8',
+);
+const supermarketApiRoute = fs.readFileSync(
+  path.join(root, 'src', 'app', 'api', 'supermarket', 'route.ts'),
+  'utf8',
+);
+check(
+  resultItem.includes('offerId: catalogOfferId(item)')
+    && supermarketApiRoute.includes("from '@/lib/supermarketResultItem'"),
+  'La API de supermercado vuelve a serializar canastas sin offerId.',
+);
+
 const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
 check(background.includes('MAX_ITEMS = 200'), 'El cargador no conserva el límite de 200 productos.');
 check(background.includes('safeProductUrl(item?.productUrl, config)'), 'Las URLs exactas no se validan por tienda.');
@@ -99,6 +142,9 @@ check(background.includes('completed_with_issues'), 'Los faltantes no tienen un 
 const loader = fs.readFileSync(path.join(extensionRoot, 'retailer-loader.js'), 'utf8');
 check(loader.includes('pageIsBlocked'), 'Falta pausa ante verificación humana.');
 check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entrega.');
+check(loader.includes('PAGE_SIGNALS.overlayIsBlocking'), 'La puerta de ubicación vuelve a matchear el widget del header.');
+check(loader.includes('productIsOutOfStock'), 'Una ficha agotada vuelve a congelar toda la lista en el item 1.');
+check(loader.includes('está agotado'), 'El cargador no deja nota visible al omitir un agotado.');
 check(loader.includes('additionWasVerified'), 'Falta verificar que el carro cambió.');
 check(loader.includes('CLAIM_CART_ITEM'), 'Falta protección contra productos duplicados por recarga.');
 check(loader.includes('COMPLETE_CART_ITEM'), 'Falta avance persistente producto por producto.');
@@ -115,7 +161,7 @@ check(
 );
 check(!/\b(click|submit)\s*\(\s*['"`]?(comprar|pagar|confirmar)/i.test(loader), 'El cargador intenta comprar o pagar.');
 
-for (const file of ['store-config.js', 'background.js', 'convive-bridge.js', 'retailer-loader.js']) {
+for (const file of ['store-config.js', 'page-signals.js', 'background.js', 'convive-bridge.js', 'retailer-loader.js']) {
   const source = fs.readFileSync(path.join(extensionRoot, file), 'utf8');
   new vm.Script(source, { filename: file });
 }
@@ -214,6 +260,19 @@ check(
   /sku: safeText\(item\?\.sku/.test(backgroundSource) && /offerId: safeText\(item\?\.offerId/.test(backgroundSource),
   'El sku o el offerId de la web no llegan al cargador.',
 );
+check(
+  backgroundSource.includes('allItems: job.items'),
+  'El content script no recibe la canasta completa para la carga por API.',
+);
+check(
+  backgroundSource.includes('rewriteLiderUrl'),
+  'Las fichas de www.lider.cl no se reescriben a super.lider.cl.',
+);
+check(
+  backgroundSource.includes('addedItemIds')
+    && backgroundSource.includes('failedItemDetails'),
+  'La web no recibe qué productos sí entraron ni el detalle de los omitidos.',
+);
 
 // Un adaptador de API solo puede existir si devuelve el carro leido: sin esa
 // lectura no hay forma de saber que entro.
@@ -282,8 +341,12 @@ check(
   'El hook no envía el sku o el offerId al cargador.',
 );// El progreso distingue fallo y termino: nunca se presenta como listo a ciegas.
 check(
-  button.includes('progressFailed') && button.includes('progressDone'),
-  'La UI no distingue una carga fallida o incompleta de un carro listo.',
+  button.includes('progressFailed') && button.includes('progressDone') && button.includes('progressPaused'),
+  'La UI no distingue una carga fallida, pausada o incompleta de un carro listo.',
+);
+check(
+  button.includes('addedItemIds') && button.includes('agotado'),
+  'La lista no marca lo agregado ni avisa los agotados omitidos.',
 );
 
 // --- Capacidades restauradas el 2026-08-18 ---

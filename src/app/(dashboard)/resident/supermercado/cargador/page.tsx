@@ -85,7 +85,7 @@ export default function CargadorPage() {
               download
               className="mt-3 inline-flex items-center gap-2 text-xs font-bold underline cc-text-primary"
             >
-              Descargar cargador 1.3.0
+              Descargar cargador 1.3.1
             </a>
           </div>
         )}

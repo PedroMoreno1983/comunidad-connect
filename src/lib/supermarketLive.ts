@@ -1,5 +1,5 @@
 import type { CartItem } from '@/lib/agentBrain';
-import { buildSelectionReason } from '@/lib/supermarketText';
+import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
 
 export interface ScrapedItem {
   name: string;
@@ -807,7 +807,10 @@ async function fetchWithTimeout(url: string): Promise<string> {
     const response = await fetch(url, {
       headers: SEARCH_HEADERS,
       signal: controller.signal,
-      next: { revalidate: 1_800 },
+      // No cachear HTML de retailers: un desafío Queue-it/bot (200 vacío)
+      // se reutilizaba 30 min y dejaba SIN catálogo a todas las tiendas
+      // que pasaran por este fetch compartido.
+      cache: 'no-store',
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.text();
@@ -881,7 +884,9 @@ export async function searchAllRetailerProducts(
       return parseSantaIsabelProducts(html, query);
     }
     if (store === 'Lider') {
-      const html = await fetchRetailerHtml(`https://www.lider.cl/supermercado/search?query=${encodeURIComponent(query)}`, store);
+      const searchUrl = storeSearchUrl(store, query);
+      if (!searchUrl) return [];
+      const html = await fetchRetailerHtml(searchUrl, store);
       return parseLiderProducts(html, query);
     }
     if (store === 'Unimarc') {
