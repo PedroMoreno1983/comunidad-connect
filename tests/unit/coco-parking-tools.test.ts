@@ -60,3 +60,16 @@ describe('CoCo conoce el módulo de estacionamientos', () => {
         }
     });
 });
+
+describe('requiredMutationTool no confunde parking con amenidad', () => {
+    it('no fuerza create_reservation cuando el mensaje es de estacionamiento', async () => {
+        const { requiredMutationTool } = await import('../../src/lib/coco/agent');
+        expect(requiredMutationTool('reservame un estacionamiento el viernes')).toBeUndefined();
+        expect(requiredMutationTool('¿tengo estacionamiento? y hay alguno libre el viernes?')).toBeUndefined();
+    });
+
+    it('sigue forzando create_reservation para quincho/piscina', async () => {
+        const { requiredMutationTool } = await import('../../src/lib/coco/agent');
+        expect(requiredMutationTool('quiero reservar el quincho el sábado')).toBe('create_reservation');
+    });
+});

@@ -211,7 +211,7 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         includesAny(text, ['filtr', 'gotera', 'agua', 'caneria', 'bano', 'lavaplatos', 'inund']) ? 'plomeria' :
         includesAny(text, ['luz', 'enchufe', 'corto', 'chisp', 'electric', 'tablero']) ? 'electricidad' :
         includesAny(text, ['ruido', 'musica', 'fiesta', 'gritos', 'molest']) ? 'ruido' :
-        includesAny(text, ['intruso', 'sospech', 'robo', 'asalt', 'estacionamiento', 'camara', 'porton', 'seguridad']) ? 'seguridad' :
+        includesAny(text, ['intruso', 'sospech', 'robo', 'asalt', 'camara', 'porton', 'seguridad']) ? 'seguridad' :
         includesAny(text, ['ascensor', 'elevador', 'atrapad']) ? 'ascensor' :
         includesAny(text, ['basura', 'sucio', 'limpieza', 'aseo', 'olor']) ? 'aseo' :
         includesAny(text, ['piscina', 'quincho', 'gimnasio', 'sala multiuso', 'area comun', 'jardin']) ? 'areas_comunes' :
@@ -239,6 +239,24 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         'como puedo', 'como se', 'como hago', 'como funciona', 'donde puedo',
         'donde se', 'en que modulo', 'en que seccion', 'me gustaria saber',
         'quisiera saber', 'no logre identificar', 'no encuentro', 'se puede',
+        'cuanto debo', 'hay alguno', 'hay estacionamiento', 'tengo estacionamiento',
+    ]);
+    // Preguntar por un cupo o reservar uno no es un incidente de seguridad.
+    // "estacionamiento" dejó de ser keyword de seguridad precisamente por esto.
+    const parkingInquiry = includesAny(text, [
+        'tengo estacionamiento', 'hay estacionamiento', 'estacionamiento libre',
+        'alguno libre', 'parking libre',
+    ]);
+    const reservationInquiry = includesAny(text, [
+        'quiero reservar', 'reservar el', 'reservar la', 'reservar un', 'reservar una',
+        'reservame', 'resérvame', 'agendar el', 'agendar la',
+    ]);
+    const isQuestion = /\?/.test(message) || asksInfo || parkingInquiry || reservationInquiry;
+    const explicitlyAsksForCase = includesAny(text, [
+        'abre un caso', 'abrir un caso', 'abre un ticket', 'abrir un ticket',
+        'registra un reclamo', 'registrar un reclamo', 'crea un reclamo', 'crear un reclamo',
+        'deja constancia', 'dejar constancia', 'quiero reportar', 'quiero abrir un caso',
+        'genera un caso', 'abre un reclamo',
     ]);
     const alreadyActed = role === 'concierge' && includesAny(text, ['ya ', 'subi', 'registre', 'autorice', 'cerre', 'avise', 'llego']);
 
@@ -260,12 +278,21 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
         action = 'registrar_bitacora';
         shouldCreateCase = true;
         reason = 'Conserjería reporta una acción ya realizada que debe quedar en bitácora.';
-    } else if (role === 'admin' && !asksInfo && includesAny(text, ['crea', 'crear', 'agenda', 'programa', 'asigna', 'coordina'])) {
+    } else if (role === 'admin' && !asksInfo && !isQuestion && includesAny(text, ['crea', 'crear', 'agenda', 'programa', 'asigna', 'coordina'])) {
         type = 'gestion_admin';
         urgency = high ? 'alta' : 'media';
         action = 'crear_ticket';
         shouldCreateCase = true;
         reason = 'Administración está solicitando una gestión operativa.';
+    } else if (explicitlyAsksForCase) {
+        type = 'reclamo';
+        urgency = high ? 'alta' : 'media';
+        action = 'crear_ticket';
+        shouldCreateCase = true;
+        reason = 'La persona pidió explícitamente abrir un caso o reclamo.';
+    } else if (isQuestion) {
+        shouldCreateCase = false;
+        reason = 'Consulta informativa; no se abre un caso hasta que lo pidan o confirmen un reclamo.';
     } else if (category !== 'otro' && category !== 'finanzas' && category !== 'administracion' && !pureGreeting) {
         type = recurring ? 'reclamo' : 'incidencia';
         urgency = high ? 'alta' : recurring ? 'media' : 'media';
@@ -296,12 +323,13 @@ export function classifyCoCoMessage(message: string, context: CoCoCaseContext = 
 export async function maybeCreateCoCoCase(
     message: string,
     context: CoCoCaseContext,
-    assistantReply?: string
+    assistantReply?: string,
+    options?: { forceCreate?: boolean }
 ): Promise<CoCoCaseSummary> {
     const started = Date.now();
     const decision = classifyCoCoMessage(message, context);
 
-    if (!decision.shouldCreateCase) {
+    if (!decision.shouldCreateCase && !options?.forceCreate) {
         recordAiEvent({
             provider: 'system',
             feature: 'coco.case_router',

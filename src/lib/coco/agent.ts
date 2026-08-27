@@ -244,6 +244,10 @@ function requiredMutationTool(message: string, role?: string) {
     if (/\b(cierra|cerrar|prepara|preparar|finaliza|finalizar)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'lock_supermarket_group_order';
     if (/\b(s[uú]mame|sumarme|agrega|agregar|a[nñ]ade|a[nñ]adir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'join_supermarket_group_order';
     if (/\b(crea|crear|abre|abrir)\b.*\bcompra\s+(grupal|comunitaria)\b/.test(text)) return 'create_supermarket_group_order';
+    // Estacionamiento tiene search_parking / book_parking. No forzar create_reservation
+    // (quincho/piscina): "reservame un estacionamiento" no es una amenidad.
+    // Tampoco forzar book_parking: necesita un spot_id de search_parking primero.
+    if (/\b(estacionamiento|parking|aparcamiento)\b/.test(text)) return undefined;
     if (/\b(reserva|reservar|res[eé]rvame|agenda|agendar)\b/.test(text)) return 'create_reservation';
     if (/\b(registra|registrar|anota|anotar)\b.*\b(visita|visitante)\b|\bva a llegar\b/.test(text)) return 'register_visitor';
     if ((role === 'admin' || role === 'concierge') && /\b(registra|registrar|recib[ií]|lleg[oó])\b.*\b(paquete|encomienda)\b/.test(text)) return 'register_package';
@@ -255,6 +259,8 @@ function requiredMutationTool(message: string, role?: string) {
     if (/\b(registra|registrar|crea|crear|reporta|reportar)\b.*\b(reclamo|caso|problema|filtraci[oó]n|ruido|falla)\b/.test(text)) return 'create_claim';
     return undefined;
 }
+
+export { requiredMutationTool };
 
 export async function askCoCo(
     message: string,
