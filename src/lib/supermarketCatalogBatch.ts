@@ -3,12 +3,14 @@ import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/supabaseAdmin';
 import { isProductSuitableForRequest } from '@/lib/supermarketBasket';
 import {
+  canonicalCatalogTerm,
   matchAnchor,
   matchAnchors,
   needsBroadCatalogCandidates,
   productIntent,
   productMatchScore,
 } from '@/lib/supermarketText';
+import type { SupermarketMeasurementUnit } from '@/lib/types';
 
 const QUERY_CHUNK_SIZE = 25;
 const CANDIDATES_PER_STORE = 12;
@@ -48,16 +50,21 @@ function isMissingBatchFunction(error: { code?: string; message?: string }): boo
     || /(could not find.*search_supermarket_products_batch|search_supermarket_products_batch.*does not exist)/i.test(error.message || '');
 }
 
+function catalogQueryTerm(term: string): string {
+  return canonicalCatalogTerm(term) || term;
+}
+
 export async function fetchBatchSupermarketRows(
   terms: string[],
   cutoff: string,
+  requestedUnits: Record<string, SupermarketMeasurementUnit | undefined> = {},
 ): Promise<Record<string, Record<string, unknown>[]> | null> {
   const supabaseAdmin = getSupabaseAdmin();
   const collected: Record<string, unknown>[] = [];
 
   for (const termChunk of chunks(terms, QUERY_CHUNK_SIZE)) {
     const queries = termChunk.map(term => ({
-      term,
+      term: catalogQueryTerm(term),
       anchor: matchAnchor(term),
       anchors: matchAnchors(term),
       intent: productIntent(term),
@@ -81,7 +88,7 @@ export async function fetchBatchSupermarketRows(
     for (const fallbackChunk of chunks(termChunk, 6)) {
       const { data: fallbackData, error: fallbackError } = await supabaseAdmin.rpc('search_supermarket_products_batch', {
         p_queries: fallbackChunk.map(term => ({
-          term,
+          term: catalogQueryTerm(term),
           anchor: matchAnchor(term),
           intent: productIntent(term),
         })),
@@ -97,15 +104,16 @@ export async function fetchBatchSupermarketRows(
   }
 
   return Object.fromEntries(terms.map(term => {
+    const queryTerm = catalogQueryTerm(term);
     const scored = collected
-      .filter(row => row.requested_term === term)
+      .filter(row => row.requested_term === term || row.requested_term === queryTerm)
       .map((row): Record<string, unknown> & { match_relevance: number } => ({
         ...row,
         match_relevance: productMatchScore(term, String(row.name || '')),
       }))
       .filter(row => (
         row.match_relevance >= 0
-        && isProductSuitableForRequest(String(row.name || ''), term, undefined)
+        && isProductSuitableForRequest(String(row.name || ''), term, requestedUnits[term])
       ));
     const bestRelevanceByStore = new Map<string, number>();
     for (const row of scored) {
