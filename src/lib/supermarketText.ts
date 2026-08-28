@@ -47,6 +47,8 @@ export function canonicalCatalogTerm(value: string): string {
         .replace(/\bpampitas?\b/g, 'pita')
         .replace(/\bgalletas?\s+salmas?\b/g, 'salmas')
         .replace(/\bsin\s+marinar\b/g, '')
+        .replace(/\bsuperpollo\b/g, 'super pollo')
+        .replace(/\bsantamarta\b/g, 'santa marta')
         .replace(new RegExp(`\\b(?:${REQUEST_PACKAGING})\\s+(?:de\\s+)?`, 'g'), '')
         .replace(new RegExp(`\\s+(?:${REQUEST_PACKAGING})$`), '')
         .replace(new RegExp(`\\bpan\\s+(?=${BREAD_TYPES}\\b)`, 'g'), '')
@@ -87,6 +89,8 @@ function stem(word: string): string {
     const aliases: Record<string, string> = {
         champinones: 'champinon',
         comida: 'alimento',
+        deslactosada: 'lactosa',
+        deslactosado: 'lactosa',
         filetito: 'filete',
         laminado: 'lamina',
         lece: 'leche',
@@ -198,6 +202,9 @@ function optionalModifierStems(termWords: string[]): Set<string> {
     if (termWords.includes('haiti') || termWords.includes('moka')) {
         optional.add('molido');
     }
+    if (termWords.includes('lactosa')) {
+        optional.add('sin');
+    }
     return optional;
 }
 
@@ -297,6 +304,7 @@ export function matchAnchors(term: string): string[] {
         filete: ['filete', 'filetito', 'filetitos'],
         lamina: ['lamina', 'laminas', 'laminado'],
         proteina: ['proteina', 'protein'],
+        lactosa: ['lactosa', 'deslactosada', 'deslactosado'],
         salma: ['salma', 'salmas'],
         haiti: ['haiti', 'haití'],
         moka: ['moka', 'mocha'],

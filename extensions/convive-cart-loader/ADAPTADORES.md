@@ -205,8 +205,10 @@ la UI pasa por el hook, y el QA verifica las dos cosas:
 * que cada capacidad declarada tenga codigo que la respalde, y
 * que la UI no vuelva a postear por su cuenta.
 
-El cargador quedó en **1.3.2** (sobre 1.3.1: Orchestra leía mal `getCart`, no
-podía bajar el bundle de walmartimages, y el PDP clicaba el skeleton).
+El cargador quedó en **1.3.3** (sobre 1.3.2: el modal de Términos de Puntos
+Cencosud en Santa Isabel se leía como “el carro no quedó vacío” y congelaba
+la carga en el producto 1. Ahora pausa con un CTA explícito y no acepta
+términos ni paga).
 
 ---
 
