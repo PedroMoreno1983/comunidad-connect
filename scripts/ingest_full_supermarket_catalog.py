@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
 import time
 from datetime import datetime, timezone
@@ -17,7 +18,9 @@ from urllib.request import Request, urlopen
 from full_catalog import CatalogCoverageWarning, CRAWLERS, product_key, serialize_product
 
 
-DEFAULT_BATCH_SIZE = 350
+DEFAULT_BATCH_SIZE = 75
+PERSIST_ATTEMPTS = 5
+PERSIST_HTTP_TIMEOUT_SECONDS = 90
 
 
 def utc_now() -> str:
@@ -39,6 +42,17 @@ def supabase_credentials() -> tuple[str, str]:
         require_environment("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL").rstrip("/"),
         require_environment("SUPABASE_SERVICE_ROLE_KEY"),
     )
+
+
+def persist_error_is_retryable(status_code: int | None, detail: str) -> bool:
+    haystack = detail.casefold()
+    if "57014" in haystack or "statement timeout" in haystack:
+        return True
+    if status_code in {408, 429, 502, 503, 504}:
+        return True
+    if status_code == 500 and "timeout" in haystack:
+        return True
+    return False
 
 
 def persist_batch(store: str, products: list[dict[str, Any]], batch_number: int) -> dict[str, Any]:
@@ -69,18 +83,30 @@ def persist_batch(store: str, products: list[dict[str, Any]], batch_number: int)
             "Accept": "application/json",
         },
     )
-    try:
-        with urlopen(request, timeout=75) as response:
-            body = response.read().decode("utf-8")
-            result = json.loads(body) if body else {}
-            return result if isinstance(result, dict) else {"result": result}
-    except HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")[:2_000]
-        raise RuntimeError(
-            f"Supabase rejected {store} batch {batch_number} with HTTP {error.code}: {detail}"
-        ) from error
-    except URLError as error:
-        raise RuntimeError(f"Could not reach Supabase for {store}: {error.reason}") from error
+    last_error: Exception | None = None
+    for attempt in range(PERSIST_ATTEMPTS):
+        try:
+            with urlopen(request, timeout=PERSIST_HTTP_TIMEOUT_SECONDS) as response:
+                body = response.read().decode("utf-8")
+                result = json.loads(body) if body else {}
+                return result if isinstance(result, dict) else {"result": result}
+        except HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")[:2_000]
+            last_error = RuntimeError(
+                f"Supabase rejected {store} batch {batch_number} with HTTP {error.code}: {detail}"
+            )
+            if persist_error_is_retryable(error.code, detail) and attempt < PERSIST_ATTEMPTS - 1:
+                time.sleep(min(45, 3 * (2**attempt)) + random.uniform(0, 8))
+                continue
+            raise last_error from error
+        except (URLError, TimeoutError, OSError) as error:
+            reason = getattr(error, "reason", error)
+            last_error = RuntimeError(f"Could not reach Supabase for {store}: {reason}")
+            if attempt < PERSIST_ATTEMPTS - 1:
+                time.sleep(min(45, 3 * (2**attempt)) + random.uniform(0, 8))
+                continue
+            raise last_error from error
+    raise last_error or RuntimeError(f"Could not persist {store} batch {batch_number}")
 
 
 def catalog_count(store_name: str) -> int:
@@ -201,7 +227,16 @@ def crawl_store(
             "dry_run": dry_run,
         }
     except Exception as error:  # noqa: BLE001 - source failures are part of the report.
-        flush()
+        # Run 80 Unimarc: persist timeout raised here, then flush() retried the
+        # same batch and crashed the process before writing the catalog JSON.
+        persist_failed = "Supabase rejected" in str(error) or "Could not reach Supabase" in str(
+            error
+        )
+        if not persist_failed:
+            try:
+                flush()
+            except Exception:  # noqa: BLE001 - keep the original crawl error.
+                pass
         return {
             "store": display_store,
             "status": "partial",
