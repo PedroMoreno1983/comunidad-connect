@@ -2,7 +2,9 @@
 
 El catálogo masivo es un proceso batch separado de la búsqueda en vivo. Recorre
 las páginas públicas de cada retailer, normaliza los productos y persiste lotes
-de hasta 350 filas mediante `ingest_supermarket_snapshot`.
+de hasta 75 filas mediante `ingest_supermarket_snapshot`. Lotes más chicos y
+reintentos con jitter evitan el `57014` (statement timeout) cuando varias tiendas
+escriben a la vez.
 
 CoCo consulta después `supermarket_products` para comparar canastas completas
 por tienda. Si un término no existe en el catálogo fresco, conserva el fallback
@@ -17,7 +19,7 @@ de búsqueda en vivo.
 | Unimarc | 15 categorías principales; `__NEXT_DATA__` SSR y total `resource` | Completa |
 | Jumbo | 13 categorías; PLP `?page=N` vía Playwright (no depende del botón visible de paginación) + JSON `bff.jumbo.cl/catalog/plp` | Completa |
 | Lider | Desafío interactivo de verificación humana | Bloqueada hasta contar con feed/API autorizado |
-| aCuenta | Pasillos de despensa fijos primero; el menú live no puede abrir con un aisle promo vacío (“Luka…”) | Completa |
+| aCuenta | Pasillos de despensa fijos primero; productos desde referencias RSC (`CatalogProductModel` no tiene que ser la última key) | Completa |
 
 “Completa” significa que el proceso recorre toda la paginación publicada por la
 tienda y deduplica por SKU, EAN, URL o nombre. No significa que un producto
@@ -59,6 +61,7 @@ incluye como `database_count`.
 `full-supermarket-catalog.yml` ejecuta una matriz independiente por tienda a las
 03:27 UTC y en cada push a `master` que toque el crawler.
 
-Jumbo y aCuenta reintentan hasta 3 veces si el job sale 2 (bloqueo / partial).
+Cada tienda reintenta hasta 3 veces si el job sale 2 (bloqueo / partial). La
+matriz corre con `max-parallel: 3` para no saturar el RPC de persistencia.
 No se inventan SKUs: un aisle vacío se omite y se sigue con el siguiente.
 
