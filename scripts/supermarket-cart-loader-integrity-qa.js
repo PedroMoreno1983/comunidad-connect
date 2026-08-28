@@ -166,6 +166,19 @@ check(loader.includes('pageIsBlocked'), 'Falta pausa ante verificación humana.'
 check(loader.includes('interventionPrompt'), 'Falta pausa para seleccionar entrega.');
 check(loader.includes('PAGE_SIGNALS.overlayIsBlocking'), 'La puerta de ubicación vuelve a matchear el widget del header.');
 check(loader.includes('productIsOutOfStock'), 'Una ficha agotada vuelve a congelar toda la lista en el item 1.');
+check(
+  loader.includes('hasVisibleEmptyCartState()')
+    && loader.includes('observedCartCount')
+    && loader.includes('textLooksLikeEmptyCart')
+    && loader.includes('dismissEmptyCartMarketing'),
+  'El copy nativo de carro vacío vuelve a ignorarse y la carga se congela esperando un contador que nunca confirma 0.',
+);
+check(
+  /intentelo aqui/.test(loader)
+    && loader.includes('isCheckoutOrCampaignLabel')
+    && !/triggerClick\([^)]*intentelo/i.test(loader),
+  'El cargador pulsa la CTA de marketing “Inténtalo aquí” o un pago.',
+);
 check(loader.includes('está agotado'), 'El cargador no deja nota visible al omitir un agotado.');
 check(loader.includes('isAddSkeleton'), 'El skeleton de agregar de Lider vuelve a tomarse como botón.');
 check(loader.includes('attemptedItemIds'), 'Un lote parcial de Orchestra vuelve a marcar como fallidos productos no intentados.');
@@ -206,6 +219,20 @@ const activationPage = fs.readFileSync(
   path.join(root, 'src', 'app', '(dashboard)', 'resident', 'supermercado', 'cargador', 'page.tsx'),
   'utf8',
 );
+check(
+  activationPage.includes(`Descargar cargador ${manifest.version}`),
+  `La página de instalación no apunta al cargador ${manifest.version}; Pedro se queda en una versión vieja.`,
+);
+{
+  const { execFileSync } = require('child_process');
+  const zipPath = path.join(root, 'public', 'downloads', 'convive-cart-loader.zip');
+  check(fs.existsSync(zipPath), 'Falta public/downloads/convive-cart-loader.zip para la descarga manual.');
+  const zipManifest = JSON.parse(execFileSync('unzip', ['-p', zipPath, 'manifest.json'], { encoding: 'utf8' }));
+  check(
+    zipManifest.version === manifest.version,
+    `El ZIP de descarga sigue en ${zipManifest.version}; el manifest es ${manifest.version}. Pedro se queda en el cargador viejo.`,
+  );
+}
 const supermarketRoute = fs.readFileSync(
   path.join(root, 'src', 'app', 'api', 'supermarket', 'route.ts'),
   'utf8',

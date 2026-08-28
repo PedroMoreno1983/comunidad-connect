@@ -24,6 +24,7 @@ function loadSignals() {
       overlayIsBlocking: (rect: object, viewport: object) => boolean;
       overlayLooksLikeDelivery: (text: string, locationText: string[]) => boolean;
       overlayLooksLikeTerms: (text: string) => boolean;
+      textLooksLikeEmptyCart: (text: string) => boolean;
       textLooksOutOfStock: (text: string) => boolean;
       OUT_OF_STOCK_TEXT: string[];
     };
@@ -106,5 +107,22 @@ describe('ficha agotada', () => {
 
   it('no marca agotado un PDP que todavía se puede agregar', () => {
     expect(signals.textLooksOutOfStock('Agregar al carro · $1.990 · 700 gr')).toBe(false);
+  });
+});
+
+describe('carro vacío nativo', () => {
+  const signals = loadSignals();
+
+  it('reconoce el copy de Jumbo que congelaba 1.3.2 en “Revisando el carro anterior”', () => {
+    expect(signals.textLooksLikeEmptyCart('Tu carro está vacío')).toBe(true);
+    expect(signals.textLooksLikeEmptyCart('Tu carro está vacío. Inténtalo aquí')).toBe(true);
+    expect(signals.textLooksLikeEmptyCart('No tienes productos en tu carro')).toBe(true);
+    expect(signals.textLooksLikeEmptyCart('Sin productos en tu carrito')).toBe(true);
+  });
+
+  it('no trata un PDP ni Términos Cencosud como carro vacío', () => {
+    expect(signals.textLooksLikeEmptyCart('Pack 12 un. Yogurt Colun Sin Azúcar 120 g')).toBe(false);
+    expect(signals.textLooksLikeEmptyCart('Agregar al carro · $1.990')).toBe(false);
+    expect(signals.overlayLooksLikeTerms('Tu carro está vacío. Inténtalo aquí')).toBe(false);
   });
 });
