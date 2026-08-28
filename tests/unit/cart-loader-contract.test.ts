@@ -185,12 +185,27 @@ describe('retailer-loader', () => {
     });
 
     it('pausa el modal de Términos Cencosud y no lo acepta por la persona', () => {
-        expect(source).toContain('overlayLooksLikeTerms');
-        expect(source).toContain('termsPauseDetail');
-        expect(source).toContain('Puntos Cencosud');
-        expect(source).toContain('no acepta términos ni paga');
-        expect(source).not.toMatch(/triggerClick\([^)]*[Aa]ceptar/);
-        expect(source).not.toMatch(/findEmptyCartConfirmation[\s\S]{0,200}aceptar terminos/i);
+      expect(source).toContain('overlayLooksLikeTerms');
+      expect(source).toContain('termsPauseDetail');
+      expect(source).toContain('Puntos Cencosud');
+      expect(source).toContain('no acepta términos ni paga');
+      expect(source).not.toMatch(/triggerClick\([^)]*[Aa]ceptar/);
+      expect(source).not.toMatch(/findEmptyCartConfirmation[\s\S]{0,200}aceptar terminos/i);
+    });
+
+    it('trata “Tu carro está vacío” como vacío y arranca a agregar, sin esperar un contador que nunca confirma', () => {
+      // Jumbo 2026-08-28: el panel nativo ya decía vacío, pero 1.3.2/1.3.3
+      // solo confiaban en parseCartCount. El badge no parseaba y la carga
+      // se quedaba en “Revisando el carro anterior…” en el producto 1.
+      expect(source).toContain('hasVisibleEmptyCartState()');
+      expect(source).toContain('observedCartCount');
+      expect(source).toContain('textLooksLikeEmptyCart');
+      expect(source).toContain('dismissEmptyCartMarketing');
+      expect(source).toMatch(/observedCartCount\(config\) === 0/);
+      expect(source).toContain('isCheckoutOrCampaignLabel');
+      expect(source).toContain('intentelo aqui');
+      expect(source).not.toMatch(/triggerClick\([^)]*intentelo/i);
+      expect(source).not.toMatch(/labelMatches\([^)]*Inténtalo/i);
     });
 
     it('omite una ficha agotada y sigue con el resto de la lista', () => {

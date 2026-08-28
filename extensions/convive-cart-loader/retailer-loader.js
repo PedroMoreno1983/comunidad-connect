@@ -334,14 +334,43 @@
     });
   }
 
+  function isCheckoutOrCampaignLabel(label) {
+    return /\b(pagar|comprar|confirmar|finalizar|checkout|intentelo aqui|intentalo aqui|aceptar terminos)\b/.test(label);
+  }
+
   function hasVisibleEmptyCartState() {
-    return [...document.querySelectorAll('h1,h2,h3,[role="heading"],p')]
-      .filter(isVisible)
-      .some(element => {
-        const label = elementLabel(element);
-        return /^(?:tu )?(?:carro|carrito) (?:esta )?vacio\b/.test(label)
-          || /^(?:no tienes|sin) productos (?:en|dentro de) (?:tu )?(?:carro|carrito)\b/.test(label);
-      });
+    const nodes = [...document.querySelectorAll(
+      'h1,h2,h3,[role="heading"],p,[data-empty-cart-state]',
+    )].filter(isVisible);
+    if (nodes.some(element => PAGE_SIGNALS.textLooksLikeEmptyCart(
+      elementLabel(element) || element.textContent,
+    ))) {
+      return true;
+    }
+    const containers = [...document.querySelectorAll(
+      'aside,dialog,[role="dialog"],[aria-modal="true"],[class*="drawer" i],[class*="minicart" i],[class*="empty-cart" i]',
+    )].filter(element => isVisible(element) && !element.closest('#convive-cart-loader'));
+    if (containers.some(element => PAGE_SIGNALS.textLooksLikeEmptyCart(element.textContent))) {
+      return true;
+    }
+    const overlay = blockingOverlay();
+    return Boolean(overlay && PAGE_SIGNALS.textLooksLikeEmptyCart(overlay.textContent));
+  }
+
+  /**
+   * Cuántas unidades hay en el carro, o 0 si la tienda ya muestra copy de vacío.
+   *
+   * El contador del header a veces no parsea (Jumbo 2026-08-28: panel "Tu carro
+   * está vacío" + "Inténtalo aquí", badge ilegible). Esperar un API/contador
+   * que nunca confirma 0 dejaba la carga congelada en el producto 1.
+   */
+  function observedCartCount(config) {
+    const counted = parseCartCount(config);
+    if (typeof counted === 'number') return counted;
+    const panelCount = visibleCartPanelCount();
+    if (typeof panelCount === 'number') return panelCount;
+    if (hasVisibleEmptyCartState()) return 0;
+    return null;
   }
 
   function visibleCartPanelCount() {
@@ -390,12 +419,15 @@
   }
 
   async function settledCartCount(config, timeoutMs = 8000) {
+    const immediate = observedCartCount(config);
+    if (immediate === 0) return 0;
     await new Promise(resolve => window.setTimeout(resolve, 1800));
     const startedAt = Date.now();
     let previous = null;
     let stableReads = 0;
     while (Date.now() - startedAt < timeoutMs) {
-      const current = parseCartCount(config);
+      const current = observedCartCount(config);
+      if (current === 0) return 0;
       if (current !== null) {
         stableReads = current === previous ? stableReads + 1 : 1;
         previous = current;
@@ -408,14 +440,27 @@
 
   async function cartCountWithDrawerProbe(config) {
     let count = await settledCartCount(config);
-    if (count !== null) return count;
+    if (count !== null) {
+      if (count === 0) dismissEmptyCartMarketing();
+      return count;
+    }
 
     const cartControl = findCartControl(config);
-    if (!cartControl) return null;
+    if (!cartControl) {
+      if (hasVisibleEmptyCartState()) {
+        dismissEmptyCartMarketing();
+        return 0;
+      }
+      return null;
+    }
     cartControl.click();
     count = await settledCartCount(config, 5000);
-    if (count !== null) closeCartPanel();
-    return count;
+    if (count !== null || hasVisibleEmptyCartState()) {
+      dismissEmptyCartMarketing();
+      return count ?? 0;
+    }
+    closeCartPanel();
+    return null;
   }
 
   function labelMatches(label, expectedLabels) {
@@ -456,10 +501,34 @@
   }
 
   function closeCartPanel() {
-    const close = [...document.querySelectorAll('button[aria-label="Cerrar" i],button[title="Cerrar" i]')]
-      .filter(element => isVisible(element) && isEnabled(element))
-      .find(element => !element.closest('#convive-cart-loader'));
+    const close = [...document.querySelectorAll('button,[role="button"],a[href]')]
+      .filter(element => isVisible(element) && isEnabled(element) && !element.closest('#convive-cart-loader'))
+      .find(element => {
+        const label = elementLabel(element);
+        if (isCheckoutOrCampaignLabel(label)) return false;
+        const aria = normalize(element.getAttribute('aria-label') || '');
+        const title = normalize(element.getAttribute('title') || '');
+        const raw = String(element.textContent || '').trim();
+        return /^(?:cerrar|close|x)$/.test(label)
+          || /^(?:cerrar|close)\b/.test(aria)
+          || /^(?:cerrar|close)\b/.test(title)
+          || raw === '×'
+          || raw === '✕';
+      });
     close?.click();
+  }
+
+  /**
+   * Cierra el panel de marketing de carro vacío (Jumbo: "Inténtalo aquí")
+   * sin pulsarlo: esa CTA no es vaciar ni agregar, y nunca es pagar.
+   */
+  function dismissEmptyCartMarketing() {
+    const overlay = blockingOverlay();
+    const looksEmpty = hasVisibleEmptyCartState()
+      || Boolean(overlay && PAGE_SIGNALS.textLooksLikeEmptyCart(overlay.textContent));
+    if (!looksEmpty) return false;
+    closeCartPanel();
+    return true;
   }
 
   async function replaceExistingCart(overlay, config, job) {
@@ -469,7 +538,11 @@
     }
     overlay.querySelector('.coco-loader__detail').textContent =
       `Revisando el carro anterior de ${job.store} antes de cargar la lista nueva…`;
-    const before = await cartCountWithDrawerProbe(config);
+    let before = await cartCountWithDrawerProbe(config);
+    if (before === null && hasVisibleEmptyCartState()) {
+      dismissEmptyCartMarketing();
+      before = 0;
+    }
     if (before === null) {
       if (interventionPrompt(config) === 'terms') {
         await pause(overlay, termsPauseDetail(job.store));
@@ -503,13 +576,13 @@
       emptyControl.click();
 
       await new Promise(resolve => window.setTimeout(resolve, 600));
-      if (parseCartCount(config) !== 0) {
+      if (observedCartCount(config) !== 0) {
         const confirmation = await waitFor(() => findEmptyCartConfirmation(), 4000);
         confirmation?.click();
       }
 
       const cleared = await waitFor(() => (
-        parseCartCount(config) === 0 ? { cartCount: 0 } : null
+        observedCartCount(config) === 0 ? { cartCount: 0 } : null
       ), 10000);
       if (!cleared) {
         if (interventionPrompt(config) === 'terms') {
@@ -522,7 +595,11 @@
         );
         return false;
       }
-      closeCartPanel();
+      dismissEmptyCartMarketing();
+    }
+
+    if (before === 0 || observedCartCount(config) === 0) {
+      dismissEmptyCartMarketing();
     }
 
     const reset = await runtimeMessage({
@@ -845,6 +922,10 @@
         if (control) return { type: 'add', control };
         if (productIsOutOfStock(config)) return { type: 'oos' };
         const unknown = blockingOverlay();
+        if (unknown && PAGE_SIGNALS.textLooksLikeEmptyCart(unknown.textContent)) {
+          dismissEmptyCartMarketing();
+          return null;
+        }
         if (unknown) return { type: 'overlay', overlay: unknown };
         return null;
       }, 15000);
