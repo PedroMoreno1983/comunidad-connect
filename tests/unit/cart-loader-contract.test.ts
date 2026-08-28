@@ -193,15 +193,20 @@ describe('retailer-loader', () => {
       expect(source).not.toMatch(/findEmptyCartConfirmation[\s\S]{0,200}aceptar terminos/i);
     });
 
-    it('trata “Tu carro está vacío” como vacío y arranca a agregar, sin esperar un contador que nunca confirma', () => {
-      // Jumbo 2026-08-28: el panel nativo ya decía vacío, pero 1.3.2/1.3.3
-      // solo confiaban en parseCartCount. El badge no parseaba y la carga
-      // se quedaba en “Revisando el carro anterior…” en el producto 1.
+    it('trata carro vacío nativo como vacío en las 7 tiendas, sin esperar un contador que nunca confirma', () => {
+      // Pedro 2026-08-28: “dale con todos los supermercados”. 1.3.4 cubría
+      // Jumbo; 1.3.5 usa el mismo replaceExistingCart/observedCartCount para
+      // Lider, Jumbo, Santa Isabel, Unimarc, Tottus, aCuenta e Irurzun.
+      const configs = loadStoreConfigs();
+      expect(Object.keys(configs).sort()).toEqual(
+        ['Irurzun', 'Jumbo', 'Lider', 'Santa Isabel', 'Tottus', 'Unimarc', 'aCuenta'],
+      );
       expect(source).toContain('hasVisibleEmptyCartState()');
       expect(source).toContain('observedCartCount');
       expect(source).toContain('textLooksLikeEmptyCart');
       expect(source).toContain('dismissEmptyCartMarketing');
       expect(source).toMatch(/observedCartCount\(config\) === 0/);
+      expect(source).not.toMatch(/store === ['"]Jumbo['"][\s\S]{0,120}hasVisibleEmptyCartState/);
       expect(source).toContain('isCheckoutOrCampaignLabel');
       expect(source).toContain('intentelo aqui');
       expect(source).not.toMatch(/triggerClick\([^)]*intentelo/i);
