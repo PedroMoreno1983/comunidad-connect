@@ -45,7 +45,8 @@
     "test:unit:watch": "vitest",
     "qa:schema-drift": "node scripts/schema-drift-qa.js",
     "qa:supabase-config": "node scripts/supabase-config-guard.js",
-    "supabase:config-push": "node scripts/supabase-config-guard.js && npx supabase config push"
+    "supabase:config-push": "node scripts/supabase-config-guard.js && npx supabase config push",
+    "qa:supermarket-framing": "node scripts/supermarket-framing-qa.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

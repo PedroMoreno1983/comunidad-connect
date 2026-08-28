@@ -80,7 +80,10 @@
       hosts: ['www.jumbo.cl', 'jumbo.cl'],
       searchUrl: q => `https://www.jumbo.cl/busqueda?ft=${encodeURIComponent(q)}`,
       ...cencosud,
-      framable: true,
+      // Jumbo pasó a X-Frame-Options: DENY entre julio y agosto de 2026.
+      // Comprobado el 2026-08-28 sobre la URL de búsqueda real, no la portada.
+      // Santa Isabel, del mismo grupo, sigue permitiéndolo.
+      framable: false,
     },
     'Santa Isabel': {
       label: 'Santa Isabel',
@@ -472,7 +475,12 @@
           resolve(frame);
         } catch {
           frame.remove();
-          reject(new Error(`${store.label} bloqueó la carga en segundo plano.`));
+          // Se marca como bloqueo de enmarcado, no como un fallo cualquiera: sin
+          // esa distinción el bucle intenta los 40 productos uno por uno y todos
+          // fallan igual. Quien llama usa la marca para cambiar de modo.
+          const blocked = new Error(`${store.label} bloqueó la carga en segundo plano.`);
+          blocked.framingBlocked = true;
+          reject(blocked);
         }
       };
       frame.onerror = () => {
@@ -519,6 +527,14 @@
         if (result.status === 'added') done += 1;
         else failed.push({ name: item.name, detail: result.detail });
       } catch (error) {
+        // Si la tienda bloquea el enmarcado no va a entrar ningún producto por
+        // esta vía: seguir el bucle solo repite la misma falla 40 veces. Se
+        // aborta para que el arranque reintente en modo asistido, que sí
+        // funciona porque navega la pestaña de verdad.
+        if (error && error.framingBlocked) {
+          frame?.remove();
+          throw error;
+        }
         failed.push({ name: item.name, detail: error instanceof Error ? error.message : 'Error inesperado.' });
       } finally {
         frame?.remove();
@@ -604,7 +620,22 @@
       if (!items) { ui.remove(); return; }
 
       render({ done: 0, total: items.length, detail: `Cargando ${items.length} productos en ${store.label}…` });
-      const { done, failed } = await runAutomatic(items);
+
+      let done; let failed;
+      try {
+        ({ done, failed } = await runAutomatic(items));
+      } catch (error) {
+        // `framable` es una suposición escrita a mano sobre un sitio ajeno, y
+        // las tiendas cambian sus cabeceras sin avisar: Jumbo pasó a DENY entre
+        // julio y agosto de 2026 y el cargador se quedó muerto ahí. En vez de
+        // depender de que la bandera esté al día, si el enmarcado falla en
+        // tiempo real se sigue por el modo asistido, que ya existe.
+        if (!error || !error.framingBlocked) throw error;
+        render({ detail: `${store.label} ya no permite la carga en segundo plano. Seguimos de a un producto.` });
+        await sleep(1500);
+        await runAssisted({ items, index: 0 });
+        return;
+      }
 
       const summary = failed.length === 0
         ? `Listo: ${done} productos agregados. Revisa el carro y paga cuando quieras.`
