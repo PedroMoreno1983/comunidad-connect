@@ -17,7 +17,7 @@ Irurzun.
 - No confunde el widget permanente de despacho del header con una puerta de ubicación.
 - Verifica que el carro cambió después de cada clic; un clic sin cambio no se reporta como éxito.
 - Informa el contador observado antes y después sin asumir que cada producto crea una línea nueva.
-- Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo; si la tienda no permite verificar el vaciado, pausa la carga.
+- Vacía el carro anterior sólo cuando la persona confirma que quiere reemplazarlo. Si la tienda muestra copy de carro vacío (“Tu carro está vacío”) trata el carro como vacío y empieza a agregar, aunque el contador del header no parsea; no espera para siempre un API que nunca confirma 0. Si un panel de marketing tapa la ficha, cierra la X o pausa con Reanudar — nunca pulsa pagar ni “Inténtalo aquí”.
 - Expone versión y capacidades para impedir que Convive use un cargador antiguo.
 - Persiste el avance para continuar producto por producto y no detiene toda la lista por un faltante.
 
