@@ -55,10 +55,15 @@ JUMBO_CATEGORIES = (
     "lacteos-huevos-y-congelados",
     "despensa",
     "carnes-y-pescados",
+    "quesos-y-fiambres",
+    "panaderia-y-pasteleria",
+    "desayuno-y-dulces",
+    "congelados",
     "licores-bebidas-y-aguas",
     "limpieza",
     "cuidado-personal-y-bebe",
     "mascotas",
+    "hogar",
 )
 ACUENTA_HOME_URL = "https://www.acuenta.cl/"
 ACUENTA_HEADERS = {

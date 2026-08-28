@@ -7,6 +7,10 @@ const state = vi.hoisted(() => ({
 
 vi.mock('server-only', () => ({}));
 
+vi.mock('@/lib/supermarketLive', () => ({
+  searchAllRetailerProducts: async () => [],
+}));
+
 vi.mock('@/lib/supabase/supabaseAdmin', () => ({
   getSupabaseAdmin: () => ({
     rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Function not found' } }),
@@ -109,6 +113,6 @@ describe('comparePersistedSupermarkets', () => {
     await comparePersistedSupermarkets(['te']);
 
     expect(state.patterns.length).toBeGreaterThan(0);
-    expect(new Set(state.patterns)).toEqual(new Set(['te%']));
+    expect(new Set(state.patterns)).toEqual(new Set(['te%', 'té%']));
   });
 });

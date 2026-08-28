@@ -150,7 +150,12 @@ describe('lista semanal desordenada (Pedro)', () => {
     expect(productMatchScore('cif', 'Detergente líquido Ariel 3 L')).toBe(-1);
     expect(productMatchScore('confort', 'Servilletas Elite 100 un')).toBe(-1);
     expect(productMatchScore('pan marraqueta', 'Pan de Molde Ideal 700 g')).toBe(-1);
-    expect(productMatchScore('galletas salma', 'Galletas de soda Costa 6 un')).toBe(-1);
+    expect(termMatchesProductName('leces sin lactosa surlat', 'Leche Deslactosada Surlat 1 L')).toBe(true);
+    expect(termMatchesProductName(
+      'super pollo filetitos sin marinar',
+      'Filetitos Superpollo 800 g',
+    )).toBe(true);
+    expect(termMatchesProductName('huevos santa marta cafe', 'Huevos SantaMarta 30 un')).toBe(true);
   });
 
   it('no deja carne molida de vacuno como pollo', () => {

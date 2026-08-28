@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from full_catalog import (
     ACUENTA_FALLBACK_CATEGORIES,
+    JUMBO_CATEGORIES,
     acuenta_categories_from_html,
     extract_santa_render_data,
     extract_next_flight_stream,
@@ -33,6 +34,12 @@ from full_catalog import (
 
 
 class FullCatalogParserTests(unittest.TestCase):
+    def test_jumbo_crawls_panaderia_and_fiambres_not_just_eight_aisles(self) -> None:
+        self.assertIn("panaderia-y-pasteleria", JUMBO_CATEGORIES)
+        self.assertIn("quesos-y-fiambres", JUMBO_CATEGORIES)
+        self.assertIn("desayuno-y-dulces", JUMBO_CATEGORIES)
+        self.assertGreaterEqual(len(JUMBO_CATEGORIES), 12)
+
     def test_acuenta_uses_stable_categories_when_homepage_is_blocked(self) -> None:
         categories = acuenta_categories_from_html("")
         self.assertEqual(categories, list(ACUENTA_FALLBACK_CATEGORIES))
