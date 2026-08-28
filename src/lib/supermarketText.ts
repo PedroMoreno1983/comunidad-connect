@@ -17,12 +17,42 @@ const MATCH_STOP_WORDS = new Set([
 ]);
 const SHORT_PRODUCT_WORDS = new Set(['te']);
 
-function canonicalCatalogTerm(value: string): string {
-    const normalized = foldAccents(value);
+/** Empaques que la persona nombra pero el SKU suele omitir. */
+const REQUEST_PACKAGING = 'sachets?|bolsas?|paquetes?|mallas?|packs?';
+const BREAD_TYPES = 'marraqueta|hallulla|pita';
+const BRAND_ANYWHERE = new Set([
+    'cif', 'confort', 'salma', 'ajax', 'poett',
+]);
+/** Palabras demasiado genéricas para usarlas como ancla FTS extra. */
+const ANCHOR_NOISE = new Set([
+    'super', 'grande', 'chico', 'color', 'natural', 'original', 'extra', 'premium',
+    'fresco', 'especial', 'light', 'diet', 'nuevo', 'familiar', 'clasico', 'tradicional',
+]);
+
+/**
+ * Normaliza typos y jerga de lista chilena al vocabulario del catálogo.
+ * "yogurth" y "leces" no existen en FTS; "ayuyitas"/"pampita" tampoco.
+ */
+export function canonicalCatalogTerm(value: string): string {
+    let normalized = foldAccents(value);
     if (/^cocas?$/.test(normalized)) return 'coca cola';
-    return normalized
+    normalized = normalized
         .replace(/^champanas?\b/, 'espumante')
-        .replace(/\bdray\b/g, 'dry');
+        .replace(/\bdray\b/g, 'dry')
+        .replace(/\byoghurts?\b/g, 'yogur')
+        .replace(/\byogurths?\b/g, 'yogur')
+        .replace(/\byogurts?\b/g, 'yogur')
+        .replace(/\bleces\b/g, 'leche')
+        .replace(/\bayuyitas?\b/g, 'hallulla')
+        .replace(/\bpampitas?\b/g, 'pita')
+        .replace(/\bgalletas?\s+salmas?\b/g, 'salmas')
+        .replace(/\bsin\s+marinar\b/g, '')
+        .replace(new RegExp(`\\b(?:${REQUEST_PACKAGING})\\s+(?:de\\s+)?`, 'g'), '')
+        .replace(new RegExp(`\\s+(?:${REQUEST_PACKAGING})$`), '')
+        .replace(new RegExp(`\\bpan\\s+(?=${BREAD_TYPES}\\b)`, 'g'), '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return normalized;
 }
 
 /** Palabras significativas del término: 3+ letras, sin conectores, sin acentos. */
@@ -33,6 +63,7 @@ export function significantWords(term: string): string[] {
         .filter(word => (
             (word.length >= 3 || SHORT_PRODUCT_WORDS.has(word))
             && !MATCH_STOP_WORDS.has(word)
+            && !/^\d+$/.test(word)
         ));
 }
 
@@ -56,9 +87,18 @@ function stem(word: string): string {
     const aliases: Record<string, string> = {
         champinones: 'champinon',
         comida: 'alimento',
+        filetito: 'filete',
+        laminado: 'lamina',
+        lece: 'leche',
+        leces: 'leche',
         limones: 'limon',
+        molida: 'molido',
         panales: 'panal',
         pescado: 'merluza',
+        protein: 'proteina',
+        quinoa: 'quinoa',
+        quinua: 'quinoa',
+        yogurth: 'yogur',
         yoghurt: 'yogur',
         yogurt: 'yogur',
     };
@@ -67,6 +107,7 @@ function stem(word: string): string {
 
     let base = word;
     if (base.endsWith('s') && base.length > 3) base = base.slice(0, -1); // plural simple
+    if (aliases[base]) return aliases[base];
 
     // Diminutivo -illa/-illo -> base ("longaniz"+"a", "salchich"+"a"), salvo las
     // palabras que legítimamente terminan así.
@@ -84,8 +125,9 @@ const PACKAGE_PREFIXES = new Set([
 ]);
 
 const FRESH_PRODUCE = new Set([
-    'ajo', 'apio', 'cebolla', 'lechuga', 'limon', 'manzana', 'naranja',
-    'palta', 'papa', 'pepino', 'pera', 'platano', 'tomate', 'zanahoria',
+    'ajo', 'apio', 'brocoli', 'cebolla', 'lechuga', 'limon', 'mandarina',
+    'manzana', 'naranja', 'palta', 'papa', 'pepino', 'pera', 'platano',
+    'repollo', 'tomate', 'zanahoria',
 ]);
 
 const PROCESSED_PRODUCE_MARKERS = new Set([
@@ -139,7 +181,30 @@ export function productIntent(term: string): SupermarketProductIntent {
  */
 export function needsBroadCatalogCandidates(term: string): boolean {
     const words = stemmedWords(term);
-    return words.length === 1 && ['bebida', 'carne', 'leche', 'longaniza'].includes(words[0] || '');
+    if (words.length >= 2) return true;
+    return words.length === 1 && [
+        'bebida', 'carne', 'huevo', 'leche', 'longaniza', 'pan', 'queso', 'yogur',
+    ].includes(words[0] || '');
+}
+
+/** Color de huevo, "molido" en café de marca, etc.: no deben tumbar un SKU real. */
+function optionalModifierStems(termWords: string[]): Set<string> {
+    const optional = new Set<string>();
+    if (termWords.includes('huevo')) {
+        optional.add('cafe');
+        optional.add('blanco');
+        optional.add('color');
+    }
+    if (termWords.includes('haiti') || termWords.includes('moka')) {
+        optional.add('molido');
+    }
+    return optional;
+}
+
+function requiredStemmedWords(term: string): string[] {
+    const words = stemmedWords(term);
+    const optional = optionalModifierStems(words);
+    return words.filter(word => !optional.has(word));
 }
 
 function stemmedWords(value: string): string[] {
@@ -152,7 +217,8 @@ function stemmedWords(value: string): string[] {
  * potato chips; reporting a missing item is safer than charging another type.
  */
 export function productMatchScore(term: string, productName: string): number {
-    const termWords = stemmedWords(term);
+    const allTermWords = stemmedWords(term);
+    const termWords = requiredStemmedWords(term);
     const nameWords = stemmedWords(productName);
     if (termWords.length === 0 || nameWords.length === 0) return -1;
     if (!termWords.every(word => nameWords.includes(word))) return -1;
@@ -164,7 +230,8 @@ export function productMatchScore(term: string, productName: string): number {
     if (termWords.length === 1) {
         const packagePrefixed = firstPosition > 0
             && nameWords.slice(0, firstPosition).every(word => PACKAGE_PREFIXES.has(word));
-        if (firstPosition !== 0 && !packagePrefixed) return -1;
+        const brandAnywhere = BRAND_ANYWHERE.has(firstTerm);
+        if (firstPosition !== 0 && !packagePrefixed && !brandAnywhere) return -1;
         if (
             FRESH_PRODUCE.has(firstTerm)
             && nameWords.some(word => PROCESSED_PRODUCE_MARKERS.has(word))
@@ -193,7 +260,12 @@ export function productMatchScore(term: string, productName: string): number {
         )).length * VARIANT_SHIFT_PENALTY
         : 0;
 
-    return directBonus + phraseBonus + termWords.length * 5 - compactnessPenalty - variantPenalty;
+    const optionalHits = [...optionalModifierStems(allTermWords)]
+        .filter(word => allTermWords.includes(word) && nameWords.includes(word))
+        .length;
+
+    return directBonus + phraseBonus + termWords.length * 5 + optionalHits * 8
+        - compactnessPenalty - variantPenalty;
 }
 
 /**
@@ -218,9 +290,34 @@ export function matchAnchors(term: string): string[] {
         platano: ['platano', 'plátano'],
         salmon: ['salmon', 'salmón'],
         te: ['te', 'té'],
-        yogur: ['yogur', 'yogurt', 'yoghurt'],
+        yogur: ['yogur', 'yogurt', 'yoghurt', 'yogurth'],
+        hallulla: ['hallulla', 'hallullas', 'ayuyita', 'ayuyitas'],
+        pita: ['pita', 'pampita'],
+        quinoa: ['quinoa', 'quinua'],
+        filete: ['filete', 'filetito', 'filetitos'],
+        lamina: ['lamina', 'laminas', 'laminado'],
+        proteina: ['proteina', 'protein'],
+        salma: ['salma', 'salmas'],
+        haiti: ['haiti', 'haití'],
+        moka: ['moka', 'mocha'],
+        cif: ['cif'],
+        confort: ['confort'],
     };
-    return variants[anchor] ?? [anchor];
+    const seen = new Set<string>();
+    const anchors: string[] = [];
+    const push = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed || seen.has(trimmed)) return;
+        seen.add(trimmed);
+        anchors.push(trimmed);
+    };
+    for (const value of (variants[anchor] ?? [anchor])) push(value);
+
+    for (const word of requiredStemmedWords(term)) {
+        if (word === anchor || ANCHOR_NOISE.has(word)) continue;
+        for (const value of (variants[word] ?? [word])) push(value);
+    }
+    return anchors;
 }
 
 /**

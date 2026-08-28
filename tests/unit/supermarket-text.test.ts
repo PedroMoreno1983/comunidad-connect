@@ -85,6 +85,15 @@ describe('supermarketText termMatchesProductName', () => {
         expect(termMatchesProductName('de la en', 'Cualquier producto')).toBe(false);
     });
 
+    it('normalizes Chilean grocery typos without inventing another product', () => {
+        expect(termMatchesProductName('yogurth colun', 'Yoghurt Batido Natural Colun 1 kg')).toBe(true);
+        expect(termMatchesProductName('leces sin lactosa surlat', 'Leche Sin Lactosa Descremada Surlat 1 L')).toBe(true);
+        expect(termMatchesProductName('pan ayuyitas', 'Hallulla 1 kg')).toBe(true);
+        expect(termMatchesProductName('pampita ideal', 'Pan Pita Ideal 6 un 300 g')).toBe(true);
+        expect(termMatchesProductName('paquete de 8 confort', 'Papel Higiénico Confort Extra Doble Hoja 8 un')).toBe(true);
+        expect(termMatchesProductName('yogurth colun', 'Leche Entera Colun 1 L')).toBe(false);
+    });
+
     it('uses complete words instead of matching a term inside a brand', () => {
         expect(termMatchesProductName('leche', 'Yogurt Loncoleche Frutilla 140 g')).toBe(false);
         expect(termMatchesProductName('leche', 'Leche entera Colun 1 L')).toBe(true);

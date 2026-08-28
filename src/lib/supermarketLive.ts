@@ -1,5 +1,6 @@
 import type { CartItem } from '@/lib/agentBrain';
-import { buildSelectionReason, storeSearchUrl } from '@/lib/supermarketText';
+import { parseGroupShoppingList } from '@/lib/supermarketGroupDomain';
+import { buildSelectionReason, canonicalCatalogTerm, productMatchScore, storeSearchUrl } from '@/lib/supermarketText';
 
 export interface ScrapedItem {
   name: string;
@@ -68,7 +69,7 @@ export interface QuantityInfo {
 }
 
 const REQUEST_TIMEOUT_MS = 12_000;
-const MAX_SEARCH_TERMS = 20;
+const MAX_SEARCH_TERMS = 200;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1_000;
 const CIRCUIT_BREAKER_THRESHOLD = 3;
@@ -79,13 +80,6 @@ const SEARCH_HEADERS = {
   'Accept-Language': 'es-CL,es;q=0.9',
   'User-Agent': 'Mozilla/5.0 (compatible; ConviveConnect/1.0; +https://conviveconnect.com)',
 };
-
-const STOP_WORDS = new Set([
-  'a', 'al', 'con', 'de', 'del', 'el', 'en', 'la', 'las', 'los', 'para', 'por', 'un', 'una',
-  'comprar', 'compra', 'necesito', 'quiero', 'agrega', 'agregar', 'añade', 'añadir', 'lista',
-  'kilos', 'kilo', 'gramos', 'gramo', 'litros', 'litro', 'unidades', 'unidad', 'packs', 'pack',
-  'botellas', 'botella', 'latas', 'lata', 'cajas', 'caja', 'bolsas', 'bolsa',
-]);
 
 /**
  * Marcas reconocidas en Chile. Se usa para priorizar productos de marca
@@ -131,12 +125,12 @@ const CATEGORIES: Record<string, string[]> = {
   pollo: ['pollo', 'pechuga', 'pierna', 'alas'],
   carne: ['carne', 'carne molida', 'vacuno', 'cerdo'],
   atun: ['atun', 'jurel', 'sardina', 'pescado enlatado'],
-  pan: ['pan', 'pan molde', 'pan integral', 'tortillas', 'hallulla', 'marraqueta'],
+  pan: ['pan', 'pan molde', 'pan integral', 'tortillas', 'hallulla', 'marraqueta', 'pita', 'pampita', 'ayuyita'],
   tomate: ['tomate', 'tomate triturado', 'salsa de tomate'],
   cebolla: ['cebolla', 'cebolla morada'],
   papa: ['papa', 'papas'],
   cafe: ['cafe', 'cafe instantaneo', 'nesCafe'],
-  yogurt: ['yogurt', 'yoghurt', 'yogur'],
+  yogurt: ['yogurt', 'yoghurt', 'yogur', 'yogurth'],
   queso: ['queso', 'queso rallado', 'queso crema'],
   mantequilla: ['mantequilla', 'margarina'],
   jamon: ['jamon', 'jamonada', 'salame', 'mortadela'],
@@ -262,18 +256,7 @@ function brandScore(brand: string, explicitBrand: string | null = null): number 
 }
 
 function scoreMatch(productName: string, query: string): number {
-  const normalizedName = normalize(productName);
-  const normalizedQuery = normalize(query);
-  const tokens = normalizedQuery.split(' ').filter(token => token.length > 1 && !STOP_WORDS.has(token));
-  if (tokens.length === 0) return 0;
-
-  const matchedTokens = tokens.filter(token => normalizedName.includes(token)).length;
-  if (matchedTokens < tokens.length) return -1;
-
-  let score = matchedTokens * 20;
-  if (normalizedName.includes(normalizedQuery)) score += 100;
-  if (normalizedName.startsWith(normalizedQuery)) score += 20;
-  return score;
+  return productMatchScore(query, productName);
 }
 
 function pickRelevant(items: CartItem[], query: string): CartItem | undefined {
@@ -311,30 +294,20 @@ function pickComparableBest(items: CartItem[]): CartItem | undefined {
  * Ahora detecta cantidades y marcas explícitas.
  */
 export function extractSupermarketTerms(message: string): Array<{ term: string; quantity: number; unit: string; explicitBrand: string | null }> {
-  const cleaned = message
-    .slice(0, 1_500)
-    .replace(/^(?:hola[,!.\s]*)/i, '')
-    .replace(/^(?:necesito|quiero|deseo)\s+(?:comprar|agregar|añadir)?\s*:*/i, '')
-    .replace(/^(?:comprar|agregar|añadir)\s*:*/i, '')
-    .trim();
-
-  const rawTerms = cleaned
-    .split(/[,;\n]+|\s+y\s+/i)
-    .map(term => term.replace(/^(?:un|una|unos|unas)\s+/i, '').trim())
-    .filter(term => term.length >= 2 && term.length <= 80);
-
-  const uniqueTerms = [...new Set(rawTerms.map(term => term.toLowerCase()))].slice(0, MAX_SEARCH_TERMS);
-
-  return uniqueTerms.map(term => {
-    const qtyInfo = extractQuantity(term);
-    const brandInfo = extractExplicitBrand(qtyInfo.cleanTerm);
-    return {
-      term: normalize(brandInfo.cleanTerm),
-      quantity: qtyInfo.quantity,
-      unit: qtyInfo.unit,
-      explicitBrand: brandInfo.brand,
-    };
-  }).filter(t => t.term.length >= 2);
+  const parsed = parseGroupShoppingList(message).slice(0, MAX_SEARCH_TERMS);
+  return parsed.flatMap(item => {
+    const conjunction = item.term.split(/\s+y\s+/).map(part => part.trim()).filter(part => part.length >= 2);
+    const parts = conjunction.length > 1 ? conjunction : [item.term];
+    return parts.map(term => {
+      const brandInfo = extractExplicitBrand(term);
+      return {
+        term: canonicalCatalogTerm(brandInfo.cleanTerm) || normalize(brandInfo.cleanTerm),
+        quantity: item.quantity,
+        unit: item.unit || 'un',
+        explicitBrand: brandInfo.brand,
+      };
+    });
+  }).filter(item => item.term.length >= 2);
 }
 
 /**
