@@ -221,9 +221,46 @@ def parse_acuenta_categories(page_html: str) -> list[tuple[str, str]]:
     return categories
 
 
+def acuenta_category_looks_promotional(name: str, slug: str) -> bool:
+    haystack = f"{name} {slug}".casefold()
+    return any(
+        token in haystack
+        for token in (
+            "luka",
+            "oferta",
+            "cyber",
+            "black friday",
+            "black-friday",
+            "hot sale",
+            "hot-sale",
+            "solo hoy",
+            "solo-hoy",
+        )
+    )
+
+
 def acuenta_categories_from_html(page_html: str) -> list[tuple[str, str]]:
-    categories = parse_acuenta_categories(page_html)
-    return categories or list(ACUENTA_FALLBACK_CATEGORIES)
+    """Stable grocery aisles first; homepage discovery cannot lead with a promo shell.
+
+    Run 77 died in 1.77s because the live menu opened on
+    "Luka, dos y tres lukas" (total>0, zero CatalogProductModel). Grocery
+    aisles were never fetched. Fallback slugs stay first; promo names are skipped.
+    """
+    discovered = parse_acuenta_categories(page_html)
+    merged: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def add(name: str, slug: str) -> None:
+        if slug in seen or acuenta_category_looks_promotional(name, slug):
+            return
+        seen.add(slug)
+        merged.append((name, slug))
+
+    for name, slug in ACUENTA_FALLBACK_CATEGORIES:
+        add(name, slug)
+    for name, slug in discovered:
+        add(name, slug)
+    return merged or list(ACUENTA_FALLBACK_CATEGORIES)
 
 
 def parse_acuenta_category_page(
@@ -572,6 +609,39 @@ def jumbo_pagination_target(current_url: str, href: str | None) -> str | None:
     return urljoin(current_url, normalized_href)
 
 
+def jumbo_category_page_url(category: str, page_number: int) -> str:
+    """Jumbo PLP pages are addressable as `?page=N`. Do not click pager buttons.
+
+    The visible control for page 41 is often missing even when pages 1–40
+    exist; `jumbo_final_page` caps N to the pager's last link. Page 41 of
+    lacteos is a 404 on the live site (checked 2026-08-28).
+    """
+    slug = str(category or "").strip().strip("/")
+    if page_number <= 1:
+        return f"https://www.jumbo.cl/{slug}"
+    return f"https://www.jumbo.cl/{slug}?page={page_number}"
+
+
+def jumbo_final_page(
+    max_pages: int | None,
+    pager_last: int,
+    advertised_pages: int,
+) -> tuple[int, bool]:
+    """Prefer the last page number in the PLP pager over ceil(BFF total / page size).
+
+    Lacteos advertised enough results for page 41, but the pager and live site
+    stop at page 40 (page 41 is 404). Using the inflated BFF total aborted the
+    whole Jumbo job.
+    """
+    if max_pages is not None:
+        return max_pages, False
+    if pager_last > 1:
+        return pager_last, False
+    if advertised_pages > 1:
+        return advertised_pages, False
+    return 200, True
+
+
 
 def _json_ld_objects(page_html: str) -> Iterator[dict[str, Any]]:
     for match in re.finditer(
@@ -877,6 +947,22 @@ def _require_playwright() -> Any:
     return sync_playwright
 
 
+def _playwright_goto_with_retry(page: Any, url: str, attempts: int = 3) -> None:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_timeout(3_000)
+            return
+        except Exception as error:  # noqa: BLE001 - Playwright timeouts are retryable.
+            last_error = error
+            if attempt < attempts - 1:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(
+        f"Playwright failed to open {url} after {attempts} attempts: {last_error}"
+    ) from last_error
+
+
 def crawl_unimarc(max_pages: int | None = None) -> Iterator[Product]:
     sync_playwright = _require_playwright()
     with sync_playwright() as playwright:
@@ -947,78 +1033,55 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
 
         def load_catalog_url(url: str, category: str) -> tuple[list[Product], int]:
             captured_payloads.clear()
-            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
-            page.wait_for_timeout(3_000)
+            _playwright_goto_with_retry(page, url)
             return current_catalog_page(category)
 
-        def click_catalog_page(
-            page_number: int,
-            category: str,
-        ) -> tuple[list[Product], int]:
-            label = re.compile(rf"^p[aá]gina\\s+{page_number}$", flags=re.I)
-            number = re.compile(rf"^\\s*{page_number}\\s*$")
-            candidates = (
-                page.get_by_role("link", name=label),
-                page.get_by_role("button", name=label),
-                page.locator(f'[aria-label="Página {page_number}"]'),
-                page.locator(f'[aria-label="pagina {page_number}" i]'),
-                page.locator("a").filter(has_text=number),
-                page.locator("button").filter(has_text=number),
-            )
-            control = None
-            for candidate in candidates:
-                for index in range(candidate.count()):
-                    visible = candidate.nth(index)
-                    if visible.is_visible():
-                        control = visible
-                        break
-                if control is not None:
-                    break
-            if control is None:
-                raise RuntimeError(
-                    f"Jumbo category {category} does not expose a visible control "
-                    f"for page {page_number}"
-                )
-            target_url = jumbo_pagination_target(
-                page.url,
-                control.get_attribute("href"),
-            )
-            if target_url is not None:
-                return load_catalog_url(target_url, category)
-
-            captured_payloads.clear()
-            control.click(timeout=15_000, force=True)
-            page.wait_for_timeout(3_000)
-            return current_catalog_page(category)
+        def load_catalog_page(page_number: int, category: str) -> tuple[list[Product], int]:
+            return load_catalog_url(jumbo_category_page_url(category, page_number), category)
 
         page.on("response", capture_catalog_response)
         coverage_warnings: list[str] = []
+        yielded = 0
         try:
             for category in JUMBO_CATEGORIES:
-                base_url = f"https://www.jumbo.cl/{category}"
-                first_products, total = load_catalog_url(base_url, category)
-                if total > 0 and not first_products:
-                    raise RuntimeError(
-                        f"Jumbo category {category} published no usable products"
+                try:
+                    first_products, total = load_catalog_page(1, category)
+                except RuntimeError as error:
+                    coverage_warnings.append(str(error))
+                    continue
+                if not first_products:
+                    coverage_warnings.append(
+                        f"{category}: published no usable products after retries"
                     )
+                    continue
                 yield from first_products
+                yielded += len(first_products)
 
+                hrefs = page.locator('a[href*="page="]').evaluate_all(
+                    "(nodes) => nodes.map((node) => node.getAttribute('href') || '')"
+                )
+                pager_last = jumbo_page_count_from_links(hrefs)
                 page_size = max(len(first_products), 1)
-                published_page_count = math.ceil(total / page_size)
-                probes_until_repeat = published_page_count <= 1
-                if max_pages is not None:
-                    final_page = max_pages
-                elif probes_until_repeat:
-                    final_page = 200
-                else:
-                    final_page = published_page_count
+                advertised_pages = math.ceil(total / page_size) if total else 1
+                final_page, probes_until_repeat = jumbo_final_page(
+                    max_pages,
+                    pager_last,
+                    advertised_pages,
+                )
+                published_page_count = pager_last if pager_last > 1 else advertised_pages
 
                 first_signature = tuple(product_key(product) for product in first_products)
                 seen_pages = {first_signature}
                 category_product_count = len(first_products)
                 repeated_page = False
                 for page_number in range(2, final_page + 1):
-                    products, _ = click_catalog_page(page_number, category)
+                    try:
+                        products, _ = load_catalog_page(page_number, category)
+                    except RuntimeError as error:
+                        coverage_warnings.append(
+                            f"{category}: page {page_number} failed ({error})"
+                        )
+                        break
                     signature = tuple(product_key(product) for product in products)
                     if not products:
                         coverage_warnings.append(
@@ -1030,22 +1093,28 @@ def crawl_jumbo(max_pages: int | None = None) -> Iterator[Product]:
                         if probes_until_repeat:
                             repeated_page = True
                             break
-                        raise RuntimeError(
-                            f"Jumbo category {category} repeated page {page_number} "
-                            f"before published page {published_page_count}"
+                        coverage_warnings.append(
+                            f"{category}: repeated page {page_number} before "
+                            f"published page {published_page_count}"
                         )
+                        break
                     seen_pages.add(signature)
                     category_product_count += len(products)
+                    yielded += len(products)
                     yield from products
 
                 if (
                     probes_until_repeat
                     and max_pages is None
                     and not repeated_page
+                    and category_product_count > 0
                 ):
-                    raise RuntimeError(
-                        f"Jumbo category {category} exceeded the 200-page safety limit"
+                    coverage_warnings.append(
+                        f"{category}: exceeded the 200-page safety limit"
                     )
+            if yielded == 0:
+                detail = "; ".join(coverage_warnings) or "all categories empty"
+                raise RuntimeError(f"Jumbo returned no usable products ({detail})")
             if coverage_warnings:
                 raise CatalogCoverageWarning("; ".join(coverage_warnings))
         finally:
@@ -1088,29 +1157,53 @@ def crawl_acuenta(max_pages: int | None = None) -> Iterator[Product]:
     except RuntimeError:
         home_html = ""
     categories = acuenta_categories_from_html(home_html)
+    coverage_warnings: list[str] = []
+    yielded = 0
 
     for category_name, slug in categories:
         base_url = f"https://www.acuenta.cl/ca/{slug}"
-        first_html = fetch_text(base_url, headers=ACUENTA_HEADERS)
+        try:
+            first_html = fetch_text(base_url, headers=ACUENTA_HEADERS)
+        except RuntimeError as error:
+            coverage_warnings.append(f"{category_name}: {error}")
+            continue
         first_products, page_count, total = parse_acuenta_category_page(
             first_html,
             category_name,
         )
-        if total > 0 and not first_products:
-            raise RuntimeError(f"aCuenta category {category_name} published no usable products")
+        if not first_products:
+            coverage_warnings.append(
+                f"{category_name}: published no usable products "
+                f"(advertised total {total})"
+            )
+            continue
         yield from first_products
+        yielded += len(first_products)
         final_page = min(page_count, max_pages) if max_pages is not None else page_count
         urls = (
             f"{base_url}?currentPage={page_number}"
             for page_number in range(2, final_page + 1)
         )
-        for page_html in fetch_many(urls, workers=4, headers=ACUENTA_HEADERS):
+        try:
+            page_htmls = list(fetch_many(urls, workers=4, headers=ACUENTA_HEADERS))
+        except RuntimeError as error:
+            coverage_warnings.append(f"{category_name}: later pages failed ({error})")
+            continue
+        for page_html in page_htmls:
             products, _, _ = parse_acuenta_category_page(page_html, category_name)
             if not products:
-                raise RuntimeError(
-                    f"aCuenta category {category_name} returned an empty page before completion"
+                coverage_warnings.append(
+                    f"{category_name}: returned an empty page before completion"
                 )
+                break
             yield from products
+            yielded += len(products)
+
+    if yielded == 0:
+        detail = "; ".join(coverage_warnings) or "no grocery aisles returned products"
+        raise RuntimeError(f"aCuenta returned no usable products ({detail})")
+    if coverage_warnings:
+        raise CatalogCoverageWarning("; ".join(coverage_warnings))
 
 
 def crawl_irurzun(max_pages: int | None = None) -> Iterator[Product]:

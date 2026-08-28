@@ -142,8 +142,21 @@ jobs:
           fi
 
           set +e
-          python scripts/ingest_full_supermarket_catalog.py "${args[@]}" | tee "full-catalog-${{ matrix.store }}.json"
-          exit_code=${PIPESTATUS[0]}
+          attempts=1
+          if [ "${{ matrix.store }}" = "jumbo" ] || [ "${{ matrix.store }}" = "acuenta" ]; then
+            attempts=3
+          fi
+          exit_code=1
+          for attempt in $(seq 1 "$attempts"); do
+            python scripts/ingest_full_supermarket_catalog.py "${args[@]}" | tee "full-catalog-${{ matrix.store }}.json"
+            exit_code=${PIPESTATUS[0]}
+            if [ "$exit_code" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -lt "$attempts" ]; then
+              sleep $((attempt * 45))
+            fi
+          done
           set -e
 
           exit "$exit_code"

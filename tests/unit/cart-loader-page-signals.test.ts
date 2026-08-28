@@ -113,16 +113,31 @@ describe('ficha agotada', () => {
 describe('carro vacío nativo', () => {
   const signals = loadSignals();
 
-  it('reconoce el copy de Jumbo que congelaba 1.3.2 en “Revisando el carro anterior”', () => {
-    expect(signals.textLooksLikeEmptyCart('Tu carro está vacío')).toBe(true);
-    expect(signals.textLooksLikeEmptyCart('Tu carro está vacío. Inténtalo aquí')).toBe(true);
-    expect(signals.textLooksLikeEmptyCart('No tienes productos en tu carro')).toBe(true);
-    expect(signals.textLooksLikeEmptyCart('Sin productos en tu carrito')).toBe(true);
+  const STORE_EMPTY_COPY: Record<string, string[]> = {
+    Jumbo: ['Tu carro está vacío', 'Tu carro está vacío. Inténtalo aquí'],
+    'Santa Isabel': ['Tu carro está vacío', 'No tienes productos en tu carro'],
+    Unimarc: ['Tu carrito está vacío', 'Sin productos en tu carrito'],
+    Lider: ['Tu carrito está vacío', 'No hay artículos en tu carrito'],
+    aCuenta: ['Tu carrito está vacío', 'No hay artículos en el carrito'],
+    Tottus: ['Tu carro está vacío', 'Tu bolsa de compras está vacía'],
+    Irurzun: ['Your cart is empty', 'Tu carrito está vacío'],
+  };
+
+  it('reconoce el copy de vacío de las 7 tiendas y arranca sin esperar un API de conteo', () => {
+    expect(Object.keys(STORE_EMPTY_COPY).sort()).toEqual(
+      ['Irurzun', 'Jumbo', 'Lider', 'Santa Isabel', 'Tottus', 'Unimarc', 'aCuenta'],
+    );
+    for (const [store, phrases] of Object.entries(STORE_EMPTY_COPY)) {
+      for (const phrase of phrases) {
+        expect(signals.textLooksLikeEmptyCart(phrase), `${store}: ${phrase}`).toBe(true);
+      }
+    }
   });
 
   it('no trata un PDP ni Términos Cencosud como carro vacío', () => {
     expect(signals.textLooksLikeEmptyCart('Pack 12 un. Yogurt Colun Sin Azúcar 120 g')).toBe(false);
     expect(signals.textLooksLikeEmptyCart('Agregar al carro · $1.990')).toBe(false);
     expect(signals.overlayLooksLikeTerms('Tu carro está vacío. Inténtalo aquí')).toBe(false);
+    expect(signals.overlayLooksLikeTerms('Tu carrito está vacío')).toBe(false);
   });
 });
