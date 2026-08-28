@@ -12,9 +12,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from full_catalog import (
     ACUENTA_FALLBACK_CATEGORIES,
     JUMBO_CATEGORIES,
+    CatalogCoverageWarning,
     acuenta_categories_from_html,
+    acuenta_category_looks_promotional,
+    crawl_acuenta,
     extract_santa_render_data,
     extract_next_flight_stream,
+    jumbo_category_page_url,
     jumbo_page_count_from_links,
     jumbo_pagination_target,
     jumbo_payload_candidates,
@@ -44,6 +48,80 @@ class FullCatalogParserTests(unittest.TestCase):
         categories = acuenta_categories_from_html("")
         self.assertEqual(categories, list(ACUENTA_FALLBACK_CATEGORIES))
         self.assertIn(("Despensa", "despensa/05"), categories)
+
+    def test_acuenta_does_not_lead_with_luka_promo_shell(self) -> None:
+        # Run 77: homepage discovery opened on "Luka, dos y tres lukas"
+        # (total>0, zero SKUs) and aborted in 1.77s. Grocery aisles first.
+        self.assertTrue(
+            acuenta_category_looks_promotional("Luka, dos y tres lukas", "luka-dos-y-tres-lukas/01")
+        )
+        self.assertFalse(acuenta_category_looks_promotional("Despensa", "despensa/05"))
+        category_tree = (
+            '{"active":true,"boost":1,"hasChildren":false,'
+            '"categoryNamesPath":"/Luka","isAvailableInHome":true,'
+            '"level":1,"name":"Luka, dos y tres lukas","path":"/01",'
+            '"reference":"01","slug":"luka-dos-y-tres-lukas/01"}'
+            '{"active":true,"boost":1,"hasChildren":true,'
+            '"categoryNamesPath":"/Despensa","isAvailableInHome":true,'
+            '"level":1,"name":"Despensa","path":"/05","reference":"05",'
+            '"slug":"despensa/05"}'
+        )
+        encoded = json.dumps(category_tree, ensure_ascii=False)
+        page_html = f"<script>self.__next_f.push([1,{encoded}])</script>"
+        categories = acuenta_categories_from_html(page_html)
+        self.assertEqual(categories[0], ("Mascotas", "mascotas/88"))
+        self.assertIn(("Despensa", "despensa/05"), categories)
+        self.assertFalse(any("luka" in slug for _, slug in categories))
+
+    def test_acuenta_skips_empty_aisles_and_keeps_grocery_skus(self) -> None:
+        from unittest.mock import patch
+
+        product = (
+            'a1:{"name":"Arroz Caja 10 unidades","price":1590,'
+            '"photosUrl":"$a2","sku":"123","ean":"$a3",'
+            '"slug":"arroz-123","brand":"Acuenta","stock":8,'
+            '"promotion":null,"__typename":"CatalogProductModel"}\n'
+            'a2:["https://img/arroz.jpg"]\n'
+            'a3:["7800000000123"]\n'
+        )
+        pagination = '"pagination":{"page":1,"pages":1,"total":{"value":1,"relation":"eq"}}'
+        encoded = json.dumps(product + pagination, ensure_ascii=False)
+        despensa_html = f"<script>self.__next_f.push([1,{encoded}])</script>"
+
+        def fake_fetch(url: str, timeout: int = 35, missing_statuses=(), headers=None) -> str:
+            if "despensa/05" in url:
+                return despensa_html
+            return "<html><body>empty</body></html>"
+
+        products: list[object] = []
+        with patch("full_catalog.fetch_text", side_effect=fake_fetch):
+            with self.assertRaises(CatalogCoverageWarning):
+                for item in crawl_acuenta(max_pages=1):
+                    products.append(item)
+        self.assertEqual(len(products), 1)
+        self.assertEqual(getattr(products[0], "sku"), "123")
+        self.assertEqual(getattr(products[0], "query"), "Despensa")
+
+    def test_jumbo_paginates_by_url_not_visible_page_41_button(self) -> None:
+        self.assertEqual(
+            jumbo_category_page_url("lacteos-huevos-y-congelados", 1),
+            "https://www.jumbo.cl/lacteos-huevos-y-congelados",
+        )
+        self.assertEqual(
+            jumbo_category_page_url("lacteos-huevos-y-congelados", 41),
+            "https://www.jumbo.cl/lacteos-huevos-y-congelados?page=41",
+        )
+        source = Path(__file__).with_name("full_catalog.py").read_text(encoding="utf-8")
+        self.assertIn("jumbo_category_page_url", source)
+        self.assertNotIn("does not expose a visible control", source)
+        self.assertIn("_playwright_goto_with_retry", source)
+
+    def test_jumbo_stops_at_pager_last_page_not_inflated_bff_total(self) -> None:
+        from full_catalog import jumbo_final_page
+
+        self.assertEqual(jumbo_final_page(None, 40, 41), (40, False))
+        self.assertEqual(jumbo_final_page(2, 40, 41), (2, False))
+        self.assertEqual(jumbo_final_page(None, 1, 1), (200, True))
 
     def test_tottus_categories_split_catalog_below_page_cap(self) -> None:
         payload = json.dumps(

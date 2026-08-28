@@ -360,9 +360,10 @@
   /**
    * Cuántas unidades hay en el carro, o 0 si la tienda ya muestra copy de vacío.
    *
-   * El contador del header a veces no parsea (Jumbo 2026-08-28: panel "Tu carro
-   * está vacío" + "Inténtalo aquí", badge ilegible). Esperar un API/contador
-   * que nunca confirma 0 dejaba la carga congelada en el producto 1.
+   * El contador del header a veces no parsea (las 7 tiendas, 2026-08-28: Jumbo
+   * "Tu carro está vacío"; misma clase de stall en Santa Isabel, Lider, Tottus,
+   * Unimarc, aCuenta e Irurzun). Esperar un API/contador que nunca confirma 0
+   * dejaba la carga congelada en el producto 1. El copy nativo de vacío basta.
    */
   function observedCartCount(config) {
     const counted = parseCartCount(config);
@@ -519,8 +520,9 @@
   }
 
   /**
-   * Cierra el panel de marketing de carro vacío (Jumbo: "Inténtalo aquí")
-   * sin pulsarlo: esa CTA no es vaciar ni agregar, y nunca es pagar.
+   * Cierra el panel de marketing de carro vacío (Jumbo/Tottus/Lider: "Inténtalo
+   * aquí" u equivalente) sin pulsarlo: esa CTA no es vaciar ni agregar, y nunca
+   * es pagar. Vale para las 7 tiendas.
    */
   function dismissEmptyCartMarketing() {
     const overlay = blockingOverlay();

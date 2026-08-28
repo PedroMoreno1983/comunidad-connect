@@ -205,13 +205,14 @@ la UI pasa por el hook, y el QA verifica las dos cosas:
 * que cada capacidad declarada tenga codigo que la respalde, y
 * que la UI no vuelva a postear por su cuenta.
 
-El cargador quedó en **1.3.4** (sobre 1.3.3: el modal de Términos de Puntos
-Cencosud en Santa Isabel se leía como “el carro no quedó vacío” y congelaba
-la carga en el producto 1. Ahora pausa con un CTA explícito y no acepta
-términos ni paga. En Jumbo, el panel nativo “Tu carro está vacío” + “Inténtalo
-aquí” ya es el carro vacío: 1.3.2/1.3.3 esperaban un contador/API que nunca
-confirmaba 0 y se quedaban en “Revisando el carro anterior…”. 1.3.4 trata ese
-copy como vacío, empieza a agregar, y no pulsa pagar ni “Inténtalo aquí”).
+El cargador quedó en **1.3.5** (1.3.4 era Jumbo; Pedro pidió las 7 tiendas).
+El modal de Términos de Puntos Cencosud en Santa Isabel se leía como “el carro
+no quedó vacío” y congelaba la carga en el producto 1: ahora pausa con un CTA
+explícito y no acepta términos ni paga. Si **cualquier** tienda partner muestra
+copy nativo de carro vacío (Jumbo “Tu carro está vacío”, Lider/aCuenta
+“Tu carrito está vacío”, Tottus “bolsa”, Irurzun “Your cart is empty”, etc.),
+1.3.5 trata eso como vacío y empieza a agregar. No espera un contador/API que
+nunca confirma 0. No pulsa pagar ni “Inténtalo aquí”.
 
 ---
 

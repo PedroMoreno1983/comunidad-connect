@@ -51,18 +51,13 @@ const stores = [
 ];
 
 function fixtureHtml(store) {
-  const emptyCartDomUpdate = store === 'Jumbo'
-    ? `
+  const emptyCartDomUpdate = `
                cart.querySelector('[data-cart-count]')?.remove();
                const drawer = document.querySelector('#fixture-cart-drawer');
                const emptyHeading = document.createElement('h2');
                emptyHeading.dataset.emptyCartState = 'true';
                emptyHeading.textContent = 'Tu carro esta vacio';
                drawer.append(emptyHeading);
-             `
-    : `
-               cart.querySelector('[data-cart-count]').textContent = '0';
-               document.querySelector('#fixture-cart-drawer').hidden = true;
              `;
   return `<!doctype html>
     <html>
